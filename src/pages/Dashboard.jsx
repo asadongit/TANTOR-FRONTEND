@@ -11,24 +11,29 @@ const Dashboard = ({ activeSection, setActiveSection }) => {
         <p className="text-gray-600">Dashboard overview</p>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        {tabs.map((tab) => {
-          const normalizedTab = tab.toLowerCase().replace(' ', '');
-          const isActive = normalizedTab === activeSection;
+      <div className="flex gap-2 mb-6 items-center justify-between">
+        <div className="flex gap-2">
+          {tabs.map((tab) => {
+            const normalizedTab = tab.toLowerCase().replace(' ', '');
+            const isActive = normalizedTab === activeSection;
 
-          return (
-            <button
-              key={tab}
-              onClick={() => setActiveSection(normalizedTab)}
-              className={`px-4 py-2 rounded-full text-sm transition-colors duration-200
-                ${isActive
-                  ? 'bg-purple-50 text-purple-600 ring-1 ring-purple-200'
-                  : 'bg-gray-50 text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100'}`}
-            >
-              {tab}
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveSection(normalizedTab)}
+                className={`px-4 py-2 rounded-full text-sm transition-colors duration-200
+                  ${isActive
+                    ? 'bg-white text-[#8e78b7] ring-1 ring-[#8e78b7]'
+                    : 'bg-gray-50 text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100'}`}
+              >
+                {tab}
+              </button>
+            );
+          })}
+        </div>
+        <button type="button" className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]">
+          Data View
+        </button>
       </div>
 
       {activeSection === 'platform' ? (
