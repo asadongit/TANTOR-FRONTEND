@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 204.39 46.98">
+  <defs>
+    <style>
+      .cls-1 {
+        letter-spacing: 0em;
+      }
+
+      .cls-2 {
+        fill: #97cd7c;
+      }
+
+      .cls-3 {
+        letter-spacing: -.01em;
+      }
+
+      .cls-4 {
+        fill: #8e78b7;
+      }
+
+      .cls-5 {
+        letter-spacing: -.04em;
+      }
+
+      .cls-6 {
+        fill: #0b1726;
+        font-family: Arial;
+        font-size: 34.65px;
+        font-weight: 800;
+      }
+    </style>
+  </defs>
+  <g id="Layer_2-2" data-name="Layer_2">
+    <text class="cls-6" transform="translate(49.18 34.19)"><tspan class="cls-5" x="0" y="0">T</tspan><tspan class="cls-1" x="20.37" y="0">AN</tspan><tspan class="cls-3" x="74.05" y="0">T</tspan><tspan x="97.3" y="0">OR</tspan></text>
+    <g>
+      <g>
+        <path class="cls-2" d="M21.56,14.6v19.65h-5.07V14.63s0-.53,0-.53c0-4.99-4.04-9.03-9.03-9.03h-2.39V0h1.76c8.14,0,14.73,5.07,14.73,14.6Z"/>
+        <path class="cls-2" d="M22.83,14.6v19.65h5.07V14.63s0-.53,0-.53c0-4.99,4.04-9.03,9.03-9.03h2.39V0h-1.76c-8.14,0-14.73,5.07-14.73,14.6Z"/>
+      </g>
+      <path class="cls-4" d="M29.17,14.09v25.23h5.07V14.06c0-1.46,1.19-2.65,2.65-2.65h7.5v-5.07h-7.47c-4.28,0-7.75,3.47-7.75,7.75Z"/>
+      <path class="cls-4" d="M15.22,14.09v25.23h-5.07V14.06c0-1.46-1.19-2.65-2.65-2.65H0v-5.07h7.47c4.28,0,7.75,3.47,7.75,7.75Z"/>
+    </g>
+  </g>
+</svg>
