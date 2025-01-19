@@ -15,25 +15,26 @@ function App() {
   };
 
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="flex">
-          <Sidebar
-            activeSection={activeSection}
-            isCollapsed={isSidebarCollapsed}
-            toggleSidebar={toggleSidebar}
-          />
-          <main className={`flex-1 p-4 transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
-            <Routes>
-              <Route path="/" element={<Dashboard activeSection={activeSection} setActiveSection={setActiveSection} />} />
-              {PlatformRoutes}
-              {DataGovernanceRoutes}
-            </Routes>
-          </main>
+      <Router>
+        <div className="min-h-screen bg-gray-50">
+          <Header />
+          <div className="flex">
+            <Sidebar
+              activeSection={activeSection}
+              isCollapsed={isSidebarCollapsed}
+              toggleSidebar={toggleSidebar}
+            />
+            <main className={`flex-1 p-4 transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+              <Routes>
+                <Route path="/" element={<Dashboard activeSection={activeSection} setActiveSection={setActiveSection} />} />
+                {PlatformRoutes}
+                {DataGovernanceRoutes}
+              </Routes>
+            </main>
+          </div>
         </div>
-      </div>
-    </Router>
+      </Router>
+
   );
 }
 
