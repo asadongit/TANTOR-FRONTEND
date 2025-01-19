@@ -10,16 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@heroicons/react": "^2.1.1",
+    "autoprefixer": "^10.4.18",
+    "postcss": "^8.4.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.22.3",
-    "@heroicons/react": "^2.1.1",
-    "tailwindcss": "^3.4.1",
-    "autoprefixer": "^10.4.18",
-    "postcss": "^8.4.35"
+    "react-router-dom": "^6.28.2",
+    "tailwindcss": "^3.4.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@iconify-icon/react": "^2.3.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
