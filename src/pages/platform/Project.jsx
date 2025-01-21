@@ -158,7 +158,7 @@ const Project = () => {
   ];
 
   return (
-    <div className="max-w-fit mx-auto">
+    <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Project</h1>
         <div>
@@ -346,7 +346,7 @@ const Project = () => {
               >
                 <button
                   onClick={() => closeModal("modal2")}
-                  className="absolute top-4 right-4 text-black p-1"  
+                  className="absolute top-4 right-4 text-black p-1"
                 >
                   <X className="h-6 w-6" />
                 </button>
