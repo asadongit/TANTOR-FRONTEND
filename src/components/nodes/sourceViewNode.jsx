@@ -105,6 +105,9 @@ export function SourceViewNode({ id }) {
           </div>
         )}
       </div>
+      <button type="button" className="w-full text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] mt-3">
+          OK
+        </button>
 
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
