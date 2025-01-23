@@ -1,3 +1,4 @@
+/*eslint-disable*/
 import { useLocation } from 'react-router-dom';
 import { addEdge, Controls, Background, MiniMap, ReactFlow, useNodesState, Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';

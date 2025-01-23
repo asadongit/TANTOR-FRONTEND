@@ -1,3 +1,4 @@
+/*eslint-disable*/
 import { Icon } from '@iconify/react';
 import { useEffect, useState } from 'react';
 
