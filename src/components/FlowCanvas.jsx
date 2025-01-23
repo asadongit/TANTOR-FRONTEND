@@ -9,11 +9,13 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { SourceViewNode } from './nodes/sourceViewNode';
+import {ConnectionNode} from './nodes/connectionNode'
 import { DrawerContainer } from './drawers/DrawerContainer';
 import {BusinessSidebar} from './BusinessSidebar'
 
 const nodeTypes = {
   sourceView: SourceViewNode,
+  connection:ConnectionNode,
 };
 
 let id = 0;
@@ -92,3 +94,4 @@ export function FlowCanvas() {
     </div>
   );
 }
+
