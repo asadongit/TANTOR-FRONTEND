@@ -10,12 +10,14 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { SourceViewNode } from './nodes/sourceViewNode';
 import {ConnectionNode} from './nodes/connectionNode'
+import {ConsolidationNode} from './nodes/consolidationNode'
 import { DrawerContainer } from './drawers/DrawerContainer';
 import {BusinessSidebar} from './BusinessSidebar'
 
 const nodeTypes = {
   sourceView: SourceViewNode,
   connection:ConnectionNode,
+  consolidation:ConsolidationNode
 };
 
 let id = 0;
@@ -85,6 +87,7 @@ export function FlowCanvas() {
         onDrop={onDrop}
         nodeTypes={nodeTypes}
         fitView
+        zoom={0.25}
         className="bg-gray-50"
       >
         {/* <Background color="#374151" gap={16} /> */}

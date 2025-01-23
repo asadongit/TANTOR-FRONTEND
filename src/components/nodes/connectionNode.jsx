@@ -35,9 +35,9 @@ export function ConnectionNode({ id }) {
     <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
       <button
         onClick={() => window.deleteNode?.(id)}
-        className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute -top-2 -right-2 bg-black rounded-full p-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <X className="w-4 h-4 text-black" />
+        <X className="w-4 h-4 text-white" />
       </button>
 
       <Handle type="target" position={Position.Left} />

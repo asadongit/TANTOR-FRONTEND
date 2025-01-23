@@ -1,8 +1,7 @@
 /*eslint-disable*/
 import React, { useState } from 'react';
 import {
-  FileSpreadsheet, Table, Brain, Network, LineChart, BarChart2, Workflow,
-  ChevronDown, ChevronRight, Search,ChartLine, Link2,Cable,SquareKanban
+ Network,ChevronDown, ChevronRight,Cable,SquareKanban
 } from 'lucide-react';
 
 
@@ -28,7 +27,7 @@ const components = [
       {
         id: 'consolidation',
         type: 'consolidation',
-        icon: FileSpreadsheet,
+        icon: Network,
         description: 'Choose Consolidation',
         name: 'Consolidation'
       }
