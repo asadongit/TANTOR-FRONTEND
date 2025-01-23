@@ -9,6 +9,7 @@ import Transformation from '../pages/platform/Transformation';
 import Purge from '../pages/platform/Purge';
 import CDC from '../pages/platform/CDC';
 import Federation from '../pages/platform/Federation';
+import Source from '../components/Federation/Source';
 
 export const PlatformRoutes = (
   <>
@@ -22,5 +23,6 @@ export const PlatformRoutes = (
     <Route path="/purge" element={<Purge />} />
     <Route path="/cdc" element={<CDC />} />
     <Route path="/federation" element={<Federation />} />
+    <Route path='/federation/view/source' element={<Source />} />
   </>
 );
