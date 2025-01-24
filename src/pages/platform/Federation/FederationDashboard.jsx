@@ -7,6 +7,10 @@ import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import CreateViewDialog from "./createViewDailog";
+import {
+  List,
+  RefreshCcw,
+} from "lucide-react";
  
 ModuleRegistry.registerModules([AllCommunityModule]);
  
@@ -260,9 +264,28 @@ const FederationDashBoard = () => {
       </div>
       <div className="flex w-full justify-between">
         <h1 className="text-2xl font-semibold">Federation</h1>
-        <button onClick={toggleModal} type="button" className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]">
-          Create View
-        </button>
+        <div>
+          <button
+            type="button"
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+          >
+            <List className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+          >
+            <RefreshCcw className="h-5 w-5" />
+          </button>
+          <button
+            // onClick={() => openModal("modal1")}
+            type="button"
+            onClick={toggleModal}
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+          >
+            + Create View
+          </button>
+        </div>
       </div>
       {/* Render modal when it's open */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 w-auto justify-self-center mt-2">
