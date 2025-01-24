@@ -5,6 +5,8 @@ import { SquareKanban, X, Network,ChevronDown ,ChevronUp } from "lucide-react";
 
 export function ConsolidationNode({ id }) {
       const [isCollapsed, setIsCollapsed] = useState(false);
+      const [type, setType] = useState("")
+      const [unionType, setUnionType] = useState("")
   return (
     <>
  { 
@@ -36,24 +38,143 @@ export function ConsolidationNode({ id }) {
                 )}
               </button>
             </div>
+            
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-black mb-1">View</label>
+        <div className="flex mt-2 text-sm justify-between">
+              <button
+                onClick={() => setType("Join")}
+                className={`w-[5rem] h-[2.25rem] py-1.5 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                  type === "Join"
+                    ? "border-[#8E77BB] text-[#8E77BB]"
+                    : "border-solid border-2 text-gray-700"
+                }`}
+              >
+                Join
+              </button>
+              <button
+                onClick={() => setType("Union")}
+                className={`w-[5rem] h-[2.25rem] py-1.5 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                  type === "Union"
+                    ? "border-[#8E77BB] text-[#8E77BB]"
+                    : "border-solid border-2 text-gray-700"
+                }`}
+              >
+               Union
+              </button>
+              <button
+                onClick={() => setType("Intersect")}
+                className={`w-[5rem] h-[2.25rem] py-1.5 rounded-full border transition-all duration-300 flex items-center justify-center ${
+                  type === "Intersect"
+                    ? "border-[#8E77BB] text-[#8E77BB]"
+                    : "border-solid border-2 text-gray-700"
+                }`}
+              >
+               Intersect
+              </button>
+            </div>
+            {type === "Join" && (
+              <>
+            <div className="flex w-full justify-between">
+          <div className="w-[47%]">
+            <label className="block text-sm font-medium text-black mb-1">Left</label>
             <select
-            //   value={selectedView}
-            //   onChange={(e) => setSelectedView(e.target.value)}
               className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
             >
               <option value="" disabled>
-                Select a view
+                Select 
               </option>
-              <option value="view1">View 1</option>
-              <option value="view2">View 2</option>
-              <option value="view3">View 3</option>
+              <option value="Column1">Column 1</option>
+              <option value="Column2">Column 2</option>
+              <option value="Column3">Column 3</option>
             </select>
           </div>
+          <div className="w-[47%]">
+            <label className="block text-sm font-medium text-black mb-1">Right</label>
+            <select
+              className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
+            >
+              <option value="" disabled>
+                Select 
+              </option>
+              <option value="Column1">Column 1</option>
+              <option value="Column2">Column 2</option>
+              <option value="Column3">Column 3</option>
+            </select>
+          </div>
+          </div>
+          <div className="flex w-full justify-between">
+          <div className="w-[47%]">
+            <label className="block text-sm font-medium text-black mb-1">Type</label>
+            <select
+              className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
+            >
+              <option value="" disabled>
+                Select 
+              </option>
+              <option value="Column1">Inner</option>
+              <option value="Column2">Outer</option>
+              <option value="Column3">Left</option>
+            </select>
+          </div>
+          <div className="w-[47%]">
+            <label className="block text-sm font-medium text-black mb-1">Operator</label>
+            <select
+
+              className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
+            >
+              <option value="" disabled>
+                Select 
+              </option>
+              <option value="Column1">=</option>
+            </select>
+          </div>
+          </div>
+          </>
+            )}
+
+            {(type === "Union" || type === "Intersect" )&&(
+                          <div className="flex gap-4 mt-6">
+                          <div
+                           onClick={() => setUnionType("Union")}
+                            className={`w-full sm:w-[9rem] h-14 p-3 border rounded-md transition-all duration-300 flex items-center justify-center ${
+                              unionType === "Union"
+                                ? "border-[#8E77BB] text-[#8E77BB] bg-[#F3F2F9]"
+                                : "border-solid border-2 text-gray-700"
+                            }`}
+                          >
+                            {type}
+                          </div>
+                          <div
+                           onClick={() => setUnionType("Union All")}
+                            className={`w-full sm:w-[9rem] h-14 p-3 border rounded-md transition-all duration-300 flex items-center justify-center ${
+                              unionType === "Union All"
+                                ? "border-[#8E77BB] text-[#8E77BB] bg-[#F3F2F9]"
+                                : "border-solid border-2 text-gray-700"
+                            }`}
+                          >
+                           {type} All
+                          </div>
+                        </div>
+            )}
         </div>
+
+{(type === "Join" || type ==="Union" || type=== "Intersect" )&& (
+        <div className="mt-4">
+        <button
+            type="button"
+            className="text-black bg-white hover:bg-gray-50 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-2 me-2 mb-2  focus:outline-none  border-solid border-2"
+          >
+            Clear
+          </button>
+        <button
+            type="button"
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-2 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+          >
+            Save
+          </button>
         </div>
+        )}
+      </div>
         </>
       ):
     <div className="bg-[#8E77BB] rounded-full p-5 shadow-lg relative group">
