@@ -12,7 +12,7 @@ const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState 
       });
     }
     if (modalState.viewType === "Business" && modalState.queryType === "Regular") {
-      navigate("/federation/view/Business", {
+      navigate("/viewcanvas", {
         state: modalState,
       });
     }

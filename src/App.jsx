@@ -12,6 +12,11 @@ import { WelcomeModal } from "./pages/platform/migration/WelcomeModal";
 import { CSVProvider } from "./pages/platform/migration/context/CSVcontext";
 import { DrawerProvider } from "./pages/platform/migration/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/migration/context/ThemeContext";
+import {ViewCanvas} from "./pages/platform/Federation/ViewCanvas"
+import {BusinessSidebar} from "./pages/platform/Federation/BusinessSidebar"
+import {ViewDrawer} from "./pages/platform/Federation/context/DrawerContext"
+import { BusinessHeader } from "./pages/platform/Federation/BusinessHeader";
+
 
 function App() {
 
@@ -82,6 +87,27 @@ function App() {
                 </CSVProvider>
               </DrawerProvider>
             </ThemeProvider>
+          }
+        />
+
+<Route
+          path="/viewcanvas"
+          element={
+              <ViewDrawer>
+                  <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
+                    <Header className="h-16 flex-shrink-0" />{" "}
+                    <BusinessHeader/>
+                    <div className="flex-1 flex mt-8 " style={{marginLeft: "20px"}}>
+                      <BusinessSidebar className="w-64" />{" "}
+                      <div className="flex-1 relative">
+                        {" "}
+                        <ReactFlowProvider>
+                          <ViewCanvas />
+                        </ReactFlowProvider>
+                      </div>
+                    </div>
+                  </div>
+              </ViewDrawer>
           }
         />
       </Routes>

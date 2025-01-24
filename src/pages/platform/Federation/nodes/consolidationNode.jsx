@@ -25,7 +25,7 @@ export function ConsolidationNode({ id }) {
       <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
                 <Network className="w-5 h-5 text-[#8E77BB]" />
-                <h3 className="text-black font-medium">Consolidation</h3>
+                <h3 className="text-[#8E77BB] font-medium">Consolidation</h3>
               </div>
               <button
                 onClick={() => setIsCollapsed(!isCollapsed)}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useDrawer } from '../../context/DrawerContext';
+import { useDrawer } from '../context/DrawerContext';
 import { ManualPrepDrawer } from './ManualPrepDrawer';
 
 const DRAWER_COMPONENTS = {

@@ -12,7 +12,6 @@ import { SourceViewNode } from './nodes/sourceViewNode';
 import {ConnectionNode} from './nodes/connectionNode'
 import {ConsolidationNode} from './nodes/consolidationNode'
 import { DrawerContainer } from './drawers/DrawerContainer';
-import {BusinessSidebar} from './BusinessSidebar'
 
 const nodeTypes = {
   sourceView: SourceViewNode,
@@ -23,7 +22,7 @@ const nodeTypes = {
 let id = 0;
 const getId = () => `node_${id++}`;
 
-export function FlowCanvas() {
+export function ViewCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
