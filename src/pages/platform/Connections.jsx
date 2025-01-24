@@ -26,17 +26,19 @@ const Connections = () => {
     modal1: false,
     modal2: false,
     modal3: false,
+    modal4: false,
   });
 
   // State for modal data
   const [modalData, setModalData] = useState({
     modal1: null,
     modal2: null,
-    modal3: null,
+    modal4: null,
   });
 
   // Function to open a specific modal
   const openModal = (modalName, data = null) => {
+    console.log("model open working0-----------", modalName);
     setIsModalOpen((prev) => ({ ...prev, [modalName]: true }));
     setModalData((prev) => ({ ...prev, [modalName]: data }));
   };
@@ -216,7 +218,6 @@ const Connections = () => {
     });
   };
 
-
   const [isTestSuccessful, setIsTestSuccessful] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
 
@@ -224,71 +225,70 @@ const Connections = () => {
     let requiredFields = getConnectorFields(modalData.modal2)
       .filter((field) => field.required)
       .map((field) => field.name);
-  
+
     requiredFields.push("name", "description", "behaviour");
-  
+
     const isValid = requiredFields.every((field) => formData[field]);
-  
+
     if (!isValid) {
       alert("Please fill all required fields");
       return;
     }
-    
-      setIsTesting(true);
-      
-      try {
-        // Mock API call - replace with your actual API call
-        let response = await fetch('/api/test-connection', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
-        });
 
-        // Mock response as ok for testing
-        response = { ok: true };
-    
-        if (response.ok) {
-          console.log('Test Connection==>',formData)
-          setIsTestSuccessful(true);
-        } else {
-          alert("Connection test failed");
-        }
-      } catch (error) {
-        alert("Test failed: " + error.message);
-      } finally {
-        setIsTesting(false);
+    setIsTesting(true);
+
+    try {
+      // Mock API call - replace with your actual API call
+      let response = await fetch("/api/test-connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      // Mock response as ok for testing
+      response = { ok: true };
+
+      if (response.ok) {
+        console.log("Test Connection==>", formData);
+        setIsTestSuccessful(true);
+      } else {
+        alert("Connection test failed");
       }
-    };
+    } catch (error) {
+      alert("Test failed: " + error.message);
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
-    const handleSubmit = async () => {
-      if (!isTestSuccessful) {
-        alert("Please run a successful test first");
-        return;
+  const handleSubmit = async () => {
+    if (!isTestSuccessful) {
+      alert("Please run a successful test first");
+      return;
+    }
+
+    try {
+      // Your save API call
+      let response = await fetch("/api/save-connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      // Mock response as ok for testing
+      response = { ok: true };
+
+      if (response.ok) {
+        console.log("Submit Connection==>", formData);
+        setFormData({});
+        setIsTestSuccessful(false);
+        closeModal("modal2");
+        openModal("modal3");
       }
-    
-      try {
-        // Your save API call
-        let response = await fetch('/api/save-connection', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
-        });
-
-        // Mock response as ok for testing
-        response = { ok: true };
-    
-        if (response.ok) {
-          console.log('Submit Connection==>',formData)
-          setFormData({});
-          setIsTestSuccessful(false);
-          closeModal("modal2");
-          openModal("modal3");
-        }
-      } catch (error) {
-        alert("Save failed: " + error.message);
-      }
-    };
-
+    } catch (error) {
+      alert("Save failed: " + error.message);
+    }
+  };
 
   const getConnectorFields = (connectorType) => {
     const fieldConfig = {
@@ -333,6 +333,102 @@ const Connections = () => {
     return fieldConfig[connectorType] || [];
   };
 
+  { /*-------------------Edit Connection----------------*/}
+  const [tableData, setTableData] = useState([
+    {
+      tableName: "sales_sorv",
+      Migration: false,
+      Purge: true,
+      "Data Federation": false,
+      CDC: true,
+    },
+    {
+      tableName: "employees",
+      Migration: true,
+      Purge: false,
+      "Data Federation": true,
+      CDC: false,
+    },
+    {
+      tableName: "products",
+      Migration: false,
+      Purge: false,
+      "Data Federation": true,
+      CDC: true,
+    },
+    {
+      tableName: "customers_sorv",
+      Migration: false,
+      Purge: false,
+      "Data Federation": true,
+      CDC: true,
+    },
+    {
+      tableName: "orders",
+      Migration: false,
+      Purge: false,
+      "Data Federation": true,
+      CDC: true,
+    },
+    {
+      tableName: "inventory_sorv",
+      Migration: false,
+      Purge: false,
+      "Data Federation": true,
+      CDC: true,
+    },
+    {
+      tableName: "transactions",
+      Migration: false,
+      Purge: false,
+      "Data Federation": true,
+      CDC: true,
+    },
+    {
+      tableName: "suppliers_sorv",
+      Migration: false,
+      Purge: false,
+      "Data Federation": true,
+      CDC: true,
+    },
+  ]);
+  
+
+  const handleServiceCheckboxChange  = (tableName, columnName) => {
+    const updatedSelection = tableData.map((row) => {
+      if (row.tableName === tableName) {
+        return { ...row, [columnName]: !row[columnName] };
+      }
+      return row;
+    });
+    setTableData(updatedSelection);
+  };
+  const [serviceSelection, setServiceSelection] = useState({
+    Migration: false,
+    Purge: false,
+    "Data Federation": false,
+    CDC: false,
+  });
+
+  const handleSelectAllServices = (columnName) => {
+    const updatedSelection = {
+      ...serviceSelection,
+      [columnName]: !serviceSelection[columnName],
+    };
+    setServiceSelection(updatedSelection);
+
+    const updatedTables = tableData.map((row) => ({
+      ...row,
+      [columnName]: !serviceSelection[columnName], 
+    }));
+    setTableData(updatedTables);
+  };
+
+
+  const handleUpdateConnection = () => {
+    alert("Connection updated successfully!");
+    closeModal("modal4");
+  };
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -395,7 +491,7 @@ const Connections = () => {
 
       {/* Add Connector Model */}
 
-      {isModalOpen.modal1 && (
+      {isModalOpen.modal2 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-[1000px] p-8">
             <div className="flex items-center justify-between mb-8">
@@ -614,7 +710,8 @@ const Connections = () => {
                     value={formData.behaviour || ""}
                     onChange={handleInputChange}
                     className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white"
-                  ><option>Select</option>
+                  >
+                    <option>Select</option>
                     <option value="source">Source</option>
                     <option value="target">Target</option>
                     <option value="both">Both</option>
@@ -655,20 +752,20 @@ const Connections = () => {
                 onClick={testSubmit}
                 disabled={isTesting}
                 className={`px-6 py-2 border rounded-lg transition-colors ${
-                  isTesting 
-                    ? 'bg-gray-300 border-gray-400 cursor-not-allowed' 
-                    : 'border-gray-400 hover:bg-[#8e78b7] hover:text-white'
+                  isTesting
+                    ? "bg-gray-300 border-gray-400 cursor-not-allowed"
+                    : "border-gray-400 hover:bg-[#8e78b7] hover:text-white"
                 }`}
               >
-                {isTesting ? 'Testing...' : 'Test'}
+                {isTesting ? "Testing..." : "Test"}
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={!isTestSuccessful}
                 className={`px-6 py-2 border rounded-lg transition-colors ${
-                  !isTestSuccessful 
-                    ? 'bg-gray-300 border-gray-400 cursor-not-allowed' 
-                    : 'border-gray-400 hover:bg-[#8e78b7] hover:text-white'
+                  !isTestSuccessful
+                    ? "bg-gray-300 border-gray-400 cursor-not-allowed"
+                    : "border-gray-400 hover:bg-[#8e78b7] hover:text-white"
                 }`}
               >
                 Create and Save
@@ -678,53 +775,213 @@ const Connections = () => {
         </div>
       )}
 
-
       {/* Success Connection Detail Model */}
-      
-            {isModalOpen.modal3 && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-2xl w-[600px] overflow-hidden">
-                  <div className="relative h-24">
-                    {" "}
-                    {/* Increased height */}
-                    <div
-                      className="absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: `url(${successBackground})` }}
-                    >
-                      <button
-                        onClick={() => closeModal("modal3")}
-                        className="absolute top-4 right-4 text-black p-1"
-                      >
-                        <X className="h-6 w-6" />
-                      </button>
-                    </div>
-                  </div>
-      
-                  <div className="p-8">
-                    <div className="flex items-center space-x-4 mb-4">
-                      <BadgeCheck className="w-8 h-8 text-green-500" />{" "}
-                      {/* Increased icon size */}
-                      <h2 className="text-2xl font-bold">Congratulations!</h2>{" "}
-                      {/* Larger text */}
-                    </div>
-                    <p className="text-lg text-gray-800">
-                      {" "}
-                      {/* Larger text */}
-                      You have successfully created a connection.
-                    </p>
-      
-                    <div className="flex justify-start gap-4 mt-8">
-                      <button
-                        onClick={() => closeModal("modal3")}
-                        className="px-6 py-3 text-lg border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
-                      >
-                        Alright
-                      </button>
-                    </div>
-                  </div>
+
+      {isModalOpen.modal3 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl w-[600px] overflow-hidden">
+            <div className="relative h-24">
+              {" "}
+              {/* Increased height */}
+              <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${successBackground})` }}
+              >
+                <button
+                  onClick={() => closeModal("modal3")}
+                  className="absolute top-4 right-4 text-black p-1"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8">
+              <div className="flex items-center space-x-4 mb-4">
+                <BadgeCheck className="w-8 h-8 text-green-500" />{" "}
+                {/* Increased icon size */}
+                <h2 className="text-2xl font-bold">Congratulations!</h2>{" "}
+                {/* Larger text */}
+              </div>
+              <p className="text-lg text-gray-800">
+                {" "}
+                {/* Larger text */}
+                You have successfully created a connection.
+              </p>
+
+              <div className="flex justify-start gap-4 mt-8">
+                <button
+                  onClick={() => closeModal("modal3")}
+                  className="px-6 py-3 text-lg border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
+                >
+                  Alright
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/*Start---------------------------Edit Connection Modal--------------------------Start */}
+      {isModalOpen.modal4 && (
+        <div
+          className={`fixed inset-0 z-50 ${
+            isModalOpen.modal4 ? "block" : "hidden"
+          } bg-gray-500 bg-opacity-75 flex justify-center items-center`}
+        >
+          <div className="bg-white w-3/4 p-6 rounded-lg shadow-lg">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center">
+                <h2 className="text-xl font-bold text-[#8e78b7]">
+                  Edit Connection
+                </h2>
+                <Icon
+                  icon="material-symbols-light:info-outline"
+                  width="24"
+                  height="24"
+                  className="ml-1"
+                  style={{ color: "#c8c3c3" }}
+                />
+              </div>
+
+              <button
+                className="text-gray-500 hover:text-black"
+                onClick={() => closeModal("modal4")}
+              >
+                &#x2715;
+              </button>
+            </div>
+
+            {/* Connection Details */}
+            <div className="flex justify-between items-center text-sm text-gray-600 mb-4 w-full">
+              {" "}
+              <div className="flex space-x-10 w-4/5">
+                {" "}
+                <div>
+                  <p className="text-gray-500">Connector</p>
+                  <p className="font-bold text-gray-800">oracle_both</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Connection Name</p>
+                  <p className="font-bold text-gray-800">ORCL_SOURCE</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">No. of Tables</p>
+                  <h3 className="font-bold text-gray-800">10</h3>
                 </div>
               </div>
-            )}
+              {/* Search Bar */}
+              <form className="max-w-md">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-gray-500"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="search"
+                    id="default-search"
+                    className="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:border-gray-600 dark:placeholder-gray-500 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    placeholder="Search Connection"
+                    required
+                  />
+                </div>
+              </form>
+            </div>
+
+            {/* Connection Table List */}
+            <div className="bg-white rounded-lg shadow mt-10">
+              <div className="overflow-x-auto">
+                <div className="max-h-96 overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#29304a] text-white sticky top-0 z-10">
+                      <tr>
+                        <th className="text-left p-4">Table Name</th>
+                        {["Migration", "Purge", "Data Federation", "CDC"].map(
+                          (column) => (
+                            <th key={column} className="text-left p-4">
+                              <div className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  onChange={() => handleSelectAllServices(column)}
+                                  checked={serviceSelection[column]}
+                                  className="w-4 h-4"
+                                />
+                                <span className="ml-2">{column}</span>
+                              </div>
+                            </th>
+                          )
+                        )}
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {tableData.map((row, index) => (
+                        <tr key={index} className="border-b">
+                          <td className="p-4 text-gray-500 flex items-center">
+                            <Icon
+                              icon="material-symbols:table-rows-narrow-outline"
+                              width="24"
+                              height="24"
+                              className="text-gray-400"
+                            />
+                            <span className="ml-2">{row.tableName}</span>
+                          </td>
+                          {["Migration", "Purge", "Data Federation", "CDC"].map(
+                            (column) => (
+                              <td key={column} className="p-4 text-gray-500">
+                                <input
+                                  type="checkbox"
+                                  checked={row[column]}
+                                  onChange={() =>
+                                    handleServiceCheckboxChange (row.tableName, column)
+                                  }
+                                  className="w-4 h-4"
+                                />
+                              </td>
+                            )
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-start gap-4 mt-8">
+              <button
+                className="px-6 py-2 border rounded-lg text-sm text-gray-500 transition-colors border-gray-400 hover:bg-[#8e78b7] hover:text-white"
+                onClick={() => closeModal("modal4")}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="px-6 py-3 text-sm  text-white border border-gray-400 rounded-lg bg-[#8e78b7] hover:bg-[#8e78b7] transition-colors"
+                onClick={handleUpdateConnection}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/*End---------------------------Edit Connection Modal--------------------------End */}
+
+
 
       {/* Project Listing Table */}
 
@@ -785,10 +1042,13 @@ const Connections = () => {
                         />
                         <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                           <div className="flex items-center p-1 gap-1">
-                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                            onClick={() => openModal("modal4")}>
                               <Eye className="h-4 w-4" />
                             </button>
-                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                            <button
+                              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
                               <Pencil className="h-4 w-4" />
                             </button>
                             <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
