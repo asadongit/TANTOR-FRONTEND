@@ -39,7 +39,7 @@ function App() {
                   isCollapsed={isSidebarCollapsed}
                   toggleSidebar={toggleSidebar}
                 />
-                <main className={`mt-16 ml-${isSidebarCollapsed ? '16' : '64'} flex-1 p-4 transition-all duration-300`}>
+                <main className={`flex-1 p-4 transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
                   <Routes>
                     <Route
                       path="/"
