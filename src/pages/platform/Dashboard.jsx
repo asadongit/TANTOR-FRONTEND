@@ -5,7 +5,7 @@ const Dashboard = () => {
   const cards = [
     {
       icon: "material-symbols:database-upload-outline",
-      bgcolor: "bg-[#d8d3e4]",
+      bgcolor: "bg-[#d8d3e4] bg-opacity-25",
       iconcolor: "text-purple-700",
       bordercolor: "border-purple-700",
       title: "Migration",
@@ -15,7 +15,7 @@ const Dashboard = () => {
     },
     {
       icon: "material-symbols-light:two-pager-store-outline",
-      bgcolor: "bg-[#FFC93F]",
+      bgcolor: "bg-[#FFC93F] bg-opacity-25",
       iconcolor: "text-orange-700",
       bordercolor: "border-orange-700",
       title: "Purge",
@@ -25,7 +25,7 @@ const Dashboard = () => {
     },
     {
       icon: "material-symbols:cloud-sync-outline",
-      bgcolor: "bg-[#96CF7B]",
+      bgcolor: "bg-[#96CF7B] bg-opacity-25",
       iconcolor: "text-green-700",
       bordercolor: "border-green-700",
       title: "CDC",
@@ -35,7 +35,7 @@ const Dashboard = () => {
     },
     {
       icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#16ABC2] Opacity-25",
+      bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
       bordercolor: "border-cyan-700",
       title: "Federation",

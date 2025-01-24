@@ -4,11 +4,12 @@ import Connections from '../pages/platform/Connections';
 import Jobs from '../pages/platform/Jobs';
 import Pipeline from '../pages/platform/Pipeline';
 import Reports from '../pages/platform/Reports';
-import Migration from '../pages/platform/Migration';
+import Migration from '../pages/platform/migration/Migration';
 import Transformation from '../pages/platform/Transformation';
 import Purge from '../pages/platform/Purge';
 import CDC from '../pages/platform/CDC';
 import Federation from '../pages/platform/Federation';
+import MigrationDragAndDrop from '../pages/platform/migration/MigrationCanvas';
 
 export const PlatformRoutes = (
   <>
@@ -22,5 +23,6 @@ export const PlatformRoutes = (
     <Route path="/purge" element={<Purge />} />
     <Route path="/cdc" element={<CDC />} />
     <Route path="/federation" element={<Federation />} />
+    <Route path="/createMigration" element={<MigrationDragAndDrop />}></Route>
   </>
 );
