@@ -2,30 +2,12 @@ import React, { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { Handle, Position } from 'reactflow';
 import { Upload, X } from 'lucide-react';
-import Papa from 'papaparse';
 import { useCSV } from '../context/CSVcontext';
 
 export function DefineNode({ id }) {
   const { setData } = useCSV();
   const [csvInfo, setCsvInfo] = useState({ name: '', rowCount: 0 });
 
-  const handleFileUpload = useCallback((event) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const fileName = file.name;
-
-      Papa.parse(file, {
-        complete: (results) => {
-          const rowCount = results.data.length;
-
-          setCsvInfo({ name: fileName, rowCount });
-
-          setData(id, results.data);
-        },
-        header: true,
-      });
-    }
-  }, [id, setData]);
 
   return (
     <div className="bg-gray-800 rounded-lg p-4 shadow-lg border-2 border-[#8E77BB] min-w-[200px] relative group">
@@ -48,7 +30,7 @@ export function DefineNode({ id }) {
           <Upload className="w-6 h-6 text-gray-400" />
           <span className="text-sm text-gray-400">Drop your file here or click to upload</span>
         </span>
-        <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+        <input type="file" accept=".csv" className="hidden" onChange='#' />
       </label>
 
       {csvInfo.name && (

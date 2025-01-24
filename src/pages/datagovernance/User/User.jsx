@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
+import Breadcrumb from '../../../components/Breadcrumb';
 
 const User = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,6 +25,7 @@ const User = () => {
 
   return (
     <div className="p-6">
+      <Breadcrumb title="Data Governance" link="/" />
       <div className="flex gap-4 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">User</h1>
 
