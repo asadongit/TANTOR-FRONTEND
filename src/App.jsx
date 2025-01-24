@@ -14,12 +14,15 @@ import { DrawerProvider } from "./pages/platform/migration/context/DrawerContext
 import { ThemeProvider } from "./pages/platform/migration/context/ThemeContext";
 
 function App() {
-  const [activeSection, setActiveSection] = useState("platform");
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
+ const [activeSection, setActiveSection] = useState('platform');
+ const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+
+ const toggleSidebar = () => {
+   setIsSidebarCollapsed(!isSidebarCollapsed);
+ };
+
 
   return (
     <Router>
@@ -36,11 +39,7 @@ function App() {
                   isCollapsed={isSidebarCollapsed}
                   toggleSidebar={toggleSidebar}
                 />
-                <main
-                  className={`flex-1 p-4 transition-all duration-300 ${
-                    isSidebarCollapsed ? "ml-16" : "ml-64"
-                  }`}
-                >
+                <main className={`mt-16 ml-${isSidebarCollapsed ? '16' : '64'} flex-1 p-4 transition-all duration-300`}>
                   <Routes>
                     <Route
                       path="/"

@@ -64,7 +64,14 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Persona', path: '/user/persona' },
       ]
     },
-    { name: 'Data Catalogue', icon: BookOpenIcon, path: '/data-catalogue' },
+    { name: 'Data Catalogue', icon: BookOpenIcon, path: '/data-catalogue', subItems: [
+      { name: 'Database', path: '/data-catalogue/database' },
+      { name: 'Schema', path: '/data-catalogue/schema' },
+      { name: 'Table', path: '/data-catalogue/table' },
+      { name: 'Column', path: '/data-catalogue/column' },
+      { name: 'View', path: '/data-catalogue/view' },
+
+    ] },
     { name: 'Data Assurance', icon: ShieldCheckIcon, path: '/data-assurance' },
     { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: '/business-catalogue' },
     { name: 'Data Shield', icon: ShieldCheckIcon, path: '/data-shield' },
@@ -127,7 +134,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
                   `block px-3 py-2 rounded-lg ${
                     isActive
                       ? 'bg-purple-100 text-purple-700'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-500 hover:bg-gray-100'
                   }`
                 }
               >
