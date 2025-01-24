@@ -4,15 +4,15 @@ import Connections from '../pages/platform/Connections';
 import Jobs from '../pages/platform/Jobs';
 import Pipeline from '../pages/platform/Pipeline';
 import Reports from '../pages/platform/Reports';
-import Migration from '../pages/platform/Migration';
+import Migration from '../pages/platform/migration/Migration';
 import Transformation from '../pages/platform/Transformation';
 import Purge from '../pages/platform/Purge';
 import CDC from '../pages/platform/CDC';
-// import Federation from '../pages/platform/Federation';
 import FederationDashBoard from '../pages/platform/Federation/FederationDashboard';
 import BusinessRegular from '../pages/platform/Federation/BusinessRegular';
 import Federation from '../pages/platform/Federation/createViewDailog';
 import Source from '../components/Federation/Source';
+import MigrationDragAndDrop from '../pages/platform/migration/MigrationCanvas';
 
 export const PlatformRoutes = (
   <>
@@ -28,7 +28,6 @@ export const PlatformRoutes = (
     <Route path="/federation" element={<FederationDashBoard />} />
     <Route path='/federation/view/source' element={<Source />} />
     <Route path="/federation/view/Business" element={<BusinessRegular />} />
-
-
+    <Route path="/createMigration" element={<MigrationDragAndDrop />}></Route>
   </>
 );
