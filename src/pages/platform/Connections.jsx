@@ -33,12 +33,12 @@ const Connections = () => {
   const [modalData, setModalData] = useState({
     modal1: null,
     modal2: null,
+    modal3: null,
     modal4: null,
   });
 
   // Function to open a specific modal
   const openModal = (modalName, data = null) => {
-    console.log("model open working0-----------", modalName);
     setIsModalOpen((prev) => ({ ...prev, [modalName]: true }));
     setModalData((prev) => ({ ...prev, [modalName]: data }));
   };
@@ -491,7 +491,7 @@ const Connections = () => {
 
       {/* Add Connector Model */}
 
-      {isModalOpen.modal2 && (
+      {isModalOpen.modal1 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-[1000px] p-8">
             <div className="flex items-center justify-between mb-8">
