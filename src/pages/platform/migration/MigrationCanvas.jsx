@@ -3,17 +3,20 @@ import ReactFlow, {
   addEdge,
   useNodesState,
   useEdgesState,
-  Background,
   Controls,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { DefineNode } from './nodes/DefineNode';
 import { SourceNode } from './nodes/SourceNode';
+import { TargetNode } from './nodes/TargetNode';
+import { SchedulerNode } from './nodes/SchedulerNode';
 import { DrawerContainer } from './drawers/DrawerContainer';
 
 const nodeTypes = {
   define: DefineNode,
-  source: SourceNode
+  source: SourceNode,
+  target: TargetNode,
+  schedule: SchedulerNode
 };
 
 let id = 0;
@@ -83,9 +86,8 @@ const MigrationCanvas = () => {
         onDrop={onDrop}
         nodeTypes={nodeTypes}
         fitView
-        className="bg-gray-100"
+        className="bg-gray-50"
       >
-        <Background color="#374151" gap={16} />
         <Controls className="fill-white stroke-black" />
       </ReactFlow>
       <DrawerContainer />

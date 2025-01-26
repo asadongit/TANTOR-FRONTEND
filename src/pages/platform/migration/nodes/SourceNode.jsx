@@ -26,11 +26,9 @@ export function SourceNode({ id }) {
           <label className="text-xs font-semibold text-black mb-0.5 block">
             Connection
           </label>
-          <input
-            type="text"
-            placeholder="Source Name"
-            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-          />
+          <select className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400">
+            <option>Select</option>
+          </select>
         </div>
         <div>
           <label className="text-xs font-semibold text-black mb-0.5 block">
