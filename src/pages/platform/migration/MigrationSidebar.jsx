@@ -15,86 +15,32 @@ const components = [
         id: 'define',
         type: 'define',
         icon: FileSpreadsheet,
-        description: 'Import your CSV data',
+        description: 'Configure your Migration Details',
         name: 'Define'
       },
       {
         id: 'source',
         type: 'source',
         icon: FileSpreadsheet,
-        description: 'Import your CSV data',
+        description: 'Choose your Source Configuration',
         name: 'Source'
       },
       {
         id: 'target',
         type: 'target',
         icon: FileSpreadsheet,
-        description: 'Import your CSV data',
+        description: 'Choose your target Configuration',
         name: 'Target'
       },
       {
         id: 'schedule',
         type: 'schedule',
         icon: FileSpreadsheet,
-        description: 'Import your CSV data',
+        description: 'Schedule your Migration',
         name: 'Schedule'
       }
     ]
   },
-  // {
-  //   category: 'Data Analysis',
-  //   icon: BarChart2,
-  //   items: [
-  //     {
-  //       id: 'data-profiling',
-  //       type: 'dataProfiling',
-  //       icon: BarChart2,
-  //       description: 'Analyze data statistics and quality',
-  //       name: 'Data Profiling'
-  //     },
-  //     {
-  //       id: 'data-preparation',
-  //       type: 'dataPreparation',
-  //       icon: Workflow,
-  //       description: 'Clean and prepare dataset',
-  //       name: 'Data Preparation'
-  //     },
-  //     {
-  //       id: 'view-csv',
-  //       type: 'viewCsv',
-  //       icon: Table,
-  //       description: 'Display CSV contents',
-  //       name: 'View CSV'
-  //     }
-  //   ]
-  // },
-  // {
-  //   category: 'Machine Learning',
-  //   icon: Brain,
-  //   items: [
-  //     {
-  //       id: 'supervised-ml',
-  //       type: 'supervisedMl',
-  //       icon: Brain,
-  //       description: 'Train supervised models',
-  //       name: 'Supervised ML'
-  //     },
-  //     {
-  //       id: 'unsupervised-ml',
-  //       type: 'unsupervisedMl',
-  //       icon: Network,
-  //       description: 'Train unsupervised models',
-  //       name: 'Unsupervised ML'
-  //     },
-  //     {
-  //       id: 'model-metrics',
-  //       type: 'modelMetrics',
-  //       icon: LineChart,
-  //       description: 'View model performance',
-  //       name: 'Model Metrics'
-  //     }
-  //   ]
-  // }
 ];
 
 export function MigrationSidebar() {
@@ -124,13 +70,6 @@ export function MigrationSidebar() {
 
   return (
     <div className="w-72 bg-gray-900 p-4 border-r border-gray-700 overflow-y-auto">
-
-{/* <div className="flex justify-center mb-6">
-        <img src={Logo} alt="Logo" className="h-12 w-auto" />
-      </div> */}
-
-
-      {/* <h2 className="text-xl font-bold mb-4 text-white">Components</h2> */}
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />

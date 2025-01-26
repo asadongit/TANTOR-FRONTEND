@@ -9,7 +9,6 @@ import { PlatformRoutes } from "./routes/PlatformRoutes";
 import { DataGovernanceRoutes } from "./routes/DataGovernanceRoutes";
 import MigrationCanvas from "./pages/platform/migration/MigrationCanvas";
 import { WelcomeModal } from "./pages/platform/migration/WelcomeModal";
-import { CSVProvider } from "./pages/platform/migration/context/CSVcontext";
 import { DrawerProvider } from "./pages/platform/migration/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/migration/context/ThemeContext";
 
@@ -65,7 +64,6 @@ function App() {
           element={
             <ThemeProvider>
               <DrawerProvider>
-                <CSVProvider>
                   <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
                     <Header className="h-16 flex-shrink-0" />{" "}
                     <div className="flex-1 flex">
@@ -79,7 +77,6 @@ function App() {
                     </div>
                     <WelcomeModal />
                   </div>
-                </CSVProvider>
               </DrawerProvider>
             </ThemeProvider>
           }

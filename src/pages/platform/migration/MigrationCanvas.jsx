@@ -8,22 +8,12 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { DefineNode } from './nodes/DefineNode';
-import { ViewNode } from './nodes/ViewNode';
-import { SupervisedMLNode } from './nodes/SupervisedMLNode';
-import { UnsupervisedMLNode } from './nodes/UnsupervisedMLNode';
-import { ModelMetricsNode } from './nodes/ModelMetricsNode';
-import { DataProfilingNode } from './nodes/DataProfilingNode';
-import { DataPreparationNode } from './nodes/DataPreparationNode';
+import { SourceNode } from './nodes/SourceNode';
 import { DrawerContainer } from './drawers/DrawerContainer';
 
 const nodeTypes = {
   define: DefineNode,
-  viewCsv: ViewNode,
-  supervisedMl: SupervisedMLNode,
-  unsupervisedMl: UnsupervisedMLNode,
-  modelMetrics: ModelMetricsNode,
-  dataProfiling: DataProfilingNode,
-  dataPreparation: DataPreparationNode,
+  source: SourceNode
 };
 
 let id = 0;
@@ -51,8 +41,8 @@ const MigrationCanvas = () => {
       if (!type) return;
 
       const position = {
-        x: event.clientX - 320,
-        y: event.clientY - 40,
+        x: event.clientX - 500,
+        y: event.clientY - 80,
       };
 
       const newNode = {
