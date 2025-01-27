@@ -20,7 +20,6 @@ return (
         </button>
 
         <Handle type="target" position={Position.Left} />
-        <Handle type="source" position={Position.Right} />
 
         <div className="flex items-center space-x-3 mb-3">
             <Upload className="w-5 h-5 text-[#96CF7B]" />
@@ -70,9 +69,9 @@ return (
                         Start Load Date
                     </label>
                     <input
-                        type="date"
+                        type="datetime-local"
                         id="start-date"
-                        className="w-full border border-gray-700 rounded px-3 py-1.5 text-xs focus:ring-2 focus:ring-[#8e78b7]"
+                        className="w-full border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-700 focus:ring-2 focus:ring-[#8e78b7]"
                     />
                 </div>
                 <div className="w-full">
@@ -83,9 +82,9 @@ return (
                         End Load Date
                     </label>
                     <input
-                        type="date"
+                        type="datetime-local"
                         id="end-date"
-                        className="w-full border border-gray-700 rounded px-3 py-1.5 text-xs focus:ring-2 focus:ring-[#8e78b7]"
+                        className="w-full border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-700 focus:ring-2 focus:ring-[#8e78b7]"
                     />
                 </div>
             </div>
