@@ -1,17 +1,20 @@
 /*eslint-disable*/
 import React, { useState } from "react";
-import PropTypes from "prop-types";
+import PropTypes from "prop-types"; // Add this import
 import { Handle, Position } from "reactflow";
 import { Cable, X, ChevronDown, ChevronUp } from "lucide-react";
+import { useStateContext } from "../../../../context/contextProvider";
 
-export function ConnectionNode({ id }) {
+export function ConnectionNode({ id, onSave }) {
+
+  const {handleConnectionPayload} = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
 
-  const dummyColumns = ["Column 1", "Column 2", "Column 3", "Column 4", "Column 5", "Column 6"];
+  const dummyColumns = ["connection 1", "id ", "name", "address", "phonenumber"];
 
   const handleColumnChange = (column) => {
     setSelectedColumns((prev) =>
@@ -30,6 +33,21 @@ export function ConnectionNode({ id }) {
   };
 
   const isAllSelected = selectedColumns.length === dummyColumns.length;
+
+  const handleSave = () => {
+    const payload = {
+      id,
+      type: "Connection",
+      selectedView,
+      selectedSchema,
+      selectedTable,
+      selectedColumns,
+      Columns: dummyColumns
+    };
+    console.log("Saved Payload:", payload); // Debugging purpose
+    handleConnectionPayload(payload)
+    onSave?.(payload);
+  };
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
@@ -62,98 +80,99 @@ export function ConnectionNode({ id }) {
 
       {!isCollapsed && (
         <>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-black mb-1">Connection</label>
-            <select
-              value={selectedView}
-              onChange={(e) => setSelectedView(e.target.value)}
-              className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-            >
-              <option value="" disabled>
-                Select a connection
-              </option>
-              <option value="view1">View 1</option>
-              <option value="view2">View 2</option>
-              <option value="view3">View 3</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-black mb-1">Schema</label>
-            <select
-              value={selectedSchema}
-              onChange={(e) => setSelectedSchema(e.target.value)}
-              className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-            >
-              <option value="" disabled>
-                Select a Schema
-              </option>
-              <option value="schema1">Schema 1</option>
-              <option value="schema2">Schema 2</option>
-              <option value="schema3">Schema 3</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-black mb-1">Table</label>
-            <select
-              value={selectedTable}
-              onChange={(e) => setSelectedTable(e.target.value)}
-              className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-            >
-              <option value="" disabled>
-                Select a table
-              </option>
-              <option value="table1">Table 1</option>
-              <option value="table2">Table 2</option>
-              <option value="table3">Table 3</option>
-            </select>
-          </div>
-          {selectedTable && (
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-black mb-1">Select Columns</label>
-              <div className="p-3 space-y-2">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="selectAll"
-                    checked={isAllSelected}
-                    onChange={(e) => handleSelectAllChange(e.target.checked)}
-                    className="text-purple-600 focus:ring-purple-500"
-                  />
-                  <label htmlFor="selectAll" className="text-sm text-gray-700 font-medium">
-                    Select All
-                  </label>
-                </div>
-                <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
-                  {dummyColumns.map((column) => (
-                    <div key={column} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={column}
-                        value={column}
-                        checked={selectedColumns.includes(column)}
-                        onChange={() => handleColumnChange(column)}
-                        className="text-purple-600 focus:ring-purple-500"
-                      />
-                      <label htmlFor={column} className="text-sm text-gray-700">
-                        {column}
-                      </label>
-                    </div>
-                  ))}
+              <label className="block text-sm font-medium text-black mb-1">Connection</label>
+              <select
+                value={selectedView}
+                onChange={(e) => setSelectedView(e.target.value)}
+                className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
+              >
+                <option value="" disabled>
+                  Select a connection
+                </option>
+                <option value="view1">View 1</option>
+                <option value="view2">View 2</option>
+                <option value="view3">View 3</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-black mb-1">Schema</label>
+              <select
+                value={selectedSchema}
+                onChange={(e) => setSelectedSchema(e.target.value)}
+                className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
+              >
+                <option value="" disabled>
+                  Select a Schema
+                </option>
+                <option value="schema1">Schema 1</option>
+                <option value="schema2">Schema 2</option>
+                <option value="schema3">Schema 3</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-black mb-1">Table</label>
+              <select
+                value={selectedTable}
+                onChange={(e) => setSelectedTable(e.target.value)}
+                className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
+              >
+                <option value="" disabled>
+                  Select a table
+                </option>
+                <option value="table1">Table 1</option>
+                <option value="table2">Table 2</option>
+                <option value="table3">Table 3</option>
+              </select>
+            </div>
+            {selectedTable && (
+              <div>
+                <label className="block text-sm font-medium text-black mb-1">Select Columns</label>
+                <div className="p-3 space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="selectAll"
+                      checked={isAllSelected}
+                      onChange={(e) => handleSelectAllChange(e.target.checked)}
+                      className="text-purple-600 focus:ring-purple-500"
+                    />
+                    <label htmlFor="selectAll" className="text-sm text-gray-700 font-medium">
+                      Select All
+                    </label>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
+                    {dummyColumns.map((column) => (
+                      <div key={column} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={column}
+                          value={column}
+                          checked={selectedColumns.includes(column)}
+                          onChange={() => handleColumnChange(column)}
+                          className="text-purple-600 focus:ring-purple-500"
+                        />
+                        <label htmlFor={column} className="text-sm text-gray-700">
+                          {column}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-        <button
-        type="button"
-        className="w-full text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] mt-3"
-      >
-        OK
-      </button>
-      </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="w-full text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] mt-3"
+          >
+            OK
+          </button>
+        </>
       )}
-      
+
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
@@ -169,4 +188,5 @@ export function ConnectionNode({ id }) {
 
 ConnectionNode.propTypes = {
   id: PropTypes.string.isRequired,
+  onSave: PropTypes.func, // Optional prop for saving payload
 };

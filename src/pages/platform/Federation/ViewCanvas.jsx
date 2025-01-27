@@ -12,6 +12,7 @@ import { SourceViewNode } from './nodes/sourceViewNode';
 import {ConnectionNode} from './nodes/connectionNode'
 import {ConsolidationNode} from './nodes/consolidationNode'
 import { DrawerContainer } from './drawers/DrawerContainer';
+import { useStateContext } from '../../../context/contextProvider';
 
 const nodeTypes = {
   sourceView: SourceViewNode,
@@ -23,13 +24,24 @@ let id = 0;
 const getId = () => `node_${id++}`;
 
 export function ViewCanvas() {
+
+  const { handleConsolidationPayload,joinPayload  } = useStateContext("");
+
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  );
+  // const onConnect = useCallback(
+  //   (params) => setEdges((eds) => addEdge(params, eds)),
+  //   [setEdges]
+  // );
+
+
+  const onConnect = (params) => {
+    const { source, target } = params; 
+    handleConsolidationPayload({ source, target })
+    console.log("Connecting:", { source, target }); 
+    setEdges((eds) => addEdge(params, eds));
+  };
 
   const onDragOver = useCallback((event) => {
     event.preventDefault();
@@ -74,6 +86,11 @@ export function ViewCanvas() {
     };
   }, [onNodeDelete]);
 
+
+  const handleClick =()=>{
+    console.log("join payload is ===>",joinPayload)
+  }
+
   return (
     <div className="h-full relative">
       <ReactFlow
@@ -93,6 +110,12 @@ export function ViewCanvas() {
         <Controls className="fill-black stroke-black" />
       </ReactFlow>
       <DrawerContainer />
+      <button
+        onClick={handleClick}
+        className="absolute bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow"
+      >
+        Combine and Save Data
+      </button>
     </div>
   );
 }

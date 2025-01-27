@@ -16,6 +16,7 @@ import {ViewCanvas} from "./pages/platform/Federation/ViewCanvas"
 import {BusinessSidebar} from "./pages/platform/Federation/BusinessSidebar"
 import {ViewDrawer} from "./pages/platform/Federation/context/DrawerContext"
 import { BusinessHeader } from "./pages/platform/Federation/BusinessHeader";
+import { ContextProvider } from "./context/contextProvider";
 
 
 function App() {
@@ -90,13 +91,14 @@ function App() {
           }
         />
 
-<Route
+        <Route
           path="/viewcanvas"
           element={
+            <ContextProvider>
               <ViewDrawer>
                   <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
                     <Header className="h-16 flex-shrink-0" />{" "}
-                    <BusinessHeader/>
+                    {/* <BusinessHeader/> */}
                     <div className="flex-1 flex mt-8 " style={{marginLeft: "20px"}}>
                       <BusinessSidebar className="w-64" />{" "}
                       <div className="flex-1 relative">
@@ -108,6 +110,7 @@ function App() {
                     </div>
                   </div>
               </ViewDrawer>
+              </ContextProvider>
           }
         />
       </Routes>
