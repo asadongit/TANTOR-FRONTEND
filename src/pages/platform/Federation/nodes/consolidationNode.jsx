@@ -5,7 +5,7 @@ import { SquareKanban, X, Network, ChevronDown, ChevronUp } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 
 export function ConsolidationNode({ id }) {
-  const { consolidationPayload, connectionPayload, viewPayload } = useStateContext("");
+  const { consolidationPayload, connectionPayload, viewPayload , handleJoinPayload, joinPayload} = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [type, setType] = useState("");
   const [unionType, setUnionType] = useState("");
@@ -19,8 +19,8 @@ export function ConsolidationNode({ id }) {
   const [view1,setLeftView] = useState("")
   const [view2, setRightView] = useState("")
 
-  const [joinType, setJoinType] = useState("")
-  const [operator, setOperator] = useState("")
+  const [joinType, setJoinType] = useState("Inner Join")
+  const [operator, setOperator] = useState("=")
 
 
   const [joins, setJoins] = useState([])
@@ -36,7 +36,7 @@ export function ConsolidationNode({ id }) {
         if (payload.source === connectionPayload.id) {
           console.log("left columns are ===>",connectionPayload.Columns)
           setLeftColumns(connectionPayload.Columns);
-          // setLeftView(connectionPayload.)
+          setLeftView("connection node")
         }
         else if(payload.source === viewPayload.id){
           console.log("left columns are ===>",viewPayload.Columns)
@@ -54,27 +54,47 @@ export function ConsolidationNode({ id }) {
         else if (payload.target === connectionPayload.id) {
           console.log("right columns are ===>",connectionPayload.Columns)
           setRightColumns(connectionPayload.Columns);
-          // setRightView(connectionPayload.)
+          setRightView("connection node")
         }
       }
     });
   }, [type, id, consolidationPayload, connectionPayload, viewPayload]);
 
-  useEffect(()=>{
-    const newJoin = {
-      view1,
-      view2,
-      join_type: joinType,
-      on: [
-        { selectedLeft },
-        { selectedRight }
-      ],
-      operator
-    };
-    setJoins(prevJoins => [...prevJoins, newJoin]);
-
-  },[view1,view2,joinType,selectedLeft,selectedRight,operator])
-
+  useEffect(() => {
+    if (view1 && view2 && joinType && selectedLeft && selectedRight && operator) {
+      const newJoin = {
+        id,
+        view1,
+        view2,
+        join_type: joinType,
+        on: [selectedLeft, selectedRight],
+        operator,
+      };
+      setJoins([newJoin]);
+    }
+  }, [view1, view2, joinType, selectedLeft, selectedRight, operator]);
+  
+  
+  
+  useEffect(() => {
+    if (joins.length > 0) {
+      handleJoinPayload({
+        view_type: "Integrated View",
+        joins: joinPayload && Array.isArray(joinPayload.joins)
+          ? [
+              ...joinPayload.joins.filter(
+                (existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id)
+              ),
+              ...joins,
+            ]
+          : [...joins],
+        base_join: "base view",
+      });
+    }
+  }, [joins]);
+  
+  
+  
   return (
     <>
       {!isCollapsed ? (
