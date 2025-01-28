@@ -32,7 +32,7 @@ return (
                     <input
                         type="radio"
                         id="manual"
-                        name="table"
+                        name="manual"
                         value="manual"
                         checked={selectedOption === "manual"}
                         onChange={handleOptionChange}
@@ -46,7 +46,7 @@ return (
                     <input
                         type="radio"
                         id="auto"
-                        name="table"
+                        name="auto"
                         value="auto"
                         checked={selectedOption === "auto"}
                         onChange={handleOptionChange}
