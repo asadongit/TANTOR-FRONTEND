@@ -5,7 +5,7 @@ import { SquareKanban, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 
 export function SourceViewNode({ id, onSave }) {
-  const { handleViewPayload } = useStateContext("");
+  const { viewPayload, handleViewPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -29,17 +29,31 @@ export function SourceViewNode({ id, onSave }) {
   };
 
   const handleSave = () => {
-    const payload = {
+    const selectFields = selectedColumns.map((column) => ({
+      field: `${selectedView}.${column}`,
+      alias: "",
+    }));
+  
+    const newPayload = {
       id,
       type: "Source",
       selectedView,
-      selectedColumns,
-      Columns: dummyColumns
+      select_fields: selectFields,
+      Columns: dummyColumns,
     };
-    console.log("Saved Payload:", payload); 
-    handleViewPayload(payload)
-    // onSave?.(payload); 
-    onSave?.(payload);
+  
+    const currentPayloads = viewPayload || [];
+    const updatedPayloads = [...currentPayloads];
+    const existingIndex = updatedPayloads.findIndex((payload) => payload.id === id);
+  
+    if (existingIndex !== -1) {
+      updatedPayloads[existingIndex] = newPayload;
+    } else {
+      updatedPayloads.push(newPayload);
+    }
+  
+    handleViewPayload(updatedPayloads);
+    onSave?.(newPayload);
   };
 
   const isAllSelected = selectedColumns.length === dummyColumns.length;

@@ -28,33 +28,37 @@ export function ConsolidationNode({ id }) {
   useEffect(() => {
     console.log("id of consolidation is ===>", id);
     console.log("consolidation is ===>", consolidationPayload);
-    console.log("viewpayload is ==>", viewPayload);
+    console.log("viewPayload is ==>", viewPayload);
     console.log("connection payload is ===>", connectionPayload);
-
+  
     consolidationPayload.forEach((payload) => {
       if (payload.target === id) {
         if (payload.source === connectionPayload.id) {
-          console.log("left columns are ===>",connectionPayload.Columns)
+          console.log("left columns are ===>", connectionPayload.Columns);
           setLeftColumns(connectionPayload.Columns);
-          setLeftView("connection node")
-        }
-        else if(payload.source === viewPayload.id){
-          console.log("left columns are ===>",viewPayload.Columns)
-          setLeftColumns(viewPayload.Columns);
-          setLeftView(viewPayload.selectedView)
+          setLeftView("connection node");
+        } else {
+          const matchingView = viewPayload.find((view) => view.id === payload.source);
+          if (matchingView) {
+            console.log("left columns are ===>", matchingView.Columns);
+            setLeftColumns(matchingView.Columns);
+            setLeftView(matchingView.selectedView);
+          }
         }
       }
-
+  
       if (payload.source === id) {
-        if (payload.target === viewPayload.id) {
-          console.log("right columns aree===>",viewPayload.Columns)
-          setRightColumns(viewPayload.Columns);
-          setRightView(viewPayload.selectedView)
-        }
-        else if (payload.target === connectionPayload.id) {
-          console.log("right columns are ===>",connectionPayload.Columns)
+        if (payload.target === connectionPayload.id) {
+          console.log("right columns are ===>", connectionPayload.Columns);
           setRightColumns(connectionPayload.Columns);
-          setRightView("connection node")
+          setRightView("connection node");
+        } else {
+          const matchingView = viewPayload.find((view) => view.id === payload.target);
+          if (matchingView) {
+            console.log("right columns are ===>", matchingView.Columns);
+            setRightColumns(matchingView.Columns);
+            setRightView(matchingView.selectedView);
+          }
         }
       }
     });
@@ -78,17 +82,22 @@ export function ConsolidationNode({ id }) {
   
   useEffect(() => {
     if (joins.length > 0) {
+      const viewSelectFields = viewPayload.flatMap((view) => view.select_fields || []);
       handleJoinPayload({
         view_type: "Integrated View",
         joins: joinPayload && Array.isArray(joinPayload.joins)
           ? [
-              ...joinPayload.joins.filter(
-                (existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id)
-              ),
-              ...joins,
+              ...joinPayload.joins
+                .filter((existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id))
+                .map(({ id, ...rest }) => rest),
+              ...joins.map(({ id, ...rest }) => rest),
             ]
-          : [...joins],
+          : [...joins.map(({ id, ...rest }) => rest)],
         base_join: "base view",
+        view_name: "MYVIEW",
+        isMateralizedView: "false",
+        isCaching: "false",
+        select_fields: viewSelectFields,
       });
     }
   }, [joins]);
