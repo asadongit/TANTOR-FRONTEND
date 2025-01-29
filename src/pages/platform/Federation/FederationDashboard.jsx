@@ -8,8 +8,13 @@ import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import CreateViewDialog from "./createViewDailog";
 import {
+  Pencil,
+  Trash2,
+  MoreHorizontal,
+  RotateCw,
+  Eye,
   List,
-  RefreshCcw,
+  RefreshCcw
 } from "lucide-react";
  
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -146,22 +151,6 @@ const FederationDashBoard = () => {
       }
     };
  
-  //   useEffect(() => {
- 
-  //     const updatedRowData = connectionData.map((item) => {
-  //         return {
-  //             ID: item.connection_id,
-  //             Connections: item.connection_name,
-  //             Descriptions: item.description,
-  //             Schema: schemaList[item.connection_id] || 0,
-  //             Tables: tableList[item.connection_id] || 0,
-  //             Views: item.status,
-  //             Created: new Date(item.created_at).toLocaleDateString(),
-  //         };
-  //     });
-  //     setRowData(updatedRowData);
-  // }, [schemaList, connectionData, tableList]);
- 
  
   const cards = [
     {
@@ -222,6 +211,60 @@ const FederationDashBoard = () => {
       Views: 17,
       Created: "2025-01-22",
     },
+    {
+      ID: "12345",
+      Connections: "Sample Connection 1",
+      Descriptions: "This is a demo connection description.",
+      Schema: 5,
+      Tables: 10,
+      Views: 5,
+      Created: "2025-01-20",
+    },
+    {
+      ID: "67890",
+      Connections: "Sample Connection 2",
+      Descriptions: "Another demo connection description.",
+      Schema: 8,
+      Tables: 15,
+      Views: 9,
+      Created: "2025-01-21",
+    },
+    {
+      ID: "11223",
+      Connections: "Sample Connection 3",
+      Descriptions: "Yet another demo connection description.",
+      Schema: 3,
+      Tables: 7,
+      Views: 17,
+      Created: "2025-01-22",
+    },
+    {
+      ID: "12345",
+      Connections: "Sample Connection 1",
+      Descriptions: "This is a demo connection description.",
+      Schema: 5,
+      Tables: 10,
+      Views: 5,
+      Created: "2025-01-20",
+    },
+    {
+      ID: "67890",
+      Connections: "Sample Connection 2",
+      Descriptions: "Another demo connection description.",
+      Schema: 8,
+      Tables: 15,
+      Views: 9,
+      Created: "2025-01-21",
+    },
+    {
+      ID: "11223",
+      Connections: "Sample Connection 3",
+      Descriptions: "Yet another demo connection description.",
+      Schema: 3,
+      Tables: 7,
+      Views: 17,
+      Created: "2025-01-22",
+    }
   ]);
   
  
@@ -256,24 +299,37 @@ const FederationDashBoard = () => {
   const getRowClass = (params) => {
     return 'text-gray-500';
   };
+
+  
+  const [activeMenu, setActiveMenu] = useState(null);
+
+  const handleClickOutside = () => {
+    setActiveMenu(null);
+  };
+
+  const openModal = (modalName, data = null) => {
+    setIsModalOpen((prev) => ({ ...prev, [modalName]: true }));
+    setModalData((prev) => ({ ...prev, [modalName]: data }));
+  };
+
   return (
     <>
-    <div className="w-full h-full">
+    <div className="w-full h-full px-6 pt-3">
       <div>
         <Link to="/">Platform</Link> &gt; <Link to="/federation" className="text-purple-600 hover:text-purple-700">Federation</Link>
       </div>
       <div className="flex w-full justify-between">
         <h1 className="text-2xl font-semibold">Federation</h1>
-        <div>
+        <div className="flex">
           <button
             type="button"
-            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
             <List className="h-5 w-5" />
           </button>
           <button
             type="button"
-            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
             <RefreshCcw className="h-5 w-5" />
           </button>
@@ -281,35 +337,107 @@ const FederationDashBoard = () => {
             // onClick={() => openModal("modal1")}
             type="button"
             onClick={toggleModal}
-            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
             + Create View
           </button>
         </div>
       </div>
       {/* Render modal when it's open */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 w-auto justify-self-center mt-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 justify-center lg:grid-cols-4 gap-12 mt-6">
         {cards.map((card) => (
           <div
             key={card.title}
-            className={`bg-white p-5 rounded-lg shadow-sm border-gray-200`}
+            className={`bg-white p-6 rounded-lg shadow-sm border-gray-200`}
           >
             <div className="flex items-center mb-2">
               <div
-                className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}
+                className={`flex items-center justify-center aspect-square w-8 md:w-8 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}
               >
                 <Icon icon={card.icon} />
               </div>
               <h3 className="text-lg font-semibold">{card.title}</h3>
             </div>
             <p className="text-black text-5xl font-bold">{card.count}</p>
-            <button className="mt-4 text-purple-600 text-sm hover:text-purple-700">
-              See details
-            </button>
+            <div className="flex items-center justify-between">
+              <button className="mt-4 text-purple-600 text-sm hover:text-purple-700">
+                See details
+              </button>
+            </div>
           </div>
         ))}
       </div>
-  <AgGridReact className="ag-theme-alpine border rounded-lg mt-4"
+      
+      <div className="bg-white rounded-lg shadow overflow-hidden mt-10">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-[#29304a] text-white">
+              <th className="text-left p-4">ID</th>
+              <th className="text-left p-4">Connections</th>
+              <th className="text-left p-4">Descriptions</th>
+              <th className="text-left p-4">Schema</th>
+              <th className="text-left p-4">Tables</th>
+              <th className="text-left p-4">Views</th>
+              <th className="text-left p-4">Created</th>
+              <th className="text-left p-4 last:rounded-tr-lg">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rowData.map((user, index) => (
+              <tr key={index} className="border-b">
+                <td className="p-4 text-center">{user.ID}</td>
+                <td className="p-4 text-center">{user.Connections}</td>
+                <td className="p-4 text-center">{user.Descriptions}</td>
+                <td className="p-4 text-center">{user.Schema}</td>
+                <td className="p-4 text-center">{user.Tables}</td>
+                <td className="p-4 text-center">{user.Views}</td>
+                <td className="p-4 text-center">{user.Created}</td>
+                <td className="p-4 text-center">
+                  <div className="relative">
+                    <button
+                      onClick={() =>
+                        setActiveMenu(activeMenu === index ? null : index)
+                      }
+                      className="p-1.5 rounded-full hover:bg-gray-100"
+                    >
+                      <MoreHorizontal className="h-5 w-5" />
+                    </button>
+
+                    {activeMenu === index && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={handleClickOutside}
+                        />
+                        <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                          <div className="flex items-center p-1 gap-1">
+                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                            onClick={() => openModal("modal4")}>
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                              <RotateCw className="h-4 w-4" />
+                            </button>
+                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+  {/* <AgGridReact className="ag-theme-alpine border rounded-lg mt-4"
     rowData={rowData}
     columnDefs={colDefs}
     rowHeight={50}
@@ -318,7 +446,7 @@ const FederationDashBoard = () => {
     pagination= {true}
     getRowClass={getRowClass}
     theme="legacy" 
-  />
+  /> */}
     </div>
      {isModalOpen && (
       <CreateViewDialog
