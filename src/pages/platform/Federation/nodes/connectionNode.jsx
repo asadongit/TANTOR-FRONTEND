@@ -7,12 +7,12 @@ import { useStateContext } from "../../../../context/contextProvider";
 
 export function ConnectionNode({ id, onSave }) {
 
-  const {handleConnectionPayload} = useStateContext("")
+  const {handleConnectionPayload, connectionPayload} = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [selectedView, setSelectedView] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
+  const [selectedConnection,setSelectedConnection] = useState("")
 
   const dummyColumns = ["connection 1", "id ", "name", "address", "phonenumber"];
 
@@ -35,19 +35,41 @@ export function ConnectionNode({ id, onSave }) {
   const isAllSelected = selectedColumns.length === dummyColumns.length;
 
   const handleSave = () => {
-    const payload = {
+    const selectedView = id;
+
+    const selectFields = selectedColumns.map((column) => ({
+      field: `${selectedView}.${column}`,
+      alias: "",
+    }));
+  
+    const newPayload = {
       id,
       type: "Connection",
       selectedView,
+      selectedConnection,
       selectedSchema,
       selectedTable,
       selectedColumns,
+      def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
+      select_fields: selectFields,
       Columns: dummyColumns
     };
-    console.log("Saved Payload:", payload); // Debugging purpose
-    handleConnectionPayload(payload)
-    onSave?.(payload);
+
+    const currentPayloads = connectionPayload || [];
+    const updatedPayloads = [...currentPayloads];
+    const existingIndex = updatedPayloads.findIndex((payload) => payload.id === id);
+  
+    if (existingIndex !== -1) {
+      updatedPayloads[existingIndex] = newPayload;
+    } else {
+      updatedPayloads.push(newPayload);
+    }
+  
+    console.log("view payload is ===>",updatedPayloads)
+    handleConnectionPayload(updatedPayloads)
+    onSave?.(newPayload);
   };
+
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
@@ -84,8 +106,8 @@ export function ConnectionNode({ id, onSave }) {
             <div>
               <label className="block text-sm font-medium text-black mb-1">Connection</label>
               <select
-                value={selectedView}
-                onChange={(e) => setSelectedView(e.target.value)}
+                value={selectedConnection}
+                onChange={(e) => setSelectedConnection(e.target.value)}
                 className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
               >
                 <option value="" disabled>

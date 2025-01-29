@@ -33,39 +33,37 @@ export function ConsolidationNode({ id }) {
   
     consolidationPayload.forEach((payload) => {
       if (payload.target === id) {
-        if (payload.source === connectionPayload.id) {
-          console.log("left columns are ===>", connectionPayload.Columns);
-          setLeftColumns(connectionPayload.Columns);
-          setLeftView("connection node");
-        } else {
-          const matchingView = viewPayload.find((view) => view.id === payload.source);
-          if (matchingView) {
-            console.log("left columns are ===>", matchingView.Columns);
-            setLeftColumns(matchingView.Columns);
-            setLeftView(matchingView.selectedView);
-          }
+        const matchingView =
+          connectionPayload.find((conn) => conn.id === payload.source) ||
+          viewPayload.find((view) => view.id === payload.source);
+    
+        if (matchingView) {
+          console.log("left columns are ===>", matchingView.Columns);
+          setLeftColumns(matchingView.Columns);
+          setLeftView(matchingView.selectedView);
         }
       }
-  
+    
       if (payload.source === id) {
-        if (payload.target === connectionPayload.id) {
-          console.log("right columns are ===>", connectionPayload.Columns);
-          setRightColumns(connectionPayload.Columns);
-          setRightView("connection node");
-        } else {
-          const matchingView = viewPayload.find((view) => view.id === payload.target);
-          if (matchingView) {
-            console.log("right columns are ===>", matchingView.Columns);
-            setRightColumns(matchingView.Columns);
-            setRightView(matchingView.selectedView);
-          }
+        const matchingView =
+          connectionPayload.find((conn) => conn.id === payload.target) ||
+          viewPayload.find((view) => view.id === payload.target);
+    
+        if (matchingView) {
+          console.log("right columns are ===>", matchingView.Columns);
+          setRightColumns(matchingView.Columns);
+          setRightView(matchingView.selectedView);
         }
       }
     });
+    
   }, [type, id, consolidationPayload, connectionPayload, viewPayload]);
 
   useEffect(() => {
     if (view1 && view2 && joinType && selectedLeft && selectedRight && operator) {
+      // Find the matching connection payloads for view1 and view2
+      const connection2 = connectionPayload.find(conn => conn.selectedView === view2);
+  
       const newJoin = {
         id,
         view1,
@@ -74,25 +72,30 @@ export function ConsolidationNode({ id }) {
         on: [selectedLeft, selectedRight],
         operator,
       };
+  
+      if (connection2) newJoin.definition = connection2.def;
+  
+      console.log("wnateddd join ====>",newJoin)
       setJoins([newJoin]);
     }
-  }, [view1, view2, joinType, selectedLeft, selectedRight, operator]);
-  
+  }, [view1, view2, joinType, selectedLeft, selectedRight, operator, connectionPayload]);
   
   
   useEffect(() => {
     if (joins.length > 0) {
-      const viewSelectFields = viewPayload.flatMap((view) => view.select_fields || []);
+      const connectionSelectFields = connectionPayload?.flatMap((conn) => conn.select_fields || []) || [];
+      const viewSelectFields = [...(viewPayload?.flatMap((view) => view.select_fields || []) || []), ...connectionSelectFields];
+  
       handleJoinPayload({
         view_type: "Integrated View",
         joins: joinPayload && Array.isArray(joinPayload.joins)
           ? [
-              ...joinPayload.joins
-                .filter((existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id))
-                .map(({ id, ...rest }) => rest),
-              ...joins.map(({ id, ...rest }) => rest),
+              ...joinPayload.joins.filter(
+                (existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id)
+              ),
+              ...joins, 
             ]
-          : [...joins.map(({ id, ...rest }) => rest)],
+          : [...joins],
         base_join: "base view",
         view_name: "MYVIEW",
         isMateralizedView: "false",
@@ -101,6 +104,31 @@ export function ConsolidationNode({ id }) {
       });
     }
   }, [joins]);
+  
+  
+  // errrior -----?
+  // useEffect(() => {
+  //   if (joins.length > 0) {
+  //     const connectionSelectFields = connectionPayload?.flatMap((conn) => conn.select_fields || []) || [];
+  //     const viewSelectFields = [...(viewPayload?.flatMap((view) => view.select_fields || []) || []), ...connectionSelectFields];
+  //     handleJoinPayload({
+  //       view_type: "Integrated View",
+  //       joins: joinPayload && Array.isArray(joinPayload.joins)
+  //         ? [
+  //             ...joinPayload.joins
+  //               .filter((existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id))
+  //               .map(({ id, ...rest }) => rest),
+  //             ...joins.map(({ id, ...rest }) => rest),
+  //           ]
+  //         : [...joins.map(({ id, ...rest }) => rest)],
+  //       base_join: "base view",
+  //       view_name: "MYVIEW",
+  //       isMateralizedView: "false",
+  //       isCaching: "false",
+  //       select_fields: viewSelectFields,
+  //     });
+  //   }
+  // }, [joins]);
   
   
   

@@ -52,6 +52,7 @@ export function SourceViewNode({ id, onSave }) {
       updatedPayloads.push(newPayload);
     }
   
+    console.log("view payload is ===>",updatedPayloads)
     handleViewPayload(updatedPayloads);
     onSave?.(newPayload);
   };

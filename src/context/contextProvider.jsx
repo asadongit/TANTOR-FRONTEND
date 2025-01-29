@@ -8,7 +8,7 @@ export const ContextProvider = ({ children }) => {
       setViewPayload(val);
     }
 
-    const [connectionPayload, setConnectionPayload] = useState({});
+    const [connectionPayload, setConnectionPayload] = useState([]);
     const handleConnectionPayload = (val) => {
       setConnectionPayload(val);
     }
