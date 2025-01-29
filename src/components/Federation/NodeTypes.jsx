@@ -1,52 +1,7 @@
-/*eslint-disable*/
 import { Icon } from '@iconify/react';
 import { useEffect, useState } from 'react';
-
-export function SourceNode({ data }) {
-    const handleClick = (event) => {
-        event.preventDefault();
-        data.setUserSelection({ ...data.userSelection, selectedMode: event.target.id });
-    };
-
-    return (
-        <div className="w-64 p-4 mt-1 bg-white rounded-lg shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium">Federation</h2>
-                <button className="text-gray-400 hover:text-gray-600">
-                    <Icon icon="mdi:chevron-right" width={20} height={20} />
-                </button>
-            </div>
-            <div className="space-y-2">
-                <button
-                    id="sourceView"
-                    className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 rounded-lg group border-solid border-2"
-                    onClick={handleClick}
-                >
-                    <div className="flex items-center space-x-3 pointer-events-none">
-                        <Icon icon="mdi:chart-line" className="w-5 h-5 text-purple-500" />
-                        <span className="text-gray-700">Source view</span>
-                    </div>
-                    <span className="text-gray-400 group-hover:text-gray-600 pointer-events-none">+</span>
-                </button>
-
-                <button
-                    id="connection"
-                    className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 rounded-lg group border-solid border-2"
-                    onClick={handleClick}
-                >
-                    <div className="flex items-center space-x-3 pointer-events-none">
-                        <Icon icon="mdi:link" className="w-5 h-5 text-purple-500" />
-                        <span className="text-gray-700">Connection</span>
-                    </div>
-                    <span className="text-gray-400 group-hover:text-gray-600 pointer-events-none">+</span>
-                </button>
-            </div>
-        </div>
-    );
-}
-
+// State 0
 export function SourceViewNode({ data }) {
-    if (data.userSelection.selectedMode !== "sourceView") return null;
 
     const [currentViewState, setViewState] = useState({
         apiViewsResult: [],
@@ -102,42 +57,87 @@ export function SourceViewNode({ data }) {
                     ...prev,
                     selectedViewName: selectedView,
                     selectedViewColumns: selectedViewData.columns,
+                    userCheckedColumns: [] 
                 }));
+                
+                data.setColumnSetting(null);
+                data.setFinalPayload({});
             }
+        } else {
+            setViewState(prev => ({
+                ...prev,
+                selectedViewName: "",
+                selectedViewColumns: [],
+                userCheckedColumns: []
+            }));
+            data.setColumnSetting(null);
+            data.setFinalPayload({});
         }
     };
 
     const handleColumnCheck = (columnName) => {
-        setViewState(prevState => {
-            const updatedCheckedColumns = [...prevState.userCheckedColumns];
-            const columnIndex = updatedCheckedColumns.indexOf(columnName);
+        const updatedCheckedColumns = [...currentViewState.userCheckedColumns];
+        const columnIndex = updatedCheckedColumns.indexOf(columnName);
+        console.log("Checking Column ==> ", columnName)
+        console.log("updatedCheckedColumns  ==> ", updatedCheckedColumns)
+        
 
-            if (columnIndex !== -1) {
-                updatedCheckedColumns.splice(columnIndex, 1);  // Uncheck
-                data.setColumnSetting(null);
-                // Remove the column from finalPayload
-                data.setFinalPayload(prevPayload => {
-                    const updatedPayload = { ...prevPayload };
-                    if (updatedPayload[prevState.selectedViewName]) {
-                        updatedPayload[prevState.selectedViewName] = updatedPayload[prevState.selectedViewName].filter(
-                            setting => setting.name !== columnName
-                        );
+        if (columnIndex !== -1) {
+            updatedCheckedColumns.splice(columnIndex, 1);
+            data.setColumnSetting(null);
+            
+            data.setFinalPayload(prevPayload => {
+                const updatedPayload = { ...prevPayload };
+                if (updatedPayload[currentViewState.selectedViewName]) {
+                    updatedPayload[currentViewState.selectedViewName] = updatedPayload[currentViewState.selectedViewName]
+                        .filter(setting => setting.name !== columnName);
+                    
+                    if (updatedPayload[currentViewState.selectedViewName].length === 0) {
+                        delete updatedPayload[currentViewState.selectedViewName];
                     }
-                    return updatedPayload;
-                });
-            } else {
-                updatedCheckedColumns.push(columnName);  // Check
-                const selectedColumn = prevState.selectedViewColumns.find(column => column.name === columnName);
-                data.setColumnSetting({
-                    viewName: prevState.selectedViewName,
-                    column: selectedColumn
-                });
-            }
-            return {
-                ...prevState,
-                userCheckedColumns: updatedCheckedColumns,
-            };
+                }
+                return updatedPayload;
+            });
+        } else {
+            updatedCheckedColumns.push(columnName);
+            const selectedColumn = currentViewState.selectedViewColumns.find(column => column.name === columnName);
+            data.setColumnSetting({
+                viewName: currentViewState.selectedViewName,
+                column: selectedColumn
+            });
+        }
+
+        setViewState(prevState => ({
+            ...prevState,
+            userCheckedColumns: updatedCheckedColumns,
+        }));
+    };
+
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        
+        const currentPayload = data.finalPayload || {};
+        const currentViewSettings = currentPayload[currentViewState.selectedViewName] || [];
+        
+        console.log("data ===> ", data);
+        
+        const filteredSettings = currentViewSettings.filter(
+            setting => currentViewState.userCheckedColumns.includes(setting.name)
+        );
+        
+        console.log('View Settings:', {
+            viewName: currentViewState.selectedViewName,
+            columns: filteredSettings
         });
+
+        data.setFinalPayload(prevPayload => ({
+            ...prevPayload,
+            [currentViewState.selectedViewName]: filteredSettings
+        }));
+
+        if (data.onSubmit) {
+            data.onSubmit();
+        }
     };
 
     const SelectViewComponent = () => (
@@ -178,25 +178,12 @@ export function SourceViewNode({ data }) {
         </div>
     );
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
-        data.setFinalPayload(prevPayload => {
-            const updatedPayload = { ...prevPayload };
-            if (updatedPayload[currentViewState.selectedViewName]) {
-                updatedPayload[currentViewState.selectedViewName] = updatedPayload[currentViewState.selectedViewName].filter(
-                    setting => currentViewState.userCheckedColumns.includes(setting.name)
-                );
-            }
-            return updatedPayload;
-        });
-        data.onSubmit();
-    };
-
     return (
         <div className="w-64 p-4 mt-1 bg-white rounded-lg shadow-lg">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">Source View</h2>
             </div>
+            
             <div className="space-y-4">
                 <div className="mb-4">
                     <label className="block text-gray-700 mb-1">View</label>
@@ -209,7 +196,7 @@ export function SourceViewNode({ data }) {
 
                 <button
                     onClick={handleSubmit}
-                    className="w-full p-3 text-white bg-[rgb(142,119,187)] text-[Proxima Nova] hover:bg-[rgb(142,119,187,0.8)] rounded-lg text-center"
+                    className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
                 >
                     Ok
                 </button>

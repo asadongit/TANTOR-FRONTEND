@@ -17,6 +17,7 @@ import {BusinessSidebar} from "./pages/platform/Federation/BusinessSidebar"
 import {ViewDrawer} from "./pages/platform/Federation/context/DrawerContext"
 import { BusinessHeader } from "./pages/platform/Federation/BusinessHeader";
 import { ContextProvider } from "./context/contextProvider";
+import Source from "./components/Federation/Source";
 
 
 function App() {
@@ -113,6 +114,14 @@ function App() {
               </ContextProvider>
           }
         />
+        <Route path="/federation/view/source" element = {
+          <>
+          <Header className="h-16 flex-shrink-0" />
+          <ReactFlowProvider>
+            <Source />
+          </ReactFlowProvider>
+          </>
+        }/>
       </Routes>
     </Router>
   );
