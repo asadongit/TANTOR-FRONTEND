@@ -101,7 +101,7 @@ function App() {
                   <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
                     <Header className="h-16 flex-shrink-0" />{" "}
                     {/* <BusinessHeader/> */}
-                    <div className="flex-1 flex mt-8 border-solid border-b-2">
+                    <div className="flex-1 flex mt-8">
                       <BusinessSidebar className="w-64" />{" "}
                       <div className="flex-1 relative">
                         {" "}

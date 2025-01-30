@@ -102,7 +102,7 @@ export function ViewCanvas() {
         className="bg-gray-50"
       >
         {/* <Background color="#374151" gap={16} /> */}
-        <Controls className="fill-black stroke-black" />
+        {/* <Controls className="fill-black stroke-black" /> */}
       </ReactFlow>
       <DrawerContainer />
     </div>
