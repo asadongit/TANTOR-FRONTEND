@@ -73,13 +73,7 @@ export function ConnectionNode({ id, onSave }) {
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
-      <button
-        onClick={() => window.deleteNode?.(id)}
-        className="absolute -top-2 -right-2 bg-black rounded-full p-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <X className="w-4 h-4 text-white" />
-      </button>
-
+ 
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
 
@@ -88,16 +82,24 @@ export function ConnectionNode({ id, onSave }) {
           <Cable className="w-5 h-5 text-[#8E77BB]" />
           <h3 className="text-black font-medium">Connection</h3>
         </div>
+        <div>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-1 rounded-md hover:bg-gray-200"
         >
           {isCollapsed ? (
-            <ChevronDown className="w-5 h-5 text-black" />
+            <ChevronDown className=" h-5 text-black" />
           ) : (
-            <ChevronUp className="w-5 h-5 text-black" />
+            <ChevronUp className=" h-5 text-black" />
           )}
         </button>
+        <button
+              onClick={() => window.deleteNode?.(id)}
+              className="p-1 rounded-md hover:bg-gray-200"
+            >
+              <X className="h-5 text-black" />
+            </button>
+            </div>
       </div>
 
       {!isCollapsed && (

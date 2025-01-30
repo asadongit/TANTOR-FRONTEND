@@ -25,6 +25,8 @@ const getId = () => `node_${id++}`;
 
 export function ViewCanvas() {
 
+  const { handleConsolidationPayload } = useStateContext("");
+  
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
