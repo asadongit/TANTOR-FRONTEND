@@ -17,7 +17,7 @@ import {BusinessSidebar} from "./pages/platform/Federation/BusinessSidebar"
 import {ViewDrawer} from "./pages/platform/Federation/context/DrawerContext"
 import { BusinessHeader } from "./pages/platform/Federation/BusinessHeader";
 import { ContextProvider } from "./context/contextProvider";
-import Source from "./components/Federation/Source";
+import Source from "./pages/platform/Federation/Source";
 import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
 
 

@@ -10,7 +10,7 @@ import Purge from '../pages/platform/Purge';
 import CDC from '../pages/platform/CDC';
 import FederationDashBoard from '../pages/platform/Federation/FederationDashboard';
 import Federation from '../pages/platform/Federation/createViewDailog';
-import Source from '../components/Federation/Source';
+import Source from '../pages/platform/Federation/Source';
 import MigrationDragAndDrop from '../pages/platform/migration/MigrationCanvas';
 
 export const PlatformRoutes = (

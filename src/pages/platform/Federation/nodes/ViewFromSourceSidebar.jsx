@@ -23,11 +23,11 @@ export default function SourceSidebar({ setUserSelection }) {
           </div>
           <div className="space-y-2">
               <button
-                  id="sourceView"
+                  id="baseNode"
                   className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 rounded-lg group border-solid border-2"
                 //   onClick={handleClick}
                   draggable
-                  onDragStart={(e) => onDragStart(e, 'sourceView')}
+                  onDragStart={(e) => onDragStart(e, 'baseNode')}
               >
                   <div className="flex items-center space-x-3 pointer-events-none">
                       <Icon icon="mdi:chart-line" className="w-5 h-5 text-[#8E77BB]" />
