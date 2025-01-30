@@ -1,7 +1,7 @@
 /*eslint-disable*/
 import React, { useState } from 'react';
 import {
- Network,ChevronDown, ChevronRight,Cable,SquareKanban,PanelLeftClose,PanelLeftOpen
+ Network,ChevronDown, ChevronRight,Cable,SquareKanban,PanelLeftClose,PanelLeftOpen,Plus
 } from 'lucide-react';
 
 
@@ -77,15 +77,22 @@ export function BusinessSidebar() {
                 {category.items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center space-x-2 p-2 rounded-lg  transition-all cursor-move hover:bg-gray-50 rounded-lg group border-solid border-2"
+                    className="flex items-center justify-between p-2 rounded-lg  transition-all cursor-move hover:bg-gray-50 rounded-lg group border-solid border-2"
                     onDragStart={(e) => onDragStart(e, item.type)}
                     draggable
                   >
+                    <div className="flex items-center justify-center">
                     <div className="flex items-center justify-center w-6 h-6 rounded-lg">
                       <item.icon className="w-4 h-4 text-[#8E77BB] transition-colors" />
                     </div>
                     {expandedCategories.includes(category.category) && (
-                    <span className="text-black text-sm">{item.name}</span> )}
+                    <span className="text-black text-sm ml-1">{item.name}</span> )}
+                    </div>
+                     <button
+                    className="p-1 rounded-md hover:bg-gray-200 "
+                     >
+                    <Plus className="h-4 text-gray-500" />
+                    </button>
                   </div>
                 ))}
               </div>
