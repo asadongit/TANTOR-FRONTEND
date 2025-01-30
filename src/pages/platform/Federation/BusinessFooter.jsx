@@ -167,7 +167,7 @@ export function BusinessFooter() {
                 <button
                   type="button"
                   onClick={() => setPreview(false)}
-                  className="text-black bg-white hover:bg-gray-50 focus:ring-1  rounded-lg text-sm px-8 py-1 mr-2 focus:outline-none border-solid border-2"
+                  className="text-black bg-white hover:bg-gray-50  rounded-lg text-sm px-8 py-1 mr-2 focus:outline-none border-solid border-2"
                 >
                   Cancel
                 </button>
