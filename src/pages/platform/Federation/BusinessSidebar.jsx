@@ -1,7 +1,7 @@
 /*eslint-disable*/
 import React, { useState } from 'react';
 import {
- Network,ChevronDown, ChevronRight,Cable,SquareKanban
+ Network,ChevronDown, ChevronRight,Cable,SquareKanban,PanelLeftClose,PanelLeftOpen
 } from 'lucide-react';
 
 
@@ -62,12 +62,13 @@ export function BusinessSidebar() {
               className="w-full flex items-center justify-between p-3 hover:bg-gray-750 transition-colors text-left border-l-4 border-transparent hover:border-[#8E77BB]"
             >
               <div className="flex items-center space-x-3">
-                <span className="text-black font-medium">{category.category}</span>
+             {expandedCategories.includes(category.category) && (
+                <span className="text-black font-medium text-lg">{category.category}</span>  )}
               </div>
               {expandedCategories.includes(category.category) ? (
-                <ChevronDown className="w-4 h-4 text-black" />
+                <PanelLeftClose className="w-5 h-5 text-black" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-black" />
+                <PanelLeftOpen className="w-5 h-5 text-black" />
               )}
             </button>
 
@@ -83,7 +84,8 @@ export function BusinessSidebar() {
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg">
                       <item.icon className="w-5 h-5 text-[#8E77BB] transition-colors" />
                     </div>
-                    <span className="text-black text-sm">{item.name}</span>
+                    {expandedCategories.includes(category.category) && (
+                    <span className="text-black text-sm">{item.name}</span> )}
                   </div>
                 ))}
               </div>
