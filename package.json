@@ -10,8 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@heroicons/react": "^2.1.1",
     "@iconify/react": "^5.2.0",
+    "@mui/material": "^6.4.2",
     "@xyflow/react": "^12.4.2",
     "ag-grid-react": "^33.0.4",
     "autoprefixer": "^10.4.18",

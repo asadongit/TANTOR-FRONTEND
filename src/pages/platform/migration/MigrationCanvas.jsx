@@ -11,6 +11,8 @@ import { SourceNode } from './nodes/SourceNode';
 import { TargetNode } from './nodes/TargetNode';
 import { SchedulerNode } from './nodes/SchedulerNode';
 import { DrawerContainer } from './drawers/DrawerContainer';
+import { useTableContext } from './context/TableContext';
+import TableDrawer from './dialog/TableDrawer';
 
 const nodeTypes = {
   define: DefineNode,
@@ -25,6 +27,7 @@ const getId = () => `node_${id++}`;
 const MigrationCanvas = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const { openDrawer } = useTableContext();
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
@@ -52,7 +55,9 @@ const MigrationCanvas = () => {
         id: getId(),
         type,
         position,
-        data: { label: type },
+        data: { label: type,
+          tables: []
+         },
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -91,6 +96,7 @@ const MigrationCanvas = () => {
         <Controls className="fill-white stroke-black" />
       </ReactFlow>
       <DrawerContainer />
+      <TableDrawer nodes={nodes} setNodes={setNodes} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import MigrationCanvas from "./pages/platform/migration/MigrationCanvas";
 import { WelcomeModal } from "./pages/platform/migration/WelcomeModal";
 import { DrawerProvider } from "./pages/platform/migration/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/migration/context/ThemeContext";
+import { TableProvider } from "./pages/platform/migration/context/TableContext";
 
 function App() {
 
@@ -62,8 +63,10 @@ function App() {
         <Route
           path="/Migrationcanvas"
           element={
+            <TableProvider>
             <ThemeProvider>
               <DrawerProvider>
+               
                   <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
                     <Header className="h-16 flex-shrink-0" />{" "}
                     <div className="flex-1 flex">
@@ -77,8 +80,10 @@ function App() {
                     </div>
                     <WelcomeModal />
                   </div>
+                  
               </DrawerProvider>
             </ThemeProvider>
+            </TableProvider>
           }
         />
       </Routes>
