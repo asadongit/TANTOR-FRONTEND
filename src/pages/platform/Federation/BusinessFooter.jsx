@@ -4,10 +4,10 @@ import { useStateContext } from "../../../context/contextProvider";
 export function BusinessFooter() {
     
       const { handleConsolidationPayload,joinPayload,handleJoinPayload  } = useStateContext("");
-      const [showPreview, setShowPreview] = useState(false);
+      const [preview, setPreview] = useState(false);
 
       const handleClick =()=>{
-        setShowPreview(true)
+        setPreview(true)
         console.log("join payload is ===>",joinPayload)
     
     
@@ -125,7 +125,7 @@ export function BusinessFooter() {
      ]);
     return (
 <>
-{showPreview && (
+{preview && (
     <>
      <div className="text-black mt-2 mb-2 ml-6 font-semibold">Ouptut Preview</div>
   <div className="bg-white rounded-lg shadow overflow-hidden h-[32%] mx-6 mb-5">
@@ -166,17 +166,17 @@ export function BusinessFooter() {
       <div className="mr-3">
                 <button
                   type="button"
-                  onClick={() => setShowPreview(false)}
-                  className="text-black bg-white hover:bg-gray-50 focus:ring-1  rounded-lg text-sm px-8 py-1 me-2 focus:outline-none border-solid border-2"
+                  onClick={() => setPreview(false)}
+                  className="text-black bg-white hover:bg-gray-50 focus:ring-1  rounded-lg text-sm px-8 py-1 mr-2 focus:outline-none border-solid border-2"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleClick}
-                  className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+                  className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1 mr-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                 >
-                  Next
+                  {preview ? "Create view" : "Next"}
                 </button>
               </div>    
       </div>
