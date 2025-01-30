@@ -96,7 +96,6 @@ export function ConsolidationNode({ id }) {
               ...joins, 
             ]
           : [...joins],
-        base_join: "base view",
         view_name: "MYVIEW",
         isMateralizedView: "false",
         isCaching: "false",

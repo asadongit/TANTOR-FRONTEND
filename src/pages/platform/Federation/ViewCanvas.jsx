@@ -25,23 +25,9 @@ const getId = () => `node_${id++}`;
 
 export function ViewCanvas() {
 
-  const { handleConsolidationPayload,joinPayload  } = useStateContext("");
-
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  const getFirstNodeId = () => {
-    if (nodes.length === 0) return null; // No nodes available
-  
-    // Find the node with the smallest numerical ID
-    const sortedNodes = [...nodes].sort((a, b) => {
-      const idA = parseInt(a.id.split('_')[1], 10); // Extract the numeric part
-      const idB = parseInt(b.id.split('_')[1], 10); // Extract the numeric part
-      return idA - idB;
-    });
-  
-    return sortedNodes[0]?.id; // Return the ID of the first node
-  };
 
   // const onConnect = useCallback(
   //   (params) => setEdges((eds) => addEdge(params, eds)),
@@ -100,12 +86,6 @@ export function ViewCanvas() {
   }, [onNodeDelete]);
 
 
-  const handleClick =()=>{
-    const firstNodeId = getFirstNodeId();
-  console.log("First node ID is:", firstNodeId);
-    console.log("join payload is ===>",joinPayload)
-  }
-
   return (
     <div className="h-full relative">
       <ReactFlow
@@ -125,12 +105,6 @@ export function ViewCanvas() {
         <Controls className="fill-black stroke-black" />
       </ReactFlow>
       <DrawerContainer />
-      <button
-        onClick={handleClick}
-        className="absolute bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow"
-      >
-        Combine and Save Data
-      </button>
     </div>
   );
 }

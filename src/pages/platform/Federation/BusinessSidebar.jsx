@@ -53,7 +53,7 @@ export function BusinessSidebar() {
 
 
   return (
-    <div className="w-52 p-4 overflow-y-auto h-fit bg-white rounded-lg shadow-lg">
+    <div className="w-52 p-4 ml-5 overflow-y-auto h-fit bg-white rounded-lg shadow-lg">
       <div className="space-y-2">
         {components.map((category) => (
           <div key={category.category} className="bg-white rounded-lg overflow-hidden">

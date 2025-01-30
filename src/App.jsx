@@ -18,6 +18,7 @@ import {ViewDrawer} from "./pages/platform/Federation/context/DrawerContext"
 import { BusinessHeader } from "./pages/platform/Federation/BusinessHeader";
 import { ContextProvider } from "./context/contextProvider";
 import Source from "./components/Federation/Source";
+import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
 
 
 function App() {
@@ -100,7 +101,7 @@ function App() {
                   <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
                     <Header className="h-16 flex-shrink-0" />{" "}
                     {/* <BusinessHeader/> */}
-                    <div className="flex-1 flex mt-8 " style={{marginLeft: "20px"}}>
+                    <div className="flex-1 flex mt-8 border-solid border-b-2">
                       <BusinessSidebar className="w-64" />{" "}
                       <div className="flex-1 relative">
                         {" "}
@@ -108,7 +109,8 @@ function App() {
                           <ViewCanvas />
                         </ReactFlowProvider>
                       </div>
-                    </div>
+                      </div>
+                      <BusinessFooter />
                   </div>
               </ViewDrawer>
               </ContextProvider>
