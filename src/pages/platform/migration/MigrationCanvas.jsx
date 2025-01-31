@@ -3,27 +3,22 @@ import ReactFlow, {
   addEdge,
   useNodesState,
   useEdgesState,
-  Background,
   Controls,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { DefineNode } from './nodes/DefineNode';
-import { ViewNode } from './nodes/ViewNode';
-import { SupervisedMLNode } from './nodes/SupervisedMLNode';
-import { UnsupervisedMLNode } from './nodes/UnsupervisedMLNode';
-import { ModelMetricsNode } from './nodes/ModelMetricsNode';
-import { DataProfilingNode } from './nodes/DataProfilingNode';
-import { DataPreparationNode } from './nodes/DataPreparationNode';
+import { SourceNode } from './nodes/SourceNode';
+import { TargetNode } from './nodes/TargetNode';
+import { SchedulerNode } from './nodes/SchedulerNode';
 import { DrawerContainer } from './drawers/DrawerContainer';
+import { useTableContext } from './context/TableContext';
+import TableDrawer from './dialog/TableDrawer';
 
 const nodeTypes = {
   define: DefineNode,
-  viewCsv: ViewNode,
-  supervisedMl: SupervisedMLNode,
-  unsupervisedMl: UnsupervisedMLNode,
-  modelMetrics: ModelMetricsNode,
-  dataProfiling: DataProfilingNode,
-  dataPreparation: DataPreparationNode,
+  source: SourceNode,
+  target: TargetNode,
+  schedule: SchedulerNode
 };
 
 let id = 0;
@@ -32,6 +27,7 @@ const getId = () => `node_${id++}`;
 const MigrationCanvas = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const { openDrawer } = useTableContext();
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
@@ -51,15 +47,17 @@ const MigrationCanvas = () => {
       if (!type) return;
 
       const position = {
-        x: event.clientX - 320,
-        y: event.clientY - 40,
+        x: event.clientX - 500,
+        y: event.clientY - 80,
       };
 
       const newNode = {
         id: getId(),
         type,
         position,
-        data: { label: type },
+        data: { label: type,
+          tables: []
+         },
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -93,12 +91,12 @@ const MigrationCanvas = () => {
         onDrop={onDrop}
         nodeTypes={nodeTypes}
         fitView
-        className="bg-gray-100"
+        className="bg-gray-50"
       >
-        <Background color="#374151" gap={16} />
         <Controls className="fill-white stroke-black" />
       </ReactFlow>
       <DrawerContainer />
+      <TableDrawer nodes={nodes} setNodes={setNodes} />
     </div>
   );
 }
