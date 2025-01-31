@@ -10,8 +10,6 @@ import Purge from '../pages/platform/Purge';
 import CDC from '../pages/platform/CDC';
 import FederationDashBoard from '../pages/platform/Federation/FederationDashboard';
 import Source from '../pages/platform/Federation/Source';
-import BusinessRegular from '../pages/platform/Federation/BusinessRegular';
-import Source from '../components/Federation/Source';
 import MigrationCanvas from '../pages/platform/migration/MigrationCanvas';
 
 export const PlatformRoutes = (
@@ -27,7 +25,6 @@ export const PlatformRoutes = (
     <Route path="/cdc" element={<CDC />} />
     <Route path="/federation" element={<FederationDashBoard />} />
     <Route path='/federation/view/source' element={<Source />} />
-    <Route path="/federation/view/Business" element={<BusinessRegular />} />
     <Route path="/createMigration" element={<MigrationCanvas />}></Route>
   </>
 );
