@@ -11,7 +11,7 @@ import {
 import { Pencil, Trash2 } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 import { useState, useEffect, useCallback } from "react";
-import { ConnectionNode, BaseNode } from "./nodes/BaseNodes";
+import { ConnectionNode, BaseNode } from "./nodes/baseNodes";
 import { Icon } from "@iconify/react";
 import SourceSidebar from "./nodes/ViewFromSourceSidebar";
 
