@@ -9,6 +9,7 @@ import Transformation from '../pages/platform/Transformation';
 import Purge from '../pages/platform/Purge';
 import CDC from '../pages/platform/CDC';
 import FederationDashBoard from '../pages/platform/Federation/FederationDashboard';
+import Source from '../pages/platform/Federation/Source';
 import BusinessRegular from '../pages/platform/Federation/BusinessRegular';
 import Source from '../components/Federation/Source';
 import MigrationCanvas from '../pages/platform/migration/MigrationCanvas';

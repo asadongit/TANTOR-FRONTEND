@@ -12,6 +12,13 @@ import { WelcomeModal } from "./pages/platform/migration/WelcomeModal";
 import { DrawerProvider } from "./pages/platform/migration/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/migration/context/ThemeContext";
 import { TableProvider } from "./pages/platform/migration/context/TableContext";
+import {ViewCanvas} from "./pages/platform/Federation/ViewCanvas"
+import {BusinessSidebar} from "./pages/platform/Federation/BusinessSidebar"
+import {ViewDrawer} from "./pages/platform/Federation/context/DrawerContext"
+import { ContextProvider } from "./context/contextProvider";
+import Source from "./pages/platform/Federation/Source";
+import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
+
 
 function App() {
 
@@ -86,6 +93,38 @@ function App() {
             </TableProvider>
           }
         />
+
+        <Route
+          path="/viewcanvas"
+          element={
+            <ContextProvider>
+              <ViewDrawer>
+                  <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
+                    <Header className="h-16 flex-shrink-0" />{" "}
+                    {/* <BusinessHeader/> */}
+                    <div className="flex-1 flex mt-8">
+                      <BusinessSidebar className="w-64" />{" "}
+                      <div className="flex-1 relative">
+                        {" "}
+                        <ReactFlowProvider>
+                          <ViewCanvas />
+                        </ReactFlowProvider>
+                      </div>
+                      </div>
+                      <BusinessFooter />
+                  </div>
+              </ViewDrawer>
+              </ContextProvider>
+          }
+        />
+        <Route path="/federation/view/source" element = {
+          <>
+          <Header className="h-16 flex-shrink-0" />
+          <ReactFlowProvider>
+            <Source />
+          </ReactFlowProvider>
+          </>
+        }/>
       </Routes>
     </Router>
   );

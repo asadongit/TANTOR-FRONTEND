@@ -12,7 +12,7 @@ import { SourceViewNode } from './nodes/sourceViewNode';
 import {ConnectionNode} from './nodes/connectionNode'
 import {ConsolidationNode} from './nodes/consolidationNode'
 import { DrawerContainer } from './drawers/DrawerContainer';
-import {BusinessSidebar} from './BusinessSidebar'
+import { useStateContext } from '../../../context/contextProvider';
 
 const nodeTypes = {
   sourceView: SourceViewNode,
@@ -23,14 +23,26 @@ const nodeTypes = {
 let id = 0;
 const getId = () => `node_${id++}`;
 
-export function FlowCanvas() {
+export function ViewCanvas() {
+
+  const { handleConsolidationPayload } = useStateContext("");
+  
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  );
+
+  // const onConnect = useCallback(
+  //   (params) => setEdges((eds) => addEdge(params, eds)),
+  //   [setEdges]
+  // );
+
+
+  const onConnect = (params) => {
+    const { source, target } = params; 
+    handleConsolidationPayload({ source, target })
+    console.log("Connecting:", { source, target }); 
+    setEdges((eds) => addEdge(params, eds));
+  };
 
   const onDragOver = useCallback((event) => {
     event.preventDefault();
@@ -79,6 +91,7 @@ export function FlowCanvas() {
     };
   }, [onNodeDelete]);
 
+
   return (
     <div className="h-full relative">
       <ReactFlow
@@ -95,7 +108,7 @@ export function FlowCanvas() {
         className="bg-gray-50"
       >
         {/* <Background color="#374151" gap={16} /> */}
-        <Controls className="fill-black stroke-black" />
+        {/* <Controls className="fill-black stroke-black" /> */}
       </ReactFlow>
       <DrawerContainer />
     </div>
