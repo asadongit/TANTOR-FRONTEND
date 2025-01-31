@@ -1,3 +1,4 @@
+/*eslint-disable*/
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
@@ -103,34 +104,7 @@ export function ConsolidationNode({ id }) {
       });
     }
   }, [joins]);
-  
-  
-  // errrior -----?
-  // useEffect(() => {
-  //   if (joins.length > 0) {
-  //     const connectionSelectFields = connectionPayload?.flatMap((conn) => conn.select_fields || []) || [];
-  //     const viewSelectFields = [...(viewPayload?.flatMap((view) => view.select_fields || []) || []), ...connectionSelectFields];
-  //     handleJoinPayload({
-  //       view_type: "Integrated View",
-  //       joins: joinPayload && Array.isArray(joinPayload.joins)
-  //         ? [
-  //             ...joinPayload.joins
-  //               .filter((existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id))
-  //               .map(({ id, ...rest }) => rest),
-  //             ...joins.map(({ id, ...rest }) => rest),
-  //           ]
-  //         : [...joins.map(({ id, ...rest }) => rest)],
-  //       base_join: "base view",
-  //       view_name: "MYVIEW",
-  //       isMateralizedView: "false",
-  //       isCaching: "false",
-  //       select_fields: viewSelectFields,
-  //     });
-  //   }
-  // }, [joins]);
-  
-  
-  
+   
   return (
     <>
       {!isCollapsed ? (

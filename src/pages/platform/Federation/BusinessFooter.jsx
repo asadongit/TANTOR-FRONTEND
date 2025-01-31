@@ -1,9 +1,10 @@
-import { useState } from "react";
+/*eslint-disable*/
+import { useEffect, useState } from "react";
 import { useStateContext } from "../../../context/contextProvider";
 
 export function BusinessFooter() {
     
-      const { handleConsolidationPayload,joinPayload,handleJoinPayload  } = useStateContext("");
+      const {joinPayload,handleJoinPayload,connectionPayload} = useStateContext("");
       const [preview, setPreview] = useState(false);
 
       const handleClick =()=>{
@@ -29,16 +30,40 @@ export function BusinessFooter() {
     
         console.log("temp array1",Array.from(tempArray1));
         console.log("tep array 2",Array.from(tempArray2));
-    
+
+        // handleJoinPayload({
+        //   ...joinPayload,
+        //   base_join: Array.from(tempArray1)[0]
+        // });
+
+        // const connection = connectionPayload.find(conn => conn.id === Array.from(tempArray1)[0]);
+        // if (connection) {
+        //     handleJoinPayload({
+        //         ...joinPayload,
+        //         base_join_def: connection.def
+        //       });
+        //     var temp = connection.def;
+        //     console.log("base join def is ====>",temp);
+        // }
+
+        const baseJoin = Array.from(tempArray1)[0];
+        const connection = connectionPayload.find(conn => conn.id === baseJoin);
+
         handleJoinPayload({
-          ...joinPayload,
-          base_join: Array.from(tempArray1)[0]
+            ...joinPayload,
+            base_join: baseJoin,
+            ...(connection && { base_join_def: connection.def })
         });
 
-
-        // ------?
+        if (connection) {
+            console.log("base join def is ====>", connection.def);
+        }
     
       }
+
+      useEffect(()=>{
+        console.log("final join payload is ====>",joinPayload)
+      },[joinPayload])
     
      const [rowData, setRowData] = useState([
        {

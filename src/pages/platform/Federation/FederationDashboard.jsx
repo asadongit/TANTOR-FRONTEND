@@ -268,37 +268,37 @@ const FederationDashBoard = () => {
   ]);
   
  
-  const ActionRenderer = (props) => {
-    return (
-      <button
-          className="p-2 rounded flex justify-center items-center"
-        >
-          <Icon icon="system-uicons:circle-menu" className="text-purple-600 text-lg" style={{ fontSize: '20px'}} />
-        </button>
-    );
-  };
+  // const ActionRenderer = (props) => {
+  //   return (
+  //     <button
+  //         className="p-2 rounded flex justify-center items-center"
+  //       >
+  //         <Icon icon="system-uicons:circle-menu" className="text-purple-600 text-lg" style={{ fontSize: '20px'}} />
+  //       </button>
+  //   );
+  // };
  
-  const [colDefs] = useState([
-    { field: "ID", headerClass: "bg-customBlue" ,headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center"},
-    { field: "Connections", headerClass: "bg-customBlue", headerStyle: { backgroundColor: '#007BFF', color: '#fff' }, flex: 2, cellClass: "flex items-center" },
-    { field: "Descriptions", headerClass: "bg-customBlue ",headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 2,cellClass: "flex items-center" },
-    { field: "Schema", headerClass: "bg-customBlue",headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center" },
-    { field: "Tables", headerClass: "bg-customBlue" ,headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center"},
-    { field: "Views", headerClass: "bg-customBlue" ,headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center"},
-    { field: "Created", headerClass: "bg-customBlue",headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center" },
-    {
-      field: "Actions",
-      headerClass: "bg-customBlue",
-      headerStyle: { backgroundColor: '#007BFF', color: '#fff' },
-      flex: 1,
-      cellClass: "flex items-center justify-center",
-      cellRenderer: ActionRenderer,  
-    },
-  ]);
+  // const [colDefs] = useState([
+  //   { field: "ID", headerClass: "bg-customBlue" ,headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center"},
+  //   { field: "Connections", headerClass: "bg-customBlue", headerStyle: { backgroundColor: '#007BFF', color: '#fff' }, flex: 2, cellClass: "flex items-center" },
+  //   { field: "Descriptions", headerClass: "bg-customBlue ",headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 2,cellClass: "flex items-center" },
+  //   { field: "Schema", headerClass: "bg-customBlue",headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center" },
+  //   { field: "Tables", headerClass: "bg-customBlue" ,headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center"},
+  //   { field: "Views", headerClass: "bg-customBlue" ,headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center"},
+  //   { field: "Created", headerClass: "bg-customBlue",headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center" },
+  //   {
+  //     field: "Actions",
+  //     headerClass: "bg-customBlue",
+  //     headerStyle: { backgroundColor: '#007BFF', color: '#fff' },
+  //     flex: 1,
+  //     cellClass: "flex items-center justify-center",
+  //     cellRenderer: ActionRenderer,  
+  //   },
+  // ]);
  
-  const getRowClass = (params) => {
-    return 'text-gray-500';
-  };
+  // const getRowClass = (params) => {
+  //   return 'text-gray-500';
+  // };
 
   
   const [activeMenu, setActiveMenu] = useState(null);
@@ -334,7 +334,6 @@ const FederationDashBoard = () => {
             <RefreshCcw className="h-5 w-5" />
           </button>
           <button
-            // onClick={() => openModal("modal1")}
             type="button"
             onClick={toggleModal}
             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
