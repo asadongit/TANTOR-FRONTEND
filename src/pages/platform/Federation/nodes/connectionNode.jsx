@@ -1,18 +1,22 @@
 /*eslint-disable*/
-import React, { useState } from "react";
+import React, { useState, useEffect} from "react";
 import PropTypes from "prop-types"; // Add this import
 import { Handle, Position } from "reactflow";
 import { Cable, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 
 export function ConnectionNode({ id, onSave }) {
-
+  const encodedToken = import.meta.env.VITE_ACCESS_TOKEN;
   const {handleConnectionPayload, connectionPayload} = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [selectedSchema, setSelectedSchema] = useState("");
-  const [selectedTable, setSelectedTable] = useState("");
-  const [selectedColumns, setSelectedColumns] = useState([]);
+  const [connections, setConnections] = useState([]);
   const [selectedConnection,setSelectedConnection] = useState("")
+  const [schemas, setSchemas] = useState([]);
+  const [selectedSchema, setSelectedSchema] = useState("");
+  const [tables, setTables] = useState([]);
+  const [selectedTable, setSelectedTable] = useState("");
+  const [columns, setColumns] = useState([])
+  const [selectedColumns, setSelectedColumns] = useState([]);
 
   const dummyColumns = ["connection 1", "id ", "name", "address", "phonenumber"];
 
@@ -33,6 +37,137 @@ export function ConnectionNode({ id, onSave }) {
   };
 
   const isAllSelected = selectedColumns.length === dummyColumns.length;
+
+
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
+        headers: {
+            'Authorization': `Bearer ${encodedToken}`,
+            'Content-Type': 'application/json',
+        },
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            const connectionNames = data
+                .filter(
+                    (item) =>
+                        // item.project === project &&
+                        // token.preferred_username === item.created_by &&
+                        item.is_deleted === false
+                )
+                .map((item) => item.connection_name);
+            setConnections(connectionNames);
+        })
+        .catch((error) => {
+            console.error("Error fetching data:", error);
+        });
+}, []);
+
+const handleConnectionChange = async (event, value) => {
+ var conn =event.target.value;
+  setSelectedTable("");
+  setSelectedConnection(conn);
+  setSelectedSchema("");
+  setColumns([])
+  setSelectedColumns([]);
+  try {
+      const response = await fetch(
+          `${import.meta.env.VITE_FAST_API}/${conn}/schemas`,
+          {
+              headers: {
+                  Authorization: `Bearer ${encodedToken}`,
+                  "Content-Type": "application/json",
+              },
+          }
+      );
+
+      if (!response.ok) {
+          throw new Error(`Error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (Array.isArray(data)) {
+          setSchemas(data);
+      } else {
+          setSchemas([]);
+          // setError("Unexpected response format.");
+      }
+  } catch (err) {
+      setSchemas([]);
+      // setError(err.message || "Failed to fetch schemas.");
+  } finally {
+
+  }
+};
+
+const handleSchemaChange = async (event, value) => {
+  var temp =event.target.value;
+  setSelectedSchema(temp);
+  setSelectedTable("");
+  setColumns([])
+  setSelectedColumns([]);
+  try {
+      const response = await fetch(
+          `${import.meta.env.VITE_FAST_API}/${selectedConnection}/schemas/${temp}/tables`,
+          {
+              headers: {
+                  Authorization: `Bearer ${encodedToken}`,
+                  "Content-Type": "application/json",
+              },
+          }
+      );
+
+      if (!response.ok) {
+          throw new Error(`Error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (Array.isArray(data)) {
+          setTables(data);
+      } else {
+          setTables([]);
+          // setError("Unexpected response format.");
+      }
+  } catch (err) {
+      setTables([]);
+      // setError(err.message || "Failed to fetch tables.");
+  } finally {
+
+  }
+};
+
+
+
+const handleTableChange = async (event, value) => {
+  var temp = event.target.value;
+  setColumns([])
+  setSelectedColumns([]);
+  if (selectedConnection && selectedSchema) {
+      var temp = event.target.value;
+      setSelectedTable(temp);
+      const response = await fetch(
+          `${import.meta.env.VITE_FAST_API}/${selectedConnection}/schemas/${selectedSchema}/tables/${temp}/columns`, {
+          headers: {
+              'Authorization': `Bearer ${encodedToken}`,
+              'Content-Type': 'application/json',
+          },
+      });
+      if (response.ok) {
+          const data = await response.json();
+          console.log("columns aree====>",data)
+          const transformedColumns = data.map((column) => (
+            column.column
+          ));
+          console.log("trans col are ===>",transformedColumns)
+        setColumns(transformedColumns);
+      }
+  } else if (!(selectedConnection || selectedSchema)) {
+      toast.error("Select above field first");
+  }
+};
+
+
 
   const handleSave = () => {
     const selectedView = id;
@@ -109,48 +244,54 @@ export function ConnectionNode({ id, onSave }) {
               <label className="block text-sm font-medium text-black mb-1">Connection</label>
               <select
                 value={selectedConnection}
-                onChange={(e) => setSelectedConnection(e.target.value)}
+                onChange={handleConnectionChange}
                 className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
               >
                 <option value="" disabled>
                   Select a connection
                 </option>
-                <option value="view1">View 1</option>
-                <option value="view2">View 2</option>
-                <option value="view3">View 3</option>
+                {connections?.map((conn,index)=>(
+                  <option key={index} value={conn}>
+                    {conn}
+                    </option>
+                ))         }
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">Schema</label>
               <select
                 value={selectedSchema}
-                onChange={(e) => setSelectedSchema(e.target.value)}
+                onChange={handleSchemaChange}
                 className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
               >
                 <option value="" disabled>
                   Select a Schema
                 </option>
-                <option value="schema1">Schema 1</option>
-                <option value="schema2">Schema 2</option>
-                <option value="schema3">Schema 3</option>
+                {schemas?.map((schema,index)=>(
+                  <option key={index} value={schema}>
+                    {schema}
+                    </option>
+                ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">Table</label>
               <select
                 value={selectedTable}
-                onChange={(e) => setSelectedTable(e.target.value)}
+                onChange={handleTableChange}
                 className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
               >
                 <option value="" disabled>
                   Select a table
                 </option>
-                <option value="table1">Table 1</option>
-                <option value="table2">Table 2</option>
-                <option value="table3">Table 3</option>
+                {tables?.map((schema,index)=>(
+                  <option key={index} value={schema}>
+                    {schema}
+                    </option>
+                ))}
               </select>
             </div>
-            {selectedTable && (
+            {columns?.length && (
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Select Columns</label>
                 <div className="p-3 space-y-2">
@@ -167,7 +308,7 @@ export function ConnectionNode({ id, onSave }) {
                     </label>
                   </div>
                   <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
-                    {dummyColumns.map((column) => (
+                    {columns.map((column) => (
                       <div key={column} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
