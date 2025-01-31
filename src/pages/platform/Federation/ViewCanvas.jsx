@@ -66,6 +66,10 @@ export function ViewCanvas() {
         type,
         position,
         data: { label: type },
+        style: { 
+          width: 100,  // Fixed width
+          height: 100  // Fixed height
+        }
       };
 
       setNodes((nds) => nds.concat(newNode));

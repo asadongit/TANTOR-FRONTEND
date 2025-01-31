@@ -7,7 +7,7 @@ import Databot from '../pages/datagovernance/Databot';
 import Reports from '../pages/datagovernance/Reports';
 import Import from '../pages/datagovernance/Import';
 import CustomAddition from '../pages/datagovernance/CustomAddition';
-import { UserRoutes } from '../pages/datagovernance/User/userRoutes';
+import { UserRoutes } from '../pages/datagovernance/User/UserRoutes';
 import { DataCatalogueRoutes } from '../pages/datagovernance/DataCatalogue/DataCatalogueRoutes';
 
 export const DataGovernanceRoutes = (

@@ -40,7 +40,7 @@ export function WelcomeModal() {
             <div className="space-y-2">
               <h3 className={`text-lg font-medium ${colors.textPrimary}`}>Quick Guide:</h3>
               <ul className={`${colors.textSecondary} space-y-2 list-disc pl-5`}>
-                <li>Start by dragging an Upload CSV node to load your data</li>
+                <li>Start by dragging an Define node to start your Migration Flow</li>
                 <li>Connect nodes by dragging from one handle to another</li>
                 <li>Configure each node's settings as needed</li>
                 <li>Delete nodes by hovering and clicking the red X button</li>

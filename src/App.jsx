@@ -9,13 +9,12 @@ import { PlatformRoutes } from "./routes/PlatformRoutes";
 import { DataGovernanceRoutes } from "./routes/DataGovernanceRoutes";
 import MigrationCanvas from "./pages/platform/migration/MigrationCanvas";
 import { WelcomeModal } from "./pages/platform/migration/WelcomeModal";
-import { CSVProvider } from "./pages/platform/migration/context/CSVcontext";
 import { DrawerProvider } from "./pages/platform/migration/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/migration/context/ThemeContext";
+import { TableProvider } from "./pages/platform/migration/context/TableContext";
 import {ViewCanvas} from "./pages/platform/Federation/ViewCanvas"
 import {BusinessSidebar} from "./pages/platform/Federation/BusinessSidebar"
 import {ViewDrawer} from "./pages/platform/Federation/context/DrawerContext"
-import { BusinessHeader } from "./pages/platform/Federation/BusinessHeader";
 import { ContextProvider } from "./context/contextProvider";
 import Source from "./pages/platform/Federation/Source";
 import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
@@ -71,9 +70,10 @@ function App() {
         <Route
           path="/Migrationcanvas"
           element={
+            <TableProvider>
             <ThemeProvider>
               <DrawerProvider>
-                <CSVProvider>
+               
                   <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
                     <Header className="h-16 flex-shrink-0" />{" "}
                     <div className="flex-1 flex">
@@ -87,9 +87,10 @@ function App() {
                     </div>
                     <WelcomeModal />
                   </div>
-                </CSVProvider>
+                  
               </DrawerProvider>
             </ThemeProvider>
+            </TableProvider>
           }
         />
 

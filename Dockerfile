@@ -1,24 +1,19 @@
-FROM node:lts-alpine as builder
-WORKDIR /app
+FROM node:20
+
+WORKDIR /usr/src/app
+
 COPY package*.json ./
-RUN npm ci --production
+
+RUN npm install
+
 COPY . .
+
 RUN npm run build
 
+FROM nginx
 
-FROM nginx:alpine
+COPY --from=0 /usr/src/app/dist /usr/share/nginx/html
 
-RUN rm -rf /etc/nginx/conf.d/*
+COPY ./default.conf /etc/nginx/conf.d/default.conf
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-RUN find /usr/share/nginx/html -type f -exec chmod 644 {} \; && \
-    find /usr/share/nginx/html -type d -exec chmod 755 {} \; && \
-    chown -R nginx:nginx /usr/share/nginx/html && \
-    apk upgrade --no-cache
-
-EXPOSE 443
-
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 80
