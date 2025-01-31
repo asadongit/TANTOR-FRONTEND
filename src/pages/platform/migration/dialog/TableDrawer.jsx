@@ -19,9 +19,6 @@ const TableDrawer = ({ nodes, setNodes }) => {
     }
   }, [drawerState.isOpen, drawerState.selectedTable]);
 
-  console.log("Drawer State:", drawerState);
-  console.log("Local Table:", localTable);
-
   const handleSave = () => {
     if (!localTable || !drawerState.nodeId) return;
     const whereCondition =
