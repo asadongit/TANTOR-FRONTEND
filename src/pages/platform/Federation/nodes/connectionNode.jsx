@@ -18,7 +18,7 @@ export function ConnectionNode({ id, onSave }) {
   const [columns, setColumns] = useState([])
   const [selectedColumns, setSelectedColumns] = useState([]);
 
-  const dummyColumns = ["connection 1", "id ", "name", "address", "phonenumber"];
+  // const dummyColumns = ["connection 1", "id ", "name", "address", "phonenumber"];
 
   const handleColumnChange = (column) => {
     setSelectedColumns((prev) =>
@@ -30,13 +30,13 @@ export function ConnectionNode({ id, onSave }) {
 
   const handleSelectAllChange = (isChecked) => {
     if (isChecked) {
-      setSelectedColumns(dummyColumns);
+      setSelectedColumns(columns);
     } else {
       setSelectedColumns([]);
     }
   };
 
-  const isAllSelected = selectedColumns.length === dummyColumns.length;
+  const isAllSelected = selectedColumns.length === columns.length;
 
 
 
@@ -184,10 +184,9 @@ const handleTableChange = async (event, value) => {
       selectedConnection,
       selectedSchema,
       selectedTable,
-      selectedColumns,
       def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
       select_fields: selectFields,
-      Columns: dummyColumns
+      Columns: columns
     };
 
     const currentPayloads = connectionPayload || [];
