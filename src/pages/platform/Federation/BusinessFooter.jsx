@@ -6,8 +6,9 @@ export function BusinessFooter() {
     
       const {joinPayload,handleJoinPayload,connectionPayload} = useStateContext("");
       const [preview, setPreview] = useState(false);
+      const encodedToken = import.meta.env.VITE_ACCESS_TOKEN;
 
-      const handleClick =()=>{
+      const handleClick = async ()=>{
         setPreview(true)
         console.log("join payload is ===>",joinPayload)
     
@@ -27,158 +28,118 @@ export function BusinessFooter() {
     
           tempArray1.delete(view2);
         });
-    
-        console.log("temp array1",Array.from(tempArray1));
-        console.log("tep array 2",Array.from(tempArray2));
-
-        // handleJoinPayload({
-        //   ...joinPayload,
-        //   base_join: Array.from(tempArray1)[0]
-        // });
-
-        // const connection = connectionPayload.find(conn => conn.id === Array.from(tempArray1)[0]);
-        // if (connection) {
-        //     handleJoinPayload({
-        //         ...joinPayload,
-        //         base_join_def: connection.def
-        //       });
-        //     var temp = connection.def;
-        //     console.log("base join def is ====>",temp);
-        // }
-
+  
         const baseJoin = Array.from(tempArray1)[0];
         const connection = connectionPayload.find(conn => conn.id === baseJoin);
 
-        handleJoinPayload({
-            ...joinPayload,
-            base_join: baseJoin,
-            ...(connection && { base_join_def: connection.def })
+        const newPayload ={
+          ...joinPayload,
+          joins: joinPayload.joins.map(({ id, ...rest }) => rest),
+          base_join: baseJoin,
+          ...(connection && { base_join_def: connection.def }),
+           command: "execute"
+        }
+
+        handleJoinPayload(newPayload);
+
+        fetch(`${import.meta.env.VITE_FAST_API}/save-view`, {
+              method: "POST",
+              headers: {
+                  'Authorization': `Bearer ${encodedToken}`,
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(newPayload),
+          })
+          .then((response) =>
+            response.text().then((data) => ({ status: response.status, data }))
+          )
+          .then(({ status, data }) => {
+            if (status === 200) {
+                // Split data into an array of potential JSON objects
+                const dataArray = data.split("\n")
+                    .filter(item => item.trim() !== "")
+                    .map(item => {
+                        try {
+                            return JSON.parse(item);
+                        } catch (e) {
+                            console.error("Error parsing JSON:", e, item);
+                            return null;
+                        }
+                    })
+                    .filter(item => item !== null);
+
+                if (dataArray.length === 0) {
+                    // If no data in the response, show "Table is empty"
+                    // setError("Table is empty");
+                    // setData([]); // Clear the table data
+                } else {
+                    console.log("Parsed Data Array: ", dataArray);
+                    // setMapData(dataArray);
+                    const rows = data.trim().split("\n").map((row) => JSON.parse(row));
+                    const columns = Object.keys(rows[0]);
+                    console.log("rows aare ===>",rows)
+                    console.log("columns aree ====>",columns)
+                    setColumnDefs(columns);
+                    setRowData(rows);
+                    // setHasMore(rows.length === 100);
+                    // setError(null);
+                }
+            } else {
+                if (data) {
+                    const res = JSON.parse(data);
+                    // setError(res.detail);
+                }
+            }
+        })
+        .catch((error) => {
+            console.error("Error fetching data:", error);
+            // setError("Something went wrong!");
+        })
+        .finally(() => {
+            // setLoading(false);
         });
 
-        if (connection) {
-            console.log("base join def is ====>", connection.def);
-        }
-    
       }
 
-      useEffect(()=>{
+
+      useEffect(()=>{        
         console.log("final join payload is ====>",joinPayload)
       },[joinPayload])
+
+
     
-     const [rowData, setRowData] = useState([
-       {
-         ID: "12345",
-         Connections: "Sample Connection 1",
-         Descriptions: "This is a demo connection description.",
-         Schema: 5,
-         Tables: 10,
-         Views: 5,
-         Created: "2025-01-20",
-       },
-       {
-         ID: "67890",
-         Connections: "Sample Connection 2",
-         Descriptions: "Another demo connection description.",
-         Schema: 8,
-         Tables: 15,
-         Views: 9,
-         Created: "2025-01-21",
-       },
-       {
-         ID: "11223",
-         Connections: "Sample Connection 3",
-         Descriptions: "Yet another demo connection description.",
-         Schema: 3,
-         Tables: 7,
-         Views: 17,
-         Created: "2025-01-22",
-       },
-       {
-         ID: "12345",
-         Connections: "Sample Connection 1",
-         Descriptions: "This is a demo connection description.",
-         Schema: 5,
-         Tables: 10,
-         Views: 5,
-         Created: "2025-01-20",
-       },
-       {
-         ID: "67890",
-         Connections: "Sample Connection 2",
-         Descriptions: "Another demo connection description.",
-         Schema: 8,
-         Tables: 15,
-         Views: 9,
-         Created: "2025-01-21",
-       },
-       {
-         ID: "11223",
-         Connections: "Sample Connection 3",
-         Descriptions: "Yet another demo connection description.",
-         Schema: 3,
-         Tables: 7,
-         Views: 17,
-         Created: "2025-01-22",
-       },
-       {
-         ID: "12345",
-         Connections: "Sample Connection 1",
-         Descriptions: "This is a demo connection description.",
-         Schema: 5,
-         Tables: 10,
-         Views: 5,
-         Created: "2025-01-20",
-       },
-       {
-         ID: "67890",
-         Connections: "Sample Connection 2",
-         Descriptions: "Another demo connection description.",
-         Schema: 8,
-         Tables: 15,
-         Views: 9,
-         Created: "2025-01-21",
-       },
-       {
-         ID: "11223",
-         Connections: "Sample Connection 3",
-         Descriptions: "Yet another demo connection description.",
-         Schema: 3,
-         Tables: 7,
-         Views: 17,
-         Created: "2025-01-22",
-       }
-     ]);
+     const [rowData, setRowData] = useState([]);
+
+     const [colDefs,setColumnDefs] = useState([])
     return (
 <>
 {preview && (
     <>
      <div className="text-black mt-2 mb-2 ml-6 font-semibold">Output Preview</div>
   <div className="bg-white rounded-lg shadow overflow-hidden h-[32%] mx-6 mb-5">
-    <div className="overflow-auto h-full"> {/* Enables scrolling without fixed height */}
-      <table className="w-full">
-        <thead className="sticky top-0 bg-[#29304a] text-white"> {/* Keeps header fixed */}
-          <tr>
-            <th className="text-left p-3">ID</th>
-            <th className="text-left p-3">Connections</th>
-            <th className="text-left p-3">Descriptions</th>
-            <th className="text-left p-3">Schema</th>
-            <th className="text-left p-3">Tables</th>
-            <th className="text-left p-3">Views</th>
-            <th className="text-left p-3">Created</th>
-          </tr>
-        </thead>
+    <div className="overflow-auto h-full"> 
+    <table className="w-full">
+    <thead className="sticky top-0 bg-[#29304a] text-white">
+      <tr>
+        {colDefs.map((column, index) => (
+          <th key={index} className="text-center p-3">
+            {column.charAt(0).toUpperCase() + column.slice(1)}
+          </th>
+        ))}
+      </tr>
+    </thead>
         <tbody className="text-sm">
-          {rowData.map((user, index) => (
-            <tr key={index} className="border-b bg-white" >
-              <td className="p-3 text-left text-black bg-white">{user.ID}</td>
-              <td className="p-3 text-left text-black bg-white">{user.Connections}</td>
-              <td className="p-3 text-left text-black bg-white">{user.Descriptions}</td>
-              <td className="p-3 text-left text-black bg-white">{user.Schema}</td>
-              <td className="p-3 text-left text-black bg-white">{user.Tables}</td>
-              <td className="p-3 text-left text-black bg-white">{user.Views}</td>
-              <td className="p-3 text-left text-black bg-white">{user.Created}</td>
-            </tr>
-          ))}
+
+        {rowData.map((row, rowIndex) => (
+    <tr key={rowIndex} className="border-b bg-white">
+      {Object.keys(row).map((key, index) => (
+        <td key={index} className="p-3 text-center text-black bg-white">
+          {row[key]}
+        </td>
+      ))}
+    </tr>
+  ))}
+
         </tbody>
       </table>
     </div>
