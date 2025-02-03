@@ -70,10 +70,12 @@ const ColumnSettings = ({
     }
 
     if(columnSetting?.type == "Connection"){
+      console.log("columnSetting ==> ", columnSetting);
       if(columnSetting?.column?.column){
-        if(settingsPayload.get("connection") == columnSetting.connection && settingsPayload.has(columnSetting.column.column)) {
+        if(settingsPayload.get("connection") == columnSetting.connection && settingsPayload.get("schema") == columnSetting.schema  && settingsPayload.get("table") == columnSetting.table && settingsPayload.has(columnSetting.column.column)) {
           setSettings(settingsPayload.get(columnSetting.column.column));
         }else {
+          // Set settingsPayload to null.
           setSettings({
             name: columnSetting?.column.column,
             type: columnSetting?.column.datatype,
@@ -107,25 +109,6 @@ const ColumnSettings = ({
   const handleExecute = (event) => {
     event.preventDefault();
 
-    // setFinalPayload((prevPayload) => {
-    //   const updatedPayload = { ...prevPayload };
-
-    //   if (!updatedPayload[columnSetting.viewName]) {
-    //     updatedPayload[columnSetting.viewName] = [];
-    //   }
-
-    //   updatedPayload[columnSetting.viewName] = updatedPayload[columnSetting.viewName]
-    //     .filter((setting) => setting.name !== settings.name);
-
-    //   updatedPayload[columnSetting.viewName].push({
-    //     ...settings,
-    //     name: columnSetting.column.column_name,
-    //     type:columnSetting.column.data_type,
-    //   });
-    //   console.log("Settings ==> ", settings);
-    //   return updatedPayload;
-    // });
-
     if (columnSetting.type == "Source") {      
       
       setSettingsPayload(prev => {
@@ -155,18 +138,20 @@ const ColumnSettings = ({
     if (columnSetting.type == "Connection") {
       setSettingsPayload(prev => {
         const updatedSettingsPayload = new Map(prev);
-        if(settingsPayload.get("connection") != columnSetting.connection){
+        if(settingsPayload.get("connection") != columnSetting.connection || settingsPayload.get("schema") != columnSetting.schema || settingsPayload.get("table") != columnSetting.table){
           updatedSettingsPayload.clear();
           updatedSettingsPayload.set("connection", columnSetting.connection);
+          updatedSettingsPayload.set("schema", columnSetting.schema);
+          updatedSettingsPayload.set("table", columnSetting.table);
         }   
         updatedSettingsPayload.set(settings.name, settings);
-
-        console.log("Updated Settings Payload ==> ", updatedSettingsPayload);
+        
+        console.log("\n\n\nColumn setting ==> ", columnSetting);
+        console.log("UDATED PAYLOAD ==> ", updatedSettingsPayload);
         return updatedSettingsPayload;
       });
     }
     toggleDialog();
-    // setColumnSetting(null);
   };
 
   return (
@@ -407,9 +392,6 @@ export default function Source() {
     console.log("TOGGLING MODEL = ", isModalOpen);
   };
 
-  useEffect(() => {
-    console.log("settings payload ==>>> ",settingsPayload);
-  },[])
   const [showPreview, setShowPreview] = useState(false);
   const sampleData = [
     {
@@ -523,10 +505,12 @@ export default function Source() {
   ];
 
   const handleColumnSetting = (params) => {
+    console.log("params ==> ", params);
     if (params.type == "Source") {
       console.log("SOURCE PAYLOAD");
       setColumnSetting(params);
-    } else if (params.type == "Connection") {
+    } 
+    if (params.type == "Connection") {
       setColumnSetting(params);
     }
   };
@@ -546,7 +530,7 @@ export default function Source() {
       setSettingsPayload(prev => {
         const updatedSettingsPayload = new Map(prev);
         updatedSettingsPayload.keys().forEach(key => {
-          if(!payload.userCheckedColumns.includes(key) && key !== "connection")
+          if(!payload.userCheckedColumns.includes(key) && key !== "connection" && key !== "schema" && key !== "table")
             updatedSettingsPayload.delete(key);
         })
         console.log("updatedSettingsPayload ==> ", updatedSettingsPayload);
