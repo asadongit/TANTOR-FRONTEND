@@ -1,7 +1,11 @@
 /*eslint-disable*/
 import { useCallback, useEffect, useState } from "react";
-import { Cable, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Cable, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 
+const AUTH_TOKEN="eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ";
+const FAST_BACKEND = import.meta.env.VITE_FAST_API;
+
+console.log(FAST_BACKEND);
 export function BaseNode({ id, data }) {
   const [currentViewState, setViewState] = useState({
     apiViewsResult: [],
@@ -16,70 +20,64 @@ export function BaseNode({ id, data }) {
 
   // Fetch Views
   useEffect(() => {
-    // Fetch all connections from the API
-    fetch("http://localhost:8000/api/v1/get-all-views", {
-      headers: {
-        accept: "*/*",
-        "accept-language": "en-US,en;q=0.9",
-        authorization:
-          "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ",
-        "content-type": "application/json",
-        priority: "u=1, i",
-        "sec-ch-ua":
-          '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-        "sec-ch-ua-mobile": "?1",
-        "sec-ch-ua-platform": '"Android"',
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-origin",
-        cookie: "sessionId=abc123",
-        Referer: "https://darch-dev.tantor.io/Dashboard",
-        "Referrer-Policy": "same-origin",
-      },
-      body: null,
-      method: "GET",
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        // const uniqueConnections = [...new Map(data.map(item => [item.connection_name, item])).values()];
-        console.log(data.result)
-        setApiViews(data.result); //Data.result = array of Connection Objects
-      })
-      .catch((error) => {
-        console.error(error);
+    (async () => {
+      let response
+      try{
+        response = await fetch(`${FAST_BACKEND}/get-all-views`,{
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${AUTH_TOKEN}`
+        }
       });
+      
+      const data = await response.json();
+      
+      if(response.status == 200){
+        setApiViews(data.result);
+      }else{
+        alert("Error occured while trying to fetch views");
+      }
+    }catch(error){
+      console.error("Error occured while trying to fetch views", error);
+      alert("Error occured while trying to fetch views");
+    }
+    })();
   }, []);
 
   useEffect(() => {
     if(selectedView){
-      fetch("http://localhost:8000/api/v1/fetch_view_columns", {
-        "headers": {
-          "accept": "*/*",
-          "accept-language": "en-US,en;q=0.9",
-          "authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNTE0NDUsImlhdCI6MTczODE1MTE0NSwianRpIjoiNDdiYjQzODktMTBmNS00ZThkLWI1ZjMtZGRiNzVlMTNiNDFjIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNDAyNGI1YjYtNDBmZi00NmM4LThjMmItNTZkMjhkOWNhMTg5IiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI0MDI0YjViNi00MGZmLTQ2YzgtOGMyYi01NmQyOGQ5Y2ExODkiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.BiE5zVydB6Rq0q6GH6FQGvjvBsjXtnH3JKsJX0XC1bitrrYPOO14sYH7TC45-sHy613L49QTb-UwjgLxKFVwC9TfKu0ZXGK_ylaXqlShFRLM1i3FYtczWpLdj_Y0pOIVt3phlAyzBELU-b_LmN0UycBvFcvxiLH3sH3HSdcGG8RxaQjc8z771v10r4r6OTCmd8VIu5vUqoE67ikrKKBtAiTgV_qeIL8ot6iFlEaZ6v1yMFJrxxOJx9rlFqVB2_o0Zb7XIMjbaPAXXYNcsG-GhR6oDc_YkaKRIyLUdiILT_ZWKsayqLqEPPIGjesEyRfiBLAJSkLhESOYqkXTHTmwsw",
-          "content-type": "application/json",
-          "priority": "u=1, i",
-          "sec-ch-ua": "\"Not A(Brand\";v=\"8\", \"Chromium\";v=\"132\", \"Google Chrome\";v=\"132\"",
-          "sec-ch-ua-mobile": "?1",
-          "sec-ch-ua-platform": "\"Android\"",
-          "sec-fetch-dest": "empty",
-          "sec-fetch-mode": "cors",
-          "sec-fetch-site": "same-origin",
-          "cookie": "sessionId=abc123",
-          "Referer": "https://darch-dev.tantor.io/Data-Federation",
-          "Referrer-Policy": "same-origin"
-        },
-        "body": JSON.stringify({view_names:[selectedView]}),
-        "method": "POST"
-      })
-      .then(response => response.json())
-      .then(data => setApiColumns(data.result[selectedView]))
-      .catch(error => console.error('Error:', error));
+      (async () => {
+        let response;
+
+        try{
+          response = await fetch(`${FAST_BACKEND}/fetch_view_columns`,{
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${AUTH_TOKEN}`,
+          },
+          body: JSON.stringify({view_names:[selectedView]}),
+          method: "POST",
+        });
+        let data = await response.json();
+
+        if(response.status == 200){
+          setApiColumns(data.result[selectedView]);
+        }else {
+          console.error(`Fetch Columms error. : \nStatus Code: ${response.status} \nData: `, data);
+          alert("Error occured while trying to fetch columns");
+        }
+        }catch(error){
+          console.log(error);
+          alert("Error occured while trying to fetch Columns");
+        }
+      })();
     }
   }, [selectedView]);
 
   const handleChangeView = (event) => {
     console.log(event.target.value);
+    setUserCheckedColumns([]);
     setSelectedView(event.target.value);
   };
 
@@ -215,7 +213,7 @@ export function BaseNode({ id, data }) {
                <label htmlFor={item.column_name} className="text-gray-700 cursor-pointer">
                  {item.column_name}
                </label>
-               <button name="edit" onClick={(e) => handleEditColumn(item.column_name)} className="ml-auto text-gray-500 hover:text-gray-700">Edit</button>
+               <Pencil name="edit" onClick={(e) => handleEditColumn(item.column_name)} className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700" />
              </div>
            ))}
          </div>
@@ -257,159 +255,124 @@ export function ConnectionNode({ id, data }) {
   ];
 
   useEffect(() => {
-    // Fetch all connections from the API
-    fetch("https://darch-dev.tantor.io/api/api/v1/connection-saves", {
-      headers: {
-        accept: "*/*",
-        "accept-language": "en-US,en;q=0.9",
-        authorization:
-          "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ",
-        "content-type": "application/json",
-        priority: "u=1, i",
-        "sec-ch-ua":
-          '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-        "sec-ch-ua-mobile": "?1",
-        "sec-ch-ua-platform": '"Android"',
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-origin",
-        cookie: "sessionId=abc123",
-        Referer: "https://darch-dev.tantor.io/Dashboard",
-        "Referrer-Policy": "same-origin",
-      },
-      body: null,
-      method: "GET",
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        const uniqueConnections = [
-          ...new Map(data.map((item) => [item.connection_name, item])).values(),
-        ];
-        setApiConnections(uniqueConnections); //Data = array of Connection Objects
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+    (async () => {
+      let response;
+      try{
+        response = await fetch(`${FAST_BACKEND}/connection-saves`,{
+          method: "GET",
+          headers: {
+            'Content-Type': 'application/json',
+            authorization: `Bearer ${AUTH_TOKEN}`
+          }
+        });
+        let data = await response.json();
+        if(response.status == 200){
+          const uniqueConnections = [
+            ...new Map(data.map((item) => [item.connection_name, item])).values(),
+          ];
+          setApiConnections(uniqueConnections); //Data = array of Connection Objects
+        }else{
+          console.log(`Error fetching connections.\nResponse status: ${response.status}\nData: `,data);
+          alert("Error fetching connections.");
+        }
+      }catch(error){
+        console.log("Error fetching connections. ", error);
+        alert("Error fetching connections.");
+      }
+    })();
   }, []);
 
   useEffect(() => {
     if (selectedConnection) {
-      // Fetch all connections from the API
-      fetch(
-        `https://darch-dev.tantor.io/api/api/v1/${selectedConnection}/schemas`,
-        {
-          headers: {
-            accept: "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            authorization:
-              "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ",
-            "content-type": "application/json",
-            priority: "u=1, i",
-            "sec-ch-ua":
-              '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-            "sec-ch-ua-mobile": "?1",
-            "sec-ch-ua-platform": '"Android"',
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-origin",
-            cookie: "sessionId=abc123",
-            Referer: "https://darch-dev.tantor.io/Dashboard",
-            "Referrer-Policy": "same-origin",
-          },
-          body: null,
-          method: "GET",
+      (async() => {
+        try{
+          let response = await fetch(
+          `${FAST_BACKEND}/${selectedConnection}/schemas`,
+          {
+            method: "GET",
+            headers: {
+              authorization: `Bearer ${AUTH_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        
+        let data = await response.json();
+        if(response.status == 200){
+          setApiSchemas(data);
+        }else {
+          console.log(`Error fetching Schemas.\nResponse status: ${response.status}\nData: `,data);
+          alert("Error fetching Schemas.");
         }
-      )
-        .then((response) => response.json())
-        .then((data) => {
-          console.log(data)
-          // const uniqueConnections = [...new Map(data.map(item => [item.connection_name, item])).values()];
-          setApiSchemas(data); //Data = array of Connection Objects
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      }catch(error){
+        console.log("Error fetching schemas. ", error);
+        alert("Error fetching Schemas.");
+      }
+      })();
     }
   }, [selectedConnection]);
 
   useEffect(() => {
     if (selectedSchema) {
-      // Fetch all connections from the API
-      // https://darch-dev.tantor.io/api/api/v1/oracle_shaukat2/schemas/test_user1/tables
-      fetch(
-        `https://darch-dev.tantor.io/api/api/v1/${selectedConnection}/schemas/${selectedSchema}/tables`,
-        {
-          headers: {
-            accept: "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            authorization:
-              "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ",
-            "content-type": "application/json",
-            priority: "u=1, i",
-            "sec-ch-ua":
-              '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-            "sec-ch-ua-mobile": "?1",
-            "sec-ch-ua-platform": '"Android"',
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-origin",
-            cookie: "sessionId=abc123",
-            Referer: "https://darch-dev.tantor.io/Dashboard",
-            "Referrer-Policy": "same-origin",
-          },
-          body: null,
-          method: "GET",
+      (async () => {
+        let response;
+        try{
+          response = await fetch(
+            `${FAST_BACKEND}/${selectedConnection}/schemas/${selectedSchema}/tables`,
+            {
+              method: "GET",
+              headers: {
+                authorization: `Bearer ${AUTH_TOKEN}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          let data = await response.json();
+          if(response.status == 200){
+            console.log(data);
+            setApiTables(data);
+          }else {
+            console.log(`Error fetching Tables.\nResponse status: ${response.status}\nData: `,data);
+            alert("Error fetching Tables.");
+          }
+        }catch(error){
+          console.log("Error fetching tables. ", error);
+          alert("Error fetching Tables.");
         }
-      )
-        .then((response) => response.json())
-        .then((data) => {
-          // console.log("Columns = ",data)
-          // const uniqueConnections = [...new Map(data.map(item => [item.connection_name, item])).values()];
-          setApiTables(data); //Data = array of Connection Objects
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      })();
     }
   }, [selectedSchema]);
 
   useEffect(() => {
     if (selectedTable) {
-      // Fetch all connections from the API
-      // https://darch-dev.tantor.io/api/api/v1/oracle_shaukat2/schemas/test_user1/tables
-      fetch(
-        `https://darch-dev.tantor.io/api/api/v1/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
-        {
-          headers: {
-            accept: "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            authorization:
-              "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ",
-            "content-type": "application/json",
-            priority: "u=1, i",
-            "sec-ch-ua":
-              '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-            "sec-ch-ua-mobile": "?1",
-            "sec-ch-ua-platform": '"Android"',
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-origin",
-            cookie: "sessionId=abc123",
-            Referer: "https://darch-dev.tantor.io/Dashboard",
-            "Referrer-Policy": "same-origin",
-          },
-          body: null,
-          method: "GET",
+      (async() => {
+        let response;
+        try{
+          response = await fetch(
+            `${FAST_BACKEND}/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
+            {
+              method: "GET",
+              headers: {
+                authorization: `Bearer ${AUTH_TOKEN}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          let data = await response.json();
+          
+          if(response.status == 200){
+            console.log("\n\nCOLUMNS = ", data, "\n\n\n")
+            setApiColumns(data);
+          }else {
+            console.log("Error while trying to fetch columns. ", data);
+            alert("Error while trying to fetch columns.");
+          }
+        }catch(error){
+          console.error("Error while trying to fetch columns. ", error);
+          alert("Error while trying to fetch columns.");
         }
-      )
-        .then((response) => response.json())
-        .then((data) => {
-          // const uniqueConnections = [...new Map(data.map(item => [item.connection_name, item])).values()];
-          setApiColumns(data); //Data = array of Connection Objects
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      })();
     }
   }, [selectedTable]);
 
@@ -430,6 +393,8 @@ export function ConnectionNode({ id, data }) {
         data.handleColumnSetting({
         column: item,
         connection: selectedConnection,
+        schema: selectedSchema,
+        table: selectedTable,
         type: "Connection"
       })
     }
@@ -497,7 +462,11 @@ export function ConnectionNode({ id, data }) {
               </label>
               <select
                 value={selectedConnection}
-                onChange={(e) => setSelectedConnection(e.target.value)}
+                onChange={(e) => {
+                  e.preventDefault(); 
+                  setSelectedConnection(e.target.value); 
+                  setSelectedColumns([]);
+                }}
                 className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
               >
                 <option value="" disabled>
@@ -519,7 +488,11 @@ export function ConnectionNode({ id, data }) {
               </label>
               <select
                 value={selectedSchema}
-                onChange={(e) => setSelectedSchema(e.target.value)}
+                onChange={(e) => {
+                  e.preventDefault()
+                  setSelectedSchema(e.target.value);
+                  setSelectedColumns([]);
+                }}
                 className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
               >
                 <option value="" disabled>
@@ -538,7 +511,11 @@ export function ConnectionNode({ id, data }) {
               </label>
               <select
                 value={selectedTable}
-                onChange={(e) => setSelectedTable(e.target.value)}
+                onChange={(e) => {
+                  e.preventDefault();
+                  setSelectedTable(e.target.value);
+                  setSelectedColumns([]);
+                }}
                 className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
               >
                 <option value="" disabled>
@@ -592,7 +569,7 @@ export function ConnectionNode({ id, data }) {
                         >
                           {item.column}
                         </label>
-                        <button onClick={(e) => {e.preventDefault(); handleEditColumn(item.column)}}>Edit</button>
+                        <Pencil name="edit" onClick={(e) => handleEditColumn(item.column)} className=" ml-auto h-4 w-4 text-gray-500 hover:text-gray-700" />
                       </div>
                     ))}
                   </div>
