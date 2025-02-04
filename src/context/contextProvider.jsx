@@ -29,6 +29,9 @@ export const ContextProvider = ({ children }) => {
         setFinalPayload(val);
       };
 
+       // Source View States
+       const [settingsPayload, setSettingsPayload] = useState(new Map());
+
     return (
         <StateContext.Provider
           value={{
@@ -39,7 +42,8 @@ export const ContextProvider = ({ children }) => {
             connectionPayload,
             handleConnectionPayload,
             finalPayload,
-            handleFinalPayload
+            handleFinalPayload,
+            settingsPayload, setSettingsPayload,
           }}
         >
           {children}

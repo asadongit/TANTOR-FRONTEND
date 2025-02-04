@@ -118,12 +118,12 @@ function App() {
           }
         />
         <Route path="/federation/view/source" element = {
-          <>
-          <Header className="h-16 flex-shrink-0" />
-          <ReactFlowProvider>
-            <Source />
-          </ReactFlowProvider>
-          </>
+          <ContextProvider>
+            <Header className="h-16 flex-shrink-0" />
+              <ReactFlowProvider>
+                <Source />
+              </ReactFlowProvider>
+          </ContextProvider>
         }/>
       </Routes>
     </Router>
