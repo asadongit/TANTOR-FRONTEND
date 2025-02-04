@@ -1,22 +1,19 @@
 /*eslint-disable*/
 import { useCallback, useEffect, useState } from "react";
 import { Cable, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { useStateContext } from "../../../../context/contextProvider";
 
 const AUTH_TOKEN="eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ";
 const FAST_BACKEND = import.meta.env.VITE_FAST_API;
 
 console.log(FAST_BACKEND);
 export function BaseNode({ id, data }) {
-  const [currentViewState, setViewState] = useState({
-    apiViewsResult: [],
-    selectedViewName: "",
-    selectedViewColumns: [],
-  });
 
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
   const [apiColumns,setApiColumns] = useState([]);
   const [userCheckedColumns, setUserCheckedColumns] = useState([]);
+  const {settingsPayload, setSettingsPayload} = useStateContext();
 
   // Fetch Views
   useEffect(() => {
@@ -87,67 +84,11 @@ export function BaseNode({ id, data }) {
 
     if (columnIndex !== -1) {
       updatedCheckedColumns.splice(columnIndex, 1);
-      // data.setColumnSetting(null);
-
-      // data.setFinalPayload((prevPayload) => {
-      //   const updatedPayload = { ...prevPayload };
-      //   if (updatedPayload[currentViewState.selectedViewName]) {
-      //     updatedPayload[currentViewState.selectedViewName] = updatedPayload[
-      //       currentViewState.selectedViewName
-      //     ].filter((setting) => setting.name !== columnName);
-
-      //     if (updatedPayload[currentViewState.selectedViewName].length === 0) {
-      //       delete updatedPayload[currentViewState.selectedViewName];
-      //     }
-      //   }
-      //   return updatedPayload;
-      // });
     } else {
       updatedCheckedColumns.push(columnName);
-      
-      // apiColumns.forEach(item => {
-      //   if(item.column_name == columnName)
-      //     data.handleColumnSetting({
-      //     column: item,
-      //     viewName: selectedView,
-      //     type: "Source"
-      //   })
-      // });
-
-      // data.setColumnSetting({
-      //   viewName: currentViewState.selectedViewName,
-      //   column: selectedColumn,
-      // });
     }
 
     setUserCheckedColumns(updatedCheckedColumns);
-  };
-
-  const handleOk = (event) => {
-    event.preventDefault();
-
-    // const currentPayload = data.finalPayload || {};
-    // const currentViewSettings =
-    //   currentPayload[currentViewState.selectedViewName] || [];
-
-    // const filteredSettings = currentViewSettings.filter((setting) =>
-    //   currentViewState.userCheckedColumns.includes(setting.name)
-    // );
-
-    // data.setFinalPayload((prevPayload) => ({
-    //   ...prevPayload,
-    //   [currentViewState.selectedViewName]: filteredSettings,
-    // }));
-
-    // if (data.onSubmit) {
-    //   data.onSubmit({ type: "Source" });
-    // }
-
-    // data.handleOk({
-    //   userCheckedColumns,
-    //   type: "Source",
-    // });
-
   };
 
   const handleClose = () => {
@@ -223,6 +164,7 @@ export function BaseNode({ id, data }) {
           onClick={(e) => data.handleOk({
             userCheckedColumns,
             type: "Source",
+            settings: settingsPayload,
           })}
           className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
         >
@@ -246,6 +188,9 @@ export function ConnectionNode({ id, data }) {
   const [apiTables, setApiTables] = useState([]);
   const [apiColumns, setApiColumns] = useState([]);
 
+  const {settingsPayload, setSettingsPayload} = useStateContext();
+
+  
   const dummyColumns = [
     "connection 1",
     "id ",
@@ -582,6 +527,7 @@ export function ConnectionNode({ id, data }) {
             onClick={(e) => data.handleOk({
               userCheckedColumns: selectedColumns,
               type: "Connection",
+              settings: settingsPayload,
             })}
             className="w-full text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] mt-3"
           >
