@@ -24,9 +24,9 @@ export const ContextProvider = ({ children }) => {
       };
 
 
-      const [joinPayload, setJoinPayload] = useState({});
-      const handleJoinPayload = (val) => {
-        setJoinPayload(val);
+      const [finalPayload, setFinalPayload] = useState({});
+      const handleFinalPayload = (val) => {
+        setFinalPayload(val);
       };
 
     return (
@@ -38,8 +38,8 @@ export const ContextProvider = ({ children }) => {
             handleConsolidationPayload,
             connectionPayload,
             handleConnectionPayload,
-            joinPayload,
-            handleJoinPayload
+            finalPayload,
+            handleFinalPayload
           }}
         >
           {children}

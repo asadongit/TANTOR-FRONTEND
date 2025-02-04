@@ -7,7 +7,7 @@ import { useStateContext } from "../../../../context/contextProvider";
 import { Modal, Box, IconButton, Typography } from "@mui/material";
 
 export function ConsolidationNode({ id }) {
-  const { consolidationPayload, connectionPayload, viewPayload, handleJoinPayload, joinPayload } = useStateContext("");
+  const { consolidationPayload, connectionPayload, viewPayload, handleFinalPayload, finalPayload } = useStateContext("");
   const [type, setType] = useState("Join");
   const [unionType, setUnionType] = useState("");
 
@@ -84,23 +84,16 @@ export function ConsolidationNode({ id }) {
 
   useEffect(() => {
     if (joins.length > 0) {
-      const connectionSelectFields = connectionPayload?.flatMap((conn) => conn.select_fields || []) || [];
-      const viewSelectFields = [...(viewPayload?.flatMap((view) => view.select_fields || []) || []), ...connectionSelectFields];
 
-      handleJoinPayload({
-        view_type: "Integrated View",
-        joins: joinPayload && Array.isArray(joinPayload.joins)
+      handleFinalPayload({
+        joins: finalPayload && Array.isArray(finalPayload.joins)
           ? [
-            ...joinPayload.joins.filter(
+            ...finalPayload.joins.filter(
               (existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id)
             ),
             ...joins,
           ]
           : [...joins],
-        view_name: "MYVIEW",
-        isMateralizedView: "false",
-        isCaching: "false",
-        select_fields: viewSelectFields,
       });
     }
   }, [joins]);
@@ -109,6 +102,118 @@ export function ConsolidationNode({ id }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const toggleModal = () => {
+    setIsModalOpen(!isModalOpen);
+  };
+
+
+  const handleSave = () => {
+
+    if (type === "Join") {
+      console.log("join payload is ===>", finalPayload)
+
+      const tempArray1 = new Set();
+      const tempArray2 = new Set();
+
+      finalPayload.joins.forEach((join) => {
+        const { view1, view2 } = join;
+
+        if (!tempArray2.has(view1)) {
+          tempArray1.add(view1);
+        }
+        if (!tempArray1.has(view2)) {
+          tempArray2.add(view2);
+        }
+
+        tempArray1.delete(view2);
+      });
+
+      const baseJoin = Array.from(tempArray1)[0];
+      const connection = connectionPayload.find(conn => conn.id === baseJoin);
+
+
+      const connectionSelectFields = connectionPayload?.flatMap((conn) => conn.select_fields || []) || [];
+      const viewSelectFields = [...(viewPayload?.flatMap((view) => view.select_fields || []) || []), ...connectionSelectFields];
+
+      console.log("ViewSELECT FILESDSS ======>", viewSelectFields)
+
+
+      const newPayload = {
+        ...finalPayload,
+        joins: finalPayload.joins.map(({ id, ...rest }) => rest),
+        base_join: baseJoin,
+        ...(connection && { base_join_def: connection.def }),
+        command: "execute",
+        view_type: "Integrated View",
+        view_name: "MYVIEW",
+        isMateralizedView: "false",
+        isCaching: "false",
+        select_fields: viewSelectFields,
+      }
+
+      handleFinalPayload(newPayload);
+
+      // const newPayload ={
+      //   ...finalPayload,
+      //   joins: finalPayload.joins.map(({ id, ...rest }) => rest),
+      //   base_join: baseJoin,
+      //   ...(connection && { base_join_def: connection.def }),
+      //    command: "execute"
+      // }
+
+      // handlefinalPayload(newPayload);
+    }
+
+    if (type === "Union" || type === "Intersect" || type === "Union All" || type === "Intersect All") {
+      if ((viewPayload && viewPayload.length > 0) || (connectionPayload && connectionPayload.length > 0)) {
+
+        const unions = [
+          ...(viewPayload ? viewPayload.map(node => node.selectedView) : []),
+          ...(connectionPayload ? connectionPayload.map(node => node.selectedView) : [])
+        ];
+
+
+        const unionData = {};
+        [...viewPayload, ...connectionPayload].forEach((item) => {
+          unionData[item.selectedView] = item.selectedColumns;
+        });
+
+
+        const defs = {};
+        connectionPayload.forEach((item) => {
+          if (item.selectedView && item.def) {
+            defs[item.selectedView] = item.def;
+          }
+        });
+
+
+        const [firstKey, firstValue] = Object.entries(unionData)[0];
+
+        const select_fields = firstValue.map(field => ({
+          field: field,
+          alias: ""
+        }));
+
+
+
+
+        const newPayload = {
+          operation: unionType,
+          command: "execute",
+          view_type: "Integrated View",
+          view_name: "MYVIEW",
+          isMateralizedView: "false",
+          isCaching: "false",
+          union: unions,
+          union_fields: unionData,
+          defs: defs,
+          select_fields
+        }
+
+        handleFinalPayload(newPayload);
+        console.log(" union newpayload after is =====>", newPayload)
+      }
+    }
+
     setIsModalOpen(!isModalOpen);
   };
 
@@ -143,21 +248,21 @@ export function ConsolidationNode({ id }) {
             borderRadius: "12px",
           }}
         >
-          <div className="h-[10%]" style={{height: "10%" }}>
-          <div className="flex items-center space-x-3">
-            <Network className="w-5 h-5 text-[#8E77BB]" />
-            <h3 className="text-[#8E77BB] font-medium">Consolidation</h3>
+          <div className="h-[10%]" style={{ height: "10%" }}>
+            <div className="flex items-center space-x-3">
+              <Network className="w-5 h-5 text-[#8E77BB]" />
+              <h3 className="text-[#8E77BB] font-medium">Consolidation</h3>
+            </div>
+            <IconButton
+              onClick={toggleModal}
+              sx={{ position: "absolute", top: 8, right: 15 }}
+            >
+              <X className="w-6 h-6" />
+            </IconButton>
           </div>
-          <IconButton
-            onClick={toggleModal}
-            sx={{ position: "absolute", top: 8, right: 15 }}
-          >
-            <X className="w-6 h-6" />
-          </IconButton>
-          </div>
-          <div className="h-[90%] mt-3 flex justify-between flex-col" style={{height: "90%" }}>
+          <div className="h-[90%] mt-3 flex justify-between flex-col" style={{ height: "90%" }}>
 
-            <div className="h-[70%]" style={{height: "70%" }}>
+            <div className="h-[70%]" style={{ height: "70%" }}>
               <div className="flex text-sm space-x-2">
                 <button
                   onClick={() => setType("Join")}
@@ -253,8 +358,8 @@ export function ConsolidationNode({ id }) {
               {(type === "Union" || type === "Intersect") && (
                 <div className="flex gap-4 mt-10">
                   <div
-                    onClick={() => setUnionType("Union")}
-                    className={`w-full sm:w-[9rem] h-14 p-3 border rounded-md transition-all duration-300 flex items-center justify-center ${unionType === "Union"
+                    onClick={() => setUnionType(`${type}`)}
+                    className={`w-full sm:w-[9rem] h-14 p-3 border rounded-md transition-all duration-300 flex items-center justify-center ${unionType === `${type}`
                       ? "border-[#8E77BB] text-[#8E77BB] bg-[#F3F2F9]"
                       : "border-solid border-2 text-gray-700"
                       }`}
@@ -262,8 +367,8 @@ export function ConsolidationNode({ id }) {
                     {type}
                   </div>
                   <div
-                    onClick={() => setUnionType("Union All")}
-                    className={`w-full sm:w-[9rem] h-14 p-3 border rounded-md transition-all duration-300 flex items-center justify-center ${unionType === "Union All"
+                    onClick={() => setUnionType(`${type} All`)}
+                    className={`w-full sm:w-[9rem] h-14 p-3 border rounded-md transition-all duration-300 flex items-center justify-center ${unionType === `${type} All`
                       ? "border-[#8E77BB] text-[#8E77BB] bg-[#F3F2F9]"
                       : "border-solid border-2 text-gray-700"
                       }`}
@@ -275,7 +380,7 @@ export function ConsolidationNode({ id }) {
             </div>
 
             {(type === "Join" || type === "Union" || type === "Intersect") && (
-              <div className="mb-4 " style={{height: "20%" }}>
+              <div className="mb-4 " style={{ height: "20%" }}>
                 <button
                   type="button"
                   className="text-black bg-white hover:bg-gray-50 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-2 me-2 mb-2 focus:outline-none border-solid border-2"
@@ -283,7 +388,7 @@ export function ConsolidationNode({ id }) {
                   Clear
                 </button>
                 <button
-                  onClick={toggleModal}
+                  onClick={handleSave}
                   type="button"
                   className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-2 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                 >

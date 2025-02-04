@@ -100,6 +100,7 @@ const handleViewChange =(e)=>{
       id,
       type: "Source",
       selectedView,
+      selectedColumns,
       select_fields: selectFields,
       Columns: columnsForViews[selectedView] || [],
     };

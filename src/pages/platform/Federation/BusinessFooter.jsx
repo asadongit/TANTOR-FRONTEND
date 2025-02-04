@@ -4,51 +4,19 @@ import { useStateContext } from "../../../context/contextProvider";
 
 export function BusinessFooter() {
     
-      const {joinPayload,handleJoinPayload,connectionPayload} = useStateContext("");
+      const {finalPayload} = useStateContext("");
       const [preview, setPreview] = useState(false);
       const encodedToken = import.meta.env.VITE_ACCESS_TOKEN;
 
       const handleClick = async ()=>{
         setPreview(true)
-        console.log("join payload is ===>",joinPayload)
-    
-    
-        const tempArray1 = new Set();
-        const tempArray2 = new Set();
-    
-        joinPayload.joins.forEach((join) => {
-          const { view1, view2 } = join;
-    
-          if (!tempArray2.has(view1)) {
-            tempArray1.add(view1);
-          }
-          if (!tempArray1.has(view2)) {
-            tempArray2.add(view2);
-          }
-    
-          tempArray1.delete(view2);
-        });
-  
-        const baseJoin = Array.from(tempArray1)[0];
-        const connection = connectionPayload.find(conn => conn.id === baseJoin);
-
-        const newPayload ={
-          ...joinPayload,
-          joins: joinPayload.joins.map(({ id, ...rest }) => rest),
-          base_join: baseJoin,
-          ...(connection && { base_join_def: connection.def }),
-           command: "execute"
-        }
-
-        handleJoinPayload(newPayload);
-
         fetch(`${import.meta.env.VITE_FAST_API}/save-view`, {
               method: "POST",
               headers: {
                   'Authorization': `Bearer ${encodedToken}`,
                   'Content-Type': 'application/json',
               },
-              body: JSON.stringify(newPayload),
+              body: JSON.stringify(finalPayload),
           })
           .then((response) =>
             response.text().then((data) => ({ status: response.status, data }))
@@ -103,8 +71,8 @@ export function BusinessFooter() {
 
 
       useEffect(()=>{        
-        console.log("final join payload is ====>",joinPayload)
-      },[joinPayload])
+        console.log("final join payload is ====>",finalPayload)
+      },[finalPayload])
 
 
     

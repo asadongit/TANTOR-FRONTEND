@@ -184,6 +184,7 @@ const handleTableChange = async (event, value) => {
       selectedConnection,
       selectedSchema,
       selectedTable,
+      selectedColumns,
       def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
       select_fields: selectFields,
       Columns: columns
