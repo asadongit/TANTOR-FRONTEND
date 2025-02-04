@@ -1,15 +1,26 @@
 /*eslint-disable*/
 import { useEffect, useState } from "react";
 import { useStateContext } from "../../../context/contextProvider";
+import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
+import { ToastContainer, toast } from "react-toastify";
 
 export function BusinessFooter() {
     
       const {finalPayload} = useStateContext("");
       const [preview, setPreview] = useState(false);
       const encodedToken = import.meta.env.VITE_ACCESS_TOKEN;
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState(null);
 
       const handleClick = async ()=>{
+    
+        if (finalPayload && Object.keys(finalPayload).length > 0){
         setPreview(true)
+        setLoading(true)
+        setRowData([]);
+        console.log("ggggggggggggggggggg final payload is =====>",finalPayload)
         fetch(`${import.meta.env.VITE_FAST_API}/save-view`, {
               method: "POST",
               headers: {
@@ -23,7 +34,6 @@ export function BusinessFooter() {
           )
           .then(({ status, data }) => {
             if (status === 200) {
-                // Split data into an array of potential JSON objects
                 const dataArray = data.split("\n")
                     .filter(item => item.trim() !== "")
                     .map(item => {
@@ -37,12 +47,11 @@ export function BusinessFooter() {
                     .filter(item => item !== null);
 
                 if (dataArray.length === 0) {
-                    // If no data in the response, show "Table is empty"
-                    // setError("Table is empty");
-                    // setData([]); // Clear the table data
+                    setError("Table is empty");
+                    setRowData([]);
                 } else {
                     console.log("Parsed Data Array: ", dataArray);
-                    // setMapData(dataArray);
+                    setLoading(false)
                     const rows = data.trim().split("\n").map((row) => JSON.parse(row));
                     const columns = Object.keys(rows[0]);
                     console.log("rows aare ===>",rows)
@@ -50,22 +59,29 @@ export function BusinessFooter() {
                     setColumnDefs(columns);
                     setRowData(rows);
                     // setHasMore(rows.length === 100);
-                    // setError(null);
+                    setError(null);
                 }
             } else {
                 if (data) {
+                    setLoading(false)
                     const res = JSON.parse(data);
-                    // setError(res.detail);
+                    toast.error("Select correct inputs");
+                    setError(res.detail);
+                    setPreview(false)
                 }
             }
         })
         .catch((error) => {
             console.error("Error fetching data:", error);
-            // setError("Something went wrong!");
+            setError("Something went wrong!");
         })
         .finally(() => {
-            // setLoading(false);
+            setLoading(false);
         });
+      }
+      else{
+        toast.error("Select inputs first");
+      }
 
       }
 
@@ -85,7 +101,25 @@ export function BusinessFooter() {
     <>
      <div className="text-black mt-2 mb-2 ml-6 font-semibold">Output Preview</div>
   <div className="bg-white rounded-lg shadow overflow-hidden h-[32%] mx-6 mb-5">
-    <div className="overflow-auto h-full"> 
+  {loading && (
+                            <div className="flex justify-center w-full h-full items-center">
+                                    <CircularProgress />
+                            </div>
+  )}
+
+{/* {(!loading && error != null) && (
+  <div className="flex h-full w-full justify-center">
+ <div className="flex w-[20%] mx-auto text-gray-500 text-center self-center bg-gray-100 p-2 text-[17px] shadow-md">
+  <Alert severity="error">
+      <AlertTitle>Error</AlertTitle>
+      {error}
+  </Alert>
+</div>
+</div>
+
+)} */}
+    {(!loading && rowData.length > 0 && error == null) &&  (
+      <div className="overflow-auto h-full"> 
     <table className="w-full">
     <thead className="sticky top-0 bg-[#29304a] text-white">
       <tr>
@@ -111,6 +145,9 @@ export function BusinessFooter() {
         </tbody>
       </table>
     </div>
+    )}
+
+  
   </div>
   </>
 )}
@@ -134,6 +171,7 @@ export function BusinessFooter() {
                 </button>
               </div>    
       </div>
+      <ToastContainer />
       </>
     )
 }

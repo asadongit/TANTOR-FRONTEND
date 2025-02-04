@@ -139,7 +139,6 @@ export function ConsolidationNode({ id }) {
 
       const newPayload = {
         ...finalPayload,
-        joins: finalPayload.joins.map(({ id, ...rest }) => rest),
         base_join: baseJoin,
         ...(connection && { base_join_def: connection.def }),
         command: "execute",
