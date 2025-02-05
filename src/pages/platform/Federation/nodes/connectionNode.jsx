@@ -205,6 +205,11 @@ const handleTableChange = async (event, value) => {
     onSave?.(newPayload);
   };
 
+  const handleDelete = (id) => {
+    const updatedPayload = connectionPayload.filter((node) => node.id !== id);
+    handleConnectionPayload(updatedPayload);
+    window.deleteNode?.(id)
+  };
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
@@ -229,7 +234,7 @@ const handleTableChange = async (event, value) => {
           )}
         </button>
         <button
-              onClick={() => window.deleteNode?.(id)}
+              onClick={() => handleDelete(id)}
               className="p-1 rounded-md hover:bg-gray-200"
             >
               <X className="h-5 text-black" />

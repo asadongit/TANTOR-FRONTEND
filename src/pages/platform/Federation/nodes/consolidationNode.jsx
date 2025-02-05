@@ -264,21 +264,30 @@ export function ConsolidationNode({ id }) {
             <div className="h-[70%]" style={{ height: "70%" }}>
               <div className="flex text-sm space-x-2">
                 <button
-                  onClick={() => setType("Join")}
+                  onClick={() => {
+                    handleFinalPayload({});
+                    setType("Join")
+                  }}
                   className={`w-[7rem] h-[2.25rem] py-1 rounded-full border transition-all duration-300 flex items-center justify-center ${type === "Join" ? "border-[#8E77BB] text-[#8E77BB]" : "border-solid border-2 text-gray-700"
                     }`}
                 >
                   Join
                 </button>
                 <button
-                  onClick={() => setType("Union")}
+                  onClick={() => {
+                    handleFinalPayload({});
+                    setType("Union")
+                  }}
                   className={`w-[7rem] h-[2.25rem] py-1.5 rounded-full border transition-all duration-300 flex items-center justify-center ${type === "Union" ? "border-[#8E77BB] text-[#8E77BB]" : "border-solid border-2 text-gray-700"
                     }`}
                 >
                   Union
                 </button>
                 <button
-                  onClick={() => setType("Intersect")}
+                  onClick={() => {
+                    handleFinalPayload({});
+                    setType("Intersect")
+                  }}
                   className={`w-[7rem] h-[2.25rem] py-1.5 rounded-full border transition-all duration-300 flex items-center justify-center ${type === "Intersect" ? "border-[#8E77BB] text-[#8E77BB]" : "border-solid border-2 text-gray-700"
                     }`}
                 >

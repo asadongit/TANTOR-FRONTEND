@@ -120,6 +120,12 @@ const handleViewChange =(e)=>{
     onSave?.(newPayload);
   };
 
+  const handleDelete = (id) => {
+    const updatedPayload = viewPayload.filter((node) => node.id !== id);
+    handleViewPayload(updatedPayload);
+    window.deleteNode?.(id)
+  };
+
   return (
     <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
 
@@ -143,7 +149,7 @@ const handleViewChange =(e)=>{
           )}
         </button>
         <button
-              onClick={() => window.deleteNode?.(id)}
+              onClick={() => handleDelete(id)}
               className="p-1 rounded-md hover:bg-gray-200"
             >
               <X className="h-5 text-black" />
