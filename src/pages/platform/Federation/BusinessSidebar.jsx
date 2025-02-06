@@ -29,16 +29,7 @@ const components = [
 
 
 export function BusinessSidebar() {
-  const [expandedCategories, setExpandedCategories] = useState(['Federation']);
   const [expanded, setExpanded] = useState(true)
-
-  const toggleCategory = (category) => {
-    setExpandedCategories(prev =>
-      prev.includes(category)
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
-    );
-  };
 
   const onDragStart = (event, nodeType) => {
     event.dataTransfer.setData('application/reactflow', nodeType);

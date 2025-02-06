@@ -7,7 +7,7 @@ import { useStateContext } from "../../../../context/contextProvider";
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload } = useStateContext("");
+  const { viewPayload, handleViewPayload, handleFinalPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -36,6 +36,8 @@ const handleViewChange =(e)=>{
   setSelectedColumns([])
   setSelectedView(e.target.value)
   fetchColumnsForView(e.target.value);
+  handleFinalPayload({});
+
 }
 
     const fetchColumnsForView = async (viewName) => {
@@ -96,6 +98,8 @@ const handleViewChange =(e)=>{
       alias: "",
     }));
   
+
+    if(selectedView){
     const newPayload = {
       id,
       type: "Source",
@@ -118,6 +122,7 @@ const handleViewChange =(e)=>{
     console.log("view payload is ===>",updatedPayloads)
     handleViewPayload(updatedPayloads);
     onSave?.(newPayload);
+  }
   };
 
   const handleDelete = (id) => {

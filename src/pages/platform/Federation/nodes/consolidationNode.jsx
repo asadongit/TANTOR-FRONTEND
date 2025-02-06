@@ -20,8 +20,8 @@ export function ConsolidationNode({ id }) {
   const [view1, setLeftView] = useState("")
   const [view2, setRightView] = useState("")
 
-  const [joinType, setJoinType] = useState("Inner Join")
-  const [operator, setOperator] = useState("=")
+  const [joinType, setJoinType] = useState("")
+  const [operator, setOperator] = useState("")
 
 
   const [joins, setJoins] = useState([])
@@ -216,6 +216,15 @@ export function ConsolidationNode({ id }) {
     setIsModalOpen(!isModalOpen);
   };
 
+  const handleType = (type) =>{
+    handleFinalPayload({});
+    setType(type)
+    setSelectedLeft("")
+    setSelectedRight("")
+    setJoinType("")
+    setOperator("")
+     }
+
   return (
     <>
       <div className="bg-[#8E77BB] rounded-full p-6 shadow-lg relative group flex justify-center">
@@ -265,8 +274,7 @@ export function ConsolidationNode({ id }) {
               <div className="flex text-sm space-x-2">
                 <button
                   onClick={() => {
-                    handleFinalPayload({});
-                    setType("Join")
+                    handleType("Join")  
                   }}
                   className={`w-[7rem] h-[2.25rem] py-1 rounded-full border transition-all duration-300 flex items-center justify-center ${type === "Join" ? "border-[#8E77BB] text-[#8E77BB]" : "border-solid border-2 text-gray-700"
                     }`}
@@ -275,8 +283,7 @@ export function ConsolidationNode({ id }) {
                 </button>
                 <button
                   onClick={() => {
-                    handleFinalPayload({});
-                    setType("Union")
+                    handleType("Union") 
                   }}
                   className={`w-[7rem] h-[2.25rem] py-1.5 rounded-full border transition-all duration-300 flex items-center justify-center ${type === "Union" ? "border-[#8E77BB] text-[#8E77BB]" : "border-solid border-2 text-gray-700"
                     }`}
@@ -285,8 +292,7 @@ export function ConsolidationNode({ id }) {
                 </button>
                 <button
                   onClick={() => {
-                    handleFinalPayload({});
-                    setType("Intersect")
+                    handleType("Intersect") 
                   }}
                   className={`w-[7rem] h-[2.25rem] py-1.5 rounded-full border transition-all duration-300 flex items-center justify-center ${type === "Intersect" ? "border-[#8E77BB] text-[#8E77BB]" : "border-solid border-2 text-gray-700"
                     }`}
@@ -336,27 +342,34 @@ export function ConsolidationNode({ id }) {
                     <div className="w-[47%]">
                       <label className="block text-sm font-medium text-black mb-1">Type</label>
                       <select
+                        value={joinType}
                         className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
                         onChange={(e) => setJoinType(e.target.value)}
                       >
                         <option value="" disabled>
                           Select
                         </option>
-                        <option value="Column1">Inner</option>
-                        <option value="Column2">Outer</option>
-                        <option value="Column3">Left</option>
+                        <option value="Inner Join">Inner Join</option>
+                        <option value="Left Join">Left Join</option>
+                        <option value="Right Join">Right Join</option>
+                        <option value="Full Join">Full Join</option>
                       </select>
                     </div>
                     <div className="w-[47%]">
                       <label className="block text-sm font-medium text-black mb-1">Operator</label>
                       <select
+                        value={operator}
                         className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
                         onChange={(e) => setOperator(e.target.value)}
                       >
                         <option value="" disabled>
                           Select
                         </option>
-                        <option value="Column1">=</option>
+                        <option value="=">=</option>
+                        <option value="&gt;=">&gt;=</option>
+                        <option value="&lt;=">&lt;=</option>
+                        <option value="&gt;">&gt;</option>
+                        <option value="&lt;">&lt;</option>
                       </select>
                     </div>
                   </div>

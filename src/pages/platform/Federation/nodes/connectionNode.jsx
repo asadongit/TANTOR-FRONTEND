@@ -172,6 +172,8 @@ const handleTableChange = async (event, value) => {
   const handleSave = () => {
     const selectedView = id;
 
+    if(selectedView && selectedConnection && selectedSchema && selectedTable){
+
     const selectFields = selectedColumns.map((column) => ({
       field: `${selectedView}.${column}`,
       alias: "",
@@ -203,6 +205,7 @@ const handleTableChange = async (event, value) => {
     console.log("view payload is ===>",updatedPayloads)
     handleConnectionPayload(updatedPayloads)
     onSave?.(newPayload);
+  }
   };
 
   const handleDelete = (id) => {
