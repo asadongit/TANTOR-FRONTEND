@@ -4,6 +4,8 @@ import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { SquareKanban, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
+import { Modal, Box} from "@mui/material";
+import { Columns } from "../Columns";
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_ACCESS_TOKEN;
@@ -131,7 +133,15 @@ const handleViewChange =(e)=>{
     window.deleteNode?.(id)
   };
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+    const toggleModal = (value) => {
+      console.log("toggle model ")
+      setIsModalOpen(value);
+    };
+
   return (
+    <>
     <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
 
       <Handle type="target" position={Position.Left} />
@@ -207,13 +217,20 @@ const handleViewChange =(e)=>{
                   columnsForViews[selectedView].map((column) => (
                     <div key={column} className="flex items-center space-x-2">
                     <input
-                    type="checkbox"
-                    id={column}
-                    value={column}
-                    checked={selectedColumns.includes(column)}
-                    onChange={() => handleColumnChange(column)}
-                    className="text-purple-600 focus:ring-purple-500"
-                  />
+                   type="checkbox"
+                   onClick={(e) => {
+                     if (e.target.checked) {
+                       toggleModal(true);
+                     } else {
+                       toggleModal(false);
+                     }
+                   }}
+                   id={column}
+                   value={column}
+                   checked={selectedColumns.includes(column)}
+                   onChange={() => handleColumnChange(column)}
+                   className="text-purple-600 focus:ring-purple-500"
+                 />
                   <label htmlFor={column} className="text-sm text-gray-700">
                     {column}
                   </label>
@@ -246,6 +263,28 @@ const handleViewChange =(e)=>{
         }
       `}</style>
     </div>
+    <Modal
+    open={isModalOpen}
+    onClose={() => toggleModal(false)}
+    BackdropProps={{
+      style: {
+        backgroundColor: 'transparent', 
+      },
+    }}
+  >
+    <Box
+      sx={{
+        position: "absolute",
+        top: 0,
+        right: 0,
+        width: "22%", 
+        height: "100%", 
+      }}
+    >
+      <Columns toggleModal={toggleModal}/>
+    </Box>
+  </Modal>
+    </>
   );
 }
 
