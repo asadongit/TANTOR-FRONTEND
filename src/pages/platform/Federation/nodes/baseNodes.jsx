@@ -103,7 +103,7 @@ export function BaseNode({ id, data }) {
         data.handleColumnSetting({
         column: item,
         viewName: selectedView,
-        type: "Source"
+        viewType: "Source"
       })
     });
   }
@@ -163,7 +163,7 @@ export function BaseNode({ id, data }) {
         <button
           onClick={(e) => data.handleOk({
             userCheckedColumns,
-            type: "Source",
+            viewType: "Source",
             settings: settingsPayload,
           })}
           className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
@@ -332,7 +332,7 @@ export function ConnectionNode({ id, data }) {
   const handleEditColumn = (columnName) => {
     if(!selectedColumns.includes(columnName))
       setSelectedColumns([...selectedColumns, columnName]);
-
+    console.log(columnName)
     apiColumns.forEach(item => {
       if(item.column == columnName){
         data.handleColumnSetting({
@@ -340,7 +340,7 @@ export function ConnectionNode({ id, data }) {
         connection: selectedConnection,
         schema: selectedSchema,
         table: selectedTable,
-        type: "Connection"
+        viewType: "Connection"
       })
     }
     });
@@ -526,7 +526,7 @@ export function ConnectionNode({ id, data }) {
             type="button"
             onClick={(e) => data.handleOk({
               userCheckedColumns: selectedColumns,
-              type: "Connection",
+              viewType: "Connection",
               settings: settingsPayload,
             })}
             className="w-full text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] mt-3"

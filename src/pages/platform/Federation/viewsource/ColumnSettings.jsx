@@ -25,7 +25,8 @@ const ColumnSettings = ({
   const toggleDialog = () => setIsOpen((prev) => !prev);
 
   useEffect(() => {
-    if (columnSetting?.type === "Source") {
+    console.log("columnSetting ==>> ", columnSetting)
+    if (columnSetting?.viewType === "Source") {
       if (columnSetting?.column?.column_name) {
         if (settingsPayload.get("viewName") === columnSetting.viewName && settingsPayload.has(columnSetting.column.column_name)) {
           setSettings(settingsPayload.get(columnSetting.column.column_name));
@@ -46,7 +47,7 @@ const ColumnSettings = ({
       }
     }
 
-    if (columnSetting?.type === "Connection") {
+    if (columnSetting?.viewType === "Connection") {
       console.log("columnSetting ==> ", columnSetting);
       if (columnSetting?.column?.column) {
         if (
@@ -90,7 +91,7 @@ const ColumnSettings = ({
   const handleExecute = async (event) => {
     event.preventDefault();
 
-    if (columnSetting.type === "Source") {
+    if (columnSetting.viewType === "Source") {
       setSettingsPayload((prev) => {
         const updatedSettingsPayload = new Map(prev);
         if (settingsPayload.get("viewName") !== columnSetting.viewName) {
@@ -115,7 +116,7 @@ const ColumnSettings = ({
         filterBy: "",
       });
     }
-    if (columnSetting.type === "Connection") {
+    if (columnSetting.viewType === "Connection") {
       setSettingsPayload((prev) => {
         const updatedSettingsPayload = new Map(prev);
         if (

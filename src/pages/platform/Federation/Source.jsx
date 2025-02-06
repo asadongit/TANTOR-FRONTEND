@@ -140,7 +140,6 @@ export default function Source() {
 
   const [userSelection, setUserSelection] = useState({});
   const [columnSetting, setColumnSetting] = useState(null);
-  // const [settingsPayload, setSettingsPayload] = useState(new Map());
   
   let {settingsPayload,setSettingsPayload} = useStateContext();
 
@@ -153,20 +152,20 @@ export default function Source() {
 
   const handleColumnSetting = (params) => {
     console.log("params ==> ", params);
-    if (params.type === "Source") {
+    if (params.viewType === "Source") {
       setColumnSetting(params);
     }
-    if (params.type === "Connection") {
+    if (params.viewType === "Connection") {
       setColumnSetting(params);
     }
   };
 
   const handleOk = async (payload) => {
-    const { type, userCheckedColumns } = payload;
+    const { viewType, userCheckedColumns } = payload;
     // The payload has the following structure
     // {
     //  userCheckedColumns,
-    //  type: "Source" or "Connection",
+    //  viewType: "Source" or "Connection",
     //  settings: settingsPayload,
     // }
 console.log("OUTSIDE SETTINGS ", settingsPayload);
@@ -188,25 +187,26 @@ console.log("OUTSIDE SETTINGS ", settingsPayload);
         let invalidColumns = userCheckedColumns.filter((column) => !groupByColumns.includes(column));
         console.log("invalidColumns ==> ", invalidColumns);
         if(invalidColumns.length > 0)
+          alert("INVALID COLUMNS SELECTED (GROUP BY)");
           return;
       }
 
     setSettingsPayload((prev) => {
       const updatedSettingsPayload = new Map(prev);
-      // const { type, userCheckedColumns } = payload;
       
       updatedSettingsPayload.forEach((_, key) => {
-        // Conditional exclusion based on payload type
+        // Conditional exclusion based on payload viewType
         const shouldDelete = 
           !userCheckedColumns.includes(key) && 
-          ((type === "Source" && key !== "viewName") || 
-          (type === "Connection" && !["connection", "schema", "table"].includes(key)));
+          ((viewType === "Source" && key !== "viewName") || 
+          (viewType === "Connection" && !["connection", "schema", "table"].includes(key)));
   
         if (shouldDelete) {
           updatedSettingsPayload.delete(key);
         }
       });
-  
+      
+      updatedSettingsPayload.set("viewType", viewType)
       return updatedSettingsPayload;
     });
 
@@ -214,10 +214,55 @@ console.log("OUTSIDE SETTINGS ", settingsPayload);
   };
   
 
-  const handleSaveView = (params) => {
-    setShowPreview((prev) => !prev);
+  const handleSaveView = async (params) => {
     console.log("settings final payload -> ", settingsPayload);
     console.log("new view name -> ", params.newViewName);
+    
+    let apiPayload;
+
+    if(settingsPayload.get("viewType") === "Source"){
+       apiPayload = {
+        "view_type": "Source",
+        "view": settingsPayload.get("viewName"),
+        "view_name": params.newViewName,
+        "select_fields": [],
+      };
+    }else if(settingsPayload.get("viewType") === "Connection"){
+      apiPayload = {
+        "view_type": "Base",
+        "connection_name" : settingsPayload.get("connection"),
+        "schema_name": settingsPayload.get("schema"),
+        "table_name": settingsPayload.get("table"),
+        "view_name": params.newViewName,
+        "select_fields": [],
+      };
+    }
+    
+    // Settings Alias
+    settingsPayload.forEach((value, key) => {
+      if(!["connection", "schema", "table", "viewName", "viewType"].includes(key)) {
+        apiPayload["select_fields"].push({"field": key, "alias": value["alias"]});
+      }
+    })
+
+    console.log("API PAYLOAD ===> ",apiPayload)
+      const response = await fetch(`${import.meta.env.VITE_FAST_API_V2}/generate-base-view`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`
+        },
+        body: JSON.stringify(apiPayload),
+      });
+
+      const data = await response.json();
+      
+      if(response.status == 200){
+        console.log("Save View Result ==> ", data);
+        setShowPreview((prev) => !prev);
+      }else {
+        alert("ERROR WHEN SAVING VIEW.")
+      }
   };
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -284,6 +329,7 @@ console.log("OUTSIDE SETTINGS ", settingsPayload);
 
   return (
     <div className="w-full h-screen overflow-hidden">
+      
       <div
         className={`${
           showPreview ? "h-[40%]" : "h-[95%]"
@@ -340,8 +386,7 @@ console.log("OUTSIDE SETTINGS ", settingsPayload);
           handleSaveView={handleSaveView}
         />
       )}
-
-      {/* <FilterModal /> */}
+      
     </div>
   );
 }
