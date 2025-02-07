@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
-import {useStateContext} from "../../../../context/contextProvider";
+import { useStateContext } from "../../../../context/contextProvider";
 
 const ColumnSettings = ({
   columnSetting,
@@ -20,16 +20,27 @@ const ColumnSettings = ({
     wildcard: "",
     filterBy: "",
   });
-  
-  const {settingsPayload,setSettingsPayload} = useStateContext();
+
+  const {
+    settingsPayload,
+    setSettingsPayload,
+    settingsList,
+    setSettingsList,
+    userSelections,
+    setUserSelections,
+  } = useStateContext();
   const toggleDialog = () => setIsOpen((prev) => !prev);
 
   useEffect(() => {
-    console.log("columnSetting ==>> ", columnSetting)
-    if (columnSetting?.viewType === "Source") {
-      if (columnSetting?.column?.column_name) {
-        if (settingsPayload.get("viewName") === columnSetting.viewName && settingsPayload.has(columnSetting.column.column_name)) {
-          setSettings(settingsPayload.get(columnSetting.column.column_name));
+    console.log("columnSetting ==>> ", columnSetting);
+    if ((columnSetting?.viewType === "Source") && (columnSetting?.column?.column_name)) {
+      // Gettings Old Column Data from Context to update the Column Settings Fields.
+        const previousColumnSetting = settingsList.find(
+          (item) => item.name === columnSetting.column.column_name
+        );
+        if (previousColumnSetting) {
+          console.log("previousColumnSetting ==> ", previousColumnSetting);
+          setSettings(previousColumnSetting);
         } else {
           setSettings({
             name: columnSetting?.column.column_name,
@@ -44,19 +55,15 @@ const ColumnSettings = ({
             filterBy: "",
           });
         }
-      }
     }
 
-    if (columnSetting?.viewType === "Connection") {
-      console.log("columnSetting ==> ", columnSetting);
-      if (columnSetting?.column?.column) {
-        if (
-          settingsPayload.get("connection") === columnSetting.connection &&
-          settingsPayload.get("schema") === columnSetting.schema &&
-          settingsPayload.get("table") === columnSetting.table &&
-          settingsPayload.has(columnSetting.column.column)
-        ) {
-          setSettings(settingsPayload.get(columnSetting.column.column));
+    if ((columnSetting?.viewType === "Connection") && (columnSetting?.column?.column)) {
+        const previousColumnSetting = settingsList.find(
+          (item) => item.name === columnSetting.column.column
+        );
+        if (previousColumnSetting) {
+          console.log("previousColumnSetting ==> ", previousColumnSetting);
+          setSettings(previousColumnSetting);
         } else {
           setSettings({
             name: columnSetting?.column.column,
@@ -71,7 +78,6 @@ const ColumnSettings = ({
             filterBy: "",
           });
         }
-      }
     }
     if (!isOpen) toggleDialog();
   }, [columnSetting]);
@@ -92,50 +98,81 @@ const ColumnSettings = ({
     event.preventDefault();
 
     if (columnSetting.viewType === "Source") {
-      setSettingsPayload((prev) => {
-        const updatedSettingsPayload = new Map(prev);
-        if (settingsPayload.get("viewName") !== columnSetting.viewName) {
-          updatedSettingsPayload.clear();
-          updatedSettingsPayload.set("viewName", columnSetting.viewName);
+      if (userSelections.get("viewName") !== columnSetting.viewName) {
+        setUserSelections((prev) => {
+          const updatedUserSelections = new Map(prev);
+          updatedUserSelections.clear();
+          updatedUserSelections.set("viewName", columnSetting.viewName);
+
+          return updatedUserSelections;
+        });
+        setSettingsList([settings]); // Clear and Update context.
+      } else {
+        let index = settingsList.findIndex(
+          (item) => item.name === columnSetting.column.column_name
+        );
+        if (index !== -1) {
+          setSettingsList((prev) => {
+            const updatedList = [...prev];
+            updatedList.splice(index, 1);
+
+            return [...updatedList, settings];
+          });
+        } else {
+          setSettingsList((prev) => [...prev, settings]);
         }
-        updatedSettingsPayload.set(settings.name, settings);
-
-        return updatedSettingsPayload;
-      });
-
-      setSettings({
-        name: "",
-        type: "",
-        output: "Yes",
-        alias: "",
-        order: "",
-        sort: "",
-        aggregate: "",
-        groupBy: "",
-        wildcard: "",
-        filterBy: "",
-      });
+      }
     }
+
     if (columnSetting.viewType === "Connection") {
-      setSettingsPayload((prev) => {
-        const updatedSettingsPayload = new Map(prev);
-        if (
-          settingsPayload.get("connection") !== columnSetting.connection ||
-          settingsPayload.get("schema") !== columnSetting.schema ||
-          settingsPayload.get("table") !== columnSetting.table
-        ) {
-          updatedSettingsPayload.clear();
-          updatedSettingsPayload.set("connection", columnSetting.connection);
-          updatedSettingsPayload.set("schema", columnSetting.schema);
-          updatedSettingsPayload.set("table", columnSetting.table);
-        }
-        updatedSettingsPayload.set(settings.name, settings);
+      if (
+        userSelections.get("connection") !== columnSetting.connection ||
+        userSelections.get("schema") !== columnSetting.schema ||
+        userSelections.get("table") !== columnSetting.table
+      ) {
+        setUserSelections((prev) => {
+          const updatedUserSelections = new Map(prev);
+          updatedUserSelections.clear();
 
-        console.log("\n\n\nColumn setting ==> ", columnSetting);
-        console.log("UDATED PAYLOAD ==> ", updatedSettingsPayload);
-        return updatedSettingsPayload;
-      });
+          updatedUserSelections.set("connection", columnSetting.connection);
+          updatedUserSelections.set("schema", columnSetting.schema);
+          updatedUserSelections.set("table", columnSetting.table);
+
+          return updatedUserSelections;
+        });
+
+        setSettingsList([settings]);
+      } else {
+        let index = settingsList.findIndex(
+          (item) => item.name === columnSetting.column.column
+        );
+        console.log("INDEX ===> ", index);
+        if (index !== -1) {
+          setSettingsList((prev) => {
+            const updatedList = [...prev];
+            updatedList.splice(index, 1);
+
+            return [...updatedList, settings];
+          });
+        } else {
+          setSettingsList((prev) => [...prev, settings]);
+        }
+      }
     }
+
+    setSettings({
+      name: "",
+      type: "",
+      output: "Yes",
+      alias: "",
+      order: "",
+      sort: "",
+      aggregate: "",
+      groupBy: "",
+      wildcard: "",
+      filterBy: "",
+    });
+
     toggleDialog();
   };
 
@@ -144,7 +181,10 @@ const ColumnSettings = ({
       <div className="w-80 bg-white p-4 rounded-lg shadow-lg absolute top-4 right-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <span className="text-lg font-medium">Column Settings</span>
-          <button onClick={toggleDialog} className="text-gray-500 hover:text-gray-700">
+          <button
+            onClick={toggleDialog}
+            className="text-gray-500 hover:text-gray-700"
+          >
             <Icon icon="mdi:close" width={20} height={20} />
           </button>
         </div>
@@ -224,7 +264,9 @@ const ColumnSettings = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Aggregate</label>
+              <label className="block text-sm text-gray-600 mb-1">
+                Aggregate
+              </label>
               <select
                 name="aggregate"
                 value={settings.aggregate || ""}
@@ -239,7 +281,9 @@ const ColumnSettings = ({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Group by</label>
+              <label className="block text-sm text-gray-600 mb-1">
+                Group by
+              </label>
               <select
                 name="groupBy"
                 value={settings.groupBy || ""}
@@ -264,7 +308,9 @@ const ColumnSettings = ({
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Filter by</label>
+            <label className="block text-sm text-gray-600 mb-1">
+              Filter by
+            </label>
             <div className="flex gap-2">
               <select
                 name="filterBy"
@@ -278,17 +324,28 @@ const ColumnSettings = ({
                 <option value="filter3">Filter 3</option>
               </select>
               <button className="px-2 py-2 border rounded-lg hover:bg-gray-50">
-                <Icon icon="mdi:plus" width={16} height={16} className="text-gray-500" />
+                <Icon
+                  icon="mdi:plus"
+                  width={16}
+                  height={16}
+                  className="text-gray-500"
+                />
               </button>
             </div>
           </div>
         </div>
 
         <div className="flex gap-3 mt-4">
-          <button onClick={toggleDialog} className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">
+          <button
+            onClick={toggleDialog}
+            className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+          >
             Cancel
           </button>
-          <button className="flex-1 px-4 py-2 bg-[#8E77BB] text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)]" onClick={handleExecute}>
+          <button
+            className="flex-1 px-4 py-2 bg-[#8E77BB] text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)]"
+            onClick={handleExecute}
+          >
             Execute
           </button>
         </div>
