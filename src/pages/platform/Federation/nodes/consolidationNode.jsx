@@ -41,7 +41,7 @@ export function ConsolidationNode({ id }) {
         if (matchingView) {
           console.log("left columns are ===>", matchingView.Columns);
           setLeftColumns(matchingView.Columns);
-          setLeftView(matchingView.selectedView);
+          setLeftView(matchingView.view);
         }
       }
 
@@ -53,7 +53,7 @@ export function ConsolidationNode({ id }) {
         if (matchingView) {
           console.log("right columns are ===>", matchingView.Columns);
           setRightColumns(matchingView.Columns);
-          setRightView(matchingView.selectedView);
+          setRightView(matchingView.view);
         }
       }
     });
@@ -63,7 +63,7 @@ export function ConsolidationNode({ id }) {
   useEffect(() => {
     if (view1 && view2 && joinType && selectedLeft && selectedRight && operator) {
       // Find the matching connection payloads for view1 and view2
-      const connection2 = connectionPayload.find(conn => conn.selectedView === view2);
+      const connection2 = connectionPayload.find(conn => conn.view === view2);
 
       const newJoin = {
         id,
@@ -83,6 +83,7 @@ export function ConsolidationNode({ id }) {
 
 
   useEffect(() => {
+    console.log("joins are ===>",joins)
     if (joins.length > 0) {
 
       handleFinalPayload({
@@ -127,14 +128,19 @@ export function ConsolidationNode({ id }) {
         tempArray1.delete(view2);
       });
 
+      console.log("temp array 1===>",tempArray1)
+      console.log("temp array 2===>",tempArray2)
+
       const baseJoin = Array.from(tempArray1)[0];
       const connection = connectionPayload.find(conn => conn.id === baseJoin);
 
+      console.log("base join is===>",baseJoin)
 
-      const connectionSelectFields = connectionPayload?.flatMap((conn) => conn.select_fields || []) || [];
-      const viewSelectFields = [...(viewPayload?.flatMap((view) => view.select_fields || []) || []), ...connectionSelectFields];
 
-      console.log("ViewSELECT FILESDSS ======>", viewSelectFields)
+      // const connectionSelectFields = connectionPayload?.flatMap((conn) => conn.select_fields || []) || [];
+      // const viewSelectFields = [...(viewPayload?.flatMap((view) => view.select_fields || []) || []), ...connectionSelectFields];
+
+      // console.log("ViewSELECT FILESDSS ======>", viewSelectFields)
 
 
       const newPayload = {
@@ -146,7 +152,7 @@ export function ConsolidationNode({ id }) {
         view_name: "MYVIEW",
         isMateralizedView: "false",
         isCaching: "false",
-        select_fields: viewSelectFields,
+        // select_fields: viewSelectFields,
       }
 
       handleFinalPayload(newPayload);
@@ -166,34 +172,35 @@ export function ConsolidationNode({ id }) {
       if ((viewPayload && viewPayload.length > 0) || (connectionPayload && connectionPayload.length > 0)) {
 
         const unions = [
-          ...(viewPayload ? viewPayload.map(node => node.selectedView) : []),
-          ...(connectionPayload ? connectionPayload.map(node => node.selectedView) : [])
+          ...(viewPayload ? viewPayload.map(node => node.view) : []),
+          ...(connectionPayload ? connectionPayload.map(node => node.view) : [])
         ];
 
 
         const unionData = {};
         [...viewPayload, ...connectionPayload].forEach((item) => {
-          unionData[item.selectedView] = item.selectedColumns;
+          unionData[item.view] = item.selectedColumns;
         });
+
+        console.log("union data is ===>",unionData)
 
 
         const defs = {};
         connectionPayload.forEach((item) => {
-          if (item.selectedView && item.def) {
-            defs[item.selectedView] = item.def;
+          if (item.view && item.def) {
+            defs[item.view] = item.def;
           }
         });
 
 
-        const [firstKey, firstValue] = Object.entries(unionData)[0];
+        // const [firstKey, firstValue] = Object.entries(unionData)[0];
 
-        const select_fields = firstValue.map(field => ({
-          field: field,
-          alias: ""
-        }));
+        // const select_fields = firstValue.map(field => ({
+        //   field: field,
+        //   alias: ""
+        // }));
 
-
-
+        // console.log("select fields aree===>",select_fields)
 
         const newPayload = {
           operation: unionType,
@@ -205,7 +212,6 @@ export function ConsolidationNode({ id }) {
           union: unions,
           union_fields: unionData,
           defs: defs,
-          select_fields
         }
 
         handleFinalPayload(newPayload);

@@ -29,6 +29,8 @@ export const ContextProvider = ({ children }) => {
         setFinalPayload(val);
       };
 
+      const [columnSettings, setColumnSettings] = useState({});
+
        // Source View States
        const [settingsPayload, setSettingsPayload] = useState(new Map());
        
@@ -51,6 +53,8 @@ export const ContextProvider = ({ children }) => {
             handleConnectionPayload,
             finalPayload,
             handleFinalPayload,
+            columnSettings,
+            setColumnSettings,
             settingsPayload, setSettingsPayload,
             settingsList, setSettingsList,
             userSelections, setUserSelections
