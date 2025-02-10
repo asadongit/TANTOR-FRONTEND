@@ -9,7 +9,7 @@ import { Columns } from "../Columns";
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, handleFinalPayload } = useStateContext("");
+  const { viewPayload, handleViewPayload, handleFinalPayload, setColumnSettings } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -134,6 +134,12 @@ export function SourceViewNode({ id, onSave }) {
     const updatedPayload = viewPayload.filter((node) => node.id !== id);
     handleViewPayload(updatedPayload);
     window.deleteNode?.(id)
+
+    setColumnSettings(prevSettings => {
+      const updatedSettings = { ...prevSettings };
+      delete updatedSettings[selectedView]; 
+      return updatedSettings;
+  });
   };
 
   const [isModalOpen, setIsModalOpen] = useState(false);

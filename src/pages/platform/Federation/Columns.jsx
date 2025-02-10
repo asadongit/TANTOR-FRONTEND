@@ -11,7 +11,7 @@ export function Columns({ id, columnName, toggleModal }) {
       const defaultSettings = {
         name: "",
         type: "",
-        output: "Yes",
+        output: "No",
         alias: "",
         order: "",
         sort: "",
@@ -25,11 +25,11 @@ export function Columns({ id, columnName, toggleModal }) {
         ...prev,
         [id]: {
           ...(prev[id] || {}),
-          [columnName]: prev[id]?.[columnName] || defaultSettings, // Preserve existing columns
+          [columnName]: prev[id]?.[columnName] || defaultSettings, 
         },
       };
     });
-  }, [id, columnName, setColumnSettings]);
+  }, [id, columnName]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

@@ -9,7 +9,7 @@ import { Modal} from "@mui/material";
 
 export function ConnectionNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { handleConnectionPayload, connectionPayload } = useStateContext("")
+  const { handleConnectionPayload, connectionPayload, columnSettings, setColumnSettings } = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("")
@@ -215,6 +215,13 @@ export function ConnectionNode({ id, onSave }) {
     const updatedPayload = connectionPayload.filter((node) => node.id !== id);
     handleConnectionPayload(updatedPayload);
     window.deleteNode?.(id)
+
+    setColumnSettings(prevSettings => {
+      const updatedSettings = { ...prevSettings };
+      delete updatedSettings[id]; 
+      return updatedSettings;
+  });
+  
   };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
