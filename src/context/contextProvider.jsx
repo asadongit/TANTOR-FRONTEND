@@ -32,16 +32,9 @@ export const ContextProvider = ({ children }) => {
       const [columnSettings, setColumnSettings] = useState({});
 
        // Source View States
-       const [settingsPayload, setSettingsPayload] = useState(new Map());
-       
        const [userSelections, setUserSelections] = useState(new Map());
        const [settingsList, setSettingsList] = useState([]);
-       
-       useEffect(() => {
-        console.log("Settings list change ==> ",settingsList);
-        console.log("User Selections ==> ",userSelections);
-
-       }, [settingsList,userSelections])
+  
     return (
         <StateContext.Provider
           value={{
@@ -55,7 +48,6 @@ export const ContextProvider = ({ children }) => {
             handleFinalPayload,
             columnSettings,
             setColumnSettings,
-            settingsPayload, setSettingsPayload,
             settingsList, setSettingsList,
             userSelections, setUserSelections
           }}

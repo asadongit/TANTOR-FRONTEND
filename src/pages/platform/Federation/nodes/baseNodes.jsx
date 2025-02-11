@@ -3,70 +3,70 @@ import { useCallback, useEffect, useState } from "react";
 import { Cable, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 
-const AUTH_TOKEN=import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
 const FAST_BACKEND = import.meta.env.VITE_FAST_API;
 
 console.log(FAST_BACKEND);
-export function BaseNode({ id, data }) {
 
+export function BaseNode({ id, data }) {
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
-  const [apiColumns,setApiColumns] = useState([]);
+  const [apiColumns, setApiColumns] = useState([]);
   const [userCheckedColumns, setUserCheckedColumns] = useState([]);
-  const {settingsList,userSelections} = useStateContext();
+  const { settingsList, userSelections } = useStateContext();
 
   // Fetch Views
   useEffect(() => {
     (async () => {
-      let response
-      try{
-        response = await fetch(`${FAST_BACKEND}/get-all-views`,{
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${AUTH_TOKEN}`
+      let response;
+      try {
+        response = await fetch(`${FAST_BACKEND}/get-all-views`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${AUTH_TOKEN}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.status == 200) {
+          setApiViews(data.result);
+        } else {
+          data.toast.error("Error occurred while trying to fetch views");
         }
-      });
-      
-      const data = await response.json();
-      
-      if(response.status == 200){
-        setApiViews(data.result);
-      }else{
-        alert("Error occured while trying to fetch views");
+      } catch (error) {
+        console.error("Error occurred while trying to fetch views", error);
+        data.toast.error("Error occurred while trying to fetch views");
       }
-    }catch(error){
-      console.error("Error occured while trying to fetch views", error);
-      alert("Error occured while trying to fetch views");
-    }
     })();
   }, []);
 
   useEffect(() => {
-    if(selectedView){
+    if (selectedView) {
       (async () => {
         let response;
 
-        try{
-          response = await fetch(`${FAST_BACKEND}/fetch_view_columns`,{
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${AUTH_TOKEN}`,
-          },
-          body: JSON.stringify({view_names:[selectedView]}),
-          method: "POST",
-        });
-        let data = await response.json();
+        try {
+          response = await fetch(`${FAST_BACKEND}/fetch_view_columns`, {
+            headers: {
+              "Content-Type": "application/json",
+              authorization: `Bearer ${AUTH_TOKEN}`,
+            },
+            body: JSON.stringify({ view_names: [selectedView] }),
+            method: "POST",
+          });
+          let data = await response.json();
 
-        if(response.status == 200){
-          setApiColumns(data.result[selectedView]);
-        }else {
-          console.error(`Fetch Columms error. : \nStatus Code: ${response.status} \nData: `, data);
-          alert("Error occured while trying to fetch columns");
-        }
-        }catch(error){
+          if (response.status == 200) {
+            setApiColumns(data.result[selectedView]);
+          } else {
+            console.error(`Fetch Columns error. : \nStatus Code: ${response.status} \nData: `, data);
+            data.toast.error("Error occurred while trying to fetch columns");
+          }
+        } catch (error) {
           console.log(error);
-          alert("Error occured while trying to fetch Columns");
+          data.toast.error("Error occurred while trying to fetch Columns");
         }
       })();
     }
@@ -96,15 +96,15 @@ export function BaseNode({ id, data }) {
   };
 
   const handleEditColumn = (columnName) => {
-    if(!userCheckedColumns.includes(columnName))
+    if (!userCheckedColumns.includes(columnName))
       setUserCheckedColumns([...userCheckedColumns, columnName]);
     apiColumns.forEach(item => {
-      if(item.column_name == columnName)
+      if (item.column_name == columnName)
         data.handleColumnSetting({
-        column: item,
-        viewName: selectedView,
-        viewType: "Source"
-      })
+          column: item,
+          viewName: selectedView,
+          viewType: "Source"
+        })
     });
   }
 
@@ -134,30 +134,29 @@ export function BaseNode({ id, data }) {
         </div>
 
         {apiColumns && (
-           <div
-           className={`mb-4 ${selectedView ? "" : "hidden"}`}
-         >
-           <h3 className="font-semibold text-gray-700">Select Columns</h3>
-           {apiColumns.map((item) => (
-             <div
-               key={item.column_name}
-               className="flex items-center mb-2 cursor-pointer"
-              //  onClick={() => handleColumnCheck(item.column_name)}
-             >
-               <input
-                 type="checkbox"
-                 className="mr-2"
-                 checked={userCheckedColumns.includes(item.column_name)}
-                 onClick={() => handleColumnCheck(item.column_name)} //delete
-                 readOnly
-               />
-               <label htmlFor={item.column_name} className="text-gray-700 cursor-pointer">
-                 {item.column_name}
-               </label>
-               <Pencil name="edit" onClick={(e) => handleEditColumn(item.column_name)} className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700" />
-             </div>
-           ))}
-         </div>
+          <div
+            className={`mb-4 ${selectedView ? "" : "hidden"}`}
+          >
+            <h3 className="font-semibold text-gray-700">Select Columns</h3>
+            {apiColumns.map((item) => (
+              <div
+                key={item.column_name}
+                className="flex items-center mb-2 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  className="mr-2"
+                  checked={userCheckedColumns.includes(item.column_name)}
+                  onClick={() => handleColumnCheck(item.column_name)}
+                  readOnly
+                />
+                <label htmlFor={item.column_name} className="text-gray-700 cursor-pointer">
+                  {item.column_name}
+                </label>
+                <Pencil name="edit" onClick={(e) => handleEditColumn(item.column_name)} className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700" />
+              </div>
+            ))}
+          </div>
         )}
 
         <button
@@ -189,9 +188,8 @@ export function ConnectionNode({ id, data }) {
   const [apiTables, setApiTables] = useState([]);
   const [apiColumns, setApiColumns] = useState([]);
 
-  const {settingsList, setSettingsList, userSelections, setUserSelections} = useStateContext();
+  const { settingsList, setSettingsList, userSelections, setUserSelections } = useStateContext();
 
-  
   const dummyColumns = [
     "connection 1",
     "id ",
@@ -203,8 +201,8 @@ export function ConnectionNode({ id, data }) {
   useEffect(() => {
     (async () => {
       let response;
-      try{
-        response = await fetch(`${FAST_BACKEND}/connection-saves`,{
+      try {
+        response = await fetch(`${FAST_BACKEND}/connection-saves`, {
           method: "GET",
           headers: {
             'Content-Type': 'application/json',
@@ -212,48 +210,48 @@ export function ConnectionNode({ id, data }) {
           }
         });
         let data = await response.json();
-        if(response.status == 200){
+        if (response.status == 200) {
           const uniqueConnections = [
             ...new Map(data.map((item) => [item.connection_name, item])).values(),
           ];
           setApiConnections(uniqueConnections); //Data = array of Connection Objects
-        }else{
-          console.log(`Error fetching connections.\nResponse status: ${response.status}\nData: `,data);
-          alert("Error fetching connections.");
+        } else {
+          console.log(`Error fetching connections.\nResponse status: ${response.status}\nData: `, data);
+          data.toast.error("Error fetching connections.");
         }
-      }catch(error){
+      } catch (error) {
         console.log("Error fetching connections. ", error);
-        alert("Error fetching connections.");
+        data.toast.error("Error fetching connections.");
       }
     })();
   }, []);
 
   useEffect(() => {
     if (selectedConnection) {
-      (async() => {
-        try{
+      (async () => {
+        try {
           let response = await fetch(
-          `${FAST_BACKEND}/${selectedConnection}/schemas`,
-          {
-            method: "GET",
-            headers: {
-              authorization: `Bearer ${AUTH_TOKEN}`,
-              "Content-Type": "application/json",
-            },
+            `${FAST_BACKEND}/${selectedConnection}/schemas`,
+            {
+              method: "GET",
+              headers: {
+                authorization: `Bearer ${AUTH_TOKEN}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          let data = await response.json();
+          if (response.status == 200) {
+            setApiSchemas(data);
+          } else {
+            console.log(`Error fetching Schemas.\nResponse status: ${response.status}\nData: `, data);
+            data.toast.error("Error fetching Schemas.");
           }
-        );
-        
-        let data = await response.json();
-        if(response.status == 200){
-          setApiSchemas(data);
-        }else {
-          console.log(`Error fetching Schemas.\nResponse status: ${response.status}\nData: `,data);
-          alert("Error fetching Schemas.");
+        } catch (error) {
+          console.log("Error fetching schemas. ", error);
+          data.toast.error("Error fetching Schemas.");
         }
-      }catch(error){
-        console.log("Error fetching schemas. ", error);
-        alert("Error fetching Schemas.");
-      }
       })();
     }
   }, [selectedConnection]);
@@ -262,7 +260,7 @@ export function ConnectionNode({ id, data }) {
     if (selectedSchema) {
       (async () => {
         let response;
-        try{
+        try {
           response = await fetch(
             `${FAST_BACKEND}/${selectedConnection}/schemas/${selectedSchema}/tables`,
             {
@@ -275,16 +273,16 @@ export function ConnectionNode({ id, data }) {
           );
 
           let data = await response.json();
-          if(response.status == 200){
+          if (response.status == 200) {
             console.log(data);
             setApiTables(data);
-          }else {
-            console.log(`Error fetching Tables.\nResponse status: ${response.status}\nData: `,data);
-            alert("Error fetching Tables.");
+          } else {
+            console.log(`Error fetching Tables.\nResponse status: ${response.status}\nData: `, data);
+            data.toast.error("Error fetching Tables.");
           }
-        }catch(error){
+        } catch (error) {
           console.log("Error fetching tables. ", error);
-          alert("Error fetching Tables.");
+          data.toast.error("Error fetching Tables.");
         }
       })();
     }
@@ -292,9 +290,9 @@ export function ConnectionNode({ id, data }) {
 
   useEffect(() => {
     if (selectedTable) {
-      (async() => {
+      (async () => {
         let response;
-        try{
+        try {
           response = await fetch(
             `${FAST_BACKEND}/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
             {
@@ -306,17 +304,17 @@ export function ConnectionNode({ id, data }) {
             }
           );
           let data = await response.json();
-          
-          if(response.status == 200){
+
+          if (response.status == 200) {
             console.log("\n\nCOLUMNS = ", data, "\n\n\n")
             setApiColumns(data);
-          }else {
+          } else {
             console.log("Error while trying to fetch columns. ", data);
-            alert("Error while trying to fetch columns.");
+            data.toast.error("Error while trying to fetch columns.");
           }
-        }catch(error){
+        } catch (error) {
           console.error("Error while trying to fetch columns. ", error);
-          alert("Error while trying to fetch columns.");
+          data.toast.error("Error while trying to fetch columns.");
         }
       })();
     }
@@ -331,19 +329,19 @@ export function ConnectionNode({ id, data }) {
   };
 
   const handleEditColumn = (columnName) => {
-    if(!selectedColumns.includes(columnName))
+    if (!selectedColumns.includes(columnName))
       setSelectedColumns([...selectedColumns, columnName]);
     console.log(columnName)
     apiColumns.forEach(item => {
-      if(item.column == columnName){
+      if (item.column == columnName) {
         data.handleColumnSetting({
-        column: item,
-        connection: selectedConnection,
-        schema: selectedSchema,
-        table: selectedTable,
-        viewType: "Connection"
-      })
-    }
+          column: item,
+          connection: selectedConnection,
+          schema: selectedSchema,
+          table: selectedTable,
+          viewType: "Connection"
+        })
+      }
     });
   }
 
@@ -409,8 +407,8 @@ export function ConnectionNode({ id, data }) {
               <select
                 value={selectedConnection}
                 onChange={(e) => {
-                  e.preventDefault(); 
-                  setSelectedConnection(e.target.value); 
+                  e.preventDefault();
+                  setSelectedConnection(e.target.value);
                   setSelectedColumns([]);
                 }}
                 className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"

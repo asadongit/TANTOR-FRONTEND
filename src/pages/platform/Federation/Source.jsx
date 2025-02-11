@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate} from "react-router-dom";
 import {
   Controls,
   Background,
@@ -15,6 +15,8 @@ import ColumnSettings from "./viewsource/ColumnSettings";
 import SaveViewModal from "./viewsource/SaveViewModal";
 import SourcePreview from "./viewsource/SourcePreview";
 import { useStateContext } from "../../../context/contextProvider";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const nodeTypes = {
   baseNode: BaseNode,
@@ -61,78 +63,6 @@ const sampleData = [
     views: 6,
     created: "17/07/2024",
   },
-  {
-    id: "05",
-    connections: "Postgres",
-    description: "A connection with Postgres",
-    schema: 74,
-    tables: 110,
-    views: 7,
-    created: "22/01/2023",
-  },
-  {
-    id: "06",
-    connections: "Oracle",
-    description: "A connection with Oracle",
-    schema: 59,
-    tables: 140,
-    views: 10,
-    created: "10/04/2020",
-  },
-  {
-    id: "07",
-    connections: "MySQL",
-    description: "A connection with MySQL",
-    schema: 45,
-    tables: 87,
-    views: 3,
-    created: "05/09/2021",
-  },
-  {
-    id: "08",
-    connections: "Postgres",
-    description: "A connection with Postgres",
-    schema: 67,
-    tables: 119,
-    views: 4,
-    created: "19/12/2022",
-  },
-  {
-    id: "09",
-    connections: "Oracle",
-    description: "A connection with Oracle",
-    schema: 94,
-    tables: 134,
-    views: 8,
-    created: "12/08/2023",
-  },
-  {
-    id: "10",
-    connections: "MySQL",
-    description: "A connection with MySQL",
-    schema: 83,
-    tables: 120,
-    views: 6,
-    created: "29/06/2022",
-  },
-  {
-    id: "11",
-    connections: "Postgres",
-    description: "A connection with Postgres",
-    schema: 65,
-    tables: 112,
-    views: 5,
-    created: "18/03/2021",
-  },
-  {
-    id: "12",
-    connections: "Oracle",
-    description: "A connection with Oracle",
-    schema: 76,
-    tables: 130,
-    views: 9,
-    created: "30/10/2024",
-  },
 ];
 
 export default function Source() {
@@ -140,6 +70,8 @@ export default function Source() {
 
   const { settingsList, setSettingsList, userSelections, setUserSelections } =
     useStateContext();
+
+  const navigate = useNavigate();
 
   const [userSelection, setUserSelection] = useState({});
   const [columnSetting, setColumnSetting] = useState(null);
@@ -190,12 +122,14 @@ export default function Source() {
 
       if (invalidColumns.length > 0) {
         console.log("\n\nHEREEE 0");
-        alert("INVALID COLUMNS SELECTED (GROUP BY)");
+        toast.error(
+          `Group By Error. Invalid Columns = ${invalidColumns.join(", ")}`
+        );
         return;
       }
     }
 
-    // Remove Uncheched Columns from Settings List
+    // Remove Unchecked Columns from Settings List
     setSettingsList((prev) => {
       return prev.filter((item) => userCheckedColumns.includes(item.name));
     });
@@ -207,10 +141,35 @@ export default function Source() {
   };
 
   const handleSaveView = async (params) => {
+    const { newViewName } = params;
+
     console.log("\n\nsettings final payload -> ", settingsList);
     console.log("\n\nnew view name -> ", params.newViewName);
     console.log("\n\nUser Selection ===> ", userSelections);
+  
+    const viewExistsResponse = await fetch(
+      `${import.meta.env.VITE_FAST_API_V2}/view-exists/${newViewName}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${
+            import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+          }`,
+        },
+      }
+    );
 
+    if (viewExistsResponse.status !== 200) {
+      toast.error("Error checking if view exists");
+      return;
+    }
+    const viewExists = await viewExistsResponse.json();
+    console.log("viewExists ===> ", viewExists);
+    if (viewExists["result"]) {
+      toast.error("View already exists");
+      return
+    }
     let apiPayload;
 
     if (userSelections.get("viewType") === "Source") {
@@ -219,6 +178,7 @@ export default function Source() {
         view: userSelections.get("viewName"),
         view_name: params.newViewName,
         select_fields: [],
+        group_by: [],
       };
     }
 
@@ -230,14 +190,19 @@ export default function Source() {
         table_name: userSelections.get("table"),
         view_name: params.newViewName,
         select_fields: [],
+        group_by: [],
       };
     }
 
     // Configuring Aliases
     settingsList.forEach((item) => {
-      apiPayload["select_fields"].push({ field: item.name, alias: item.alias });
+      if(item.output === "Yes")
+        apiPayload["select_fields"].push({ field: item.name, alias: item.alias });
+      
+      if(item.groupBy === "Yes")
+        apiPayload["group_by"].push(item.name);
     });
-    
+
     console.log("API PAYLOAD ===> ", apiPayload);
     
     const response = await fetch(
@@ -246,7 +211,9 @@ export default function Source() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${
+            import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+          }`,
         },
         body: JSON.stringify(apiPayload),
       }
@@ -257,8 +224,10 @@ export default function Source() {
     if (response.status == 200) {
       console.log("Save View Result ==> ", data);
       setShowPreview((prev) => !prev);
+      toast.success("VIEW SAVED SUCCESSFULLY.");
+      setTimeout(() => navigate("/federation"),3000)
     } else {
-      alert("ERROR WHEN SAVING VIEW.");
+      toast.error("ERROR WHEN SAVING VIEW.");
     }
   };
 
@@ -300,6 +269,7 @@ export default function Source() {
           deleteNode: (id) =>
             setNodes((nds) => nds.filter((node) => node.id !== id)),
           handleColumnSetting,
+          toast,
         },
       };
 
@@ -323,9 +293,9 @@ export default function Source() {
   return (
     <div className="w-full h-screen overflow-hidden">
       <div
-        className={`${
-          showPreview ? "h-[40%]" : "h-[95%]"
-        } transition-all duration-300`}
+        className={`${showPreview ? "h-[40%]" : "h-[95%]"}`}
+        transition-all
+        duration-300
       >
         <p className="p-2">Source Page</p>
         <div className="w-full h-[calc(100%-2rem)]">
@@ -368,8 +338,6 @@ export default function Source() {
       <ColumnSettings
         columnSetting={columnSetting}
         setColumnSetting={setColumnSetting}
-        // settingsPayload={settingsPayload}
-        // setSettingsPayload={setSettingsPayload}
       />
 
       {isModalOpen && (
@@ -378,6 +346,8 @@ export default function Source() {
           handleSaveView={handleSaveView}
         />
       )}
+
+      <ToastContainer position="top-right" />
     </div>
   );
 }

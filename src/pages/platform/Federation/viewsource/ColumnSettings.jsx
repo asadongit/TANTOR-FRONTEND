@@ -4,8 +4,6 @@ import { useStateContext } from "../../../../context/contextProvider";
 
 const ColumnSettings = ({
   columnSetting,
-  // settingsPayload,
-  // setSettingsPayload,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [settings, setSettings] = useState({
@@ -22,8 +20,6 @@ const ColumnSettings = ({
   });
 
   const {
-    settingsPayload,
-    setSettingsPayload,
     settingsList,
     setSettingsList,
     userSelections,
