@@ -6,10 +6,11 @@ import { SquareKanban, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { Modal} from "@mui/material";
 import { Columns } from "../Columns";
+import { ToastContainer, toast } from "react-toastify";
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, handleFinalPayload, setColumnSettings } = useStateContext("");
+  const { viewPayload, handleViewPayload, handleFinalPayload, setColumnSettings, columnSettings } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -160,7 +161,37 @@ export function SourceViewNode({ id, onSave }) {
     //   alias: "",
     // }));
 
+    console.log("column settings are ===>",columnSettings)
 
+    const groupByColumns = Object.keys(columnSettings[selectedView]).filter(
+      (column) => columnSettings[selectedView][column].groupBy === "Yes"
+    );
+
+    const selectColumns = Object.keys(columnSettings[selectedView]).filter(
+      (column) => columnSettings[selectedView][column].output === "Yes"
+    );
+
+    const aggregateColumns = Object.keys(columnSettings[selectedView]).filter(
+      (column) => columnSettings[selectedView][column].aggregate
+    );
+
+    
+    console.log("group by columns are ====>",groupByColumns)
+    console.log("select columns are ====>",selectColumns)
+    console.log("aggregate Columns ====>",aggregateColumns)
+
+    if (groupByColumns.length > 0 || aggregateColumns.length > 0) {
+      const allowedColumns = new Set([...groupByColumns, ...aggregateColumns]);
+    
+      const invalidColumns = selectColumns.filter(
+        (column) => !allowedColumns.has(column)
+      );
+    
+      if (invalidColumns.length > 0) {
+        toast.error("Select Field must be aggregate or in Group by");
+      }
+    } 
+    else{
     if (selectedView) {
       const view = selectedView;
       const newPayload = {
@@ -186,7 +217,18 @@ export function SourceViewNode({ id, onSave }) {
       handleViewPayload(updatedPayloads);
       onSave?.(newPayload);
     }
+
+  }
   };
+
+  useEffect(() => {
+    if (selectedView && columnSettings[selectedView]) {
+      const columnsWithOutputYes = Object.keys(columnSettings[selectedView]).filter(
+        column => columnSettings[selectedView][column].output === "Yes"
+      );
+      setSelectedColumns(columnsWithOutputYes);
+    }
+  }, [columnSettings, selectedView]);
 
   const handleDelete = (id) => {
     const updatedPayload = viewPayload.filter((node) => node.id !== id);

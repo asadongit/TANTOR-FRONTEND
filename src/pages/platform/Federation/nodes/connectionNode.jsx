@@ -5,11 +5,11 @@ import { Handle, Position } from "reactflow";
 import { Cable, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { Columns } from "../Columns";
-import { Modal} from "@mui/material";
+import { Modal } from "@mui/material";
 
 export function ConnectionNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { handleConnectionPayload, connectionPayload,setColumnSettings, columnSettings } = useStateContext("")
+  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings } = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("")
@@ -52,9 +52,9 @@ export function ConnectionNode({ id, onSave }) {
       }
     });
   };
-  
 
-  const handleChange = (column) =>{
+
+  const handleChange = (column) => {
     toggleModal(true);
     setSelectedColumn(column);
   }
@@ -69,7 +69,7 @@ export function ConnectionNode({ id, onSave }) {
             ...updatedSettings[id],
             [column]: {
               ...(updatedSettings[id]?.[column] || {}),
-              output: "Yes", 
+              output: "Yes",
             },
           };
         });
@@ -229,41 +229,83 @@ export function ConnectionNode({ id, onSave }) {
   const handleSave = () => {
     const view = id;
 
-    if (view && selectedConnection && selectedSchema && selectedTable) {
 
-      // const selectFields = selectedColumns.map((column) => ({
-      //   field: `${view}.${column}`,
-      //   alias: "",
-      // }));
+    console.log("column settings are ===>", columnSettings)
 
-      const newPayload = {
-        id,
-        type: "Connection",
-        view,
-        selectedConnection,
-        selectedSchema,
-        selectedTable,
-        selectedColumns,
-        def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
-        // select_fields: selectFields,
-        Columns: columns
-      };
+    const groupByColumns = Object.keys(columnSettings[view]).filter(
+      (column) => columnSettings[view][column].groupBy === "Yes"
+    );
 
-      const currentPayloads = connectionPayload || [];
-      const updatedPayloads = [...currentPayloads];
-      const existingIndex = updatedPayloads.findIndex((payload) => payload.id === id);
+    const selectColumns = Object.keys(columnSettings[view]).filter(
+      (column) => columnSettings[view][column].output === "Yes"
+    );
 
-      if (existingIndex !== -1) {
-        updatedPayloads[existingIndex] = newPayload;
-      } else {
-        updatedPayloads.push(newPayload);
+    const aggregateColumns = Object.keys(columnSettings[view]).filter(
+      (column) => columnSettings[view][column].aggregate
+    );
+
+
+    console.log("group by columns are ====>", groupByColumns)
+    console.log("select columns are ====>", selectColumns)
+    console.log("aggregate Columns ====>", aggregateColumns)
+
+    if (groupByColumns.length > 0 || aggregateColumns.length > 0) {
+      const allowedColumns = new Set([...groupByColumns, ...aggregateColumns]);
+
+      const invalidColumns = selectColumns.filter(
+        (column) => !allowedColumns.has(column)
+      );
+
+      if (invalidColumns.length > 0) {
+        toast.error("Select Field must be aggregate or in Group by");
       }
+    }
+    else {
+      if (view && selectedConnection && selectedSchema && selectedTable) {
 
-      console.log("view payload is ===>", updatedPayloads)
-      handleConnectionPayload(updatedPayloads)
-      onSave?.(newPayload);
+        // const selectFields = selectedColumns.map((column) => ({
+        //   field: `${view}.${column}`,
+        //   alias: "",
+        // }));
+
+        const newPayload = {
+          id,
+          type: "Connection",
+          view,
+          selectedConnection,
+          selectedSchema,
+          selectedTable,
+          selectedColumns,
+          def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
+          // select_fields: selectFields,
+          Columns: columns
+        };
+
+        const currentPayloads = connectionPayload || [];
+        const updatedPayloads = [...currentPayloads];
+        const existingIndex = updatedPayloads.findIndex((payload) => payload.id === id);
+
+        if (existingIndex !== -1) {
+          updatedPayloads[existingIndex] = newPayload;
+        } else {
+          updatedPayloads.push(newPayload);
+        }
+
+        console.log("view payload is ===>", updatedPayloads)
+        handleConnectionPayload(updatedPayloads)
+        onSave?.(newPayload);
+      }
     }
   };
+
+    useEffect(() => {
+      if (id && columnSettings[id]) {
+        const columnsWithOutputYes = Object.keys(columnSettings[id]).filter(
+          column => columnSettings[id][column].output === "Yes"
+        );
+        setSelectedColumns(columnsWithOutputYes);
+      }
+    }, [columnSettings, id]);
 
   const handleDelete = (id) => {
     const updatedPayload = connectionPayload.filter((node) => node.id !== id);
@@ -272,9 +314,9 @@ export function ConnectionNode({ id, onSave }) {
 
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
-      delete updatedSettings[id]; 
+      delete updatedSettings[id];
       return updatedSettings;
-  });
+    });
 
   };
 
@@ -390,30 +432,30 @@ export function ConnectionNode({ id, onSave }) {
                     <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
                       {columns.map((column) => (
                         <div className="flex justify-between">
-                        <div key={column} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            onClick={(e) => {
-                              if (e.target.checked) {
-                                toggleModal(true);
-                                setSelectedColumn(column);
+                          <div key={column} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              onClick={(e) => {
+                                if (e.target.checked) {
+                                  toggleModal(true);
+                                  setSelectedColumn(column);
 
-                              } else {
-                                toggleModal(false);
-                              }
-                            }}
-                            id={column}
-                            value={column}
-                            checked={selectedColumns.includes(column)}
-                            onChange={() => handleColumnChange(column)}
-                            className="text-purple-600 focus:ring-purple-500"
-                          />
-                          <label htmlFor={column} className="text-sm text-gray-700">
-                            {column}
-                          </label>
+                                } else {
+                                  toggleModal(false);
+                                }
+                              }}
+                              id={column}
+                              value={column}
+                              checked={selectedColumns.includes(column)}
+                              onChange={() => handleColumnChange(column)}
+                              className="text-purple-600 focus:ring-purple-500"
+                            />
+                            <label htmlFor={column} className="text-sm text-gray-700">
+                              {column}
+                            </label>
                           </div>
                           <Pencil name="edit" onClick={() => handleChange(column)} className="mr-3 h-4 w-4 text-[#8E77BB]" />
-                         
+
                         </div>
                       ))}
                     </div>
