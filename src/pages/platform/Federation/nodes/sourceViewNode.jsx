@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
-import { SquareKanban, X, ChevronDown, ChevronUp } from "lucide-react";
+import { SquareKanban, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { Modal} from "@mui/material";
 import { Columns } from "../Columns";
@@ -39,7 +39,7 @@ export function SourceViewNode({ id, onSave }) {
     setSelectedColumns([])
     setSelectedView(e.target.value)
     fetchColumnsForView(e.target.value);
-    handleFinalPayload({});
+    // handleFinalPayload({});
 
   }
 
@@ -77,18 +77,76 @@ export function SourceViewNode({ id, onSave }) {
   };
 
   const handleColumnChange = (column) => {
-    setSelectedColumns((prev) =>
-      prev.includes(column)
-        ? prev.filter((col) => col !== column)
-        : [...prev, column]
-    );
+    setSelectedColumns((prev) => {
+      if (prev.includes(column)) {
+        setColumnSettings((prevSettings) => {
+          const updatedSettings = { ...prevSettings };
+          if (updatedSettings[selectedView]) {
+            delete updatedSettings[selectedView][column];
+            if (Object.keys(updatedSettings[selectedView]).length === 0) {
+              delete updatedSettings[selectedView];
+            }
+          }
+          return updatedSettings;
+        });
+        return prev.filter((col) => col !== column);
+      } else {
+        setColumnSettings((prevSettings) => ({
+          ...prevSettings,
+          [selectedView]: {
+            ...(prevSettings[selectedView] || {}),
+            [column]: {
+              ...(prevSettings[selectedView]?.[column] || {}),
+              output: "Yes",
+            },
+          },
+        }));
+        return [...prev, column];
+      }
+    });
   };
+  
+
+  const handleChange = (column) =>{
+    toggleModal(true);
+    setSelectedColumn(column);
+  }
+  
+  
 
   const handleSelectAllChange = (isChecked) => {
     if (isChecked && columnsForViews[selectedView]) {
       setSelectedColumns(columnsForViews[selectedView]);
+      setColumnSettings((prevSettings) => {
+        const updatedSettings = { ...prevSettings };
+        columnsForViews[selectedView].forEach((column) => {
+          updatedSettings[selectedView] = {
+            ...updatedSettings[selectedView],
+            [column]: {
+              ...(updatedSettings[selectedView]?.[column] || {}),
+              output: "Yes",
+            },
+          };
+        });
+        return updatedSettings;
+      });
     } else {
       setSelectedColumns([]);
+      setColumnSettings((prevSettings) => {
+        const updatedSettings = { ...prevSettings };
+        if (columnsForViews[selectedView]) {
+          columnsForViews[selectedView].forEach((column) => {
+            updatedSettings[selectedView] = {
+              ...updatedSettings[selectedView],
+              [column]: {
+                ...(updatedSettings[selectedView]?.[column] || {}),
+                output: "No", 
+              },
+            };
+          });
+        }
+        return updatedSettings;
+      });
     }
   };
 
@@ -222,18 +280,20 @@ export function SourceViewNode({ id, onSave }) {
                     </div>
 
                     <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
+                      
                       {columnsForViews[selectedView]?.length > 0 &&
                         columnsForViews[selectedView].map((column) => (
+                          <div className="flex justify-between">
                           <div key={column} className="flex items-center space-x-2">
                             <input
                               type="checkbox"
                               onClick={(e) => {
                                 if (e.target.checked) {
-                                  toggleModal(true);
+                                  // toggleModal(true);
                                   setSelectedColumn(column);
 
                                 } else {
-                                  toggleModal(false);
+                                  // toggleModal(false);
                                 }
                               }}
                               id={column}
@@ -245,6 +305,8 @@ export function SourceViewNode({ id, onSave }) {
                             <label htmlFor={column} className="text-sm text-gray-700">
                               {column}
                             </label>
+                          </div>
+                          <Pencil name="edit" onClick={() => handleChange(column)} className="mr-3 h-4 w-4 text-[#8E77BB]" />
                           </div>
                         ))}
 

@@ -11,7 +11,7 @@ export function Columns({ id, columnName, toggleModal }) {
       const defaultSettings = {
         name: "",
         type: "",
-        output: "No",
+        output: "Yes",
         alias: "",
         order: "",
         sort: "",

@@ -40,6 +40,9 @@ export function BusinessFooter() {
 
 
   const handleClick = async () => {
+    
+    console.log("select all column settings are ===>",columnSettings)
+
     if (finalPayload && Object.keys(finalPayload).length > 0) {
       setPreview(true);
       setLoading(true);

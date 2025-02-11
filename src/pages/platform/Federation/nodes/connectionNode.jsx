@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types"; // Add this import
 import { Handle, Position } from "reactflow";
-import { Cable, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Cable, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { Columns } from "../Columns";
 import { Modal} from "@mui/material";
 
 export function ConnectionNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { handleConnectionPayload, connectionPayload, columnSettings, setColumnSettings } = useStateContext("")
+  const { handleConnectionPayload, connectionPayload,setColumnSettings, columnSettings } = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("")
@@ -24,18 +24,72 @@ export function ConnectionNode({ id, onSave }) {
   // const dummyColumns = ["connection 1", "id ", "name", "address", "phonenumber"];
 
   const handleColumnChange = (column) => {
-    setSelectedColumns((prev) =>
-      prev.includes(column)
-        ? prev.filter((col) => col !== column)
-        : [...prev, column]
-    );
+    setSelectedColumns((prev) => {
+      if (prev.includes(column)) {
+        setColumnSettings((prevSettings) => {
+          const updatedSettings = { ...prevSettings };
+          if (updatedSettings[id]) {
+            delete updatedSettings[id][column];
+            if (Object.keys(updatedSettings[id]).length === 0) {
+              delete updatedSettings[id];
+            }
+          }
+          return updatedSettings;
+        });
+        return prev.filter((col) => col !== column);
+      } else {
+        setColumnSettings((prevSettings) => ({
+          ...prevSettings,
+          [id]: {
+            ...(prevSettings[id] || {}),
+            [column]: {
+              ...(prevSettings[id]?.[column] || {}),
+              output: "Yes",
+            },
+          },
+        }));
+        return [...prev, column];
+      }
+    });
   };
+  
+
+  const handleChange = (column) =>{
+    toggleModal(true);
+    setSelectedColumn(column);
+  }
 
   const handleSelectAllChange = (isChecked) => {
     if (isChecked) {
       setSelectedColumns(columns);
+      setColumnSettings((prevSettings) => {
+        const updatedSettings = { ...prevSettings };
+        columns.forEach((column) => {
+          updatedSettings[id] = {
+            ...updatedSettings[id],
+            [column]: {
+              ...(updatedSettings[id]?.[column] || {}),
+              output: "Yes", 
+            },
+          };
+        });
+        return updatedSettings;
+      });
     } else {
       setSelectedColumns([]);
+      setColumnSettings((prevSettings) => {
+        const updatedSettings = { ...prevSettings };
+        columns.forEach((column) => {
+          updatedSettings[id] = {
+            ...updatedSettings[id],
+            [column]: {
+              ...(updatedSettings[id]?.[column] || {}),
+              output: "No",
+            },
+          };
+        });
+        return updatedSettings;
+      });
     }
   };
 
@@ -221,7 +275,7 @@ export function ConnectionNode({ id, onSave }) {
       delete updatedSettings[id]; 
       return updatedSettings;
   });
-  
+
   };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -335,6 +389,7 @@ export function ConnectionNode({ id, onSave }) {
                     </div>
                     <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
                       {columns.map((column) => (
+                        <div className="flex justify-between">
                         <div key={column} className="flex items-center space-x-2">
                           <input
                             type="checkbox"
@@ -356,6 +411,9 @@ export function ConnectionNode({ id, onSave }) {
                           <label htmlFor={column} className="text-sm text-gray-700">
                             {column}
                           </label>
+                          </div>
+                          <Pencil name="edit" onClick={() => handleChange(column)} className="mr-3 h-4 w-4 text-[#8E77BB]" />
+                         
                         </div>
                       ))}
                     </div>

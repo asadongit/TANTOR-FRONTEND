@@ -231,6 +231,14 @@ export function ConsolidationNode({ id }) {
     setOperator("")
      }
 
+  const handleClear = () =>{
+    handleFinalPayload({});
+    setSelectedLeft("")
+    setSelectedRight("")
+    setJoinType("")
+    setOperator("")
+  }
+
   return (
     <>
       <div className="bg-[#8E77BB] rounded-full p-6 shadow-lg relative group flex justify-center">
@@ -409,6 +417,7 @@ export function ConsolidationNode({ id }) {
             {(type === "Join" || type === "Union" || type === "Intersect") && (
               <div className="mb-4 " style={{ height: "20%" }}>
                 <button
+                onClick={handleClear}
                   type="button"
                   className="text-black bg-white hover:bg-gray-50 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-2 me-2 mb-2 focus:outline-none border-solid border-2"
                 >
