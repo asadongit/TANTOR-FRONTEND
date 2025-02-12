@@ -17,63 +17,72 @@ export function BusinessFooter() {
 
 
   // let selectFields = Object.entries(columnSettings).flatMap(([view, columns]) =>
-      //   Object.entries(columns)
-      //     .filter(([colName, colProps]) => colProps.output === "Yes")
-      //     .map(([colName, colProps]) => ({
-      //       field: hasOperation ? colName : `${view}.${colName}`,
-      //       alias: colProps.aggregate ? colProps.aggregate : colProps.alias || ""
-      //     }))
-      // );
+  //   Object.entries(columns)
+  //     .filter(([colName, colProps]) => colProps.output === "Yes")
+  //     .map(([colName, colProps]) => ({
+  //       field: hasOperation ? colName : `${view}.${colName}`,
+  //       alias: colProps.aggregate ? colProps.aggregate : colProps.alias || ""
+  //     }))
+  // );
 
-      const getSelectFields = (columnSettings, hasOperation) => {
-        return Object.entries(columnSettings).flatMap(([view, columns]) =>
-            Object.entries(columns)
-                .filter(([colName, colProps]) => colProps.output === "Yes")
-                .map(([colName, colProps]) => ({
-                    field: colProps.aggregate 
-                        ? `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})` 
-                        : (hasOperation ? colName : `${view}.${colName}`),
-                    alias: colProps.alias || ""
-                }))
-        );
-    };
+  const getSelectFields = (columnSettings, hasOperation) => {
+    return Object.entries(columnSettings).flatMap(([view, columns]) =>
+      Object.entries(columns)
+        .filter(([colName, colProps]) => colProps.output === "Yes")
+        .map(([colName, colProps]) => ({
+          field: colProps.aggregate
+            ? `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`
+            : (hasOperation ? colName : `${view}.${colName}`),
+          alias: colProps.alias || ""
+        }))
+    );
+  };
 
 
   const handleClick = async () => {
 
-    console.log("column settings are ===>",columnSettings)
-    
-          let selectColumns = [];
-          let groupByColumns = [];
-          let aggregateColumns = [];
-        
-          Object.entries(columnSettings).forEach(([table, columns]) => {
-            Object.entries(columns).forEach(([column, properties]) => {
-              if (properties.output === "Yes" && !properties.aggregate) {
-                selectColumns.push(column);
-              }
-              if (properties.groupBy === "Yes") {
-                groupByColumns.push(column);
-              }
-              if (properties.aggregate) {
-                aggregateColumns.push(column);
-              }
-            });
-          });
-    
-        if (groupByColumns.length > 0) {
-          if (JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
-            toast.error("Select Field must be aggregate or in Group by");
-            return;
-          }
-        } else if (aggregateColumns.length > 0) {
-          if (selectColumns.length > 0) {
-             toast.error("Select Field must be aggregate or in Group by");
-             return;
-          }
-        } 
-    
-    console.log("select all column settings are ===>",columnSettings)
+    console.log("column settings are ===>", columnSettings)
+
+    let selectColumns = new Set();
+    let groupByColumns = new Set();
+    let aggregateColumns = new Set();
+
+    Object.entries(columnSettings).forEach(([table, columns]) => {
+      Object.entries(columns).forEach(([column, properties]) => {
+        if (properties.output === "Yes" && !properties.aggregate) {
+          selectColumns.add(column);
+        }
+        if (properties.groupBy === "Yes") {
+          groupByColumns.add(column);
+        }
+        if (properties.aggregate) {
+          aggregateColumns.add(column);
+        }
+      });
+    });
+
+    selectColumns = [...selectColumns];
+    groupByColumns = [...groupByColumns];
+    aggregateColumns = [...aggregateColumns];
+
+
+    console.log("group by cols are===>", groupByColumns)
+    console.log("select cols aree===>", selectColumns)
+    console.log("aggregate cols are ===>", aggregateColumns)
+
+    if (groupByColumns.length > 0) {
+      if (JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
+        toast.error("Select Field must be aggregate or in Group by");
+        return;
+      }
+    } else if (aggregateColumns.length > 0) {
+      if (selectColumns.length > 0) {
+        toast.error("Select Field must be aggregate or in Group by");
+        return;
+      }
+    }
+
+    console.log("select all column settings are ===>", columnSettings)
 
     if (finalPayload && Object.keys(finalPayload).length > 0) {
       setPreview(true);
@@ -92,9 +101,9 @@ export function BusinessFooter() {
       const selectFields = getSelectFields(columnSettings, hasOperation)
 
 
-      console.log("select fields are =====>",selectFields)
+      console.log("select fields are =====>", selectFields)
 
-      const updatedPayload = { ...finalPayload, group_by: groupByArray, select_fields: selectFields};
+      const updatedPayload = { ...finalPayload, group_by: groupByArray, select_fields: selectFields };
       console.log("Updated final payload with group_by and select fields is ===>", updatedPayload);
 
       fetch(`${import.meta.env.VITE_FAST_API_V2}/save-view`, {
