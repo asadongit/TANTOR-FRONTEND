@@ -409,11 +409,12 @@ export function ConnectionNode({ id, onSave }) {
                               type="checkbox"
                               onClick={(e) => {
                                 if (e.target.checked) {
-                                  toggleModal(true);
+                                  // toggleModal(true);
                                   setSelectedColumn(column);
 
                                 } else {
-                                  toggleModal(false);
+                                  setSelectedColumn("");
+                                  // toggleModal(false);
                                 }
                               }}
                               id={column}

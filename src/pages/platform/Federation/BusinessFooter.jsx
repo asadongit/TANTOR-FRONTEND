@@ -26,16 +26,21 @@ export function BusinessFooter() {
   // );
 
   const getSelectFields = (columnSettings, hasOperation) => {
-    return Object.entries(columnSettings).flatMap(([view, columns]) =>
-      Object.entries(columns)
-        .filter(([colName, colProps]) => colProps.output === "Yes")
-        .map(([colName, colProps]) => ({
-          field: colProps.aggregate
-            ? `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`
-            : (hasOperation ? colName : `${view}.${colName}`),
-          alias: colProps.alias || ""
-        }))
-    );
+    const selectedViews = hasOperation ? { Union: columnSettings.Union } : columnSettings;
+
+    console.log("selected views column seetings ====>", selectedViews)
+
+    return Object.entries(selectedViews || {}) 
+      .flatMap(([view, columns]) =>
+        Object.entries(columns)
+          .filter(([colName, colProps]) => colProps.output === "Yes")
+          .map(([colName, colProps]) => ({
+            field: colProps.aggregate
+              ? `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`
+              : (hasOperation ? colName : `${view}.${colName}`),
+            alias: colProps.alias || ""
+          }))
+      );
   };
 
 
@@ -47,17 +52,18 @@ export function BusinessFooter() {
     let groupByColumns = new Set();
     let aggregateColumns = new Set();
 
-    Object.entries(columnSettings).forEach(([table, columns]) => {
+    const hasOperation = finalPayload?.operation !== undefined;
+    const source = hasOperation ? columnSettings["Union"] : columnSettings;
+
+    Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
+      const columns = hasOperation ? { [tableOrColumn]: columnsOrProperties } : columnsOrProperties;
+
       Object.entries(columns).forEach(([column, properties]) => {
-        if (properties.output === "Yes" && !properties.aggregate) {
-          selectColumns.add(column);
+        if (properties.output === "Yes") {
+          if (!properties.aggregate) selectColumns.add(column);
         }
-        if (properties.groupBy === "Yes") {
-          groupByColumns.add(column);
-        }
-        if (properties.aggregate) {
-          aggregateColumns.add(column);
-        }
+        if (properties.groupBy === "Yes") groupByColumns.add(column);
+        if (properties.aggregate) aggregateColumns.add(column);
       });
     });
 
@@ -65,24 +71,20 @@ export function BusinessFooter() {
     groupByColumns = [...groupByColumns];
     aggregateColumns = [...aggregateColumns];
 
+    console.log("group by cols are ===>", groupByColumns);
+    console.log("select cols are ===>", selectColumns);
+    console.log("aggregate cols are ===>", aggregateColumns);
 
-    console.log("group by cols are===>", groupByColumns)
-    console.log("select cols aree===>", selectColumns)
-    console.log("aggregate cols are ===>", aggregateColumns)
-
-    if (groupByColumns.length > 0) {
-      if (JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
+      if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
         toast.error("Select Field must be aggregate or in Group by");
         return;
       }
-    } else if (aggregateColumns.length > 0) {
-      if (selectColumns.length > 0) {
+      
+      if (!hasOperation && aggregateColumns.length > 0 && selectColumns.some(col => aggregateColumns.includes(col))) {
         toast.error("Select Field must be aggregate or in Group by");
         return;
       }
-    }
-
-    console.log("select all column settings are ===>", columnSettings)
+      
 
     if (finalPayload && Object.keys(finalPayload).length > 0) {
       setPreview(true);
@@ -92,7 +94,9 @@ export function BusinessFooter() {
       console.log("ggggggggggggggggggg final payload is =====>", finalPayload);
 
       const hasOperation = finalPayload?.operation !== undefined;
-      const groupByArray = Object.entries(columnSettings).flatMap(([view, columns]) =>
+      const source = hasOperation ? { Union: columnSettings["Union"] } : columnSettings;
+
+      const groupByArray = Object.entries(source).flatMap(([view, columns]) =>
         Object.entries(columns)
           .filter(([col, settings]) => settings.groupBy === "Yes")
           .map(([col]) => hasOperation ? `${col}` : `${view}.${col}`)
@@ -101,9 +105,10 @@ export function BusinessFooter() {
       const selectFields = getSelectFields(columnSettings, hasOperation)
 
 
-      console.log("select fields are =====>", selectFields)
+      console.log("select fields are in every case is   &&&&&&&&&&&&&&&=====>", selectFields)
 
       const updatedPayload = { ...finalPayload, group_by: groupByArray, select_fields: selectFields };
+
       console.log("Updated final payload with group_by and select fields is ===>", updatedPayload);
 
       fetch(`${import.meta.env.VITE_FAST_API_V2}/save-view`, {
