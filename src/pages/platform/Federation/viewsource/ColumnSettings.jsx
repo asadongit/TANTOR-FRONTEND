@@ -6,7 +6,7 @@ const ColumnSettings = ({
   columnSetting,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [settings, setSettings] = useState({
+  const defaultSetting = {
     name: "",
     type: "",
     output: "Yes",
@@ -17,7 +17,8 @@ const ColumnSettings = ({
     groupBy: "",
     wildcard: "",
     filterBy: "",
-  });
+  };
+  const [settings, setSettings] = useState(defaultSetting);
 
   const {
     settingsList,
@@ -39,16 +40,9 @@ const ColumnSettings = ({
           setSettings(previousColumnSetting);
         } else {
           setSettings({
+            ...defaultSetting,
             name: columnSetting?.column.column_name,
-            type: columnSetting?.column.data_type,
-            output: "Yes",
-            alias: "",
-            order: "",
-            sort: "",
-            aggregate: "",
-            groupBy: "",
-            wildcard: "",
-            filterBy: "",
+            type: columnSetting?.column.data_type
           });
         }
     }
@@ -62,16 +56,9 @@ const ColumnSettings = ({
           setSettings(previousColumnSetting);
         } else {
           setSettings({
+            ...defaultSetting,
             name: columnSetting?.column.column,
-            type: columnSetting?.column.datatype,
-            output: "Yes",
-            alias: "",
-            order: "",
-            sort: "",
-            aggregate: "",
-            groupBy: "",
-            wildcard: "",
-            filterBy: "",
+            type: columnSetting?.column.datatype
           });
         }
     }
@@ -156,18 +143,7 @@ const ColumnSettings = ({
       }
     }
 
-    setSettings({
-      name: "",
-      type: "",
-      output: "Yes",
-      alias: "",
-      order: "",
-      sort: "",
-      aggregate: "",
-      groupBy: "",
-      wildcard: "",
-      filterBy: "",
-    });
+    setSettings(defaultSetting);
 
     toggleDialog();
   };
@@ -238,8 +214,9 @@ const ColumnSettings = ({
               <input
                 type="number"
                 name="order"
-                value={settings.order || 1}
+                value={settings.order}
                 onChange={handleChange}
+                min={1}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
               />
             </div>

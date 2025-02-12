@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useLocation, useNavigate} from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Controls,
   Background,
@@ -105,23 +105,51 @@ export default function Source() {
     console.log("OUTSIDE SETTINGS ", params);
     if (!params) return;
 
-    // Validate GROUPBY
+    // Validate Columns
     const groupByColumns = [];
+    const aggregateColumns = [];
     params.settings.forEach((item) => {
-      if (item.groupBy === "Yes") groupByColumns.push(item.name);
+      if (userCheckedColumns.includes(item.name)){
+        if (item.groupBy === "Yes") groupByColumns.push(item.name);
+        if (item.aggregate) aggregateColumns.push(item.name);  
+      }
     });
 
     console.log("GROUP BY COLUMNS ==> ", groupByColumns);
+    console.log("AGGREGATE COLUMNS ==> ", aggregateColumns);
+    console.log("User Checked Columns ==> ", userCheckedColumns);
 
-    if (groupByColumns.length > 0) {
+    // Validation for Aggregate and Group By columns
+    if (groupByColumns.length > 0 && aggregateColumns.length > 0) {
+      let invalidColumns = userCheckedColumns.filter(
+        (column) =>
+          !aggregateColumns.includes(column) && !groupByColumns.includes(column)
+      );
+      if (invalidColumns.length > 0) {
+        toast.error(
+          `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`
+        );
+        return;
+      }
+    }
+
+    if (aggregateColumns.length > 0 && groupByColumns.length === 0) {
+      let invalidColumns = userCheckedColumns.filter(
+        (column) => !aggregateColumns.includes(column)
+      );
+      if (invalidColumns.length > 0) {
+        toast.error(
+          `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`
+        );
+        return;
+      }
+    }
+
+    if (aggregateColumns.length === 0 && groupByColumns.length > 0) {
       let invalidColumns = userCheckedColumns.filter(
         (column) => !groupByColumns.includes(column)
       );
-      console.log("invalidColumns ==> ", invalidColumns);
-      console.log("invalidColumns length ==> ", invalidColumns.length);
-
       if (invalidColumns.length > 0) {
-        console.log("\n\nHEREEE 0");
         toast.error(
           `Group By Error. Invalid Columns = ${invalidColumns.join(", ")}`
         );
@@ -146,7 +174,7 @@ export default function Source() {
     console.log("\n\nsettings final payload -> ", settingsList);
     console.log("\n\nnew view name -> ", params.newViewName);
     console.log("\n\nUser Selection ===> ", userSelections);
-  
+
     const viewExistsResponse = await fetch(
       `${import.meta.env.VITE_FAST_API_V2}/view-exists/${newViewName}`,
       {
@@ -168,7 +196,7 @@ export default function Source() {
     console.log("viewExists ===> ", viewExists);
     if (viewExists["result"]) {
       toast.error("View already exists");
-      return
+      return;
     }
     let apiPayload;
 
@@ -196,15 +224,24 @@ export default function Source() {
 
     // Configuring Aliases
     settingsList.forEach((item) => {
-      if(item.output === "Yes")
-        apiPayload["select_fields"].push({ field: item.name, alias: item.alias });
-      
-      if(item.groupBy === "Yes")
-        apiPayload["group_by"].push(item.name);
+      if (item.output === "Yes") {
+        if (item.aggregate)
+          apiPayload["select_fields"].push({
+            field: `${item.aggregate.toLowerCase()}(${item.name})`,
+            alias: item.alias,
+          });
+        else
+          apiPayload["select_fields"].push({
+            field: item.name,
+            alias: item.alias,
+          });
+      }
+
+      if (item.groupBy === "Yes") apiPayload["group_by"].push(item.name);
     });
 
     console.log("API PAYLOAD ===> ", apiPayload);
-    
+
     const response = await fetch(
       `${import.meta.env.VITE_FAST_API_V2}/generate-base-view`,
       {
@@ -225,9 +262,9 @@ export default function Source() {
       console.log("Save View Result ==> ", data);
       setShowPreview((prev) => !prev);
       toast.success("VIEW SAVED SUCCESSFULLY.");
-      setTimeout(() => navigate("/federation"),3000)
+      setTimeout(() => navigate("/federation"), 3000);
     } else {
-      toast.error("ERROR WHEN SAVING VIEW.");
+      toast.error("Error while saving view..");
     }
   };
 
