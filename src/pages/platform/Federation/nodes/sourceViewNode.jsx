@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { SquareKanban, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
-import { Modal} from "@mui/material";
+import { Modal } from "@mui/material";
 import { Columns } from "../Columns";
 import { ToastContainer, toast } from "react-toastify";
 
@@ -17,6 +17,7 @@ export function SourceViewNode({ id, onSave }) {
   const [views, setViews] = useState([])
   const [columnsForViews, setColumnsForViews] = useState({});
   const [selectedColumn, setSelectedColumn] = useState("");
+  const [columnData, setColumnData] = useState([])
 
   useEffect(() => {
     const fetchViews = async () => {
@@ -62,12 +63,13 @@ export function SourceViewNode({ id, onSave }) {
       });
       const data = await response.json();
       if (data && data.result) {
+        console.log("columns are ===>", data.result[viewName])
+        setColumnData(data.result[viewName])
         const columnNames = data.result[viewName].map(col => col.column_name);
         setColumnsForViews(prevState => ({
           ...prevState,
           [viewName]: columnNames,
         }));
-        console.log("columns are ===>", data.result)
       } else {
         console.error(`Invalid response for columns of view `);
       }
@@ -106,14 +108,14 @@ export function SourceViewNode({ id, onSave }) {
       }
     });
   };
-  
 
-  const handleChange = (column) =>{
+
+  const handleChange = (column) => {
     toggleModal(true);
     setSelectedColumn(column);
   }
-  
-  
+
+
 
   const handleSelectAllChange = (isChecked) => {
     if (isChecked && columnsForViews[selectedView]) {
@@ -141,7 +143,7 @@ export function SourceViewNode({ id, onSave }) {
               ...updatedSettings[selectedView],
               [column]: {
                 ...(updatedSettings[selectedView]?.[column] || {}),
-                output: "No", 
+                output: "No",
               },
             };
           });
@@ -200,9 +202,9 @@ export function SourceViewNode({ id, onSave }) {
 
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
-      delete updatedSettings[selectedView]; 
+      delete updatedSettings[selectedView];
       return updatedSettings;
-  });
+    });
   };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -285,33 +287,33 @@ export function SourceViewNode({ id, onSave }) {
                     </div>
 
                     <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
-                      
+
                       {columnsForViews[selectedView]?.length > 0 &&
                         columnsForViews[selectedView].map((column) => (
                           <div className="flex justify-between">
-                          <div key={column} className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              onClick={(e) => {
-                                if (e.target.checked) {
-                                  // toggleModal(true);
-                                  setSelectedColumn(column);
+                            <div key={column} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                onClick={(e) => {
+                                  if (e.target.checked) {
+                                    // toggleModal(true);
+                                    setSelectedColumn(column);
 
-                                } else {
-                                  // toggleModal(false);
-                                }
-                              }}
-                              id={column}
-                              value={column}
-                              checked={selectedColumns.includes(column)}
-                              onChange={() => handleColumnChange(column)}
-                              className="text-purple-600 focus:ring-purple-500"
-                            />
-                            <label htmlFor={column} className="text-sm text-gray-700">
-                              {column}
-                            </label>
-                          </div>
-                          <Pencil name="edit" onClick={() => handleChange(column)} className="mr-3 h-4 w-4 text-[#8E77BB]" />
+                                  } else {
+                                    // toggleModal(false);
+                                  }
+                                }}
+                                id={column}
+                                value={column}
+                                checked={selectedColumns.includes(column)}
+                                onChange={() => handleColumnChange(column)}
+                                className="text-purple-600 focus:ring-purple-500"
+                              />
+                              <label htmlFor={column} className="text-sm text-gray-700">
+                                {column}
+                              </label>
+                            </div>
+                            <Pencil name="edit" onClick={() => handleChange(column)} className="mr-3 h-4 w-4 text-[#8E77BB]" />
                           </div>
                         ))}
 
@@ -351,7 +353,13 @@ export function SourceViewNode({ id, onSave }) {
         }}
       >
         <div className="absolute top-0 right-0 h-full w-full sm:w-1/2 md:w-1/3 lg:w-[22%]">
-        <Columns id={selectedView} columnName={selectedColumn} toggleModal={toggleModal} />
+          <Columns
+            id={selectedView}
+            columnName={selectedColumn}
+            dataType={columnData.find(col => col.column_name === selectedColumn)?.data_type}
+            toggleModal={toggleModal}
+          />
+
         </div>
 
       </Modal>

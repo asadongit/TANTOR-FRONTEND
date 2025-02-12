@@ -21,6 +21,7 @@ export function ConnectionNode({ id, onSave }) {
   const [columns, setColumns] = useState([])
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [selectedColumn, setSelectedColumn] = useState("");
+  const [columnData, setColumnData] = useState([])
 
   // const dummyColumns = ["connection 1", "id ", "name", "address", "phonenumber"];
 
@@ -214,11 +215,13 @@ export function ConnectionNode({ id, onSave }) {
       if (response.ok) {
         const data = await response.json();
         console.log("columns aree====>", data)
+        setColumnData(data)
         const transformedColumns = data.map((column) => (
           column.column
         ));
         console.log("trans col are ===>", transformedColumns)
         setColumns(transformedColumns);
+
       }
     } else if (!(selectedConnection || selectedSchema)) {
       toast.error("Select above field first");
@@ -230,51 +233,51 @@ export function ConnectionNode({ id, onSave }) {
   const handleSave = () => {
     const view = id;
 
-      if (view && selectedConnection && selectedSchema && selectedTable) {
+    if (view && selectedConnection && selectedSchema && selectedTable) {
 
-        // const selectFields = selectedColumns.map((column) => ({
-        //   field: `${view}.${column}`,
-        //   alias: "",
-        // }));
+      // const selectFields = selectedColumns.map((column) => ({
+      //   field: `${view}.${column}`,
+      //   alias: "",
+      // }));
 
-        const newPayload = {
-          id,
-          type: "Connection",
-          view,
-          selectedConnection,
-          selectedSchema,
-          selectedTable,
-          selectedColumns,
-          def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
-          // select_fields: selectFields,
-          Columns: columns
-        };
+      const newPayload = {
+        id,
+        type: "Connection",
+        view,
+        selectedConnection,
+        selectedSchema,
+        selectedTable,
+        selectedColumns,
+        def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
+        // select_fields: selectFields,
+        Columns: columns
+      };
 
-        const currentPayloads = connectionPayload || [];
-        const updatedPayloads = [...currentPayloads];
-        const existingIndex = updatedPayloads.findIndex((payload) => payload.id === id);
+      const currentPayloads = connectionPayload || [];
+      const updatedPayloads = [...currentPayloads];
+      const existingIndex = updatedPayloads.findIndex((payload) => payload.id === id);
 
-        if (existingIndex !== -1) {
-          updatedPayloads[existingIndex] = newPayload;
-        } else {
-          updatedPayloads.push(newPayload);
-        }
-
-        console.log("view payload is ===>", updatedPayloads)
-        handleConnectionPayload(updatedPayloads)
-        onSave?.(newPayload);
+      if (existingIndex !== -1) {
+        updatedPayloads[existingIndex] = newPayload;
+      } else {
+        updatedPayloads.push(newPayload);
       }
+
+      console.log("view payload is ===>", updatedPayloads)
+      handleConnectionPayload(updatedPayloads)
+      onSave?.(newPayload);
+    }
 
   };
 
-    useEffect(() => {
-      if (id && columnSettings[id]) {
-        const columnsWithOutputYes = Object.keys(columnSettings[id]).filter(
-          column => columnSettings[id][column].output === "Yes"
-        );
-        setSelectedColumns(columnsWithOutputYes);
-      }
-    }, [columnSettings, id]);
+  useEffect(() => {
+    if (id && columnSettings[id]) {
+      const columnsWithOutputYes = Object.keys(columnSettings[id]).filter(
+        column => columnSettings[id][column].output === "Yes"
+      );
+      setSelectedColumns(columnsWithOutputYes);
+    }
+  }, [columnSettings, id]);
 
   const handleDelete = (id) => {
     const updatedPayload = connectionPayload.filter((node) => node.id !== id);
@@ -462,7 +465,10 @@ export function ConnectionNode({ id, onSave }) {
         }}
       >
         <div className="absolute top-0 right-0 h-full w-full sm:w-1/2 md:w-1/3 lg:w-[22%]">
-          <Columns id={id} columnName={selectedColumn} toggleModal={toggleModal} />
+          <Columns id={id}
+            columnName={selectedColumn}
+            dataType={columnData.find(col => col.column === selectedColumn)?.datatype}
+            toggleModal={toggleModal} />
         </div>
       </Modal>
     </>

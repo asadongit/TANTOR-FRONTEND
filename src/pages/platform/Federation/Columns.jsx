@@ -2,15 +2,13 @@ import { Settings, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStateContext } from "../../../context/contextProvider";
 
-export function Columns({ id, columnName, toggleModal }) {
+export function Columns({ id, columnName,dataType, toggleModal }) {
 
   const { columnSettings, setColumnSettings } = useStateContext("")
 
   useEffect(() => {
     setColumnSettings((prev) => {
       const defaultSettings = {
-        name: "",
-        type: "",
         output: "Yes",
         alias: "",
         order: "",
@@ -72,7 +70,7 @@ export function Columns({ id, columnName, toggleModal }) {
               <label className="block text-sm text-gray-600 mb-1">Name</label>
               <input
                 type="text"
-                value={columnSettings[id][columnName].name || ""}
+                value={columnName}
                 className="w-full px-3 py-2 border rounded-lg text-[rgba(0,0,0,0.5)] focus:outline-none focus:ring-1 focus:ring-purple-500"
                 readOnly
               />
@@ -82,7 +80,7 @@ export function Columns({ id, columnName, toggleModal }) {
               <label className="block text-sm text-gray-600 mb-1">Type</label>
               <input
                 type="text"
-                value={columnSettings[id][columnName].type || ""}
+                value={dataType}
                 className="w-full px-3 py-2 border rounded-lg text-[rgba(0,0,0,0.5)] focus:outline-none focus:ring-1 focus:ring-purple-500"
                 readOnly
               />
