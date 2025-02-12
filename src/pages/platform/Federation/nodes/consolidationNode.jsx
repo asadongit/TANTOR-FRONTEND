@@ -5,9 +5,10 @@ import { Handle, Position } from "reactflow";
 import { SquareKanban, X, Network, ChevronDown, ChevronUp } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { Modal, Box, IconButton, Typography } from "@mui/material";
+import { ToastContainer, toast } from "react-toastify";
 
 export function ConsolidationNode({ id }) {
-  const { consolidationPayload, connectionPayload, viewPayload, handleFinalPayload, finalPayload } = useStateContext("");
+  const { consolidationPayload, connectionPayload, viewPayload, handleFinalPayload, finalPayload, columnSettings} = useStateContext("");
   const [type, setType] = useState("Join");
   const [unionType, setUnionType] = useState("");
 
@@ -110,7 +111,7 @@ export function ConsolidationNode({ id }) {
   const handleSave = () => {
 
     if (type === "Join") {
-      console.log("join payload is ===>", finalPayload)
+      console.log("@@@@@@@@@@@@@@join payload is ===>", finalPayload)
 
       const tempArray1 = new Set();
       const tempArray2 = new Set();

@@ -40,6 +40,38 @@ export function BusinessFooter() {
 
 
   const handleClick = async () => {
+
+    console.log("column settings are ===>",columnSettings)
+    
+          let selectColumns = [];
+          let groupByColumns = [];
+          let aggregateColumns = [];
+        
+          Object.entries(columnSettings).forEach(([table, columns]) => {
+            Object.entries(columns).forEach(([column, properties]) => {
+              if (properties.output === "Yes" && !properties.aggregate) {
+                selectColumns.push(column);
+              }
+              if (properties.groupBy === "Yes") {
+                groupByColumns.push(column);
+              }
+              if (properties.aggregate) {
+                aggregateColumns.push(column);
+              }
+            });
+          });
+    
+        if (groupByColumns.length > 0) {
+          if (JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
+            toast.error("Select Field must be aggregate or in Group by");
+            return;
+          }
+        } else if (aggregateColumns.length > 0) {
+          if (selectColumns.length > 0) {
+             toast.error("Select Field must be aggregate or in Group by");
+             return;
+          }
+        } 
     
     console.log("select all column settings are ===>",columnSettings)
 

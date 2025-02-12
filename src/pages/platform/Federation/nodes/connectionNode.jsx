@@ -6,6 +6,7 @@ import { Cable, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { Columns } from "../Columns";
 import { Modal } from "@mui/material";
+import { ToastContainer, toast } from "react-toastify";
 
 export function ConnectionNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
@@ -229,38 +230,6 @@ export function ConnectionNode({ id, onSave }) {
   const handleSave = () => {
     const view = id;
 
-
-    console.log("column settings are ===>", columnSettings)
-
-    const groupByColumns = Object.keys(columnSettings[view]).filter(
-      (column) => columnSettings[view][column].groupBy === "Yes"
-    );
-
-    const selectColumns = Object.keys(columnSettings[view]).filter(
-      (column) => columnSettings[view][column].output === "Yes"
-    );
-
-    const aggregateColumns = Object.keys(columnSettings[view]).filter(
-      (column) => columnSettings[view][column].aggregate
-    );
-
-
-    console.log("group by columns are ====>", groupByColumns)
-    console.log("select columns are ====>", selectColumns)
-    console.log("aggregate Columns ====>", aggregateColumns)
-
-    if (groupByColumns.length > 0 || aggregateColumns.length > 0) {
-      const allowedColumns = new Set([...groupByColumns, ...aggregateColumns]);
-
-      const invalidColumns = selectColumns.filter(
-        (column) => !allowedColumns.has(column)
-      );
-
-      if (invalidColumns.length > 0) {
-        toast.error("Select Field must be aggregate or in Group by");
-      }
-    }
-    else {
       if (view && selectedConnection && selectedSchema && selectedTable) {
 
         // const selectFields = selectedColumns.map((column) => ({
@@ -295,7 +264,7 @@ export function ConnectionNode({ id, onSave }) {
         handleConnectionPayload(updatedPayloads)
         onSave?.(newPayload);
       }
-    }
+
   };
 
     useEffect(() => {
