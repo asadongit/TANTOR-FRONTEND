@@ -26,45 +26,6 @@ const nodeTypes = {
 let id = 0;
 const getId = () => `node_${id++}`;
 
-const sampleData = [
-  {
-    id: "01",
-    connections: "MySQL",
-    description: "A connection with MySQL",
-    schema: 53,
-    tables: 135,
-    views: 8,
-    created: "14/05/2023",
-  },
-  {
-    id: "02",
-    connections: "Postgres",
-    description: "A connection with Postgres",
-    schema: 92,
-    tables: 127,
-    views: 9,
-    created: "02/11/2021",
-  },
-  {
-    id: "03",
-    connections: "Oracle",
-    description: "A connection with Oracle",
-    schema: 81,
-    tables: 104,
-    views: 5,
-    created: "29/08/2022",
-  },
-  {
-    id: "04",
-    connections: "MySQL",
-    description: "A description fot MYSQL",
-    schema: 68,
-    tables: 95,
-    views: 6,
-    created: "17/07/2024",
-  },
-];
-
 export default function Source() {
   const modalState = useLocation().state;
 
@@ -82,6 +43,7 @@ export default function Source() {
   };
 
   const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState([]);
 
   const handleColumnSetting = (params) => {
     console.log("params ==> ", params);
@@ -94,7 +56,7 @@ export default function Source() {
   };
 
   const handleOk = async (params) => {
-    const { viewType, userCheckedColumns } = params;
+    const { settings, viewType, userCheckedColumns } = params;
     // The payload has the following structure
     // {
     //  userCheckedColumns: [],
@@ -103,15 +65,16 @@ export default function Source() {
     //  userSelections: userSelections Map(),
     // }
     console.log("OUTSIDE SETTINGS ", params);
-    if (!params) return;
+    if (!params) return null;
 
     // Validate Columns
     const groupByColumns = [];
     const aggregateColumns = [];
-    params.settings.forEach((item) => {
-      if (userCheckedColumns.includes(item.name)){
+
+    settings.forEach((item) => {
+      if (userCheckedColumns.includes(item.name)) {
         if (item.groupBy === "Yes") groupByColumns.push(item.name);
-        if (item.aggregate) aggregateColumns.push(item.name);  
+        if (item.aggregate) aggregateColumns.push(item.name);
       }
     });
 
@@ -129,7 +92,7 @@ export default function Source() {
         toast.error(
           `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`
         );
-        return;
+        return null;
       }
     }
 
@@ -141,7 +104,7 @@ export default function Source() {
         toast.error(
           `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`
         );
-        return;
+        return null;
       }
     }
 
@@ -153,69 +116,37 @@ export default function Source() {
         toast.error(
           `Group By Error. Invalid Columns = ${invalidColumns.join(", ")}`
         );
-        return;
+        return null;
       }
     }
 
     // Remove Unchecked Columns from Settings List
-    setSettingsList((prev) => {
-      return prev.filter((item) => userCheckedColumns.includes(item.name));
-    });
-    setUserSelections((prev) => {
-      const updatedUserSelections = new Map(prev);
-      return updatedUserSelections.set("viewType", params.viewType);
-    });
-    setShowPreview((prev) => !prev);
-  };
-
-  const handleSaveView = async (params) => {
-    const { newViewName } = params;
-
-    console.log("\n\nsettings final payload -> ", settingsList);
-    console.log("\n\nnew view name -> ", params.newViewName);
-    console.log("\n\nUser Selection ===> ", userSelections);
-
-    const viewExistsResponse = await fetch(
-      `${import.meta.env.VITE_FAST_API_V2}/view-exists/${newViewName}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${
-            import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-          }`,
-        },
-      }
+    const updatedSettingsList = settings.filter((item) =>
+      userCheckedColumns.includes(item.name)
     );
+    const updatedUserSelections = new Map(params.userSelections);
+    updatedUserSelections.set("viewType", viewType);
 
-    if (viewExistsResponse.status !== 200) {
-      toast.error("Error checking if view exists");
-      return;
-    }
-    const viewExists = await viewExistsResponse.json();
-    console.log("viewExists ===> ", viewExists);
-    if (viewExists["result"]) {
-      toast.error("View already exists");
-      return;
-    }
+    console.log("updatedUserSelections ===> ", updatedUserSelections);
+
+    // Generate API Payload
     let apiPayload;
-
-    if (userSelections.get("viewType") === "Source") {
+    if (updatedUserSelections.get("viewType") === "Source") {
       apiPayload = {
         view_type: "Source",
-        view: userSelections.get("viewName"),
-        view_name: params.newViewName,
+        view: updatedUserSelections.get("viewName"),
+        // view_name: params.newViewName,
         select_fields: [],
         group_by: [],
       };
     }
 
-    if (userSelections.get("viewType") === "Connection") {
+    if (updatedUserSelections.get("viewType") === "Connection") {
       apiPayload = {
         view_type: "Base",
-        connection_name: userSelections.get("connection"),
-        schema_name: userSelections.get("schema"),
-        table_name: userSelections.get("table"),
+        connection_name: updatedUserSelections.get("connection"),
+        schema_name: updatedUserSelections.get("schema"),
+        table_name: updatedUserSelections.get("table"),
         view_name: params.newViewName,
         select_fields: [],
         group_by: [],
@@ -223,7 +154,7 @@ export default function Source() {
     }
 
     // Configuring Aliases
-    settingsList.forEach((item) => {
+    updatedSettingsList.forEach((item) => {
       if (item.output === "Yes") {
         if (item.aggregate)
           apiPayload["select_fields"].push({
@@ -242,6 +173,89 @@ export default function Source() {
 
     console.log("API PAYLOAD ===> ", apiPayload);
 
+    // Saving API payload to use in handleSaveView().
+    updatedUserSelections.set("apiPayload", apiPayload);
+
+    const response = await fetch(
+      `${
+        import.meta.env.VITE_FAST_API_V2
+      }/generate-base-view?execute_query=true`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${
+            import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+          }`,
+        },
+        body: JSON.stringify(apiPayload),
+      }
+    );
+    const responseText = await response.text();
+    const jsonObjects = responseText.trim().split("\n");
+    const data = jsonObjects
+      .map((jsonObject) => {
+        try {
+          return JSON.parse(jsonObject);
+        } catch (error) {
+          console.log("Error parsing JSON object: ", e);
+          toast.error("Error Parsing JSON Object ");
+          return null;
+        }
+      })
+      .filter((item) => item !== null);
+
+    if (response.status === 200) {
+      if(!data.length > 0){
+        toast.error(`${viewType === "Source" ? "View" : "Table"} is empty!`);
+        return null;
+      }
+      
+      setPreviewData(data);
+      setShowPreview((prev) => prev === false? !prev : prev);
+      toast.success("View Query Executed!");
+    } else {
+      toast.error("Error while generating output preview.");
+    }
+
+    setSettingsList((prev) => {
+      return updatedSettingsList;
+    });
+    setUserSelections((prev) => {
+      return updatedUserSelections;
+    });
+  };
+
+  const handleSaveView = async (params) => {
+    const { newViewName } = params;
+    let apiPayload = userSelections.get("apiPayload");
+    apiPayload["view_name"] = newViewName;
+
+    const viewExistsResponse = await fetch(
+      `${import.meta.env.VITE_FAST_API_V2}/view-exists/${newViewName}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${
+            import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+          }`,
+        },
+      }
+    );
+
+    if (viewExistsResponse.status !== 200) {
+      toast.error("Error checking if view exists");
+      return null;
+    }
+    const viewExists = await viewExistsResponse.json();
+    console.log("viewExists ===> ", viewExists);
+    if (viewExists["result"]) {
+      toast.error("View already exists");
+      return null;
+    }
+
+    console.log("Final apiPayload ===> ", apiPayload);
     const response = await fetch(
       `${import.meta.env.VITE_FAST_API_V2}/generate-base-view`,
       {
@@ -261,7 +275,7 @@ export default function Source() {
     if (response.status == 200) {
       console.log("Save View Result ==> ", data);
       setShowPreview((prev) => !prev);
-      toast.success("VIEW SAVED SUCCESSFULLY.");
+      toast.success("VIEW SAVED SUCCESSFULLY.",{autoClose: 2900});
       setTimeout(() => navigate("/federation"), 3000);
     } else {
       toast.error("Error while saving view..");
@@ -284,7 +298,7 @@ export default function Source() {
       const type = event.dataTransfer.getData("application/reactflow");
 
       if (typeof type === "undefined" || !type) {
-        return;
+        return null;
       }
 
       const position = {
@@ -366,7 +380,8 @@ export default function Source() {
 
       {showPreview && (
         <SourcePreview
-          sampleData={sampleData}
+          previewData = {previewData}
+          setPreviewData = {setPreviewData}
           setShowPreview={setShowPreview}
           toggleModal={toggleModal}
         />
