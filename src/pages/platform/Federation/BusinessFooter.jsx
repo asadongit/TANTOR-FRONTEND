@@ -78,17 +78,10 @@ export function BusinessFooter() {
       return;
     }
 
-    if (hasOperation && groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
+    if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
       toast.error("Select Field must be aggregate or in Group by");
       return;
     }
-
-    if (!hasOperation && groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.some(col => aggregateColumns.includes(col))) {
-      toast.error("Select Field must be aggregate or in Group by");
-      return;
-    }
-
-
 
     if (finalPayload && Object.keys(finalPayload).length > 0) {
       setPreview(true);
