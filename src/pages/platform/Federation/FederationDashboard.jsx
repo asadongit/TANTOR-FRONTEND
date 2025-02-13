@@ -150,6 +150,22 @@ const FederationDashBoard = () => {
         console.log(error);
       }
     };
+
+      useEffect(() => {
+ 
+      const updatedRowData = connectionData.map((item) => {
+          return {
+              ID: item.connection_id,
+              Connections: item.connection_name,
+              Descriptions: item.description,
+              Schema: schemaList[item.connection_id] || 0,
+              Tables: tableList[item.connection_id] || 0,
+              Views: item.status,
+              Created: new Date(item.created_at).toLocaleDateString(),
+          };
+      });
+      setRowData(updatedRowData);
+  }, [schemaList, connectionData, tableList]);
  
  
   const cards = [
@@ -184,87 +200,87 @@ const FederationDashBoard = () => {
   ];
  
   const [rowData, setRowData] = useState([
-    {
-      ID: "12345",
-      Connections: "Sample Connection 1",
-      Descriptions: "This is a demo connection description.",
-      Schema: 5,
-      Tables: 10,
-      Views: 5,
-      Created: "2025-01-20",
-    },
-    {
-      ID: "67890",
-      Connections: "Sample Connection 2",
-      Descriptions: "Another demo connection description.",
-      Schema: 8,
-      Tables: 15,
-      Views: 9,
-      Created: "2025-01-21",
-    },
-    {
-      ID: "11223",
-      Connections: "Sample Connection 3",
-      Descriptions: "Yet another demo connection description.",
-      Schema: 3,
-      Tables: 7,
-      Views: 17,
-      Created: "2025-01-22",
-    },
-    {
-      ID: "12345",
-      Connections: "Sample Connection 1",
-      Descriptions: "This is a demo connection description.",
-      Schema: 5,
-      Tables: 10,
-      Views: 5,
-      Created: "2025-01-20",
-    },
-    {
-      ID: "67890",
-      Connections: "Sample Connection 2",
-      Descriptions: "Another demo connection description.",
-      Schema: 8,
-      Tables: 15,
-      Views: 9,
-      Created: "2025-01-21",
-    },
-    {
-      ID: "11223",
-      Connections: "Sample Connection 3",
-      Descriptions: "Yet another demo connection description.",
-      Schema: 3,
-      Tables: 7,
-      Views: 17,
-      Created: "2025-01-22",
-    },
-    {
-      ID: "12345",
-      Connections: "Sample Connection 1",
-      Descriptions: "This is a demo connection description.",
-      Schema: 5,
-      Tables: 10,
-      Views: 5,
-      Created: "2025-01-20",
-    },
-    {
-      ID: "67890",
-      Connections: "Sample Connection 2",
-      Descriptions: "Another demo connection description.",
-      Schema: 8,
-      Tables: 15,
-      Views: 9,
-      Created: "2025-01-21",
-    },
-    {
-      ID: "11223",
-      Connections: "Sample Connection 3",
-      Descriptions: "Yet another demo connection description.",
-      Schema: 3,
-      Tables: 7,
-      Views: 17,
-      Created: "2025-01-22",
-    }
+    // {
+    //   ID: "12345",
+    //   Connections: "Sample Connection 1",
+    //   Descriptions: "This is a demo connection description.",
+    //   Schema: 5,
+    //   Tables: 10,
+    //   Views: 5,
+    //   Created: "2025-01-20",
+    // },
+    // {
+    //   ID: "67890",
+    //   Connections: "Sample Connection 2",
+    //   Descriptions: "Another demo connection description.",
+    //   Schema: 8,
+    //   Tables: 15,
+    //   Views: 9,
+    //   Created: "2025-01-21",
+    // },
+    // {
+    //   ID: "11223",
+    //   Connections: "Sample Connection 3",
+    //   Descriptions: "Yet another demo connection description.",
+    //   Schema: 3,
+    //   Tables: 7,
+    //   Views: 17,
+    //   Created: "2025-01-22",
+    // },
+    // {
+    //   ID: "12345",
+    //   Connections: "Sample Connection 1",
+    //   Descriptions: "This is a demo connection description.",
+    //   Schema: 5,
+    //   Tables: 10,
+    //   Views: 5,
+    //   Created: "2025-01-20",
+    // },
+    // {
+    //   ID: "67890",
+    //   Connections: "Sample Connection 2",
+    //   Descriptions: "Another demo connection description.",
+    //   Schema: 8,
+    //   Tables: 15,
+    //   Views: 9,
+    //   Created: "2025-01-21",
+    // },
+    // {
+    //   ID: "11223",
+    //   Connections: "Sample Connection 3",
+    //   Descriptions: "Yet another demo connection description.",
+    //   Schema: 3,
+    //   Tables: 7,
+    //   Views: 17,
+    //   Created: "2025-01-22",
+    // },
+    // {
+    //   ID: "12345",
+    //   Connections: "Sample Connection 1",
+    //   Descriptions: "This is a demo connection description.",
+    //   Schema: 5,
+    //   Tables: 10,
+    //   Views: 5,
+    //   Created: "2025-01-20",
+    // },
+    // {
+    //   ID: "67890",
+    //   Connections: "Sample Connection 2",
+    //   Descriptions: "Another demo connection description.",
+    //   Schema: 8,
+    //   Tables: 15,
+    //   Views: 9,
+    //   Created: "2025-01-21",
+    // },
+    // {
+    //   ID: "11223",
+    //   Connections: "Sample Connection 3",
+    //   Descriptions: "Yet another demo connection description.",
+    //   Schema: 3,
+    //   Tables: 7,
+    //   Views: 17,
+    //   Created: "2025-01-22",
+    // }
   ]);
   
  
@@ -369,7 +385,7 @@ const FederationDashBoard = () => {
       
       <div className="bg-white rounded-lg shadow overflow-hidden mt-10">
         <table className="w-full">
-          <thead>
+          <thead className="text-sm">
             <tr className="bg-[#29304a] text-white">
               <th className="text-left p-4">ID</th>
               <th className="text-left p-4">Connections</th>
@@ -381,17 +397,17 @@ const FederationDashBoard = () => {
               <th className="text-left p-4 last:rounded-tr-lg">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-sm">
             {rowData.map((user, index) => (
               <tr key={index} className="border-b">
-                <td className="p-4 text-center">{user.ID}</td>
-                <td className="p-4 text-center">{user.Connections}</td>
-                <td className="p-4 text-center">{user.Descriptions}</td>
-                <td className="p-4 text-center">{user.Schema}</td>
-                <td className="p-4 text-center">{user.Tables}</td>
-                <td className="p-4 text-center">{user.Views}</td>
-                <td className="p-4 text-center">{user.Created}</td>
-                <td className="p-4 text-center">
+                <td className="p-4 text-left">{user.ID}</td>
+                <td className="p-4 text-left">{user.Connections}</td>
+                <td className="p-4 text-left">{user.Descriptions}</td>
+                <td className="p-4 text-left">{user.Schema}</td>
+                <td className="p-4 text-left">{user.Tables}</td>
+                <td className="p-4 text-left">{user.Views}</td>
+                <td className="p-4 text-left">{user.Created}</td>
+                <td className="p-4 text-left">
                   <div className="relative">
                     <button
                       onClick={() =>
@@ -410,10 +426,6 @@ const FederationDashBoard = () => {
                         />
                         <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                           <div className="flex items-center p-1 gap-1">
-                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                            onClick={() => openModal("modal4")}>
-                              <Eye className="h-4 w-4" />
-                            </button>
                             <button
                               className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                             >

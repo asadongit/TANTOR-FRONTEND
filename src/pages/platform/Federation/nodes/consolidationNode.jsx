@@ -32,6 +32,23 @@ export function ConsolidationNode({ id }) {
   const [colId, setColId] = useState("Union")
 
   useEffect(() => {
+    console.log("finalpayload operation is ======>",finalPayload.operation)
+    console.log("finalpayload operation is ======>", finalPayload.operation);
+
+if (finalPayload?.operation) {
+ 
+  const updatedOperation = finalPayload.operation.endsWith(" All") 
+    ? finalPayload.operation.replace(/ All$/, "") 
+    : finalPayload.operation;
+
+  setType(updatedOperation);
+  setUnionType(finalPayload.operation);
+}
+
+  }, [finalPayload]);
+  
+
+  useEffect(() => {
     console.log("id of consolidation is ===>", id);
     console.log("consolidation is ===>", consolidationPayload);
     console.log("viewPayload is ==>", viewPayload);
@@ -244,6 +261,7 @@ export function ConsolidationNode({ id }) {
   };
 
   const handleType = (type) => {
+    console.log("handle typeeee")
     handleFinalPayload({});
     setType(type)
     setSelectedLeft("")

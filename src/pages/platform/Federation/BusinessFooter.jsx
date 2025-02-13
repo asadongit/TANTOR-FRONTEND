@@ -6,9 +6,11 @@ import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import { ToastContainer, toast } from "react-toastify";
 import SaveViewModal from "./viewsource/SaveViewModal";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export function BusinessFooter() {
 
+  const navigate = useNavigate();
   const { finalPayload, handleFinalPayload } = useStateContext("");
   const [preview, setPreview] = useState(false);
   const encodedToken = import.meta.env.VITE_ACCESS_TOKEN;
@@ -227,7 +229,7 @@ export function BusinessFooter() {
                 import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
               }`,
             },
-            body: JSON.stringify(finalPayload ),
+            body: JSON.stringify(finalPayload),
           }
         );
     
@@ -235,8 +237,7 @@ export function BusinessFooter() {
     
         if (response.status == 200) {
           console.log("Save View Result ==> ", data);
-          // setShowPreview((prev) => !prev);
-          toast.success("VIEW SAVED SUCCESSFULLY.",{autoClose: 2900});
+          toast.success("View Saved Successfully.",{autoClose: 2900});
           setTimeout(() => navigate("/federation"), 3000);
         } else {
           toast.error("Error while saving view..");
