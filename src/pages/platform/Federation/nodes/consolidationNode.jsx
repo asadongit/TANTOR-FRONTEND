@@ -166,7 +166,6 @@ export function ConsolidationNode({ id }) {
 
         const newPayload = {
           operation: unionType,
-          command: "execute",
           view_type: "Integrated View",
           view_name: "MYVIEW",
           isMateralizedView: "false",

@@ -5,10 +5,11 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import { ToastContainer, toast } from "react-toastify";
+import SaveViewModal from "./viewsource/SaveViewModal";
 
 export function BusinessFooter() {
 
-  const { finalPayload } = useStateContext("");
+  const { finalPayload, handleFinalPayload } = useStateContext("");
   const [preview, setPreview] = useState(false);
   const encodedToken = import.meta.env.VITE_ACCESS_TOKEN;
   const [loading, setLoading] = useState(false);
@@ -107,8 +108,9 @@ export function BusinessFooter() {
       const updatedPayload = { ...finalPayload, group_by: groupByArray, select_fields: selectFields };
 
       console.log("Updated final payload with group_by and select fields is ===>", updatedPayload);
+      handleFinalPayload(updatedPayload);
 
-      fetch(`${import.meta.env.VITE_FAST_API_V2}/save-view`, {
+      fetch(`${import.meta.env.VITE_FAST_API_V2}/save-view?execute_query=true`, {
         method: "POST",
         headers: {
           'Authorization': `Bearer ${encodedToken}`,
@@ -175,6 +177,72 @@ export function BusinessFooter() {
   const [rowData, setRowData] = useState([]);
 
   const [colDefs, setColumnDefs] = useState([])
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const toggleModal = () => {
+    setIsModalOpen((prev) => !prev);
+  };
+
+  const handleSaveView = async (params) =>{
+
+    console.log("view name entered is =======>",params)
+        const { newViewName } = params;
+
+        finalPayload["view_name"] = newViewName;
+
+        console.log("final payload fainally is =======>",finalPayload)
+    
+        const viewExistsResponse = await fetch(
+          `${import.meta.env.VITE_FAST_API_V2}/view-exists/${newViewName}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${
+                import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+              }`,
+            },
+          }
+        );
+    
+        if (viewExistsResponse.status !== 200) {
+          toast.error("Error checking if view exists");
+          return null;
+        }
+        const viewExists = await viewExistsResponse.json();
+        console.log("viewExists ===> ", viewExists);
+        if (viewExists["result"]) {
+          toast.error("View already exists");
+          return null;
+        }
+    
+        const response = await fetch(
+          `${import.meta.env.VITE_FAST_API_V2}/save-view`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${
+                import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+              }`,
+            },
+            body: JSON.stringify(finalPayload ),
+          }
+        );
+    
+        const data = await response.json();
+    
+        if (response.status == 200) {
+          console.log("Save View Result ==> ", data);
+          // setShowPreview((prev) => !prev);
+          toast.success("VIEW SAVED SUCCESSFULLY.",{autoClose: 2900});
+          setTimeout(() => navigate("/federation"), 3000);
+        } else {
+          toast.error("Error while saving view..");
+        }
+
+  }
   return (
     <>
       {preview && (
@@ -244,13 +312,19 @@ export function BusinessFooter() {
           </button>
           <button
             type="button"
-            onClick={handleClick}
+            onClick={preview === true ? toggleModal : handleClick}
             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1 mr-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
             {preview ? "Create view" : "Next"}
           </button>
         </div>
       </div>
+      {isModalOpen && (
+        <SaveViewModal
+          toggleModal={toggleModal}
+          handleSaveView={handleSaveView}
+        />
+      )}
       <ToastContainer />
     </>
   )
