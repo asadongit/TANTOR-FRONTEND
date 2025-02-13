@@ -16,15 +16,6 @@ export function BusinessFooter() {
   const { columnSettings } = useStateContext("")
 
 
-  // let selectFields = Object.entries(columnSettings).flatMap(([view, columns]) =>
-  //   Object.entries(columns)
-  //     .filter(([colName, colProps]) => colProps.output === "Yes")
-  //     .map(([colName, colProps]) => ({
-  //       field: hasOperation ? colName : `${view}.${colName}`,
-  //       alias: colProps.aggregate ? colProps.aggregate : colProps.alias || ""
-  //     }))
-  // );
-
   const getSelectFields = (columnSettings, hasOperation) => {
     const selectedViews = hasOperation
       ? { Union: columnSettings.Union }
@@ -81,20 +72,6 @@ export function BusinessFooter() {
     console.log("aggregate cols are ===>", aggregateColumns);
 
     // unionnnnnnnnnnnn
-
-
-    // if (groupByColumns.length > 0) {
-    //   if(JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)){
-    //   toast.error("Select Field must be aggregate or in Group by");
-    //   return;
-    //   }
-    // }
-    // else if (aggregateColumns.length > 0) {
-    //   if (selectColumns.length > 0){
-    //   toast.error("Select Field must be aggregate or in Group by");
-    //   return;
-    //   }
-    // }
 
     if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
       toast.error("Select Field must be aggregate or in Group by");
