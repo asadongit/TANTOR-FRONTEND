@@ -53,7 +53,9 @@ export function BusinessFooter() {
     let aggregateColumns = new Set();
 
     const hasOperation = finalPayload?.operation !== undefined;
-    const source = hasOperation ? columnSettings["Union"] : columnSettings;
+    const source = hasOperation 
+    ? columnSettings["Union"] 
+    : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
     Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
       const columns = hasOperation ? { [tableOrColumn]: columnsOrProperties } : columnsOrProperties;
@@ -74,6 +76,22 @@ export function BusinessFooter() {
     console.log("group by cols are ===>", groupByColumns);
     console.log("select cols are ===>", selectColumns);
     console.log("aggregate cols are ===>", aggregateColumns);
+
+// unionnnnnnnnnnnn
+
+
+    // if (groupByColumns.length > 0) {
+    //   if(JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)){
+    //   toast.error("Select Field must be aggregate or in Group by");
+    //   return;
+    //   }
+    // }
+    // else if (aggregateColumns.length > 0) {
+    //   if (selectColumns.length > 0){
+    //   toast.error("Select Field must be aggregate or in Group by");
+    //   return;
+    //   }
+    // }
 
       if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
         toast.error("Select Field must be aggregate or in Group by");
