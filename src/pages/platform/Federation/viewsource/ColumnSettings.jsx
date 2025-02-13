@@ -219,7 +219,8 @@ const ColumnSettings = ({
                 value={settings.order}
                 onChange={handleChange}
                 min={1}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
+                onWheel={(e) => e.target.blur()}
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
               />
             </div>
             <div>
@@ -231,8 +232,8 @@ const ColumnSettings = ({
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
               >
                 <option value="">None</option>
-                <option value="Ascending">Ascending</option>
-                <option value="Descending">Descending</option>
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
               </select>
             </div>
           </div>

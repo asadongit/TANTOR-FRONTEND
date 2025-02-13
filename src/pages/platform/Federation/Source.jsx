@@ -57,30 +57,33 @@ export default function Source() {
 
   const handleOk = async (params) => {
     const { settings, viewType, userCheckedColumns } = params;
-    // The payload has the following structure
-    // {
-    //  userCheckedColumns: [],
-    //  viewType: "Source" or "Connection",
-    //  settings: settingsList[],
-    //  userSelections: userSelections Map(),
-    // }
-    console.log("OUTSIDE SETTINGS ", params);
+
     if (!params) return null;
 
     // Validate Columns
     const groupByColumns = [];
     const aggregateColumns = [];
-
+    let orderByColumns = [];
+    
     settings.forEach((item) => {
       if (userCheckedColumns.includes(item.name)) {
         if (item.groupBy === "Yes") groupByColumns.push(item.name);
         if (item.aggregate) aggregateColumns.push(item.name);
+        
+        if(item.sort) orderByColumns.push({
+          field: item.name,
+          sortType: item.sort,
+          order: item.order,
+        });
       }
     });
-
+     // Sorting Order By Columns.
+    orderByColumns = orderByColumns.sort((a,b) => a.order - b.order);
+    
     console.log("GROUP BY COLUMNS ==> ", groupByColumns);
     console.log("AGGREGATE COLUMNS ==> ", aggregateColumns);
     console.log("User Checked Columns ==> ", userCheckedColumns);
+    console.log("Order By Columns ==> ", orderByColumns);
 
     // Validation for Aggregate and Group By columns
     if (groupByColumns.length > 0 && aggregateColumns.length > 0) {
@@ -124,6 +127,7 @@ export default function Source() {
     const updatedSettingsList = settings.filter((item) =>
       userCheckedColumns.includes(item.name)
     );
+    
     const updatedUserSelections = new Map(params.userSelections);
     updatedUserSelections.set("viewType", viewType);
 
@@ -135,7 +139,6 @@ export default function Source() {
       apiPayload = {
         view_type: "Source",
         view: updatedUserSelections.get("viewName"),
-        // view_name: params.newViewName,
         select_fields: [],
         group_by: [],
       };
@@ -147,7 +150,6 @@ export default function Source() {
         connection_name: updatedUserSelections.get("connection"),
         schema_name: updatedUserSelections.get("schema"),
         table_name: updatedUserSelections.get("table"),
-        view_name: params.newViewName,
         select_fields: [],
         group_by: [],
       };
@@ -171,7 +173,10 @@ export default function Source() {
       if (item.groupBy === "Yes") apiPayload["group_by"].push(item.name);
     });
 
-    console.log("API PAYLOAD ===> ", apiPayload);
+    // Set orderby fields
+    apiPayload["order_by"] = orderByColumns.map(item => `${item.field} ${item.sortType}`);
+
+    console.log("Final API Payload ===> ", apiPayload);
 
     // Saving API payload to use in handleSaveView().
     updatedUserSelections.set("apiPayload", apiPayload);
