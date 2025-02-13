@@ -20,7 +20,8 @@ export function BaseNode({ id, data }) {
     (async () => {
       let response;
       try {
-        response = await fetch(`${FAST_BACKEND}/get-all-views`, {
+        const VIEW_TYPE = "Base";
+        response = await fetch(`${FAST_BACKEND}/get-all-views?view_type=${VIEW_TYPE}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -31,7 +32,12 @@ export function BaseNode({ id, data }) {
         const data = await response.json();
 
         if (response.status == 200) {
-          setApiViews(data.result);
+          const sortedViews = data.result.sort((a,b) => {
+            if(a.toUpperCase() < b.toUpperCase()) return -1;
+            if(a.toUpperCase() > b.toUpperCase()) return 1;
+            return 0;
+          })
+          setApiViews(sortedViews);
         } else {
           data.toast.error("Error occurred while trying to fetch views");
         }
@@ -478,8 +484,8 @@ export function ConnectionNode({ id, data }) {
                   Select Columns
                 </label>
                 <div className="p-3 space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <input
+                  {/* <div className="flex items-center space-x-2"> */}
+                    {/* <input
                       type="checkbox"
                       id="selectAll"
                       checked={isAllSelected}
@@ -491,8 +497,8 @@ export function ConnectionNode({ id, data }) {
                       className="text-sm text-gray-700 font-medium"
                     >
                       Select All
-                    </label>
-                  </div>
+                    </label> */}
+                  {/* </div> */}
                   <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
                     {apiColumns.map((item) => (
                       <div

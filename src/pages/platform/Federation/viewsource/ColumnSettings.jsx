@@ -149,8 +149,9 @@ const ColumnSettings = ({
   };
 
   return (
-    <div className="w-full flex justify-end items-start">
-      <div className="w-80 bg-white p-4 rounded-lg shadow-lg absolute top-4 right-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-start justify-end bg-black bg-opacity-0 p-0 h-screen">
+    <div className="w-80 bg-white rounded-lg shadow-lg overflow-hidden h-full">
+      <div className="p-4 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <span className="text-lg font-medium">Column Settings</span>
           <button
@@ -161,7 +162,8 @@ const ColumnSettings = ({
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto pr-2 pl-1">
+          {/* Settings Form */}
           <div>
             <label className="block text-sm text-gray-600 mb-1">Name</label>
             <input
@@ -281,9 +283,7 @@ const ColumnSettings = ({
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">
-              Filter by
-            </label>
+            <label className="block text-sm text-gray-600 mb-1">Filter by</label>
             <div className="flex gap-2">
               <select
                 name="filterBy"
@@ -308,7 +308,7 @@ const ColumnSettings = ({
           </div>
         </div>
 
-        <div className="flex gap-3 mt-4">
+        <div className="flex gap-3 mt-4 pt-4 border-t">
           <button
             onClick={toggleDialog}
             className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
@@ -324,6 +324,7 @@ const ColumnSettings = ({
         </div>
       </div>
     </div>
+  </div>
   );
 };
 
