@@ -26,11 +26,14 @@ export function BusinessFooter() {
   // );
 
   const getSelectFields = (columnSettings, hasOperation) => {
-    const selectedViews = hasOperation ? { Union: columnSettings.Union } : columnSettings;
+    const selectedViews = hasOperation
+      ? { Union: columnSettings.Union }
+      : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
+
 
     console.log("selected views column seetings ====>", selectedViews)
 
-    return Object.entries(selectedViews || {}) 
+    return Object.entries(selectedViews || {})
       .flatMap(([view, columns]) =>
         Object.entries(columns)
           .filter(([colName, colProps]) => colProps.output === "Yes")
@@ -53,9 +56,9 @@ export function BusinessFooter() {
     let aggregateColumns = new Set();
 
     const hasOperation = finalPayload?.operation !== undefined;
-    const source = hasOperation 
-    ? columnSettings["Union"] 
-    : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
+    const source = hasOperation
+      ? columnSettings["Union"]
+      : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
     Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
       const columns = hasOperation ? { [tableOrColumn]: columnsOrProperties } : columnsOrProperties;
@@ -77,7 +80,7 @@ export function BusinessFooter() {
     console.log("select cols are ===>", selectColumns);
     console.log("aggregate cols are ===>", aggregateColumns);
 
-// unionnnnnnnnnnnn
+    // unionnnnnnnnnnnn
 
 
     // if (groupByColumns.length > 0) {
@@ -93,16 +96,22 @@ export function BusinessFooter() {
     //   }
     // }
 
-      if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
-        toast.error("Select Field must be aggregate or in Group by");
-        return;
-      }
-      
-      if (!hasOperation && aggregateColumns.length > 0 && selectColumns.some(col => aggregateColumns.includes(col))) {
-        toast.error("Select Field must be aggregate or in Group by");
-        return;
-      }
-      
+    if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
+      toast.error("Select Field must be aggregate or in Group by");
+      return;
+    }
+
+    if (hasOperation && groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
+      toast.error("Select Field must be aggregate or in Group by");
+      return;
+    }
+
+    if (!hasOperation && groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.some(col => aggregateColumns.includes(col))) {
+      toast.error("Select Field must be aggregate or in Group by");
+      return;
+    }
+
+
 
     if (finalPayload && Object.keys(finalPayload).length > 0) {
       setPreview(true);
