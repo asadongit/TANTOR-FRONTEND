@@ -1,23 +1,35 @@
 import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { useStateContext } from "../../../../context/contextProvider";
+export const defaultSetting = {
+  name: "",
+  type: "",
+  output: "Yes",
+  alias: "",
+  order: "",
+  sort: "",
+  aggregate: "",
+  groupBy: "",
+  wildcard: "",
+  filterBy: "",
+};
 
 const ColumnSettings = ({
   columnSetting,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const defaultSetting = {
-    name: "",
-    type: "",
-    output: "Yes",
-    alias: "",
-    order: "",
-    sort: "",
-    aggregate: "",
-    groupBy: "",
-    wildcard: "",
-    filterBy: "",
-  };
+  // const defaultSetting = {
+  //   name: "",
+  //   type: "",
+  //   output: "Yes",
+  //   alias: "",
+  //   order: "",
+  //   sort: "",
+  //   aggregate: "",
+  //   groupBy: "",
+  //   wildcard: "",
+  //   filterBy: "",
+  // };
   const [settings, setSettings] = useState(defaultSetting);
 
   const {
@@ -25,9 +37,12 @@ const ColumnSettings = ({
     setSettingsList,
     userSelections,
     setUserSelections,
+    userCheckedColumns, setUserCheckedColumns,
   } = useStateContext();
   const toggleDialog = () => setIsOpen((prev) => !prev);
-
+  useEffect(() => {
+    console.log("Use Effect User Checked columns ===> ", userCheckedColumns);
+  },[userCheckedColumns]);
   useEffect(() => {
     console.log("columnSetting ==>> ", columnSetting);
     if ((columnSetting?.viewType === "Source") && (columnSetting?.column?.column_name)) {
@@ -76,9 +91,20 @@ const ColumnSettings = ({
       [name]: value,
     }));
   };
+  
 
   const handleExecute = async (event) => {
     event.preventDefault();
+    
+    // if (!userCheckedColumns.includes(settings.name)){
+    //   setUserCheckedColumns(prev => [...prev, settings.name]);
+    //   console.log("INSIDE HANDLE EXECUTE ==> ", userCheckedColumns);
+    // }
+    setUserCheckedColumns(prev => {
+      if(!prev.includes(settings.name))
+        return [...prev, settings.name];
+      return prev;
+    })
 
     if (columnSetting.viewType === "Source") {
       if (userSelections.get("viewName") !== columnSetting.viewName) {
