@@ -25,6 +25,8 @@ export function ConnectionNode({ id, onSave }) {
 
   // const dummyColumns = ["connection 1", "id ", "name", "address", "phonenumber"];
 
+  const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
+
   const handleColumnChange = (column) => {
     setSelectedColumns((prev) => {
       if (prev.includes(column)) {
@@ -38,6 +40,7 @@ export function ConnectionNode({ id, onSave }) {
           }
           return updatedSettings;
         });
+        setSelectedColumnsOrder((prevOrder) => prevOrder.filter((col) => col !== column));
         return prev.filter((col) => col !== column);
       } else {
         setColumnSettings((prevSettings) => ({
@@ -50,6 +53,7 @@ export function ConnectionNode({ id, onSave }) {
             },
           },
         }));
+        setSelectedColumnsOrder((prevOrder) => [...prevOrder, column]);
         return [...prev, column];
       }
     });
@@ -64,6 +68,7 @@ export function ConnectionNode({ id, onSave }) {
   const handleSelectAllChange = (isChecked) => {
     if (isChecked) {
       setSelectedColumns(columns);
+      setSelectedColumnsOrder(columns);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         columns.forEach((column) => {
@@ -79,6 +84,7 @@ export function ConnectionNode({ id, onSave }) {
       });
     } else {
       setSelectedColumns([]);
+      setSelectedColumnsOrder([]);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         columns.forEach((column) => {
@@ -96,6 +102,17 @@ export function ConnectionNode({ id, onSave }) {
   };
 
   const isAllSelected = selectedColumns.length === columns.length;
+
+  
+  useEffect(() => {
+    if (id && columnSettings[id]) {
+      const columnsWithOutputYes = selectedColumnsOrder.filter(
+        (column) => columnSettings[id][column]?.output === "Yes"
+      );
+
+      setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
+    }
+  }, [columnSettings, id]);
 
 
 
@@ -250,7 +267,8 @@ export function ConnectionNode({ id, onSave }) {
         selectedColumns,
         def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
         // select_fields: selectFields,
-        Columns: columns
+        // Columns: columns
+        Columns: columnData
       };
 
       const currentPayloads = connectionPayload || [];
@@ -270,14 +288,6 @@ export function ConnectionNode({ id, onSave }) {
 
   };
 
-  useEffect(() => {
-    if (id && columnSettings[id]) {
-      const columnsWithOutputYes = Object.keys(columnSettings[id]).filter(
-        column => columnSettings[id][column].output === "Yes"
-      );
-      setSelectedColumns(columnsWithOutputYes);
-    }
-  }, [columnSettings, id]);
 
   const handleDelete = (id) => {
     const updatedPayload = connectionPayload.filter((node) => node.id !== id);

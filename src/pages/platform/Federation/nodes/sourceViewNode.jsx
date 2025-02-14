@@ -10,7 +10,7 @@ import { ToastContainer, toast } from "react-toastify";
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, handleFinalPayload, setColumnSettings, columnSettings } = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -79,7 +79,10 @@ export function SourceViewNode({ id, onSave }) {
     }
   };
 
+  const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
+
   const handleColumnChange = (column) => {
+    console.log("SELECTED COLUMN IS ====>",column)
     setSelectedColumns((prev) => {
       if (prev.includes(column)) {
         setColumnSettings((prevSettings) => {
@@ -92,7 +95,8 @@ export function SourceViewNode({ id, onSave }) {
           }
           return updatedSettings;
         });
-        return prev.filter((col) => col !== column);
+        setSelectedColumnsOrder((prevOrder) => prevOrder.filter((col) => col !== column));
+        return prev.filter((col) => col !== column); 
       } else {
         setColumnSettings((prevSettings) => ({
           ...prevSettings,
@@ -104,7 +108,9 @@ export function SourceViewNode({ id, onSave }) {
             },
           },
         }));
-        return [...prev, column];
+
+        setSelectedColumnsOrder((prevOrder) => [...prevOrder, column]);
+        return [...prev, column]; 
       }
     });
   };
@@ -118,8 +124,10 @@ export function SourceViewNode({ id, onSave }) {
 
 
   const handleSelectAllChange = (isChecked) => {
+    console.log("SELECT ALL CALLED")
     if (isChecked && columnsForViews[selectedView]) {
       setSelectedColumns(columnsForViews[selectedView]);
+      setSelectedColumnsOrder(columnsForViews[selectedView]);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         columnsForViews[selectedView].forEach((column) => {
@@ -135,6 +143,7 @@ export function SourceViewNode({ id, onSave }) {
       });
     } else {
       setSelectedColumns([]);
+      setSelectedColumnsOrder([]);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         if (columnsForViews[selectedView]) {
@@ -156,6 +165,20 @@ export function SourceViewNode({ id, onSave }) {
 
   const isAllSelected = selectedColumns.length === (columnsForViews[selectedView]?.length || 0);
 
+  useEffect(() => {
+    console.log("CHECKING PROBLEM FOR DUPLICATE");
+  
+    if (selectedView && columnSettings[selectedView]) {
+      const columnsWithOutputYes = selectedColumnsOrder.filter(
+        (column) => columnSettings[selectedView][column]?.output === "Yes"
+      );
+  
+      // Ensure unique values in selectedColumns
+      setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
+    }
+  }, [columnSettings, selectedView, selectedColumnsOrder]);
+  
+
   const handleSave = () => {
 
     if (selectedView) {
@@ -166,7 +189,8 @@ export function SourceViewNode({ id, onSave }) {
         view,
         selectedColumns,
         // select_fields: selectFields,
-        Columns: columnsForViews[selectedView] || [],
+        // Columns: columnsForViews[selectedView] || [],
+        Columns: columnData
       };
 
       const currentPayloads = viewPayload || [];
@@ -185,15 +209,6 @@ export function SourceViewNode({ id, onSave }) {
     }
 
   };
-
-  useEffect(() => {
-    if (selectedView && columnSettings[selectedView]) {
-      const columnsWithOutputYes = Object.keys(columnSettings[selectedView]).filter(
-        column => columnSettings[selectedView][column].output === "Yes"
-      );
-      setSelectedColumns(columnsWithOutputYes);
-    }
-  }, [columnSettings, selectedView]);
 
   const handleDelete = (id) => {
     const updatedPayload = viewPayload.filter((node) => node.id !== id);

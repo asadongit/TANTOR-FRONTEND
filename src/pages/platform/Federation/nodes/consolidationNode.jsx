@@ -62,7 +62,8 @@ if (finalPayload?.operation) {
 
         if (matchingView) {
           console.log("left columns are ===>", matchingView.Columns);
-          setLeftColumns(matchingView.Columns);
+          const columnNames = matchingView.Columns.map(col => col.column_name || col.column);
+          setLeftColumns(columnNames);
           setLeftView(matchingView.view);
         }
       }
@@ -74,7 +75,8 @@ if (finalPayload?.operation) {
 
         if (matchingView) {
           console.log("right columns are ===>", matchingView.Columns);
-          setRightColumns(matchingView.Columns);
+          const columnNames = matchingView.Columns.map(col => col.column_name || col.column);
+          setRightColumns(columnNames);
           setRightView(matchingView.view);
         }
       }
@@ -148,6 +150,8 @@ if (finalPayload?.operation) {
   }, [viewPayload, connectionPayload])
 
   const handleSave = () => {
+
+    // checkConsolidation();
 
     console.log("column settings are =====>",columnSettings)
 
@@ -380,6 +384,101 @@ if (finalPayload?.operation) {
     };
 
     const [selectedColumn, setSelectedColumn] = useState("");
+
+
+
+   // Function to normalize data types by removing precision and scale
+  //  const normalizeDataType = (dataType) => {
+  //   return dataType.replace(/\(\d+,\d+\)/, "").toLowerCase();
+  // };
+
+  // Function to get data types for selectedColumns
+  // const getDataTypesForSelectedColumns = (nodeId) => {
+  //   const viewNode = viewPayload.find((node) => node.id === nodeId);
+  //   const connectionNode = connectionPayload.find((node) => node.id === nodeId);
+
+  //   if (viewNode) {
+  //     return viewNode.selectedColumns.map((col) => {
+  //       const columnInfo = viewNode.Columns.find((c) => c.column_name === col);
+  //       return columnInfo
+  //         ? { name: col, type: normalizeDataType(columnInfo.data_type) }
+  //         : null;
+  //     });
+  //   } else if (connectionNode) {
+  //     return connectionNode.selectedColumns.map((col) => {
+  //       const columnInfo = connectionNode.Columns.find((c) => c.column === col);
+  //       return columnInfo
+  //         ? { name: col, type: normalizeDataType(columnInfo.datatype) }
+  //         : null;
+  //     });
+  //   }
+  //   return null;
+  // };
+
+  // Function to find source and target nodes for a given consolidation ID
+  // const findSourceAndTargetNodes = (consolidationId) => {
+  //   let sourceNode = null;
+  //   let targetNode = null;
+
+  //   // Find the source node for the consolidation ID
+  //   const sourceConsolidation = consolidationPayload.find(
+  //     (cons) => cons.target === consolidationId
+  //   );
+  //   if (sourceConsolidation) {
+  //     sourceNode = sourceConsolidation.source;
+  //   }
+
+  //   // Find the target node for the consolidation ID
+  //   const targetConsolidation = consolidationPayload.find(
+  //     (cons) => cons.source === consolidationId
+  //   );
+  //   if (targetConsolidation) {
+  //     targetNode = targetConsolidation.target;
+  //   }
+
+  //   if (!sourceNode || !targetNode) {
+  //     console.log(`Error: Unable to find source or target for consolidation ID ${id}.`);
+  //     return { source: null, target: null };
+  //   }
+
+  //   return { source: sourceNode, target: targetNode };
+  // };
+
+  // const checkConsolidation = () => {
+
+  //   console.log("inside the union check functiion *********")
+  //   const { source, target } = findSourceAndTargetNodes(id);
+
+  //   console.log("source iss ====>",source)
+  //   console.log("target iss ====>",target)
+
+  //   if (!source || !target) {
+  //     console.log(`Error: Invalid source or target for consolidation ID ${id}.`);
+  //     return false;
+  //   }
+
+  //   const sourceColumns = getDataTypesForSelectedColumns(source);
+  //   const targetColumns = getDataTypesForSelectedColumns(target);
+
+
+  //   if (sourceColumns.length !== targetColumns.length) {
+  //     toast.error(`Error: Column count mismatch`);
+  //     console.log(`Error: Column count mismatch for consolidation ${source} -> ${target}`);
+  //     return false;
+  //   }
+
+  //   for (let i = 0; i < sourceColumns.length; i++) {
+  //     if (sourceColumns[i].type !== targetColumns[i].type) {
+  //       toast.error(`Incompatible data types for ${sourceColumns[i].name}: ${targetColumns[i].name}`)
+  //       console.log(
+  //         `Incompatible data types for ${sourceColumns[i].name} : ${targetColumns[i].name}`
+  //       );
+  //       return false;
+  //     }
+  //   }
+  //   console.log("All consolidations are valid.");
+  //   return true;
+  // };
 
   return (
     <>
