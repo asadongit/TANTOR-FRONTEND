@@ -34,7 +34,7 @@ export const ContextProvider = ({ children }) => {
        // Source View States
        const [userSelections, setUserSelections] = useState(new Map());
        const [settingsList, setSettingsList] = useState([]);
-  
+       const [userCheckedColumns, setUserCheckedColumns] = useState([]);
     return (
         <StateContext.Provider
           value={{
@@ -49,7 +49,8 @@ export const ContextProvider = ({ children }) => {
             columnSettings,
             setColumnSettings,
             settingsList, setSettingsList,
-            userSelections, setUserSelections
+            userSelections, setUserSelections,
+            userCheckedColumns, setUserCheckedColumns,
           }}
         >
           {children}

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Cable, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
+import { defaultSetting } from "../viewsource/ColumnSettings";
 
 const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
 const FAST_BACKEND = import.meta.env.VITE_FAST_API;
@@ -9,11 +10,13 @@ const FAST_BACKEND = import.meta.env.VITE_FAST_API;
 console.log(FAST_BACKEND);
 
 export function BaseNode({ id, data }) {
+  const [isAllSelected, setIsAllSelected] = useState(false);
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
   const [apiColumns, setApiColumns] = useState([]);
-  const [userCheckedColumns, setUserCheckedColumns] = useState([]);
-  const { settingsList, userSelections } = useStateContext();
+  // const [userCheckedColumns, setUserCheckedColumns] = useState([]);
+  const { settingsList, setSettingsList, userSelections, setUserSelections,userCheckedColumns, setUserCheckedColumns } =
+    useStateContext();
 
   // Fetch Views
   useEffect(() => {
@@ -21,22 +24,25 @@ export function BaseNode({ id, data }) {
       let response;
       try {
         const VIEW_TYPE = "Base";
-        response = await fetch(`${FAST_BACKEND}/get-all-views?view_type=${VIEW_TYPE}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${AUTH_TOKEN}`
+        response = await fetch(
+          `${FAST_BACKEND}/get-all-views?view_type=${VIEW_TYPE}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              authorization: `Bearer ${AUTH_TOKEN}`,
+            },
           }
-        });
+        );
 
         const data = await response.json();
 
         if (response.status == 200) {
-          const sortedViews = data.result.sort((a,b) => {
-            if(a.toUpperCase() < b.toUpperCase()) return -1;
-            if(a.toUpperCase() > b.toUpperCase()) return 1;
+          const sortedViews = data.result.sort((a, b) => {
+            if (a.toUpperCase() < b.toUpperCase()) return -1;
+            if (a.toUpperCase() > b.toUpperCase()) return 1;
             return 0;
-          })
+          });
           setApiViews(sortedViews);
         } else {
           data.toast.error("Error occurred while trying to fetch views");
@@ -67,7 +73,10 @@ export function BaseNode({ id, data }) {
           if (response.status == 200) {
             setApiColumns(data.result[selectedView]);
           } else {
-            console.error(`Fetch Columns error. : \nStatus Code: ${response.status} \nData: `, data);
+            console.error(
+              `Fetch Columns error. : \nStatus Code: ${response.status} \nData: `,
+              data
+            );
             data.toast.error("Error occurred while trying to fetch columns");
           }
         } catch (error) {
@@ -79,21 +88,42 @@ export function BaseNode({ id, data }) {
   }, [selectedView]);
 
   const handleChangeView = (event) => {
-    console.log(event.target.value);
+    const selectedViewName = event.target.value;
     setUserCheckedColumns([]);
-    setSelectedView(event.target.value);
+    setApiColumns([]);
+
+    setSelectedView(selectedViewName);
+
+    setUserSelections((prev) => {
+      const updatedSelections = new Map();
+      updatedSelections.set("viewName", selectedViewName);
+      return updatedSelections;
+    });
+    setSettingsList([]);
   };
 
-  const handleColumnCheck = (columnName) => {
+  const handleColumnCheck = (column) => {
+    
+    const columnName = column.column_name;
+    const dataType = column.data_type;
     const updatedCheckedColumns = [...userCheckedColumns];
     const columnIndex = updatedCheckedColumns.indexOf(columnName);
-
+    
     if (columnIndex !== -1) {
+      if(isAllSelected)
+        setIsAllSelected(false);
       updatedCheckedColumns.splice(columnIndex, 1);
-    } else {
+      setSettingsList(prev => prev.filter(item => item.name !== columnName));
+    } else {      
       updatedCheckedColumns.push(columnName);
+      setSettingsList((prev) => [
+        ...prev,
+        { ...defaultSetting, name: columnName, type: dataType },
+      ]);
+      
+      if(updatedCheckedColumns.length === apiColumns.length)
+        setIsAllSelected(true);
     }
-
     setUserCheckedColumns(updatedCheckedColumns);
   };
 
@@ -102,17 +132,43 @@ export function BaseNode({ id, data }) {
   };
 
   const handleEditColumn = (columnName) => {
-    if (!userCheckedColumns.includes(columnName))
-      setUserCheckedColumns([...userCheckedColumns, columnName]);
-    apiColumns.forEach(item => {
+    // if (!userCheckedColumns.includes(columnName))
+    //   setUserCheckedColumns([...userCheckedColumns, columnName]);
+
+    apiColumns.forEach((item) => {
       if (item.column_name == columnName)
         data.handleColumnSetting({
           column: item,
           viewName: selectedView,
-          viewType: "Source"
-        })
+          viewType: "Source",
+        });
     });
-  }
+  };
+
+  const handleSelectAllColumns = () => {
+    console.log("handleSelectAllColumns");
+    if (isAllSelected) {
+      setUserCheckedColumns([]);
+      setSettingsList([]);
+    } else {
+      const updatedCheckedColumns = [];
+      const updatedSettingsList = [];
+
+      apiColumns.forEach((item) => {
+        updatedCheckedColumns.push(item.column_name);
+        updatedSettingsList.push({
+          ...defaultSetting,
+          name: item.column_name,
+          type: item.data_type,
+        });
+      });
+
+      setUserCheckedColumns(updatedCheckedColumns);
+      setSettingsList(updatedSettingsList);
+    }
+
+    setIsAllSelected((prev) => !prev);
+  };
 
   return (
     <div className="w-64 p-4 mt-1 bg-white rounded-lg shadow-lg relative group">
@@ -135,15 +191,35 @@ export function BaseNode({ id, data }) {
             onChange={handleChangeView}
           >
             <option value="">Select a view</option>
-            {apiViews.map(view => <option key={view} value={view}>{view}</option>)}
+            {apiViews.map((view) => (
+              <option key={view} value={view}>
+                {view}
+              </option>
+            ))}
           </select>
         </div>
 
         {apiColumns && (
-          <div
-            className={`mb-4 ${selectedView ? "" : "hidden"}`}
-          >
-            <h3 className="font-semibold text-gray-700">Select Columns</h3>
+          <div className={`mb-4 ${selectedView ? "" : "hidden"}`}>
+            <h3 className="font-semibold text-gray-700 mb-2">Select Columns</h3>
+
+            {/* "Select All" Checkbox */}
+            <div className="flex items-center mb-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mr-2"
+                checked={isAllSelected}
+                onChange={handleSelectAllColumns}
+              />
+              <label
+                htmlFor="select-all"
+                className="text-gray-700 cursor-pointer"
+              >
+                Select All
+              </label>
+            </div>
+
+            {/* Individual Columns */}
             {apiColumns.map((item) => (
               <div
                 key={item.column_name}
@@ -153,25 +229,33 @@ export function BaseNode({ id, data }) {
                   type="checkbox"
                   className="mr-2"
                   checked={userCheckedColumns.includes(item.column_name)}
-                  onClick={() => handleColumnCheck(item.column_name)}
-                  readOnly
+                  onChange={() => handleColumnCheck(item)} // Changed from onClick to onChange
                 />
-                <label htmlFor={item.column_name} className="text-gray-700 cursor-pointer">
+                <label
+                  htmlFor={item.column_name}
+                  className="text-gray-700 cursor-pointer"
+                >
                   {item.column_name}
                 </label>
-                <Pencil name="edit" onClick={(e) => handleEditColumn(item.column_name)} className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700" />
+                <Pencil
+                  name="edit"
+                  onClick={(e) => handleEditColumn(item.column_name)}
+                  className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
+                />
               </div>
             ))}
           </div>
         )}
 
         <button
-          onClick={(e) => data.handleOk({
-            userCheckedColumns,
-            viewType: "Source",
-            settings: settingsList,
-            userSelections: userSelections
-          })}
+          onClick={(e) =>
+            data.handleOk({
+              userCheckedColumns,
+              viewType: "Source",
+              settings: settingsList,
+              userSelections: userSelections,
+            })
+          }
           className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
         >
           Ok
@@ -182,27 +266,21 @@ export function BaseNode({ id, data }) {
 }
 
 export function ConnectionNode({ id, data }) {
+  const [isAllSelected, setIsAllSelected] = useState(false);
   const [handleConnectionPayload, setHandleConnectionPayload] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
-  const [selectedColumns, setSelectedColumns] = useState([]);
+  // const [selectedColumns, setSelectedColumns] = useState([]);
 
   const [apiConnections, setApiConnections] = useState([]);
   const [apiSchemas, setApiSchemas] = useState([]);
   const [apiTables, setApiTables] = useState([]);
   const [apiColumns, setApiColumns] = useState([]);
 
-  const { settingsList, setSettingsList, userSelections, setUserSelections } = useStateContext();
-
-  const dummyColumns = [
-    "connection 1",
-    "id ",
-    "name",
-    "address",
-    "phonenumber",
-  ];
+  const { settingsList, setSettingsList, userSelections, setUserSelections ,userCheckedColumns, setUserCheckedColumns} =
+    useStateContext();
 
   useEffect(() => {
     (async () => {
@@ -211,18 +289,23 @@ export function ConnectionNode({ id, data }) {
         response = await fetch(`${FAST_BACKEND}/connection-saves`, {
           method: "GET",
           headers: {
-            'Content-Type': 'application/json',
-            authorization: `Bearer ${AUTH_TOKEN}`
-          }
+            "Content-Type": "application/json",
+            authorization: `Bearer ${AUTH_TOKEN}`,
+          },
         });
         let data = await response.json();
         if (response.status == 200) {
           const uniqueConnections = [
-            ...new Map(data.map((item) => [item.connection_name, item])).values(),
+            ...new Map(
+              data.map((item) => [item.connection_name, item])
+            ).values(),
           ];
           setApiConnections(uniqueConnections); //Data = array of Connection Objects
         } else {
-          console.log(`Error fetching connections.\nResponse status: ${response.status}\nData: `, data);
+          console.log(
+            `Error fetching connections.\nResponse status: ${response.status}\nData: `,
+            data
+          );
           data.toast.error("Error fetching connections.");
         }
       } catch (error) {
@@ -251,7 +334,10 @@ export function ConnectionNode({ id, data }) {
           if (response.status == 200) {
             setApiSchemas(data);
           } else {
-            console.log(`Error fetching Schemas.\nResponse status: ${response.status}\nData: `, data);
+            console.log(
+              `Error fetching Schemas.\nResponse status: ${response.status}\nData: `,
+              data
+            );
             data.toast.error("Error fetching Schemas.");
           }
         } catch (error) {
@@ -283,7 +369,10 @@ export function ConnectionNode({ id, data }) {
             console.log(data);
             setApiTables(data);
           } else {
-            console.log(`Error fetching Tables.\nResponse status: ${response.status}\nData: `, data);
+            console.log(
+              `Error fetching Tables.\nResponse status: ${response.status}\nData: `,
+              data
+            );
             data.toast.error("Error fetching Tables.");
           }
         } catch (error) {
@@ -312,7 +401,7 @@ export function ConnectionNode({ id, data }) {
           let data = await response.json();
 
           if (response.status == 200) {
-            console.log("\n\nCOLUMNS = ", data, "\n\n\n")
+            console.log("\n\nCOLUMNS = ", data, "\n\n\n");
             setApiColumns(data);
           } else {
             console.log("Error while trying to fetch columns. ", data);
@@ -327,39 +416,69 @@ export function ConnectionNode({ id, data }) {
   }, [selectedTable]);
 
   const handleColumnChange = (column) => {
-    setSelectedColumns((prev) =>
-      prev.includes(column)
-        ? prev.filter((col) => col !== column)
-        : [...prev, column]
-    );
+
+    const columnName = column.column;
+    const columnType = column.datatype;
+
+    const updatedCheckedColumns = [...userCheckedColumns];
+    const columnIndex = updatedCheckedColumns.indexOf(columnName);
+
+    console.log("COLUMN INDEX = ", columnIndex);
+    if (columnIndex !== -1) {
+      if (isAllSelected) setIsAllSelected(false);
+      updatedCheckedColumns.splice(columnIndex, 1);
+      setSettingsList(prev => prev.filter(item => item.name !== columnName));
+    } else {
+      updatedCheckedColumns.push(columnName);
+      setSettingsList((prev) => [
+        ...prev,
+        { ...defaultSetting, name: columnName, type: columnType },
+      ]);
+    }
+    setUserCheckedColumns(updatedCheckedColumns);
+    console.log("Selected Columns: ", userCheckedColumns);
+
   };
 
   const handleEditColumn = (columnName) => {
-    if (!selectedColumns.includes(columnName))
-      setSelectedColumns([...selectedColumns, columnName]);
-    console.log(columnName)
-    apiColumns.forEach(item => {
+    // if (!selectedColumns.includes(columnName))
+    //   setSelectedColumns([...selectedColumns, columnName]);
+    console.log(columnName);
+    apiColumns.forEach((item) => {
       if (item.column == columnName) {
         data.handleColumnSetting({
           column: item,
           connection: selectedConnection,
           schema: selectedSchema,
           table: selectedTable,
-          viewType: "Connection"
-        })
+          viewType: "Connection",
+        });
       }
     });
-  }
-
-  const handleSelectAllChange = (isChecked) => {
-    if (isChecked) {
-      setSelectedColumns(dummyColumns);
-    } else {
-      setSelectedColumns([]);
-    }
   };
 
-  const isAllSelected = selectedColumns.length === dummyColumns.length;
+  const handleSelectAllChange = () => {
+    if (isAllSelected) {
+      setUserCheckedColumns([]);
+      setSettingsList([]);
+    } else {
+      const updatedCheckedColumns = [];
+      const updatedColumnSettingsList = [];
+
+      apiColumns.forEach((column) => {
+        updatedCheckedColumns.push(column.column);
+        updatedColumnSettingsList.push({
+          ...defaultSetting,
+          name: column.column,
+          type: column.datatype,
+        });
+      });
+
+      setUserCheckedColumns(updatedCheckedColumns);
+      setSettingsList(updatedColumnSettingsList);
+    }
+    setIsAllSelected((prev) => !prev);
+  };
 
   const handleSave = () => {
     const payload = {
@@ -369,7 +488,7 @@ export function ConnectionNode({ id, data }) {
       selectedView,
       selectedSchema,
       selectedTable,
-      selectedColumns,
+      selectedColumns : userCheckedColumns,
       Columns: apiColumns,
     };
     console.log("Saved Payload:", payload); // Debugging purpose
@@ -415,7 +534,18 @@ export function ConnectionNode({ id, data }) {
                 onChange={(e) => {
                   e.preventDefault();
                   setSelectedConnection(e.target.value);
-                  setSelectedColumns([]);
+                  setApiSchemas([]);
+                  setApiTables([]);
+                  setApiColumns([]);
+                  setSelectedSchema("");
+                  setSelectedTable("");
+                  setUserCheckedColumns([]);
+                  setIsAllSelected(false);
+                  setUserSelections((prev) => {
+                    const updatedSelections = new Map();
+                    updatedSelections.set("connection", e.target.value);
+                    return updatedSelections;
+                  });
                 }}
                 className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
               >
@@ -439,9 +569,18 @@ export function ConnectionNode({ id, data }) {
               <select
                 value={selectedSchema}
                 onChange={(e) => {
-                  e.preventDefault()
+                  e.preventDefault();
                   setSelectedSchema(e.target.value);
-                  setSelectedColumns([]);
+                  setApiTables([]);
+                  setApiColumns([]);
+                  setSelectedTable("");
+                  setUserCheckedColumns([]);
+                  setIsAllSelected(false);
+                  setUserSelections((prev) => {
+                    const updatedSelections = new Map(prev);
+                    updatedSelections.set("schema", e.target.value);
+                    return updatedSelections;
+                  });
                 }}
                 className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
               >
@@ -464,7 +603,14 @@ export function ConnectionNode({ id, data }) {
                 onChange={(e) => {
                   e.preventDefault();
                   setSelectedTable(e.target.value);
-                  setSelectedColumns([]);
+                  setApiColumns([]);
+                  setUserCheckedColumns([]);
+                  setIsAllSelected(false);
+                  setUserSelections((prev) => {
+                    const updatedSelections = new Map(prev);
+                    updatedSelections.set("table", e.target.value);
+                    return updatedSelections;
+                  });
                 }}
                 className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
               >
@@ -484,12 +630,12 @@ export function ConnectionNode({ id, data }) {
                   Select Columns
                 </label>
                 <div className="p-3 space-y-2">
-                  {/* <div className="flex items-center space-x-2"> */}
-                    {/* <input
+                  <div className="flex items-center space-x-2">
+                    <input
                       type="checkbox"
                       id="selectAll"
                       checked={isAllSelected}
-                      onChange={(e) => handleSelectAllChange(e.target.checked)}
+                      onChange={handleSelectAllChange}
                       className="text-purple-600 focus:ring-purple-500"
                     />
                     <label
@@ -497,8 +643,8 @@ export function ConnectionNode({ id, data }) {
                       className="text-sm text-gray-700 font-medium"
                     >
                       Select All
-                    </label> */}
-                  {/* </div> */}
+                    </label>
+                  </div>
                   <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
                     {apiColumns.map((item) => (
                       <div
@@ -509,8 +655,8 @@ export function ConnectionNode({ id, data }) {
                           type="checkbox"
                           id={item.column}
                           value={item.column}
-                          checked={selectedColumns.includes(item.column)}
-                          onChange={() => handleColumnChange(item.column)}
+                          checked={userCheckedColumns.includes(item.column)}
+                          onChange={() => handleColumnChange(item)}
                           className="text-purple-600 focus:ring-purple-500"
                         />
                         <label
@@ -519,7 +665,11 @@ export function ConnectionNode({ id, data }) {
                         >
                           {item.column}
                         </label>
-                        <Pencil name="edit" onClick={(e) => handleEditColumn(item.column)} className=" ml-auto h-4 w-4 text-gray-500 hover:text-gray-700" />
+                        <Pencil
+                          name="edit"
+                          onClick={(e) => handleEditColumn(item.column)}
+                          className=" ml-auto h-4 w-4 text-gray-500 hover:text-gray-700 hover:cursor-pointer"
+                        />
                       </div>
                     ))}
                   </div>
@@ -529,12 +679,14 @@ export function ConnectionNode({ id, data }) {
           </div>
           <button
             type="button"
-            onClick={(e) => data.handleOk({
-              userCheckedColumns: selectedColumns,
-              viewType: "Connection",
-              settings: settingsList,
-              userSelections: userSelections,
-            })}
+            onClick={(e) =>
+              data.handleOk({
+                userCheckedColumns: userCheckedColumns,
+                viewType: "Connection",
+                settings: settingsList,
+                userSelections: userSelections,
+              })
+            }
             className="w-full text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] mt-3"
           >
             OK

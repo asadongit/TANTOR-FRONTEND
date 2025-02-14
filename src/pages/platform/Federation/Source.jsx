@@ -46,17 +46,13 @@ export default function Source() {
   const [previewData, setPreviewData] = useState([]);
 
   const handleColumnSetting = (params) => {
-    console.log("params ==> ", params);
-    if (params.viewType === "Source") {
       setColumnSetting(params);
-    }
-    if (params.viewType === "Connection") {
-      setColumnSetting(params);
-    }
   };
 
   const handleOk = async (params) => {
     const { settings, viewType, userCheckedColumns } = params;
+    if(userCheckedColumns.length === 0)
+      return toast.error("Please select at least one column");
 
     if (!params) return null;
 
@@ -367,11 +363,12 @@ export default function Source() {
               style={{
                 backgroundColor: "#FFFFFF",
               }}
-              defaultViewport={{
-                x: 0,
-                y: 0,
-                zoom: 1,
-              }}
+              fitView
+              // defaultViewport={{
+              //   x: 0,
+              //   y: 0,
+              //   zoom: 1,
+              // }}
             >
               <Controls />
               <Background variant="solid" className="bg-white" />
