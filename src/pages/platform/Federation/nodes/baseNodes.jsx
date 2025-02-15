@@ -1,21 +1,86 @@
 import { useCallback, useEffect, useState } from "react";
-import { Cable, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { Cable, X, ChevronDown, ChevronUp, Pencil, Search } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { defaultSetting } from "../viewsource/ColumnSettings";
 
 const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
 const FAST_BACKEND = import.meta.env.VITE_FAST_API;
 
-console.log(FAST_BACKEND);
+const SearchableSelect = ({ options, value, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const filteredOptions = options.map(option => 
+    typeof option === 'object' ? option.connection_name : option
+  ).filter(option => 
+    option.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSelectClick = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleOptionClick = (option) => {
+    onChange({ target: { value: option } });
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div className="relative w-full">
+      <div 
+        className="w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+        onClick={handleSelectClick}
+      >
+        <span>{value || placeholder}</span>
+        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                className="w-full p-2 pl-8 border rounded-md"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {filteredOptions.map((option) => (
+              <div
+                key={option}
+                className="p-2 hover:bg-gray-100 cursor-pointer"
+                onClick={() => handleOptionClick(option)}
+              >
+                {option}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export function BaseNode({ id, data }) {
   const [isAllSelected, setIsAllSelected] = useState(false);
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
   const [apiColumns, setApiColumns] = useState([]);
-  // const [userCheckedColumns, setUserCheckedColumns] = useState([]);
-  const { settingsList, setSettingsList, userSelections, setUserSelections,userCheckedColumns, setUserCheckedColumns } =
-    useStateContext();
+  const { 
+    settingsList, 
+    setSettingsList, 
+    userSelections, 
+    setUserSelections,
+    userCheckedColumns, 
+    setUserCheckedColumns 
+  } = useStateContext();
 
   // Fetch Views
   useEffect(() => {
@@ -102,7 +167,6 @@ export function BaseNode({ id, data }) {
   };
 
   const handleColumnCheck = (column) => {
-    
     const columnName = column.column_name;
     const dataType = column.data_type;
     const updatedCheckedColumns = [...userCheckedColumns];
@@ -131,9 +195,6 @@ export function BaseNode({ id, data }) {
   };
 
   const handleEditColumn = (columnName) => {
-    // if (!userCheckedColumns.includes(columnName))
-    //   setUserCheckedColumns([...userCheckedColumns, columnName]);
-
     apiColumns.forEach((item) => {
       if (item.column_name == columnName)
         data.handleColumnSetting({
@@ -145,7 +206,6 @@ export function BaseNode({ id, data }) {
   };
 
   const handleSelectAllColumns = () => {
-    console.log("handleSelectAllColumns");
     if (isAllSelected) {
       setUserCheckedColumns([]);
       setSettingsList([]);
@@ -184,25 +244,18 @@ export function BaseNode({ id, data }) {
       <div className="space-y-4">
         <div className="mb-4">
           <label className="block text-gray-700 mb-1">View</label>
-          <select
-            className="w-full p-2 border rounded-lg text-gray-700 hover:bg-gray-50"
+          <SearchableSelect
+            options={apiViews}
             value={selectedView}
             onChange={handleChangeView}
-          >
-            <option value="">Select a view</option>
-            {apiViews.map((view) => (
-              <option key={view} value={view}>
-                {view}
-              </option>
-            ))}
-          </select>
+            placeholder="Select View"
+          />
         </div>
 
         {apiColumns && (
           <div className={`mb-4 ${selectedView ? "" : "hidden"}`}>
             <h3 className="font-semibold text-gray-700 mb-2">Select Columns</h3>
 
-            {/* "Select All" Checkbox */}
             <div className="flex items-center mb-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -218,7 +271,6 @@ export function BaseNode({ id, data }) {
               </label>
             </div>
 
-            {/* Individual Columns */}
             {apiColumns.map((item) => (
               <div
                 key={item.column_name}
@@ -228,7 +280,7 @@ export function BaseNode({ id, data }) {
                   type="checkbox"
                   className="mr-2"
                   checked={userCheckedColumns.includes(item.column_name)}
-                  onChange={() => handleColumnCheck(item)} // Changed from onClick to onChange
+                  onChange={() => handleColumnCheck(item)}
                 />
                 <label
                   htmlFor={item.column_name}
@@ -238,7 +290,7 @@ export function BaseNode({ id, data }) {
                 </label>
                 <Pencil
                   name="edit"
-                  onClick={(e) => handleEditColumn(item.column_name)}
+                  onClick={() => handleEditColumn(item.column_name)}
                   className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
                 />
               </div>
@@ -247,7 +299,7 @@ export function BaseNode({ id, data }) {
         )}
 
         <button
-          onClick={(e) =>
+          onClick={() =>
             data.handleOk({
               userCheckedColumns,
               viewType: "Source",
@@ -264,20 +316,16 @@ export function BaseNode({ id, data }) {
   );
 }
 
-export function ConnectionNode({ id, data }) {
-  const [isAllSelected, setIsAllSelected] = useState(false);
-  const [handleConnectionPayload, setHandleConnectionPayload] = useState(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [selectedConnection, setSelectedConnection] = useState("");
-  const [selectedSchema, setSelectedSchema] = useState("");
-  const [selectedTable, setSelectedTable] = useState("");
-  // const [selectedColumns, setSelectedColumns] = useState([]);
-
-  const [apiConnections, setApiConnections] = useState([]);
-  const [apiSchemas, setApiSchemas] = useState([]);
-  const [apiTables, setApiTables] = useState([]);
-  const [apiColumns, setApiColumns] = useState([]);
-
+  export function ConnectionNode({ id, data }) {
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [selectedConnection, setSelectedConnection] = useState("");
+    const [selectedSchema, setSelectedSchema] = useState("");
+    const [selectedTable, setSelectedTable] = useState("");
+    const [apiConnections, setApiConnections] = useState([]);
+    const [apiSchemas, setApiSchemas] = useState([]);
+    const [apiTables, setApiTables] = useState([]);
+    const [apiColumns, setApiColumns] = useState([]);
+    const [isAllSelected, setIsAllSelected] = useState(false);
   const { settingsList, setSettingsList, userSelections, setUserSelections ,userCheckedColumns, setUserCheckedColumns} =
     useStateContext();
 
@@ -480,6 +528,51 @@ export function ConnectionNode({ id, data }) {
   };
 
 
+  const resetSelections = () => {
+    setApiSchemas([]);
+    setApiTables([]);
+    setApiColumns([]);
+    setSelectedSchema("");
+    setSelectedTable("");
+    setUserCheckedColumns([]);
+    setIsAllSelected(false);
+  };
+
+  const handleConnectionChange = (event) => {
+    setSelectedConnection(event.target.value);
+    resetSelections();
+    setUserSelections((prev) => {
+      const updatedSelections = new Map();
+      updatedSelections.set("connection", event.target.value);
+      return updatedSelections;
+    });
+  };
+
+  const handleSchemaChange = (event) => {
+    setSelectedSchema(event.target.value);
+    setApiTables([]);
+    setApiColumns([]);
+    setSelectedTable("");
+    setUserCheckedColumns([]);
+    setIsAllSelected(false);
+    setUserSelections((prev) => {
+      const updatedSelections = new Map(prev);
+      updatedSelections.set("schema", event.target.value);
+      return updatedSelections;
+    });
+  };
+
+  const handleTableChange = (event) => {
+    setSelectedTable(event.target.value);
+    setApiColumns([]);
+    setUserCheckedColumns([]);
+    setIsAllSelected(false);
+    setUserSelections((prev) => {
+      const updatedSelections = new Map(prev);
+      updatedSelections.set("table", event.target.value);
+      return updatedSelections;
+    });
+  };
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
@@ -514,101 +607,36 @@ export function ConnectionNode({ id, data }) {
               <label className="block text-sm font-medium text-black mb-1">
                 Connection
               </label>
-              <select
+              <SearchableSelect
+                options={apiConnections}
                 value={selectedConnection}
-                onChange={(e) => {
-                  e.preventDefault();
-                  setSelectedConnection(e.target.value);
-                  setApiSchemas([]);
-                  setApiTables([]);
-                  setApiColumns([]);
-                  setSelectedSchema("");
-                  setSelectedTable("");
-                  setUserCheckedColumns([]);
-                  setIsAllSelected(false);
-                  setUserSelections((prev) => {
-                    const updatedSelections = new Map();
-                    updatedSelections.set("connection", e.target.value);
-                    return updatedSelections;
-                  });
-                }}
-                className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-              >
-                <option value="" disabled>
-                  Select a connection
-                </option>
-                {apiConnections.map((connection) => (
-                  <option
-                    key={connection.connection_name}
-                    value={connection.connection_name}
-                  >
-                    {connection.connection_name}
-                  </option>
-                ))}
-              </select>
+                onChange={handleConnectionChange}
+                placeholder="Select a connection"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">
                 Schema
               </label>
-              <select
+              <SearchableSelect
+                options={apiSchemas}
                 value={selectedSchema}
-                onChange={(e) => {
-                  e.preventDefault();
-                  setSelectedSchema(e.target.value);
-                  setApiTables([]);
-                  setApiColumns([]);
-                  setSelectedTable("");
-                  setUserCheckedColumns([]);
-                  setIsAllSelected(false);
-                  setUserSelections((prev) => {
-                    const updatedSelections = new Map(prev);
-                    updatedSelections.set("schema", e.target.value);
-                    return updatedSelections;
-                  });
-                }}
-                className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-              >
-                <option value="" disabled>
-                  Select a Schema
-                </option>
-                {apiSchemas.map((schema) => (
-                  <option key={schema} value={schema}>
-                    {schema}
-                  </option>
-                ))}
-              </select>
+                onChange={handleSchemaChange}
+                placeholder="Select a schema"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">
                 Table
               </label>
-              <select
+              <SearchableSelect
+                options={apiTables}
                 value={selectedTable}
-                onChange={(e) => {
-                  e.preventDefault();
-                  setSelectedTable(e.target.value);
-                  setApiColumns([]);
-                  setUserCheckedColumns([]);
-                  setIsAllSelected(false);
-                  setUserSelections((prev) => {
-                    const updatedSelections = new Map(prev);
-                    updatedSelections.set("table", e.target.value);
-                    return updatedSelections;
-                  });
-                }}
-                className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-              >
-                <option value="" disabled>
-                  Select a table
-                </option>
-                {apiTables.map((table) => (
-                  <option key={table} value={table}>
-                    {table}
-                  </option>
-                ))}
-              </select>
+                onChange={handleTableChange}
+                placeholder="Select a table"
+              />
             </div>
+
             {selectedTable && (
               <div>
                 <label className="block text-sm font-medium text-black mb-1">
@@ -652,8 +680,8 @@ export function ConnectionNode({ id, data }) {
                         </label>
                         <Pencil
                           name="edit"
-                          onClick={(e) => handleEditColumn(item.column)}
-                          className=" ml-auto h-4 w-4 text-gray-500 hover:text-gray-700 hover:cursor-pointer"
+                          onClick={() => handleEditColumn(item.column)}
+                          className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700 hover:cursor-pointer"
                         />
                       </div>
                     ))}
@@ -662,9 +690,10 @@ export function ConnectionNode({ id, data }) {
               </div>
             )}
           </div>
+          
           <button
             type="button"
-            onClick={(e) =>
+            onClick={() =>
               data.handleOk({
                 userCheckedColumns: userCheckedColumns,
                 viewType: "Connection",

@@ -363,12 +363,12 @@ export default function Source() {
               style={{
                 backgroundColor: "#FFFFFF",
               }}
-              fitView
-              // defaultViewport={{
-              //   x: 0,
-              //   y: 0,
-              //   zoom: 1,
-              // }}
+              defaultViewport={{
+                x: 0,
+                y: 0,
+                zoom: 1,
+              }}
+              // fitView
             >
               <Controls />
               <Background variant="solid" className="bg-white" />
