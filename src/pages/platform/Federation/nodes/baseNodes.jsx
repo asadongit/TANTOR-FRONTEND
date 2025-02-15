@@ -1,4 +1,3 @@
-/*eslint-disable*/
 import { useCallback, useEffect, useState } from "react";
 import { Cable, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
@@ -480,21 +479,7 @@ export function ConnectionNode({ id, data }) {
     setIsAllSelected((prev) => !prev);
   };
 
-  const handleSave = () => {
-    const payload = {
-      id,
-      type: "Connection",
-      selectedConnection,
-      selectedView,
-      selectedSchema,
-      selectedTable,
-      selectedColumns : userCheckedColumns,
-      Columns: apiColumns,
-    };
-    console.log("Saved Payload:", payload); // Debugging purpose
-    setHandleConnectionPayload(payload);
-    data.onSubmit(payload);
-  };
+
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">

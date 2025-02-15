@@ -40,9 +40,8 @@ const ColumnSettings = ({
     userCheckedColumns, setUserCheckedColumns,
   } = useStateContext();
   const toggleDialog = () => setIsOpen((prev) => !prev);
-  useEffect(() => {
-    console.log("Use Effect User Checked columns ===> ", userCheckedColumns);
-  },[userCheckedColumns]);
+ 
+  
   useEffect(() => {
     console.log("columnSetting ==>> ", columnSetting);
     if ((columnSetting?.viewType === "Source") && (columnSetting?.column?.column_name)) {
@@ -96,10 +95,6 @@ const ColumnSettings = ({
   const handleExecute = async (event) => {
     event.preventDefault();
     
-    // if (!userCheckedColumns.includes(settings.name)){
-    //   setUserCheckedColumns(prev => [...prev, settings.name]);
-    //   console.log("INSIDE HANDLE EXECUTE ==> ", userCheckedColumns);
-    // }
     setUserCheckedColumns(prev => {
       if(!prev.includes(settings.name))
         return [...prev, settings.name];
