@@ -2,11 +2,74 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
-import { SquareKanban, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { Modal } from "@mui/material";
 import { Columns } from "../Columns";
 import { ToastContainer, toast } from "react-toastify";
+
+
+const SearchableSelect = ({ options, value, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const filteredOptions = options.map(option => 
+    typeof option === 'object' ? option.connection_name : option
+  ).filter(option => 
+    option.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSelectClick = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleOptionClick = (option) => {
+    onChange({ target: { value: option } });
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div className="relative w-full h-full">
+      <div 
+        className="w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+        onClick={handleSelectClick}
+      >
+        <span>{value || placeholder}</span>
+        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white text-black border rounded-lg shadow-lg">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 w-4 h-4 text-black" />
+              <input
+                type="text"
+                className="w-full p-2 pl-8 border rounded-md"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {filteredOptions.map((option) => (
+              <div
+                key={option}
+                className="p-2 hover:bg-gray-100 cursor-pointer"
+                onClick={() => handleOptionClick(option)}
+              >
+                {option}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
@@ -266,7 +329,13 @@ export function SourceViewNode({ id, onSave }) {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-black mb-1">View</label>
-                <select
+                <SearchableSelect
+            options={views}
+            value={selectedView}
+            onChange={handleViewChange}
+            placeholder="Select View"
+          />
+                {/* <select
                   value={selectedView}
                   onChange={handleViewChange}
                   className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
@@ -279,7 +348,7 @@ export function SourceViewNode({ id, onSave }) {
                       {view}
                     </option>
                   ))}
-                </select>
+                </select> */}
               </div>
 
               {columnsForViews[selectedView]?.length > 0 && (

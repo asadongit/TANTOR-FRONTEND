@@ -14,12 +14,16 @@ import {
   RotateCw,
   Eye,
   List,
-  RefreshCcw
+  RefreshCcw,
+  Code,
+  Plus
 } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
  
 ModuleRegistry.registerModules([AllCommunityModule]);
  
 const FederationDashBoard = () => {
+  const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalState, setModalState] = useState({ 
@@ -337,24 +341,37 @@ const FederationDashBoard = () => {
       <div className="flex w-full justify-between">
         <h1 className="text-2xl font-semibold">Federation</h1>
         <div className="flex">
+        <button
+            type="button"
+            onClick={()=>navigate('/editor')}
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+          >
+            <div className="flex justify-between"> 
+            <Code className="h-5 w-5 mr-2"/>
+            Editor
+            </div>
+          </button>
           <button
             type="button"
-            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
             <List className="h-5 w-5" />
           </button>
           <button
             type="button"
-            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
             <RefreshCcw className="h-5 w-5" />
           </button>
           <button
             type="button"
             onClick={toggleModal}
-            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            + Create View
+             <div className="flex justify-between"> 
+            <Plus className="h-5 w-5 mr-1"/>
+            Create View
+            </div>
           </button>
         </div>
       </div>
