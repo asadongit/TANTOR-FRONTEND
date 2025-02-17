@@ -35,6 +35,10 @@ export const ContextProvider = ({ children }) => {
        const [userSelections, setUserSelections] = useState(new Map());
        const [settingsList, setSettingsList] = useState([]);
        const [userCheckedColumns, setUserCheckedColumns] = useState([]);
+
+       useEffect(() => {
+        console.log(`Context ==== UserSelection => `, userSelections);
+       }, [userSelections])
     return (
         <StateContext.Provider
           value={{

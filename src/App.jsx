@@ -18,6 +18,7 @@ import {ViewDrawer} from "./pages/platform/Federation/context/DrawerContext"
 import { ContextProvider } from "./context/contextProvider";
 import Source from "./pages/platform/Federation/Source";
 import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
+import ComplexSource from "./pages/platform/Federation/ComplexSource";
 
 
 function App() {
@@ -126,6 +127,21 @@ function App() {
                 <div className="flex-1 relative overflow-hidden">
                   <ReactFlowProvider>
                     <Source />
+                  </ReactFlowProvider>
+                </div>
+              </div>
+            </ContextProvider>
+          }
+        />
+        <Route
+          path="/federation/complex/source"
+          element={
+            <ContextProvider>
+              <div className="h-screen flex flex-col">
+                <Header className="flex-shrink-0 h-16" />
+                <div className="flex-1 relative overflow-hidden">
+                  <ReactFlowProvider>
+                    <ComplexSource />
                   </ReactFlowProvider>
                 </div>
               </div>

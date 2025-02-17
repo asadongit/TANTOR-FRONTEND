@@ -55,11 +55,11 @@ export default function SourceSidebar({ setUserSelection }) {
                                         <span className="text-black text-sm ml-1">{item.name}</span>
                                     )}
                                 </div>
-                                <button
+                                <span
                                     className={`rounded-md hover:bg-gray-200 ${expanded && 'ml-3'}`}
                                 >
                                     <Plus className="h-4 text-gray-500" />
-                                </button>
+                                </span>
                             </button>
                         ))}
                     </div>

@@ -345,9 +345,8 @@ export default function Source() {
   return (
     <div className="w-full h-screen overflow-hidden">
       <div
-        className={`${showPreview ? "h-[40%]" : "h-[95%]"}`}
-        transition-all
-        duration-300
+        className={`${showPreview ? "h-[40%]" : "h-[95%]"} transition-all
+        duration-300`}
       >
         <p className="p-2">Source Page</p>
         <div className="w-full h-[calc(100%-2rem)]">

@@ -99,7 +99,7 @@ const ColumnSettings = ({
       if(!prev.includes(settings.name))
         return [...prev, settings.name];
       return prev;
-    })
+    });
 
     if (columnSetting.viewType === "Source") {
       if (userSelections.get("viewName") !== columnSetting.viewName) {
