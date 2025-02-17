@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Database, Search } from "lucide-react";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-mysql";
 import "ace-builds/src-noconflict/theme-tomorrow";
 
-export default function QueryEditor() {
+export default function Editor() {
+  var encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [query, setQuery] = useState("");
+  const [connections,  setConnections] = useState([]);
+  const [history, setHistory] = useState([]);
 
   const databases = [
     "Oracle",
@@ -30,9 +33,74 @@ export default function QueryEditor() {
     "Firebird",
   ];
 
-  const filteredDatabases = databases.filter((db) =>
+  useEffect(() => {
+      var project = "me";
+      const fetchData = async () => {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
+            headers: {
+              Authorization: `Bearer ${encodedToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          let data = await response.json();
+   
+          if (project !== "none") {
+            data = data.filter(
+              (item) =>
+                // item.project.toUpperCase() === project.toUpperCase() &&
+                // item.created_by.toUpperCase() === token.preferred_username.toUpperCase() &&
+                !item.is_deleted
+            );
+          } else {
+            data = data.filter(
+              (item) =>
+                // item.created_by.toUpperCase() === token.preferred_username.toUpperCase() &&
+                !item.is_deleted
+            );
+          }
+          console.log("connection data is ===>",data)
+          const names = data?.map(connection => connection.connection_name);
+          setConnections(names);
+        } catch (error) {
+          console.log(error);
+        }
+      };
+   
+      fetchData();
+    }, []);
+
+  const filteredDatabases = connections?.filter((db) =>
     db.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_FAST_API}/recent-queries`, {
+      headers: {
+        'Authorization': `Bearer ${encodedToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+      .then((response) => response.text())
+      .then((result) => {
+        const lines = result.trim().split("\n");
+        const queries = lines
+          .map((line) => {
+            try {
+              const json = JSON.parse(line);
+              return json.query;
+            } catch (error) {
+              console.error("Error parsing JSON:", error);
+              return null;
+            }
+          })
+          .filter((query) => query !== null);
+        console.log("queries are ====>",queries)
+        setHistory(queries);
+      })
+      .catch((error) => console.error("Error fetching data:", error));
+  }, []);
 
   const handleRunQuery = () => {
     console.log("Running query:", query);
@@ -72,11 +140,7 @@ export default function QueryEditor() {
         {/* History Section */}
         <div className="h-[40%] flex flex-col border-t pt-3">
           <h2 className="text-xl font-bold mb-3">History</h2>
-          <ul className="list-disc pl-5 text-gray-600 flex-1 overflow-y-auto custom-scrollbar pr-2">
-            {[...Array(50)].map((_, i) => (
-              <li key={i} className="mb-2">Query {i + 1}</li>
-            ))}
-          </ul>
+          
         </div>
       </aside>
 
@@ -102,14 +166,23 @@ export default function QueryEditor() {
             }}
             value={query}
             onChange={setQuery}
-            style={{ width: "100%", height: "180px", padding: "10px", borderRadius: "8px" }}
+            style={{ width: "100%", height: "150px", padding: "10px", borderRadius: "8px" }}
             showLineNumbers
           />
         </div>
-        {/* <div className="mt-3 flex gap-3">
-          <button onClick={handleRunQuery} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Run</button>
-          <button onClick={handleClearQuery} className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500">Clear</button>
-        </div> */}
+        <div className="mt-3 flex gap-3 justify-end">
+        <button
+            type="button"
+            // onClick={toggleModal}
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+          >
+             <div className="flex justify-between"> 
+            {/* <Plus className="h-5 w-5 mr-1"/> */}
+            Run
+            </div>
+          </button> 
+        <button onClick={handleClearQuery} className="bg-gray-400 text-white px-6 py-1.5 rounded-lg hover:bg-gray-500">Clear</button>
+        </div>
 
         {/* Output Section */}
         <div className="mt-6">
