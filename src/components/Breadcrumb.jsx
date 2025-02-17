@@ -5,30 +5,30 @@ const Breadcrumb = ({ title, link }) => {
   const location = useLocation();
   const pathSegments = location.pathname.split("/").filter((segment) => segment);
 
-  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+  const formatText = (str) => {
+    const withSpaces = str.replace(/-/g, ' ');
+    return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
+  };
 
   return (
     <nav aria-label="breadcrumb" style={styles.breadcrumbNav}>
       <ol style={styles.breadcrumbList}>
         <li style={styles.breadcrumbItem}>
-          {/* <span style={styles.link}>{title}</span> */}
           <Link to={link} style={styles.link}>
-                  {title}
-                </Link>
+            {title}
+          </Link>
           <span style={styles.separator}>&gt;</span>
         </li>
-
         {pathSegments.map((segment, index) => {
           const to = "/" + pathSegments.slice(0, index + 1).join("/");
-
           return (
             <li key={index} style={styles.breadcrumbItem}>
               {index > 0 && <span style={styles.separator}>&gt;</span>}
               {index === pathSegments.length - 1 ? (
-                <span style={styles.active}>{capitalize(segment)}</span>
+                <span style={styles.active}>{formatText(segment)}</span>
               ) : (
                 <Link to={to} style={styles.link}>
-                  {capitalize(segment)}
+                  {formatText(segment)}
                 </Link>
               )}
             </li>

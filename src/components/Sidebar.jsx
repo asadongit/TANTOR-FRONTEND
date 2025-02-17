@@ -25,16 +25,13 @@ import {
 } from '@heroicons/react/24/outline';
 
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
-  const [expandedItems, setExpandedItems] = useState({});
+  const [expandedItem, setExpandedItem] = useState(null);
 
   const toggleExpand = (e, routeName) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setExpandedItems(prev => ({
-      ...prev,
-      [routeName]: !prev[routeName]
-    }));
-  };
+  e.preventDefault();
+  e.stopPropagation();
+  setExpandedItem(prev => prev === routeName ? null : routeName);
+};
 
   const platformRoutes = [
     { name: 'Dashboard', icon: ChartBarIcon, path: '/' },
@@ -90,7 +87,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     }
 
     const hasSubItems = route.subItems && route.subItems.length > 0;
-    const isExpanded = expandedItems[route.name];
+    const isExpanded = expandedItem === route.name;
 
     return (
       <div key={route.path}>
@@ -111,36 +108,42 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
               {hasSubItems && (
                 <button
                   onClick={(e) => toggleExpand(e, route.name)}
-                  className="p-1 hover:bg-gray-200 rounded-full"
+                  className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
                 >
-                  {isExpanded ? (
-                    <ChevronDownIcon className="h-4 w-4" />
-                  ) : (
-                    <ChevronRightIcon className="h-4 w-4" />
-                  )}
+                  <ChevronRightIcon
+                    className={`h-4 w-4 transition-transform duration-300 ${
+                      isExpanded ? 'rotate-90' : 'rotate-0'
+                    }`}
+                  />
                 </button>
               )}
             </>
           )}
         </NavLink>
 
-        {hasSubItems && isExpanded && !isCollapsed && (
-          <div className="ml-9 space-y-1">
-            {route.subItems.map((subItem) => (
-              <NavLink
-                key={subItem.path}
-                to={subItem.path}
-                className={({ isActive }) =>
-                  `block px-3 py-2 rounded-lg ${
-                    isActive
-                      ? 'bg-purple-100 text-purple-700'
-                      : 'text-gray-500 hover:bg-gray-100'
-                  }`
-                }
-              >
-                {subItem.name}
-              </NavLink>
-            ))}
+        {hasSubItems && !isCollapsed && (
+          <div
+            className={`ml-9 overflow-hidden transition-all duration-300 ease-in-out ${
+              isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="space-y-1 py-1">
+              {route.subItems.map((subItem) => (
+                <NavLink
+                  key={subItem.path}
+                  to={subItem.path}
+                  className={({ isActive }) =>
+                    `block px-3 py-2 rounded-lg transition-colors duration-200 ${
+                      isActive
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'text-gray-500 hover:bg-gray-100'
+                    }`
+                  }
+                >
+                  {subItem.name}
+                </NavLink>
+              ))}
+            </div>
           </div>
         )}
       </div>
