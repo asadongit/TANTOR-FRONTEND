@@ -12,9 +12,9 @@ import { WelcomeModal } from "./pages/platform/migration/WelcomeModal";
 import { DrawerProvider } from "./pages/platform/migration/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/migration/context/ThemeContext";
 import { TableProvider } from "./pages/platform/migration/context/TableContext";
-import {ViewCanvas} from "./pages/platform/Federation/ViewCanvas"
-import {BusinessSidebar} from "./pages/platform/Federation/BusinessSidebar"
-import {ViewDrawer} from "./pages/platform/Federation/context/DrawerContext"
+import { ViewCanvas } from "./pages/platform/Federation/ViewCanvas"
+import { BusinessSidebar } from "./pages/platform/Federation/BusinessSidebar"
+import { ViewDrawer } from "./pages/platform/Federation/context/DrawerContext"
 import { ContextProvider } from "./context/contextProvider";
 import Source from "./pages/platform/Federation/Source";
 import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
@@ -23,13 +23,13 @@ import ComplexSource from "./pages/platform/Federation/ComplexSource";
 
 function App() {
 
- const [activeSection, setActiveSection] = useState('platform');
- const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeSection, setActiveSection] = useState('platform');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
 
- const toggleSidebar = () => {
-   setIsSidebarCollapsed(!isSidebarCollapsed);
- };
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
 
 
   return (
@@ -47,7 +47,10 @@ function App() {
                   isCollapsed={isSidebarCollapsed}
                   toggleSidebar={toggleSidebar}
                 />
-                <main className={`flex-1 p-4 transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+                <main
+                  className={`${isSidebarCollapsed ? 'ml-16 w-[calc(100%-4rem)]' : 'ml-64 w-[calc(100%-16rem)]'
+                    } flex-1 p-4 transition-all duration-300`}
+                >
                   <Routes>
                     <Route
                       path="/"
@@ -72,9 +75,9 @@ function App() {
           path="/Migrationcanvas"
           element={
             <TableProvider>
-            <ThemeProvider>
-              <DrawerProvider>
-               
+              <ThemeProvider>
+                <DrawerProvider>
+
                   <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
                     <Header className="h-16 flex-shrink-0" />{" "}
                     <div className="flex-1 flex">
@@ -88,9 +91,9 @@ function App() {
                     </div>
                     <WelcomeModal />
                   </div>
-                  
-              </DrawerProvider>
-            </ThemeProvider>
+
+                </DrawerProvider>
+              </ThemeProvider>
             </TableProvider>
           }
         />
@@ -100,25 +103,25 @@ function App() {
           element={
             <ContextProvider>
               <ViewDrawer>
-                  <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
-                    <Header className="h-16 flex-shrink-0" />{" "}
-                    {/* <BusinessHeader/> */}
-                    <div className="flex-1 flex mt-8">
-                      <BusinessSidebar className="w-64" />{" "}
-                      <div className="flex-1 relative">
-                        {" "}
-                        <ReactFlowProvider>
-                          <ViewCanvas />
-                        </ReactFlowProvider>
-                      </div>
-                      </div>
-                      <BusinessFooter />
+                <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
+                  <Header className="h-16 flex-shrink-0" />{" "}
+                  {/* <BusinessHeader/> */}
+                  <div className="flex-1 flex mt-8">
+                    <BusinessSidebar className="w-64" />{" "}
+                    <div className="flex-1 relative">
+                      {" "}
+                      <ReactFlowProvider>
+                        <ViewCanvas />
+                      </ReactFlowProvider>
+                    </div>
                   </div>
+                  <BusinessFooter />
+                </div>
               </ViewDrawer>
-              </ContextProvider>
+            </ContextProvider>
           }
         />
-         <Route
+        <Route
           path="/federation/view/source"
           element={
             <ContextProvider>
