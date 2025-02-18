@@ -4,7 +4,7 @@ import { useStateContext } from "../../../context/contextProvider";
 
 export function Columns({ id, columnName,dataType, toggleModal }) {
 
-  const { columnSettings, setColumnSettings, finalPayload } = useStateContext("")
+  const { columnSettings, setColumnSettings, complexCheck } = useStateContext("")
 
   useEffect(() => {
     setColumnSettings((prev) => {
@@ -117,7 +117,7 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
               </div>
             </div>
 
-            {finalPayload.query_type != "Complex" && (
+            {!complexCheck && (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Order</label>
@@ -162,7 +162,7 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
                   <option value="Count">Count</option>
                 </select>
               </div>
-              {finalPayload.query_type != "Complex" && (
+              {!complexCheck && (
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Group by</label>
                 <select

@@ -74,7 +74,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload } = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, complexCheck } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -315,7 +315,7 @@ export function SourceViewNode({ id, onSave }) {
             <h3 className="text-black font-medium">Source View</h3>
           </div>
           <div>
-          {finalPayload.query_type === "Complex" && (
+          {complexCheck && (
           <button
               onClick={() => toggleEditorModal(true)}
               className="p-1 rounded-md hover:bg-gray-200"

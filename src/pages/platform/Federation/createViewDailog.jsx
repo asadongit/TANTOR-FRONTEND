@@ -5,7 +5,7 @@ import { useStateContext } from "../../../context/contextProvider";
 
 const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState }) => {
 
-  const { handleFinalPayload , finalPayload} = useStateContext("")
+  const { complexCheck, setComplexCheck} = useStateContext("")
   
   const navigate = useNavigate();
 
@@ -17,9 +17,12 @@ const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState 
     }
     if (modalState.viewType === "Business" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
 
-      handleFinalPayload({
-        query_type : modalState.queryType
-      });
+      if(modalState.queryType === "Complex"){
+        setComplexCheck(true)
+      }
+      else{
+        setComplexCheck(false)
+      }
 
       navigate("/viewcanvas", {
         state: modalState,

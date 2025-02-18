@@ -11,7 +11,7 @@ import ComplexQueryEditor from "../complexsource/ComplexQueryEditor";
 
 export function ConnectionNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, finalPayload } = useStateContext("")
+  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck } = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("")
@@ -330,7 +330,7 @@ export function ConnectionNode({ id, onSave }) {
             <h3 className="text-black font-medium">Connection</h3>
           </div>
           <div>
-          {finalPayload.query_type === "Complex" && (
+          {complexCheck && (
           <button
               onClick={() => toggleEditorModal(true)}
               className="p-1 rounded-md hover:bg-gray-200"

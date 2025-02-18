@@ -6,7 +6,7 @@ import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode } fro
 function ComplexQueryEditor({setShowQueryEditor}) {
   const [query, setQuery] = useState("");
   
-  const {userSelections, setUserSelections} = useStateContext("");
+  const {userSelections, setUserSelections, finalPayload, handleFinalPayload, complexCheck} = useStateContext("");
   
   useEffect(() => {
     if(userSelections.has("complex_query"))
@@ -14,6 +14,16 @@ function ComplexQueryEditor({setShowQueryEditor}) {
   },[]);
   
   const handelExecute = () => {
+
+    if(complexCheck){
+         console.log("query is ======>",query)
+
+    const updatedPayload = { ...finalPayload,  "complex_query" : query};
+
+      console.log("Updated final payload with query is ===>", updatedPayload);
+      handleFinalPayload(updatedPayload);
+    }
+
     setUserSelections(prev => {
         const updatedSelections = new Map(prev);
         updatedSelections.set("complex_query", query);
@@ -25,7 +35,7 @@ function ComplexQueryEditor({setShowQueryEditor}) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end bg-black bg-opacity-0 p-0 h-screen">
-      <div className="w-96 bg-white rounded-lg shadow-lg overflow-hidden h-full"> {/* Increased width to w-96 */}
+      <div className="w-96 bg-white shadow-lg overflow-hidden h-full"> {/* Increased width to w-96 */}
         <div className="h-full flex flex-col">
 
           <div className="h-[10%] border-solid border-b-2">
@@ -49,7 +59,7 @@ function ComplexQueryEditor({setShowQueryEditor}) {
               mode="mysql"
               theme="tomorrow"
               name="editor"
-              fontSize={18}
+              fontSize={15}
               wrapEnabled={true}
               showPrintMargin={false}
               showGutter
