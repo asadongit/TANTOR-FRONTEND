@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Cable, X, ChevronDown, ChevronUp, Pencil, Search } from "lucide-react";
+import { Cable, X, ChevronDown, ChevronUp, Pencil, Search, SquareKanban, Database } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { defaultSetting } from "../viewsource/ColumnSettings";
 
@@ -69,6 +69,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 };
 
 export function BaseNode({ id, data }) {
+  console.log("QUERY TYPEEEE ===>> ",data.queryType);
   const [isAllSelected, setIsAllSelected] = useState(false);
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
@@ -157,7 +158,7 @@ export function BaseNode({ id, data }) {
     setApiColumns([]);
 
     setSelectedView(selectedViewName);
-
+    setIsAllSelected(false);
     setUserSelections((prev) => {
       const updatedSelections = new Map();
       updatedSelections.set("viewName", selectedViewName);
@@ -238,7 +239,16 @@ export function BaseNode({ id, data }) {
         <X className="w-4 h-4 text-white" />
       </button>
       <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center space-x-3">
+         <SquareKanban className="w-5 h-5 text-[#8E77BB]" />
         <h2 className="text-lg font-medium">Source View</h2>
+        
+          {data.queryType==="Complex" ? (<button onClick={(e) => {
+            e.preventDefault();
+            data.setShowQueryEditor(prev => !prev);
+            console.log("clicked");
+          }}> <Database className="w-5 h-5 text-[#8E77BB]" /></button>) : null}
+      </div>
       </div>
 
       <div className="space-y-4">
@@ -317,6 +327,7 @@ export function BaseNode({ id, data }) {
 }
 
   export function ConnectionNode({ id, data }) {
+    console.log("QUERY TYPEEEE ===>> ",data.queryType);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [selectedConnection, setSelectedConnection] = useState("");
     const [selectedSchema, setSelectedSchema] = useState("");
@@ -586,7 +597,12 @@ export function BaseNode({ id, data }) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3">
           <Cable className="w-5 h-5 text-[#8E77BB]" />
-          <h3 className="text-black font-medium">Connection</h3>
+          <h2 className="text-black font-medium">Connection</h2>
+          {data.queryType==="Complex" ? (<button onClick={(e) => {
+            e.preventDefault();
+            data.setShowQueryEditor(prev => !prev);
+            console.log("clicked");
+          }}> <Database className="w-5 h-5 text-[#8E77BB]" /></button>) : null}
         </div>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}

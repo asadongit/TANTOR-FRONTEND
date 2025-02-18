@@ -17,6 +17,7 @@ import SourcePreview from "./viewsource/SourcePreview";
 import { useStateContext } from "../../../context/contextProvider";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ComplexQueryEditor from "./complexsource/ComplexQueryEditor";
 
 const nodeTypes = {
   baseNode: BaseNode,
@@ -28,6 +29,8 @@ const getId = () => `node_${id++}`;
 
 export default function Source() {
   const modalState = useLocation().state;
+
+  console.log("\n\n\n Modal state ===> ", modalState);
 
   const { settingsList, setSettingsList, userSelections, setUserSelections } =
     useStateContext();
@@ -41,84 +44,88 @@ export default function Source() {
   const toggleModal = () => {
     setIsModalOpen((prev) => !prev);
   };
-
+  const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState([]);
 
   const handleColumnSetting = (params) => {
-      setColumnSetting(params);
+    setColumnSetting(params);
   };
 
   const handleOk = async (params) => {
     const { settings, viewType, userCheckedColumns } = params;
-    if(userCheckedColumns.length === 0)
+    if (userCheckedColumns.length === 0)
       return toast.error("Please select at least one column");
 
     if (!params) return null;
 
-    // Validate Columns
-    const groupByColumns = [];
-    const aggregateColumns = [];
     let orderByColumns = [];
-    
-    settings.forEach((item) => {
-      if (userCheckedColumns.includes(item.name)) {
-        if (item.groupBy === "Yes") groupByColumns.push(item.name);
-        if (item.aggregate) aggregateColumns.push(item.name);
-        
-        if(item.sort) orderByColumns.push({
-          field: item.name,
-          sortType: item.sort,
-          order: item.order,
-        });
-      }
-    });
-     // Sorting Order By Columns.
-    orderByColumns = orderByColumns.sort((a,b) => a.order - b.order);
-    
-    console.log("GROUP BY COLUMNS ==> ", groupByColumns);
-    console.log("AGGREGATE COLUMNS ==> ", aggregateColumns);
-    console.log("User Checked Columns ==> ", userCheckedColumns);
-    console.log("Order By Columns ==> ", orderByColumns);
 
-    // Validation for Aggregate and Group By columns
-    if (groupByColumns.length > 0 && aggregateColumns.length > 0) {
-      let invalidColumns = userCheckedColumns.filter(
-        (column) =>
-          !aggregateColumns.includes(column) && !groupByColumns.includes(column)
-      );
-      if (invalidColumns.length > 0) {
-        toast.error(
-          `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`
+    if (modalState.queryType === "Source") {
+      // Validate Columns
+      const groupByColumns = [];
+      const aggregateColumns = [];
+
+      settings.forEach((item) => {
+        if (userCheckedColumns.includes(item.name)) {
+          if (item.groupBy === "Yes") groupByColumns.push(item.name);
+          if (item.aggregate) aggregateColumns.push(item.name);
+
+          if (item.sort)
+            orderByColumns.push({
+              field: item.name,
+              sortType: item.sort,
+              order: item.order,
+            });
+        }
+      });
+      // Sorting Order By Columns.
+      orderByColumns = orderByColumns.sort((a, b) => a.order - b.order);
+
+      console.log("GROUP BY COLUMNS ==> ", groupByColumns);
+      console.log("AGGREGATE COLUMNS ==> ", aggregateColumns);
+      console.log("User Checked Columns ==> ", userCheckedColumns);
+      console.log("Order By Columns ==> ", orderByColumns);
+
+      // Validation for Aggregate and Group By columns
+      if (groupByColumns.length > 0 && aggregateColumns.length > 0) {
+        let invalidColumns = userCheckedColumns.filter(
+          (column) =>
+            !aggregateColumns.includes(column) &&
+            !groupByColumns.includes(column)
         );
-        return null;
+        if (invalidColumns.length > 0) {
+          toast.error(
+            `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`
+          );
+          return null;
+        }
       }
-    }
 
-    if (aggregateColumns.length > 0 && groupByColumns.length === 0) {
-      let invalidColumns = userCheckedColumns.filter(
-        (column) => !aggregateColumns.includes(column)
-      );
-      if (invalidColumns.length > 0) {
-        toast.error(
-          `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`
+      if (aggregateColumns.length > 0 && groupByColumns.length === 0) {
+        let invalidColumns = userCheckedColumns.filter(
+          (column) => !aggregateColumns.includes(column)
         );
-        return null;
+        if (invalidColumns.length > 0) {
+          toast.error(
+            `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`
+          );
+          return null;
+        }
       }
-    }
 
-    if (aggregateColumns.length === 0 && groupByColumns.length > 0) {
-      let invalidColumns = userCheckedColumns.filter(
-        (column) => !groupByColumns.includes(column)
-      );
-      if (invalidColumns.length > 0) {
-        toast.error(
-          `Group By Error. Invalid Columns = ${invalidColumns.join(", ")}`
+      if (aggregateColumns.length === 0 && groupByColumns.length > 0) {
+        let invalidColumns = userCheckedColumns.filter(
+          (column) => !groupByColumns.includes(column)
         );
-        return null;
-      }
+        if (invalidColumns.length > 0) {
+          toast.error(
+            `Group By Error. Invalid Columns = ${invalidColumns.join(", ")}`
+          );
+          return null;
+        }
+      }   
     }
-
     // Remove Unchecked Columns from Settings List
     const updatedSettingsList = settings.filter((item) =>
       userCheckedColumns.includes(item.name)
@@ -128,9 +135,10 @@ export default function Source() {
     updatedUserSelections.set("viewType", viewType);
 
     console.log("updatedUserSelections ===> ", updatedUserSelections);
-
     // Generate API Payload
     let apiPayload;
+    
+    
     if (updatedUserSelections.get("viewType") === "Source") {
       apiPayload = {
         view_type: "Source",
@@ -139,10 +147,10 @@ export default function Source() {
         group_by: [],
       };
     }
-
+    
     if (updatedUserSelections.get("viewType") === "Connection") {
       apiPayload = {
-        view_type: "Base",
+        view_type: "Connection",
         connection_name: updatedUserSelections.get("connection"),
         schema_name: updatedUserSelections.get("schema"),
         table_name: updatedUserSelections.get("table"),
@@ -150,7 +158,11 @@ export default function Source() {
         group_by: [],
       };
     }
-
+    
+    const hasComplexQuery = params.userSelections.has("complex_query");
+    if(modalState.queryType === "Complex" && hasComplexQuery){
+      apiPayload["complex_query"] = params.userSelections.get("complex_query");
+    } 
     // Configuring Aliases
     updatedSettingsList.forEach((item) => {
       if (item.output === "Yes") {
@@ -170,7 +182,9 @@ export default function Source() {
     });
 
     // Set orderby fields
-    apiPayload["order_by"] = orderByColumns.map(item => `${item.field} ${item.sortType}`);
+    apiPayload["order_by"] = orderByColumns.map(
+      (item) => `${item.field} ${item.sortType}`
+    );
 
     console.log("Final API Payload ===> ", apiPayload);
 
@@ -207,13 +221,13 @@ export default function Source() {
       .filter((item) => item !== null);
 
     if (response.status === 200) {
-      if(!data.length > 0){
+      if (!data.length > 0) {
         toast.error(`${viewType === "Source" ? "View" : "Table"} is empty!`);
         return null;
       }
-      
+
       setPreviewData(data);
-      setShowPreview((prev) => prev === false? !prev : prev);
+      setShowPreview((prev) => (prev === false ? !prev : prev));
       toast.success("View Query Executed!");
     } else {
       toast.error("Error while generating output preview.");
@@ -276,7 +290,7 @@ export default function Source() {
     if (response.status == 200) {
       console.log("Save View Result ==> ", data);
       setShowPreview((prev) => !prev);
-      toast.success("VIEW SAVED SUCCESSFULLY.",{autoClose: 2900});
+      toast.success("VIEW SAVED SUCCESSFULLY.", { autoClose: 2900 });
       setTimeout(() => navigate("/federation"), 3000);
     } else {
       toast.error("Error while saving view..");
@@ -321,6 +335,8 @@ export default function Source() {
           deleteNode: (id) =>
             setNodes((nds) => nds.filter((node) => node.id !== id)),
           handleColumnSetting,
+          setShowQueryEditor,
+          queryType: modalState.queryType,
           toast,
         },
       };
@@ -348,7 +364,11 @@ export default function Source() {
         className={`${showPreview ? "h-[40%]" : "h-[95%]"} transition-all
         duration-300`}
       >
-        <p className="p-2">Source Page</p>
+        {modalState.queryType === "Regular" ? (
+          <p className="p-2">Source Page</p>
+        ) : (
+          <p className="p-2">Complex Page</p>
+        )}
         <div className="w-full h-[calc(100%-2rem)]">
           <div className="w-full h-full">
             <ReactFlow
@@ -381,8 +401,8 @@ export default function Source() {
 
       {showPreview && (
         <SourcePreview
-          previewData = {previewData}
-          setPreviewData = {setPreviewData}
+          previewData={previewData}
+          setPreviewData={setPreviewData}
           setShowPreview={setShowPreview}
           toggleModal={toggleModal}
         />
@@ -391,6 +411,7 @@ export default function Source() {
       <ColumnSettings
         columnSetting={columnSetting}
         setColumnSetting={setColumnSetting}
+        queryType={modalState.queryType}
       />
 
       {isModalOpen && (
@@ -399,7 +420,9 @@ export default function Source() {
           handleSaveView={handleSaveView}
         />
       )}
-
+      {showQueryEditor && (
+        <ComplexQueryEditor setShowQueryEditor={setShowQueryEditor} />
+      )}
       <ToastContainer position="top-right" />
     </div>
   );

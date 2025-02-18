@@ -19,7 +19,7 @@ function ComplexQueryEditor({setShowQueryEditor}) {
          console.log("query is ======>",query)
 
     const updatedPayload = { ...finalPayload,  "complex_query" : query};
-
+    
       console.log("Updated final payload with query is ===>", updatedPayload);
       handleFinalPayload(updatedPayload);
     }

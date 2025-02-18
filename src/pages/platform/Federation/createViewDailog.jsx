@@ -10,7 +10,7 @@ const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState 
   const navigate = useNavigate();
 
   const handleCreateView = () => {
-    if (modalState.viewType === "Source" && modalState.queryType === "Regular") {
+    if (modalState.viewType === "Source" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
       navigate("/federation/view/source", {
         state: modalState,
       });
