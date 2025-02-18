@@ -2,11 +2,12 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
-import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search } from "lucide-react";
+import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { Modal } from "@mui/material";
 import { Columns } from "../Columns";
 import { ToastContainer, toast } from "react-toastify";
+import ComplexQueryEditor from "../complexsource/ComplexQueryEditor";
 
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
@@ -73,7 +74,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings } = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -81,6 +82,7 @@ export function SourceViewNode({ id, onSave }) {
   const [columnsForViews, setColumnsForViews] = useState({});
   const [selectedColumn, setSelectedColumn] = useState("");
   const [columnData, setColumnData] = useState([])
+  const [showQueryEditor, setShowQueryEditor] = useState(false);
 
   useEffect(() => {
     const fetchViews = async () => {
@@ -292,6 +294,14 @@ export function SourceViewNode({ id, onSave }) {
     setIsModalOpen(value);
   };
 
+  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
+
+  const toggleEditorModal = (value) => {
+    console.log("toggle model ")
+    setIsEditorModalOpen(value);
+  };
+
+
   return (
     <>
       <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
@@ -305,21 +315,29 @@ export function SourceViewNode({ id, onSave }) {
             <h3 className="text-black font-medium">Source View</h3>
           </div>
           <div>
+          {finalPayload.query_type === "Complex" && (
+          <button
+              onClick={() => toggleEditorModal(true)}
+              className="p-1 rounded-md hover:bg-gray-200"
+            >
+              <FileCode className="h-5 text-gray-500" />
+            </button>
+          )}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1 rounded-md hover:bg-gray-200"
             >
               {isCollapsed ? (
-                <ChevronDown className=" h-5 text-black" />
+                <ChevronDown className=" h-5 text-gray-500" />
               ) : (
-                <ChevronUp className=" h-5 text-black" />
+                <ChevronUp className=" h-5 text-gray-500" />
               )}
             </button>
             <button
               onClick={() => handleDelete(id)}
               className="p-1 rounded-md hover:bg-gray-200"
             >
-              <X className="h-5 text-black" />
+              <X className="h-5 text-gray-500" />
             </button>
           </div>
         </div>
@@ -335,20 +353,6 @@ export function SourceViewNode({ id, onSave }) {
             onChange={handleViewChange}
             placeholder="Select View"
           />
-                {/* <select
-                  value={selectedView}
-                  onChange={handleViewChange}
-                  className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-                >
-                  <option value="" disabled>
-                    Select a view
-                  </option>
-                  {views?.map((view, index) => (
-                    <option key={index} value={view}>
-                      {view}
-                    </option>
-                  ))}
-                </select> */}
               </div>
 
               {columnsForViews[selectedView]?.length > 0 && (
@@ -443,6 +447,21 @@ export function SourceViewNode({ id, onSave }) {
             dataType={columnData.find(col => col.column_name === selectedColumn)?.data_type}
             toggleModal={toggleModal}
           />
+
+        </div>
+
+      </Modal>
+      <Modal
+        open={isEditorModalOpen}
+        onClose={() => toggleEditorModal(false)}
+        BackdropProps={{
+          style: {
+            backgroundColor: 'transparent',
+          },
+        }}
+      >
+        <div className="absolute top-0 right-0 h-full">
+        <ComplexQueryEditor setShowQueryEditor={toggleEditorModal} />
 
         </div>
 

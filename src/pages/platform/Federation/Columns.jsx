@@ -1,10 +1,10 @@
-import { Settings, X } from "lucide-react";
+import { Settings, X, Info} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStateContext } from "../../../context/contextProvider";
 
 export function Columns({ id, columnName,dataType, toggleModal }) {
 
-  const { columnSettings, setColumnSettings } = useStateContext("")
+  const { columnSettings, setColumnSettings, finalPayload } = useStateContext("")
 
   useEffect(() => {
     setColumnSettings((prev) => {
@@ -57,9 +57,14 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
             <Settings className="w-7 h-7 text-[#8E77BB] pr-3" />
             <span className="text-lg font-medium">Column Settings</span>
           </div>
+          <div className="mt-1">
           <button className="text-gray-500 hover:text-gray-700">
-            <X className="h-5" onClick={() => toggleModal(false)} />
+            <Info className="h-4" />
           </button>
+          <button className="text-gray-500 hover:text-gray-700">
+            <X className="h-4" onClick={() => toggleModal(false)} />
+          </button>
+          </div>
         </div>
       </div>
 
@@ -112,6 +117,7 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
               </div>
             </div>
 
+            {finalPayload.query_type != "Complex" && (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Order</label>
@@ -123,6 +129,7 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
                 />
               </div>
+              
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Sort</label>
                 <select
@@ -137,6 +144,7 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
                 </select>
               </div>
             </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -154,6 +162,7 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
                   <option value="Count">Count</option>
                 </select>
               </div>
+              {finalPayload.query_type != "Complex" && (
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Group by</label>
                 <select
@@ -166,9 +175,10 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
                   <option value="Yes">Yes</option>
                 </select>
               </div>
+              )}
             </div>
 
-            <div>
+            {/* <div>
               <label className="block text-sm text-gray-600 mb-1">Wildcard</label>
               <input
                 type="text"
@@ -177,7 +187,7 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
                 onChange={handleChange}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
               />
-            </div>
+            </div> */}
           </div>
         </div>
       )}

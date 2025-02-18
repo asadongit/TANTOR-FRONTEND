@@ -19,6 +19,8 @@ import { ContextProvider } from "./context/contextProvider";
 import Source from "./pages/platform/Federation/Source";
 import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
 import ComplexSource from "./pages/platform/Federation/ComplexSource";
+import FederationDashBoard from "./pages/platform/Federation/FederationDashboard";
+
 
 
 function App() {
@@ -34,6 +36,7 @@ function App() {
 
   return (
     <Router>
+      <ContextProvider>
       <Routes>
         {/* Main layout with header/sidebar */}
         <Route
@@ -99,9 +102,13 @@ function App() {
         />
 
         <Route
+            path="/federation"
+            element={<FederationDashBoard />}
+          />
+
+        <Route
           path="/viewcanvas"
           element={
-            <ContextProvider>
               <ViewDrawer>
                 <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
                   <Header className="h-16 flex-shrink-0" />{" "}
@@ -118,7 +125,6 @@ function App() {
                   <BusinessFooter />
                 </div>
               </ViewDrawer>
-            </ContextProvider>
           }
         />
         <Route
@@ -152,6 +158,7 @@ function App() {
           }
         />
       </Routes>
+      </ContextProvider>
     </Router>
   );
 }

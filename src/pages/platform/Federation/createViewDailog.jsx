@@ -1,8 +1,12 @@
 /*eslint-disable*/
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useStateContext } from "../../../context/contextProvider";
 
 const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState }) => {
+
+  const { handleFinalPayload , finalPayload} = useStateContext("")
+  
   const navigate = useNavigate();
 
   const handleCreateView = () => {
@@ -11,7 +15,12 @@ const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState 
         state: modalState,
       });
     }
-    if (modalState.viewType === "Business" && modalState.queryType === "Regular") {
+    if (modalState.viewType === "Business" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
+
+      handleFinalPayload({
+        query_type : modalState.queryType
+      });
+
       navigate("/viewcanvas", {
         state: modalState,
       });

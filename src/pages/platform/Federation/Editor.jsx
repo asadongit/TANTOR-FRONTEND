@@ -206,7 +206,7 @@ export default function Editor() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="mt-3 flex-1 ml-1 overflow-y-auto custom-scroll pr-2">
+          <div className="mt-3 flex-1 ml-1 overflow-y-auto overflow-x-auto custom-scroll pr-2">
             {filteredDatabases.map((db) => (
               <div className="flex mt-1" key={db}>
                 <Database className="h-4 w-4 mr-3 mt-1" />
@@ -307,9 +307,9 @@ export default function Editor() {
                   <CircularProgress sx={{ color: "#8e78b7" }} />
                 </div>
               ) : (
-                <div className="h-full overflow-y-auto overflow-x-auto">
+                <div className="h-full overflow-y-auto overflow-x-auto custom-scroll">
                   <table className="h-full w-full">
-                    <thead className="text-sm sticky top-0 bg-[#29304a] text-white">
+                    <thead className="text-xs sticky top-0 bg-[#29304a] text-white">
                       <tr>
                         {columnDefs.map((col, index) => (
                           <th key={index} className="text-left p-4">
@@ -318,7 +318,7 @@ export default function Editor() {
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="text-sm">
+                    <tbody className="text-xs">
                       {data.map((row, rowIndex) => (
                         <tr key={rowIndex} className="border-b">
                           {columnDefs.map((col, colIndex) => {
