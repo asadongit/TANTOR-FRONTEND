@@ -19,7 +19,6 @@ import { ContextProvider } from "./context/contextProvider";
 import Source from "./pages/platform/Federation/Source";
 import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
 import ComplexSource from "./pages/platform/Federation/ComplexSource";
-import FederationDashBoard from "./pages/platform/Federation/FederationDashboard";
 
 
 
@@ -100,11 +99,6 @@ function App() {
             </TableProvider>
           }
         />
-
-        <Route
-            path="/federation"
-            element={<FederationDashBoard />}
-          />
 
         <Route
           path="/viewcanvas"
