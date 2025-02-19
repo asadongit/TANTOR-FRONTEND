@@ -11,12 +11,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 export function BusinessFooter() {
 
   const navigate = useNavigate();
-  const { finalPayload, handleFinalPayload } = useStateContext("");
+  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload,columnSettings } = useStateContext("");
   const [preview, setPreview] = useState(false);
   const encodedToken = import.meta.env.VITE_ACCESS_TOKEN;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { columnSettings } = useStateContext("")
 
 
   const getSelectFields = (columnSettings, hasOperation) => {
@@ -43,7 +42,15 @@ export function BusinessFooter() {
 
   const handleClick = async () => {
 
-    console.log("column settings are ===>", columnSettings)
+    const connections = connectionPayload.map(item => item.selectedConnection);
+    const views = viewPayload.map(item => item.view);
+
+    const  metadata ={
+        connections,
+        views
+    }
+
+    console.log("metadata payload is ", metadata)
 
     let selectColumns = new Set();
     let groupByColumns = new Set();
@@ -135,7 +142,7 @@ export function BusinessFooter() {
 
       console.log("select fields are in every case is   &&&&&&&&&&&&&&&=====>", selectFields)
 
-      const updatedPayload = { ...finalPayload, group_by: groupByArray, select_fields: selectFields };
+      const updatedPayload = { ...finalPayload, group_by: groupByArray, select_fields: selectFields, metadata };
 
       console.log("Updated final payload with group_by and select fields is ===>", updatedPayload);
       handleFinalPayload(updatedPayload);
