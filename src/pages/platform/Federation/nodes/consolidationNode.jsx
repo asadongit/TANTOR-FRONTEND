@@ -179,12 +179,6 @@ if (finalPayload?.operation) {
           }
         });
 
-        // console.log("selected columns are =======#################", selectedColumns)
-        // const select_fields = selectedColumns.map(field => ({
-        //   field,
-        //   alias: ""
-        // }));
-
         const newPayload = {
           operation: unionType,
           view_type: "Integrated View",
@@ -230,12 +224,6 @@ if (finalPayload?.operation) {
       console.log("base join is===>", baseJoin)
 
 
-      // const connectionSelectFields = connectionPayload?.flatMap((conn) => conn.select_fields || []) || [];
-      // const viewSelectFields = [...(viewPayload?.flatMap((view) => view.select_fields || []) || []), ...connectionSelectFields];
-
-      // console.log("ViewSELECT FILESDSS ======>", viewSelectFields)
-
-
       const newPayload = {
         ...finalPayload,
         base_join: baseJoin,
@@ -245,20 +233,9 @@ if (finalPayload?.operation) {
         view_name: "MYVIEW",
         isMateralizedView: "false",
         isCaching: "false",
-        // select_fields: viewSelectFields,
       }
 
       handleFinalPayload(newPayload);
-
-      // const newPayload ={
-      //   ...finalPayload,
-      //   joins: finalPayload.joins.map(({ id, ...rest }) => rest),
-      //   base_join: baseJoin,
-      //   ...(connection && { base_join_def: connection.def }),
-      //    command: "execute"
-      // }
-
-      // handlefinalPayload(newPayload);
     }
 
     setIsConsolidationModalOpen(!isConsolidationModalOpen);
@@ -281,18 +258,6 @@ if (finalPayload?.operation) {
     setJoinType("")
     setOperator("")
   }
-
-  // const handleColumnChange = (column) => {
-  //   setSelectedColumns((prevSelected) =>
-  //     prevSelected.includes(column)
-  //       ? prevSelected.filter((col) => col !== column)
-  //       : [...prevSelected, column]
-  //   );
-  // };
-
-  // const handleSelectAllChange = (isChecked) => {
-  //   setSelectedColumns(isChecked ? columns : []);
-  // };
 
   const handleColumnChange = (column) => {
     setSelectedColumns((prev) => {
@@ -384,101 +349,6 @@ if (finalPayload?.operation) {
     };
 
     const [selectedColumn, setSelectedColumn] = useState("");
-
-
-
-   // Function to normalize data types by removing precision and scale
-  //  const normalizeDataType = (dataType) => {
-  //   return dataType.replace(/\(\d+,\d+\)/, "").toLowerCase();
-  // };
-
-  // Function to get data types for selectedColumns
-  // const getDataTypesForSelectedColumns = (nodeId) => {
-  //   const viewNode = viewPayload.find((node) => node.id === nodeId);
-  //   const connectionNode = connectionPayload.find((node) => node.id === nodeId);
-
-  //   if (viewNode) {
-  //     return viewNode.selectedColumns.map((col) => {
-  //       const columnInfo = viewNode.Columns.find((c) => c.column_name === col);
-  //       return columnInfo
-  //         ? { name: col, type: normalizeDataType(columnInfo.data_type) }
-  //         : null;
-  //     });
-  //   } else if (connectionNode) {
-  //     return connectionNode.selectedColumns.map((col) => {
-  //       const columnInfo = connectionNode.Columns.find((c) => c.column === col);
-  //       return columnInfo
-  //         ? { name: col, type: normalizeDataType(columnInfo.datatype) }
-  //         : null;
-  //     });
-  //   }
-  //   return null;
-  // };
-
-  // Function to find source and target nodes for a given consolidation ID
-  // const findSourceAndTargetNodes = (consolidationId) => {
-  //   let sourceNode = null;
-  //   let targetNode = null;
-
-  //   // Find the source node for the consolidation ID
-  //   const sourceConsolidation = consolidationPayload.find(
-  //     (cons) => cons.target === consolidationId
-  //   );
-  //   if (sourceConsolidation) {
-  //     sourceNode = sourceConsolidation.source;
-  //   }
-
-  //   // Find the target node for the consolidation ID
-  //   const targetConsolidation = consolidationPayload.find(
-  //     (cons) => cons.source === consolidationId
-  //   );
-  //   if (targetConsolidation) {
-  //     targetNode = targetConsolidation.target;
-  //   }
-
-  //   if (!sourceNode || !targetNode) {
-  //     console.log(`Error: Unable to find source or target for consolidation ID ${id}.`);
-  //     return { source: null, target: null };
-  //   }
-
-  //   return { source: sourceNode, target: targetNode };
-  // };
-
-  // const checkConsolidation = () => {
-
-  //   console.log("inside the union check functiion *********")
-  //   const { source, target } = findSourceAndTargetNodes(id);
-
-  //   console.log("source iss ====>",source)
-  //   console.log("target iss ====>",target)
-
-  //   if (!source || !target) {
-  //     console.log(`Error: Invalid source or target for consolidation ID ${id}.`);
-  //     return false;
-  //   }
-
-  //   const sourceColumns = getDataTypesForSelectedColumns(source);
-  //   const targetColumns = getDataTypesForSelectedColumns(target);
-
-
-  //   if (sourceColumns.length !== targetColumns.length) {
-  //     toast.error(`Error: Column count mismatch`);
-  //     console.log(`Error: Column count mismatch for consolidation ${source} -> ${target}`);
-  //     return false;
-  //   }
-
-  //   for (let i = 0; i < sourceColumns.length; i++) {
-  //     if (sourceColumns[i].type !== targetColumns[i].type) {
-  //       toast.error(`Incompatible data types for ${sourceColumns[i].name}: ${targetColumns[i].name}`)
-  //       console.log(
-  //         `Incompatible data types for ${sourceColumns[i].name} : ${targetColumns[i].name}`
-  //       );
-  //       return false;
-  //     }
-  //   }
-  //   console.log("All consolidations are valid.");
-  //   return true;
-  // };
 
   return (
     <>
@@ -716,47 +586,6 @@ if (finalPayload?.operation) {
                         </div>
                       </div>
                     )}
-                    {/* {columns.length > 0 && (
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium text-black">Select Columns</label>
-                          <div className="px-3 pt-2 space-y-2">
-                            {/* Select All 
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                id="selectAll"
-                                checked={selectedColumns.length === columns.length}
-                                onChange={(e) => handleSelectAllChange(e.target.checked)}
-                                className="text-purple-600 focus:ring-purple-500"
-                              />
-                              <label htmlFor="selectAll" className="text-sm text-gray-700 font-medium">
-                                Select All
-                              </label>
-                            </div>
-
-                            {/* Column Selection 
-                            <div className="max-h-24 overflow-y-auto space-y-2 custom-scrollbar">
-                              {columns.map((column) => (
-                                <div key={column} className="flex justify-between">
-                                  <div className="flex items-center space-x-2">
-                                    <input
-                                      type="checkbox"
-                                      id={column}
-                                      value={column}
-                                      checked={selectedColumns.includes(column)}
-                                      onChange={() => handleColumnChange(column)}
-                                      className="text-purple-600 focus:ring-purple-500"
-                                    />
-                                    <label htmlFor={column} className="text-sm text-gray-700">
-                                      {column}
-                                    </label>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )} */}
                   </div>
                 </>
               )}

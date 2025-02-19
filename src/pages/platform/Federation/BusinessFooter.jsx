@@ -101,6 +101,34 @@ export function BusinessFooter() {
           .filter(([col, settings]) => settings.groupBy === "Yes")
           .map(([col]) => hasOperation ? `${col}` : `${view}.${col}`)
       );
+      
+      let orderBy = [];
+
+      Object.keys(source).forEach(table => {
+        const tableColumns = source[table];
+        Object.keys(tableColumns).forEach(key => {
+          const column = tableColumns[key];
+          if (column.order) {
+            orderBy.push({
+              table,
+              key,
+              order: parseInt(column.order, 10), 
+              sort: column.sort.toLowerCase()
+            });
+          }
+        });
+      });
+      
+      orderBy.sort((a, b) => a.order - b.order);
+      
+      const finalOrderBy = orderBy.map(col => {
+        return hasOperation
+          ? `${col.key} ${col.sort}` 
+          : `${col.table}.${col.key} ${col.sort}`;
+      });
+
+      console.log("order by is ====>",{ order_by: finalOrderBy });
+      
 
       const selectFields = getSelectFields(columnSettings, hasOperation)
 
@@ -186,62 +214,60 @@ export function BusinessFooter() {
     setIsModalOpen((prev) => !prev);
   };
 
-  const handleSaveView = async (params) =>{
+  const handleSaveView = async (params) => {
 
-    console.log("view name entered is =======>",params)
-        const { newViewName } = params;
+    console.log("view name entered is =======>", params)
+    const { newViewName } = params;
 
-        finalPayload["view_name"] = newViewName;
+    finalPayload["view_name"] = newViewName;
 
-        console.log("final payload fainally is =======>",finalPayload)
-    
-        const viewExistsResponse = await fetch(
-          `${import.meta.env.VITE_FAST_API_V2}/view-exists/${newViewName}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${
-                import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-              }`,
-            },
-          }
-        );
-    
-        if (viewExistsResponse.status !== 200) {
-          toast.error("Error checking if view exists");
-          return null;
-        }
-        const viewExists = await viewExistsResponse.json();
-        console.log("viewExists ===> ", viewExists);
-        if (viewExists["result"]) {
-          toast.error("View already exists");
-          return null;
-        }
-    
-        const response = await fetch(
-          `${import.meta.env.VITE_FAST_API_V2}/save-view`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${
-                import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-              }`,
-            },
-            body: JSON.stringify(finalPayload),
-          }
-        );
-    
-        const data = await response.json();
-    
-        if (response.status == 200) {
-          console.log("Save View Result ==> ", data);
-          toast.success("View Saved Successfully.",{autoClose: 2900});
-          setTimeout(() => navigate("/federation"), 3000);
-        } else {
-          toast.error("Error while saving view..");
-        }
+    console.log("final payload fainally is =======>", finalPayload)
+
+    const viewExistsResponse = await fetch(
+      `${import.meta.env.VITE_FAST_API_V2}/view-exists/${newViewName}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+            }`,
+        },
+      }
+    );
+
+    if (viewExistsResponse.status !== 200) {
+      toast.error("Error checking if view exists");
+      return null;
+    }
+    const viewExists = await viewExistsResponse.json();
+    console.log("viewExists ===> ", viewExists);
+    if (viewExists["result"]) {
+      toast.error("View already exists");
+      return null;
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_FAST_API_V2}/save-view`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+            }`,
+        },
+        body: JSON.stringify(finalPayload),
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.status == 200) {
+      console.log("Save View Result ==> ", data);
+      toast.success("View Saved Successfully.", { autoClose: 2900 });
+      setTimeout(() => navigate("/federation"), 3000);
+    } else {
+      toast.error("Error while saving view..");
+    }
 
   }
   return (
@@ -255,18 +281,6 @@ export function BusinessFooter() {
                 <CircularProgress />
               </div>
             )}
-
-            {/* {(!loading && error != null) && (
-  <div className="flex h-full w-full justify-center">
- <div className="flex w-[20%] mx-auto text-gray-500 text-center self-center bg-gray-100 p-2 text-[17px] shadow-md">
-  <Alert severity="error">
-      <AlertTitle>Error</AlertTitle>
-      {error}
-  </Alert>
-</div>
-</div>
-
-)} */}
             {(!loading && rowData.length > 0 && error == null) && (
               <div className="overflow-auto h-full">
                 <table className="w-full">
