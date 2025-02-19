@@ -61,7 +61,7 @@ export default function Source() {
 
     let orderByColumns = [];
 
-    if (modalState.queryType === "Source") {
+    if (modalState.queryType === "Regular") {
       // Validate Columns
       const groupByColumns = [];
       const aggregateColumns = [];
@@ -361,41 +361,35 @@ export default function Source() {
   return (
     <div className="w-full h-screen overflow-hidden">
       <div
-        className={`${showPreview ? "h-[40%]" : "h-[95%]"} transition-all
-        duration-300`}
+        className={`${
+          showPreview ? "h-[60vh]" : "h-[calc(100vh-4rem)]"
+        } transition-all duration-300`}
       >
-        {modalState.queryType === "Regular" ? (
-          <p className="p-2">Source Page</p>
-        ) : (
-          <p className="p-2">Complex Page</p>
-        )}
-        <div className="w-full h-[calc(100%-2rem)]">
-          <div className="w-full h-full">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              nodeTypes={nodeTypes}
-              onDragOver={onDragOver}
-              onDrop={onDrop}
-              style={{
-                backgroundColor: "#FFFFFF",
-              }}
-              defaultViewport={{
-                x: 0,
-                y: 0,
-                zoom: 1,
-              }}
-              // fitView
-            >
-              <Controls />
-              <Background variant="solid" className="bg-white" />
-              <Panel position="top-left">
-                <SourceSidebar setUserSelection={setUserSelection} />
-              </Panel>
-            </ReactFlow>
-          </div>
+        <div className="w-full h-[calc(100%-2.5rem)]">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            style={{
+              backgroundColor: "#FFFFFF",
+              height: "100%",
+            }}
+            defaultViewport={{
+              x: 0,
+              y: 0,
+              zoom: 1,
+            }}
+          >
+            <Controls />
+            <Background variant="solid" className="bg-white" />
+            <Panel position="top-left">
+              <SourceSidebar setUserSelection={setUserSelection} />
+            </Panel>
+          </ReactFlow>
         </div>
       </div>
 
