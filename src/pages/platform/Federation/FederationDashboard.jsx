@@ -48,7 +48,7 @@ const FederationDashBoard = () => {
   const [viewList, setViewList] = useState([])
 
   useEffect(() => {
-    var project = "me";
+    var project = "dummy";
     const fetchData = async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
@@ -85,33 +85,34 @@ const FederationDashBoard = () => {
 
 
   useEffect(() => {
-    var project = "me";
+    if (connectionData.length === 0) return;
+  
+    var project = "dummy";
     connectionData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    var extractedData;
     if (project !== "none") {
       data.map((item) => { });
-      const extractedData = connectionData.filter(
+      extractedData = connectionData.filter(
         (item) =>
           // item.project.toUpperCase() === project.toUpperCase() &&
           // item.created_by.toUpperCase() ===
           // token.preferred_username.toUpperCase() &&
           item.is_deleted === false
       );
+    } else {
+      extractedData = connectionData.filter(
+        (item) =>
+          // item.created_by.toUpperCase() ===
+          // token.preferred_username.toUpperCase() &&
+          item.is_deleted === false
+      );
+    }
       setData(extractedData);
       const connectionIds = extractedData.map((item) => item.connection_id);
       const connectionNames = extractedData.map((item) => item.connection_name);
       fetchSchemaCount(connectionIds)
       fetchTableCount(connectionIds)
       fetchViewCount(connectionNames)
-    } else {
-      const extractedData = connectionData.filter(
-        (item) =>
-          // item.created_by.toUpperCase() ===
-          // token.preferred_username.toUpperCase() &&
-          item.is_deleted === false
-      );
-      setData(extractedData);
-      // fetchSchemaCount(connectionNames)
-    }
 
   }, [connectionData]);
 
@@ -192,7 +193,7 @@ const FederationDashBoard = () => {
       };
     });
     setRowData(updatedRowData);
-  }, [connectionData]);
+  }, [connectionData, schemaList,tableList,viewList]);
 
 
   const cards = [
@@ -466,11 +467,11 @@ const FederationDashBoard = () => {
                           />
                           <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                             <div className="flex items-center p-1 gap-1">
-                              <button
+                              {/* <button
                                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                               >
                                 <Pencil className="h-4 w-4" />
-                              </button>
+                              </button> */}
                               <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                                 <RotateCw className="h-4 w-4" />
                               </button>
