@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { Cable, X, ChevronDown, ChevronUp, Pencil, Search, SquareKanban, Database } from "lucide-react";
+import {
+  Cable,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Search,
+  SquareKanban,
+  Database,
+  FileCode,
+} from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { defaultSetting } from "../viewsource/ColumnSettings";
 
@@ -9,12 +19,14 @@ const FAST_BACKEND = import.meta.env.VITE_FAST_API;
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  
-  const filteredOptions = options.map(option => 
-    typeof option === 'object' ? option.connection_name : option
-  ).filter(option => 
-    option.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+
+  const filteredOptions = options
+    .map((option) =>
+      typeof option === "object" ? option.connection_name : option
+    )
+    .filter((option) =>
+      option.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   const handleSelectClick = () => {
     setIsOpen(!isOpen);
@@ -28,14 +40,18 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 
   return (
     <div className="relative w-full">
-      <div 
+      <div
         className="w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
         onClick={handleSelectClick}
       >
         <span>{value || placeholder}</span>
-        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        {isOpen ? (
+          <ChevronUp className="w-4 h-4" />
+        ) : (
+          <ChevronDown className="w-4 h-4" />
+        )}
       </div>
-      
+
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
           <div className="p-2 border-b">
@@ -69,21 +85,20 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 };
 
 export function BaseNode({ id, data }) {
-  console.log("QUERY TYPEEEE ===>> ",data.queryType);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isAllSelected, setIsAllSelected] = useState(false);
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
   const [apiColumns, setApiColumns] = useState([]);
-  const { 
-    settingsList, 
-    setSettingsList, 
-    userSelections, 
+  const {
+    settingsList,
+    setSettingsList,
+    userSelections,
     setUserSelections,
-    userCheckedColumns, 
-    setUserCheckedColumns 
+    userCheckedColumns,
+    setUserCheckedColumns,
   } = useStateContext();
 
-  // Fetch Views
   useEffect(() => {
     (async () => {
       let response;
@@ -123,7 +138,6 @@ export function BaseNode({ id, data }) {
     if (selectedView) {
       (async () => {
         let response;
-
         try {
           response = await fetch(`${FAST_BACKEND}/fetch_view_columns`, {
             headers: {
@@ -156,7 +170,6 @@ export function BaseNode({ id, data }) {
     const selectedViewName = event.target.value;
     setUserCheckedColumns([]);
     setApiColumns([]);
-
     setSelectedView(selectedViewName);
     setIsAllSelected(false);
     setUserSelections((prev) => {
@@ -172,20 +185,21 @@ export function BaseNode({ id, data }) {
     const dataType = column.data_type;
     const updatedCheckedColumns = [...userCheckedColumns];
     const columnIndex = updatedCheckedColumns.indexOf(columnName);
-    
+
     if (columnIndex !== -1) {
-      if(isAllSelected)
-        setIsAllSelected(false);
+      if (isAllSelected) setIsAllSelected(false);
       updatedCheckedColumns.splice(columnIndex, 1);
-      setSettingsList(prev => prev.filter(item => item.name !== columnName));
-    } else {      
+      setSettingsList((prev) =>
+        prev.filter((item) => item.name !== columnName)
+      );
+    } else {
       updatedCheckedColumns.push(columnName);
       setSettingsList((prev) => [
         ...prev,
         { ...defaultSetting, name: columnName, type: dataType },
       ]);
-      
-      if(updatedCheckedColumns.length === apiColumns.length)
+
+      if (updatedCheckedColumns.length === apiColumns.length)
         setIsAllSelected(true);
     }
     setUserCheckedColumns(updatedCheckedColumns);
@@ -231,114 +245,140 @@ export function BaseNode({ id, data }) {
   };
 
   return (
-    <div className="w-64 p-4 mt-1 bg-white rounded-lg shadow-lg relative group">
-      <button
-        onClick={handleClose}
-        className="absolute top-2 right-2 bg-black rounded-full p-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <X className="w-4 h-4 text-white" />
-      </button>
+    <div className="w-80 p-4 mt-1 bg-white rounded-lg shadow-lg relative group">
       <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center space-x-3">
-         <SquareKanban className="w-5 h-5 text-[#8E77BB]" />
-        <h2 className="text-lg font-medium">Source View</h2>
-        
-          {data.queryType==="Complex" ? (<button onClick={(e) => {
-            e.preventDefault();
-            data.setShowQueryEditor(prev => !prev);
-            console.log("clicked");
-          }}> <Database className="w-5 h-5 text-[#8E77BB]" /></button>) : null}
-      </div>
-      </div>
+  <div className="flex items-center space-x-3">
+    <SquareKanban className="w-5 h-5 text-[#8E77BB]" />
+    <h2 className="text-lg font-medium">Source View</h2>
+  </div>
+  <div className="flex items-center space-x-2">
+    {data.queryType === "Complex" && (
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          data.setShowQueryEditor((prev) => !prev);
+        }}
+      >
+        <FileCode className="w-5 h-5 text-[#8E77BB]" />
+      </button>
+    )}
+    <button
+      onClick={() => setIsCollapsed(!isCollapsed)}
+      className="p-1 rounded-md hover:bg-gray-200"
+    >
+      {isCollapsed ? (
+        <ChevronDown className="w-5 h-5 text-black" />
+      ) : (
+        <ChevronUp className="w-5 h-5 text-black" />
+      )}
+    </button>
+    <button
+      onClick={handleClose}
+      className="p-1 rounded-md hover:bg-gray-200"
+    >
+      <X className="h-5 text-gray-500" />
+    </button>
+  </div>
+</div>
 
-      <div className="space-y-4">
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-1">View</label>
-          <SearchableSelect
-            options={apiViews}
-            value={selectedView}
-            onChange={handleChangeView}
-            placeholder="Select View"
-          />
-        </div>
+      {!isCollapsed && (
+        <div className="space-y-4">
+          <div className="mb-4">
+            <label className="block text-gray-700 mb-1">View</label>
+            <SearchableSelect
+              options={apiViews}
+              value={selectedView}
+              onChange={handleChangeView}
+              placeholder="Select View"
+            />
+          </div>
 
-        {apiColumns && (
-          <div className={`mb-4 ${selectedView ? "" : "hidden"}`}>
-            <h3 className="font-semibold text-gray-700 mb-2">Select Columns</h3>
+          {apiColumns && (
+            <div className={`mb-4 ${selectedView ? "" : "hidden"}`}>
+              <h3 className="font-semibold text-gray-700 mb-2">
+                Select Columns
+              </h3>
 
-            <div className="flex items-center mb-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={isAllSelected}
-                onChange={handleSelectAllColumns}
-              />
-              <label
-                htmlFor="select-all"
-                className="text-gray-700 cursor-pointer"
-              >
-                Select All
-              </label>
-            </div>
-
-            {apiColumns.map((item) => (
-              <div
-                key={item.column_name}
-                className="flex items-center mb-2 cursor-pointer"
-              >
+              <div className="flex items-center mb-2 cursor-pointer">
                 <input
                   type="checkbox"
                   className="mr-2"
-                  checked={userCheckedColumns.includes(item.column_name)}
-                  onChange={() => handleColumnCheck(item)}
+                  checked={isAllSelected}
+                  onChange={handleSelectAllColumns}
                 />
                 <label
-                  htmlFor={item.column_name}
+                  htmlFor="select-all"
                   className="text-gray-700 cursor-pointer"
                 >
-                  {item.column_name}
+                  Select All
                 </label>
-                <Pencil
-                  name="edit"
-                  onClick={() => handleEditColumn(item.column_name)}
-                  className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
-                />
               </div>
-            ))}
-          </div>
-        )}
 
-        <button
-          onClick={() =>
-            data.handleOk({
-              userCheckedColumns,
-              viewType: "Source",
-              settings: settingsList,
-              userSelections: userSelections,
-            })
-          }
-          className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
-        >
-          Ok
-        </button>
-      </div>
+              {apiColumns.map((item) => (
+                <div
+                  key={item.column_name}
+                  className="flex items-center mb-2 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    className="mr-2"
+                    checked={userCheckedColumns.includes(item.column_name)}
+                    onChange={() => handleColumnCheck(item)}
+                  />
+                  <label
+                    htmlFor={item.column_name}
+                    className="text-gray-700 cursor-pointer"
+                  >
+                    {item.column_name}
+                  </label>
+                  <Pencil
+                    name="edit"
+                    onClick={() => handleEditColumn(item.column_name)}
+                    className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={() =>
+              data.handleOk({
+                userCheckedColumns,
+                viewType: "Source",
+                settings: settingsList,
+                userSelections: userSelections,
+              })
+            }
+            className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
+          >
+            Ok
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-  export function ConnectionNode({ id, data }) {
-    console.log("QUERY TYPEEEE ===>> ",data.queryType);
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    const [selectedConnection, setSelectedConnection] = useState("");
-    const [selectedSchema, setSelectedSchema] = useState("");
-    const [selectedTable, setSelectedTable] = useState("");
-    const [apiConnections, setApiConnections] = useState([]);
-    const [apiSchemas, setApiSchemas] = useState([]);
-    const [apiTables, setApiTables] = useState([]);
-    const [apiColumns, setApiColumns] = useState([]);
-    const [isAllSelected, setIsAllSelected] = useState(false);
-  const { settingsList, setSettingsList, userSelections, setUserSelections ,userCheckedColumns, setUserCheckedColumns} =
-    useStateContext();
+export function ConnectionNode({ id, data }) {
+  console.log("QUERY TYPEEEE ===>> ", data.queryType);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [selectedConnection, setSelectedConnection] = useState("");
+  const [selectedSchema, setSelectedSchema] = useState("");
+  const [selectedTable, setSelectedTable] = useState("");
+  const [apiConnections, setApiConnections] = useState([]);
+  const [apiSchemas, setApiSchemas] = useState([]);
+  const [apiTables, setApiTables] = useState([]);
+  const [apiColumns, setApiColumns] = useState([]);
+  const [isAllSelected, setIsAllSelected] = useState(false);
+  const {
+    settingsList,
+    setSettingsList,
+    userSelections,
+    setUserSelections,
+    userCheckedColumns,
+    setUserCheckedColumns,
+  } = useStateContext();
 
   useEffect(() => {
     (async () => {
@@ -474,7 +514,6 @@ export function BaseNode({ id, data }) {
   }, [selectedTable]);
 
   const handleColumnChange = (column) => {
-
     const columnName = column.column;
     const columnType = column.datatype;
 
@@ -485,7 +524,9 @@ export function BaseNode({ id, data }) {
     if (columnIndex !== -1) {
       if (isAllSelected) setIsAllSelected(false);
       updatedCheckedColumns.splice(columnIndex, 1);
-      setSettingsList(prev => prev.filter(item => item.name !== columnName));
+      setSettingsList((prev) =>
+        prev.filter((item) => item.name !== columnName)
+      );
     } else {
       updatedCheckedColumns.push(columnName);
       setSettingsList((prev) => [
@@ -495,7 +536,6 @@ export function BaseNode({ id, data }) {
     }
     setUserCheckedColumns(updatedCheckedColumns);
     console.log("Selected Columns: ", userCheckedColumns);
-
   };
 
   const handleEditColumn = (columnName) => {
@@ -537,7 +577,6 @@ export function BaseNode({ id, data }) {
     }
     setIsAllSelected((prev) => !prev);
   };
-
 
   const resetSelections = () => {
     setApiSchemas([]);
@@ -584,38 +623,43 @@ export function BaseNode({ id, data }) {
       return updatedSelections;
     });
   };
-
-  return (
-    <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
-      <button
-        onClick={() => data.deleteNode(id)}
-        className="absolute -top-2 -right-2 bg-black rounded-full p-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <X className="w-4 h-4 text-white" />
-      </button>
-
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <Cable className="w-5 h-5 text-[#8E77BB]" />
-          <h2 className="text-black font-medium">Connection</h2>
-          {data.queryType==="Complex" ? (<button onClick={(e) => {
-            e.preventDefault();
-            data.setShowQueryEditor(prev => !prev);
-            console.log("clicked");
-          }}> <Database className="w-5 h-5 text-[#8E77BB]" /></button>) : null}
+  
+    return (
+      <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <Cable className="w-5 h-5 text-[#8E77BB]" />
+            <h2 className="text-black font-medium">Connection</h2>
+          </div>
+          <div className="flex items-center space-x-2">
+            {data.queryType === "Complex" && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  data.setShowQueryEditor((prev) => !prev);
+                }}
+              >
+                <FileCode className="w-5 h-5 text-[#8E77BB]" />
+              </button>
+            )}
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-1 rounded-md hover:bg-gray-200"
+            >
+              {isCollapsed ? (
+                <ChevronDown className="w-5 h-5 text-black" />
+              ) : (
+                <ChevronUp className="w-5 h-5 text-black" />
+              )}
+            </button>
+            <button
+              onClick={() => data.deleteNode(id)}
+              className="p-1 rounded-md hover:bg-gray-200"
+            >
+              <X className="h-5 text-gray-500" />
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1 rounded-md hover:bg-gray-200"
-        >
-          {isCollapsed ? (
-            <ChevronDown className="w-5 h-5 text-black" />
-          ) : (
-            <ChevronUp className="w-5 h-5 text-black" />
-          )}
-        </button>
-      </div>
-
       {!isCollapsed && (
         <>
           <div className="space-y-4">
@@ -706,7 +750,7 @@ export function BaseNode({ id, data }) {
               </div>
             )}
           </div>
-          
+
           <button
             type="button"
             onClick={() =>
