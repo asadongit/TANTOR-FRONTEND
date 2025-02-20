@@ -308,7 +308,7 @@ export default function Editor() {
                 </div>
               ) : (
                 <div className="h-full overflow-y-auto overflow-x-auto custom-scroll">
-                  <table className="h-full w-full">
+                  <table className="w-full">
                     <thead className="text-xs sticky top-0 bg-[#29304a] text-white">
                       <tr>
                         {columnDefs.map((col, index) => (
