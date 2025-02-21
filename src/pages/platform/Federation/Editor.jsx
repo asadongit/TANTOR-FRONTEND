@@ -259,14 +259,16 @@ export default function Editor() {
  
       {/* Main Content */}
       <main className="flex-1 pl-5 md:w-3/4">
-        <h2 className="text-xl font-bold">Query Editor</h2>
-        <div className={`mt-3 border rounded-lg shadow-lg overflow-hidden ${(data?.length>0 || loading) ? "h-[30%]" : "h-[83%]"}`}>
+        <div className={`${(data?.length > 0 || loading) ? "h-[42%]" : "h-[100%]"} flex flex-col`}>
+          <h2 className="text-xl font-bold">Query Editor</h2>
+
+          {/* Ace Editor */}
           <AceEditor
             aria-label="editor"
             mode="mysql"
             theme="tomorrow"
             name="editor"
-            fontSize={18}
+            fontSize={12}
             wrapEnabled={true}
             showPrintMargin={false}
             showGutter
@@ -279,35 +281,46 @@ export default function Editor() {
             }}
             value={query}
             onChange={setQuery}
-            style={{ width: "100%", height: "100%", padding: "10px", borderRadius: "8px" }}
+            style={{
+              width: "100%",
+              height: "100%",
+              padding: "10px",
+              borderRadius: "8px",
+              boxSizing: "border-box",
+              border: "1px solid #e0e0e0",
+              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+              marginTop: "6px",
+              flexGrow: 1, // Ensures AceEditor takes up the remaining space
+            }}
             showLineNumbers
           />
+
+          {/* Buttons */}
+          <div className="mt-3 flex gap-3 justify-end">
+            <button
+              type="button"
+              onClick={() => executeQuery(query)}
+              className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            >
+              <div className="flex justify-between">
+                Run
+              </div>
+            </button>
+            <button onClick={handleClearQuery} className="bg-gray-400 text-white px-7 py-1.5 rounded-lg hover:bg-gray-500">Clear</button>
+          </div>
         </div>
-        <div className="mt-3 flex gap-3 justify-end">
-          <button
-            type="button"
-            onClick={() => executeQuery(query)}
-            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-          >
-            <div className="flex justify-between">
-              {/* <Plus className="h-5 w-5 mr-1"/> */}
-              Run
-            </div>
-          </button>
-          <button onClick={handleClearQuery} className="bg-gray-400 text-white px-7 py-1.5 rounded-lg hover:bg-gray-500">Clear</button>
-        </div>
- 
-        {/* Output Section */}
-        {(data?.length>0 || loading) && (
-          <>
+
+
+        {(data?.length > 0 || loading) && (
+          <div className="h-[58%] flex flex-col">
             <h2 className="text-xl font-bold pb-3">Output</h2>
-            <div className="h-[45%] bg-white rounded-lg shadow overflow-hidden w-[100%]">
+            <div className="bg-white rounded-lg shadow w-full flex-1 overflow-hidden">
               {loading ? (
-                <div className="flex justify-center items-center h-full ">
+                <div className="flex justify-center items-center h-full">
                   <CircularProgress sx={{ color: "#8e78b7" }} />
                 </div>
               ) : (
-                <div className="h-full overflow-y-auto overflow-x-auto custom-scroll">
+                <div className="h-full overflow-y-auto overflow-x-auto custom-scroll rounded-lg">
                   <table className="w-full">
                     <thead className="text-xs sticky top-0 bg-[#29304a] text-white">
                       <tr>
@@ -326,7 +339,7 @@ export default function Editor() {
                             const isLink =
                               typeof cellContent === "string" &&
                               cellContent.startsWith("http");
- 
+
                             return (
                               <td key={colIndex} className="p-4 text-left">
                                 {isLink ? (
@@ -351,7 +364,8 @@ export default function Editor() {
                 </div>
               )}
             </div>
-          </>
+          </div>
+
         )}
       </main>
       <ToastContainer />

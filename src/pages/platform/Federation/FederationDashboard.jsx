@@ -47,6 +47,8 @@ const FederationDashBoard = () => {
   const [tableList, setTableList] = useState([])
   const [viewList, setViewList] = useState([])
 
+  const [count, setCount] = useState({});
+
   useEffect(() => {
     var project = "dummy";
     const fetchData = async () => {
@@ -107,6 +109,7 @@ const FederationDashBoard = () => {
           item.is_deleted === false
       );
     }
+     console.log("connection data is ====>",extractedData)
       setData(extractedData);
       const connectionIds = extractedData.map((item) => item.connection_id);
       const connectionNames = extractedData.map((item) => item.connection_name);
@@ -181,6 +184,15 @@ const FederationDashBoard = () => {
 
   useEffect(() => {
 
+    const connectionNames = connectionData.map(connection => connection.connection_name);
+
+    const totalViewsCount = Object.values(viewList).reduce((sum, views) => sum + views.length, 0);
+
+      setCount({
+        connections: connectionNames,
+        totalViewsCount: totalViewsCount
+      });
+
     const updatedRowData = connectionData.map((item) => {
       return {
         ID: item.connection_id,
@@ -196,36 +208,71 @@ const FederationDashBoard = () => {
   }, [connectionData, schemaList,tableList,viewList]);
 
 
-  const cards = [
+  const [cards, setCards] = useState([
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#d8d3e4]",
       iconcolor: "text-purple-700",
       title: "Connections",
-      count: "20"
+      count: "0"
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#d8d3e4]",
       iconcolor: "text-purple-700",
       title: "Schemas",
-      count: "10"
+      count: "0"
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#d8d3e4]",
       iconcolor: "text-purple-700",
       title: "Tables",
-      count: "50"
+      count: "0"
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#d8d3e4]",
       iconcolor: "text-purple-700",
       title: "Views",
-      count: "15",
+      count: "0"
     }
-  ];
+  ]);
+
+  useEffect(() => {
+    if (count.connections && count.totalViewsCount) {
+      setCards([
+        {
+          icon: "material-symbols:tab-group-outline",
+          bgcolor: "bg-[#d8d3e4]",
+          iconcolor: "text-purple-700",
+          title: "Connections",
+          count: `${count.connections.length}`
+        },
+        {
+          icon: "material-symbols:tab-group-outline",
+          bgcolor: "bg-[#d8d3e4]",
+          iconcolor: "text-purple-700",
+          title: "Schemas",
+          count: "10"
+        },
+        {
+          icon: "material-symbols:tab-group-outline",
+          bgcolor: "bg-[#d8d3e4]",
+          iconcolor: "text-purple-700",
+          title: "Tables",
+          count: "50"
+        },
+        {
+          icon: "material-symbols:tab-group-outline",
+          bgcolor: "bg-[#d8d3e4]",
+          iconcolor: "text-purple-700",
+          title: "Views",
+          count: `${count.totalViewsCount}`
+        }
+      ]);
+    }
+  }, [count]); 
 
   const [rowData, setRowData] = useState([
     // {
@@ -424,7 +471,7 @@ const FederationDashBoard = () => {
           ))}
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden mt-10">
+        <div className="bg-white rounded-lg shadow overflow-auto mt-10">
           <table className="w-full">
             <thead className="text-sm">
               <tr className="bg-[#29304a] text-white">
