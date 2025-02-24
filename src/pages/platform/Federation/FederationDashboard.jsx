@@ -247,7 +247,7 @@ const FederationDashBoard = () => {
           bgcolor: "bg-[#d8d3e4]",
           iconcolor: "text-purple-700",
           title: "Connections",
-          count: `${count.connections.length}`
+          count: `${count.connections.length}` || 0
         },
         {
           icon: "material-symbols:tab-group-outline",
@@ -268,7 +268,7 @@ const FederationDashBoard = () => {
           bgcolor: "bg-[#d8d3e4]",
           iconcolor: "text-purple-700",
           title: "Views",
-          count: `${count.totalViewsCount}`
+          count: `${count.totalViewsCount}` || 0
         }
       ]);
     }
