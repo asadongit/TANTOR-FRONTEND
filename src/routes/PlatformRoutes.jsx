@@ -11,6 +11,7 @@ import CDC from '../pages/platform/CDC';
 import FederationDashBoard from '../pages/platform/Federation/FederationDashboard';
 import Source from '../pages/platform/Federation/Source';
 import MigrationCanvas from '../pages/platform/migration/MigrationCanvas';
+import DataView from '../pages/platform/DataView';
 
 export const PlatformRoutes = (
   <>
@@ -20,6 +21,7 @@ export const PlatformRoutes = (
     <Route path="/pipeline" element={<Pipeline />} />
     <Route path="/reports" element={<Reports />} />
     <Route path="/migration" element={<Migration />} />
+    <Route path="/dataview" element={<DataView/>} />
     <Route path="/transformation" element={<Transformation />} />
     <Route path="/purge" element={<Purge />} />
     <Route path="/cdc" element={<CDC />} />

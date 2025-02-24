@@ -27,6 +27,7 @@ export function SourceNode({ id, data }) {
   const [schemaLoading, setSchemaLoading] = useState(false);  
   const { openDrawer } = useTableContext();  
 
+  
 
   let connectionsData;
   let schemacount;
