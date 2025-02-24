@@ -722,7 +722,7 @@ export function ConnectionNode({ id, data }) {
                     {apiColumns.map((item) => (
                       <div
                         key={item.column}
-                        className="flex items-center space-x-2"
+                        className="flex items-center mb-2 cursor-pointer"
                       >
                         <input
                           type="checkbox"
@@ -730,7 +730,7 @@ export function ConnectionNode({ id, data }) {
                           value={item.column}
                           checked={userCheckedColumns.includes(item.column)}
                           onChange={() => handleColumnChange(item)}
-                          className="text-purple-600 focus:ring-purple-500"
+                          className="text-purple-600 focus:ring-purple-500 mr-2"
                         />
                         <label
                           htmlFor={item.column}
@@ -741,7 +741,7 @@ export function ConnectionNode({ id, data }) {
                         <Pencil
                           name="edit"
                           onClick={() => handleEditColumn(item.column)}
-                          className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700 hover:cursor-pointer"
+                          className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
                         />
                       </div>
                     ))}
