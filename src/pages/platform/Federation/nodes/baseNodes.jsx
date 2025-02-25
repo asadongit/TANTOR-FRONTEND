@@ -247,39 +247,39 @@ export function BaseNode({ id, data }) {
   return (
     <div className="w-80 p-4 mt-1 bg-white rounded-lg shadow-lg relative group">
       <div className="flex items-center justify-between mb-4">
-  <div className="flex items-center space-x-3">
-    <SquareKanban className="w-5 h-5 text-[#8E77BB]" />
-    <h2 className="text-lg font-medium">Source View</h2>
-  </div>
-  <div className="flex items-center space-x-2">
-    {data.queryType === "Complex" && (
-      <button
-        onClick={(e) => {
-          e.preventDefault();
-          data.setShowQueryEditor((prev) => !prev);
-        }}
-      >
-        <FileCode className="w-5 h-5 text-[#8E77BB]" />
-      </button>
-    )}
-    <button
-      onClick={() => setIsCollapsed(!isCollapsed)}
-      className="p-1 rounded-md hover:bg-gray-200"
-    >
-      {isCollapsed ? (
-        <ChevronDown className="w-5 h-5 text-black" />
-      ) : (
-        <ChevronUp className="w-5 h-5 text-black" />
-      )}
-    </button>
-    <button
-      onClick={handleClose}
-      className="p-1 rounded-md hover:bg-gray-200"
-    >
-      <X className="h-5 text-gray-500" />
-    </button>
-  </div>
-</div>
+        <div className="flex items-center space-x-3">
+          <SquareKanban className="w-5 h-5 text-[#8E77BB]" />
+          <h2 className="text-lg font-medium">Source View</h2>
+        </div>
+        <div className="flex items-center space-x-2">
+          {data.queryType === "Complex" && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                data.setShowQueryEditor((prev) => !prev);
+              }}
+            >
+              <FileCode className="w-5 h-5 text-[#8E77BB]" />
+            </button>
+          )}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1 rounded-md hover:bg-gray-200"
+          >
+            {isCollapsed ? (
+              <ChevronDown className="w-5 h-5 text-black" />
+            ) : (
+              <ChevronUp className="w-5 h-5 text-black" />
+            )}
+          </button>
+          <button
+            onClick={handleClose}
+            className="p-1 rounded-md hover:bg-gray-200"
+          >
+            <X className="h-5 text-gray-500" />
+          </button>
+        </div>
+      </div>
 
       {!isCollapsed && (
         <div className="space-y-4">
@@ -361,7 +361,6 @@ export function BaseNode({ id, data }) {
 }
 
 export function ConnectionNode({ id, data }) {
-  console.log("QUERY TYPEEEE ===>> ", data.queryType);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
@@ -606,8 +605,10 @@ export function ConnectionNode({ id, data }) {
     setUserCheckedColumns([]);
     setIsAllSelected(false);
     setUserSelections((prev) => {
-      const updatedSelections = new Map(prev);
+      const updatedSelections = new Map();
+      updatedSelections.set("connection", selectedConnection);
       updatedSelections.set("schema", event.target.value);
+
       return updatedSelections;
     });
   };
@@ -618,48 +619,50 @@ export function ConnectionNode({ id, data }) {
     setUserCheckedColumns([]);
     setIsAllSelected(false);
     setUserSelections((prev) => {
-      const updatedSelections = new Map(prev);
+      const updatedSelections = new Map();
+      updatedSelections.set("connection", selectedConnection);
+      updatedSelections.set("schema", selectedSchema);
       updatedSelections.set("table", event.target.value);
       return updatedSelections;
     });
   };
-  
-    return (
-      <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <Cable className="w-5 h-5 text-[#8E77BB]" />
-            <h2 className="text-black font-medium">Connection</h2>
-          </div>
-          <div className="flex items-center space-x-2">
-            {data.queryType === "Complex" && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  data.setShowQueryEditor((prev) => !prev);
-                }}
-              >
-                <FileCode className="w-5 h-5 text-[#8E77BB]" />
-              </button>
-            )}
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1 rounded-md hover:bg-gray-200"
-            >
-              {isCollapsed ? (
-                <ChevronDown className="w-5 h-5 text-black" />
-              ) : (
-                <ChevronUp className="w-5 h-5 text-black" />
-              )}
-            </button>
-            <button
-              onClick={() => data.deleteNode(id)}
-              className="p-1 rounded-md hover:bg-gray-200"
-            >
-              <X className="h-5 text-gray-500" />
-            </button>
-          </div>
+
+  return (
+    <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <Cable className="w-5 h-5 text-[#8E77BB]" />
+          <h2 className="text-black font-medium">Connection</h2>
         </div>
+        <div className="flex items-center space-x-2">
+          {data.queryType === "Complex" && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                data.setShowQueryEditor((prev) => !prev);
+              }}
+            >
+              <FileCode className="w-5 h-5 text-[#8E77BB]" />
+            </button>
+          )}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1 rounded-md hover:bg-gray-200"
+          >
+            {isCollapsed ? (
+              <ChevronDown className="w-5 h-5 text-black" />
+            ) : (
+              <ChevronUp className="w-5 h-5 text-black" />
+            )}
+          </button>
+          <button
+            onClick={() => data.deleteNode(id)}
+            className="p-1 rounded-md hover:bg-gray-200"
+          >
+            <X className="h-5 text-gray-500" />
+          </button>
+        </div>
+      </div>
       {!isCollapsed && (
         <>
           <div className="space-y-4">

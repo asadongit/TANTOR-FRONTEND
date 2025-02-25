@@ -3,52 +3,25 @@ import { useStateContext } from "../../../../context/contextProvider";
 import { X } from "lucide-react";
 
 const getColumnGroupType = (columnType) => {
-  if(!columnType) return null;
+  if (!columnType) return null;
   const formattedColumnType = columnType.toLowerCase().replace(/\(.*\)/, "");
-  let result = null; 
-  
-  result = ["date", "timestamp"].includes(formattedColumnType) ? "DATE" : result;
-  result = ["decimal"].includes(formattedColumnType) ? "NUMBER" : result;
+  let result = null;
+
+  result = ["date", "timestamp"].includes(formattedColumnType)
+    ? "DATE"
+    : result;
+  result = ["decimal","double"].includes(formattedColumnType) ? "NUMBER" : result;
   result = ["varchar"].includes(formattedColumnType) ? "STRING" : result;
 
   console.log("result ==>> ", result);
   return result;
 };
-const DatePicker = () => {
-  return (
-    <div class="relative max-w-sm">
-      <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-        {/* <svg
-          class="w-4 h-4 text-gray-500 dark:text-gray-400"
-          aria-hidden="true"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
-        </svg> */}
-      </div>
-      <input
-        id="datepicker-actions"
-        datepicker
-        datepicker-buttons
-        datepicker-autoselect-today
-        type="text"
-        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-        placeholder="Select date"
-      />
-    </div>
-  );
-};
-const DynamicSelectOptions = ({
-  condition,
-  index,
-  updateCondition,
-}) => {
-  if(!condition.type) return null;
-  let columnGroupType = getColumnGroupType(condition.type);
 
-  if(columnGroupType === "DATE" || columnGroupType === "NUMBER"){
+const DynamicSelectOptions = ({ condition, index, updateCondition }) => {
+  if (!condition.type) return null;
+  let columnGroupType = getColumnGroupType(condition.type);
+  console.log("columnGroupType ==>> ", columnGroupType);
+  if (columnGroupType === "DATE" || columnGroupType === "NUMBER") {
     return (
       <select
         value={condition.operator}
@@ -64,7 +37,7 @@ const DynamicSelectOptions = ({
         <option value="between"> Between </option>
       </select>
     );
-  }else if(columnGroupType === "STRING"){
+  } else if (columnGroupType === "STRING") {
     return (
       <select
         value={condition.operator}
@@ -75,7 +48,7 @@ const DynamicSelectOptions = ({
         <option value="!=">!=</option>
       </select>
     );
-  }else{
+  } else {
     return (
       <select
         value={condition.operator}
@@ -91,6 +64,75 @@ const DynamicSelectOptions = ({
       </select>
     );
   }
+};
+
+const DynamicOptionValues = ({ condition, index, updateCondition }) => {
+  if (!condition.operator) return null;
+
+  let columnType = getColumnGroupType(condition.type);
+  console.log("columnType", columnType);
+  console.log("condition", condition);
+  if (condition.operator === "between" && columnType === "DATE") {
+    return (
+      <>
+        <input
+          type="date"
+          name="date"
+          value={condition["value"]}
+          onChange={(e) => updateCondition(index, "value", e.target.value)}
+          style={{
+            border: "1px solid grey",
+            width: "200px",
+            padding: "12px",
+            borderRadius: "5px",
+          }}
+        />
+        <input
+          type="date"
+          name="date"
+          value={condition["value2"]}
+          onChange={(e) => updateCondition(index, "value2", e.target.value)}
+          style={{
+            border: "1px solid grey",
+            width: "200px",
+            padding: "12px",
+            borderRadius: "5px",
+          }}
+        />
+      </>
+    );
+  }
+  if (condition.operator === "between" && columnType === "NUMBER") {
+    return (
+      <>
+        <input
+          type="text"
+          placeholder="Value"
+          value={condition.value}
+          onChange={(e) => updateCondition(index, "value", e.target.value)}
+          className="border p-1.5 rounded w-[200px]"
+        />
+        <input
+          type="text"
+          placeholder="Value"
+          hidden={condition.operator !== "between"}
+          value={condition["value2"]}
+          onChange={(e) => updateCondition(index, "value2", e.target.value)}
+          className="border p-1.5 rounded w-[200px]"
+        />
+      </>
+    );
+  }
+
+  return (
+    <input
+      type="text"
+      placeholder="Value"
+      value={condition.value}
+      onChange={(e) => updateCondition(index, "value", e.target.value)}
+      className="border p-1.5 rounded w-[200px]"
+    />
+  );
 };
 export default function FilterComponent({ setIsOpen, columns, onApply }) {
   console.log("COLUMNS ++>> ", columns);
@@ -119,7 +161,7 @@ export default function FilterComponent({ setIsOpen, columns, onApply }) {
         ...prevConditions,
         {
           column: "",
-          operator: "=",
+          operator: "",
           value: "",
           value2: null,
           condition: condition,
@@ -142,7 +184,16 @@ export default function FilterComponent({ setIsOpen, columns, onApply }) {
       return prevConditions.map((condition, i) => {
         if (i === index) {
           if (columnType)
-            return { ...condition, [field]: value, type: columnType, value: "", value2: "", operator: "=" };
+            return {
+              ...condition,
+              [field]: value,
+              type: columnType,
+              value: "",
+              value2: "",
+              operator: "=",
+            };
+          else if (field === "operator")
+            return { ...condition, [field]: value, value: "", value2: "" };
           return { ...condition, [field]: value };
         }
         return condition;
@@ -180,8 +231,16 @@ export default function FilterComponent({ setIsOpen, columns, onApply }) {
       <div className="bg-white rounded-lg w-[80vw] max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="p-2 pl-4 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
-          <h2 className="text-xl font-semibold">Query Builder</h2>
-          {/* <button onClick={onClose} className="text-2xl">&times;</button> */}
+          <h2 className="text-xl font-semibold">Filter</h2>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              setIsOpen(false);
+            }}
+            className="text-2xl"
+          >
+            <X />
+          </button>
         </div>
 
         {/* Content */}
@@ -235,7 +294,12 @@ export default function FilterComponent({ setIsOpen, columns, onApply }) {
                   index={index}
                   updateCondition={updateCondition}
                 />
-                <input
+                <DynamicOptionValues
+                  condition={condition}
+                  index={index}
+                  updateCondition={updateCondition}
+                />
+                {/* <input
                   type="text"
                   placeholder="Value"
                   value={condition.value}
@@ -253,7 +317,7 @@ export default function FilterComponent({ setIsOpen, columns, onApply }) {
                     updateCondition(index, "value2", e.target.value)
                   }
                   className="border p-1.5 rounded w-[200px]"
-                />
+                /> */}
                 <button
                   onClick={() => removeCondition(index)}
                   className="mt-1 p-1.5 text-red-500 hover:text-red-800 hover:bg-[#b6b3bb] rounded-lg"
@@ -274,17 +338,17 @@ export default function FilterComponent({ setIsOpen, columns, onApply }) {
 
         {/* Footer */}
         <div className="p-4 border-t flex justify-end gap-4">
-          {/* <button
-              onClick={() => onApply(null,null)}
-              className="px-4 py-2 bg-[#cecece] text-white rounded hover:bg-opacity-80"
-            >
-              Skip
-            </button> */}
           <button
-            onClick={(e) => setIsOpen(false)}
+            onClick={() => onApply(null, null)}
+            className="px-4 py-2 bg-[#8E77BB] text-white rounded hover:bg-opacity-80"
+          >
+            Skip
+          </button>
+          <button
+            onClick={(e) => setConditions([])}
             className="px-4 py-2 border rounded hover:bg-gray-50"
           >
-            Cancel
+            Clear
           </button>
           <button
             onClick={() => onApply(null, conditions)}

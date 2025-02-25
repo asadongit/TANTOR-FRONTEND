@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import AceEditor from "react-ace";
 import { useStateContext } from "../../../../context/contextProvider";
-import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode } from "lucide-react";
+import { X, FileCode } from "lucide-react";
 
 function ComplexQueryEditor({setShowQueryEditor}) {
   const [query, setQuery] = useState("");
@@ -14,10 +14,9 @@ function ComplexQueryEditor({setShowQueryEditor}) {
   },[]);
   
   const handelExecute = () => {
-
     if(complexCheck){
          console.log("query is ======>",query)
-
+         
     const updatedPayload = { ...finalPayload,  "complex_query" : query};
     
       console.log("Updated final payload with query is ===>", updatedPayload);

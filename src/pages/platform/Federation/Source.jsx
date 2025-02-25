@@ -186,25 +186,20 @@ export default function Source() {
 
     if (!validateColumns(userCheckedColumns, settings)) return null;
 
-    // Process column settings
     const columnSettings = processColumnSettings(settings, userCheckedColumns);
 
-    // Validate for Regular query type
     if (modalState.queryType === "Regular") {
       if (!validateAggregateAndGroupBy(userCheckedColumns, columnSettings))
         return null;
     }
 
-    // Update settings list
     const updatedSettingsList = settings.filter((item) =>
       userCheckedColumns.includes(item.name)
     );
 
-    // Update user selections
     const updatedUserSelections = new Map(userSelections);
     updatedUserSelections.set("viewType", viewType);
 
-    // Create API payload
     const apiPayload = createApiPayload(
       updatedUserSelections,
       updatedSettingsList,
@@ -215,15 +210,13 @@ export default function Source() {
       return { name: item.name, type: item.type };
     });
 
-    // Update the states
     await Promise.all([
       setSettingsList(updatedSettingsList),
       setUserSelections((prev) => {
         const newSelections = new Map(prev);
-        
+
         const filterData = newSelections?.get("apiPayload")?.filter_data;
-        if(filterData)
-          apiPayload["filter_data"] = filterData;
+        if (filterData) apiPayload["filter_data"] = filterData;
 
         newSelections.set("viewType", viewType);
         newSelections.set("apiPayload", apiPayload);
@@ -232,126 +225,186 @@ export default function Source() {
       setFilterModalColumns(filterModalColumns),
     ]);
     console.log(modalState.queryType);
-    if(modalState.queryType === "Regular")
-      return setIsFilterModalOpen(true);
-    
+    if (modalState.queryType === "Regular") return setIsFilterModalOpen(true);
+
     fetchPreviewData(apiPayload, null);
   };
 
-  
-  const fetchPreviewData = async (payload,filterData) => {
+  const fetchPreviewData = async (payload = null, filterData = null) => {
     setIsFilterModalOpen(false);
+  
+    // Get or create API payload
+    let apiPayload = payload || userSelections.get("apiPayload");
     
-    let apiPayload;
-    if(payload)
-      apiPayload = payload;
-    else
-      apiPayload = userSelections.get("apiPayload");
-
-    if(filterData)
-      apiPayload["filter_data"] = filterData;
-
     if (!apiPayload) {
       toast.error("No API payload available");
       return;
     }
-
+  
+    // Handle filter data
+    if (filterData) {
+      apiPayload = {
+        ...apiPayload,
+        filter_data: filterData
+      };
+      setUserSelections(prev => prev.set("apiPayload", apiPayload));
+    }
+  
+    // Handle skip condition
+    const isSkipCondition = payload === null && filterData === null;
+    
+    if (isSkipCondition) {
+      // First update with skip_filter flag
+      setUserSelections(prev => prev.set("apiPayload", {
+        ...apiPayload,
+        skip_filter: true
+      }));
+      
+      // Then remove filter data for API call
+      apiPayload = {
+        ...apiPayload
+      };
+      delete apiPayload.filter_data;
+    } else {
+      setUserSelections(prev => prev.set("apiPayload", {
+        ...apiPayload,
+        skip_filter: false
+      }));
+    }
+  
+    // Clean up before sending
+    const cleanApiPayload = { ...apiPayload };
+    delete cleanApiPayload.skip_filter;
+    
+    console.log("FILTER API PAYLOAD ==> ", cleanApiPayload);
+    
     try {
       const response = await fetch(
-        `${
-          import.meta.env.VITE_FAST_API_V2
-        }/generate-base-view?execute_query=true`,
+        `${import.meta.env.VITE_FAST_API_V2}/generate-base-view?execute_query=true`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${
-              import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
           },
-          body: JSON.stringify(apiPayload),
+          body: JSON.stringify(cleanApiPayload),
         }
       );
-
+  
       const responseText = await response.text();
+      
       const data = responseText
         .trim()
         .split("\n")
-        .map((jsonObject) => {
+        .reduce((validData, jsonString) => {
           try {
-            return JSON.parse(jsonObject);
+            validData.push(JSON.parse(jsonString));
+            return validData;
           } catch (error) {
             console.error("Error parsing JSON object:", error);
-            return null;
+            return validData;
           }
-        })
-        .filter(Boolean);
-
+        }, []);
+  
       if (response.ok) {
         if (data.length === 0) {
           toast.error(`${viewType === "Source" ? "View" : "Table"} is empty!`);
           return null;
         }
-
+  
         setPreviewData(data);
         setShowPreview(true);
         toast.success("View Query Executed!");
+        return data; // Return data for potential further use
       } else {
         toast.error("Error while generating output preview.");
+        return null;
       }
     } catch (error) {
       console.error("Error executing query:", error);
       toast.error("Failed to execute query");
+      return null;
     }
   };
   const handleSaveView = async (params) => {
     const { newViewName } = params;
-    let apiPayload = userSelections.get("apiPayload");
-    apiPayload["view_name"] = newViewName;
-    const viewExistsResponse = await fetch(
-      `${import.meta.env.VITE_FAST_API_V2}/view-exists/${newViewName}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${
-            import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-          }`,
-        },
-      }
-    );
-    if (viewExistsResponse.status !== 200) {
-      toast.error("Error checking if view exists");
+    
+    let apiPayload = { ...userSelections.get("apiPayload") };
+    
+    if (!apiPayload) {
+      toast.error("No API payload available");
       return null;
     }
-    const viewExists = await viewExistsResponse.json();
-    console.log("viewExists ===> ", viewExists);
-    if (viewExists["result"]) {
-      toast.error("View already exists");
-      return null;
+    
+    apiPayload.view_name = newViewName;
+    
+    if (apiPayload.skip_filter === true) {
+      delete apiPayload.filter_data;
+      delete apiPayload.skip_filter;
+    }else{
+      delete apiPayload.skip_filter;
     }
-    console.log("Final apiPayload ===> ", apiPayload);
-    const response = await fetch(
-      `${import.meta.env.VITE_FAST_API_V2}/generate-base-view`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${
-            import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-          }`,
-        },
-        body: JSON.stringify(apiPayload),
+
+    console.log("SAVE VIEW API PAYLOAD ==> ", apiPayload);
+    return null;
+    try {
+      // Check if view already exists
+      const viewExistsResponse = await fetch(
+        `${import.meta.env.VITE_FAST_API_V2}/view-exists/${encodeURIComponent(newViewName)}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
+          },
+        }
+      );
+      
+      if (!viewExistsResponse.ok) {
+        toast.error("Error checking if view exists");
+        return null;
       }
-    );
-    const data = await response.json();
-    if (response.status == 200) {
+      
+      const viewExists = await viewExistsResponse.json();
+      console.log("viewExists ===> ", viewExists);
+      
+      if (viewExists.result) {
+        toast.error("View already exists");
+        return null;
+      }
+      
+      // Save the view
+      console.log("Final apiPayload ===> ", apiPayload);
+      const response = await fetch(
+        `${import.meta.env.VITE_FAST_API_V2}/generate-base-view`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
+          },
+          body: JSON.stringify(apiPayload),
+        }
+      );
+      
+      if (!response.ok) {
+        toast.error("Error while saving view..");
+        return null;
+      }
+      
+      const data = await response.json();
       console.log("Save View Result ==> ", data);
-      setShowPreview((prev) => !prev);
+      
+      setShowPreview(false);
       toast.success("VIEW SAVED SUCCESSFULLY.", { autoClose: 2900 });
+      
       setTimeout(() => navigate("/federation"), 3000);
-    } else {
-      toast.error("Error while saving view..");
+      
+      return data;
+    } catch (error) {
+      console.error("Error saving view:", error);
+      toast.error("Failed to save view");
+      return null;
     }
   };
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
