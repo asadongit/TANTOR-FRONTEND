@@ -346,7 +346,7 @@ export default function Source() {
     }
 
     console.log("SAVE VIEW API PAYLOAD ==> ", apiPayload);
-    return null;
+
     try {
       // Check if view already exists
       const viewExistsResponse = await fetch(
