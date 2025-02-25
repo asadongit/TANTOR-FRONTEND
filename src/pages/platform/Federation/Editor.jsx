@@ -459,10 +459,11 @@ export default function Editor() {
                 <span>{checked ? "Editor" : "Builder"}</span>
               </div>
             </div>
-            <div className="h-[85%] flex justify-between flex-col">
+            <div className="h-[85%] flex flex-col">
               {(data?.length > 0 || loading) && (
                 <>
-                  <div className={`${isAccordionOpen ? "h-[55%]" : "h-[70%]"} flex flex-col`}>
+                  {/* Table Container */}
+                  <div className="flex-1 flex flex-col mb-4 overflow-hidden">
                     <h2 className="text-xl font-bold pb-3">Output</h2>
                     <div className="bg-white rounded-lg shadow w-full flex-1 overflow-hidden">
                       {loading ? (
@@ -470,7 +471,7 @@ export default function Editor() {
                           <CircularProgress sx={{ color: "#8e78b7" }} />
                         </div>
                       ) : (
-                        <div className="h-full overflow-y-auto overflow-x-auto custom-scroll rounded-lg">
+                        <div className="h-full overflow-y-auto custom-scroll">
                           <table className="w-full">
                             <thead className="text-xs sticky top-0 bg-[#29304a] text-white">
                               <tr>
@@ -516,35 +517,39 @@ export default function Editor() {
                     </div>
                   </div>
 
-                  <div className={`${isAccordionOpen ? "h-[40%]" : "h-[25%]"} flex justify-between flex-col`}>
+                  {/* Accordion and Buttons Container */}
+                  <div className="flex-none">
                     <div>
-                      <Accordion style={{ width: "100%", padding: "0px" }}
-                      expanded={isAccordionOpen} 
-                      onChange={() => setIsAccordionOpen(!isAccordionOpen)}
-                      className="transition-all duration-300"
+                      <Accordion
+                        style={{ width: "100%", padding: "0px", marginBottom: "15px" }}
+                        expanded={isAccordionOpen}
+                        onChange={() => setIsAccordionOpen(!isAccordionOpen)}
+                        className="transition-all duration-300"
                       >
                         <AccordionSummary
                           expandIcon={<ChevronDown />}
                           aria-controls="panel2-content"
                           id="panel2-header"
                         >
-                          <div style={{
-                            display: "flex",
-                          }}>
-                            <div style={{
-                              backgroundColor: "#8E77BB",
-                              marginRight: "25px",
-                              color: "white",
-                              borderRadius: "8px",
-                              padding: "2px 10px"
-                            }}>POST</div>
-                            <Typography component="span">/api/v1/view/{selectedView}</Typography>
+                          <div style={{ display: "flex" }}>
+                            <div
+                              style={{
+                                backgroundColor: "#8E77BB",
+                                marginRight: "25px",
+                                color: "white",
+                                borderRadius: "8px",
+                                padding: "2px 10px",
+                              }}
+                            >
+                              POST
+                            </div>
+                            <Typography component="span">
+                              /api/v1/view/{selectedView}
+                            </Typography>
                           </div>
                         </AccordionSummary>
                         <AccordionDetails>
-                          <Typography>
-                            {curl}
-                          </Typography>
+                          <Typography>{curl}</Typography>
                         </AccordionDetails>
                       </Accordion>
                     </div>
@@ -552,7 +557,7 @@ export default function Editor() {
                       <div>
                         <button
                           type="button"
-                         // onClick={handleQueryDetails}
+                          // onClick={handleQueryDetails}
                           className="text-white px-8 py-1.5 bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                         >
                           Query Details
@@ -569,8 +574,8 @@ export default function Editor() {
                         </button>
                         <button
                           type="button"
-                           // onClick={handleNextPage}
-                        // disabled={!hasMore}
+                          // onClick={handleNextPage}
+                          // disabled={!hasMore}
                           className="text-white px-8 py-1.5 bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                         >
                           Next
@@ -578,9 +583,7 @@ export default function Editor() {
                       </div>
                     </div>
                   </div>
-
                 </>
-
               )}
             </div>
           </div>
