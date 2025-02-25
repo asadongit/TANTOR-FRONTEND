@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types"; // Add this import
 import { Handle, Position } from "reactflow";
-import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode } from "lucide-react";
+import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode,Search } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
 import { Columns } from "../Columns";
 import { Modal } from "@mui/material";
@@ -317,6 +317,74 @@ export function ConnectionNode({ id, onSave }) {
       setIsEditorModalOpen(value);
     };
 
+    const SearchableSelect = ({ options, value, onChange, placeholder }) => {
+      const [isOpen, setIsOpen] = useState(false);
+      const [searchTerm, setSearchTerm] = useState("");
+    
+      const filteredOptions = options
+        .map((option) =>
+          typeof option === "object" ? option.connection_name : option
+        )
+        .filter((option) =>
+          option.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    
+      const handleSelectClick = () => {
+        setIsOpen(!isOpen);
+      };
+    
+      const handleOptionClick = (option) => {
+        onChange({ target: { value: option } });
+        setIsOpen(false);
+        setSearchTerm("");
+      };
+    
+      return (
+        <div className="relative w-full text-black">
+          <div
+            className="w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+            onClick={handleSelectClick}
+          >
+            <span>{value || placeholder}</span>
+            {isOpen ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </div>
+    
+          {isOpen && (
+            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+              <div className="p-2 border-b">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    className="w-full p-2 pl-8 border rounded-md"
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              </div>
+              <div className="max-h-60 overflow-y-auto">
+                {filteredOptions.map((option) => (
+                  <div
+                    key={option}
+                    className="p-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => handleOptionClick(option)}
+                  >
+                    {option}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
   return (
     <>
       <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
@@ -362,54 +430,30 @@ export function ConnectionNode({ id, onSave }) {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Connection</label>
-                <select
-                  value={selectedConnection}
-                  onChange={handleConnectionChange}
-                  className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-                >
-                  <option value="" disabled>
-                    Select a connection
-                  </option>
-                  {connections?.map((conn, index) => (
-                    <option key={index} value={conn}>
-                      {conn}
-                    </option>
-                  ))}
-                </select>
+                 <SearchableSelect
+                options={connections}
+                value={selectedConnection}
+                onChange={handleConnectionChange}
+                placeholder="Select a connection"
+              />
               </div>
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Schema</label>
-                <select
-                  value={selectedSchema}
-                  onChange={handleSchemaChange}
-                  className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-                >
-                  <option value="" disabled>
-                    Select a Schema
-                  </option>
-                  {schemas?.map((schema, index) => (
-                    <option key={index} value={schema}>
-                      {schema}
-                    </option>
-                  ))}
-                </select>
+                <SearchableSelect
+                options={schemas}
+                value={selectedSchema}
+                onChange={handleSchemaChange}
+                placeholder="Select a schema"
+              />
               </div>
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Table</label>
-                <select
-                  value={selectedTable}
-                  onChange={handleTableChange}
-                  className="w-full bg-white rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-                >
-                  <option value="" disabled>
-                    Select a table
-                  </option>
-                  {tables?.map((schema, index) => (
-                    <option key={index} value={schema}>
-                      {schema}
-                    </option>
-                  ))}
-                </select>
+                <SearchableSelect
+                options={tables}
+                value={selectedTable}
+                onChange={handleTableChange}
+                placeholder="Select a table"
+              />
               </div>
               {columns?.length && (
                 <div>
