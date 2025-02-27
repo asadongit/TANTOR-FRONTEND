@@ -8,9 +8,9 @@ const SourcePreview = ({ previewData, setPreviewData, setShowPreview, toggleModa
       <div className="p-4 pb-2 bg-white border-b">
         <p className="text-lg font-semibold mb-0">Output Preview</p>
       </div>
-
-      <div className="flex-1 overflow-auto">
-        <div className="relative shadow-md sm:rounded-lg">
+  
+      <div className="flex-1 overflow-auto mx-1">
+        <div className="relative shadow-md sm:rounded-lg mx-1">
           <table className="w-full text-sm text-left text-black">
             <thead className="sticky top-0 text-xs uppercase bg-[#282F49] text-white">
               <tr>
@@ -31,7 +31,7 @@ const SourcePreview = ({ previewData, setPreviewData, setShowPreview, toggleModa
           </table>
         </div>
       </div>
-
+  
       <div className="p-4 border-t shadow-lg flex justify-end gap-4 bg-white">
         <button
           onClick={() => setShowPreview(false)}

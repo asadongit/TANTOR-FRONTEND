@@ -98,7 +98,15 @@ export function BaseNode({ id, data }) {
     userCheckedColumns,
     setUserCheckedColumns,
   } = useStateContext();
-
+  const getFilterModalColumns = () => {
+    if (apiColumns.length > 0) {
+      return apiColumns.map((column) => ({
+        name: column.column_name,
+        type: column.data_type,
+      }));
+    }
+    return [];
+  };
   useEffect(() => {
     (async () => {
       let response;
@@ -183,26 +191,34 @@ export function BaseNode({ id, data }) {
   const handleColumnCheck = (column) => {
     const columnName = column.column_name;
     const dataType = column.data_type;
-    const updatedCheckedColumns = [...userCheckedColumns];
-    const columnIndex = updatedCheckedColumns.indexOf(columnName);
 
-    if (columnIndex !== -1) {
-      if (isAllSelected) setIsAllSelected(false);
-      updatedCheckedColumns.splice(columnIndex, 1);
-      setSettingsList((prev) =>
-        prev.filter((item) => item.name !== columnName)
-      );
-    } else {
-      updatedCheckedColumns.push(columnName);
-      setSettingsList((prev) => [
-        ...prev,
-        { ...defaultSetting, name: columnName, type: dataType },
-      ]);
+    const isColumnChecked = userCheckedColumns.includes(columnName);
 
-      if (updatedCheckedColumns.length === apiColumns.length)
-        setIsAllSelected(true);
-    }
+    const updatedCheckedColumns = isColumnChecked
+      ? userCheckedColumns.filter((name) => name !== columnName) // Uncheck the column
+      : [...userCheckedColumns, columnName]; // Check the column
+
+    setSettingsList((prev) => {
+      const updatedSettingsList = prev.map((item) => {
+        if (item.name === columnName) {
+          return { ...item, output: isColumnChecked ? "No" : "Yes" };
+        }
+        return item;
+      });
+
+      if (!isColumnChecked && !prev.some((item) => item.name === columnName)) {
+        updatedSettingsList.push({
+          ...defaultSetting,
+          name: columnName,
+          type: dataType,
+        });
+      }
+
+      return updatedSettingsList;
+    });
+
     setUserCheckedColumns(updatedCheckedColumns);
+    setIsAllSelected(updatedCheckedColumns.length === apiColumns.length);
   };
 
   const handleClose = () => {
@@ -223,20 +239,29 @@ export function BaseNode({ id, data }) {
   const handleSelectAllColumns = () => {
     if (isAllSelected) {
       setUserCheckedColumns([]);
-      setSettingsList([]);
+      setSettingsList((prev) => prev.map(item => ({ ...item, output: "No" })));
     } else {
       const updatedCheckedColumns = [];
-      const updatedSettingsList = [];
+      const newSettingList = [];
 
       apiColumns.forEach((item) => {
         updatedCheckedColumns.push(item.column_name);
-        updatedSettingsList.push({
+        newSettingList.push({
           ...defaultSetting,
           name: item.column_name,
           type: item.data_type,
         });
       });
 
+      const updatedSettingsList = [...settingsList];
+      newSettingList.forEach((newSetting) => {
+        const existingIndex = updatedSettingsList.findIndex(setting => setting.name === newSetting.name);
+        if (existingIndex !== -1) {
+          updatedSettingsList[existingIndex] = {...updatedSettingsList[existingIndex], output: "Yes"};
+        }else{
+          updatedSettingsList.push(newSetting);
+        }
+      });
       setUserCheckedColumns(updatedCheckedColumns);
       setSettingsList(updatedSettingsList);
     }
@@ -348,6 +373,7 @@ export function BaseNode({ id, data }) {
                 viewType: "Source",
                 settings: settingsList,
                 userSelections: userSelections,
+                apiColumns: getFilterModalColumns(),
               })
             }
             className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
@@ -379,6 +405,15 @@ export function ConnectionNode({ id, data }) {
     setUserCheckedColumns,
   } = useStateContext();
 
+  const getFilterModalColumns = () => {
+    if (apiColumns.length > 0) {
+      return apiColumns.map((column) => ({
+        name: column.column,
+        type: column.datatype,
+      }));
+    }
+    return [];
+  };
   useEffect(() => {
     (async () => {
       let response;
@@ -514,33 +549,36 @@ export function ConnectionNode({ id, data }) {
 
   const handleColumnChange = (column) => {
     const columnName = column.column;
-    const columnType = column.datatype;
+    const dataType = column.datatype;
 
-    const updatedCheckedColumns = [...userCheckedColumns];
-    const columnIndex = updatedCheckedColumns.indexOf(columnName);
+    const isColumnChecked = userCheckedColumns.includes(columnName);
 
-    console.log("COLUMN INDEX = ", columnIndex);
-    if (columnIndex !== -1) {
-      if (isAllSelected) setIsAllSelected(false);
-      updatedCheckedColumns.splice(columnIndex, 1);
-      setSettingsList((prev) =>
-        prev.filter((item) => item.name !== columnName)
-      );
-    } else {
-      updatedCheckedColumns.push(columnName);
-      setSettingsList((prev) => [
-        ...prev,
-        { ...defaultSetting, name: columnName, type: columnType },
-      ]);
-    }
+    const updatedCheckedColumns = isColumnChecked
+      ? userCheckedColumns.filter((name) => name !== columnName)
+      : [...userCheckedColumns, columnName];
+
+    setSettingsList((prev) => {
+      const updatedSettingsList = prev.map((item) => {
+        if (item.name === columnName) {
+          return { ...item, output: isColumnChecked ? "No" : "Yes" };
+        }
+        return item;
+      });
+
+      if (!isColumnChecked && !prev.some((item) => item.name === columnName)) {
+        updatedSettingsList.push({
+          ...defaultSetting,
+          name: columnName,
+          type: dataType,
+        });
+      }
+      return updatedSettingsList;
+    });
     setUserCheckedColumns(updatedCheckedColumns);
-    console.log("Selected Columns: ", userCheckedColumns);
+    setIsAllSelected(updatedCheckedColumns.length === apiColumns.length);
   };
 
   const handleEditColumn = (columnName) => {
-    // if (!selectedColumns.includes(columnName))
-    //   setSelectedColumns([...selectedColumns, columnName]);
-    console.log(columnName);
     apiColumns.forEach((item) => {
       if (item.column == columnName) {
         data.handleColumnSetting({
@@ -557,22 +595,34 @@ export function ConnectionNode({ id, data }) {
   const handleSelectAllChange = () => {
     if (isAllSelected) {
       setUserCheckedColumns([]);
-      setSettingsList([]);
+      setSettingsList((prev) => prev.map(item => ({
+        ...item,
+        output: "No"
+      })));
     } else {
       const updatedCheckedColumns = [];
-      const updatedColumnSettingsList = [];
+      const newSettingList = [];
 
-      apiColumns.forEach((column) => {
-        updatedCheckedColumns.push(column.column);
-        updatedColumnSettingsList.push({
+      apiColumns.forEach((item) => {
+        updatedCheckedColumns.push(item.column);
+        newSettingList.push({
           ...defaultSetting,
-          name: column.column,
-          type: column.datatype,
+          name: item.column,
+          type: item.datatype,
         });
       });
 
+      const updatedSettingsList = [...settingsList];
+      newSettingList.forEach((newSetting) => {
+        const existingIndex = updatedSettingsList.findIndex(setting => setting.name === newSetting.name);
+        if (existingIndex !== -1) {
+          updatedSettingsList[existingIndex] = {...updatedSettingsList[existingIndex], output: "Yes"};
+        }else{
+          updatedSettingsList.push(newSetting);
+        }
+      });
       setUserCheckedColumns(updatedCheckedColumns);
-      setSettingsList(updatedColumnSettingsList);
+      setSettingsList(updatedSettingsList);
     }
     setIsAllSelected((prev) => !prev);
   };
@@ -585,6 +635,7 @@ export function ConnectionNode({ id, data }) {
     setSelectedTable("");
     setUserCheckedColumns([]);
     setIsAllSelected(false);
+    setSettingsList([]);
   };
 
   const handleConnectionChange = (event) => {
@@ -595,6 +646,7 @@ export function ConnectionNode({ id, data }) {
       updatedSelections.set("connection", event.target.value);
       return updatedSelections;
     });
+    
   };
 
   const handleSchemaChange = (event) => {
@@ -603,6 +655,7 @@ export function ConnectionNode({ id, data }) {
     setApiColumns([]);
     setSelectedTable("");
     setUserCheckedColumns([]);
+    setSettingsList([]);
     setIsAllSelected(false);
     setUserSelections((prev) => {
       const updatedSelections = new Map();
@@ -611,6 +664,7 @@ export function ConnectionNode({ id, data }) {
 
       return updatedSelections;
     });
+
   };
 
   const handleTableChange = (event) => {
@@ -618,6 +672,7 @@ export function ConnectionNode({ id, data }) {
     setApiColumns([]);
     setUserCheckedColumns([]);
     setIsAllSelected(false);
+    setSettingsList([]);
     setUserSelections((prev) => {
       const updatedSelections = new Map();
       updatedSelections.set("connection", selectedConnection);
@@ -762,6 +817,7 @@ export function ConnectionNode({ id, data }) {
                 viewType: "Connection",
                 settings: settingsList,
                 userSelections: userSelections,
+                apiColumns: getFilterModalColumns(),
               })
             }
             className="w-full text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] mt-3"

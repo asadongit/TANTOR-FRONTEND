@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
+import { Info, Settings } from "lucide-react";
 import { useStateContext } from "../../../../context/contextProvider";
-import { toast } from "react-toastify";
 
 export const defaultSetting = {
   name: "",
@@ -74,11 +74,15 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
 
   const handleExecute = async (event) => {
     event.preventDefault();
-
-    setUserCheckedColumns((prev) => {
-      if (!prev.includes(settings.name)) return [...prev, settings.name];
-      return prev;
-    });
+    
+    if(settings.output === "Yes"){
+      setUserCheckedColumns((prev) => {
+        if (!prev.includes(settings.name)) return [...prev, settings.name];
+        return prev;
+      });
+    }else{
+      setUserCheckedColumns(prev => prev.filter(column => column !== settings.name));
+    }
 
     if (columnSetting.viewType === "Source") {
       if (userSelections.get("viewName") !== columnSetting.viewName) {
@@ -305,19 +309,27 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
       <div className="w-80 bg-white rounded-lg shadow-lg overflow-hidden h-full">
         <div className="p-4 h-full flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-lg font-medium">Column Settings</span>
-            <button
-              onClick={toggleDialog}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Icon icon="mdi:close" width={20} height={20} />
-            </button>
+            <div className="flex items-center">
+              <Settings size={19} className="text-[#8E77BB]"/>
+              <span className="text-lg font-medium ml-2">Column Settings</span>
+            </div>
+            <div className="flex items-center">
+              <button onClick={(e) => alert("Info")} className="mr-2">
+                <Info size={16} />
+              </button>
+              <button
+                onClick={toggleDialog}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <Icon icon="mdi:close" width={20} height={20} />
+              </button>
+            </div>
           </div>
-
+  
           <div className="flex-1 overflow-y-auto pr-2 pl-1">
             {renderFormFields()}
           </div>
-
+  
           <div className="flex gap-3 mt-4 pt-4 border-t">
             <button
               onClick={toggleDialog}
@@ -336,6 +348,5 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
       </div>
     </div>
   );
-};
-
+  };
 export default ColumnSettings;

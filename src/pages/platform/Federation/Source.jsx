@@ -51,7 +51,6 @@ export default function Source() {
   const handleColumnSetting = (params) => {
     setColumnSetting(params);
   };
-  // Utility functions
   const validateColumns = (userCheckedColumns, settings) => {
     if (userCheckedColumns.length === 0) {
       toast.error("Please select at least one column");
@@ -66,9 +65,8 @@ export default function Source() {
     const orderByColumns = [];
 
     settings.forEach((item) => {
-      if (userCheckedColumns.includes(item.name)) {
         if (item.groupBy === "Yes") groupByColumns.push(item.name);
-        if (item.aggregate) aggregateColumns.push(item.name);
+        if (item.aggregate && item.output === "Yes") aggregateColumns.push(item.name);
         if (item.sort) {
           orderByColumns.push({
             field: item.name,
@@ -76,7 +74,6 @@ export default function Source() {
             order: item.order,
           });
         }
-      }
     });
 
     return {
@@ -183,7 +180,7 @@ export default function Source() {
 
   const handleOk = async (params) => {
     const { settings, viewType, userCheckedColumns, userSelections } = params;
-
+    
     if (!validateColumns(userCheckedColumns, settings)) return null;
 
     const columnSettings = processColumnSettings(settings, userCheckedColumns);
@@ -193,25 +190,21 @@ export default function Source() {
         return null;
     }
 
-    const updatedSettingsList = settings.filter((item) =>
-      userCheckedColumns.includes(item.name)
-    );
-
     const updatedUserSelections = new Map(userSelections);
     updatedUserSelections.set("viewType", viewType);
 
     const apiPayload = createApiPayload(
       updatedUserSelections,
-      updatedSettingsList,
+      settings,
       columnSettings.orderByColumns
     );
 
-    const filterModalColumns = updatedSettingsList.map((item) => {
-      return { name: item.name, type: item.type };
-    });
+    const filterModalColumns = [...params.apiColumns];
+
+    console.log("filterModalColumns ==>> ", filterModalColumns);
 
     await Promise.all([
-      setSettingsList(updatedSettingsList),
+      // setSettingsList(updatedSettingsList),
       setUserSelections((prev) => {
         const newSelections = new Map(prev);
 
@@ -292,7 +285,9 @@ export default function Source() {
       );
   
       const responseText = await response.text();
-      
+
+      if(!responseText.length)
+        return toast.error("No data found");
       const data = responseText
         .trim()
         .split("\n")
@@ -305,9 +300,10 @@ export default function Source() {
             return validData;
           }
         }, []);
-  
+        
+        console.log("DATA ==> ", data);
       if (response.ok) {
-        if (data.length === 0) {
+        if (!data || data.length === 0) {
           toast.error(`${viewType === "Source" ? "View" : "Table"} is empty!`);
           return null;
         }
@@ -321,7 +317,7 @@ export default function Source() {
         return null;
       }
     } catch (error) {
-      console.error("Error executing query:", error);
+      console.log("Error executing query:", error);
       toast.error("Failed to execute query");
       return null;
     }
