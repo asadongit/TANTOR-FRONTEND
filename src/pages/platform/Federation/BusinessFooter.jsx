@@ -7,13 +7,14 @@ import AlertTitle from "@mui/material/AlertTitle";
 import { ToastContainer, toast } from "react-toastify";
 import SaveViewModal from "./viewsource/SaveViewModal";
 import { useLocation, useNavigate } from "react-router-dom";
+import FilterComponent from "./viewsource/FilterComponent";
 
 export function BusinessFooter() {
 
   const navigate = useNavigate();
-  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload,columnSettings } = useStateContext("");
+  const { finalPayload, handleFinalPayload, complexCheck, connectionPayload, viewPayload, columnSettings } = useStateContext("");
   const [preview, setPreview] = useState(false);
-  const encodedToken = import.meta.env.VITE_ACCESS_TOKEN;
+  const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -39,37 +40,143 @@ export function BusinessFooter() {
       );
   };
 
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterModalColumns, setFilterModalColumns] = useState([
+    {
+      "name": "id",
+      "type": "decimal"
+    },
+    {
+      "name": "name",
+      "type": "varchar"
+    },
+    {
+      "name": "user_age",
+      "type": "decimal"
+    }
+  ]);
 
-  const handleClick = async () => {
+  const helperPreviewData = (cleanApiPayload) => {
+
+    fetch(`${import.meta.env.VITE_FAST_API_V2}/save-view?execute_query=true`, {
+      method: "POST",
+      headers: {
+        'Authorization': `Bearer ${encodedToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(cleanApiPayload),
+    })
+      .then((response) =>
+        response.text().then((data) => ({ status: response.status, data }))
+      )
+      .then(({ status, data }) => {
+        if (status === 200) {
+          const dataArray = data.split("\n")
+            .filter(item => item.trim() !== "")
+            .map(item => {
+              try {
+                return JSON.parse(item);
+              } catch (e) {
+                console.error("Error parsing JSON:", e, item);
+                return null;
+              }
+            })
+            .filter(item => item !== null);
+
+          if (dataArray.length === 0) {
+            setError("Table is empty");
+            setRowData([]);
+          } else {
+            console.log("Parsed Data Array: ", dataArray);
+            setLoading(false);
+            const rows = data.trim().split("\n").map((row) => JSON.parse(row));
+            const columns = Object.keys(rows[0]);
+            console.log("rows are ===>", rows);
+            console.log("columns are ===>", columns);
+            setColumnDefs(columns);
+            setRowData(rows);
+            setError(null);
+          }
+        } else {
+          if (data) {
+            setLoading(false);
+            const res = JSON.parse(data);
+            toast.error("Select correct inputs");
+            setError(res.detail);
+            setPreview(false);
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+        setError("Something went wrong!");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+    // } else {
+    //   toast.error("Select inputs first");
+    // }
+  }
+
+  useEffect(() => {
+    console.log("PAYLOAD IS $$$$$$$$$$$$$", finalPayload)
+  }, [finalPayload])
+
+  const fetchPreviewData = async (payload = null, filterData = null) => {
+    setIsFilterModalOpen(false);
+
+    console.log("filterdata is ====>", filterData);
+
+    let apiPayload = payload || finalPayload;
+
+    if (filterData) {
+      apiPayload = { ...apiPayload, filter_data: filterData };
+    }
+
+    const isSkipCondition = !payload && !filterData;
+    console.log("skip condition is ====>", isSkipCondition);
+
+
+    apiPayload = { ...apiPayload, skip_filter: isSkipCondition };
+
+
+    let apiPayloadForApi = { ...apiPayload };
+    if (isSkipCondition) {
+      delete apiPayloadForApi.filter_data;
+    }
+
+    console.log("FILTER API PAYLOAD ==> ", apiPayloadForApi);
+
 
     const connections = connectionPayload.map(item => item.selectedConnection);
     const views = viewPayload.map(item => item.view);
-
-    const  metadata ={
-        connections,
-        views
-    }
-
-    console.log("metadata payload is ", metadata)
+    const metadata = { connections, views };
 
     let selectColumns = new Set();
     let groupByColumns = new Set();
     let aggregateColumns = new Set();
 
-    const hasOperation = finalPayload?.operation !== undefined;
+    const hasOperation = apiPayloadForApi?.operation !== undefined;
     const source = hasOperation
       ? columnSettings["Union"]
       : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
+
 
     Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
       const columns = hasOperation ? { [tableOrColumn]: columnsOrProperties } : columnsOrProperties;
 
       Object.entries(columns).forEach(([column, properties]) => {
-        if (properties.output === "Yes") {
-          if (!properties.aggregate) selectColumns.add(column);
+        if (properties.output === "Yes" && !properties.aggregate) {
+          selectColumns.add(column);
         }
-        if (properties.groupBy === "Yes") groupByColumns.add(column);
-        if (properties.aggregate) aggregateColumns.add(column);
+        if (properties.groupBy === "Yes") {
+          groupByColumns.add(column);
+        }
+        if (properties.aggregate) {
+          aggregateColumns.add(column);
+        }
       });
     });
 
@@ -77,11 +184,6 @@ export function BusinessFooter() {
     groupByColumns = [...groupByColumns];
     aggregateColumns = [...aggregateColumns];
 
-    console.log("group by cols are ===>", groupByColumns);
-    console.log("select cols are ===>", selectColumns);
-    console.log("aggregate cols are ===>", aggregateColumns);
-
-    // unionnnnnnnnnnnn
 
     if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
       toast.error("Select Field must be aggregate or in Group by");
@@ -93,117 +195,163 @@ export function BusinessFooter() {
       return;
     }
 
-    if (finalPayload && Object.keys(finalPayload).length > 0) {
+    if (Object.keys(apiPayloadForApi).length > 0) {
       setPreview(true);
       setLoading(true);
       setRowData([]);
 
-      console.log("ggggggggggggggggggg final payload is =====>", finalPayload);
-
-      const hasOperation = finalPayload?.operation !== undefined;
-      const source = hasOperation ? { Union: columnSettings["Union"] } : columnSettings;
-
       const groupByArray = Object.entries(source).flatMap(([view, columns]) =>
         Object.entries(columns)
           .filter(([col, settings]) => settings.groupBy === "Yes")
-          .map(([col]) => hasOperation ? `${col}` : `${view}.${col}`)
+          .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
       );
-      
-      let orderBy = [];
 
+      let orderBy = [];
       Object.keys(source).forEach(table => {
-        const tableColumns = source[table];
-        Object.keys(tableColumns).forEach(key => {
-          const column = tableColumns[key];
+        Object.entries(source[table]).forEach(([key, column]) => {
           if (column.order) {
             orderBy.push({
               table,
               key,
-              order: parseInt(column.order, 10), 
-              sort: column.sort.toLowerCase()
+              order: parseInt(column.order, 10),
+              sort: column.sort.toLowerCase(),
             });
           }
         });
       });
-      
+
       orderBy.sort((a, b) => a.order - b.order);
-      
-      const finalOrderBy = orderBy.map(col => {
-        return hasOperation
-          ? `${col.key} ${col.sort}` 
-          : `${col.table}.${col.key} ${col.sort}`;
+
+      const finalOrderBy = orderBy.map(col =>
+        hasOperation ? `${col.key} ${col.sort}` : `${col.table}.${col.key} ${col.sort}`
+      );
+
+      console.log("order by is ====>", { order_by: finalOrderBy });
+
+      const selectFields = getSelectFields(columnSettings, hasOperation);
+
+      const updatedPayload = {
+        ...apiPayloadForApi,
+        group_by: groupByArray,
+        select_fields: selectFields,
+        metadata,
+      };
+
+      console.log("Updated final payload for API is ===>", updatedPayload);
+
+      handleFinalPayload({
+        ...apiPayload,
+        group_by: groupByArray,
+        select_fields: selectFields,
+        metadata,
       });
-
-      console.log("order by is ====>",{ order_by: finalOrderBy });
       
+      helperPreviewData(updatedPayload);
+    }
+  };
 
-      const selectFields = getSelectFields(columnSettings, hasOperation)
 
 
-      console.log("select fields are in every case is   &&&&&&&&&&&&&&&=====>", selectFields)
+  const handleClick = async () => {
 
-      const updatedPayload = { ...finalPayload, group_by: groupByArray, select_fields: selectFields, metadata };
+    if (finalPayload && Object.keys(finalPayload).length > 0) {
+      if (!complexCheck) setIsFilterModalOpen(true);
+      else {
+        const connections = connectionPayload.map(item => item.selectedConnection);
+        const views = viewPayload.map(item => item.view);
+        const metadata = { connections, views };
 
-      console.log("Updated final payload with group_by and select fields is ===>", updatedPayload);
-      handleFinalPayload(updatedPayload);
+        let selectColumns = new Set();
+        let groupByColumns = new Set();
+        let aggregateColumns = new Set();
 
-      fetch(`${import.meta.env.VITE_FAST_API_V2}/save-view?execute_query=true`, {
-        method: "POST",
-        headers: {
-          'Authorization': `Bearer ${encodedToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedPayload),
-      })
-        .then((response) =>
-          response.text().then((data) => ({ status: response.status, data }))
-        )
-        .then(({ status, data }) => {
-          if (status === 200) {
-            const dataArray = data.split("\n")
-              .filter(item => item.trim() !== "")
-              .map(item => {
-                try {
-                  return JSON.parse(item);
-                } catch (e) {
-                  console.error("Error parsing JSON:", e, item);
-                  return null;
-                }
-              })
-              .filter(item => item !== null);
+        const hasOperation = apiPayloadForApi?.operation !== undefined;
+        const source = hasOperation
+          ? columnSettings["Union"]
+          : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
-            if (dataArray.length === 0) {
-              setError("Table is empty");
-              setRowData([]);
-            } else {
-              console.log("Parsed Data Array: ", dataArray);
-              setLoading(false);
-              const rows = data.trim().split("\n").map((row) => JSON.parse(row));
-              const columns = Object.keys(rows[0]);
-              console.log("rows are ===>", rows);
-              console.log("columns are ===>", columns);
-              setColumnDefs(columns);
-              setRowData(rows);
-              setError(null);
+
+        Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
+          const columns = hasOperation ? { [tableOrColumn]: columnsOrProperties } : columnsOrProperties;
+
+          Object.entries(columns).forEach(([column, properties]) => {
+            if (properties.output === "Yes" && !properties.aggregate) {
+              selectColumns.add(column);
             }
-          } else {
-            if (data) {
-              setLoading(false);
-              const res = JSON.parse(data);
-              toast.error("Select correct inputs");
-              setError(res.detail);
-              setPreview(false);
+            if (properties.groupBy === "Yes") {
+              groupByColumns.add(column);
             }
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching data:", error);
-          setError("Something went wrong!");
-        })
-        .finally(() => {
-          setLoading(false);
+            if (properties.aggregate) {
+              aggregateColumns.add(column);
+            }
+          });
         });
-    } else {
+
+        selectColumns = [...selectColumns];
+        groupByColumns = [...groupByColumns];
+        aggregateColumns = [...aggregateColumns];
+
+
+        if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
+          toast.error("Select Field must be aggregate or in Group by");
+          return;
+        }
+
+        if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
+          toast.error("Select Field must be aggregate or in Group by");
+          return;
+        }
+
+        if (Object.keys(apiPayloadForApi).length > 0) {
+          setPreview(true);
+          setLoading(true);
+          setRowData([]);
+
+          const groupByArray = Object.entries(source).flatMap(([view, columns]) =>
+            Object.entries(columns)
+              .filter(([col, settings]) => settings.groupBy === "Yes")
+              .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
+          );
+
+          let orderBy = [];
+          Object.keys(source).forEach(table => {
+            Object.entries(source[table]).forEach(([key, column]) => {
+              if (column.order) {
+                orderBy.push({
+                  table,
+                  key,
+                  order: parseInt(column.order, 10),
+                  sort: column.sort.toLowerCase(),
+                });
+              }
+            });
+          });
+
+          orderBy.sort((a, b) => a.order - b.order);
+
+          const finalOrderBy = orderBy.map(col =>
+            hasOperation ? `${col.key} ${col.sort}` : `${col.table}.${col.key} ${col.sort}`
+          );
+
+          console.log("order by is ====>", { order_by: finalOrderBy });
+
+          const selectFields = getSelectFields(columnSettings, hasOperation);
+
+          const updatedPayload = {
+            ...finalPayload,
+            group_by: groupByArray,
+            select_fields: selectFields,
+            metadata,
+          };
+
+          console.log("Updated final payload for API is ===>", updatedPayload);
+
+          handleFinalPayload(...updatedPayload);
+        }
+        helperPreviewData(updatedPayload)
+      }
+    }
+    else {
       toast.error("Select inputs first");
     }
   };
@@ -227,6 +375,13 @@ export function BusinessFooter() {
     const { newViewName } = params;
 
     finalPayload["view_name"] = newViewName;
+
+    if (finalPayload.skip_filter === true) {
+      delete finalPayload.filter_data;
+      delete finalPayload.skip_filter;
+    } else {
+      delete finalPayload.skip_filter;
+    }
 
     console.log("final payload fainally is =======>", finalPayload)
 
@@ -271,7 +426,7 @@ export function BusinessFooter() {
     if (response.status == 200) {
       console.log("Save View Result ==> ", data);
       toast.success("View Saved Successfully.", { autoClose: 2900 });
-      setTimeout(() => navigate("/federation"), 3000);
+      // setTimeout(() => navigate("/federation"), 3000);
     } else {
       toast.error("Error while saving view..");
     }
@@ -345,6 +500,13 @@ export function BusinessFooter() {
         <SaveViewModal
           toggleModal={toggleModal}
           handleSaveView={handleSaveView}
+        />
+      )}
+      {isFilterModalOpen && (
+        <FilterComponent
+          setIsOpen={setIsFilterModalOpen}
+          columns={filterModalColumns}
+          onApply={fetchPreviewData}
         />
       )}
       <ToastContainer />

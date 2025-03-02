@@ -137,15 +137,22 @@ const DynamicOptionValues = ({ condition, index, updateCondition }) => {
 export default function FilterComponent({ setIsOpen, columns, onApply }) {
   console.log("COLUMNS ++>> ", columns);
 
-  const { userSelections } = useStateContext();
+  const { userSelections, finalPayload } = useStateContext();
 
   const [conditions, setConditions] = useState([]);
 
   useEffect(() => {
+    if(finalPayload.view_type === "Integrated View"){
+      const filterData = finalPayload.filter_data;
+      console.log("integrated filter data is ===>",filterData)
+      if (filterData) setConditions(filterData);
+    }
+    else{
     const filterData = userSelections?.get("apiPayload")?.filter_data;
     console.log("USE CALLBACK ===>> ", userSelections);
     if (filterData) setConditions(filterData);
-  }, [userSelections]);
+    }
+  }, [userSelections, finalPayload]);
 
   useEffect(() => console.log("CONDITIONS ++>> ", conditions), [conditions]);
 
@@ -227,7 +234,7 @@ export default function FilterComponent({ setIsOpen, columns, onApply }) {
     });
   };
   return (
-    <div className="fixed inset-0 text-['Proxima Nova'] bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="text-black fixed inset-0 text-['Proxima Nova'] bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg w-[80vw] max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="p-2 pl-4 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
