@@ -81,7 +81,6 @@ if (finalPayload?.operation) {
         }
       }
     });
-
   }, [type, id, consolidationPayload, connectionPayload, viewPayload]);
 
   useEffect(() => {
@@ -134,20 +133,51 @@ if (finalPayload?.operation) {
   };
 
   useEffect(() => {
+    console.log("viewPayload in consolidation is =====>", viewPayload);
+    console.log("connection payload in consolidation is ====>", connectionPayload);
 
     const unionData = {};
     [...viewPayload, ...connectionPayload].forEach((item) => {
-      unionData[item.view] = item.selectedColumns;
+        if (item.view && Array.isArray(item.selectedColumns)) {
+            unionData[item.view] = item.selectedColumns;
+        }
     });
 
-    console.log("union data is ===>", unionData)
+    console.log("union data is ===>", unionData);
 
     const firstKey = Object.keys(unionData)[0];
-    const firstKeyColumns = unionData[firstKey];
-    console.log("first key columns for union is ===>", firstKeyColumns)
+    const firstKeyColumns = unionData[firstKey] || [];
+
+    console.log("first key columns for union is ===>", firstKeyColumns);
     setColumns(firstKeyColumns);
 
-  }, [viewPayload, connectionPayload])
+    const columnTypeMap = {};
+    [...viewPayload, ...connectionPayload].forEach((item) => {
+        if (Array.isArray(item.Columns)) {
+            item.Columns.forEach((col) => {
+                columnTypeMap[col.column_name || col.column] = col.data_type || col.datatype;
+            });
+        }
+    });
+
+    if (Array.isArray(firstKeyColumns)) {
+        const formattedPayload = firstKeyColumns.map((col) => ({
+            name: col,
+            type: columnTypeMap[col] || "unknown"
+        }));
+
+        console.log("Formatted Payload ===>", formattedPayload);
+
+        handleFinalPayload({
+          ...finalPayload,
+          columnsDataType:formattedPayload
+        })
+
+    } else {
+        console.error("firstKeyColumns is not an array:", firstKeyColumns);
+    }
+}, [viewPayload, connectionPayload]);
+
 
   const handleSave = () => {
 
@@ -191,12 +221,35 @@ if (finalPayload?.operation) {
           defs: defs,
         }
 
-        handleFinalPayload(newPayload);
+        handleFinalPayload({ ...finalPayload, ...newPayload });
         console.log(" union newpayload after is =====>", newPayload)
       }
     }
 
     if (type === "Join") {
+
+      let columnsPayload = [];
+
+    viewPayload.forEach(view => {
+        view.Columns.forEach(column => {
+          columnsPayload.push({
+                name: `${view.view}.${column.column_name}`,
+                type: column.data_type
+            });
+        });
+    });
+
+    connectionPayload.forEach(connection => {
+        connection.Columns.forEach(column => {
+          columnsPayload.push({
+                name: `${connection.id}.${column.column}`,
+                type: column.datatype
+            });
+        });
+    });
+
+    console.log("columns payload in the join is =====>",columnsPayload)
+
       console.log("@@@@@@@@@@@@@@join payload is ===>", finalPayload)
 
       const tempArray1 = new Set();
@@ -226,6 +279,7 @@ if (finalPayload?.operation) {
 
       const newPayload = {
         ...finalPayload,
+        columnsDataType: columnsPayload,
         base_join: baseJoin,
         ...(connection && { base_join_def: connection.def }),
         command: "execute",
@@ -235,8 +289,9 @@ if (finalPayload?.operation) {
         isCaching: "false",
       }
 
-      handleFinalPayload(newPayload);
+      handleFinalPayload({...finalPayload, ...newPayload});
     }
+    toast.success("Data Saved Successfully");
 
     setIsConsolidationModalOpen(!isConsolidationModalOpen);
   };
@@ -367,20 +422,7 @@ if (finalPayload?.operation) {
       </div>
 
       <Modal open={isConsolidationModalOpen} onClose={toggleConsolidationModal}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "40%",
-            height: "60%",
-            bgcolor: "background.paper",
-            px: 4,
-            pt: 2,
-            borderRadius: "12px",
-          }}
-        >
+        <div className="max-w-[100vw] max-h-[100vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 pt-2 rounded-xl">
           <div className="h-[10%]" style={{ height: "10%" }}>
             <div className="flex items-center space-x-3">
               <Network className="w-5 h-5 text-[#8E77BB]" />
@@ -592,7 +634,7 @@ if (finalPayload?.operation) {
             </div>
 
             {(type === "Join" || type === "Union" || type === "Intersect") && (
-              <div className=" mb-4 flex justify-end" >
+              <div className=" mb-4 mt-4 flex justify-end" >
                 <button
                   onClick={toggleConsolidationModal}
                   type="button"
@@ -611,7 +653,7 @@ if (finalPayload?.operation) {
             )}
           </div>
 
-        </Box>
+          </div>
       </Modal>
       <Modal
         open={isModalOpen}

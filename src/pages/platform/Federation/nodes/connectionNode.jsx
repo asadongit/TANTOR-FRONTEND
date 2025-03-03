@@ -11,7 +11,7 @@ import ComplexQueryEditor from "../complexsource/ComplexQueryEditor";
 
 export function ConnectionNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck } = useStateContext("")
+  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, handleFinalPayload } = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("")
@@ -250,6 +250,7 @@ export function ConnectionNode({ id, onSave }) {
 
   const handleSave = () => {
     const view = id;
+    handleFinalPayload({});
 
     if (view && selectedConnection && selectedSchema && selectedTable) {
 
@@ -269,7 +270,7 @@ export function ConnectionNode({ id, onSave }) {
         def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
         // select_fields: selectFields,
         // Columns: columns
-        Columns: columnData
+        Columns: columnData   /////////////same here 
       };
 
       const currentPayloads = connectionPayload || [];

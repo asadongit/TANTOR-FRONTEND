@@ -41,23 +41,10 @@ export function BusinessFooter() {
   };
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [filterModalColumns, setFilterModalColumns] = useState([
-    {
-      "name": "id",
-      "type": "decimal"
-    },
-    {
-      "name": "name",
-      "type": "varchar"
-    },
-    {
-      "name": "user_age",
-      "type": "decimal"
-    }
-  ]);
 
   const helperPreviewData = (cleanApiPayload) => {
 
+    console.log("CALLING API VIA PAYLOAD =====>",cleanApiPayload)
     fetch(`${import.meta.env.VITE_FAST_API_V2}/save-view?execute_query=true`, {
       method: "POST",
       headers: {
@@ -245,7 +232,7 @@ export function BusinessFooter() {
         select_fields: selectFields,
         metadata,
       });
-      
+
       helperPreviewData(updatedPayload);
     }
   };
@@ -505,7 +492,7 @@ export function BusinessFooter() {
       {isFilterModalOpen && (
         <FilterComponent
           setIsOpen={setIsFilterModalOpen}
-          columns={filterModalColumns}
+          columns={finalPayload?.columnsDataType || []}
           onApply={fetchPreviewData}
         />
       )}

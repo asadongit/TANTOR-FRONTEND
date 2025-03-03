@@ -74,7 +74,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, complexCheck } = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, complexCheck , handleFinalPayload} = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -246,6 +246,8 @@ export function SourceViewNode({ id, onSave }) {
 
   const handleSave = () => {
 
+    handleFinalPayload({});
+
     if (selectedView) {
       const view = selectedView;
       const newPayload = {
@@ -255,7 +257,7 @@ export function SourceViewNode({ id, onSave }) {
         selectedColumns,
         // select_fields: selectFields,
         // Columns: columnsForViews[selectedView] || [],
-        Columns: columnData
+        Columns: columnData   ////// correct with data type 
       };
 
       const currentPayloads = viewPayload || [];
@@ -272,6 +274,7 @@ export function SourceViewNode({ id, onSave }) {
       handleViewPayload(updatedPayloads);
       onSave?.(newPayload);
     }
+    toast.success("Data Saved Successfully");
 
   };
 
