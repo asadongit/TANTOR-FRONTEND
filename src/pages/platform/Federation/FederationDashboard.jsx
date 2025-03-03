@@ -51,6 +51,7 @@ const FederationDashBoard = () => {
 
   useEffect(() => {
     var project = "dummy";
+    var preferred_username = "sabhyata";
     const fetchData = async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
@@ -65,13 +66,13 @@ const FederationDashBoard = () => {
           data = data.filter(
             (item) =>
               // item.project.toUpperCase() === project.toUpperCase() &&
-              // item.created_by.toUpperCase() === token.preferred_username.toUpperCase() &&
+              item.created_by.toUpperCase() === preferred_username.toUpperCase() &&
               !item.is_deleted
           );
         } else {
           data = data.filter(
             (item) =>
-              // item.created_by.toUpperCase() === token.preferred_username.toUpperCase() &&
+              item.created_by.toUpperCase() === preferred_username.toUpperCase() &&
               !item.is_deleted
           );
         }

@@ -413,7 +413,7 @@ export function BusinessFooter() {
     if (response.status == 200) {
       console.log("Save View Result ==> ", data);
       toast.success("View Saved Successfully.", { autoClose: 2900 });
-      // setTimeout(() => navigate("/federation"), 3000);
+      setTimeout(() => navigate("/federation"), 3000);
     } else {
       toast.error("Error while saving view..");
     }
