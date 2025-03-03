@@ -118,6 +118,8 @@ export function ConnectionNode({ id, onSave }) {
 
 
   useEffect(() => {
+    var preferred_username = "sabhyata";
+
     fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
       headers: {
         'Authorization': `Bearer ${encodedToken}`,
@@ -130,7 +132,7 @@ export function ConnectionNode({ id, onSave }) {
           .filter(
             (item) =>
               // item.project === project &&
-              // token.preferred_username === item.created_by &&
+              preferred_username === item.created_by &&
               item.is_deleted === false
           )
           .map((item) => item.connection_name);
@@ -287,6 +289,8 @@ export function ConnectionNode({ id, onSave }) {
       handleConnectionPayload(updatedPayloads)
       onSave?.(newPayload);
     }
+
+    toast.success("Data Saved Successfully");
 
   };
 

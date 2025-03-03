@@ -422,7 +422,7 @@ if (finalPayload?.operation) {
       </div>
 
       <Modal open={isConsolidationModalOpen} onClose={toggleConsolidationModal}>
-        <div className="max-w-[100vw] max-h-[100vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 pt-2 rounded-xl">
+        <div className="max-w-[100vw] max-h-[80vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 pt-2 rounded-xl">
           <div className="h-[10%]" style={{ height: "10%" }}>
             <div className="flex items-center space-x-3">
               <Network className="w-5 h-5 text-[#8E77BB]" />
@@ -545,10 +545,10 @@ if (finalPayload?.operation) {
 
               {(type === "Union" || type === "Intersect") && (
                 <>
-                  <div className="flex gap-4 mt-5 mb-2 w-full">
+                  <div className="flex mt-2 mb-2 w-full justify-between">
                     <div
                       onClick={() => setUnionType(`${type}`)}
-                      className={`w-[50%] sm:w-[9rem] h-10 py-3 px-4 flex justify-between border rounded-md transition-all duration-300 flex items-center justify-center ${unionType === `${type}`
+                      className={`w-[49%] h-10 py-3 px-4 flex justify-between border rounded-md transition-all duration-300 flex items-center justify-center ${unionType === `${type}`
                         ? "border-[#8E77BB] text-[#8E77BB] bg-[#F3F2F9]"
                         : "border-solid border-2 text-gray-700"
                         }`}
@@ -562,7 +562,7 @@ if (finalPayload?.operation) {
                     </div>
                     <div
                       onClick={() => setUnionType(`${type} All`)}
-                      className={`w-[50%] sm:w-[9rem] h-10 py-3 px-4 flex justify-between border rounded-md transition-all duration-300 flex items-center justify-center ${unionType === `${type} All`
+                      className={`w-[49%] h-10 py-3 px-4 flex justify-between border rounded-md transition-all duration-300 flex items-center justify-center ${unionType === `${type} All`
                         ? "border-[#8E77BB] text-[#8E77BB] bg-[#F3F2F9]"
                         : "border-solid border-2 text-gray-700"
                         }`}
@@ -578,7 +578,7 @@ if (finalPayload?.operation) {
                   <div>
                     {columns?.length && (
                       <div>
-                        <label className="mt-4 block text-sm font-medium text-black mb-1">Select Columns</label>
+                        <label className="mt-3 block text-sm font-medium text-black mb-1">Select Columns</label>
                         <div className="px-3 pt-2 space-y-2">
                           <div className="flex items-center space-x-2">
                             <input
@@ -592,7 +592,7 @@ if (finalPayload?.operation) {
                               Select All
                             </label>
                           </div>
-                          <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
+                          <div className="max-h-28 overflow-y-auto space-y-2 custom-scrollbar">
                             {columns.map((column) => (
                               <div className="flex justify-between">
                                 <div key={column} className="flex items-center space-x-2">
@@ -634,18 +634,18 @@ if (finalPayload?.operation) {
             </div>
 
             {(type === "Join" || type === "Union" || type === "Intersect") && (
-              <div className=" mb-4 mt-4 flex justify-end" >
+              <div className="mt-2 mb-1 flex justify-end" >
                 <button
                   onClick={toggleConsolidationModal}
                   type="button"
-                  className="text-black bg-white hover:bg-gray-50 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-2 me-2 mb-2 focus:outline-none border-solid border-2"
+                  className="text-black bg-white hover:bg-gray-50 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-1.5 me-2 mb-2 focus:outline-none border-solid border-2"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   type="button"
-                  className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+                  className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                 >
                   Save
                 </button>
