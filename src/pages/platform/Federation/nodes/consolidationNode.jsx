@@ -469,7 +469,7 @@ if (finalPayload?.operation) {
               </div>
               {type === "Join" && (
                 <>
-                  <div className="flex w-full justify-between mt-7">
+                  <div className="flex w-full justify-between mt-3">
                     <div className="w-[47%]">
                       <label className="block text-sm font-medium text-black mb-1">Left</label>
                       <select
@@ -545,7 +545,7 @@ if (finalPayload?.operation) {
 
               {(type === "Union" || type === "Intersect") && (
                 <>
-                  <div className="flex mt-2 mb-2 w-full justify-between">
+                  <div className="flex mt-3 w-full justify-between">
                     <div
                       onClick={() => setUnionType(`${type}`)}
                       className={`w-[49%] h-10 py-3 px-4 flex justify-between border rounded-md transition-all duration-300 flex items-center justify-center ${unionType === `${type}`
@@ -578,7 +578,7 @@ if (finalPayload?.operation) {
                   <div>
                     {columns?.length && (
                       <div>
-                        <label className="mt-3 block text-sm font-medium text-black mb-1">Select Columns</label>
+                        <label className="mt-3 block text-sm font-medium text-black ">Select Columns</label>
                         <div className="px-3 pt-2 space-y-2">
                           <div className="flex items-center space-x-2">
                             <input
@@ -634,7 +634,7 @@ if (finalPayload?.operation) {
             </div>
 
             {(type === "Join" || type === "Union" || type === "Intersect") && (
-              <div className="mt-2 mb-1 flex justify-end" >
+              <div className="mt-3 mb-1 flex justify-end" >
                 <button
                   onClick={toggleConsolidationModal}
                   type="button"

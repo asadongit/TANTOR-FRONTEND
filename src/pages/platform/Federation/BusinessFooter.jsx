@@ -252,7 +252,7 @@ export function BusinessFooter() {
         let groupByColumns = new Set();
         let aggregateColumns = new Set();
 
-        const hasOperation = apiPayloadForApi?.operation !== undefined;
+        const hasOperation = finalPayload?.operation !== undefined;
         const source = hasOperation
           ? columnSettings["Union"]
           : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
@@ -289,7 +289,7 @@ export function BusinessFooter() {
           return;
         }
 
-        if (Object.keys(apiPayloadForApi).length > 0) {
+        if (Object.keys(finalPayload).length > 0) {
           setPreview(true);
           setLoading(true);
           setRowData([]);
@@ -327,15 +327,16 @@ export function BusinessFooter() {
           const updatedPayload = {
             ...finalPayload,
             group_by: groupByArray,
+            order_by: finalOrderBy,
             select_fields: selectFields,
             metadata,
           };
 
           console.log("Updated final payload for API is ===>", updatedPayload);
 
-          handleFinalPayload(...updatedPayload);
+          handleFinalPayload(updatedPayload);
+          helperPreviewData(updatedPayload)
         }
-        helperPreviewData(updatedPayload)
       }
     }
     else {
