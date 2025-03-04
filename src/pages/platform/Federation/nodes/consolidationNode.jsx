@@ -27,7 +27,7 @@ export function ConsolidationNode({ id }) {
   const [operator, setOperator] = useState("")
   const [joins, setJoins] = useState([])
   const [columns, setColumns] = useState([])
-  const [selectedColumns, setSelectedColumns] = useState([])
+  const [selectedUnionColumns, setSelectedUnionColumns] = useState([])
 
   const [colId, setColId] = useState("Union")
 
@@ -126,7 +126,21 @@ if (finalPayload?.operation) {
   const [isConsolidationModalOpen, setIsConsolidationModalOpen] = useState(false);
 
   const toggleConsolidationModal = () => {
+    console.log("checking the selected columns", finalPayload)
+    if (finalPayload?.select_fields) {
+      setSelectedUnionColumns(finalPayload.select_fields.map(field => field.field));
+    }
+    else{
+      setSelectedUnionColumns([])
+    }
     setIsConsolidationModalOpen(!isConsolidationModalOpen);
+
+  // console.log("finalpayload operation ",finalPayload.operation)
+  //   if (!("operation" in finalPayload)) {
+  //     const updatedSettings = { ...columnSettings };
+  //     delete updatedSettings.Union;
+  //     setColumnSettings(updatedSettings);
+  // }
     // if(!isModalOpen){
     //   setType("")
     // }
@@ -298,7 +312,10 @@ if (finalPayload?.operation) {
 
   const handleType = (type) => {
     console.log("handle typeeee")
-    handleFinalPayload({});
+    handleFinalPayload(prevPayload => ({
+      columnsDataType: prevPayload?.columnsDataType || {}
+  }));
+
     setType(type)
     setSelectedLeft("")
     setSelectedRight("")
@@ -307,7 +324,9 @@ if (finalPayload?.operation) {
   }
 
   const handleClear = () => {
-    handleFinalPayload({});
+    handleFinalPayload(prevPayload => ({
+      columnsDataType: prevPayload?.columnsDataType || {}
+  }));
     setSelectedLeft("")
     setSelectedRight("")
     setJoinType("")
@@ -315,7 +334,8 @@ if (finalPayload?.operation) {
   }
 
   const handleColumnChange = (column) => {
-    setSelectedColumns((prev) => {
+    console.log("column settings in union are======>",columnSettings)
+    setSelectedUnionColumns((prev) => {
       if (prev.includes(column)) {
         setColumnSettings((prevSettings) => {
           const updatedSettings = { ...prevSettings };
@@ -352,7 +372,7 @@ if (finalPayload?.operation) {
 
   const handleSelectAllChange = (isChecked) => {
     if (isChecked) {
-      setSelectedColumns(columns);
+      setSelectedUnionColumns(columns);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         columns.forEach((column) => {
@@ -367,7 +387,7 @@ if (finalPayload?.operation) {
         return updatedSettings;
       });
     } else {
-      setSelectedColumns([]);
+      setSelectedUnionColumns([]);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         columns.forEach((column) => {
@@ -384,14 +404,14 @@ if (finalPayload?.operation) {
     }
   };
 
-  const isAllSelected = (selectedColumns?.length || 0) === (columns?.length || 0);
+  const isAllSelected = (selectedUnionColumns?.length || 0) === (columns?.length || 0);
 
     useEffect(() => {
       if (columnSettings["Union"]) {
         const columnsWithOutputYes = Object.keys(columnSettings["Union"]).filter(
           column => columnSettings["Union"][column].output === "Yes"
         );
-        setSelectedColumns(columnsWithOutputYes);
+        setSelectedUnionColumns(columnsWithOutputYes);
       }
     }, [columnSettings]);
 
@@ -421,7 +441,7 @@ if (finalPayload?.operation) {
         <Network className="w-7 h-7 text-white" onClick={toggleConsolidationModal} />
       </div>
 
-      <Modal open={isConsolidationModalOpen} onClose={toggleConsolidationModal}>
+      <Modal open={isConsolidationModalOpen} onClose={() =>  setIsConsolidationModalOpen(!isConsolidationModalOpen)}>
         <div className="max-w-[100vw] max-h-[80vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 pt-2 rounded-xl">
           <div className="h-[10%]" style={{ height: "10%" }}>
             <div className="flex items-center space-x-3">
@@ -429,8 +449,8 @@ if (finalPayload?.operation) {
               <h3 className="text-[#8E77BB] font-medium">Consolidation</h3>
             </div>
             <IconButton
-              onClick={toggleConsolidationModal}
-              sx={{ position: "absolute", top: 8, right: 15 }}
+              onClick={() => setIsConsolidationModalOpen(!isConsolidationModalOpen)}
+              sx={{ position: "absolute", top: 0, right: 8 }}
             >
               <X className="w-6 h-6" />
             </IconButton>
@@ -610,7 +630,7 @@ if (finalPayload?.operation) {
                                     }}
                                     id={column}
                                     value={column}
-                                    checked={selectedColumns.includes(column)}
+                                    checked={selectedUnionColumns.includes(column)}
                                     onChange={() => handleColumnChange(column)}
                                     className="text-purple-600 focus:ring-purple-500"
                                   />

@@ -247,6 +247,9 @@ export function SourceViewNode({ id, onSave }) {
   const handleSave = () => {
 
     handleFinalPayload({});
+    const updatedSettings = { ...columnSettings };
+    delete updatedSettings.Union;
+    setColumnSettings(updatedSettings);
 
     if (selectedView) {
       const view = selectedView;

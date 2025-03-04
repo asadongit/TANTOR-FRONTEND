@@ -254,12 +254,11 @@ export function ConnectionNode({ id, onSave }) {
     const view = id;
     handleFinalPayload({});
 
-    if (view && selectedConnection && selectedSchema && selectedTable) {
+    const updatedSettings = { ...columnSettings };
+    delete updatedSettings.Union;
+    setColumnSettings(updatedSettings);
 
-      // const selectFields = selectedColumns.map((column) => ({
-      //   field: `${view}.${column}`,
-      //   alias: "",
-      // }));
+    if (view && selectedConnection && selectedSchema && selectedTable) {
 
       const newPayload = {
         id,
