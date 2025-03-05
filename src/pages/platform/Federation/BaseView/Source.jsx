@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import {
   Controls,
   Background,
@@ -9,6 +9,7 @@ import {
   Panel,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { LayoutDashboard } from "lucide-react";
 import { ConnectionNode, BaseNode } from "../nodes/baseNodes";
 import SourceSidebar from "../nodes/ViewFromSourceSidebar";
 import ColumnSettings from "./ColumnSettings";
@@ -30,7 +31,7 @@ const getId = () => `node_${id++}`;
 
 export default function Source() {
   const modalState = useLocation().state;
-  const { settingsList, setSettingsList, userSelections, setUserSelections } =
+  const { userSelections, setUserSelections } =
     useStateContext();
 
   const navigate = useNavigate();
@@ -284,11 +285,9 @@ export default function Source() {
         }
       );
   
-      const responseText = await response.text();
-
-      if(!responseText.length)
-        return toast.error("No data found");
-      const data = responseText
+      if (response.status === 200) {
+        const responseText = await response.text();
+        const data = responseText
         .trim()
         .split("\n")
         .reduce((validData, jsonString) => {
@@ -302,18 +301,14 @@ export default function Source() {
         }, []);
         
         console.log("DATA ==> ", data);
-      if (response.ok) {
-        if (!data || data.length === 0) {
-          toast.error(`${viewType === "Source" ? "View" : "Table"} is empty!`);
-          return null;
-        }
-  
         setPreviewData(data);
         setShowPreview(true);
         toast.success("View Query Executed!");
         return data; // Return data for potential further use
       } else {
-        toast.error("Error while generating output preview.");
+        const errorData = await response.json();
+        let errorMessage = errorData.error;
+        toast.error(errorMessage);
         return null;
       }
     } catch (error) {
@@ -454,11 +449,34 @@ export default function Source() {
       }))
     );
   }, [userSelection]);
+
   return (
-    <div className="w-full h-screen overflow-hidden">
+    <div className="w-full h-screen overflow-hidden bg-[rgba(243,245,247,1)]">
+      <div className="flex items-center gap-6 px-4 py-2 bg-white border-b">
+        {/* Dashboard Button */}
+        <Link 
+          to="/dashboard" 
+          className="flex items-center gap-2 px-4 py-2 bg-white text-[#8E77BB] font-semibold rounded-lg hover:bg-[#E8E4F1] transition-colors"
+        >
+          <LayoutDashboard size={20} />
+          Dashboard
+        </Link>
+        
+        {/* Breadcrumb Navigation */}
+        <div className="flex items-center">
+          <Link to="/platform" className="text-gray-600 hover:text-gray-900">Platform</Link>
+          <span className="mx-2 text-gray-500">&gt;</span>
+          <Link to="/federation" className="text-gray-600 hover:text-gray-900">Federation</Link>
+          <span className="mx-2 text-gray-500">&gt;</span>
+          <Link to="/view" className="text-gray-600 hover:text-gray-900">View</Link>
+          <span className="mx-2 text-gray-500">&gt;</span>
+          { (<span className="text-gray-900 font-medium">Source</span>)}
+        </div>
+      </div>
+      
       <div
         className={`${
-          showPreview ? "h-[60vh]" : "h-[calc(100vh-4rem)]"
+          showPreview ? "h-[60vh]" : "h-[calc(100vh-6rem)]"
         } transition-all duration-300`}
       >
         <div className="w-full h-[calc(100%-2.5rem)]">
@@ -471,7 +489,7 @@ export default function Source() {
             onDragOver={onDragOver}
             onDrop={onDrop}
             style={{
-              backgroundColor: "#FFFFFF",
+              backgroundColor: "#FFFFF",
               height: "100%",
             }}
             defaultViewport={{
@@ -481,13 +499,15 @@ export default function Source() {
             }}
           >
             <Controls />
-            <Background variant="solid" className="bg-white" />
+            <Background variant="solid" className="bg-[#F3F5F7]" />
             <Panel position="top-left">
               <SourceSidebar setUserSelection={setUserSelection} />
             </Panel>
           </ReactFlow>
         </div>
       </div>
+      
+      {/* Rest of the components */}
       {showPreview && (
         <SourcePreview
           previewData={previewData}
