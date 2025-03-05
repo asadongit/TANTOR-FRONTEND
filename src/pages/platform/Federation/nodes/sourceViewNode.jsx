@@ -3,20 +3,20 @@ import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode } from "lucide-react";
-import { useStateContext } from "../../../../context/contextProvider";
+import { useStateContext } from "../context/contextProvider";
 import { Modal } from "@mui/material";
-import { Columns } from "../Columns";
+import { Columns } from "../BusinessView/Columns";
 import { ToastContainer, toast } from "react-toastify";
-import ComplexQueryEditor from "../complexsource/ComplexQueryEditor";
+import ComplexQueryEditor from "../components/ComplexQueryEditor";
 
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  
-  const filteredOptions = options.map(option => 
+
+  const filteredOptions = options.map(option =>
     typeof option === 'object' ? option.connection_name : option
-  ).filter(option => 
+  ).filter(option =>
     option.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -32,14 +32,14 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 
   return (
     <div className="relative w-full h-full">
-      <div 
+      <div
         className="w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
         onClick={handleSelectClick}
       >
         <span>{value || placeholder}</span>
         {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </div>
-      
+
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white text-black border rounded-lg shadow-lg">
           <div className="p-2 border-b">
@@ -74,7 +74,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, complexCheck , handleFinalPayload} = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, complexCheck, handleFinalPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -147,7 +147,7 @@ export function SourceViewNode({ id, onSave }) {
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
 
   const handleColumnChange = (column) => {
-    console.log("SELECTED COLUMN IS ====>",column)
+    console.log("SELECTED COLUMN IS ====>", column)
     setSelectedColumns((prev) => {
       if (prev.includes(column)) {
         setColumnSettings((prevSettings) => {
@@ -161,7 +161,7 @@ export function SourceViewNode({ id, onSave }) {
           return updatedSettings;
         });
         setSelectedColumnsOrder((prevOrder) => prevOrder.filter((col) => col !== column));
-        return prev.filter((col) => col !== column); 
+        return prev.filter((col) => col !== column);
       } else {
         setColumnSettings((prevSettings) => ({
           ...prevSettings,
@@ -175,7 +175,7 @@ export function SourceViewNode({ id, onSave }) {
         }));
 
         setSelectedColumnsOrder((prevOrder) => [...prevOrder, column]);
-        return [...prev, column]; 
+        return [...prev, column];
       }
     });
   };
@@ -232,19 +232,24 @@ export function SourceViewNode({ id, onSave }) {
 
   useEffect(() => {
     console.log("CHECKING PROBLEM FOR DUPLICATE");
-  
+
     if (selectedView && columnSettings[selectedView]) {
       const columnsWithOutputYes = selectedColumnsOrder.filter(
         (column) => columnSettings[selectedView][column]?.output === "Yes"
       );
-  
+
       // Ensure unique values in selectedColumns
       setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
     }
   }, [columnSettings, selectedView, selectedColumnsOrder]);
-  
+
 
   const handleSave = () => {
+
+    if (selectedColumns.length === 0) {
+      toast.error("Select atleast one column");
+      return;
+    }
 
     handleFinalPayload({});
     const updatedSettings = { ...columnSettings };
@@ -321,14 +326,14 @@ export function SourceViewNode({ id, onSave }) {
             <h3 className="text-black font-medium">Source View</h3>
           </div>
           <div>
-          {complexCheck && (
-          <button
-              onClick={() => toggleEditorModal(true)}
-              className="p-1 rounded-md hover:bg-gray-200"
-            >
-              <FileCode className="h-5 text-gray-500" />
-            </button>
-          )}
+            {complexCheck && (
+              <button
+                onClick={() => toggleEditorModal(true)}
+                className="p-1 rounded-md hover:bg-gray-200"
+              >
+                <FileCode className="h-5 text-gray-500" />
+              </button>
+            )}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1 rounded-md hover:bg-gray-200"
@@ -354,11 +359,11 @@ export function SourceViewNode({ id, onSave }) {
               <div>
                 <label className="block text-sm font-medium text-black mb-1">View</label>
                 <SearchableSelect
-            options={views}
-            value={selectedView}
-            onChange={handleViewChange}
-            placeholder="Select View"
-          />
+                  options={views}
+                  value={selectedView}
+                  onChange={handleViewChange}
+                  placeholder="Select View"
+                />
               </div>
 
               {columnsForViews[selectedView]?.length > 0 && (
@@ -467,7 +472,7 @@ export function SourceViewNode({ id, onSave }) {
         }}
       >
         <div className="absolute top-0 right-0 h-full">
-        <ComplexQueryEditor setShowQueryEditor={toggleEditorModal} />
+          <ComplexQueryEditor setShowQueryEditor={toggleEditorModal} />
 
         </div>
 

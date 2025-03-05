@@ -8,10 +8,10 @@ import Migration from '../pages/platform/migration/Migration';
 import Transformation from '../pages/platform/Transformation';
 import Purge from '../pages/platform/Purge';
 import CDC from '../pages/platform/CDC';
-import Source from '../pages/platform/Federation/Source';
+import Source from '../pages/platform/Federation/BaseView/Source';
 import MigrationCanvas from '../pages/platform/migration/MigrationCanvas';
-import Editor from '../pages/platform/Federation/Editor';
-import FederationDashBoard from "../pages/platform/Federation/FederationDashboard"
+import Editor from '../pages/platform/Federation/components/Editor';
+import FederationDashBoard from "../pages/platform/Federation/components/FederationDashboard"
 
 
 export const PlatformRoutes = (

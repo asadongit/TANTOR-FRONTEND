@@ -1,13 +1,13 @@
 /*eslint-disable*/
 import { useEffect, useState } from "react";
-import { useStateContext } from "../../../context/contextProvider";
+import { useStateContext } from "../context/contextProvider";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import { ToastContainer, toast } from "react-toastify";
-import SaveViewModal from "./viewsource/SaveViewModal";
+import SaveViewModal from "../components/SaveViewModal";
 import { useLocation, useNavigate } from "react-router-dom";
-import FilterComponent from "./viewsource/FilterComponent";
+import FilterComponent from "../components/FilterComponent";
 
 export function BusinessFooter() {
 

@@ -9,16 +9,16 @@ import {
   Panel,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ConnectionNode, BaseNode } from "./nodes/baseNodes";
-import SourceSidebar from "./nodes/ViewFromSourceSidebar";
-import ColumnSettings from "./viewsource/ColumnSettings";
-import SaveViewModal from "./viewsource/SaveViewModal";
-import SourcePreview from "./viewsource/SourcePreview";
-import { useStateContext } from "../../../context/contextProvider";
+import { ConnectionNode, BaseNode } from "../nodes/baseNodes";
+import SourceSidebar from "../nodes/ViewFromSourceSidebar";
+import ColumnSettings from "./ColumnSettings";
+import SaveViewModal from "../components/SaveViewModal";
+import SourcePreview from "./SourcePreview";
+import { useStateContext } from "../context/contextProvider";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import ComplexQueryEditor from "./complexsource/ComplexQueryEditor";
-import FilterComponent from "./viewsource/FilterComponent";
+import ComplexQueryEditor from "../components/ComplexQueryEditor";
+import FilterComponent from "../components/FilterComponent";
 
 const nodeTypes = {
   baseNode: BaseNode,

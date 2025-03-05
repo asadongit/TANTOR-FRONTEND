@@ -3,11 +3,11 @@ import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types"; // Add this import
 import { Handle, Position } from "reactflow";
 import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode,Search } from "lucide-react";
-import { useStateContext } from "../../../../context/contextProvider";
-import { Columns } from "../Columns";
+import { useStateContext } from "../context/contextProvider";
+import { Columns } from "../BusinessView/Columns";
 import { Modal } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";
-import ComplexQueryEditor from "../complexsource/ComplexQueryEditor";
+import ComplexQueryEditor from "../components/ComplexQueryEditor";
 
 export function ConnectionNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
@@ -251,6 +251,10 @@ export function ConnectionNode({ id, onSave }) {
 
 
   const handleSave = () => {
+    if (selectedColumns.length === 0) {
+          toast.error("Select atleast one column");
+          return;
+    }
     const view = id;
     handleFinalPayload({});
 

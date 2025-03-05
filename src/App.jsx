@@ -12,12 +12,12 @@ import { WelcomeModal } from "./pages/platform/migration/WelcomeModal";
 import { DrawerProvider } from "./pages/platform/migration/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/migration/context/ThemeContext";
 import { TableProvider } from "./pages/platform/migration/context/TableContext";
-import { ViewCanvas } from "./pages/platform/Federation/ViewCanvas"
-import { BusinessSidebar } from "./pages/platform/Federation/BusinessSidebar"
+import { ViewCanvas } from "./pages/platform/Federation/BusinessView/ViewCanvas"
+import { BusinessSidebar } from "./pages/platform/Federation/BusinessView/BusinessSidebar"
 import { ViewDrawer } from "./pages/platform/Federation/context/DrawerContext"
-import { ContextProvider } from "./context/contextProvider";
-import Source from "./pages/platform/Federation/Source";
-import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
+import { ContextProvider } from "./pages/platform/Federation/context/contextProvider";
+import Source from "./pages/platform/Federation/BaseView/Source";
+import { BusinessFooter } from "./pages/platform/Federation/BusinessView/BusinessFooter";
 
 
 

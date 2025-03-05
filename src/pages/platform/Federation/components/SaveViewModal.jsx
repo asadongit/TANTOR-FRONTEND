@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useStateContext } from "../../../../context/contextProvider";
+import { useStateContext } from "../context/contextProvider";
 
 const SaveViewModal = ({ toggleModal, handleSaveView }) => {
   const { finalPayload, handleFinalPayload } = useStateContext("");

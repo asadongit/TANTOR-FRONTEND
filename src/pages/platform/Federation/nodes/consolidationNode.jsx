@@ -3,11 +3,11 @@ import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { SquareKanban, X, Network, ChevronDown, ChevronUp, Pencil } from "lucide-react";
-import { useStateContext } from "../../../../context/contextProvider";
+import { useStateContext } from "../context/contextProvider";
 import { Modal, Box, IconButton, Typography } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";
 import { Circle } from 'lucide-react';
-import { Columns } from "../Columns";
+import { Columns } from "../BusinessView/Columns";
 
 export function ConsolidationNode({ id }) {
   const { consolidationPayload, connectionPayload, viewPayload, handleFinalPayload, finalPayload, columnSettings, setColumnSettings } = useStateContext("");
@@ -32,21 +32,28 @@ export function ConsolidationNode({ id }) {
   const [colId, setColId] = useState("Union")
 
   useEffect(() => {
-    console.log("finalpayload operation is ======>",finalPayload.operation)
+    console.log("finalpayload operation is ======>", finalPayload.operation)
     console.log("finalpayload operation is ======>", finalPayload.operation);
 
-if (finalPayload?.operation) {
- 
-  const updatedOperation = finalPayload.operation.endsWith(" All") 
-    ? finalPayload.operation.replace(/ All$/, "") 
-    : finalPayload.operation;
+    if (!finalPayload.joins || finalPayload.joins.length === 0) {
+      setSelectedLeft("")
+      setSelectedRight("")
+      setJoinType("")
+      setOperator("")
+    }
 
-  setType(updatedOperation);
-  setUnionType(finalPayload.operation);
-}
+    if (finalPayload?.operation) {
+
+      const updatedOperation = finalPayload.operation.endsWith(" All")
+        ? finalPayload.operation.replace(/ All$/, "")
+        : finalPayload.operation;
+
+      setType(updatedOperation);
+      setUnionType(finalPayload.operation);
+    }
 
   }, [finalPayload]);
-  
+
 
   useEffect(() => {
     console.log("id of consolidation is ===>", id);
@@ -99,7 +106,7 @@ if (finalPayload?.operation) {
 
       if (connection2) newJoin.definition = connection2.def;
 
-      console.log("wnateddd join ====>", newJoin)
+      console.log("wanteddd join ====>", newJoin)
       setJoins([newJoin]);
     }
   }, [view1, view2, joinType, selectedLeft, selectedRight, operator, connectionPayload]);
@@ -130,20 +137,10 @@ if (finalPayload?.operation) {
     if (finalPayload?.select_fields) {
       setSelectedUnionColumns(finalPayload.select_fields.map(field => field.field));
     }
-    else{
+    else {
       setSelectedUnionColumns([])
     }
     setIsConsolidationModalOpen(!isConsolidationModalOpen);
-
-  // console.log("finalpayload operation ",finalPayload.operation)
-  //   if (!("operation" in finalPayload)) {
-  //     const updatedSettings = { ...columnSettings };
-  //     delete updatedSettings.Union;
-  //     setColumnSettings(updatedSettings);
-  // }
-    // if(!isModalOpen){
-    //   setType("")
-    // }
   };
 
   useEffect(() => {
@@ -152,9 +149,9 @@ if (finalPayload?.operation) {
 
     const unionData = {};
     [...viewPayload, ...connectionPayload].forEach((item) => {
-        if (item.view && Array.isArray(item.selectedColumns)) {
-            unionData[item.view] = item.selectedColumns;
-        }
+      if (item.view && Array.isArray(item.selectedColumns)) {
+        unionData[item.view] = item.selectedColumns;
+      }
     });
 
     console.log("union data is ===>", unionData);
@@ -167,39 +164,48 @@ if (finalPayload?.operation) {
 
     const columnTypeMap = {};
     [...viewPayload, ...connectionPayload].forEach((item) => {
-        if (Array.isArray(item.Columns)) {
-            item.Columns.forEach((col) => {
-                columnTypeMap[col.column_name || col.column] = col.data_type || col.datatype;
-            });
-        }
+      if (Array.isArray(item.Columns)) {
+        item.Columns.forEach((col) => {
+          columnTypeMap[col.column_name || col.column] = col.data_type || col.datatype;
+        });
+      }
     });
 
     if (Array.isArray(firstKeyColumns)) {
-        const formattedPayload = firstKeyColumns.map((col) => ({
-            name: col,
-            type: columnTypeMap[col] || "unknown"
-        }));
+      const formattedPayload = firstKeyColumns.map((col) => ({
+        name: col,
+        type: columnTypeMap[col] || "unknown"
+      }));
 
-        console.log("Formatted Payload ===>", formattedPayload);
+      console.log("Formatted Payload ===>", formattedPayload);
 
-        handleFinalPayload({
-          ...finalPayload,
-          columnsDataType:formattedPayload
-        })
+      handleFinalPayload({
+        ...finalPayload,
+        columnsDataType: formattedPayload
+      })
 
     } else {
-        console.error("firstKeyColumns is not an array:", firstKeyColumns);
+      console.error("firstKeyColumns is not an array:", firstKeyColumns);
     }
-}, [viewPayload, connectionPayload]);
+  }, [viewPayload, connectionPayload]);
 
 
   const handleSave = () => {
 
     // checkConsolidation();
 
-    console.log("column settings are =====>",columnSettings)
+    console.log("type is =====>", type);
 
     if (type === "Union" || type === "Intersect" || type === "Union All" || type === "Intersect All") {
+      if (unionType == "") {
+        toast.error("Select type first");
+        return;
+      }
+      if (selectedUnionColumns.length === 0) {
+        toast.error("Select atleast one column");
+        return;
+      }
+
       if ((viewPayload && viewPayload.length > 0) || (connectionPayload && connectionPayload.length > 0)) {
 
         const unions = [
@@ -229,7 +235,6 @@ if (finalPayload?.operation) {
           view_name: "MYVIEW",
           isMateralizedView: "false",
           isCaching: "false",
-          // select_fields,
           union: unions,
           union_fields: unionData,
           defs: defs,
@@ -242,34 +247,39 @@ if (finalPayload?.operation) {
 
     if (type === "Join") {
 
+      if (!(joinType && selectedLeft && selectedRight && operator)) {
+        toast.error("Select input first")
+        return;
+      }
+
       let columnsPayload = [];
 
-    viewPayload.forEach(view => {
+      viewPayload.forEach(view => {
         view.Columns.forEach(column => {
           columnsPayload.push({
-                name: `${view.view}.${column.column_name}`,
-                type: column.data_type
-            });
+            name: `${view.view}.${column.column_name}`,
+            type: column.data_type
+          });
         });
-    });
+      });
 
-    connectionPayload.forEach(connection => {
+      connectionPayload.forEach(connection => {
         connection.Columns.forEach(column => {
           columnsPayload.push({
-                name: `${connection.id}.${column.column}`,
-                type: column.datatype
-            });
+            name: `${connection.id}.${column.column}`,
+            type: column.datatype
+          });
         });
-    });
+      });
 
-    console.log("columns payload in the join is =====>",columnsPayload)
+      console.log("columns payload in the join is =====>", columnsPayload)
 
       console.log("@@@@@@@@@@@@@@join payload is ===>", finalPayload)
 
       const tempArray1 = new Set();
       const tempArray2 = new Set();
 
-      finalPayload.joins.forEach((join) => {
+      finalPayload?.joins?.forEach((join) => {
         const { view1, view2 } = join;
 
         if (!tempArray2.has(view1)) {
@@ -303,7 +313,7 @@ if (finalPayload?.operation) {
         isCaching: "false",
       }
 
-      handleFinalPayload({...finalPayload, ...newPayload});
+      handleFinalPayload({ ...finalPayload, ...newPayload });
     }
     toast.success("Data Saved Successfully");
 
@@ -314,7 +324,7 @@ if (finalPayload?.operation) {
     console.log("handle typeeee")
     handleFinalPayload(prevPayload => ({
       columnsDataType: prevPayload?.columnsDataType || {}
-  }));
+    }));
 
     setType(type)
     setSelectedLeft("")
@@ -326,7 +336,7 @@ if (finalPayload?.operation) {
   const handleClear = () => {
     handleFinalPayload(prevPayload => ({
       columnsDataType: prevPayload?.columnsDataType || {}
-  }));
+    }));
     setSelectedLeft("")
     setSelectedRight("")
     setJoinType("")
@@ -334,7 +344,7 @@ if (finalPayload?.operation) {
   }
 
   const handleColumnChange = (column) => {
-    console.log("column settings in union are======>",columnSettings)
+    console.log("column settings in union are======>", columnSettings)
     setSelectedUnionColumns((prev) => {
       if (prev.includes(column)) {
         setColumnSettings((prevSettings) => {
@@ -406,24 +416,24 @@ if (finalPayload?.operation) {
 
   const isAllSelected = (selectedUnionColumns?.length || 0) === (columns?.length || 0);
 
-    useEffect(() => {
-      if (columnSettings["Union"]) {
-        const columnsWithOutputYes = Object.keys(columnSettings["Union"]).filter(
-          column => columnSettings["Union"][column].output === "Yes"
-        );
-        setSelectedUnionColumns(columnsWithOutputYes);
-      }
-    }, [columnSettings]);
+  useEffect(() => {
+    if (columnSettings["Union"]) {
+      const columnsWithOutputYes = Object.keys(columnSettings["Union"]).filter(
+        column => columnSettings["Union"][column].output === "Yes"
+      );
+      setSelectedUnionColumns(columnsWithOutputYes);
+    }
+  }, [columnSettings]);
 
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-  
-    const toggleModal = (value) => {
-      console.log("toggle model ")
-      setIsModalOpen(value);
-    };
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const [selectedColumn, setSelectedColumn] = useState("");
+  const toggleModal = (value) => {
+    console.log("toggle model ")
+    setIsModalOpen(value);
+  };
+
+  const [selectedColumn, setSelectedColumn] = useState("");
 
   return (
     <>
@@ -441,7 +451,7 @@ if (finalPayload?.operation) {
         <Network className="w-7 h-7 text-white" onClick={toggleConsolidationModal} />
       </div>
 
-      <Modal open={isConsolidationModalOpen} onClose={() =>  setIsConsolidationModalOpen(!isConsolidationModalOpen)}>
+      <Modal open={isConsolidationModalOpen} onClose={() => setIsConsolidationModalOpen(!isConsolidationModalOpen)}>
         <div className="max-w-[100vw] max-h-[80vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 pt-2 rounded-xl">
           <div className="h-[10%]" style={{ height: "10%" }}>
             <div className="flex items-center space-x-3">
@@ -596,7 +606,7 @@ if (finalPayload?.operation) {
 
                   </div>
                   <div>
-                    {columns?.length && (
+                    {columns?.length > 0 && (
                       <div>
                         <label className="mt-3 block text-sm font-medium text-black ">Select Columns</label>
                         <div className="px-3 pt-2 space-y-2">
@@ -673,7 +683,7 @@ if (finalPayload?.operation) {
             )}
           </div>
 
-          </div>
+        </div>
       </Modal>
       <Modal
         open={isModalOpen}

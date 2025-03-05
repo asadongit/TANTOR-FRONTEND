@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import AceEditor from "react-ace";
-import { useStateContext } from "../../../../context/contextProvider";
+import { useStateContext } from "../context/contextProvider";
 import { X, FileCode } from "lucide-react";
 
 function ComplexQueryEditor({setShowQueryEditor}) {
