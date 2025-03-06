@@ -16,7 +16,9 @@ import {
   List,
   RefreshCcw,
   Code,
-  Plus
+  Plus,
+  Tally1,
+  Tv2
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 
@@ -89,7 +91,7 @@ const FederationDashBoard = () => {
 
   useEffect(() => {
     if (connectionData.length === 0) return;
-  
+
     var project = "dummy";
     connectionData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     var extractedData;
@@ -110,13 +112,13 @@ const FederationDashBoard = () => {
           item.is_deleted === false
       );
     }
-     console.log("connection data is ====>",extractedData)
-      setData(extractedData);
-      const connectionIds = extractedData.map((item) => item.connection_id);
-      const connectionNames = extractedData.map((item) => item.connection_name);
-      fetchSchemaCount(connectionIds)
-      fetchTableCount(connectionIds)
-      fetchViewCount(connectionNames)
+    console.log("connection data is ====>", extractedData)
+    setData(extractedData);
+    const connectionIds = extractedData.map((item) => item.connection_id);
+    const connectionNames = extractedData.map((item) => item.connection_name);
+    fetchSchemaCount(connectionIds)
+    fetchTableCount(connectionIds)
+    fetchViewCount(connectionNames)
 
   }, [connectionData]);
 
@@ -184,43 +186,85 @@ const FederationDashBoard = () => {
 
   const getTableCount = (tableList, connectionId) => {
     if (!tableList || !tableList[connectionId]) {
-        return 0;
+      return 0;
     }
-  
+
     let totalTables = 0;
     Object.keys(tableList[connectionId]).forEach((user) => {
-        console.log(`Tables for user ${user}:`, tableList[connectionId][user]);
-        totalTables += Array.isArray(tableList[connectionId][user])
-            ? tableList[connectionId][user].length
-            : 0;
+      totalTables += Array.isArray(tableList[connectionId][user])
+        ? tableList[connectionId][user].length
+        : 0;
     });
     return totalTables;
+  };
+
+  const getSchemaMainCount = async (connectionNames) => {
+    try {
+        const response = await fetch(`${import.meta.env.VITE_FAST_API}/schemas/count`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${encodedToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "connection_names": connectionNames
+            })
+        });
+
+        let data = await response.json();
+        console.log("schema main count is  ===>", data["schema-count"]);
+
+        if (data && data["schema-count"] !== undefined) {
+            return data["schema-count"];
+        } else {
+            return 0;
+        }
+
+    } catch (error) {
+        console.log("Error fetching schema count:", error);
+        return 0;
+    }
 };
 
-  useEffect(() => {
 
+useEffect(() => {
+  const fetchData = async () => {
+    if (!connectionData || connectionData.length === 0 || !schemaList || !viewList || !tableList) {
+      return;
+    }
     const connectionNames = connectionData.map(connection => connection.connection_name);
+    if (!connectionNames.length) return;
 
     const totalViewsCount = Object.values(viewList).reduce((sum, views) => sum + views.length, 0);
+    var totalSchemaCount=0;
 
-      setCount({
-        connections: connectionNames,
-        totalViewsCount: totalViewsCount
-      });
+    if(connectionNames){
+      totalSchemaCount = await getSchemaMainCount(connectionNames);
+    }
+
+    setCount({
+      connections: connectionNames,
+      totalSchemaCount: totalSchemaCount,
+      totalViewsCount: totalViewsCount
+    });
 
     const updatedRowData = connectionData.map((item) => {
       return {
         ID: item.connection_id,
         Connections: item.connection_name,
         Descriptions: item.description,
-        Schema: schemaList[item.connection_id]?.length || 0,
-        Tables: getTableCount(tableList, item.connection_id),
-        Views: viewList[item.connection_name]?.length || 0,
+        Schema: schemaList?.[item.connection_id]?.length || 0,
+        Tables: tableList ? getTableCount(tableList, item.connection_id) : 0,
+        Views: viewList?.[item.connection_name]?.length || 0,
         Created: new Date(item.created_at).toLocaleDateString(),
       };
     });
     setRowData(updatedRowData);
-  }, [connectionData, schemaList,tableList,viewList]);
+  };
+
+  fetchData();
+}, [connectionData, schemaList, tableList, viewList]);
+
 
 
   const [cards, setCards] = useState([
@@ -269,7 +313,7 @@ const FederationDashBoard = () => {
           bgcolor: "bg-[#d8d3e4]",
           iconcolor: "text-purple-700",
           title: "Schemas",
-          count: "10"
+          count: `${count.totalSchemaCount}` || 0
         },
         {
           icon: "material-symbols:tab-group-outline",
@@ -287,125 +331,9 @@ const FederationDashBoard = () => {
         }
       ]);
     }
-  }, [count]); 
+  }, [count]);
 
-  const [rowData, setRowData] = useState([
-    // {
-    //   ID: "12345",
-    //   Connections: "Sample Connection 1",
-    //   Descriptions: "This is a demo connection description.",
-    //   Schema: 5,
-    //   Tables: 10,
-    //   Views: 5,
-    //   Created: "2025-01-20",
-    // },
-    // {
-    //   ID: "67890",
-    //   Connections: "Sample Connection 2",
-    //   Descriptions: "Another demo connection description.",
-    //   Schema: 8,
-    //   Tables: 15,
-    //   Views: 9,
-    //   Created: "2025-01-21",
-    // },
-    // {
-    //   ID: "11223",
-    //   Connections: "Sample Connection 3",
-    //   Descriptions: "Yet another demo connection description.",
-    //   Schema: 3,
-    //   Tables: 7,
-    //   Views: 17,
-    //   Created: "2025-01-22",
-    // },
-    // {
-    //   ID: "12345",
-    //   Connections: "Sample Connection 1",
-    //   Descriptions: "This is a demo connection description.",
-    //   Schema: 5,
-    //   Tables: 10,
-    //   Views: 5,
-    //   Created: "2025-01-20",
-    // },
-    // {
-    //   ID: "67890",
-    //   Connections: "Sample Connection 2",
-    //   Descriptions: "Another demo connection description.",
-    //   Schema: 8,
-    //   Tables: 15,
-    //   Views: 9,
-    //   Created: "2025-01-21",
-    // },
-    // {
-    //   ID: "11223",
-    //   Connections: "Sample Connection 3",
-    //   Descriptions: "Yet another demo connection description.",
-    //   Schema: 3,
-    //   Tables: 7,
-    //   Views: 17,
-    //   Created: "2025-01-22",
-    // },
-    // {
-    //   ID: "12345",
-    //   Connections: "Sample Connection 1",
-    //   Descriptions: "This is a demo connection description.",
-    //   Schema: 5,
-    //   Tables: 10,
-    //   Views: 5,
-    //   Created: "2025-01-20",
-    // },
-    // {
-    //   ID: "67890",
-    //   Connections: "Sample Connection 2",
-    //   Descriptions: "Another demo connection description.",
-    //   Schema: 8,
-    //   Tables: 15,
-    //   Views: 9,
-    //   Created: "2025-01-21",
-    // },
-    // {
-    //   ID: "11223",
-    //   Connections: "Sample Connection 3",
-    //   Descriptions: "Yet another demo connection description.",
-    //   Schema: 3,
-    //   Tables: 7,
-    //   Views: 17,
-    //   Created: "2025-01-22",
-    // }
-  ]);
-
-
-  // const ActionRenderer = (props) => {
-  //   return (
-  //     <button
-  //         className="p-2 rounded flex justify-center items-center"
-  //       >
-  //         <Icon icon="system-uicons:circle-menu" className="text-purple-600 text-lg" style={{ fontSize: '20px'}} />
-  //       </button>
-  //   );
-  // };
-
-  // const [colDefs] = useState([
-  //   { field: "ID", headerClass: "bg-customBlue" ,headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center"},
-  //   { field: "Connections", headerClass: "bg-customBlue", headerStyle: { backgroundColor: '#007BFF', color: '#fff' }, flex: 2, cellClass: "flex items-center" },
-  //   { field: "Descriptions", headerClass: "bg-customBlue ",headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 2,cellClass: "flex items-center" },
-  //   { field: "Schema", headerClass: "bg-customBlue",headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center" },
-  //   { field: "Tables", headerClass: "bg-customBlue" ,headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center"},
-  //   { field: "Views", headerClass: "bg-customBlue" ,headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center"},
-  //   { field: "Created", headerClass: "bg-customBlue",headerStyle: { backgroundColor: '#007BFF', color: '#fff' },flex: 1,cellClass: "flex items-center" },
-  //   {
-  //     field: "Actions",
-  //     headerClass: "bg-customBlue",
-  //     headerStyle: { backgroundColor: '#007BFF', color: '#fff' },
-  //     flex: 1,
-  //     cellClass: "flex items-center justify-center",
-  //     cellRenderer: ActionRenderer,  
-  //   },
-  // ]);
-
-  // const getRowClass = (params) => {
-  //   return 'text-gray-500';
-  // };
-
+  const [rowData, setRowData] = useState([]);
 
   const [activeMenu, setActiveMenu] = useState(null);
 
