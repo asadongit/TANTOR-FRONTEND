@@ -266,7 +266,7 @@ export function ConsolidationNode({ id }) {
       connectionPayload.forEach(connection => {
         connection.Columns.forEach(column => {
           columnsPayload.push({
-            name: `${connection.id}.${column.column}`,
+            name: `${connection.view}.${column.column}`,
             type: column.datatype
           });
         });
@@ -535,7 +535,7 @@ export function ConsolidationNode({ id }) {
                       </select>
                     </div>
                   </div>
-                  <div className="flex w-full justify-between mt-3">
+                  <div className="flex w-full justify-between mt-3 mb-6">
                     <div className="w-[47%]">
                       <label className="block text-sm font-medium text-black mb-1">Type</label>
                       <select
@@ -664,7 +664,7 @@ export function ConsolidationNode({ id }) {
             </div>
 
             {(type === "Join" || type === "Union" || type === "Intersect") && (
-              <div className="mt-3 mb-1 flex justify-end" >
+              <div className="mt-2 mb-1 flex justify-end" >
                 <button
                   onClick={toggleConsolidationModal}
                   type="button"

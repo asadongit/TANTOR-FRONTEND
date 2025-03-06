@@ -123,7 +123,7 @@ const FederationDashBoard = () => {
 
   const fetchSchemaCount = async (connectionIds) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/schema_count`, {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/schema_names`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${encodedToken}`,
@@ -134,8 +134,8 @@ const FederationDashBoard = () => {
         })
       });
       let data = await response.json();
-      console.log("schema data is ===>", data.schema_counts)
-      setSchemaList(data.schema_counts)
+      console.log("schema data is ===>", data.schema_names)
+      setSchemaList(data.schema_names)
     } catch (error) {
       console.log(error);
     }
@@ -144,7 +144,7 @@ const FederationDashBoard = () => {
 
   const fetchTableCount = async (connectionIds) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/table_count`, {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/table_names`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${encodedToken}`,
@@ -155,8 +155,8 @@ const FederationDashBoard = () => {
         })
       });
       let data = await response.json();
-      console.log("table data is ===>", data.table_counts)
-      setTableList(data.table_counts)
+      console.log("table data is ===>", data.table_names)
+      setTableList(data.table_names)
     } catch (error) {
       console.log(error);
     }
@@ -182,6 +182,20 @@ const FederationDashBoard = () => {
     }
   };
 
+  const getTableCount = (tableList, connectionId) => {
+    if (!tableList || !tableList[connectionId]) {
+        return 0;
+    }
+  
+    let totalTables = 0;
+    Object.keys(tableList[connectionId]).forEach((user) => {
+        console.log(`Tables for user ${user}:`, tableList[connectionId][user]);
+        totalTables += Array.isArray(tableList[connectionId][user])
+            ? tableList[connectionId][user].length
+            : 0;
+    });
+    return totalTables;
+};
 
   useEffect(() => {
 
@@ -199,8 +213,8 @@ const FederationDashBoard = () => {
         ID: item.connection_id,
         Connections: item.connection_name,
         Descriptions: item.description,
-        Schema: schemaList[item.connection_id] || 0,
-        Tables: tableList[item.connection_id] || 0,
+        Schema: schemaList[item.connection_id]?.length || 0,
+        Tables: getTableCount(tableList, item.connection_id),
         Views: viewList[item.connection_name]?.length || 0,
         Created: new Date(item.created_at).toLocaleDateString(),
       };
