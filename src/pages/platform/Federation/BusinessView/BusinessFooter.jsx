@@ -44,7 +44,7 @@ export function BusinessFooter() {
 
   const helperPreviewData = (cleanApiPayload) => {
 
-    console.log("CALLING API VIA PAYLOAD =====>",cleanApiPayload)
+    console.log("CALLING API VIA PAYLOAD =====>", cleanApiPayload)
     fetch(`${import.meta.env.VITE_FAST_API_V2}/save-view?execute_query=true`, {
       method: "POST",
       headers: {
@@ -209,9 +209,10 @@ export function BusinessFooter() {
 
       orderBy.sort((a, b) => a.order - b.order);
 
-      const finalOrderBy = orderBy.map(col =>
-        hasOperation ? `${col.key} ${col.sort}` : `${col.table}.${col.key} ${col.sort}`
-      );
+      const finalOrderBy = orderBy.map(col => {
+        const sortOrder = col.sort.toLowerCase() === "ascending" ? "ASC" : "DESC";
+        return hasOperation ? `${col.key} ${sortOrder}` : `${col.table}.${col.key} ${sortOrder}`;
+      });
 
       console.log("order by is ====>", { order_by: finalOrderBy });
 
@@ -220,6 +221,7 @@ export function BusinessFooter() {
       const updatedPayload = {
         ...apiPayloadForApi,
         group_by: groupByArray,
+        order_by: finalOrderBy,
         select_fields: selectFields,
         metadata,
       };
@@ -229,6 +231,7 @@ export function BusinessFooter() {
       handleFinalPayload({
         ...apiPayload,
         group_by: groupByArray,
+        order_by: finalOrderBy,
         select_fields: selectFields,
         metadata,
       });
@@ -316,11 +319,14 @@ export function BusinessFooter() {
 
           orderBy.sort((a, b) => a.order - b.order);
 
-          const finalOrderBy = orderBy.map(col =>
-            hasOperation ? `${col.key} ${col.sort}` : `${col.table}.${col.key} ${col.sort}`
-          );
+          const finalOrderBy = orderBy.map(col => {
+            const sortOrder = col.sort.toLowerCase() === "ascending" ? "ASC" : "DESC";
+            return hasOperation ? `${col.key} ${sortOrder}` : `${col.table}.${col.key} ${sortOrder}`;
+          });
+
 
           console.log("order by is ====>", { order_by: finalOrderBy });
+          console.log("second time calling the",finalOrderBy)
 
           const selectFields = getSelectFields(columnSettings, hasOperation);
 

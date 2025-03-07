@@ -8,19 +8,16 @@ import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import CreateViewDialog from "./createViewDailog";
 import {
-  Pencil,
   Trash2,
   MoreHorizontal,
   RotateCw,
-  Eye,
   List,
   RefreshCcw,
   Code,
   Plus,
-  Tally1,
-  Tv2
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import { Modal } from "@mui/material";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -226,6 +223,34 @@ const FederationDashBoard = () => {
     }
 };
 
+const getTableMainCount = async (connectionNames) => {
+  try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/tables/count`, {
+          method: "POST",
+          headers: {
+              Authorization: `Bearer ${encodedToken}`,
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+              "connection_names": connectionNames
+          })
+      });
+
+      let data = await response.json();
+      console.log("table-count is  ===>", data["table-count"]);
+
+      if (data && data["table-count"] !== undefined) {
+          return data["table-count"];
+      } else {
+          return 0;
+      }
+
+  } catch (error) {
+      console.log("Error fetching schema count:", error);
+      return 0;
+  }
+};
+
 
 useEffect(() => {
   const fetchData = async () => {
@@ -237,14 +262,17 @@ useEffect(() => {
 
     const totalViewsCount = Object.values(viewList).reduce((sum, views) => sum + views.length, 0);
     var totalSchemaCount=0;
+    var totalTableCount=0;
 
     if(connectionNames){
       totalSchemaCount = await getSchemaMainCount(connectionNames);
+      totalTableCount = await getTableMainCount(connectionNames);
     }
 
     setCount({
       connections: connectionNames,
       totalSchemaCount: totalSchemaCount,
+      totalTableCount: totalTableCount,
       totalViewsCount: totalViewsCount
     });
 
@@ -320,7 +348,7 @@ useEffect(() => {
           bgcolor: "bg-[#d8d3e4]",
           iconcolor: "text-purple-700",
           title: "Tables",
-          count: "50"
+          count: `${count.totalTableCount}` || 0
         },
         {
           icon: "material-symbols:tab-group-outline",

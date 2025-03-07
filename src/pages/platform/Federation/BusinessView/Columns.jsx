@@ -124,7 +124,7 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
                 <input
                   type="number"
                   name="order"
-                  value={columnSettings[id][columnName].order || 1}
+                  value={columnSettings[id][columnName].order || 0}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
                 />

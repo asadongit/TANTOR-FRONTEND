@@ -251,10 +251,10 @@ export function ConnectionNode({ id, onSave }) {
 
 
   const handleSave = () => {
-    if (selectedColumns.length === 0) {
-          toast.error("Select atleast one column");
-          return;
-    }
+    // if (selectedColumns.length === 0) {
+    //       toast.error("Select atleast one column");
+    //       return;
+    // }
     const view = selectedConnection;
     handleFinalPayload({});
 
