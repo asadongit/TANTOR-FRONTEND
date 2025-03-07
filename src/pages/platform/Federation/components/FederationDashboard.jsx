@@ -548,7 +548,7 @@ const FederationDashBoard = () => {
             type="text"
             placeholder="Search connections..."
             value={searchConnection}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchConnection(e.target.value)}
             className="mt-3 w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
           />
 
