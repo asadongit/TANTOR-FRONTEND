@@ -15,6 +15,7 @@ import {
   RefreshCcw,
   Code,
   Plus,
+  LinkIcon
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { Modal } from "@mui/material";
@@ -197,101 +198,102 @@ const FederationDashBoard = () => {
 
   const getSchemaMainCount = async (connectionNames) => {
     try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/schemas/count`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${encodedToken}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                "connection_names": connectionNames
-            })
-        });
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/schemas/count`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${encodedToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "connection_names": connectionNames
+        })
+      });
 
-        let data = await response.json();
-        console.log("schema main count is  ===>", data["schema-count"]);
+      let data = await response.json();
+      console.log("schema main count is  ===>", data["schema-count"]);
 
-        if (data && data["schema-count"] !== undefined) {
-            return data["schema-count"];
-        } else {
-            return 0;
-        }
+      if (data && data["schema-count"] !== undefined) {
+        return data["schema-count"];
+      } else {
+        return 0;
+      }
 
     } catch (error) {
-        console.log("Error fetching schema count:", error);
-        return 0;
+      console.log("Error fetching schema count:", error);
+      return 0;
     }
-};
+  };
 
-const getTableMainCount = async (connectionNames) => {
-  try {
+  const getTableMainCount = async (connectionNames) => {
+    try {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/tables/count`, {
-          method: "POST",
-          headers: {
-              Authorization: `Bearer ${encodedToken}`,
-              'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-              "connection_names": connectionNames
-          })
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${encodedToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "connection_names": connectionNames
+        })
       });
 
       let data = await response.json();
       console.log("table-count is  ===>", data["table-count"]);
 
       if (data && data["table-count"] !== undefined) {
-          return data["table-count"];
+        return data["table-count"];
       } else {
-          return 0;
+        return 0;
       }
 
-  } catch (error) {
+    } catch (error) {
       console.log("Error fetching schema count:", error);
       return 0;
-  }
-};
-
-
-useEffect(() => {
-  const fetchData = async () => {
-    if (!connectionData || connectionData.length === 0 || !schemaList || !viewList || !tableList) {
-      return;
     }
-    const connectionNames = connectionData.map(connection => connection.connection_name);
-    if (!connectionNames.length) return;
-
-    const totalViewsCount = Object.values(viewList).reduce((sum, views) => sum + views.length, 0);
-    var totalSchemaCount=0;
-    var totalTableCount=0;
-
-    if(connectionNames){
-      totalSchemaCount = await getSchemaMainCount(connectionNames);
-      totalTableCount = await getTableMainCount(connectionNames);
-    }
-
-    setCount({
-      connections: connectionNames,
-      totalSchemaCount: totalSchemaCount,
-      totalTableCount: totalTableCount,
-      totalViewsCount: totalViewsCount
-    });
-
-    const updatedRowData = connectionData.map((item) => {
-      return {
-        ID: item.connection_id,
-        Connections: item.connection_name,
-        Descriptions: item.description,
-        Schema: schemaList?.[item.connection_id]?.length || 0,
-        Tables: tableList ? getTableCount(tableList, item.connection_id) : 0,
-        Views: viewList?.[item.connection_name]?.length || 0,
-        Created: new Date(item.created_at).toLocaleDateString(),
-      };
-    });
-    setRowData(updatedRowData);
   };
 
-  fetchData();
-}, [connectionData, schemaList, tableList, viewList]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!connectionData || connectionData.length === 0 || !schemaList || !viewList || !tableList) {
+        return;
+      }
+      const connectionNames = connectionData.map(connection => connection.connection_name);
+      console.log("connection names are ====>", connectionNames);
+      if (!connectionNames.length) return;
+
+      const totalViewsCount = Object.values(viewList).reduce((sum, views) => sum + views.length, 0);
+      var totalSchemaCount = 0;
+      var totalTableCount = 0;
+
+      if (connectionNames) {
+        totalSchemaCount = await getSchemaMainCount(connectionNames);
+        totalTableCount = await getTableMainCount(connectionNames);
+      }
+
+      setCount({
+        connections: connectionNames,
+        totalSchemaCount: totalSchemaCount,
+        totalTableCount: totalTableCount,
+        totalViewsCount: totalViewsCount
+      });
+
+      const updatedRowData = connectionData.map((item) => {
+        return {
+          ID: item.connection_id,
+          Connections: item.connection_name,
+          Descriptions: item.description,
+          Schema: schemaList?.[item.connection_id]?.length || 0,
+          Tables: tableList ? getTableCount(tableList, item.connection_id) : 0,
+          Views: viewList?.[item.connection_name]?.length || 0,
+          Created: new Date(item.created_at).toLocaleDateString(),
+        };
+      });
+      setRowData(updatedRowData);
+    };
+
+    fetchData();
+  }, [connectionData, schemaList, tableList, viewList]);
 
 
 
@@ -374,6 +376,16 @@ useEffect(() => {
     setModalData((prev) => ({ ...prev, [modalName]: data }));
   };
 
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
+  const handleConnectionsOpen = () => setConnectionsOpen(true);
+  const handleConnectionsClose = () => setConnectionsOpen(false);
+
+  const [searchConnection, setSearchConnection] = useState("");
+  const filteredConnections = count.connections?.filter((name) =>
+    name.toLowerCase().includes(searchConnection.toLowerCase())
+  );
+
+
   return (
     <>
       <div className="w-full h-full px-6 pt-3">
@@ -434,7 +446,7 @@ useEffect(() => {
               </div>
               <p className="text-black text-5xl font-bold">{card.count}</p>
               <div className="flex items-center justify-between">
-                <button className="mt-4 text-purple-600 text-sm hover:text-purple-700">
+                <button onClick={handleConnectionsOpen} className="mt-4 text-purple-600 text-sm hover:text-purple-700">
                   See details
                 </button>
               </div>
@@ -526,6 +538,44 @@ useEffect(() => {
           setModalState={setModalState}
         />
       )}
+      <Modal open={connectionsOpen} onClose={handleConnectionsClose}>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 py-5 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200">
+          <div className="flex text-center justify-center">
+            <LinkIcon className="h-5 w-5 mr-4 mt-1" />
+            <h2 className="text-xl font-bold text-gray-900"> Connections</h2>
+          </div>
+          <input
+            type="text"
+            placeholder="Search connections..."
+            value={searchConnection}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="mt-3 w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+          />
+
+          <div className="mt-4 max-h-[55vh] overflow-y-auto py-2 pr-4 space-y-3">
+            {filteredConnections?.length > 0 ? (
+              filteredConnections.map((name, index) => (
+                <div
+                  key={index}
+                  className="p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition flex items-center gap-2"
+                >
+                  <span className="text-gray-800 font-medium">{name}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">No connections found</p>
+            )}
+          </div>
+
+          <button
+            onClick={handleConnectionsClose}
+            className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
+          >
+            Close
+          </button>
+        </div>
+      </Modal>
+
     </>
   );
 
