@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { Modal } from "@mui/material";
+import { MenuItem, Select, InputLabel, FormControl } from "@mui/material";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -114,14 +115,14 @@ const FederationDashBoard = () => {
     setData(extractedData);
     const connectionIds = extractedData.map((item) => item.connection_id);
     const connectionNames = extractedData.map((item) => item.connection_name);
-    fetchSchemaCount(connectionIds)
-    fetchTableCount(connectionIds)
+    fetchSchemaCount(connectionNames)
+    fetchTableCount(connectionNames)
     fetchViewCount(connectionNames)
 
   }, [connectionData]);
 
 
-  const fetchSchemaCount = async (connectionIds) => {
+  const fetchSchemaCount = async (connectionNames) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/schema_names`, {
         method: "POST",
@@ -130,7 +131,7 @@ const FederationDashBoard = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          "connection_id": connectionIds
+          "connection_names": connectionNames
         })
       });
       let data = await response.json();
@@ -142,7 +143,7 @@ const FederationDashBoard = () => {
   };
 
 
-  const fetchTableCount = async (connectionIds) => {
+  const fetchTableCount = async (connectionNames) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/table_names`, {
         method: "POST",
@@ -151,7 +152,7 @@ const FederationDashBoard = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          "connection_id": connectionIds
+          "connection_names": connectionNames
         })
       });
       let data = await response.json();
@@ -283,8 +284,8 @@ const FederationDashBoard = () => {
           ID: item.connection_id,
           Connections: item.connection_name,
           Descriptions: item.description,
-          Schema: schemaList?.[item.connection_id]?.length || 0,
-          Tables: tableList ? getTableCount(tableList, item.connection_id) : 0,
+          Schema: schemaList?.[item.connection_name]?.length || 0,
+          Tables: tableList ? getTableCount(tableList, item.connection_name) : 0,
           Views: viewList?.[item.connection_name]?.length || 0,
           Created: new Date(item.created_at).toLocaleDateString(),
         };
@@ -385,6 +386,68 @@ const FederationDashBoard = () => {
     name.toLowerCase().includes(searchConnection.toLowerCase())
   );
 
+  const [schemasOpen, setSchemasOpen] = useState(false);
+  const [selectedConnection, setSelectedConnection] = useState("");
+  const [schemas, setSchemas] = useState([]);
+
+  const handleSchemasOpen = () => {
+    setSchemasOpen(true);
+    setSelectedConnection("");
+    setSchemas([]);
+  };
+
+  const handleSchemasClose = () => {
+    setSchemasOpen(false);
+  };
+
+  const handleConnectionSelect = (event) => {
+    const connectionName = event.target.value;
+    setSelectedConnection(connectionName);
+    setSchemas(schemaList[connectionName] || []);
+  };
+
+  const [tablesOpen, setTablesOpen] = useState(false);
+  const [selectedTableConnection, setSelectedTableConnection] = useState('');
+  const [selectedTableSchema, setSelectedTableSchema] = useState('');
+  const [tables, setTables] = useState([]);
+
+  const handleTablesOpen = () => {
+    setTablesOpen(true);
+    setSelectedTableConnection('');
+    setSelectedTableSchema('');
+    setTables([]);
+  };
+
+  const handleTablesClose = () => {
+    setTablesOpen(false);
+  };
+
+  const handleTableConnectionSelect = (event) => {
+    const connectionName = event.target.value;
+    setSelectedTableConnection(connectionName);
+    setSelectedTableSchema('');
+  };
+
+  const handleTableSchemaSelect = (event) => {
+    const schemaName = event.target.value;
+    setSelectedTableSchema(schemaName);
+    setTables(tableList[selectedTableConnection]?.[schemaName] || []);
+  };
+
+  const [selectedView, setSelectedView] = useState("");
+
+  const [viewOpen, setViewOpen] = useState(false);
+  const handleViewsOpen = () => setViewOpen(true);
+  const handleViewsClose = () => setViewOpen(false);
+
+  const handleConnectionChange = (e) => {
+    setSelectedConnection(e.target.value);
+    setSelectedView("");
+  };
+
+  const handleViewChange = (e) => {
+    setSelectedView(e.target.value);
+  };
 
   return (
     <>
@@ -446,9 +509,38 @@ const FederationDashBoard = () => {
               </div>
               <p className="text-black text-5xl font-bold">{card.count}</p>
               <div className="flex items-center justify-between">
-                <button onClick={handleConnectionsOpen} className="mt-4 text-purple-600 text-sm hover:text-purple-700">
-                  See details
-                </button>
+                {card.title === "Schemas" && (
+                  <button
+                    onClick={handleSchemasOpen}
+                    className="mt-4 text-purple-600 text-sm hover:text-purple-700"
+                  >
+                    See details
+                  </button>
+                )}
+                {card.title === "Connections" && (
+                  <button
+                    onClick={handleConnectionsOpen}
+                    className="mt-4 text-purple-600 text-sm hover:text-purple-700"
+                  >
+                    See details
+                  </button>
+                )}
+                {card.title === "Tables" && (
+                  <button
+                    onClick={handleTablesOpen}
+                    className="mt-4 text-purple-600 text-sm hover:text-purple-700"
+                  >
+                    See details
+                  </button>
+                )}
+                {card.title === "Views" && (
+                  <button
+                    onClick={handleViewsOpen}
+                    className="mt-4 text-purple-600 text-sm hover:text-purple-700"
+                  >
+                    See details
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -539,11 +631,13 @@ const FederationDashBoard = () => {
         />
       )}
       <Modal open={connectionsOpen} onClose={handleConnectionsClose}>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 py-5 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200">
-          <div className="flex text-center justify-center">
-            <LinkIcon className="h-5 w-5 mr-4 mt-1" />
-            <h2 className="text-xl font-bold text-gray-900"> Connections</h2>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
+          <div className="flex text-center justify-center mb-4">
+            {/* <LinkIcon className="h-5 w-5 mr-4 mt-1" /> */}
+            <h2 className="text-xl font-bold text-gray-900">Connections Details</h2>
           </div>
+
+          {/* Search Input */}
           <input
             type="text"
             placeholder="Search connections..."
@@ -552,7 +646,8 @@ const FederationDashBoard = () => {
             className="mt-3 w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
           />
 
-          <div className="mt-4 max-h-[55vh] overflow-y-auto py-2 pr-4 space-y-3">
+          {/* Connections List */}
+          <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
             {filteredConnections?.length > 0 ? (
               filteredConnections.map((name, index) => (
                 <div
@@ -567,6 +662,7 @@ const FederationDashBoard = () => {
             )}
           </div>
 
+          {/* Close Button */}
           <button
             onClick={handleConnectionsClose}
             className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
@@ -575,6 +671,179 @@ const FederationDashBoard = () => {
           </button>
         </div>
       </Modal>
+
+
+      <Modal open={schemasOpen} onClose={handleSchemasClose}>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
+          <div className="flex text-center justify-center">
+            <h2 className="text-xl font-bold text-gray-900">Schemas Details</h2>
+          </div>
+
+          {/* Dropdown to select a connection */}
+          <FormControl fullWidth variant="outlined" margin="normal">
+            <InputLabel id="connection-select-label">Select Connection</InputLabel>
+            <Select
+              labelId="connection-select-label"
+              value={selectedConnection}
+              onChange={handleConnectionSelect}
+              label="Select Connection"
+            >
+              {Object.keys(schemaList).map((connection, index) => (
+                <MenuItem key={index} value={connection}>
+                  {connection}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {selectedConnection && (
+            <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
+              {schemas.length > 0 ? (
+                schemas.map((schema, index) => (
+                  <div
+                    key={index}
+                    className="p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition flex items-center gap-2"
+                  >
+                    <span className="text-gray-800 font-medium">{schema}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">No schemas found</p>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={handleSchemasClose}
+            className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
+          >
+            Close
+          </button>
+        </div>
+      </Modal>
+
+
+      <Modal open={tablesOpen} onClose={handleTablesClose}>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
+          <div className="flex text-center justify-center">
+            <h2 className="text-xl font-bold text-gray-900">Tables Details</h2>
+          </div>
+
+          <FormControl fullWidth variant="outlined" margin="normal">
+            <InputLabel id="table-connection-select-label">Select Connection</InputLabel>
+            <Select
+              labelId="table-connection-select-label"
+              value={selectedTableConnection}
+              onChange={handleTableConnectionSelect}
+              label="Select Connection"
+            >
+              {Object.keys(tableList).map((connection, index) => (
+                <MenuItem key={index} value={connection}>
+                  {connection}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {selectedTableConnection && (
+            <FormControl fullWidth variant="outlined" margin="normal">
+              <InputLabel id="table-schema-select-label">Select Schema</InputLabel>
+              <Select
+                labelId="table-schema-select-label"
+                value={selectedTableSchema}
+                onChange={handleTableSchemaSelect}
+                label="Select Schema"
+              >
+                {Object.keys(tableList[selectedTableConnection] || {}).map((schema, index) => (
+                  <MenuItem key={index} value={schema}>
+                    {schema}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+
+          {selectedTableSchema && (
+            <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
+              {tables.length > 0 ? (
+                tables.map((table, index) => (
+                  <div
+                    key={index}
+                    className="p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition flex items-center gap-2"
+                  >
+                    <span className="text-gray-800 font-medium break-words max-w-full overflow-x-auto">{table}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">No tables found</p>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={handleTablesClose}
+            className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
+          >
+            Close
+          </button>
+        </div>
+      </Modal>
+      <Modal open={viewOpen} onClose={handleViewsClose}>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
+          <div className="flex text-center justify-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900">View Details</h2>
+          </div>
+
+          {/* Dropdown for selecting connection */}
+          <FormControl fullWidth variant="outlined" margin="normal">
+            <InputLabel id="connection-select-label">Select Connection</InputLabel>
+            <Select
+              labelId="connection-select-label"
+              value={selectedConnection}
+              onChange={handleConnectionChange}
+              label="Select Connection"
+            >
+              {Object.keys(viewList).map((connection, index) => (
+                <MenuItem key={index} value={connection}>
+                  {connection}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {selectedConnection && (
+            <FormControl fullWidth variant="outlined" margin="normal">
+              <InputLabel id="view-select-label">Select View</InputLabel>
+              <Select
+                labelId="view-select-label"
+                value={selectedView}
+                onChange={handleViewChange}
+                label="Select View"
+              >
+                {viewList[selectedConnection]?.length > 0 ? (
+                  viewList[selectedConnection].map((view, index) => (
+                    <MenuItem key={index} value={view}>
+                      {view}
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem disabled>No views available</MenuItem>
+                )}
+              </Select>
+            </FormControl>
+          )}
+
+<button
+            onClick={handleViewsClose}
+            className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
+          >
+            Close
+          </button>
+        </div>
+      </Modal>
+
+
+
 
     </>
   );
