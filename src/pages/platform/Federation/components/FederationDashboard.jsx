@@ -398,6 +398,7 @@ const FederationDashBoard = () => {
 
   const handleSchemasClose = () => {
     setSchemasOpen(false);
+    setSelectedConnection("");
   };
 
   const handleConnectionSelect = (event) => {
@@ -788,13 +789,16 @@ const FederationDashBoard = () => {
           </button>
         </div>
       </Modal>
+
+
       <Modal open={viewOpen} onClose={handleViewsClose}>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
-          <div className="flex text-center justify-center mb-4">
-            <h2 className="text-xl font-bold text-gray-900">View Details</h2>
+
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
+          <div className="flex text-center justify-center">
+            <h2 className="text-xl font-bold text-gray-900">Views Details</h2>
           </div>
 
-          {/* Dropdown for selecting connection */}
+          {/* Dropdown to select a connection */}
           <FormControl fullWidth variant="outlined" margin="normal">
             <InputLabel id="connection-select-label">Select Connection</InputLabel>
             <Select
@@ -803,7 +807,7 @@ const FederationDashBoard = () => {
               onChange={handleConnectionChange}
               label="Select Connection"
             >
-              {Object.keys(viewList).map((connection, index) => (
+              {Object.keys(schemaList).map((connection, index) => (
                 <MenuItem key={index} value={connection}>
                   {connection}
                 </MenuItem>
@@ -812,28 +816,23 @@ const FederationDashBoard = () => {
           </FormControl>
 
           {selectedConnection && (
-            <FormControl fullWidth variant="outlined" margin="normal">
-              <InputLabel id="view-select-label">Select View</InputLabel>
-              <Select
-                labelId="view-select-label"
-                value={selectedView}
-                onChange={handleViewChange}
-                label="Select View"
-              >
-                {viewList[selectedConnection]?.length > 0 ? (
+            <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
+              {viewList[selectedConnection]?.length > 0 ? (
                   viewList[selectedConnection].map((view, index) => (
-                    <MenuItem key={index} value={view}>
-                      {view}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem disabled>No views available</MenuItem>
-                )}
-              </Select>
-            </FormControl>
+                  <div
+                    key={index}
+                    className="p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition flex items-center gap-2"
+                  >
+                    <span className="text-gray-800 font-medium">{view}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">No views found</p>
+              )}
+            </div>
           )}
 
-<button
+          <button
             onClick={handleViewsClose}
             className="mt-6 w-full bg-[#8E77BB] text-white py-2 rounded-lg hover:opacity-90 font-medium shadow-md"
           >
