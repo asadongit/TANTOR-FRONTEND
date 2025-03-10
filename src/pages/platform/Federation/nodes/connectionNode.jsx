@@ -255,7 +255,7 @@ export function ConnectionNode({ id, onSave }) {
     //       toast.error("Select atleast one column");
     //       return;
     // }
-    const view = selectedConnection;
+    const view = id;
     handleFinalPayload({});
 
     const updatedSettings = { ...columnSettings };
