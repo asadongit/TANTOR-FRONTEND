@@ -1,7 +1,7 @@
 /*eslint-disable*/
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
-import { Handle, Position } from "reactflow";
+import { Handle, Position, useUpdateNodeInternals } from "reactflow";
 import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode } from "lucide-react";
 import { useStateContext } from "../context/contextProvider";
 import { Modal } from "@mui/material";
@@ -312,6 +312,13 @@ export function SourceViewNode({ id, onSave }) {
     setIsEditorModalOpen(value);
   };
 
+  const updateNodeInternals = useUpdateNodeInternals();
+
+  const handleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+    updateNodeInternals(id); 
+  };
+
 
   return (
     <>
@@ -335,7 +342,8 @@ export function SourceViewNode({ id, onSave }) {
               </button>
             )}
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
+              onClick={handleCollapse}
+              // onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1 rounded-md hover:bg-gray-200"
             >
               {isCollapsed ? (

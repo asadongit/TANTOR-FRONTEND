@@ -1,7 +1,7 @@
 /*eslint-disable*/
 import React, { useState, useEffect } from "react";
-import PropTypes from "prop-types"; // Add this import
-import { Handle, Position } from "reactflow";
+import PropTypes from "prop-types";
+import { Handle, Position,useUpdateNodeInternals  } from "reactflow";
 import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode,Search } from "lucide-react";
 import { useStateContext } from "../context/contextProvider";
 import { Columns } from "../BusinessView/Columns";
@@ -393,6 +393,13 @@ export function ConnectionNode({ id, onSave }) {
       );
     };
 
+      const updateNodeInternals = useUpdateNodeInternals();
+    
+      const handleCollapse = () => {
+        setIsCollapsed(!isCollapsed);
+        updateNodeInternals(id); 
+      };
+
   return (
     <>
       <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
@@ -415,7 +422,8 @@ export function ConnectionNode({ id, onSave }) {
             </button>
           )}
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={handleCollapse}
+              // onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1 rounded-md hover:bg-gray-200"
             >
               {isCollapsed ? (
