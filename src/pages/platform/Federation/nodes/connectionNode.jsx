@@ -241,7 +241,7 @@ export function ConnectionNode({ id, onSave }) {
         ));
         console.log("trans col are ===>", transformedColumns)
         setColumns(transformedColumns);
-
+        updateNodeInternals(id);
       }
     } else if (!(selectedConnection || selectedSchema)) {
       toast.error("Select above field first");

@@ -135,6 +135,7 @@ export function SourceViewNode({ id, onSave }) {
           ...prevState,
           [viewName]: columnNames,
         }));
+        updateNodeInternals(id);
       } else {
         console.error(`Invalid response for columns of view `);
       }
