@@ -21,6 +21,7 @@ export default function Editor() {
 
   useEffect(() => {
     var project = "me";
+    var preferred_username ="sabhyata";
     const fetchData = async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
@@ -35,7 +36,7 @@ export default function Editor() {
           data = data.filter(
             (item) =>
               // item.project.toUpperCase() === project.toUpperCase() &&
-              // item.created_by.toUpperCase() === token.preferred_username.toUpperCase() &&
+              item.created_by.toUpperCase() === preferred_username.toUpperCase() &&
               !item.is_deleted
           );
         } else {
