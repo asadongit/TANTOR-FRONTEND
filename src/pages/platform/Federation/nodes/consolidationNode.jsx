@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { SquareKanban, X, Network, ChevronDown, ChevronUp, Pencil, MoveHorizontal } from "lucide-react";
 import { useStateContext } from "../context/contextProvider";
-import { Modal, Box, IconButton, Typography } from "@mui/material";
+import { Modal, Box, IconButton,Autocomplete, TextField } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";
 import { Circle } from 'lucide-react';
 import { Columns } from "../BusinessView/Columns";
@@ -307,7 +307,6 @@ export function ConsolidationNode({ id }) {
   };
 
   const handleUnionNext = () => {
-    setIsUnionModalOpen(true)
     if (type === "Union" || type === "Intersect" || type === "Union All" || type === "Intersect All") {
       if (unionType == "") {
         toast.error("Select type first");
@@ -319,7 +318,7 @@ export function ConsolidationNode({ id }) {
       }
 
       if ((viewPayload && viewPayload.length > 0) || (connectionPayload && connectionPayload.length > 0)) {
-
+        setIsUnionModalOpen(true)
         const unions = [
           ...(viewPayload ? viewPayload.map(node => node.view) : []),
           ...(connectionPayload ? connectionPayload.map(node => node.view) : [])
@@ -482,19 +481,19 @@ export function ConsolidationNode({ id }) {
     }));
   };
 
-  const handleMappingSave = () =>{
+  const handleMappingSave = () => {
     const updatedFields = finalPayload.union_fields[firstView].map((col) => mapping[col] || "");
 
-  handleFinalPayload((prev) => ({
-    ...prev,
-    union_fields: {
-      ...prev.union_fields,
-      [secondView]: updatedFields,
-    },
-  }));
+    handleFinalPayload((prev) => ({
+      ...prev,
+      union_fields: {
+        ...prev.union_fields,
+        [secondView]: updatedFields,
+      },
+    }));
 
-  setIsUnionModalOpen(false)
-  setIsConsolidationModalOpen(false)
+    setIsUnionModalOpen(false)
+    setIsConsolidationModalOpen(false)
   }
 
   useEffect(() => {
@@ -785,68 +784,84 @@ export function ConsolidationNode({ id }) {
         </div>
       </Modal> */}
 
-<Modal open={isUnionModalOpen} onClose={() => setIsUnionModalOpen(false)}>
-  <div className="max-w-[600px] max-h-[80vh] min-h-[30vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-6 pt-4 pb-2 rounded-3xl shadow-2xl w-full border border-gray-300">
-    <div className="flex justify-between items-center mb-6">
-      <h2 className="text-xl font-bold text-gray-800">Column Mappings</h2>
-      <button onClick={() => setIsUnionModalOpen(false)} className="text-gray-500">
-        <X size={24} />
-      </button>
-    </div>
-    
-    <div className="border border-gray-300 p-4 bg-gray-50 max-h-[40vh] overflow-y-auto custom-scroll">
-      {firstView && secondView && finalPayload?.union_fields?.[firstView] && finalPayload?.union_fields?.[secondView] ? (
-        finalPayload.union_fields[firstView].map((col) => (
-          <div key={col} className="flex justify-between items-center py-3 border-b last:border-b-0">
-            {/* Left Side - First View Columns */}
-            <select
+      <Modal open={isUnionModalOpen} onClose={() => setIsUnionModalOpen(false)}>
+        <div className="max-w-[600px] max-h-[80vh] min-h-[30vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-6 pt-4 pb-2 rounded-3xl shadow-2xl w-full border border-gray-300">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-gray-800">Column Mappings</h2>
+            <button onClick={() => setIsUnionModalOpen(false)} className="text-gray-500">
+              <X size={24} />
+            </button>
+          </div>
+
+          <div className="border border-gray-300 p-4 bg-gray-50 max-h-[40vh] overflow-y-auto custom-scroll">
+            {firstView && secondView && finalPayload?.union_fields?.[firstView] && finalPayload?.union_fields?.[secondView] ? (
+              finalPayload.union_fields[firstView].map((col) => (
+                <div key={col} className="flex justify-between items-center py-3 border-b last:border-b-0">
+                  {/* Left Side - First View Columns */}
+                  {/* <select
               className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-white transition shadow-md text-gray-700 font-medium"
               value={col}
               disabled
             >
               <option value={col}>{col}</option>
-            </select>
+            </select> */}
+                  <input
+                    type="text"
+                    className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-gray-100 text-gray-500 transition shadow-md font-medium"
+                    value={col}
+                    disabled
+                  />
 
-            <MoveHorizontal className="w-6 h-4" />
 
-            {/* Right Side - Second View Columns */}
-            <select
-              className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-white transition shadow-md text-gray-700 font-medium"
-              value={mapping[col] || ""}
-              onChange={(e) => handleMappingChange(col, e.target.value)}
-            >
-              <option value="">Select column</option>
-              {finalPayload.union_fields[secondView].map((targetCol) => (
-                <option key={targetCol} value={targetCol}>
-                  {targetCol}
-                </option>
-              ))}
-            </select>
+
+                  <MoveHorizontal className="w-6 h-4" />
+
+                  {/* <select
+                    className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-white transition shadow-md text-gray-700 font-medium"
+                    value={mapping[col] || ""}
+                    onChange={(e) => handleMappingChange(col, e.target.value)}
+                  >
+                    <option value="">Select column</option>
+                    {finalPayload.union_fields[secondView].map((targetCol) => (
+                      <option key={targetCol} value={targetCol}>
+                        {targetCol}
+                      </option>
+                    ))}
+                  </select> */}
+                  <Autocomplete
+                    options={finalPayload.union_fields[secondView]}
+                    value={mapping[col] || null}
+                    onChange={(event, newValue) => handleMappingChange(col, newValue)}
+                    renderInput={(params) => (
+                      <TextField {...params} variant="outlined" size="small" />
+                    )}
+                    className="w-5/12"
+                  />
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-600 text-center">No columns available for mapping.</p>
+            )}
           </div>
-        ))
-      ) : (
-        <p className="text-gray-600 text-center">No columns available for mapping.</p>
-      )}
-    </div>
 
-    <div className="mt-5 flex justify-end">
-      <button
-        type="button"
-        onClick={() => setIsUnionModalOpen(false)}
-        className="text-black bg-white hover:bg-gray-50 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-1.5 me-2 mb-2 focus:outline-none border-solid border-2"
-      >
-        Previous
-      </button>
-      <button
-        type="button"
-        onClick={handleMappingSave}
-        className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-      >
-        Save
-      </button>
-    </div>
-  </div>
-</Modal>
+          <div className="mt-5 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setIsUnionModalOpen(false)}
+              className="text-black bg-white hover:bg-gray-50 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-1.5 me-2 mb-2 focus:outline-none border-solid border-2"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={handleMappingSave}
+              className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }
