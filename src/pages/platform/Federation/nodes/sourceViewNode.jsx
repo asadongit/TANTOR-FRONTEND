@@ -252,7 +252,7 @@ export function SourceViewNode({ id, onSave }) {
     //   return;
     // }
 
-    handleFinalPayload({});
+    // handleFinalPayload({});
     const updatedSettings = { ...columnSettings };
     delete updatedSettings.Union;
     setColumnSettings(updatedSettings);
@@ -290,6 +290,7 @@ export function SourceViewNode({ id, onSave }) {
   const handleDelete = (id) => {
     const updatedPayload = viewPayload.filter((node) => node.id !== id);
     handleViewPayload(updatedPayload);
+    // handleFinalPayload({})
     window.deleteNode?.(id)
 
     setColumnSettings(prevSettings => {

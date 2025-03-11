@@ -430,8 +430,8 @@ export function BusinessFooter() {
     <>
       {preview && (
         <>
-          <div className="text-black mt-2 mb-2 ml-6 font-semibold">Output Preview</div>
-          <div className="bg-white rounded-lg shadow overflow-hidden h-[32%] mx-6 mb-5">
+          <div className="text-black mt-2 mb-2 ml-2 font-semibold">Output Preview</div>
+          <div className="bg-white shadow overflow-hidden h-[32%]">
             {loading && (
               <div className="flex justify-center w-full h-full items-center">
                 <CircularProgress />

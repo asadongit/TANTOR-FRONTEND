@@ -256,7 +256,7 @@ export function ConnectionNode({ id, onSave }) {
     //       return;
     // }
     const view = id;
-    handleFinalPayload({});
+    // handleFinalPayload({});
 
     const updatedSettings = { ...columnSettings };
     delete updatedSettings.Union;

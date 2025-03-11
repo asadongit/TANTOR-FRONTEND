@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
-import { SquareKanban, X, Network, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { SquareKanban, X, Network, ChevronDown, ChevronUp, Pencil, MoveHorizontal } from "lucide-react";
 import { useStateContext } from "../context/contextProvider";
 import { Modal, Box, IconButton, Typography } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";
@@ -55,39 +55,69 @@ export function ConsolidationNode({ id }) {
   }, [finalPayload]);
 
 
+  const [firstView, setFirstView] = useState("")
+  const [secondView, setSecondView] = useState("")
+
   useEffect(() => {
     console.log("id of consolidation is ===>", id);
     console.log("consolidation is ===>", consolidationPayload);
     console.log("viewPayload is ==>", viewPayload);
     console.log("connection payload is ===>", connectionPayload);
 
-    consolidationPayload.forEach((payload) => {
-      if (payload.target === id) {
-        const matchingView =
-          connectionPayload.find((conn) => conn.id === payload.source) ||
-          viewPayload.find((view) => view.id === payload.source);
+    if (type === "Join") {
+      consolidationPayload.forEach((payload) => {
+        if (payload.target === id) {
+          const matchingView =
+            connectionPayload.find((conn) => conn.id === payload.source) ||
+            viewPayload.find((view) => view.id === payload.source);
 
-        if (matchingView) {
-          console.log("left columns are ===>", matchingView.Columns);
-          const columnNames = matchingView.Columns.map(col => col.column_name || col.column);
-          setLeftColumns(columnNames);
-          setLeftView(matchingView.view);
+          if (matchingView) {
+            console.log("left columns are ===>", matchingView.Columns);
+            const columnNames = matchingView.Columns.map(col => col.column_name || col.column);
+            setLeftColumns(columnNames);
+            setLeftView(matchingView.view);
+          }
         }
-      }
 
-      if (payload.source === id) {
-        const matchingView =
-          connectionPayload.find((conn) => conn.id === payload.target) ||
-          viewPayload.find((view) => view.id === payload.target);
+        if (payload.source === id) {
+          const matchingView =
+            connectionPayload.find((conn) => conn.id === payload.target) ||
+            viewPayload.find((view) => view.id === payload.target);
 
-        if (matchingView) {
-          console.log("right columns are ===>", matchingView.Columns);
-          const columnNames = matchingView.Columns.map(col => col.column_name || col.column);
-          setRightColumns(columnNames);
-          setRightView(matchingView.view);
+          if (matchingView) {
+            console.log("right columns are ===>", matchingView.Columns);
+            const columnNames = matchingView.Columns.map(col => col.column_name || col.column);
+            setRightColumns(columnNames);
+            setRightView(matchingView.view);
+          }
         }
-      }
-    });
+      });
+    }
+    else if (type === "Union") {
+      consolidationPayload.forEach((payload) => {
+        if (payload.target === id) {
+          const matchingView =
+            connectionPayload.find((conn) => conn.id === payload.source) ||
+            viewPayload.find((view) => view.id === payload.source);
+
+          if (matchingView) {
+            console.log("LEFT SIDE ISSSSSS&&&&&&&&&&&&&&===>", matchingView.view);
+            setFirstView(matchingView.view)
+          }
+        }
+
+        if (payload.source === id) {
+          const matchingView =
+            connectionPayload.find((conn) => conn.id === payload.target) ||
+            viewPayload.find((view) => view.id === payload.target);
+
+          if (matchingView) {
+            console.log("RIGHT SIDE ISSSSSS&&&&&&&&&&&&&&===>", matchingView.view);
+            setSecondView(matchingView.view)
+          }
+        }
+      });
+    }
   }, [type, id, consolidationPayload, connectionPayload, viewPayload]);
 
   useEffect(() => {
@@ -130,6 +160,9 @@ export function ConsolidationNode({ id }) {
   }, [joins]);
 
 
+  const [isUnionModalOpen, setIsUnionModalOpen] = useState(false);
+
+
   const [isConsolidationModalOpen, setIsConsolidationModalOpen] = useState(false);
 
   const toggleConsolidationModal = () => {
@@ -147,45 +180,47 @@ export function ConsolidationNode({ id }) {
     console.log("viewPayload in consolidation is =====>", viewPayload);
     console.log("connection payload in consolidation is ====>", connectionPayload);
 
-    const unionData = {};
-    [...viewPayload, ...connectionPayload].forEach((item) => {
-      if (item.view && Array.isArray(item.selectedColumns)) {
-        unionData[item.view] = item.selectedColumns;
+    if (type === "Join") {
+      const unionData = {};
+      [...viewPayload, ...connectionPayload].forEach((item) => {
+        if (item.view && Array.isArray(item.selectedColumns)) {
+          unionData[item.view] = item.selectedColumns;
+        }
+      });
+
+      console.log("union data is ===>", unionData);
+
+      const firstKey = Object.keys(unionData)[0];
+      const firstKeyColumns = unionData[firstKey] || [];
+
+      console.log("first key columns for union is ===>", firstKeyColumns);
+      setColumns(firstKeyColumns);
+
+      const columnTypeMap = {};
+      [...viewPayload, ...connectionPayload].forEach((item) => {
+        if (Array.isArray(item.Columns)) {
+          item.Columns.forEach((col) => {
+            columnTypeMap[col.column_name || col.column] = col.data_type || col.datatype;
+          });
+        }
+      });
+
+      if (Array.isArray(firstKeyColumns)) {
+        const formattedPayload = firstKeyColumns.map((col) => ({
+          name: col,
+          type: columnTypeMap[col] || "unknown"
+        }));
+
+        console.log("Formatted Payload ===>", formattedPayload);
+
+        handleFinalPayload({
+          ...finalPayload,
+          columnsDataType: formattedPayload
+        })
+
+      } else {
+        console.error("firstKeyColumns is not an array:", firstKeyColumns);
       }
-    });
-
-    console.log("union data is ===>", unionData);
-
-    const firstKey = Object.keys(unionData)[0];
-    const firstKeyColumns = unionData[firstKey] || [];
-
-    console.log("first key columns for union is ===>", firstKeyColumns);
-    setColumns(firstKeyColumns);
-
-    const columnTypeMap = {};
-    [...viewPayload, ...connectionPayload].forEach((item) => {
-      if (Array.isArray(item.Columns)) {
-        item.Columns.forEach((col) => {
-          columnTypeMap[col.column_name || col.column] = col.data_type || col.datatype;
-        });
-      }
-    });
-
-    if (Array.isArray(firstKeyColumns)) {
-      const formattedPayload = firstKeyColumns.map((col) => ({
-        name: col,
-        type: columnTypeMap[col] || "unknown"
-      }));
-
-      console.log("Formatted Payload ===>", formattedPayload);
-
-      handleFinalPayload({
-        ...finalPayload,
-        columnsDataType: formattedPayload
-      })
-
-    } else {
-      console.error("firstKeyColumns is not an array:", firstKeyColumns);
     }
   }, [viewPayload, connectionPayload]);
 
@@ -195,55 +230,6 @@ export function ConsolidationNode({ id }) {
     // checkConsolidation();
 
     console.log("type is =====>", type);
-
-    if (type === "Union" || type === "Intersect" || type === "Union All" || type === "Intersect All") {
-      if (unionType == "") {
-        toast.error("Select type first");
-        return;
-      }
-      if (selectedUnionColumns.length === 0) {
-        toast.error("Select atleast one column");
-        return;
-      }
-
-      if ((viewPayload && viewPayload.length > 0) || (connectionPayload && connectionPayload.length > 0)) {
-
-        const unions = [
-          ...(viewPayload ? viewPayload.map(node => node.view) : []),
-          ...(connectionPayload ? connectionPayload.map(node => node.view) : [])
-        ];
-
-
-        const unionData = {};
-        [...viewPayload, ...connectionPayload].forEach((item) => {
-          unionData[item.view] = item.selectedColumns;
-        });
-
-        console.log("union data is ===>", unionData)
-
-
-        const defs = {};
-        connectionPayload.forEach((item) => {
-          if (item.view && item.def) {
-            defs[item.view] = item.def;
-          }
-        });
-
-        const newPayload = {
-          operation: unionType,
-          view_type: "Integrated View",
-          view_name: "MYVIEW",
-          isMateralizedView: "false",
-          isCaching: "false",
-          union: unions,
-          union_fields: unionData,
-          defs: defs,
-        }
-
-        handleFinalPayload({ ...finalPayload, ...newPayload });
-        console.log(" union newpayload after is =====>", newPayload)
-      }
-    }
 
     if (type === "Join") {
 
@@ -319,6 +305,58 @@ export function ConsolidationNode({ id }) {
 
     setIsConsolidationModalOpen(!isConsolidationModalOpen);
   };
+
+  const handleUnionNext = () => {
+    setIsUnionModalOpen(true)
+    if (type === "Union" || type === "Intersect" || type === "Union All" || type === "Intersect All") {
+      if (unionType == "") {
+        toast.error("Select type first");
+        return;
+      }
+      if (selectedUnionColumns.length === 0) {
+        toast.error("Select atleast one column");
+        return;
+      }
+
+      if ((viewPayload && viewPayload.length > 0) || (connectionPayload && connectionPayload.length > 0)) {
+
+        const unions = [
+          ...(viewPayload ? viewPayload.map(node => node.view) : []),
+          ...(connectionPayload ? connectionPayload.map(node => node.view) : [])
+        ];
+
+
+        const unionData = {};
+        [...viewPayload, ...connectionPayload].forEach((item) => {
+          unionData[item.view] = item.selectedColumns;
+        });
+
+        console.log("union data is ===>", unionData)
+
+
+        const defs = {};
+        connectionPayload.forEach((item) => {
+          if (item.view && item.def) {
+            defs[item.view] = item.def;
+          }
+        });
+
+        const newPayload = {
+          operation: unionType,
+          view_type: "Integrated View",
+          view_name: "MYVIEW",
+          isMateralizedView: "false",
+          isCaching: "false",
+          union: unions,
+          union_fields: unionData,
+          defs: defs,
+        }
+
+        handleFinalPayload({ ...finalPayload, ...newPayload });
+        console.log(" union newpayload after is =====>", newPayload)
+      }
+    }
+  }
 
   const handleType = (type) => {
     console.log("handle typeeee")
@@ -434,6 +472,40 @@ export function ConsolidationNode({ id }) {
   };
 
   const [selectedColumn, setSelectedColumn] = useState("");
+
+  const [mapping, setMapping] = useState({});
+
+  const handleMappingChange = (source, target) => {
+    setMapping((prev) => ({
+      ...prev,
+      [source]: target,
+    }));
+  };
+
+  const handleMappingSave = () =>{
+    const updatedFields = finalPayload.union_fields[firstView].map((col) => mapping[col] || "");
+
+  handleFinalPayload((prev) => ({
+    ...prev,
+    union_fields: {
+      ...prev.union_fields,
+      [secondView]: updatedFields,
+    },
+  }));
+
+  setIsUnionModalOpen(false)
+  setIsConsolidationModalOpen(false)
+  }
+
+  useEffect(() => {
+    if (firstView && secondView && finalPayload?.union_fields?.[firstView] && finalPayload?.union_fields?.[secondView]) {
+      const defaultMapping = {};
+      finalPayload.union_fields[firstView].forEach((col, index) => {
+        defaultMapping[col] = finalPayload.union_fields[secondView][index] || "";
+      });
+      setMapping(defaultMapping);
+    }
+  }, [firstView, secondView, finalPayload]);
 
   return (
     <>
@@ -673,12 +745,13 @@ export function ConsolidationNode({ id }) {
                   Cancel
                 </button>
                 <button
-                  onClick={handleSave}
+                  onClick={(type === "Union") ? handleUnionNext : handleSave}
                   type="button"
                   className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                 >
-                  Save
+                  {type === "Union" ? "Next" : "Save"}
                 </button>
+
               </div>
             )}
           </div>
@@ -695,12 +768,85 @@ export function ConsolidationNode({ id }) {
         }}
       >
         <div className="absolute top-0 right-0 h-full w-full sm:w-1/2 md:w-1/3 lg:w-[22%]">
-          <Columns id={"Union"}
+          <Columns
+            id={"Union"}
             columnName={selectedColumn}
-            // dataType={columnData.find(col => col.column === selectedColumn)?.datatype}
-            toggleModal={toggleModal} />
+            dataType={finalPayload?.columnsDataType?.find(col => col.name === selectedColumn)?.type}
+            toggleModal={toggleModal}
+          />
+
         </div>
       </Modal>
+
+      {/* <Modal open={isUnionModalOpen} onClose={() => setIsUnionModalOpen(!isUnionModalOpen)}>
+        <div className="max-w-[100vw] max-h-[80vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 pt-2 rounded-xl">
+          union model
+
+        </div>
+      </Modal> */}
+
+<Modal open={isUnionModalOpen} onClose={() => setIsUnionModalOpen(false)}>
+  <div className="max-w-[600px] max-h-[80vh] min-h-[30vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-6 pt-4 pb-2 rounded-3xl shadow-2xl w-full border border-gray-300">
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-xl font-bold text-gray-800">Column Mappings</h2>
+      <button onClick={() => setIsUnionModalOpen(false)} className="text-gray-500">
+        <X size={24} />
+      </button>
+    </div>
+    
+    <div className="border border-gray-300 p-4 bg-gray-50 max-h-[40vh] overflow-y-auto custom-scroll">
+      {firstView && secondView && finalPayload?.union_fields?.[firstView] && finalPayload?.union_fields?.[secondView] ? (
+        finalPayload.union_fields[firstView].map((col) => (
+          <div key={col} className="flex justify-between items-center py-3 border-b last:border-b-0">
+            {/* Left Side - First View Columns */}
+            <select
+              className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-white transition shadow-md text-gray-700 font-medium"
+              value={col}
+              disabled
+            >
+              <option value={col}>{col}</option>
+            </select>
+
+            <MoveHorizontal className="w-6 h-4" />
+
+            {/* Right Side - Second View Columns */}
+            <select
+              className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-white transition shadow-md text-gray-700 font-medium"
+              value={mapping[col] || ""}
+              onChange={(e) => handleMappingChange(col, e.target.value)}
+            >
+              <option value="">Select column</option>
+              {finalPayload.union_fields[secondView].map((targetCol) => (
+                <option key={targetCol} value={targetCol}>
+                  {targetCol}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))
+      ) : (
+        <p className="text-gray-600 text-center">No columns available for mapping.</p>
+      )}
+    </div>
+
+    <div className="mt-5 flex justify-end">
+      <button
+        type="button"
+        onClick={() => setIsUnionModalOpen(false)}
+        className="text-black bg-white hover:bg-gray-50 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-7 py-1.5 me-2 mb-2 focus:outline-none border-solid border-2"
+      >
+        Previous
+      </button>
+      <button
+        type="button"
+        onClick={handleMappingSave}
+        className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+      >
+        Save
+      </button>
+    </div>
+  </div>
+</Modal>
     </>
   );
 }
