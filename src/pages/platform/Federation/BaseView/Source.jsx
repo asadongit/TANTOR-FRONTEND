@@ -307,7 +307,7 @@ export default function Source() {
         return data; // Return data for potential further use
       } else {
         const errorData = await response.json();
-        let errorMessage = errorData.error;
+        let errorMessage = errorData.detail;
         toast.error(errorMessage);
         return null;
       }

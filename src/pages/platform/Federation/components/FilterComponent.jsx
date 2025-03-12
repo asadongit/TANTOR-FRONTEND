@@ -46,6 +46,7 @@ const DynamicSelectOptions = ({ condition, index, updateCondition }) => {
       >
         <option value="=">=</option>
         <option value="!=">!=</option>
+        <option value="like">LIKE</option>
       </select>
     );
   } else {
@@ -127,7 +128,7 @@ const DynamicOptionValues = ({ condition, index, updateCondition }) => {
   return (
     <input
       type="text"
-      placeholder="Value"
+      placeholder={condition.operator === "like" ? "Wildcard" : "Value"}
       value={condition.value}
       onChange={(e) => updateCondition(index, "value", e.target.value)}
       className="border p-1.5 rounded w-[200px]"

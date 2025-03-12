@@ -417,6 +417,7 @@ export function ConnectionNode({ id, data }) {
   useEffect(() => {
     (async () => {
       let response;
+      var preferred_username = "sabhyata";
       try {
         response = await fetch(`${FAST_BACKEND}/connection-saves`, {
           method: "GET",
@@ -432,7 +433,9 @@ export function ConnectionNode({ id, data }) {
               data.map((item) => [item.connection_name, item])
             ).values(),
           ];
-          setApiConnections(uniqueConnections); //Data = array of Connection Objects
+          const filteredConnections = uniqueConnections.filter(item => preferred_username === item.created_by && item.is_deleted === false);
+          console.log("FILTERED CONNECTIONS by username==>> ", filteredConnections);
+          setApiConnections(filteredConnections); //Data = array of Connection Objects
         } else {
           console.log(
             `Error fetching connections.\nResponse status: ${response.status}\nData: `,
