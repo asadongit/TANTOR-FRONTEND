@@ -104,7 +104,9 @@ const TableDrawer = ({ nodes, setNodes }) => {
     setNodes(prevNodes => 
       prevNodes.map((node) => {
         if (node.id === drawerState.nodeId) {
-          const updatedTables = node.data.tables?.map((t) =>
+          // Correctly handle undefined tables
+          const existingTables = node.data.tables || [];
+          const updatedTables = existingTables.map(t =>
             t.table_name === localTable.table_name
               ? {
                   ...t,
@@ -112,8 +114,17 @@ const TableDrawer = ({ nodes, setNodes }) => {
                   whereCondition: whereConditions.join(' AND ')
                 }
               : t
-          ) || [];
-
+          );
+  
+          // If the table wasn't found, add it (in case tables were empty)
+          if (!existingTables.some(t => t.table_name === localTable.table_name)) {
+            updatedTables.push({
+              ...localTable,
+              filters: filterEntries,
+              whereCondition: whereConditions.join(' AND ')
+            });
+          }
+  
           return {
             ...node,
             data: {
@@ -125,6 +136,7 @@ const TableDrawer = ({ nodes, setNodes }) => {
         return node;
       })
     );
+  
 
     closeDrawer();
   };
