@@ -23,8 +23,7 @@ export function ConnectionNode({ id, onSave }) {
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [selectedColumn, setSelectedColumn] = useState("");
   const [columnData, setColumnData] = useState([])
-
-  // const dummyColumns = ["connection 1", "id ", "name", "address", "phonenumber"];
+  const [previousTable, setPreviousTable] = useState("");
 
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
 
@@ -256,11 +255,21 @@ export function ConnectionNode({ id, onSave }) {
     //       return;
     // }
     const view = id;
-    handleFinalPayload({});
-
-    const updatedSettings = { ...columnSettings };
-    delete updatedSettings.Union;
-    setColumnSettings(updatedSettings);
+    if (!finalPayload.operation && previousTable!=selectedTable) {
+      console.log("URR TABLE IS CHANGEDDD")
+      handleFinalPayload((prevData) => ({
+        ...prevData,
+        joins: prevData?.joins?.filter(
+          (join) => join.view1 !== previousTable && join.view2 !== previousTable
+        ),
+      }));
+    }
+    else if(finalPayload.operation){
+      handleFinalPayload({});
+      const updatedSettings = { ...columnSettings };
+      delete updatedSettings.Union;
+      setColumnSettings(updatedSettings);
+    }
 
     if (view && selectedConnection && selectedSchema && selectedTable) {
 
@@ -294,14 +303,11 @@ export function ConnectionNode({ id, onSave }) {
     }
 
     toast.success("Data Saved Successfully");
+    setPreviousTable(selectedTable);
 
   };
 
-
   const cleanFinalPayload = (finalPayload, viewName) => {
-    if (!finalPayload.operation) {
-        return finalPayload;
-    }
 
     let updatedPayload = { ...finalPayload };
 
@@ -335,8 +341,19 @@ export function ConnectionNode({ id, onSave }) {
     const updatedPayload = connectionPayload.filter((node) => node.id !== id);
     handleConnectionPayload(updatedPayload);
 
-    const cleanedPayload = cleanFinalPayload(finalPayload,id);
-    handleFinalPayload(cleanedPayload)
+    if (!finalPayload.operation) {
+      handleFinalPayload((prevData) => ({
+        ...prevData,
+        joins: prevData?.joins?.filter(
+          (join) => join.view1 !== id && join.view2 !== id
+        ),
+      }));
+    }
+    else if(finalPayload.operation){
+      const cleanedPayload = cleanFinalPayload(finalPayload, id);
+      handleFinalPayload(cleanedPayload)
+    }
+
 
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };

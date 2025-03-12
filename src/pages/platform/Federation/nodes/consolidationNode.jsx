@@ -36,7 +36,7 @@ export function ConsolidationNode({ id }) {
     console.log("finalpayload operation is ======>", finalPayload.operation)
     console.log("finalpayload operation is ======>", finalPayload.operation);
 
-    if (!finalPayload.joins || finalPayload.joins.length === 0) {
+    if (!finalPayload.joins || finalPayload.joins.length === 0 || !finalPayload.joins.some(join => join.id === id) ){
       setSelectedLeft("")
       setSelectedRight("")
       setJoinType("")
@@ -122,7 +122,7 @@ export function ConsolidationNode({ id }) {
   }, [type, id, consolidationPayload, connectionPayload, viewPayload]);
 
   useEffect(() => {
-    if (view1 && view2 && joinType && selectedLeft && selectedRight && operator) {
+    if (view1 && view2 && joinType && selectedLeft && selectedRight && operator && isConsolidationModalOpen) {
       // Find the matching connection payloads for view1 and view2
       const connection2 = connectionPayload.find(conn => conn.view === view2);
 

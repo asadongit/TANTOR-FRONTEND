@@ -266,7 +266,8 @@ export function SourceViewNode({ id, onSave }) {
     //   toast.error("Select atleast one column");
     //   return;
     // }
-    if (!finalPayload.operation) {
+    if (!finalPayload.operation && previousView!=selectedView) {
+      console.log("URR VIEW IS CHANGEDDD")
       handleFinalPayload((prevData) => ({
         ...prevData,
         joins: prevData?.joins?.filter(
@@ -274,7 +275,7 @@ export function SourceViewNode({ id, onSave }) {
         ),
       }));
     }
-    else {
+    else if(finalPayload.operation){
       handleFinalPayload({});
       const updatedSettings = { ...columnSettings };
       delete updatedSettings.Union;
@@ -315,10 +316,6 @@ export function SourceViewNode({ id, onSave }) {
   };
 
   const cleanFinalPayload = (finalPayload, viewName) => {
-    if (!finalPayload.operation) {
-      return finalPayload;
-    }
-
     let updatedPayload = { ...finalPayload };
 
     if (updatedPayload.defs && updatedPayload.defs[viewName]) {
@@ -351,8 +348,18 @@ export function SourceViewNode({ id, onSave }) {
     const updatedPayload = viewPayload.filter((node) => node.id !== id);
     handleViewPayload(updatedPayload);
 
+    if (!finalPayload.operation) {
+    handleFinalPayload((prevData) => ({
+      ...prevData,
+      joins: prevData?.joins?.filter(
+        (join) => join.view1 !== selectedView && join.view2 !== selectedView
+      ),
+    }));
+  }
+  else if(finalPayload.operation){
     const cleanedPayload = cleanFinalPayload(finalPayload, selectedView);
     handleFinalPayload(cleanedPayload)
+  }
 
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
@@ -364,8 +371,6 @@ export function SourceViewNode({ id, onSave }) {
     });
 
     window.deleteNode?.(id)
-
-    // handleFinalPayload({});    for union delete
 
   };
 
