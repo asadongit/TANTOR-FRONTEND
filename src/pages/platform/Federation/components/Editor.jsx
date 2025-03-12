@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
-import { Database, Search } from "lucide-react";
+import { 
+  Database, 
+  Search, 
+  ChevronRight, 
+  ChevronDown, 
+  Table, 
+  Type, 
+  Hash, 
+  X,
+  Play,
+  Trash2
+} from "lucide-react";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-mysql";
 import "ace-builds/src-noconflict/theme-tomorrow";
@@ -7,16 +18,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { ToastContainer, toast } from "react-toastify";
 import Switch from "@mui/material/Switch";
 import Builder from "./Builder";
-import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
-import { TreeItem } from '@mui/x-tree-view/TreeItem';
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import { FiDatabase } from "react-icons/fi";
-import { TbSchema } from "react-icons/tb";
-import { CiViewTable } from "react-icons/ci";
-import { MdAbc } from "react-icons/md";
-import { Md123 } from "react-icons/md";
-import { RxCross2 } from "react-icons/rx";
 
 export default function Editor() {
   var encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
@@ -422,14 +423,14 @@ export default function Editor() {
       >
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {isExpanded ? (
-            <ExpandMoreIcon style={{ fontSize: 18 }} />
+            <ChevronDown size={18} />
           ) : (
-            <ChevronRightIcon style={{ fontSize: 18 }} />
+            <ChevronRight size={18} />
           )}
         </div>
         
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <FiDatabase size={15} />
+          <Database size={15} />
         </div>
         
         <span style={{ 
@@ -460,14 +461,14 @@ export default function Editor() {
       >
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {isExpanded ? (
-            <ExpandMoreIcon style={{ fontSize: 18 }} />
+            <ChevronDown size={18} />
           ) : (
-            <ChevronRightIcon style={{ fontSize: 18 }} />
+            <ChevronRight size={18} />
           )}
         </div>
         
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <TbSchema size={15} />
+          <Database size={15} />
         </div>
         
         <span style={{ 
@@ -498,14 +499,14 @@ export default function Editor() {
       >
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {isExpanded ? (
-            <ExpandMoreIcon style={{ fontSize: 18 }} />
+            <ChevronDown size={18} />
           ) : (
-            <ChevronRightIcon style={{ fontSize: 18 }} />
+            <ChevronRight size={18} />
           )}
         </div>
         
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <CiViewTable size={15} />
+          <Table size={15} />
         </div>
         
         <span style={{ 
@@ -534,7 +535,7 @@ export default function Editor() {
         overflow: "hidden"
       }}>
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {isNumber ? <Md123 size={18} /> : <MdAbc size={18} />}
+          {isNumber ? <Hash size={18} /> : <Type size={18} />}
         </div>
         
         <span style={{ 
@@ -571,7 +572,7 @@ export default function Editor() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                   {searchTerm && (
-                    <RxCross2
+                    <X
                       className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
                       onClick={() => setSearchTerm("")}
                     />
@@ -780,11 +781,18 @@ export default function Editor() {
                     onClick={() => executeQuery(query)}
                     className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                   >
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
+                      <Play size={16} className="mr-2" />
                       Run
                     </div>
                   </button>
-                  <button onClick={handleClearQuery} className="bg-gray-400 text-white px-7 py-1.5 rounded-lg hover:bg-gray-500">Clear</button>
+                  <button 
+                    onClick={handleClearQuery} 
+                    className="bg-gray-400 text-white px-7 py-1.5 rounded-lg hover:bg-gray-500 flex items-center"
+                  >
+                    <Trash2 size={16} className="mr-2" />
+                    Clear
+                  </button>
                 </div>
               </div>
 
