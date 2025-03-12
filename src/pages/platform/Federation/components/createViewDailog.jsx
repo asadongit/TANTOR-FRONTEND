@@ -10,7 +10,6 @@ const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState 
   const navigate = useNavigate();
 
   const handleCreateView = () => {
-    handleFinalPayload({})
     if (modalState.viewType === "Source" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
       navigate("/federation/view/source", {
         state: modalState,
@@ -18,6 +17,7 @@ const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState 
     }
     if (modalState.viewType === "Business" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
 
+       handleFinalPayload({ view_type: "Integrated View"})
       if(modalState.queryType === "Complex"){
         setComplexCheck(true)
       }

@@ -9,32 +9,34 @@ function ComplexQueryEditor({setShowQueryEditor}) {
   const {userSelections, setUserSelections, finalPayload, handleFinalPayload, complexCheck} = useStateContext("");
   
   useEffect(() => {
-    if(userSelections.has("complex_query"))
-        setQuery(userSelections.get("complex_query"));
 
+    console.log("finalpayload in complex is ss=====>",finalPayload)
+    
     if(finalPayload.view_type === "Integrated View"){
-      const complex_query = finalPayload.complex_query;
-      console.log("integrated filter data is ===>",complex_query)
-      if (complex_query) setQuery(complex_query);
-    }
+    const complex_query = finalPayload.complex_query;
+    console.log("integrated filter data is ===>",complex_query)
+    if (complex_query) setQuery(complex_query);
+    else setQuery("");
+  }
+    else if(userSelections.has("complex_query"))
+        setQuery(userSelections.get("complex_query"));
   },[]);
   
   const handelExecute = () => {
+
     if(complexCheck){
-         console.log("query is ======>",query)
-         
-    const updatedPayload = { ...finalPayload,  "complex_query" : query};
-    
+      console.log("query is ======>",query) 
+      const updatedPayload = { ...finalPayload,  "complex_query" : query};
       console.log("Updated final payload with query is ===>", updatedPayload);
       handleFinalPayload(updatedPayload);
     }
-
+    else{
     setUserSelections(prev => {
         const updatedSelections = new Map(prev);
         updatedSelections.set("complex_query", query);
         return updatedSelections;
     });
-
+  }
     setShowQueryEditor(false);
   }
 
