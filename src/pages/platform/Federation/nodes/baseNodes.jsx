@@ -239,7 +239,9 @@ export function BaseNode({ id, data }) {
   const handleSelectAllColumns = () => {
     if (isAllSelected) {
       setUserCheckedColumns([]);
-      setSettingsList((prev) => prev.map(item => ({ ...item, output: "No" })));
+      setSettingsList((prev) =>
+        prev.map((item) => ({ ...item, output: "No" }))
+      );
     } else {
       const updatedCheckedColumns = [];
       const newSettingList = [];
@@ -255,10 +257,15 @@ export function BaseNode({ id, data }) {
 
       const updatedSettingsList = [...settingsList];
       newSettingList.forEach((newSetting) => {
-        const existingIndex = updatedSettingsList.findIndex(setting => setting.name === newSetting.name);
+        const existingIndex = updatedSettingsList.findIndex(
+          (setting) => setting.name === newSetting.name
+        );
         if (existingIndex !== -1) {
-          updatedSettingsList[existingIndex] = {...updatedSettingsList[existingIndex], output: "Yes"};
-        }else{
+          updatedSettingsList[existingIndex] = {
+            ...updatedSettingsList[existingIndex],
+            output: "Yes",
+          };
+        } else {
           updatedSettingsList.push(newSetting);
         }
       });
@@ -324,45 +331,49 @@ export function BaseNode({ id, data }) {
                 Select Columns
               </h3>
 
-              <div className="flex items-center mb-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="mr-2"
-                  checked={isAllSelected}
-                  onChange={handleSelectAllColumns}
-                />
-                <label
-                  htmlFor="select-all"
-                  className="text-gray-700 cursor-pointer"
-                >
-                  Select All
-                </label>
-              </div>
-
-              {apiColumns.map((item) => (
-                <div
-                  key={item.column_name}
-                  className="flex items-center mb-2 cursor-pointer"
-                >
+              <div className="p-3 space-y-2">
+                <div className="flex items-center mb-2 cursor-pointer">
                   <input
                     type="checkbox"
                     className="mr-2"
-                    checked={userCheckedColumns.includes(item.column_name)}
-                    onChange={() => handleColumnCheck(item)}
+                    checked={isAllSelected}
+                    onChange={handleSelectAllColumns}
                   />
                   <label
-                    htmlFor={item.column_name}
+                    htmlFor="select-all"
                     className="text-gray-700 cursor-pointer"
                   >
-                    {item.column_name}
+                    Select All
                   </label>
-                  <Pencil
-                    name="edit"
-                    onClick={() => handleEditColumn(item.column_name)}
-                    className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
-                  />
                 </div>
-              ))}
+
+                <div className="max-h-32 overflow-y-auto pr-1">
+                  {apiColumns.map((item) => (
+                    <div
+                      key={item.column_name}
+                      className="flex items-center mb-2 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mr-2"
+                        checked={userCheckedColumns.includes(item.column_name)}
+                        onChange={() => handleColumnCheck(item)}
+                      />
+                      <label
+                        htmlFor={item.column_name}
+                        className="text-gray-700 cursor-pointer"
+                      >
+                        {item.column_name}
+                      </label>
+                      <Pencil
+                        name="edit"
+                        onClick={() => handleEditColumn(item.column_name)}
+                        className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -433,8 +444,15 @@ export function ConnectionNode({ id, data }) {
               data.map((item) => [item.connection_name, item])
             ).values(),
           ];
-          const filteredConnections = uniqueConnections.filter(item => preferred_username === item.created_by && item.is_deleted === false);
-          console.log("FILTERED CONNECTIONS by username==>> ", filteredConnections);
+          const filteredConnections = uniqueConnections.filter(
+            (item) =>
+              preferred_username === item.created_by &&
+              item.is_deleted === false
+          );
+          console.log(
+            "FILTERED CONNECTIONS by username==>> ",
+            filteredConnections
+          );
           setApiConnections(filteredConnections); //Data = array of Connection Objects
         } else {
           console.log(
@@ -598,10 +616,12 @@ export function ConnectionNode({ id, data }) {
   const handleSelectAllChange = () => {
     if (isAllSelected) {
       setUserCheckedColumns([]);
-      setSettingsList((prev) => prev.map(item => ({
-        ...item,
-        output: "No"
-      })));
+      setSettingsList((prev) =>
+        prev.map((item) => ({
+          ...item,
+          output: "No",
+        }))
+      );
     } else {
       const updatedCheckedColumns = [];
       const newSettingList = [];
@@ -617,10 +637,15 @@ export function ConnectionNode({ id, data }) {
 
       const updatedSettingsList = [...settingsList];
       newSettingList.forEach((newSetting) => {
-        const existingIndex = updatedSettingsList.findIndex(setting => setting.name === newSetting.name);
+        const existingIndex = updatedSettingsList.findIndex(
+          (setting) => setting.name === newSetting.name
+        );
         if (existingIndex !== -1) {
-          updatedSettingsList[existingIndex] = {...updatedSettingsList[existingIndex], output: "Yes"};
-        }else{
+          updatedSettingsList[existingIndex] = {
+            ...updatedSettingsList[existingIndex],
+            output: "Yes",
+          };
+        } else {
           updatedSettingsList.push(newSetting);
         }
       });
@@ -649,7 +674,6 @@ export function ConnectionNode({ id, data }) {
       updatedSelections.set("connection", event.target.value);
       return updatedSelections;
     });
-    
   };
 
   const handleSchemaChange = (event) => {
@@ -667,7 +691,6 @@ export function ConnectionNode({ id, data }) {
 
       return updatedSelections;
     });
-
   };
 
   const handleTableChange = (event) => {
