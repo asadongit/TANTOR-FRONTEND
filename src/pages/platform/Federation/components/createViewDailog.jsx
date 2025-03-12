@@ -5,11 +5,12 @@ import { useStateContext } from "../context/contextProvider";
 
 const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState }) => {
 
-  const { complexCheck, setComplexCheck} = useStateContext("")
+  const { complexCheck, setComplexCheck,handleFinalPayload} = useStateContext("")
   
   const navigate = useNavigate();
 
   const handleCreateView = () => {
+    handleFinalPayload({})
     if (modalState.viewType === "Source" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
       navigate("/federation/view/source", {
         state: modalState,

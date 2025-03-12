@@ -4,13 +4,13 @@ import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { SquareKanban, X, Network, ChevronDown, ChevronUp, Pencil, MoveHorizontal } from "lucide-react";
 import { useStateContext } from "../context/contextProvider";
-import { Modal, Box, IconButton,Autocomplete, TextField } from "@mui/material";
+import { Modal, Box, IconButton, Autocomplete, TextField } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";
 import { Circle } from 'lucide-react';
 import { Columns } from "../BusinessView/Columns";
 
 export function ConsolidationNode({ id }) {
-  const { consolidationPayload, connectionPayload, viewPayload, handleFinalPayload, finalPayload, columnSettings, setColumnSettings } = useStateContext("");
+  const { handleConnectionPayload, handleViewPayload, consolidationPayload, connectionPayload, viewPayload, handleFinalPayload, finalPayload, columnSettings, setColumnSettings } = useStateContext("");
   const [type, setType] = useState("Join");
   const [unionType, setUnionType] = useState("");
 
@@ -32,6 +32,7 @@ export function ConsolidationNode({ id }) {
   const [colId, setColId] = useState("Union")
 
   useEffect(() => {
+    console.log("COLUMN SETTTINGS ARE ======>", columnSettings)
     console.log("finalpayload operation is ======>", finalPayload.operation)
     console.log("finalpayload operation is ======>", finalPayload.operation);
 
@@ -142,22 +143,22 @@ export function ConsolidationNode({ id }) {
   }, [view1, view2, joinType, selectedLeft, selectedRight, operator, connectionPayload]);
 
 
-  useEffect(() => {
-    console.log("joins are ===>", joins)
-    if (joins.length > 0) {
+  // useEffect(() => {
+  //   console.log("joins are ===>", joins)
+  //   if (joins.length > 0) {
 
-      handleFinalPayload({
-        joins: finalPayload && Array.isArray(finalPayload.joins)
-          ? [
-            ...finalPayload.joins.filter(
-              (existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id)
-            ),
-            ...joins,
-          ]
-          : [...joins],
-      });
-    }
-  }, [joins]);
+  //     handleFinalPayload({
+  //       joins: finalPayload && Array.isArray(finalPayload.joins)
+  //         ? [
+  //           ...finalPayload.joins.filter(
+  //             (existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id)
+  //           ),
+  //           ...joins,
+  //         ]
+  //         : [...joins],
+  //     });
+  //   }
+  // }, [joins]);
 
 
   const [isUnionModalOpen, setIsUnionModalOpen] = useState(false);
@@ -167,11 +168,14 @@ export function ConsolidationNode({ id }) {
 
   const toggleConsolidationModal = () => {
     console.log("checking the selected columns", finalPayload)
-    if (finalPayload?.select_fields) {
-      setSelectedUnionColumns(finalPayload.select_fields.map(field => field.field));
-    }
-    else {
-      setSelectedUnionColumns([])
+    if (columnSettings?.Union) {
+      setSelectedUnionColumns(
+        Object.entries(columnSettings.Union)
+          .filter(([_, value]) => value.output === "Yes")
+          .map(([key]) => key)
+      );
+    } else {
+      setSelectedUnionColumns([]);
     }
     setIsConsolidationModalOpen(!isConsolidationModalOpen);
   };
@@ -180,7 +184,7 @@ export function ConsolidationNode({ id }) {
     console.log("viewPayload in consolidation is =====>", viewPayload);
     console.log("connection payload in consolidation is ====>", connectionPayload);
 
-    if (type === "Join") {
+    if (type === "Union") {
       const unionData = {};
       [...viewPayload, ...connectionPayload].forEach((item) => {
         if (item.view && Array.isArray(item.selectedColumns)) {
@@ -222,7 +226,7 @@ export function ConsolidationNode({ id }) {
         console.error("firstKeyColumns is not an array:", firstKeyColumns);
       }
     }
-  }, [viewPayload, connectionPayload]);
+  }, [viewPayload, connectionPayload, type]);
 
 
   const handleSave = () => {
@@ -236,6 +240,22 @@ export function ConsolidationNode({ id }) {
       if (!(joinType && selectedLeft && selectedRight && operator)) {
         toast.error("Select input first")
         return;
+      }
+
+
+      console.log("joins are ===>", joins)
+
+      let updatedJoins = [];
+      if (joins.length > 0) {
+        updatedJoins =
+          finalPayload && Array.isArray(finalPayload.joins)
+            ? [
+              ...finalPayload.joins.filter(
+                (existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id)
+              ),
+              ...joins,
+            ]
+            : [...joins];
       }
 
       let columnsPayload = [];
@@ -289,14 +309,15 @@ export function ConsolidationNode({ id }) {
 
       const newPayload = {
         ...finalPayload,
+        joins: updatedJoins.length > 0 ? updatedJoins : finalPayload?.joins || [],
         columnsDataType: columnsPayload,
-        base_join: baseJoin,
-        ...(connection && { base_join_def: connection.def }),
-        command: "execute",
-        view_type: "Integrated View",
         view_name: "MYVIEW",
         isMateralizedView: "false",
         isCaching: "false",
+        base_join: baseJoin,
+        ...(connection && { base_join_def: connection.def }),
+        command: "execute",
+        view_type: "Integrated View"
       }
 
       handleFinalPayload({ ...finalPayload, ...newPayload });
@@ -343,9 +364,9 @@ export function ConsolidationNode({ id }) {
         const newPayload = {
           operation: unionType,
           view_type: "Integrated View",
-          view_name: "MYVIEW",
           isMateralizedView: "false",
           isCaching: "false",
+          view_name: "MYVIEW",
           union: unions,
           union_fields: unionData,
           defs: defs,
@@ -484,13 +505,32 @@ export function ConsolidationNode({ id }) {
   const handleMappingSave = () => {
     const updatedFields = finalPayload.union_fields[firstView].map((col) => mapping[col] || "");
 
-    handleFinalPayload((prev) => ({
-      ...prev,
-      union_fields: {
-        ...prev.union_fields,
-        [secondView]: updatedFields,
-      },
-    }));
+    handleFinalPayload((prev) => {
+      const updatedFinalPayload = {
+        ...prev,
+        union_fields: {
+          ...prev.union_fields,
+          [secondView]: updatedFields,
+        },
+      };
+
+      handleViewPayload((prevView) =>
+        prevView.map((item) => ({
+          ...item,
+          selectedColumns: updatedFinalPayload.union_fields[item.view] || item.selectedColumns,
+        }))
+      );
+
+      handleConnectionPayload((prevConn) =>
+        prevConn.map((item) => ({
+          ...item,
+          selectedColumns: updatedFinalPayload.union_fields[item.view] || item.selectedColumns,
+        }))
+      );
+
+      return updatedFinalPayload;
+    });
+
 
     setIsUnionModalOpen(false)
     setIsConsolidationModalOpen(false)
@@ -503,6 +543,7 @@ export function ConsolidationNode({ id }) {
         defaultMapping[col] = finalPayload.union_fields[secondView][index] || "";
       });
       setMapping(defaultMapping);
+
     }
   }, [firstView, secondView, finalPayload]);
 
@@ -770,19 +811,18 @@ export function ConsolidationNode({ id }) {
           <Columns
             id={"Union"}
             columnName={selectedColumn}
-            dataType={finalPayload?.columnsDataType?.find(col => col.name === selectedColumn)?.type}
+            // dataType={finalPayload?.columnsDataType?.find(col => col.name === selectedColumn)?.type}
+            dataType={
+              Array.isArray(finalPayload?.columnsDataType) && finalPayload.columnsDataType.length > 0
+                ? finalPayload.columnsDataType.find(col => col.name === selectedColumn)?.type || "unknown"
+                : "unknown"
+            }
+
             toggleModal={toggleModal}
           />
 
         </div>
       </Modal>
-
-      {/* <Modal open={isUnionModalOpen} onClose={() => setIsUnionModalOpen(!isUnionModalOpen)}>
-        <div className="max-w-[100vw] max-h-[80vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 pt-2 rounded-xl">
-          union model
-
-        </div>
-      </Modal> */}
 
       <Modal open={isUnionModalOpen} onClose={() => setIsUnionModalOpen(false)}>
         <div className="max-w-[600px] max-h-[80vh] min-h-[30vh] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-6 pt-4 pb-2 rounded-3xl shadow-2xl w-full border border-gray-300">

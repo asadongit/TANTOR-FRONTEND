@@ -11,7 +11,7 @@ import ComplexQueryEditor from "../components/ComplexQueryEditor";
 
 export function ConnectionNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, handleFinalPayload } = useStateContext("")
+  const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload } = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("")
@@ -256,7 +256,7 @@ export function ConnectionNode({ id, onSave }) {
     //       return;
     // }
     const view = id;
-    // handleFinalPayload({});
+    handleFinalPayload({});
 
     const updatedSettings = { ...columnSettings };
     delete updatedSettings.Union;
@@ -298,16 +298,57 @@ export function ConnectionNode({ id, onSave }) {
   };
 
 
+  const cleanFinalPayload = (finalPayload, viewName) => {
+    if (!finalPayload.operation) {
+        return finalPayload;
+    }
+
+    let updatedPayload = { ...finalPayload };
+
+    if (updatedPayload.defs && updatedPayload.defs[viewName]) {
+        delete updatedPayload.defs[viewName];
+        if (Object.keys(updatedPayload.defs).length === 0) delete updatedPayload.defs;
+    }
+
+    if (updatedPayload.union_fields && updatedPayload.union_fields[viewName]) {
+        delete updatedPayload.union_fields[viewName];
+        if (Object.keys(updatedPayload.union_fields).length === 0) delete updatedPayload.union_fields;
+    }
+
+    if (updatedPayload.union) {
+        updatedPayload.union = updatedPayload.union.filter(item => item !== viewName);
+        if (updatedPayload.union.length === 0) delete updatedPayload.union;
+    }
+
+    if (updatedPayload.metadata) {
+        if (updatedPayload.metadata.views) {
+            updatedPayload.metadata.views = updatedPayload.metadata.views.filter(view => view !== viewName);
+            if (updatedPayload.metadata.views.length === 0) delete updatedPayload.metadata.views;
+        }
+        if (Object.keys(updatedPayload.metadata).length === 0) delete updatedPayload.metadata;
+    }
+
+    return updatedPayload;
+};
+
   const handleDelete = (id) => {
     const updatedPayload = connectionPayload.filter((node) => node.id !== id);
     handleConnectionPayload(updatedPayload);
-    window.deleteNode?.(id)
+
+    const cleanedPayload = cleanFinalPayload(finalPayload,id);
+    handleFinalPayload(cleanedPayload)
 
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
       delete updatedSettings[id];
+      delete updatedSettings["Union"]
+
+      console.log("Updated column settings:", updatedSettings); 
+
       return updatedSettings;
     });
+
+    window.deleteNode?.(id)
 
   };
 

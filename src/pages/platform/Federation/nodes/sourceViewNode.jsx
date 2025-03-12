@@ -74,7 +74,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, complexCheck, handleFinalPayload } = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -83,6 +83,11 @@ export function SourceViewNode({ id, onSave }) {
   const [selectedColumn, setSelectedColumn] = useState("");
   const [columnData, setColumnData] = useState([])
   const [showQueryEditor, setShowQueryEditor] = useState(false);
+  const [previousView, setPreviousView] = useState("");
+
+  // useEffect(() => {
+  //   console.log("MY PREVIOUS VIEWWW IS ==========>", previousView)
+  // }, [])
 
   useEffect(() => {
     const fetchViews = async () => {
@@ -104,6 +109,14 @@ export function SourceViewNode({ id, onSave }) {
 
   const handleViewChange = (e) => {
     setSelectedColumns([])
+    console.log("selected view $$$$$$$$$$$$",selectedView)
+    setColumnSettings(prevSettings => {
+      const updatedSettings = { ...prevSettings };
+      delete updatedSettings[selectedView];
+
+      console.log("Updated column settings:", updatedSettings);
+      return updatedSettings;
+    });
     setSelectedView(e.target.value)
     fetchColumnsForView(e.target.value);
     // handleFinalPayload({});
@@ -247,16 +260,29 @@ export function SourceViewNode({ id, onSave }) {
 
   const handleSave = () => {
 
+    console.log("MY PREVIOUS VIEWWW IS ==========>",previousView)
+
     // if (selectedColumns.length === 0) {
     //   toast.error("Select atleast one column");
     //   return;
     // }
+    if (!finalPayload.operation) {
+      handleFinalPayload((prevData) => ({
+        ...prevData,
+        joins: prevData?.joins?.filter(
+          (join) => join.view1 !== previousView && join.view2 !== previousView
+        ),
+      }));
+    }
+    else {
+      handleFinalPayload({});
+      const updatedSettings = { ...columnSettings };
+      delete updatedSettings.Union;
+      setColumnSettings(updatedSettings);
+    }
 
-    // handleFinalPayload({});
-    const updatedSettings = { ...columnSettings };
-    delete updatedSettings.Union;
-    setColumnSettings(updatedSettings);
 
+    console.log("vcolumn data is&&&&&&&&&&&&&&&&&",columnData)
     if (selectedView) {
       const view = selectedView;
       const newPayload = {
@@ -284,20 +310,63 @@ export function SourceViewNode({ id, onSave }) {
       onSave?.(newPayload);
     }
     toast.success("Data Saved Successfully");
+    setPreviousView(selectedView)
 
+  };
+
+  const cleanFinalPayload = (finalPayload, viewName) => {
+    if (!finalPayload.operation) {
+      return finalPayload;
+    }
+
+    let updatedPayload = { ...finalPayload };
+
+    if (updatedPayload.defs && updatedPayload.defs[viewName]) {
+      delete updatedPayload.defs[viewName];
+      if (Object.keys(updatedPayload.defs).length === 0) delete updatedPayload.defs;
+    }
+
+    if (updatedPayload.union_fields && updatedPayload.union_fields[viewName]) {
+      delete updatedPayload.union_fields[viewName];
+      if (Object.keys(updatedPayload.union_fields).length === 0) delete updatedPayload.union_fields;
+    }
+
+    if (updatedPayload.union) {
+      updatedPayload.union = updatedPayload.union.filter(item => item !== viewName);
+      if (updatedPayload.union.length === 0) delete updatedPayload.union;
+    }
+
+    if (updatedPayload.metadata) {
+      if (updatedPayload.metadata.views) {
+        updatedPayload.metadata.views = updatedPayload.metadata.views.filter(view => view !== viewName);
+        if (updatedPayload.metadata.views.length === 0) delete updatedPayload.metadata.views;
+      }
+      if (Object.keys(updatedPayload.metadata).length === 0) delete updatedPayload.metadata;
+    }
+
+    return updatedPayload;
   };
 
   const handleDelete = (id) => {
     const updatedPayload = viewPayload.filter((node) => node.id !== id);
     handleViewPayload(updatedPayload);
-    // handleFinalPayload({})
-    window.deleteNode?.(id)
+
+    const cleanedPayload = cleanFinalPayload(finalPayload, selectedView);
+    handleFinalPayload(cleanedPayload)
 
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
       delete updatedSettings[selectedView];
+      delete updatedSettings["Union"]
+
+      console.log("Updated column settings:", updatedSettings);
       return updatedSettings;
     });
+
+    window.deleteNode?.(id)
+
+    // handleFinalPayload({});    for union delete
+
   };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -318,7 +387,7 @@ export function SourceViewNode({ id, onSave }) {
 
   const handleCollapse = () => {
     setIsCollapsed(!isCollapsed);
-    updateNodeInternals(id); 
+    updateNodeInternals(id);
   };
 
 

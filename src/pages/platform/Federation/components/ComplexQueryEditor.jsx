@@ -11,6 +11,12 @@ function ComplexQueryEditor({setShowQueryEditor}) {
   useEffect(() => {
     if(userSelections.has("complex_query"))
         setQuery(userSelections.get("complex_query"));
+
+    if(finalPayload.view_type === "Integrated View"){
+      const complex_query = finalPayload.complex_query;
+      console.log("integrated filter data is ===>",complex_query)
+      if (complex_query) setQuery(complex_query);
+    }
   },[]);
   
   const handelExecute = () => {
