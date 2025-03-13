@@ -4,8 +4,8 @@ import { DefineNodePurge } from "../purge/purge-nodes/DefineNodePurge";
 import { SourceNode } from "../purge/purge-nodes/SourceNodePurge";
 import { TargetNode } from "../purge/purge-nodes/TargetNodePurge";
 import { SchedulerNode } from "../purge/purge-nodes/SchedulerNodePurge"
-import { DrawerContainer } from "../migration/drawers/DrawerContainer";
-import TableDrawer from "../migration/dialog/TableDrawer";
+import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
+import TableDrawer from "../react-flow/dialog/TableDrawer";
 
 
 const nodeTypes = {
