@@ -21,6 +21,8 @@ import { ContextProvider } from "./context/contextProvider";
 import { FlowDataProvider } from "./pages/platform/react-flow/context/FlowDataContext";
 import Source from "./pages/platform/Federation/Source";
 import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
+import PurgeSidebar from "./pages/platform/purge/PurgeSidebar";
+import PurgeCanvas from "./pages/platform/purge/PurgeCanvas";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -126,6 +128,33 @@ function App() {
           }
         />
 
+
+        <Route
+          path="/PurgeCanvas"
+          element={
+            <TableProvider>
+              <FlowDataProvider>
+                <ThemeProvider>
+                  <DrawerProvider>
+                    <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
+                      <Header className="h-16 flex-shrink-0" />{" "}
+                      <div className="flex-1 flex">
+                        <PurgeSidebar className="w-64 flex-shrink-0" />{" "}
+                        <div className="flex-1 relative">
+                          {" "}
+                          <ReactFlowProvider>
+                            <PurgeCanvas />
+                          </ReactFlowProvider>
+                        </div>
+                      </div>
+                      <WelcomeModal />
+                    </div>
+                  </DrawerProvider>
+                </ThemeProvider>
+              </FlowDataProvider>
+            </TableProvider>
+          }
+        />
 
         <Route
           path="/viewcanvas"
