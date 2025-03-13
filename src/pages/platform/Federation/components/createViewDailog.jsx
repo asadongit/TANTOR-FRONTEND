@@ -1,7 +1,7 @@
 /*eslint-disable*/
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useStateContext } from "../context/contextProvider";
+import { useStateContext } from "../context/contextViewProvider";
 
 const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState }) => {
 

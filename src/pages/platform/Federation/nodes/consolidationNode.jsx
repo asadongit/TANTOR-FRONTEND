@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { SquareKanban, X, Network, ChevronDown, ChevronUp, Pencil, MoveHorizontal } from "lucide-react";
-import { useStateContext } from "../context/contextProvider";
+import { useStateContext } from "../context/contextViewProvider";
 import { Modal, Box, IconButton, Autocomplete, TextField } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";
 import { Circle } from 'lucide-react';

@@ -15,7 +15,7 @@ import SourceSidebar from "../nodes/ViewFromSourceSidebar";
 import ColumnSettings from "./ColumnSettings";
 import SaveViewModal from "../components/SaveViewModal";
 import SourcePreview from "./SourcePreview";
-import { useStateContext } from "../context/contextProvider";
+import { useStateContext } from "../context/contextViewProvider";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";

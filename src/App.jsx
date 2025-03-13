@@ -15,13 +15,14 @@ import { WelcomeModal } from "./pages/platform/react-flow/WelcomeModal";
 import { DrawerProvider } from "./pages/platform/react-flow/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/react-flow/context/ThemeContext";
 import { TableProvider } from "./pages/platform/react-flow/context/TableContext";
-import { ViewCanvas } from "./pages/platform/Federation/ViewCanvas";
-import { BusinessSidebar } from "./pages/platform/Federation/BusinessSidebar";
+import { ViewCanvas } from "./pages/platform/Federation/BusinessView/ViewCanvas";
+import { BusinessSidebar } from "./pages/platform/Federation/BusinessView/BusinessSidebar";
 import { ViewDrawer } from "./pages/platform/Federation/context/DrawerContext";
-import { ContextProvider } from "./context/contextProvider";
+// import { ContextProvider } from "./context/contextProvider";
 import { FlowDataProvider } from "./pages/platform/react-flow/context/FlowDataContext";
-import Source from "./pages/platform/Federation/Source";
-import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
+import Source from "./pages/platform/Federation/BaseView/Source";
+import { BusinessFooter } from "./pages/platform/Federation/BusinessView/BusinessFooter";
+import { ContextViewProvider } from "./pages/platform/Federation/context/contextViewProvider";
 import PurgeSidebar from "./pages/platform/purge/PurgeSidebar";
 import PurgeCanvas from "./pages/platform/purge/PurgeCanvas";
 
@@ -35,7 +36,8 @@ function App() {
 
   return (
     <Router>
-      <ContextProvider>
+      <ContextViewProvider >
+      {/* <ContextProvider> */}
       <Routes>
         {/* Main layout with header/sidebar */}
         <Route
@@ -184,7 +186,7 @@ function App() {
         <Route
           path="/federation/view/source"
           element={
-            <ContextProvider>
+            <ContextViewProvider>
               <div className="h-screen flex flex-col">
                 <Header className="flex-shrink-0 h-16" />
                 <div className="flex-1 relative overflow-hidden">
@@ -193,12 +195,13 @@ function App() {
                   </ReactFlowProvider>
                 </div>
               </div>
-            </ContextProvider>
+           </ContextViewProvider>
           }
         />
 
       </Routes>
-      </ContextProvider>
+      {/* </ContextProvider> */}
+      </ContextViewProvider>
     </Router>
   );
 }

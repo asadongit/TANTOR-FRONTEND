@@ -10,7 +10,7 @@ import {
   Database,
   FileCode,
 } from "lucide-react";
-import { useStateContext } from "../context/contextProvider";
+import { useStateContext } from "../context/contextViewProvider";
 import { defaultSetting } from "../BaseView/ColumnSettings";
 
 const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
