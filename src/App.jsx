@@ -18,13 +18,12 @@ import { TableProvider } from "./pages/platform/react-flow/context/TableContext"
 import { ViewCanvas } from "./pages/platform/Federation/BusinessView/ViewCanvas";
 import { BusinessSidebar } from "./pages/platform/Federation/BusinessView/BusinessSidebar";
 import { ViewDrawer } from "./pages/platform/Federation/context/DrawerContext";
-// import { ContextProvider } from "./context/contextProvider";
 import { FlowDataProvider } from "./pages/platform/react-flow/context/FlowDataContext";
 import Source from "./pages/platform/Federation/BaseView/Source";
 import { BusinessFooter } from "./pages/platform/Federation/BusinessView/BusinessFooter";
-import { ContextViewProvider } from "./pages/platform/Federation/context/contextViewProvider";
 import PurgeSidebar from "./pages/platform/purge/PurgeSidebar";
 import PurgeCanvas from "./pages/platform/purge/PurgeCanvas";
+import { ContextViewProvider } from "./pages/platform/Federation/context/contextViewProvider";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -36,8 +35,7 @@ function App() {
 
   return (
     <Router>
-      <ContextViewProvider >
-      {/* <ContextProvider> */}
+    <ContextViewProvider >
       <Routes>
         {/* Main layout with header/sidebar */}
         <Route
@@ -195,12 +193,11 @@ function App() {
                   </ReactFlowProvider>
                 </div>
               </div>
-           </ContextViewProvider>
+            </ContextViewProvider>
           }
         />
 
       </Routes>
-      {/* </ContextProvider> */}
       </ContextViewProvider>
     </Router>
   );
