@@ -150,6 +150,13 @@ export function BusinessFooter() {
       ? columnSettings["Union"]
       : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
+    console.log("$$$#####$$$$$#####%%%%",source)
+    console.log("column settings ===>",columnSettings)
+
+    if (!source || Object.keys(source).length === 0) {
+      toast.error("Please select columns first before proceeding.");
+      return;
+    }
 
     Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
       const columns = hasOperation ? { [tableOrColumn]: columnsOrProperties } : columnsOrProperties;
