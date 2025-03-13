@@ -4,19 +4,21 @@ import { ReactFlowProvider } from "reactflow";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import { MigrationSidebar } from "./pages/platform/migration/MigrationSidebar";
+import { TransformationSidebar } from "./pages/platform/transformation/TransformationSidebar";
 import Dashboard from "./pages/Dashboard";
 import { PlatformRoutes } from "./routes/PlatformRoutes";
 import { DataGovernanceRoutes } from "./routes/DataGovernanceRoutes";
 import MigrationCanvas from "./pages/platform/migration/MigrationCanvas";
-import { WelcomeModal } from "./pages/platform/migration/WelcomeModal";
-import { DrawerProvider } from "./pages/platform/migration/context/DrawerContext";
-import { ThemeProvider } from "./pages/platform/migration/context/ThemeContext";
-import { TableProvider } from "./pages/platform/migration/context/TableContext";
+import TransformationCanvas from "./pages/platform/transformation/TransformationCanvas";
+import { WelcomeModal } from "./pages/platform/react-flow/WelcomeModal";
+import { DrawerProvider } from "./pages/platform/react-flow/context/DrawerContext";
+import { ThemeProvider } from "./pages/platform/react-flow/context/ThemeContext";
+import { TableProvider } from "./pages/platform/react-flow/context/TableContext";
 import { ViewCanvas } from "./pages/platform/Federation/ViewCanvas";
 import { BusinessSidebar } from "./pages/platform/Federation/BusinessSidebar";
 import { ViewDrawer } from "./pages/platform/Federation/context/DrawerContext";
 import { ContextProvider } from "./context/contextProvider";
-import { FlowDataProvider } from "./pages/platform/migration/context/FlowDataContext";
+import { FlowDataProvider } from "./pages/platform/react-flow/context/FlowDataContext";
 import Source from "./pages/platform/Federation/Source";
 import { BusinessFooter } from "./pages/platform/Federation/BusinessFooter";
 
@@ -94,6 +96,36 @@ function App() {
             </TableProvider>
           }
         />
+
+
+        {/* Standalone drag-and-drop route outside main layout */}
+        <Route
+          path="/Transformationcanvas"
+          element={
+            <TableProvider>
+              <FlowDataProvider>
+                <ThemeProvider>
+                  <DrawerProvider>
+                    <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
+                      <Header className="h-16 flex-shrink-0" />{" "}
+                      <div className="flex-1 flex">
+                        <TransformationSidebar className="w-64 flex-shrink-0" />{" "}
+                        <div className="flex-1 relative">
+                          {" "}
+                          <ReactFlowProvider>
+                            <TransformationCanvas />
+                          </ReactFlowProvider>
+                        </div>
+                      </div>
+                      <WelcomeModal />
+                    </div>
+                  </DrawerProvider>
+                </ThemeProvider>
+              </FlowDataProvider>
+            </TableProvider>
+          }
+        />
+
 
         <Route
           path="/viewcanvas"

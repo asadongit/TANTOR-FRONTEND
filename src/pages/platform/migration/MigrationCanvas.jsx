@@ -9,16 +9,14 @@ import 'reactflow/dist/style.css';
 import { DefineNode } from './nodes/DefineNode';
 import { SourceNode } from './nodes/SourceNode';
 import { TargetNode } from './nodes/TargetNode';
-import { SchedulerNode } from './nodes/SchedulerNode';
-import { DrawerContainer } from './drawers/DrawerContainer';
-import { useTableContext } from './context/TableContext';
-import TableDrawer from './dialog/TableDrawer';
+import { DrawerContainer } from '../react-flow/drawers/DrawerContainer';
+import { useTableContext } from '../react-flow/context/TableContext';
+import TableDrawer from '../react-flow/dialog/TableDrawer';
 
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
-  target: TargetNode,
-  schedule: SchedulerNode
+  target: TargetNode
 };
 
 let id = 0;

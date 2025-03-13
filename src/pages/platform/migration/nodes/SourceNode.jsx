@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
-import { useTableContext } from '../context/TableContext';
+import { useTableContext } from '../../react-flow/context/TableContext';
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">

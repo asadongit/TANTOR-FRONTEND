@@ -5,7 +5,7 @@ import Jobs from '../pages/platform/Jobs';
 import Pipeline from '../pages/platform/Pipeline';
 import Reports from '../pages/platform/Reports';
 import Migration from '../pages/platform/migration/Migration';
-import Transformation from '../pages/platform/Transformation';
+import Transformation from '../pages/platform/transformation/Transformation';
 import Purge from '../pages/platform/Purge';
 import CDC from '../pages/platform/CDC';
 import FederationDashBoard from '../pages/platform/Federation/FederationDashboard';
