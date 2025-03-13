@@ -12,6 +12,7 @@ import FederationDashBoard from '../pages/platform/Federation/FederationDashboar
 import Source from '../pages/platform/Federation/Source';
 import MigrationCanvas from '../pages/platform/migration/MigrationCanvas';
 import DataView from '../pages/platform/DataView';
+import PurgeCanvas from '../pages/platform/purge/PurgeCanvas';
 
 export const PlatformRoutes = (
   <>
@@ -28,5 +29,6 @@ export const PlatformRoutes = (
     <Route path="/federation" element={<FederationDashBoard />} />
     <Route path='/federation/view/source' element={<Source />} />
     <Route path="/createMigration" element={<MigrationCanvas />}></Route>
+    <Route path='/PurgeCanvas' element={<PurgeCanvas />}></Route>
   </>
 );

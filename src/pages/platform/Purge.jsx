@@ -1,7 +1,20 @@
+import PurgeEmpty from "./purge/PurgeEmpty";
+import PurgeList from "./purge/PurgeList";
+
 const Purge = () => {
+
+  const isLoggedIn = false;
+
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Purge</h1>
+      {isLoggedIn ?
+        (
+          <PurgeList />
+        )
+        :
+        (
+          <PurgeEmpty />
+        )}
     </div>
   );
 };
