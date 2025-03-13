@@ -1,17 +1,30 @@
 /*eslint-disable*/
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useStateContext } from "../context/contextViewProvider";
 
 const CreateViewDialog = ({ isModalOpen, toggleModal, modalState, setModalState }) => {
+
+  const { complexCheck, setComplexCheck,handleFinalPayload} = useStateContext("")
+  
   const navigate = useNavigate();
 
   const handleCreateView = () => {
-    if (modalState.viewType === "Source" && modalState.queryType === "Regular") {
+    if (modalState.viewType === "Source" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
       navigate("/federation/view/source", {
         state: modalState,
       });
     }
-    if (modalState.viewType === "Business" && modalState.queryType === "Regular") {
+    if (modalState.viewType === "Business" && (modalState.queryType === "Regular" || modalState.queryType === "Complex")) {
+
+       handleFinalPayload({ view_type: "Integrated View"})
+      if(modalState.queryType === "Complex"){
+        setComplexCheck(true)
+      }
+      else{
+        setComplexCheck(false)
+      }
+
       navigate("/viewcanvas", {
         state: modalState,
       });
