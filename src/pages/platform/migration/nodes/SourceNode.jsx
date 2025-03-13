@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
-import { useTableContext } from '../context/TableContext';
+import { useTableContext } from '../../react-flow/context/TableContext';
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -27,6 +27,7 @@ export function SourceNode({ id, data }) {
   const [schemaLoading, setSchemaLoading] = useState(false);  
   const { openDrawer } = useTableContext();  
 
+  
 
   let connectionsData;
   let schemacount;
@@ -453,7 +454,18 @@ export function SourceNode({ id, data }) {
         <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           Cancel
         </button>
-        <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
+        <button onClick={() => {
+    // Access node data from React Flow's props
+    const nodeTables = data.tables || [];
+    
+    // Log all tables and their filters
+    nodeTables.forEach(table => {
+      console.group(`Table: ${table.table_name}`);
+      console.log('Filters:', table.filters);
+      console.groupEnd();
+    });
+  }}
+  className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           OK
         </button>
       </div>
