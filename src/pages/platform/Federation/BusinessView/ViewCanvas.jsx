@@ -12,7 +12,7 @@ import { SourceViewNode } from '../nodes/sourceViewNode';
 import {ConnectionNode} from '../nodes/connectionNode'
 import {ConsolidationNode} from '../nodes/consolidationNode'
 import { DrawerContainer } from '../drawers/DrawerContainer';
-import { useStateContext } from '../context/contextProvider';
+import { useStateContext } from '../context/contextViewProvider';
 
 const nodeTypes = {
   sourceView: SourceViewNode,

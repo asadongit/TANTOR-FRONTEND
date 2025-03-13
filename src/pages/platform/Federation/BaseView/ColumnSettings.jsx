@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { Info, Settings } from "lucide-react";
-import { useStateContext } from "../context/contextProvider";
+import { useStateContext } from "../context/contextViewProvider";
 
 export const defaultSetting = {
   name: "",

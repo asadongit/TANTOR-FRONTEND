@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position,useUpdateNodeInternals  } from "reactflow";
 import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode,Search } from "lucide-react";
-import { useStateContext } from "../context/contextProvider";
+import { useStateContext } from "../context/contextViewProvider";
 import { Columns } from "../BusinessView/Columns";
 import { Modal } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";

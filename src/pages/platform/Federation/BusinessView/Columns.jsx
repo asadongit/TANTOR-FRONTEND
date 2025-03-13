@@ -1,6 +1,6 @@
 import { Settings, X, Info} from "lucide-react";
 import { useEffect, useState } from "react";
-import { useStateContext } from "../context/contextProvider";
+import { useStateContext } from "../context/contextViewProvider";
 
 export function Columns({ id, columnName,dataType, toggleModal }) {
 

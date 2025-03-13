@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useStateContext } from "../context/contextProvider";
+import { useStateContext } from "../context/contextViewProvider";
 import { X } from "lucide-react";
 
 const getColumnGroupType = (columnType) => {

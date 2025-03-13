@@ -20,7 +20,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Modal } from "@mui/material";
 import { MenuItem, Select, InputLabel, FormControl } from "@mui/material";
-import { useStateContext } from "../context/contextProvider";
+import { useStateContext } from "../context/contextViewProvider";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
