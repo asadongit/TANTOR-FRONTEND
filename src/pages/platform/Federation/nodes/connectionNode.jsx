@@ -23,7 +23,8 @@ export function ConnectionNode({ id, onSave }) {
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [selectedColumn, setSelectedColumn] = useState("");
   const [columnData, setColumnData] = useState([])
-  const [previousTable, setPreviousTable] = useState("");
+  const [previousColId, setPreviousColId] = useState("");
+  const [colId, setColId] = useState("")
 
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
 
@@ -32,10 +33,10 @@ export function ConnectionNode({ id, onSave }) {
       if (prev.includes(column)) {
         setColumnSettings((prevSettings) => {
           const updatedSettings = { ...prevSettings };
-          if (updatedSettings[id]) {
-            delete updatedSettings[id][column];
-            if (Object.keys(updatedSettings[id]).length === 0) {
-              delete updatedSettings[id];
+          if (updatedSettings[colId]) {
+            delete updatedSettings[colId][column];
+            if (Object.keys(updatedSettings[colId]).length === 0) {
+              delete updatedSettings[colId];
             }
           }
           return updatedSettings;
@@ -45,10 +46,10 @@ export function ConnectionNode({ id, onSave }) {
       } else {
         setColumnSettings((prevSettings) => ({
           ...prevSettings,
-          [id]: {
-            ...(prevSettings[id] || {}),
+          [colId]: {
+            ...(prevSettings[colId] || {}),
             [column]: {
-              ...(prevSettings[id]?.[column] || {}),
+              ...(prevSettings[colId]?.[column] || {}),
               output: "Yes",
             },
           },
@@ -72,10 +73,10 @@ export function ConnectionNode({ id, onSave }) {
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         columns.forEach((column) => {
-          updatedSettings[id] = {
-            ...updatedSettings[id],
+          updatedSettings[colId] = {
+            ...updatedSettings[colId],
             [column]: {
-              ...(updatedSettings[id]?.[column] || {}),
+              ...(updatedSettings[colId]?.[column] || {}),
               output: "Yes",
             },
           };
@@ -88,10 +89,10 @@ export function ConnectionNode({ id, onSave }) {
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         columns.forEach((column) => {
-          updatedSettings[id] = {
-            ...updatedSettings[id],
+          updatedSettings[colId] = {
+            ...updatedSettings[colId],
             [column]: {
-              ...(updatedSettings[id]?.[column] || {}),
+              ...(updatedSettings[colId]?.[column] || {}),
               output: "No",
             },
           };
@@ -105,14 +106,14 @@ export function ConnectionNode({ id, onSave }) {
 
   
   useEffect(() => {
-    if (id && columnSettings[id]) {
+    if (colId && columnSettings[colId]) {
       const columnsWithOutputYes = selectedColumnsOrder.filter(
-        (column) => columnSettings[id][column]?.output === "Yes"
+        (column) => columnSettings[colId][column]?.output === "Yes"
       );
 
       setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
     }
-  }, [columnSettings, id]);
+  }, [columnSettings, colId]);
 
 
 
@@ -219,6 +220,8 @@ export function ConnectionNode({ id, onSave }) {
 
   const handleTableChange = async (event, value) => {
     var temp = event.target.value;
+    const unique = `${selectedConnection}_${selectedSchema}_${temp}`;
+    setColId(unique);
     setColumns([])
     setSelectedColumns([]);
     if (selectedConnection && selectedSchema) {
@@ -254,13 +257,12 @@ export function ConnectionNode({ id, onSave }) {
     //       toast.error("Select atleast one column");
     //       return;
     // }
-    const view = id;
-    if (!finalPayload.operation && previousTable!=selectedTable) {
+    if (!finalPayload.operation && previousColId!=colId) {
       console.log("URR TABLE IS CHANGEDDD")
       handleFinalPayload((prevData) => ({
         ...prevData,
         joins: prevData?.joins?.filter(
-          (join) => join.view1 !== previousTable && join.view2 !== previousTable
+          (join) => join.view1 !== previousColId && join.view2 !== previousColId
         ),
       }));
     }
@@ -271,12 +273,12 @@ export function ConnectionNode({ id, onSave }) {
       setColumnSettings(updatedSettings);
     }
 
-    if (view && selectedConnection && selectedSchema && selectedTable) {
+    if (selectedConnection && selectedSchema && selectedTable) {
 
       const newPayload = {
         id,
         type: "Connection",
-        view,
+        view: colId,
         selectedConnection,
         selectedSchema,
         selectedTable,
@@ -303,7 +305,7 @@ export function ConnectionNode({ id, onSave }) {
     }
 
     toast.success("Data Saved Successfully");
-    setPreviousTable(selectedTable);
+    setPreviousColId(`${selectedConnection}.${selectedSchema}.${selectedTable}`);
 
   };
 
@@ -345,19 +347,19 @@ export function ConnectionNode({ id, onSave }) {
       handleFinalPayload((prevData) => ({
         ...prevData,
         joins: prevData?.joins?.filter(
-          (join) => join.view1 !== id && join.view2 !== id
+          (join) => join.view1 !== colId && join.view2 !== colId
         ),
       }));
     }
     else if(finalPayload.operation){
-      const cleanedPayload = cleanFinalPayload(finalPayload, id);
+      const cleanedPayload = cleanFinalPayload(finalPayload, colId);
       handleFinalPayload(cleanedPayload)
     }
 
 
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
-      delete updatedSettings[id];
+      delete updatedSettings[colId];
       delete updatedSettings["Union"]
 
       console.log("Updated column settings:", updatedSettings); 
