@@ -8,11 +8,16 @@ import Migration from '../pages/platform/migration/Migration';
 import Transformation from '../pages/platform/transformation/Transformation';
 import Purge from '../pages/platform/Purge';
 import CDC from '../pages/platform/CDC';
-import FederationDashBoard from '../pages/platform/Federation/FederationDashboard';
-import Source from '../pages/platform/Federation/Source';
+import Source from '../pages/platform/Federation/BaseView/Source';
 import MigrationCanvas from '../pages/platform/migration/MigrationCanvas';
+
+import Editor from '../pages/platform/Federation/components/Editor';
+import FederationDashBoard from "../pages/platform/Federation/components/FederationDashboard"
+
+
 import DataView from '../pages/platform/DataView';
 import PurgeCanvas from '../pages/platform/purge/PurgeCanvas';
+
 
 export const PlatformRoutes = (
   <>
@@ -26,7 +31,8 @@ export const PlatformRoutes = (
     <Route path="/transformation" element={<Transformation />} />
     <Route path="/purge" element={<Purge />} />
     <Route path="/cdc" element={<CDC />} />
-    <Route path="/federation" element={<FederationDashBoard />} />
+    <Route path="/editor" element ={<Editor />} />
+    <Route path="/federation" element={<FederationDashBoard />}/>
     <Route path='/federation/view/source' element={<Source />} />
     <Route path="/createMigration" element={<MigrationCanvas />}></Route>
     <Route path='/PurgeCanvas' element={<PurgeCanvas />}></Route>

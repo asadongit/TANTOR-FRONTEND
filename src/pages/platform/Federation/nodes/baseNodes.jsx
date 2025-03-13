@@ -1,155 +1,224 @@
-/*eslint-disable*/
 import { useCallback, useEffect, useState } from "react";
-import { Cable, X, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Cable,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Search,
+  SquareKanban,
+  Database,
+  FileCode,
+} from "lucide-react";
+import { useStateContext } from "../context/contextProvider";
+import { defaultSetting } from "../BaseView/ColumnSettings";
+
+const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+const FAST_BACKEND = import.meta.env.VITE_FAST_API;
+
+const SearchableSelect = ({ options, value, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredOptions = options
+    .map((option) =>
+      typeof option === "object" ? option.connection_name : option
+    )
+    .filter((option) =>
+      option.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+  const handleSelectClick = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleOptionClick = (option) => {
+    onChange({ target: { value: option } });
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div className="relative w-full">
+      <div
+        className="w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+        onClick={handleSelectClick}
+      >
+        <span>{value || placeholder}</span>
+        {isOpen ? (
+          <ChevronUp className="w-4 h-4" />
+        ) : (
+          <ChevronDown className="w-4 h-4" />
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                className="w-full p-2 pl-8 border rounded-md"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {filteredOptions.map((option) => (
+              <div
+                key={option}
+                className="p-2 hover:bg-gray-100 cursor-pointer"
+                onClick={() => handleOptionClick(option)}
+              >
+                {option}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export function BaseNode({ id, data }) {
-  const [currentViewState, setViewState] = useState({
-    apiViewsResult: [],
-    selectedViewName: "",
-    selectedViewColumns: [],
-  });
-
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isAllSelected, setIsAllSelected] = useState(false);
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
-  const [apiColumns,setApiColumns] = useState([]);
-  const [userCheckedColumns, setUserCheckedColumns] = useState([]);
-
-  // Fetch Views
+  const [apiColumns, setApiColumns] = useState([]);
+  const {
+    settingsList,
+    setSettingsList,
+    userSelections,
+    setUserSelections,
+    userCheckedColumns,
+    setUserCheckedColumns,
+  } = useStateContext();
+  const getFilterModalColumns = () => {
+    if (apiColumns.length > 0) {
+      return apiColumns.map((column) => ({
+        name: column.column_name,
+        type: column.data_type,
+      }));
+    }
+    return [];
+  };
   useEffect(() => {
-    // Fetch all connections from the API
-    fetch("http://localhost:8000/api/v1/get-all-views", {
-      headers: {
-        accept: "*/*",
-        "accept-language": "en-US,en;q=0.9",
-        authorization:
-          "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ",
-        "content-type": "application/json",
-        priority: "u=1, i",
-        "sec-ch-ua":
-          '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-        "sec-ch-ua-mobile": "?1",
-        "sec-ch-ua-platform": '"Android"',
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-origin",
-        cookie: "sessionId=abc123",
-        Referer: "https://darch-dev.tantor.io/Dashboard",
-        "Referrer-Policy": "same-origin",
-      },
-      body: null,
-      method: "GET",
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        // const uniqueConnections = [...new Map(data.map(item => [item.connection_name, item])).values()];
-        console.log(data.result)
-        setApiViews(data.result); //Data.result = array of Connection Objects
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+    (async () => {
+      let response;
+      try {
+        const VIEW_TYPE = "Base";
+        response = await fetch(
+          `${FAST_BACKEND}/get-all-views?view_type=${VIEW_TYPE}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              authorization: `Bearer ${AUTH_TOKEN}`,
+            },
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.status == 200) {
+          const sortedViews = data.result.sort((a, b) => {
+            if (a.toUpperCase() < b.toUpperCase()) return -1;
+            if (a.toUpperCase() > b.toUpperCase()) return 1;
+            return 0;
+          });
+          setApiViews(sortedViews);
+        } else {
+          data.toast.error("Error occurred while trying to fetch views");
+        }
+      } catch (error) {
+        console.error("Error occurred while trying to fetch views", error);
+        data.toast.error("Error occurred while trying to fetch views");
+      }
+    })();
   }, []);
 
   useEffect(() => {
-    if(selectedView){
-      fetch("http://localhost:8000/api/v1/fetch_view_columns", {
-        "headers": {
-          "accept": "*/*",
-          "accept-language": "en-US,en;q=0.9",
-          "authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNTE0NDUsImlhdCI6MTczODE1MTE0NSwianRpIjoiNDdiYjQzODktMTBmNS00ZThkLWI1ZjMtZGRiNzVlMTNiNDFjIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNDAyNGI1YjYtNDBmZi00NmM4LThjMmItNTZkMjhkOWNhMTg5IiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI0MDI0YjViNi00MGZmLTQ2YzgtOGMyYi01NmQyOGQ5Y2ExODkiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.BiE5zVydB6Rq0q6GH6FQGvjvBsjXtnH3JKsJX0XC1bitrrYPOO14sYH7TC45-sHy613L49QTb-UwjgLxKFVwC9TfKu0ZXGK_ylaXqlShFRLM1i3FYtczWpLdj_Y0pOIVt3phlAyzBELU-b_LmN0UycBvFcvxiLH3sH3HSdcGG8RxaQjc8z771v10r4r6OTCmd8VIu5vUqoE67ikrKKBtAiTgV_qeIL8ot6iFlEaZ6v1yMFJrxxOJx9rlFqVB2_o0Zb7XIMjbaPAXXYNcsG-GhR6oDc_YkaKRIyLUdiILT_ZWKsayqLqEPPIGjesEyRfiBLAJSkLhESOYqkXTHTmwsw",
-          "content-type": "application/json",
-          "priority": "u=1, i",
-          "sec-ch-ua": "\"Not A(Brand\";v=\"8\", \"Chromium\";v=\"132\", \"Google Chrome\";v=\"132\"",
-          "sec-ch-ua-mobile": "?1",
-          "sec-ch-ua-platform": "\"Android\"",
-          "sec-fetch-dest": "empty",
-          "sec-fetch-mode": "cors",
-          "sec-fetch-site": "same-origin",
-          "cookie": "sessionId=abc123",
-          "Referer": "https://darch-dev.tantor.io/Data-Federation",
-          "Referrer-Policy": "same-origin"
-        },
-        "body": JSON.stringify({view_names:[selectedView]}),
-        "method": "POST"
-      })
-      .then(response => response.json())
-      .then(data => setApiColumns(data.result[selectedView]))
-      .catch(error => console.error('Error:', error));
+    if (selectedView) {
+      (async () => {
+        let response;
+        try {
+          response = await fetch(`${FAST_BACKEND}/fetch_view_columns`, {
+            headers: {
+              "Content-Type": "application/json",
+              authorization: `Bearer ${AUTH_TOKEN}`,
+            },
+            body: JSON.stringify({ view_names: [selectedView] }),
+            method: "POST",
+          });
+          let data = await response.json();
+
+          if (response.status == 200) {
+            setApiColumns(data.result[selectedView]);
+          } else {
+            console.error(
+              `Fetch Columns error. : \nStatus Code: ${response.status} \nData: `,
+              data
+            );
+            data.toast.error("Error occurred while trying to fetch columns");
+          }
+        } catch (error) {
+          console.log(error);
+          data.toast.error("Error occurred while trying to fetch Columns");
+        }
+      })();
     }
   }, [selectedView]);
 
   const handleChangeView = (event) => {
-    console.log(event.target.value);
-    setSelectedView(event.target.value);
+    const selectedViewName = event.target.value;
+    setUserCheckedColumns([]);
+    setApiColumns([]);
+    setSelectedView(selectedViewName);
+    setIsAllSelected(false);
+    setUserSelections((prev) => {
+      const updatedSelections = new Map();
+      updatedSelections.set("viewName", selectedViewName);
+      return updatedSelections;
+    });
+    setSettingsList([]);
   };
 
-  const handleColumnCheck = (columnName) => {
-    const updatedCheckedColumns = [...userCheckedColumns];
-    const columnIndex = updatedCheckedColumns.indexOf(columnName);
+  const handleColumnCheck = (column) => {
+    const columnName = column.column_name;
+    const dataType = column.data_type;
 
-    if (columnIndex !== -1) {
-      updatedCheckedColumns.splice(columnIndex, 1);
-      // data.setColumnSetting(null);
+    const isColumnChecked = userCheckedColumns.includes(columnName);
 
-      // data.setFinalPayload((prevPayload) => {
-      //   const updatedPayload = { ...prevPayload };
-      //   if (updatedPayload[currentViewState.selectedViewName]) {
-      //     updatedPayload[currentViewState.selectedViewName] = updatedPayload[
-      //       currentViewState.selectedViewName
-      //     ].filter((setting) => setting.name !== columnName);
+    const updatedCheckedColumns = isColumnChecked
+      ? userCheckedColumns.filter((name) => name !== columnName) // Uncheck the column
+      : [...userCheckedColumns, columnName]; // Check the column
 
-      //     if (updatedPayload[currentViewState.selectedViewName].length === 0) {
-      //       delete updatedPayload[currentViewState.selectedViewName];
-      //     }
-      //   }
-      //   return updatedPayload;
-      // });
-    } else {
-      updatedCheckedColumns.push(columnName);
-      
-      // apiColumns.forEach(item => {
-      //   if(item.column_name == columnName)
-      //     data.handleColumnSetting({
-      //     column: item,
-      //     viewName: selectedView,
-      //     type: "Source"
-      //   })
-      // });
+    setSettingsList((prev) => {
+      const updatedSettingsList = prev.map((item) => {
+        if (item.name === columnName) {
+          return { ...item, output: isColumnChecked ? "No" : "Yes" };
+        }
+        return item;
+      });
 
-      // data.setColumnSetting({
-      //   viewName: currentViewState.selectedViewName,
-      //   column: selectedColumn,
-      // });
-    }
+      if (!isColumnChecked && !prev.some((item) => item.name === columnName)) {
+        updatedSettingsList.push({
+          ...defaultSetting,
+          name: columnName,
+          type: dataType,
+        });
+      }
+
+      return updatedSettingsList;
+    });
 
     setUserCheckedColumns(updatedCheckedColumns);
-  };
-
-  const handleOk = (event) => {
-    event.preventDefault();
-
-    // const currentPayload = data.finalPayload || {};
-    // const currentViewSettings =
-    //   currentPayload[currentViewState.selectedViewName] || [];
-
-    // const filteredSettings = currentViewSettings.filter((setting) =>
-    //   currentViewState.userCheckedColumns.includes(setting.name)
-    // );
-
-    // data.setFinalPayload((prevPayload) => ({
-    //   ...prevPayload,
-    //   [currentViewState.selectedViewName]: filteredSettings,
-    // }));
-
-    // if (data.onSubmit) {
-    //   data.onSubmit({ type: "Source" });
-    // }
-
-    // data.handleOk({
-    //   userCheckedColumns,
-    //   type: "Source",
-    // });
-
+    setIsAllSelected(updatedCheckedColumns.length === apiColumns.length);
   };
 
   const handleClose = () => {
@@ -157,337 +226,524 @@ export function BaseNode({ id, data }) {
   };
 
   const handleEditColumn = (columnName) => {
-    if(!userCheckedColumns.includes(columnName))
-      setUserCheckedColumns([...userCheckedColumns, columnName]);
-    apiColumns.forEach(item => {
-      if(item.column_name == columnName)
+    apiColumns.forEach((item) => {
+      if (item.column_name == columnName)
         data.handleColumnSetting({
-        column: item,
-        viewName: selectedView,
-        type: "Source"
-      })
+          column: item,
+          viewName: selectedView,
+          viewType: "Source",
+        });
     });
-  }
+  };
+
+  const handleSelectAllColumns = () => {
+    if (isAllSelected) {
+      setUserCheckedColumns([]);
+      setSettingsList((prev) =>
+        prev.map((item) => ({ ...item, output: "No" }))
+      );
+    } else {
+      const updatedCheckedColumns = [];
+      const newSettingList = [];
+
+      apiColumns.forEach((item) => {
+        updatedCheckedColumns.push(item.column_name);
+        newSettingList.push({
+          ...defaultSetting,
+          name: item.column_name,
+          type: item.data_type,
+        });
+      });
+
+      const updatedSettingsList = [...settingsList];
+      newSettingList.forEach((newSetting) => {
+        const existingIndex = updatedSettingsList.findIndex(
+          (setting) => setting.name === newSetting.name
+        );
+        if (existingIndex !== -1) {
+          updatedSettingsList[existingIndex] = {
+            ...updatedSettingsList[existingIndex],
+            output: "Yes",
+          };
+        } else {
+          updatedSettingsList.push(newSetting);
+        }
+      });
+      setUserCheckedColumns(updatedCheckedColumns);
+      setSettingsList(updatedSettingsList);
+    }
+
+    setIsAllSelected((prev) => !prev);
+  };
 
   return (
-    <div className="w-64 p-4 mt-1 bg-white rounded-lg shadow-lg relative group">
-      <button
-        onClick={handleClose}
-        className="absolute top-2 right-2 bg-black rounded-full p-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <X className="w-4 h-4 text-white" />
-      </button>
+    <div className="w-80 p-4 mt-1 bg-white rounded-lg shadow-lg relative group">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-medium">Source View</h2>
-      </div>
-
-      <div className="space-y-4">
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-1">View</label>
-          <select
-            className="w-full p-2 border rounded-lg text-gray-700 hover:bg-gray-50"
-            value={selectedView}
-            onChange={handleChangeView}
-          >
-            <option value="">Select a view</option>
-            {apiViews.map(view => <option key={view} value={view}>{view}</option>)}
-          </select>
+        <div className="flex items-center space-x-3">
+          <SquareKanban className="w-5 h-5 text-[#8E77BB]" />
+          <h2 className="text-lg font-medium">Source View</h2>
         </div>
-
-        {apiColumns && (
-           <div
-           className={`mb-4 ${selectedView ? "" : "hidden"}`}
-         >
-           <h3 className="font-semibold text-gray-700">Select Columns</h3>
-           {apiColumns.map((item) => (
-             <div
-               key={item.column_name}
-               className="flex items-center mb-2 cursor-pointer"
-              //  onClick={() => handleColumnCheck(item.column_name)}
-             >
-               <input
-                 type="checkbox"
-                 className="mr-2"
-                 checked={userCheckedColumns.includes(item.column_name)}
-                 onClick={() => handleColumnCheck(item.column_name)} //delete
-                 readOnly
-               />
-               <label htmlFor={item.column_name} className="text-gray-700 cursor-pointer">
-                 {item.column_name}
-               </label>
-               <button name="edit" onClick={(e) => handleEditColumn(item.column_name)} className="ml-auto text-gray-500 hover:text-gray-700">Edit</button>
-             </div>
-           ))}
-         </div>
-        )}
-
-        <button
-          onClick={(e) => data.handleOk({
-            userCheckedColumns,
-            type: "Source",
-          })}
-          className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
-        >
-          Ok
-        </button>
+        <div className="flex items-center space-x-2">
+          {data.queryType === "Complex" && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                data.setShowQueryEditor((prev) => !prev);
+              }}
+            >
+              <FileCode className="w-5 h-5 text-[#8E77BB]" />
+            </button>
+          )}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1 rounded-md hover:bg-gray-200"
+          >
+            {isCollapsed ? (
+              <ChevronDown className="w-5 h-5 text-black" />
+            ) : (
+              <ChevronUp className="w-5 h-5 text-black" />
+            )}
+          </button>
+          <button
+            onClick={handleClose}
+            className="p-1 rounded-md hover:bg-gray-200"
+          >
+            <X className="h-5 text-gray-500" />
+          </button>
+        </div>
       </div>
+
+      {!isCollapsed && (
+        <div className="space-y-4">
+          <div className="mb-4">
+            <label className="block text-gray-700 mb-1">View</label>
+            <SearchableSelect
+              options={apiViews}
+              value={selectedView}
+              onChange={handleChangeView}
+              placeholder="Select View"
+            />
+          </div>
+
+          {apiColumns && (
+            <div className={`mb-4 ${selectedView ? "" : "hidden"}`}>
+              <h3 className="font-semibold text-gray-700 mb-2">
+                Select Columns
+              </h3>
+
+              <div className="p-3 space-y-2">
+                <div className="flex items-center mb-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mr-2"
+                    checked={isAllSelected}
+                    onChange={handleSelectAllColumns}
+                  />
+                  <label
+                    htmlFor="select-all"
+                    className="text-gray-700 cursor-pointer"
+                  >
+                    Select All
+                  </label>
+                </div>
+
+                <div className="max-h-32 overflow-y-auto pr-1">
+                  {apiColumns.map((item) => (
+                    <div
+                      key={item.column_name}
+                      className="flex items-center mb-2 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mr-2"
+                        checked={userCheckedColumns.includes(item.column_name)}
+                        onChange={() => handleColumnCheck(item)}
+                      />
+                      <label
+                        htmlFor={item.column_name}
+                        className="text-gray-700 cursor-pointer"
+                      >
+                        {item.column_name}
+                      </label>
+                      <Pencil
+                        name="edit"
+                        onClick={() => handleEditColumn(item.column_name)}
+                        className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={() =>
+              data.handleOk({
+                userCheckedColumns,
+                viewType: "Source",
+                settings: settingsList,
+                userSelections: userSelections,
+                apiColumns: getFilterModalColumns(),
+              })
+            }
+            className="w-full p-3 text-white bg-[rgb(142,119,187)] hover:bg-[rgba(142,119,187,0.8)] rounded-lg text-center font-sans"
+          >
+            Ok
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 export function ConnectionNode({ id, data }) {
-  const [handleConnectionPayload, setHandleConnectionPayload] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
-  const [selectedColumns, setSelectedColumns] = useState([]);
-
   const [apiConnections, setApiConnections] = useState([]);
   const [apiSchemas, setApiSchemas] = useState([]);
   const [apiTables, setApiTables] = useState([]);
   const [apiColumns, setApiColumns] = useState([]);
+  const [isAllSelected, setIsAllSelected] = useState(false);
+  const {
+    settingsList,
+    setSettingsList,
+    userSelections,
+    setUserSelections,
+    userCheckedColumns,
+    setUserCheckedColumns,
+  } = useStateContext();
 
-  const dummyColumns = [
-    "connection 1",
-    "id ",
-    "name",
-    "address",
-    "phonenumber",
-  ];
-
+  const getFilterModalColumns = () => {
+    if (apiColumns.length > 0) {
+      return apiColumns.map((column) => ({
+        name: column.column,
+        type: column.datatype,
+      }));
+    }
+    return [];
+  };
   useEffect(() => {
-    // Fetch all connections from the API
-    fetch("https://darch-dev.tantor.io/api/api/v1/connection-saves", {
-      headers: {
-        accept: "*/*",
-        "accept-language": "en-US,en;q=0.9",
-        authorization:
-          "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ",
-        "content-type": "application/json",
-        priority: "u=1, i",
-        "sec-ch-ua":
-          '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-        "sec-ch-ua-mobile": "?1",
-        "sec-ch-ua-platform": '"Android"',
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-origin",
-        cookie: "sessionId=abc123",
-        Referer: "https://darch-dev.tantor.io/Dashboard",
-        "Referrer-Policy": "same-origin",
-      },
-      body: null,
-      method: "GET",
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        const uniqueConnections = [
-          ...new Map(data.map((item) => [item.connection_name, item])).values(),
-        ];
-        setApiConnections(uniqueConnections); //Data = array of Connection Objects
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+    (async () => {
+      let response;
+      var preferred_username = "sabhyata";
+      try {
+        response = await fetch(`${FAST_BACKEND}/connection-saves`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${AUTH_TOKEN}`,
+          },
+        });
+        let data = await response.json();
+        if (response.status == 200) {
+          const uniqueConnections = [
+            ...new Map(
+              data.map((item) => [item.connection_name, item])
+            ).values(),
+          ];
+          const filteredConnections = uniqueConnections.filter(
+            (item) =>
+              preferred_username === item.created_by &&
+              item.is_deleted === false
+          );
+          console.log(
+            "FILTERED CONNECTIONS by username==>> ",
+            filteredConnections
+          );
+          setApiConnections(filteredConnections); //Data = array of Connection Objects
+        } else {
+          console.log(
+            `Error fetching connections.\nResponse status: ${response.status}\nData: `,
+            data
+          );
+          data.toast.error("Error fetching connections.");
+        }
+      } catch (error) {
+        console.log("Error fetching connections. ", error);
+        data.toast.error("Error fetching connections.");
+      }
+    })();
   }, []);
 
   useEffect(() => {
     if (selectedConnection) {
-      // Fetch all connections from the API
-      fetch(
-        `https://darch-dev.tantor.io/api/api/v1/${selectedConnection}/schemas`,
-        {
-          headers: {
-            accept: "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            authorization:
-              "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ",
-            "content-type": "application/json",
-            priority: "u=1, i",
-            "sec-ch-ua":
-              '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-            "sec-ch-ua-mobile": "?1",
-            "sec-ch-ua-platform": '"Android"',
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-origin",
-            cookie: "sessionId=abc123",
-            Referer: "https://darch-dev.tantor.io/Dashboard",
-            "Referrer-Policy": "same-origin",
-          },
-          body: null,
-          method: "GET",
+      (async () => {
+        try {
+          let response = await fetch(
+            `${FAST_BACKEND}/${selectedConnection}/schemas`,
+            {
+              method: "GET",
+              headers: {
+                authorization: `Bearer ${AUTH_TOKEN}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          let data = await response.json();
+          if (response.status == 200) {
+            setApiSchemas(data);
+          } else {
+            console.log(
+              `Error fetching Schemas.\nResponse status: ${response.status}\nData: `,
+              data
+            );
+            data.toast.error("Error fetching Schemas.");
+          }
+        } catch (error) {
+          console.log("Error fetching schemas. ", error);
+          data.toast.error("Error fetching Schemas.");
         }
-      )
-        .then((response) => response.json())
-        .then((data) => {
-          console.log(data)
-          // const uniqueConnections = [...new Map(data.map(item => [item.connection_name, item])).values()];
-          setApiSchemas(data); //Data = array of Connection Objects
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      })();
     }
   }, [selectedConnection]);
 
   useEffect(() => {
     if (selectedSchema) {
-      // Fetch all connections from the API
-      // https://darch-dev.tantor.io/api/api/v1/oracle_shaukat2/schemas/test_user1/tables
-      fetch(
-        `https://darch-dev.tantor.io/api/api/v1/${selectedConnection}/schemas/${selectedSchema}/tables`,
-        {
-          headers: {
-            accept: "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            authorization:
-              "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ",
-            "content-type": "application/json",
-            priority: "u=1, i",
-            "sec-ch-ua":
-              '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-            "sec-ch-ua-mobile": "?1",
-            "sec-ch-ua-platform": '"Android"',
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-origin",
-            cookie: "sessionId=abc123",
-            Referer: "https://darch-dev.tantor.io/Dashboard",
-            "Referrer-Policy": "same-origin",
-          },
-          body: null,
-          method: "GET",
+      (async () => {
+        let response;
+        try {
+          response = await fetch(
+            `${FAST_BACKEND}/${selectedConnection}/schemas/${selectedSchema}/tables`,
+            {
+              method: "GET",
+              headers: {
+                authorization: `Bearer ${AUTH_TOKEN}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          let data = await response.json();
+          if (response.status == 200) {
+            console.log(data);
+            setApiTables(data);
+          } else {
+            console.log(
+              `Error fetching Tables.\nResponse status: ${response.status}\nData: `,
+              data
+            );
+            data.toast.error("Error fetching Tables.");
+          }
+        } catch (error) {
+          console.log("Error fetching tables. ", error);
+          data.toast.error("Error fetching Tables.");
         }
-      )
-        .then((response) => response.json())
-        .then((data) => {
-          // console.log("Columns = ",data)
-          // const uniqueConnections = [...new Map(data.map(item => [item.connection_name, item])).values()];
-          setApiTables(data); //Data = array of Connection Objects
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      })();
     }
   }, [selectedSchema]);
 
   useEffect(() => {
     if (selectedTable) {
-      // Fetch all connections from the API
-      // https://darch-dev.tantor.io/api/api/v1/oracle_shaukat2/schemas/test_user1/tables
-      fetch(
-        `https://darch-dev.tantor.io/api/api/v1/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
-        {
-          headers: {
-            accept: "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            authorization:
-              "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJfT0JkZW9SZGQxaVVwd3RJb2t6Y2JYdnZ1QXdMeENzMk1KTTYwa0s5QUw0In0.eyJleHAiOjE3MzgxNDQ3MzcsImlhdCI6MTczODE0NDQzNywianRpIjoiODk1YzU4NWItYzFjZi00NjEzLWE5ODctNTk4YmMxYTMzZWY3IiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsicmVhbG0tbWFuYWdlbWVudCIsImFjY291bnQiXSwic3ViIjoiOTU0NDNkYzQtZDY1My00Njg3LWFjOWEtMTYxMDNmYzVlN2ViIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZGFyY2giLCJzZXNzaW9uX3N0YXRlIjoiNjc5YWViMWYtMWZmNy00ZTQyLTlkMjMtMjI2NTc0OTc4Y2RmIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImRlZmF1bHQtcm9sZXMtZ2F0ZWtlZXBlciIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsicmVhbG0tbWFuYWdlbWVudCI6eyJyb2xlcyI6WyJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsInZpZXctcmVhbG0iLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsInJlYWxtLWFkbWluIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI2NzlhZWIxZi0xZmY3LTRlNDItOWQyMy0yMjY1NzQ5NzhjZGYiLCJuYW1lIjoic2FiaHlhdGEgYmhhcmdhdmEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWJoeWF0YSIsImdpdmVuX25hbWUiOiJzYWJoeWF0YSIsImZhbWlseV9uYW1lIjoiYmhhcmdhdmEifQ.KOdzmc4v-u-qNatsnOLpi2cUvDoZSYPoRkf4RqjSqryzEepJxLmvwW_vzW9pdPQHHN46MLw1_vC8CmFbRgS_t8BVvM0k039gVuR9Z6rDPDQ8p0ENk5T6_XmkQUDQwlF2Nln5ASTQnaucMeuvrVQO0pdTtypRXM5S_Hk-GBZkYZZdcZDYvl9nagXCfW6XqyMOT9ck2eBTePHpQr2thlg_1yv1lMvgaXIfX4qJCHwgUTdiKvxTrPErmsicTLKH-wA06x8fqtK0sRD9vC1z6G-cY0zJ4aQgtbSbLUzo7L2q-nE6S5nhrZE3WI0Zs1M_ykrVyy2a-3ilL8GkdLx22KHZSQ",
-            "content-type": "application/json",
-            priority: "u=1, i",
-            "sec-ch-ua":
-              '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-            "sec-ch-ua-mobile": "?1",
-            "sec-ch-ua-platform": '"Android"',
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-origin",
-            cookie: "sessionId=abc123",
-            Referer: "https://darch-dev.tantor.io/Dashboard",
-            "Referrer-Policy": "same-origin",
-          },
-          body: null,
-          method: "GET",
+      (async () => {
+        let response;
+        try {
+          response = await fetch(
+            `${FAST_BACKEND}/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
+            {
+              method: "GET",
+              headers: {
+                authorization: `Bearer ${AUTH_TOKEN}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          let data = await response.json();
+
+          if (response.status == 200) {
+            console.log("\n\nCOLUMNS = ", data, "\n\n\n");
+            setApiColumns(data);
+          } else {
+            console.log("Error while trying to fetch columns. ", data);
+            data.toast.error("Error while trying to fetch columns.");
+          }
+        } catch (error) {
+          console.error("Error while trying to fetch columns. ", error);
+          data.toast.error("Error while trying to fetch columns.");
         }
-      )
-        .then((response) => response.json())
-        .then((data) => {
-          // const uniqueConnections = [...new Map(data.map(item => [item.connection_name, item])).values()];
-          setApiColumns(data); //Data = array of Connection Objects
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      })();
     }
   }, [selectedTable]);
 
   const handleColumnChange = (column) => {
-    setSelectedColumns((prev) =>
-      prev.includes(column)
-        ? prev.filter((col) => col !== column)
-        : [...prev, column]
-    );
+    const columnName = column.column;
+    const dataType = column.datatype;
+
+    const isColumnChecked = userCheckedColumns.includes(columnName);
+
+    const updatedCheckedColumns = isColumnChecked
+      ? userCheckedColumns.filter((name) => name !== columnName)
+      : [...userCheckedColumns, columnName];
+
+    setSettingsList((prev) => {
+      const updatedSettingsList = prev.map((item) => {
+        if (item.name === columnName) {
+          return { ...item, output: isColumnChecked ? "No" : "Yes" };
+        }
+        return item;
+      });
+
+      if (!isColumnChecked && !prev.some((item) => item.name === columnName)) {
+        updatedSettingsList.push({
+          ...defaultSetting,
+          name: columnName,
+          type: dataType,
+        });
+      }
+      return updatedSettingsList;
+    });
+    setUserCheckedColumns(updatedCheckedColumns);
+    setIsAllSelected(updatedCheckedColumns.length === apiColumns.length);
   };
 
   const handleEditColumn = (columnName) => {
-    if(!selectedColumns.includes(columnName))
-      setSelectedColumns([...selectedColumns, columnName]);
-
-    apiColumns.forEach(item => {
-      if(item.column == columnName){
+    apiColumns.forEach((item) => {
+      if (item.column == columnName) {
         data.handleColumnSetting({
-        column: item,
-        connection: selectedConnection,
-        type: "Connection"
-      })
-    }
+          column: item,
+          connection: selectedConnection,
+          schema: selectedSchema,
+          table: selectedTable,
+          viewType: "Connection",
+        });
+      }
     });
-  }
-
-  const handleSelectAllChange = (isChecked) => {
-    if (isChecked) {
-      setSelectedColumns(dummyColumns);
-    } else {
-      setSelectedColumns([]);
-    }
   };
 
-  const isAllSelected = selectedColumns.length === dummyColumns.length;
+  const handleSelectAllChange = () => {
+    if (isAllSelected) {
+      setUserCheckedColumns([]);
+      setSettingsList((prev) =>
+        prev.map((item) => ({
+          ...item,
+          output: "No",
+        }))
+      );
+    } else {
+      const updatedCheckedColumns = [];
+      const newSettingList = [];
 
-  const handleSave = () => {
-    const payload = {
-      id,
-      type: "Connection",
-      selectedConnection,
-      selectedView,
-      selectedSchema,
-      selectedTable,
-      selectedColumns,
-      Columns: apiColumns,
-    };
-    console.log("Saved Payload:", payload); // Debugging purpose
-    setHandleConnectionPayload(payload);
-    data.onSubmit(payload);
+      apiColumns.forEach((item) => {
+        updatedCheckedColumns.push(item.column);
+        newSettingList.push({
+          ...defaultSetting,
+          name: item.column,
+          type: item.datatype,
+        });
+      });
+
+      const updatedSettingsList = [...settingsList];
+      newSettingList.forEach((newSetting) => {
+        const existingIndex = updatedSettingsList.findIndex(
+          (setting) => setting.name === newSetting.name
+        );
+        if (existingIndex !== -1) {
+          updatedSettingsList[existingIndex] = {
+            ...updatedSettingsList[existingIndex],
+            output: "Yes",
+          };
+        } else {
+          updatedSettingsList.push(newSetting);
+        }
+      });
+      setUserCheckedColumns(updatedCheckedColumns);
+      setSettingsList(updatedSettingsList);
+    }
+    setIsAllSelected((prev) => !prev);
+  };
+
+  const resetSelections = () => {
+    setApiSchemas([]);
+    setApiTables([]);
+    setApiColumns([]);
+    setSelectedSchema("");
+    setSelectedTable("");
+    setUserCheckedColumns([]);
+    setIsAllSelected(false);
+    setSettingsList([]);
+  };
+
+  const handleConnectionChange = (event) => {
+    setSelectedConnection(event.target.value);
+    resetSelections();
+    setUserSelections((prev) => {
+      const updatedSelections = new Map();
+      updatedSelections.set("connection", event.target.value);
+      return updatedSelections;
+    });
+  };
+
+  const handleSchemaChange = (event) => {
+    setSelectedSchema(event.target.value);
+    setApiTables([]);
+    setApiColumns([]);
+    setSelectedTable("");
+    setUserCheckedColumns([]);
+    setSettingsList([]);
+    setIsAllSelected(false);
+    setUserSelections((prev) => {
+      const updatedSelections = new Map();
+      updatedSelections.set("connection", selectedConnection);
+      updatedSelections.set("schema", event.target.value);
+
+      return updatedSelections;
+    });
+  };
+
+  const handleTableChange = (event) => {
+    setSelectedTable(event.target.value);
+    setApiColumns([]);
+    setUserCheckedColumns([]);
+    setIsAllSelected(false);
+    setSettingsList([]);
+    setUserSelections((prev) => {
+      const updatedSelections = new Map();
+      updatedSelections.set("connection", selectedConnection);
+      updatedSelections.set("schema", selectedSchema);
+      updatedSelections.set("table", event.target.value);
+      return updatedSelections;
+    });
   };
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-lg min-w-[300px] relative group">
-      <button
-        onClick={() => data.deleteNode(id)}
-        className="absolute -top-2 -right-2 bg-black rounded-full p-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <X className="w-4 h-4 text-white" />
-      </button>
-
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3">
           <Cable className="w-5 h-5 text-[#8E77BB]" />
-          <h3 className="text-black font-medium">Connection</h3>
+          <h2 className="text-black font-medium">Connection</h2>
         </div>
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1 rounded-md hover:bg-gray-200"
-        >
-          {isCollapsed ? (
-            <ChevronDown className="w-5 h-5 text-black" />
-          ) : (
-            <ChevronUp className="w-5 h-5 text-black" />
+        <div className="flex items-center space-x-2">
+          {data.queryType === "Complex" && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                data.setShowQueryEditor((prev) => !prev);
+              }}
+            >
+              <FileCode className="w-5 h-5 text-[#8E77BB]" />
+            </button>
           )}
-        </button>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1 rounded-md hover:bg-gray-200"
+          >
+            {isCollapsed ? (
+              <ChevronDown className="w-5 h-5 text-black" />
+            ) : (
+              <ChevronUp className="w-5 h-5 text-black" />
+            )}
+          </button>
+          <button
+            onClick={() => data.deleteNode(id)}
+            className="p-1 rounded-md hover:bg-gray-200"
+          >
+            <X className="h-5 text-gray-500" />
+          </button>
+        </div>
       </div>
-
       {!isCollapsed && (
         <>
           <div className="space-y-4">
@@ -495,62 +751,36 @@ export function ConnectionNode({ id, data }) {
               <label className="block text-sm font-medium text-black mb-1">
                 Connection
               </label>
-              <select
+              <SearchableSelect
+                options={apiConnections}
                 value={selectedConnection}
-                onChange={(e) => setSelectedConnection(e.target.value)}
-                className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-              >
-                <option value="" disabled>
-                  Select a connection
-                </option>
-                {apiConnections.map((connection) => (
-                  <option
-                    key={connection.connection_name}
-                    value={connection.connection_name}
-                  >
-                    {connection.connection_name}
-                  </option>
-                ))}
-              </select>
+                onChange={handleConnectionChange}
+                placeholder="Select a connection"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">
                 Schema
               </label>
-              <select
+              <SearchableSelect
+                options={apiSchemas}
                 value={selectedSchema}
-                onChange={(e) => setSelectedSchema(e.target.value)}
-                className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-              >
-                <option value="" disabled>
-                  Select a Schema
-                </option>
-                {apiSchemas.map((schema) => (
-                  <option key={schema} value={schema}>
-                    {schema}
-                  </option>
-                ))}
-              </select>
+                onChange={handleSchemaChange}
+                placeholder="Select a schema"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-black mb-1">
                 Table
               </label>
-              <select
+              <SearchableSelect
+                options={apiTables}
                 value={selectedTable}
-                onChange={(e) => setSelectedTable(e.target.value)}
-                className="w-full bg-white px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 rounded-lg group border-solid border-2"
-              >
-                <option value="" disabled>
-                  Select a table
-                </option>
-                {apiTables.map((table) => (
-                  <option key={table} value={table}>
-                    {table}
-                  </option>
-                ))}
-              </select>
+                onChange={handleTableChange}
+                placeholder="Select a table"
+              />
             </div>
+
             {selectedTable && (
               <div>
                 <label className="block text-sm font-medium text-black mb-1">
@@ -562,7 +792,7 @@ export function ConnectionNode({ id, data }) {
                       type="checkbox"
                       id="selectAll"
                       checked={isAllSelected}
-                      onChange={(e) => handleSelectAllChange(e.target.checked)}
+                      onChange={handleSelectAllChange}
                       className="text-purple-600 focus:ring-purple-500"
                     />
                     <label
@@ -576,15 +806,15 @@ export function ConnectionNode({ id, data }) {
                     {apiColumns.map((item) => (
                       <div
                         key={item.column}
-                        className="flex items-center space-x-2"
+                        className="flex items-center mb-2 cursor-pointer"
                       >
                         <input
                           type="checkbox"
                           id={item.column}
                           value={item.column}
-                          checked={selectedColumns.includes(item.column)}
-                          onChange={() => handleColumnChange(item.column)}
-                          className="text-purple-600 focus:ring-purple-500"
+                          checked={userCheckedColumns.includes(item.column)}
+                          onChange={() => handleColumnChange(item)}
+                          className="text-purple-600 focus:ring-purple-500 mr-2"
                         />
                         <label
                           htmlFor={item.column}
@@ -592,7 +822,11 @@ export function ConnectionNode({ id, data }) {
                         >
                           {item.column}
                         </label>
-                        <button onClick={(e) => {e.preventDefault(); handleEditColumn(item.column)}}>Edit</button>
+                        <Pencil
+                          name="edit"
+                          onClick={() => handleEditColumn(item.column)}
+                          className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
+                        />
                       </div>
                     ))}
                   </div>
@@ -600,12 +834,18 @@ export function ConnectionNode({ id, data }) {
               </div>
             )}
           </div>
+
           <button
             type="button"
-            onClick={(e) => data.handleOk({
-              userCheckedColumns: selectedColumns,
-              type: "Connection",
-            })}
+            onClick={() =>
+              data.handleOk({
+                userCheckedColumns: userCheckedColumns,
+                viewType: "Connection",
+                settings: settingsList,
+                userSelections: userSelections,
+                apiColumns: getFilterModalColumns(),
+              })
+            }
             className="w-full text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] mt-3"
           >
             OK

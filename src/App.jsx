@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import { PlatformRoutes } from "./routes/PlatformRoutes";
 import { DataGovernanceRoutes } from "./routes/DataGovernanceRoutes";
 import MigrationCanvas from "./pages/platform/migration/MigrationCanvas";
+
 import TransformationCanvas from "./pages/platform/transformation/TransformationCanvas";
 import { WelcomeModal } from "./pages/platform/react-flow/WelcomeModal";
 import { DrawerProvider } from "./pages/platform/react-flow/context/DrawerContext";
@@ -34,6 +35,7 @@ function App() {
 
   return (
     <Router>
+      <ContextProvider>
       <Routes>
         {/* Main layout with header/sidebar */}
         <Route
@@ -48,6 +50,7 @@ function App() {
                   toggleSidebar={toggleSidebar}
                 />
                 <main
+
                   className={`flex-1 p-4 transition-all duration-300 ${
                     isSidebarCollapsed ? "ml-16" : "ml-64"
                   }`}
@@ -76,6 +79,7 @@ function App() {
           path="/Migrationcanvas"
           element={
             <TableProvider>
+
               <FlowDataProvider>
                 <ThemeProvider>
                   <DrawerProvider>
@@ -159,7 +163,6 @@ function App() {
         <Route
           path="/viewcanvas"
           element={
-            <ContextProvider>
               <ViewDrawer>
                 <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
                   <Header className="h-16 flex-shrink-0" />{" "}
@@ -176,21 +179,26 @@ function App() {
                   <BusinessFooter />
                 </div>
               </ViewDrawer>
-            </ContextProvider>
           }
         />
         <Route
           path="/federation/view/source"
           element={
-            <>
-              <Header className="h-16 flex-shrink-0" />
-              <ReactFlowProvider>
-                <Source />
-              </ReactFlowProvider>
-            </>
+            <ContextProvider>
+              <div className="h-screen flex flex-col">
+                <Header className="flex-shrink-0 h-16" />
+                <div className="flex-1 relative overflow-hidden">
+                  <ReactFlowProvider>
+                    <Source />
+                  </ReactFlowProvider>
+                </div>
+              </div>
+            </ContextProvider>
           }
         />
+
       </Routes>
+      </ContextProvider>
     </Router>
   );
 }

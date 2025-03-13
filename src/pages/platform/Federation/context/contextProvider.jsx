@@ -24,11 +24,23 @@ export const ContextProvider = ({ children }) => {
       };
 
 
-      const [joinPayload, setJoinPayload] = useState({});
-      const handleJoinPayload = (val) => {
-        setJoinPayload(val);
+      const [finalPayload, setFinalPayload] = useState({});
+      const handleFinalPayload = (val) => {
+        setFinalPayload(val);
       };
 
+      const [complexCheck, setComplexCheck] = useState(false);
+
+      const [columnSettings, setColumnSettings] = useState({});
+
+       // Source View States
+       const [userSelections, setUserSelections] = useState(new Map());
+       const [settingsList, setSettingsList] = useState([]);
+       const [userCheckedColumns, setUserCheckedColumns] = useState([]);
+
+       useEffect(() => {
+        console.log(`Context ==== UserSelection => `, userSelections);
+       }, [userSelections])
     return (
         <StateContext.Provider
           value={{
@@ -38,8 +50,15 @@ export const ContextProvider = ({ children }) => {
             handleConsolidationPayload,
             connectionPayload,
             handleConnectionPayload,
-            joinPayload,
-            handleJoinPayload
+            finalPayload,
+            handleFinalPayload,
+            complexCheck, 
+            setComplexCheck,
+            columnSettings,
+            setColumnSettings,
+            settingsList, setSettingsList,
+            userSelections, setUserSelections,
+            userCheckedColumns, setUserCheckedColumns,
           }}
         >
           {children}
