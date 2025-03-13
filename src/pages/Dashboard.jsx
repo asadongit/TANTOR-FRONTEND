@@ -1,8 +1,10 @@
 import PlatformDashboard from './platform/Dashboard';
 import DataGovernanceDashboard from './datagovernance/Dashboard';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = ({ activeSection, setActiveSection }) => {
   const tabs = ['Platform', 'Data Governance', 'AI'];
+  const navigate = useNavigate();
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -31,7 +33,7 @@ const Dashboard = ({ activeSection, setActiveSection }) => {
             );
           })}
         </div>
-        <button type="button" className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]">
+        <button type="button" onClick={() => navigate('/dataview')} className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]">
           Data View
         </button>
       </div>
