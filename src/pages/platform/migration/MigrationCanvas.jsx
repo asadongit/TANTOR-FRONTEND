@@ -1,22 +1,24 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect } from "react";
 import ReactFlow, {
   addEdge,
   useNodesState,
   useEdgesState,
   Controls,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
-import { DefineNode } from './nodes/DefineNode';
-import { SourceNode } from './nodes/SourceNode';
-import { TargetNode } from './nodes/TargetNode';
-import { DrawerContainer } from '../react-flow/drawers/DrawerContainer';
-import { useTableContext } from '../react-flow/context/TableContext';
-import TableDrawer from '../react-flow/dialog/TableDrawer';
+  Panel,
+} from "reactflow";
+import "reactflow/dist/style.css";
+import { DefineNode } from "./nodes/DefineNode";
+import { SourceNode } from "./nodes/SourceNode";
+import { TargetNode } from "./nodes/TargetNode";
+import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
+import { useTableContext } from "../react-flow/context/TableContext";
+import TableDrawer from "../react-flow/dialog/TableDrawer";
+import { MigrationSidebar } from "./MigrationSidebar";
 
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
-  target: TargetNode
+  target: TargetNode,
 };
 
 let id = 0;
@@ -34,14 +36,14 @@ const MigrationCanvas = () => {
 
   const onDragOver = useCallback((event) => {
     event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+    event.dataTransfer.dropEffect = "move";
   }, []);
 
   const onDrop = useCallback(
     (event) => {
       event.preventDefault();
 
-      const type = event.dataTransfer.getData('application/reactflow');
+      const type = event.dataTransfer.getData("application/reactflow");
       if (!type) return;
 
       const position = {
@@ -53,9 +55,7 @@ const MigrationCanvas = () => {
         id: getId(),
         type,
         position,
-        data: { label: type,
-          tables: []
-         },
+        data: { label: type, tables: [] },
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -63,12 +63,15 @@ const MigrationCanvas = () => {
     [setNodes]
   );
 
-  const onNodeDelete = useCallback((nodeId) => {
-    setNodes((nds) => nds.filter((node) => node.id !== nodeId));
-    setEdges((eds) => eds.filter((edge) =>
-      edge.source !== nodeId && edge.target !== nodeId
-    ));
-  }, [setNodes, setEdges]);
+  const onNodeDelete = useCallback(
+    (nodeId) => {
+      setNodes((nds) => nds.filter((node) => node.id !== nodeId));
+      setEdges((eds) =>
+        eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
+      );
+    },
+    [setNodes, setEdges]
+  );
 
   useEffect(() => {
     window.deleteNode = onNodeDelete;
@@ -92,10 +95,13 @@ const MigrationCanvas = () => {
         className="bg-gray-50"
       >
         <Controls className="fill-white stroke-black" />
+        <Panel position="top-left">
+          <MigrationSidebar />
+        </Panel>
       </ReactFlow>
       <DrawerContainer />
       <TableDrawer nodes={nodes} setNodes={setNodes} />
     </div>
   );
-}
+};
 export default MigrationCanvas;

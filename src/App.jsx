@@ -86,7 +86,7 @@ function App() {
                     <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
                       <Header className="h-16 flex-shrink-0" />{" "}
                       <div className="flex-1 flex">
-                        <MigrationSidebar className="w-64 flex-shrink-0" />{" "}
+                        {/* <MigrationSidebar className="w-64 flex-shrink-0" />{" "} */}
                         <div className="flex-1 relative">
                           {" "}
                           <ReactFlowProvider>
@@ -115,7 +115,7 @@ function App() {
                     <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
                       <Header className="h-16 flex-shrink-0" />{" "}
                       <div className="flex-1 flex">
-                        <TransformationSidebar className="w-64 flex-shrink-0" />{" "}
+                        {/* <TransformationSidebar className="w-64 flex-shrink-0" />{" "} */}
                         <div className="flex-1 relative">
                           {" "}
                           <ReactFlowProvider>
