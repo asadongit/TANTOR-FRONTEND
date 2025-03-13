@@ -30,9 +30,11 @@ let id = 0;
 const getId = () => `node_${id++}`;
 
 export default function Source() {
-  const modalState = useLocation().state;
-  const { userSelections, setUserSelections } =
-    useStateContext();
+  const modalState = useLocation().state || {
+    queryType: "Regular",
+    viewType: "Source",
+  };
+  const { userSelections, setUserSelections } = useStateContext();
 
   const navigate = useNavigate();
 
@@ -66,20 +68,23 @@ export default function Source() {
     const orderByColumns = [];
 
     settings.forEach((item) => {
-        if (item.groupBy === "Yes") groupByColumns.push(item.name);
-        if (item.aggregate && item.output === "Yes") aggregateColumns.push(item.name);
-        if (item.sort) {
-          orderByColumns.push({
-            field: item.name,
-            sortType: item.sort,
-            order: item.order,
-          });
-        }
+      if (item.groupBy === "Yes") groupByColumns.push(item.name);
+      if (item.aggregate && item.output === "Yes")
+        aggregateColumns.push(item.name);
+      if (item.sort) {
+        orderByColumns.push({
+          field: item.name,
+          sortType: item.sort,
+          order: item.order,
+        });
+      }
     });
 
+    console.log("Order By Columns ==>> ", orderByColumns);
     return {
       groupByColumns,
       aggregateColumns,
+
       orderByColumns: orderByColumns.sort((a, b) => a.order - b.order),
     };
   };
@@ -181,11 +186,12 @@ export default function Source() {
 
   const handleOk = async (params) => {
     const { settings, viewType, userCheckedColumns, userSelections } = params;
-    
+
+    console.log("SETTINGS ==>> ", settings);
     if (!validateColumns(userCheckedColumns, settings)) return null;
 
     const columnSettings = processColumnSettings(settings, userCheckedColumns);
-
+    console.log("Sorted Order By Columns ===>>> ", columnSettings.orderByColumns);
     if (modalState.queryType === "Regular") {
       if (!validateAggregateAndGroupBy(userCheckedColumns, columnSettings))
         return null;
@@ -226,80 +232,88 @@ export default function Source() {
 
   const fetchPreviewData = async (payload = null, filterData = null) => {
     setIsFilterModalOpen(false);
-  
+
     // Get or create API payload
     let apiPayload = payload || userSelections.get("apiPayload");
-    
+
     if (!apiPayload) {
       toast.error("No API payload available");
       return;
     }
-  
+
     // Handle filter data
     if (filterData) {
       apiPayload = {
         ...apiPayload,
-        filter_data: filterData
+        filter_data: filterData,
       };
-      setUserSelections(prev => prev.set("apiPayload", apiPayload));
+      setUserSelections((prev) => prev.set("apiPayload", apiPayload));
     }
-  
+
     // Handle skip condition
     const isSkipCondition = payload === null && filterData === null;
-    
+
     if (isSkipCondition) {
       // First update with skip_filter flag
-      setUserSelections(prev => prev.set("apiPayload", {
-        ...apiPayload,
-        skip_filter: true
-      }));
-      
+      setUserSelections((prev) =>
+        prev.set("apiPayload", {
+          ...apiPayload,
+          skip_filter: true,
+        })
+      );
+
       // Then remove filter data for API call
       apiPayload = {
-        ...apiPayload
+        ...apiPayload,
       };
       delete apiPayload.filter_data;
     } else {
-      setUserSelections(prev => prev.set("apiPayload", {
-        ...apiPayload,
-        skip_filter: false
-      }));
+      setUserSelections((prev) =>
+        prev.set("apiPayload", {
+          ...apiPayload,
+          skip_filter: false,
+        })
+      );
     }
-  
+
     // Clean up before sending
     const cleanApiPayload = { ...apiPayload };
     delete cleanApiPayload.skip_filter;
-    
+
     console.log("FILTER API PAYLOAD ==> ", cleanApiPayload);
-    
+
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API_V2}/generate-base-view?execute_query=true`,
+        `${
+          import.meta.env.VITE_FAST_API_V2
+        }/generate-base-view?execute_query=true`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
+            Authorization: `Bearer ${
+              import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+            }`,
           },
           body: JSON.stringify(cleanApiPayload),
         }
       );
-  
+
       if (response.status === 200) {
         const responseText = await response.text();
         const data = responseText
-        .trim()
-        .split("\n")
-        .reduce((validData, jsonString) => {
-          try {
-            validData.push(JSON.parse(jsonString));
-            return validData;
-          } catch (error) {
-            console.error("Error parsing JSON object:", error);
-            return validData;
-          }
-        }, []);
-        
+          .trim()
+          .split("\n")
+          .reduce((validData, jsonString) => {
+            try {
+              validData.push(JSON.parse(jsonString));
+              return validData;
+            } catch (error) {
+              console.error("Error parsing JSON object:", error);
+              return validData;
+            }
+          }, []);
+
         console.log("DATA ==> ", data);
         setPreviewData(data);
         setShowPreview(true);
@@ -319,20 +333,20 @@ export default function Source() {
   };
   const handleSaveView = async (params) => {
     const { newViewName } = params;
-    
+
     let apiPayload = { ...userSelections.get("apiPayload") };
-    
+
     if (!apiPayload) {
       toast.error("No API payload available");
       return null;
     }
-    
+
     apiPayload.view_name = newViewName;
-    
+
     if (apiPayload.skip_filter === true) {
       delete apiPayload.filter_data;
       delete apiPayload.skip_filter;
-    }else{
+    } else {
       delete apiPayload.skip_filter;
     }
 
@@ -341,29 +355,33 @@ export default function Source() {
     try {
       // Check if view already exists
       const viewExistsResponse = await fetch(
-        `${import.meta.env.VITE_FAST_API_V2}/view-exists/${encodeURIComponent(newViewName)}`,
+        `${import.meta.env.VITE_FAST_API_V2}/view-exists/${encodeURIComponent(
+          newViewName
+        )}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
+            Authorization: `Bearer ${
+              import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+            }`,
           },
         }
       );
-      
+
       if (!viewExistsResponse.ok) {
         toast.error("Error checking if view exists");
         return null;
       }
-      
+
       const viewExists = await viewExistsResponse.json();
       console.log("viewExists ===> ", viewExists);
-      
+
       if (viewExists.result) {
         toast.error("View already exists");
         return null;
       }
-      
+
       // Save the view
       console.log("Final apiPayload ===> ", apiPayload);
       const response = await fetch(
@@ -372,25 +390,27 @@ export default function Source() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
+            Authorization: `Bearer ${
+              import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+            }`,
           },
           body: JSON.stringify(apiPayload),
         }
       );
-      
+
       if (!response.ok) {
         toast.error("Error while saving view..");
         return null;
       }
-      
+
       const data = await response.json();
       console.log("Save View Result ==> ", data);
-      
+
       setShowPreview(false);
       toast.success("VIEW SAVED SUCCESSFULLY.", { autoClose: 2900 });
-      
+
       setTimeout(() => navigate("/federation"), 3000);
-      
+
       return data;
     } catch (error) {
       console.error("Error saving view:", error);
@@ -449,31 +469,45 @@ export default function Source() {
       }))
     );
   }, [userSelection]);
-
+  
+  const handleViewLinkClick = useCallback(() => {
+    setNodes([]);
+  }, [setNodes]);
+  
   return (
     <div className="w-full h-screen overflow-hidden bg-[rgba(243,245,247,1)]">
       <div className="flex items-center gap-6 px-4 py-2 bg-white border-b">
         {/* Dashboard Button */}
-        <Link 
-          to="/dashboard" 
+        <Link
+          to="/dashboard"
           className="flex items-center gap-2 px-4 py-2 bg-white text-[#8E77BB] font-semibold rounded-lg hover:bg-[#E8E4F1] transition-colors"
         >
           <LayoutDashboard size={20} />
           Dashboard
         </Link>
-        
+
         {/* Breadcrumb Navigation */}
         <div className="flex items-center">
-          <Link to="/platform" className="text-gray-600 hover:text-gray-900">Platform</Link>
+          <Link to="/" className="text-gray-600 hover:text-gray-900">
+            Platform
+          </Link>
           <span className="mx-2 text-gray-500">&gt;</span>
-          <Link to="/federation" className="text-gray-600 hover:text-gray-900">Federation</Link>
+          <Link to="/federation" className="text-gray-600 hover:text-gray-900">
+            Federation
+          </Link>
           <span className="mx-2 text-gray-500">&gt;</span>
-          <Link to="/view" className="text-gray-600 hover:text-gray-900">View</Link>
+          <Link
+            to="/federation/view/source"
+            className="text-gray-600 hover:text-gray-900"
+            onClick={handleViewLinkClick}
+          >
+            View
+          </Link>
           <span className="mx-2 text-gray-500">&gt;</span>
-          { (<span className="text-gray-900 font-medium">Source</span>)}
+          {<span className="text-gray-900 font-medium">Source</span>}
         </div>
       </div>
-      
+
       <div
         className={`${
           showPreview ? "h-[60vh]" : "h-[calc(100vh-6rem)]"
@@ -506,7 +540,7 @@ export default function Source() {
           </ReactFlow>
         </div>
       </div>
-      
+
       {/* Rest of the components */}
       {showPreview && (
         <SourcePreview
