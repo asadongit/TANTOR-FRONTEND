@@ -31,13 +31,6 @@ const components = [
         icon: FileSpreadsheet,
         description: 'Choose your target Configuration',
         name: 'Target'
-      },
-      {
-        id: 'schedule',
-        type: 'schedule',
-        icon: FileSpreadsheet,
-        description: 'Schedule your Migration',
-        name: 'Schedule'
       }
     ]
   },
