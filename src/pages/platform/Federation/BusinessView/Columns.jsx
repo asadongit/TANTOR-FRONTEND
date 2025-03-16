@@ -7,9 +7,10 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
   const { columnSettings, setColumnSettings, complexCheck } = useStateContext("")
 
   useEffect(() => {
+    console.log("id isss =======>",id)
     setColumnSettings((prev) => {
       const defaultSettings = {
-        output: "Yes",
+        output: "No",
         alias: "",
         order: "",
         sort: "",

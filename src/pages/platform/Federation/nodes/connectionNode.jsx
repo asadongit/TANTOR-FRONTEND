@@ -104,16 +104,29 @@ export function ConnectionNode({ id, onSave }) {
 
   const isAllSelected = selectedColumns.length === columns.length;
 
-  
+  // -------------------------------------------------------------------------------->
+  // useEffect(() => {
+  //   if (colId && columnSettings[colId]) {
+  //     const columnsWithOutputYes = selectedColumnsOrder.filter(
+  //       (column) => columnSettings[colId][column]?.output === "Yes"
+  //     );
+
+  //     setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
+  //   }
+  // }, [columnSettings, colId]);
+  // --------------------------------------------------------------------------------------->
+
   useEffect(() => {
     if (colId && columnSettings[colId]) {
-      const columnsWithOutputYes = selectedColumnsOrder.filter(
-        (column) => columnSettings[colId][column]?.output === "Yes"
+      const columnsWithOutputOrAggregate = Object.keys(columnSettings[colId]).filter(
+        column => 
+          columnSettings[colId][column].output === "Yes" || 
+          columnSettings[colId][column].aggregate.trim() !== ""
       );
-
-      setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
+      setSelectedColumns(columnsWithOutputOrAggregate);
     }
   }, [columnSettings, colId]);
+  
 
 
 
@@ -612,7 +625,7 @@ export function ConnectionNode({ id, onSave }) {
         }}
       >
         <div className="absolute top-0 right-0 h-full w-full sm:w-1/2 md:w-1/3 lg:w-[22%]">
-          <Columns id={id}
+          <Columns id={colId}
             columnName={selectedColumn}
             dataType={columnData.find(col => col.column === selectedColumn)?.datatype}
             toggleModal={toggleModal} />

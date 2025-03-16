@@ -19,26 +19,60 @@ export function BusinessFooter() {
   const [error, setError] = useState(null);
 
 
+  // const getSelectFields = (columnSettings, hasOperation) => {
+  //   console.log("hase operation isss =====>",hasOperation)
+  //   const selectedViews = hasOperation
+  //     ? { Union: columnSettings.Union }
+  //     : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
+
+
+  //   console.log("selected views column seetings ====>", selectedViews)
+
+  //   return Object.entries(selectedViews || {})
+  //     .flatMap(([view, columns]) =>
+  //       Object.entries(columns)
+  //         .filter(([colName, colProps]) => colProps.output === "Yes")
+  //         .map(([colName, colProps]) => ({
+  //           field: colProps.aggregate
+  //             ? `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`
+  //             : (hasOperation ? colName : `${view}.${colName}`),
+  //           alias: colProps.alias || ""
+  //         }))
+  //     );
+  // };
+
   const getSelectFields = (columnSettings, hasOperation) => {
+    console.log("hasOperation is =====>", hasOperation);
+
     const selectedViews = hasOperation
-      ? { Union: columnSettings.Union }
-      : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
+        ? { Union: columnSettings.Union }
+        : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
+    console.log("selected views column settings ====>", selectedViews);
 
-    console.log("selected views column seetings ====>", selectedViews)
+    return Object.entries(selectedViews || {}).flatMap(([view, columns]) =>
+        Object.entries(columns).flatMap(([colName, colProps]) => {
+            let fields = [];
 
-    return Object.entries(selectedViews || {})
-      .flatMap(([view, columns]) =>
-        Object.entries(columns)
-          .filter(([colName, colProps]) => colProps.output === "Yes")
-          .map(([colName, colProps]) => ({
-            field: colProps.aggregate
-              ? `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`
-              : (hasOperation ? colName : `${view}.${colName}`),
-            alias: colProps.alias || ""
-          }))
-      );
-  };
+            if (colProps.aggregate) {
+                fields.push({
+                    field: `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`,
+                    alias: colProps.alias || ""
+                });
+            }
+
+            if (colProps.output === "Yes") {
+                fields.push({
+                    field: hasOperation ? colName : `${view}.${colName}`,
+                    alias: colProps.aggregate ? "" : colProps.alias || ""
+                });
+            }
+
+            return fields;
+        })
+    );
+};
+
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
@@ -178,8 +212,12 @@ export function BusinessFooter() {
     groupByColumns = [...groupByColumns];
     aggregateColumns = [...aggregateColumns];
 
+    console.log("select columns ",selectColumns)
+    console.log("group by columns ", groupByColumns)
+    console.log("aggreagte columns ",aggregateColumns)
 
-    if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
+
+    if (groupByColumns.length > 0 && selectColumns.length>0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
       toast.error("Select Field must be aggregate or in Group by");
       return;
     }
@@ -224,6 +262,8 @@ export function BusinessFooter() {
       console.log("order by is ====>", { order_by: finalOrderBy });
 
       const selectFields = getSelectFields(columnSettings, hasOperation);
+
+      console.log("selected fields areeee =========>", selectFields)
 
       const updatedPayload = {
         ...apiPayloadForApi,

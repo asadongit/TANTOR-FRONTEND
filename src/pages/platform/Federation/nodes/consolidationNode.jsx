@@ -550,12 +550,27 @@ export function ConsolidationNode({ id }) {
  
     }
   }, [firstView, secondView, finalPayload]);
+
+
+  const handleDelete = (id) => {
+    if (!finalPayload.operation) {
+      handleFinalPayload((prevData) => ({
+          ...prevData,
+          joins: prevData?.joins?.filter((join) => join.id !== id),
+      }));
+  }
+    // else if(finalPayload.operation){
+    // }
+
+    window.deleteNode?.(id)
+
+  };
  
   return (
     <>
       <div className="bg-[#8E77BB] rounded-full p-6 shadow-lg relative group flex justify-center">
         <button
-          onClick={() => window.deleteNode?.(id)}
+          onClick={() => handleDelete(id)}
           className="absolute -top-2 -right-2 bg-black rounded-full p-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <X className="w-4 h-4 text-white" />

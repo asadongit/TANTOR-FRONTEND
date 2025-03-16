@@ -241,21 +241,34 @@ export function SourceViewNode({ id, onSave }) {
     }
   };
 
-
   const isAllSelected = selectedColumns.length === (columnsForViews[selectedView]?.length || 0);
 
+  // --------------------------------------------->
+  // useEffect(() => {
+  //   console.log("CHECKING PROBLEM FOR DUPLICATE",selectedColumnsOrder );
+
+  //   if (selectedView && columnSettings[selectedView]) {
+  //     const columnsWithOutputYes = selectedColumnsOrder.filter(
+  //       (column) => columnSettings[selectedView][column]?.output === "Yes"
+  //     );
+
+  //     // Ensure unique values in selectedColumns
+  //     setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
+  //   }
+  // }, [columnSettings, selectedView, selectedColumnsOrder]);
+  // ------------------------------------------------>
+
   useEffect(() => {
-    console.log("CHECKING PROBLEM FOR DUPLICATE");
-
     if (selectedView && columnSettings[selectedView]) {
-      const columnsWithOutputYes = selectedColumnsOrder.filter(
-        (column) => columnSettings[selectedView][column]?.output === "Yes"
+      const columnsWithOutputOrAggregate = Object.keys(columnSettings[selectedView]).filter(
+        column => 
+          columnSettings[selectedView][column].output === "Yes" || 
+          columnSettings[selectedView][column].aggregate.trim() !== ""
       );
-
-      // Ensure unique values in selectedColumns
-      setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
+      setSelectedColumns(columnsWithOutputOrAggregate);
     }
-  }, [columnSettings, selectedView, selectedColumnsOrder]);
+  }, [columnSettings, selectedView]);
+  
 
 
   const handleSave = () => {
