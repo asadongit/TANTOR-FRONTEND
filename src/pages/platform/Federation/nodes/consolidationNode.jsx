@@ -94,7 +94,7 @@ export function ConsolidationNode({ id }) {
         }
       });
     }
-    else if (type === "Union") {
+    else if (type === "Union" || type === "Intersect") {
       consolidationPayload.forEach((payload) => {
         if (payload.target === id) {
           const matchingView =
@@ -184,7 +184,7 @@ export function ConsolidationNode({ id }) {
     console.log("viewPayload in consolidation is =====>", viewPayload);
     console.log("connection payload in consolidation is ====>", connectionPayload);
  
-    if (type === "Union") {
+    if (type === "Union" || type === "Intersect") {
       const unionData = {};
       [...viewPayload, ...connectionPayload].forEach((item) => {
         if (item.view && Array.isArray(item.selectedColumns)) {
@@ -332,9 +332,15 @@ export function ConsolidationNode({ id }) {
   };
  
   const handleUnionNext = () => {
+    console.log("type is ====>",type)
+    console.log("inner type is =====>", unionType)
     if (type === "Union" || type === "Intersect" || type === "Union All" || type === "Intersect All") {
-      if (unionType == "") {
+      if (type === "Union" && unionType == "" ) {
         toast.error("Select type first");
+        return;
+      }
+      if(type === "Intersect" && unionType == ""){
+        toast.error("Select type first")
         return;
       }
       if (selectedUnionColumns.length === 0) {
@@ -804,11 +810,11 @@ export function ConsolidationNode({ id }) {
                   Cancel
                 </button>
                 <button
-                  onClick={(type === "Union") ? handleUnionNext : handleSave}
+                  onClick={(type === "Union" || type === "Intersect") ? handleUnionNext : handleSave}
                   type="button"
                   className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                 >
-                  {type === "Union" ? "Next" : "Save"}
+                  {(type === "Union" || type === "Intersect") ? "Next" : "Save"}
                 </button>
  
               </div>
