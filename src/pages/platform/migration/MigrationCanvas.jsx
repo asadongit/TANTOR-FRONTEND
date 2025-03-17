@@ -101,7 +101,6 @@ const MigrationCanvas = () => {
       </ReactFlow>
       <DrawerContainer />
       <TableDrawer nodes={nodes} setNodes={setNodes} />
-      <Success nodes={nodes} setNodes={setNodes} />
     </div>
   );
 };

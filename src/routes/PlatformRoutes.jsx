@@ -3,7 +3,10 @@ import Project from '../pages/platform/Project';
 import Connections from '../pages/platform/Connections';
 import Jobs from '../pages/platform/Jobs';
 import Pipeline from '../pages/platform/Pipeline';
-import Reports from '../pages/platform/Reports';
+
+import Reports from '../pages/platform/reports/Reports';
+import GenerateReport from '../pages/platform/reports/GenerateReport';
+
 import Migration from '../pages/platform/migration/Migration';
 import Transformation from '../pages/platform/transformation/Transformation';
 import Purge from '../pages/platform/Purge';
@@ -26,6 +29,7 @@ export const PlatformRoutes = (
     <Route path="/jobs" element={<Jobs />} />
     <Route path="/pipeline" element={<Pipeline />} />
     <Route path="/reports" element={<Reports />} />
+    <Route path="/generateReport" element={<GenerateReport />}></Route>
     <Route path="/migration" element={<Migration />} />
     <Route path="/dataview" element={<DataView/>} />
     <Route path="/transformation" element={<Transformation />} />
