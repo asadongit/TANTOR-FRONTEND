@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
 import { useTableContext } from '../../react-flow/context/TableContext';
+import { useStateContext } from "../../react-flow/context/ContextProvider";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -26,6 +27,9 @@ export function SourceNode({ id }) {
   const [selectedSchema, setSelectedSchema] = useState("");
   const [schemaLoading, setSchemaLoading] = useState(false);  
   const { openDrawer } = useTableContext();  
+  const [metadata, setMetaData] = useState([]);
+  const [selectedPurgeScope, setSelectedPurgeScope] = useState("");
+  const { handleSelectedTables, handleSourceConnectionName } = useStateContext("");
 
   
 
@@ -186,7 +190,6 @@ export function SourceNode({ id }) {
           );
         }
         setTables(tabledetails);
-        console.log("table details on source node", tabledetails)
       } catch (error) {
         console.error("Error fetching tables:", error);
         setTables([]); // Clear tables on error
@@ -197,10 +200,40 @@ export function SourceNode({ id }) {
     [hostname, token]
   );
 
+  const fetchMetadata = useCallback(async () => {
+    try {
+      const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
+        method : "GET",
+        headers : {
+          Authorization : `Bearer ${token}`,
+          "Content-Type" : "application/json"
+        }
+      });
+
+      if (!metaDataResponse.ok) {
+        throw new Error(`HTTP error! status: ${metaDataResponse.status}`);
+      }
+
+      const response = await metaDataResponse.json();
+      setMetaData(response)
+    } catch (error) {
+      console.error("Error fetching tables:", error);
+    }
+  }, [])
+
 
   const filteredTables = tables.filter((table) =>
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
   );
+
+  const filterMetaData = metadata.filter((sourceTable) => 
+    sourceTable.source_table.toLowerCase().includes(searchTerm?.toLowerCase() || "")
+  );
+
+  useEffect(()=> {
+    handleSelectedTables(selectedItems);
+    handleSourceConnectionName(selectedConnection)
+  }, [selectedItems])
 
 
   return (
@@ -260,6 +293,7 @@ export function SourceNode({ id }) {
                 const schemaName = e.target.value;
                 setSelectedSchema(schemaName);
                 fetchTables(selectedConnection, schemaName);
+                //fetchMetadata();
               }}
               disabled={!selectedConnection || schemaLoading}
             >
@@ -298,7 +332,11 @@ export function SourceNode({ id }) {
               id="table-bulk"
               name="table"
               value="bulk"
-              defaultChecked
+              onChange={(e) => {
+                const scopeName = e.target.value;
+                setSelectedPurgeScope(scopeName);
+                fetchMetadata();
+              }}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
             />
             <label htmlFor="table-bulk" className="ml-2 text-xs text-gray-700">
@@ -323,7 +361,7 @@ export function SourceNode({ id }) {
         </div>
       </div>
 
-      <div className="flex gap-4 items-center mt-3">
+      {/* <div className="flex gap-4 items-center mt-3">
         <label className="text-xs text-black font-medium">Column</label>
         <div className="flex items-center">
           <input
@@ -350,9 +388,9 @@ export function SourceNode({ id }) {
             Subset
           </label>
         </div>
-      </div>
+      </div> */}
 
-      {selectedConnection && selectedSchema && (
+      {selectedConnection && selectedSchema && selectedPurgeScope && (
         <div>
           <div className="flex items-center gap-2 mb-0.5 mt-4">
             <Search size={14} className="text-gray-500" />
@@ -381,14 +419,14 @@ export function SourceNode({ id }) {
                       type="checkbox"
                       id="select-all"
                       className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                      checked={selectedItems.length === filteredTables.length} // Check if all items are selected
+                      checked={selectedItems.length === filterMetaData.length} // Check if all items are selected
                       onChange={(e) => {
                         const isChecked = e.target.checked;
                         if (isChecked) {
                           setSelectedItems(
-                            filteredTables
+                            filterMetaData
                               .filter((table) => table !== null) // Filter out null responses
-                              .map((table) => table.table_name)
+                              .map((table) => table.source_table)
                           );
                         } else {
                           setSelectedItems([]);
@@ -404,8 +442,9 @@ export function SourceNode({ id }) {
                   </div>
                 </div>
 
-                {filteredTables
-                  .filter((table) => table !== null) 
+                {filterMetaData
+                  .filter((table) => table !== null)
+                  .filter((connection) => connection.source_conn_name == selectedConnection)
                   .map((table, idx) => (
                     <div
                       key={idx}
@@ -415,12 +454,12 @@ export function SourceNode({ id }) {
                         <input
                           type="checkbox"
                           id={`table-${idx}`}
-                          checked={selectedItems.includes(table.table_name)}
+                          checked={selectedItems.includes(table.source_table)}
                           onChange={(e) => {
                             const checked = e.target.checked;
                             setSelectedItems(prev => checked 
-                              ? [...prev, table.table_name]
-                              : prev.filter(i => i !== table.table_name)
+                              ? [...prev, table.source_table]
+                              : prev.filter(i => i !== table.source_table)
                             );
                           }}
                           className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
@@ -429,7 +468,7 @@ export function SourceNode({ id }) {
                           htmlFor={`table-${idx}`}
                           className="text-xs font-semibold text-black"
                         >
-                          {table.table_name}
+                          {table.source_table}
                         </label>
                       </div>
                       <button
