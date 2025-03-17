@@ -17,6 +17,7 @@ export function SourceNode({ id, data }) {
   const token = import.meta.env.VITE_ACCESS_TOKEN;
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);
+  const [selectedScope, setSelectedScope] = useState("bulk");
   const [selectedItems, setSelectedItems] = useState([]);
   const [tables, setTables] = useState([]);
   const [schemas, setSchema] = useState([]);
@@ -201,6 +202,60 @@ export function SourceNode({ id, data }) {
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
   );
 
+
+  const handleScopeChange = (e) => {
+    setSelectedScope(e.target.value);
+    if (e.target.value === "subset") {
+      setSelectedItems([]); 
+    }
+  };
+
+
+const handleSelectAll = (e) => {
+  const isChecked = e.target.checked;
+  if (isChecked) {
+    setSelectedItems(
+      filteredTables
+        .filter((table) => table !== null)
+        .map((table) => table.table_name)
+    );
+  } else {
+    setSelectedItems([]);
+  }
+};
+
+
+const handleTableSelection = (tableName) => {
+  if (selectedScope === "subset") {
+    setSelectedItems([tableName]);
+  } else {
+    setSelectedItems((prev) =>
+      prev.includes(tableName)
+        ? prev.filter((item) => item !== tableName)
+        : [...prev, tableName]
+    );
+  }
+};
+
+
+const handleCancel = () => {
+  setSelectedItems([]);
+  console.log("Selection reset.");
+};
+
+
+const handleOk = () => {
+  console.log("Selected items:", selectedItems);
+  // setShowAlert(true);
+
+  // // Hide the alert after 3 seconds
+  // setTimeout(() => {
+  //   setShowAlert(false);
+  // }, 3000);
+
+  alert("Flow Updated Successfully"); // Temporary alert
+};
+
   return (
     <div
       className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
@@ -297,6 +352,7 @@ export function SourceNode({ id, data }) {
               name="table"
               value="bulk"
               defaultChecked
+              onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
             />
             <label htmlFor="table-bulk" className="ml-2 text-xs text-gray-700">
@@ -309,6 +365,7 @@ export function SourceNode({ id, data }) {
               id="table-subset"
               name="table"
               value="subset"
+              onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label
@@ -321,7 +378,7 @@ export function SourceNode({ id, data }) {
         </div>
       </div>
 
-      <div className="flex gap-4 items-center mt-3">
+      {/* <div className="flex gap-4 items-center mt-3">  
         <label className="text-xs text-black font-medium">Column</label>
         <div className="flex items-center">
           <input
@@ -348,7 +405,7 @@ export function SourceNode({ id, data }) {
             Subset
           </label>
         </div>
-      </div>
+      </div> */}
 
       {/* <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-24 border border-gray-700 hover:border-transparent rounded mt-4">
         OK
@@ -382,19 +439,13 @@ export function SourceNode({ id, data }) {
                       type="checkbox"
                       id="select-all"
                       className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                      checked={selectedItems.length === filteredTables.length} // Check if all items are selected
-                      onChange={(e) => {
-                        const isChecked = e.target.checked;
-                        if (isChecked) {
-                          setSelectedItems(
-                            filteredTables
-                              .filter((table) => table !== null) // Filter out null responses
-                              .map((table) => table.table_name)
-                          );
-                        } else {
-                          setSelectedItems([]);
-                        }
-                      }}
+                      checked={
+                        selectedScope === "bulk" &&
+                        selectedItems.length ===
+                          filteredTables.filter((table) => table !== null).length
+                      } // Check if all items are selected
+                      onChange={handleSelectAll}
+                    disabled={selectedScope === "subset"} // Disable in "subset" mode
                     />
                     <label
                       htmlFor="select-all"
@@ -417,15 +468,10 @@ export function SourceNode({ id, data }) {
                           type="checkbox"
                           id={`table-${idx}`}
                           checked={selectedItems.includes(table.table_name)}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setSelectedItems(prev => checked 
-                              ? [...prev, table.table_name]
-                              : prev.filter(i => i !== table.table_name)
-                            );
-                          }}
-                          className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        />
+                          onChange={() => handleTableSelection(table.table_name)}
+                        className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        disabled={selectedScope === "subset" && selectedItems.length > 0 && !selectedItems.includes(table.table_name)}
+                      />
                         <label
                           htmlFor={`table-${idx}`}
                           className="text-xs font-semibold text-black"
@@ -451,21 +497,16 @@ export function SourceNode({ id, data }) {
         </div>
       )}
       <div className="flex space-x-2 mt-4">
-        <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
+      <button
+          onClick={handleCancel}
+          className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
+        >
           Cancel
         </button>
-        <button onClick={() => {
-    // Access node data from React Flow's props
-    const nodeTables = data.tables || [];
-    
-    // Log all tables and their filters
-    nodeTables.forEach(table => {
-      console.group(`Table: ${table.table_name}`);
-      console.log('Filters:', table.filters);
-      console.groupEnd();
-    });
-  }}
-  className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
+        <button
+          onClick={handleOk}
+          className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
+        >
           OK
         </button>
       </div>

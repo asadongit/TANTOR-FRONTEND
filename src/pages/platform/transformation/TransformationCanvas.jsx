@@ -14,6 +14,7 @@ import { SchedulerNode } from "./nodes/SchedulerNode";
 import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
 import { useTableContext } from "../react-flow/context/TableContext";
 import TableDrawer from "../react-flow/dialog/TableDrawer";
+import Success from "../react-flow/dialog/success";
 import { TransformationSidebar } from "./TransformationSidebar";
 
 const nodeTypes = {
@@ -103,6 +104,7 @@ const TransformationCanvas = () => {
       </ReactFlow>
       <DrawerContainer />
       <TableDrawer nodes={nodes} setNodes={setNodes} />
+      <Success nodes={nodes} setNodes={setNodes} />
     </div>
   );
 };
