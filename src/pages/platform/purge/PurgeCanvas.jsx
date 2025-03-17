@@ -1,11 +1,12 @@
 import { useCallback, useEffect } from "react";
-import ReactFlow, { addEdge, Controls, useEdgesState, useNodesState } from "reactflow";
+import ReactFlow, { addEdge, Controls, Panel, useEdgesState, useNodesState } from "reactflow";
 import { DefineNodePurge } from "../purge/purge-nodes/DefineNodePurge";
 import { SourceNode } from "../purge/purge-nodes/SourceNodePurge";
 import { TargetNode } from "../purge/purge-nodes/TargetNodePurge";
 import { SchedulerNode } from "../purge/purge-nodes/SchedulerNodePurge"
 import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
 import TableDrawer from "../react-flow/dialog/TableDrawer";
+import PurgeSidebar from "./PurgeSidebar";
 
 
 const nodeTypes = {
@@ -83,6 +84,9 @@ function PurgeCanvas() {
         className="bg-gray-50"
       >
         <Controls className="fill-white stroke-black" />
+        <Panel position="top-left">
+          <PurgeSidebar />
+        </Panel>
       </ReactFlow>
       <DrawerContainer />
       <TableDrawer nodes={nodes} setNodes={setNodes}/>
