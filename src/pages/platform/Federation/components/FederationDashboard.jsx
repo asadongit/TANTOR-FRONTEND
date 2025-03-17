@@ -205,62 +205,6 @@ const FederationDashBoard = () => {
     return totalTables;
   };
 
-  const getSchemaMainCount = async (connectionNames) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/schemas/count`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${encodedToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          "connection_names": connectionNames
-        })
-      });
-
-      let data = await response.json();
-      console.log("schema main count is  ===>", data["schema-count"]);
-
-      if (data && data["schema-count"] !== undefined) {
-        return data["schema-count"];
-      } else {
-        return 0;
-      }
-
-    } catch (error) {
-      console.log("Error fetching schema count:", error);
-      return 0;
-    }
-  };
-
-  const getTableMainCount = async (connectionNames) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/tables/count`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${encodedToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          "connection_names": connectionNames
-        })
-      });
-
-      let data = await response.json();
-      console.log("table-count is  ===>", data["table-count"]);
-
-      if (data && data["table-count"] !== undefined) {
-        return data["table-count"];
-      } else {
-        return 0;
-      }
-
-    } catch (error) {
-      console.log("Error fetching schema count:", error);
-      return 0;
-    }
-  };
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -272,13 +216,8 @@ const FederationDashBoard = () => {
       if (!connectionNames.length) return;
 
       const totalViewsCount = Object.values(viewList).reduce((sum, views) => sum + views.length, 0);
-      var totalSchemaCount = 0;
-      var totalTableCount = 0;
-
-      if (connectionNames) {
-        totalSchemaCount = await getSchemaMainCount(connectionNames);
-        totalTableCount = await getTableMainCount(connectionNames);
-      }
+      const totalSchemaCount = Object.values(schemaList).reduce((acc, schemas) => acc + schemas.length, 0);
+      const totalTableCount = Object.values(tableList).reduce((acc, db) =>  acc + Object.values(db).reduce((sum, tables) => sum + tables.length, 0), 0);
 
       setCount({
         connections: connectionNames,
