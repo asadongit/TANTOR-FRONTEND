@@ -76,69 +76,82 @@ export function BusinessFooter() {
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  const helperPreviewData = (cleanApiPayload) => {
+  const [rowData, setRowData] = useState([]);
+
+  const [colDefs, setColumnDefs] = useState([])
+
+  const helperPreviewData = async (cleanApiPayload) => {
 
     console.log("CALLING API VIA PAYLOAD =====>", cleanApiPayload)
-    fetch(`${import.meta.env.VITE_FAST_API_V2}/save-view?execute_query=true`, {
-      method: "POST",
-      headers: {
-        'Authorization': `Bearer ${encodedToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(cleanApiPayload),
-    })
-      .then((response) =>
-        response.text().then((data) => ({ status: response.status, data }))
-      )
-      .then(({ status, data }) => {
-        if (status === 200) {
-          const dataArray = data.split("\n")
-            .filter(item => item.trim() !== "")
-            .map(item => {
-              try {
-                return JSON.parse(item);
-              } catch (e) {
-                console.error("Error parsing JSON:", e, item);
-                return null;
-              }
-            })
-            .filter(item => item !== null);
 
-          if (dataArray.length === 0) {
-            setError("Table is empty");
-            setRowData([]);
-          } else {
-            console.log("Parsed Data Array: ", dataArray);
-            setLoading(false);
-            const rows = data.trim().split("\n").map((row) => JSON.parse(row));
-            const columns = Object.keys(rows[0]);
-            console.log("rows are ===>", rows);
-            console.log("columns are ===>", columns);
-            setColumnDefs(columns);
-            setRowData(rows);
-            setError(null);
-          }
-        } else {
-          if (data) {
-            setLoading(false);
-            const res = JSON.parse(data);
-            toast.error("Select correct inputs");
-            setError(res.detail);
-            setPreview(false);
-          }
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_FAST_API_V2}/save-view?execute_query=true`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
+          },
+          body: JSON.stringify(cleanApiPayload),
         }
-      })
-      .catch((error) => {
-        console.error("Error fetching data:", error);
-        setError("Something went wrong!");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-
-    // } else {
-    //   toast.error("Select inputs first");
-    // }
+      );
+    
+      const responseText = await response.text();
+    
+      if (response.ok) {
+        const data = responseText
+          .trim()
+          .split("\n")
+          .reduce((validData, jsonString) => {
+            try {
+              validData.push(JSON.parse(jsonString));
+            } catch (error) {
+              console.error("Error parsing JSON object:", error, jsonString);
+            }
+            return validData;
+          }, []);
+    
+        if (data.length === 0) {
+          setError("Table is empty");
+          setRowData([]);
+        } else {
+          console.log("Parsed Data Array:", data);
+          setLoading(false);
+          const columns = Object.keys(data[0]);
+          setColumnDefs(columns);
+          setRowData(data);
+          setError(null);
+          toast.success("View Query Executed!");
+        }
+        return data;
+      } else {
+        try {
+          const errorData = JSON.parse(responseText);
+          let errorMessage = errorData.detail || "Unknown error occurred";
+          setError(errorMessage);
+          toast.error(errorMessage);
+          setColumnDefs([]);
+          setRowData([]);
+          setPreview(false);
+        } catch (parseError) {
+          console.error("Error parsing error response:", parseError, responseText);
+          setError("An unexpected error occurred");
+          toast.error("An unexpected error occurred");
+        }
+        return null;
+      }
+    } catch (error) {
+      console.error("Error executing query:", error);
+      setError("Something went wrong!");
+      toast.error("Failed to execute query");
+      setColumnDefs([]);
+      setRowData([]);
+      setPreview(false);
+      return null;
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -397,12 +410,6 @@ export function BusinessFooter() {
     }
   };
 
-
-
-
-  const [rowData, setRowData] = useState([]);
-
-  const [colDefs, setColumnDefs] = useState([])
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
