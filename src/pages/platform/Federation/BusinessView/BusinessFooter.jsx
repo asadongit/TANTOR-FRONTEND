@@ -194,7 +194,7 @@ export function BusinessFooter() {
 
     const hasOperation = apiPayloadForApi?.operation !== undefined;
     const source = hasOperation
-      ? columnSettings["Union"]
+      ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === "Union"))
       : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
     console.log("$$$#####$$$$$#####%%%%",source)
@@ -230,26 +230,30 @@ export function BusinessFooter() {
     console.log("aggreagte columns ",aggregateColumns)
 
 
-    if (groupByColumns.length > 0 && selectColumns.length>0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
-      toast.error("Select Field must be aggregate or in Group by");
-      return;
-    }
+    // if (groupByColumns.length > 0 && selectColumns.length>0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
+    //   toast.error("Select Field must be aggregate or in Group by");
+    //   return;
+    // }
 
-    if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
-      toast.error("Select Field must be aggregate or in Group by");
-      return;
-    }
+    // if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
+    //   toast.error("Select Field must be aggregate or in Group by");
+    //   return;
+    // }
 
     if (Object.keys(apiPayloadForApi).length > 0) {
       setPreview(true);
       setLoading(true);
       setRowData([]);
 
+      console.log("source is newwwwwwww =====>", source)
+
       const groupByArray = Object.entries(source).flatMap(([view, columns]) =>
         Object.entries(columns)
           .filter(([col, settings]) => settings.groupBy === "Yes")
           .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
       );
+
+      console.log("group by array new is =====>",groupByArray)
 
       let orderBy = [];
       Object.keys(source).forEach(table => {
@@ -317,7 +321,7 @@ export function BusinessFooter() {
 
         const hasOperation = finalPayload?.operation !== undefined;
         const source = hasOperation
-          ? columnSettings["Union"]
+          ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === "Union"))
           : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
 
@@ -342,15 +346,15 @@ export function BusinessFooter() {
         aggregateColumns = [...aggregateColumns];
 
 
-        if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
-          toast.error("Select Field must be aggregate or in Group by");
-          return;
-        }
+        // if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
+        //   toast.error("Select Field must be aggregate or in Group by");
+        //   return;
+        // }
 
-        if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
-          toast.error("Select Field must be aggregate or in Group by");
-          return;
-        }
+        // if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
+        //   toast.error("Select Field must be aggregate or in Group by");
+        //   return;
+        // }
 
         if (Object.keys(finalPayload).length > 0) {
           setPreview(true);
