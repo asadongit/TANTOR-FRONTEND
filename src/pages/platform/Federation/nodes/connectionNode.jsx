@@ -118,14 +118,15 @@ export function ConnectionNode({ id, onSave }) {
 
   useEffect(() => {
     if (colId && columnSettings[colId]) {
-      const columnsWithOutputOrAggregate = Object.keys(columnSettings[colId]).filter(
-        column => 
-          columnSettings[colId][column].output === "Yes" || 
-          columnSettings[colId][column].aggregate.trim() !== ""
-      );
+      const columnsWithOutputOrAggregate = Object.keys(columnSettings[colId]).filter(column => {
+        const columnData = columnSettings[colId][column] || {};
+        return columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+      });
+  
       setSelectedColumns(columnsWithOutputOrAggregate);
     }
   }, [columnSettings, colId]);
+  
   
 
 

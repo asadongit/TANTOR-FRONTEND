@@ -261,13 +261,15 @@ export function SourceViewNode({ id, onSave }) {
   useEffect(() => {
     if (selectedView && columnSettings[selectedView]) {
       const columnsWithOutputOrAggregate = Object.keys(columnSettings[selectedView]).filter(
-        column => 
-          columnSettings[selectedView][column].output === "Yes" || 
-          columnSettings[selectedView][column].aggregate.trim() !== ""
+        column => {
+          const columnData = columnSettings[selectedView][column] || {};
+          return columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+        }
       );
       setSelectedColumns(columnsWithOutputOrAggregate);
     }
   }, [columnSettings, selectedView]);
+  
   
 
 
