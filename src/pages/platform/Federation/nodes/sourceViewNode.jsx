@@ -117,8 +117,8 @@ export function SourceViewNode({ id, onSave }) {
       console.log("Updated column settings:", updatedSettings);
       return updatedSettings;
     });
-    setSelectedView(e.target.value)
-    fetchColumnsForView(e.target.value);
+    setSelectedView(e.target.value.toLowerCase())
+    fetchColumnsForView(e.target.value.toLowerCase());
     // handleFinalPayload({});
 
   }

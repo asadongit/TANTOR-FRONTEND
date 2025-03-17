@@ -175,7 +175,7 @@ export function BaseNode({ id, data }) {
   }, [selectedView]);
 
   const handleChangeView = (event) => {
-    const selectedViewName = event.target.value;
+    const selectedViewName = event.target.value.toLowerCase();
     setUserCheckedColumns([]);
     setApiColumns([]);
     setSelectedView(selectedViewName);

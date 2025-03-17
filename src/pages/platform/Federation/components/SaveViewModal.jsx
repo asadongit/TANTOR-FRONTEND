@@ -19,9 +19,10 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
         ...finalPayload,
         isMateralizedView: isMaterializedView,
         isCaching: isCaching,
+        grace_period: refreshPeriod
       });
     }
-  }, [isMaterializedView, isCaching]);
+  }, [isMaterializedView, isCaching, refreshPeriod]);
 
   const handleViewTypeChange = (event) => {
     setIsMaterializedView(event.target.checked);
