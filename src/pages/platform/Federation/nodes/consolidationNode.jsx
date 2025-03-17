@@ -349,7 +349,6 @@ export function ConsolidationNode({ id }) {
       }
  
       if ((viewPayload && viewPayload.length > 0) || (connectionPayload && connectionPayload.length > 0)) {
-        setIsUnionModalOpen(true)
         const unions = [
           ...(viewPayload ? viewPayload.map(node => node.view) : []),
           ...(connectionPayload ? connectionPayload.map(node => node.view) : [])
@@ -370,6 +369,19 @@ export function ConsolidationNode({ id }) {
             defs[item.view] = item.def;
           }
         });
+
+
+        console.log("UNION ISS  SSSSSS-========>",unionData)
+        console.log("first view is =========>",firstView)
+        console.log("second view is ========>",secondView)
+
+        if (unionData[firstView]?.length !== unionData[secondView]?.length) {
+          console.error(`Column count mismatch: ${firstView} (${unionData[firstView]?.length}) vs ${secondView} (${unionData[secondView]?.length})`);
+          toast.error(`Column count mismatch: ${firstView} (${unionData[firstView]?.length}) and ${secondView} (${unionData[secondView]?.length})`);
+          return;
+      }
+
+      setIsUnionModalOpen(true)
  
         const newPayload = {
           operation: unionType,
