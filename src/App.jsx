@@ -53,7 +53,7 @@ function App() {
                 <main
 
                   className={`flex-1 p-4 transition-all duration-300 ${
-                    isSidebarCollapsed ? "ml-16" : "ml-64"
+                    isSidebarCollapsed ? "ml-16 w-[calc(100%-4rem)]" : "ml-64 w-[calc(100%-16rem)]"
                   }`}
                 >
                   <Routes>
