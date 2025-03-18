@@ -9,15 +9,15 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { SourceViewNode } from '../nodes/sourceViewNode';
-import {ConnectionNode} from '../nodes/connectionNode'
-import {ConsolidationNode} from '../nodes/consolidationNode'
+import { ConnectionNode } from '../nodes/connectionNode'
+import { ConsolidationNode } from '../nodes/consolidationNode'
 import { DrawerContainer } from '../drawers/DrawerContainer';
 import { useStateContext } from '../context/contextViewProvider';
 
 const nodeTypes = {
   sourceView: SourceViewNode,
-  connection:ConnectionNode,
-  consolidation:ConsolidationNode
+  connection: ConnectionNode,
+  consolidation: ConsolidationNode
 };
 
 let id = 0;
@@ -26,7 +26,7 @@ const getId = () => `node_${id++}`;
 export function ViewCanvas() {
 
   const { handleConsolidationPayload } = useStateContext("");
-  
+
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
@@ -38,9 +38,9 @@ export function ViewCanvas() {
 
 
   const onConnect = (params) => {
-    const { source, target } = params; 
+    const { source, target } = params;
     handleConsolidationPayload({ source, target })
-    console.log("Connecting:", { source, target }); 
+    console.log("Connecting:", { source, target });
     setEdges((eds) => addEdge(params, eds));
   };
 
@@ -66,7 +66,7 @@ export function ViewCanvas() {
         type,
         position,
         data: { label: type },
-        style: { 
+        style: {
           width: 100,  // Fixed width
           height: 100  // Fixed height
         }
@@ -94,6 +94,10 @@ export function ViewCanvas() {
 
   return (
     <div className="h-full relative">
+      <div className="fixed left-1 bottom-16 transform -translate-y-1/2 z-50">
+        <Controls className="fill-black text-black stroke-black" />
+      </div>
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -107,8 +111,6 @@ export function ViewCanvas() {
         zoom={0.25}
         className="bg-gray-50"
       >
-        {/* <Background color="#374151" gap={16} /> */}
-        {/* <Controls className="fill-black stroke-black" /> */}
       </ReactFlow>
       <DrawerContainer />
     </div>
