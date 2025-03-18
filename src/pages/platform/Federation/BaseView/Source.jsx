@@ -476,11 +476,11 @@ export default function Source() {
   
   return (
     <div className="w-full h-screen overflow-hidden bg-[rgba(243,245,247,1)]">
-      <div className="flex items-center gap-6 px-4 py-2 bg-white border-b">
+      <div className="flex items-center gap-6 px-4 pt-2">
         {/* Dashboard Button */}
         <Link
           to="/dashboard"
-          className="flex items-center gap-2 px-4 py-2 bg-white text-[#8E77BB] font-semibold rounded-lg hover:bg-[#E8E4F1] transition-colors"
+          className="flex items-center  border-solid border gap-2 px-4 py-2 bg-white text-[#8E77BB] font-semibold rounded-lg hover:bg-[#E8E4F1] transition-colors"
         >
           <LayoutDashboard size={20} />
           Dashboard
@@ -504,7 +504,7 @@ export default function Source() {
             View
           </Link>
           <span className="mx-2 text-gray-500">&gt;</span>
-          {<span className="text-gray-900 font-medium">Source</span>}
+          {<span className="text-[#8E77BB] font-medium">Source</span>}
         </div>
       </div>
 

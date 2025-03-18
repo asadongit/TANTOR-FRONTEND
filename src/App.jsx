@@ -24,6 +24,7 @@ import { BusinessFooter } from "./pages/platform/Federation/BusinessView/Busines
 import PurgeSidebar from "./pages/platform/purge/PurgeSidebar";
 import PurgeCanvas from "./pages/platform/purge/PurgeCanvas";
 import { ContextViewProvider } from "./pages/platform/Federation/context/contextViewProvider";
+import { BusinessHeader } from "./pages/platform/Federation/BusinessView/BusinessHeader";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -166,8 +167,8 @@ function App() {
               <ViewDrawer>
                 <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
                   <Header className="h-16 flex-shrink-0" />{" "}
-                  {/* <BusinessHeader/> */}
-                  <div className="flex-1 flex mt-8">
+                  <BusinessHeader/>
+                  <div className="flex-1 flex mt-2">
                     <BusinessSidebar className="w-64" />{" "}
                     <div className="flex-1 relative">
                       {" "}
