@@ -69,13 +69,12 @@ export default function Source() {
 
     settings.forEach((item) => {
       if (item.groupBy === "Yes") groupByColumns.push(item.name);
-      if (item.aggregate && item.output === "Yes")
-        aggregateColumns.push(item.name);
+      if (item.aggregate) aggregateColumns.push(item.name);
       if (item.sort) {
         orderByColumns.push({
           field: item.name,
           sortType: item.sort,
-          order: item.order,
+          order: item.order ? item.order : 1,
         });
       }
     });
@@ -160,13 +159,19 @@ export default function Source() {
     }
 
     // Configure fields and group by
+
     settings.forEach((item) => {
+      if (item.aggregate) {
+        basePayload.select_fields.push({
+          field: `${item.aggregate.toLowerCase()}(${item.name})`,
+          alias: item.alias,
+          type: item.type,
+        });
+      }
       if (item.output === "Yes") {
         basePayload.select_fields.push({
-          field: item.aggregate
-            ? `${item.aggregate.toLowerCase()}(${item.name})`
-            : item.name,
-          alias: item.alias,
+          field: item.name,
+          alias: item.aggregate ? "" : item.alias,
           type: item.type,
         });
       }
@@ -191,7 +196,10 @@ export default function Source() {
     if (!validateColumns(userCheckedColumns, settings)) return null;
 
     const columnSettings = processColumnSettings(settings, userCheckedColumns);
-    console.log("Sorted Order By Columns ===>>> ", columnSettings.orderByColumns);
+    console.log(
+      "Sorted Order By Columns ===>>> ",
+      columnSettings.orderByColumns
+    );
     if (modalState.queryType === "Regular") {
       if (!validateAggregateAndGroupBy(userCheckedColumns, columnSettings))
         return null;
@@ -469,11 +477,11 @@ export default function Source() {
       }))
     );
   }, [userSelection]);
-  
+
   const handleViewLinkClick = useCallback(() => {
     setNodes([]);
   }, [setNodes]);
-  
+
   return (
     <div className="w-full h-screen overflow-hidden bg-[rgba(243,245,247,1)]">
       <div className="flex items-center gap-6 px-4 pt-2">
