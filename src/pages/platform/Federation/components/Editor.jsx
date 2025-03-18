@@ -214,6 +214,7 @@ export default function Editor() {
 
   const handleHistoryClick = (history) => {
     setQuery(history);
+    setPageNo(1);
     executeQuery(history, 1);
   };
 
@@ -507,7 +508,11 @@ export default function Editor() {
         </div>
 
         <span
-          onDoubleClick={() => handleTableClick(connection, schema, table)}
+        onDoubleClick={() => {
+          if (!loading) {
+            handleTableClick(connection, schema, table)
+          }
+        }}
           style={{
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -523,6 +528,7 @@ export default function Editor() {
     console.log("Inputs are ===>", connection, schema, table);
     const query = `Select * from ${connection}.${schema}.${table}`
     setQuery(query);
+    setPageNo(1);
     executeQuery(query, 1);
   }
 
@@ -716,9 +722,18 @@ export default function Editor() {
                   ) : (
                     <ul className="list-decimal pl-5">
                       {history.map((query, index) => (
-                        <li key={index} className="text-xs text-gray-700 mb-2 cursor-pointer hover:text-gray-900" onClick={() => handleHistoryClick(query)}>
+                        <li
+                          key={index}
+                          className={`text-xs text-gray-700 mb-2 cursor-pointer ${loading ? "cursor-not-allowed text-gray-400" : "hover:text-gray-900"}`}
+                          onClick={() => {
+                            if (!loading) {
+                              handleHistoryClick(query);
+                            }
+                          }}
+                        >
                           {query}
                         </li>
+
                       ))}
                     </ul>
                   )}
