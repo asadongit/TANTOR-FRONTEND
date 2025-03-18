@@ -2,16 +2,19 @@ import { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X } from "lucide-react";
+import { useStateContext } from "../../react-flow/context/ContextProvider";
 
-export function TargetNode({id}) {
+export function TargetNode({ id }) {
 
     const hostname = import.meta.env.VITE_FAST_API;
     const token = import.meta.env.VITE_ACCESS_TOKEN;
 
+    const { selectedTables, sourceConnectionName } = useStateContext("");
     const [connections, setConnections] = useState([]);
-    const [selectedConnection, setSelectedConnection] = useState("");
+    const [targetConnection, setTargetConnection] = useState("");
     const [schemas, setSchema] = useState([]);
     const [selectedSchema, setSelectedSchema] = useState("");
+    const [metadata, setMetaData] = useState([])
 
     let connectionsData;
     let schemadetails;
@@ -40,7 +43,6 @@ export function TargetNode({id}) {
             }
 
             setConnections(connectionsData);
-            console.log("connectionsdata", connectionsData)
 
         } catch (error) {
             console.error("Error fetching options", error);
@@ -92,6 +94,25 @@ export function TargetNode({id}) {
         }, [hostname, token]
     );
 
+    const fetchMetadata = useCallback(async () => {
+        const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        });
+        const response = await metaDataResponse.json();
+        setMetaData(response)
+    }, [])
+
+    const filterConnection = metadata.filter((connection) => connection.source_conn_name ==
+        sourceConnectionName && connection.target_conn_name == targetConnection)
+
+    const mappedTargetTables = filterConnection
+        .filter(conn => selectedTables.includes(conn.source_table))
+        .map(conn => conn.target_table);
+
     return (
         <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
             <button
@@ -116,12 +137,13 @@ export function TargetNode({id}) {
                     </label>
                     <select
                         className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-                        value={selectedConnection}
+                        value={targetConnection}
                         onChange={(e) => {
                             const connectionName = e.target.value;
-                            setSelectedConnection(connectionName);
+                            setTargetConnection(connectionName);
                             setSelectedSchema("");
                             fetchSchema(connectionName);
+                            fetchMetadata();
                         }}
                     >
                         <option value="">Select</option>
@@ -152,6 +174,26 @@ export function TargetNode({id}) {
                     </select>
                 </div>
             </div>
+
+            {targetConnection && selectedSchema && (
+                <div className="flex flex-col space-y-2 mt-3 justify-between">
+                <span className="text-xs font-semibold text-black">Data Set</span>
+                {mappedTargetTables.map((targetTable, idx) =>
+                    <div key={idx}
+                    >
+                        <div className="flex space-x-2 space-y-3">
+                            <label
+                                htmlFor={`table-${idx}`}
+                                className="text-xs font-semibold text-black"
+                            >
+                                {targetTable}
+                            </label>
+                        </div>
+                    </div>
+                )}
+            </div>
+            )}
+
             <div className="flex space-x-2 mt-4">
                 <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
                     Cancel
