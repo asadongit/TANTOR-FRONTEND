@@ -157,10 +157,11 @@ export function Columns({ id, columnName,dataType, toggleModal }) {
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
                 >
                   <option value="">None</option>
+                  <option value="Count">Count</option>
                   <option value="Sum">Sum</option>
                   <option value="Min">Min</option>
                   <option value="Max">Max</option>
-                  <option value="Count">Count</option>
+                  <option value="Avg">Avg</option>
                 </select>
               </div>
               {!complexCheck && (

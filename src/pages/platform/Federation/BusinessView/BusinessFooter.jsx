@@ -45,33 +45,33 @@ export function BusinessFooter() {
     console.log("hasOperation is =====>", hasOperation);
 
     const selectedViews = hasOperation
-        ? { Union: columnSettings.Union }
-        : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
+      ? { Union: columnSettings.Union }
+      : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
     console.log("selected views column settings ====>", selectedViews);
 
     return Object.entries(selectedViews || {}).flatMap(([view, columns]) =>
-        Object.entries(columns).flatMap(([colName, colProps]) => {
-            let fields = [];
+      Object.entries(columns).flatMap(([colName, colProps]) => {
+        let fields = [];
 
-            if (colProps.aggregate) {
-                fields.push({
-                    field: `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`,
-                    alias: colProps.alias || ""
-                });
-            }
+        if (colProps.aggregate) {
+          fields.push({
+            field: `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`,
+            alias: colProps.alias || ""
+          });
+        }
 
-            if (colProps.output === "Yes") {
-                fields.push({
-                    field: hasOperation ? colName : `${view}.${colName}`,
-                    alias: colProps.aggregate ? "" : colProps.alias || ""
-                });
-            }
+        if (colProps.output === "Yes") {
+          fields.push({
+            field: hasOperation ? colName : `${view}.${colName}`,
+            alias: colProps.aggregate ? "" : colProps.alias || ""
+          });
+        }
 
-            return fields;
-        })
+        return fields;
+      })
     );
-};
+  };
 
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -96,9 +96,9 @@ export function BusinessFooter() {
           body: JSON.stringify(cleanApiPayload),
         }
       );
-    
+
       const responseText = await response.text();
-    
+
       if (response.ok) {
         const data = responseText
           .trim()
@@ -111,7 +111,7 @@ export function BusinessFooter() {
             }
             return validData;
           }, []);
-    
+
         if (data.length === 0) {
           setError("Table is empty");
           setRowData([]);
@@ -191,14 +191,12 @@ export function BusinessFooter() {
     let selectColumns = new Set();
     let groupByColumns = new Set();
     let aggregateColumns = new Set();
+    let sortColumns = new Set();
 
     const hasOperation = apiPayloadForApi?.operation !== undefined;
     const source = hasOperation
       ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === "Union"))
       : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
-
-    console.log("$$$#####$$$$$#####%%%%",source)
-    console.log("column settings ===>",columnSettings)
 
     if (!source || Object.keys(source).length === 0) {
       toast.error("Please select columns first before proceeding.");
@@ -206,10 +204,10 @@ export function BusinessFooter() {
     }
 
     Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
-      const columns = hasOperation ? { [tableOrColumn]: columnsOrProperties } : columnsOrProperties;
+      const columns = hasOperation ? columnsOrProperties : columnsOrProperties;
 
       Object.entries(columns).forEach(([column, properties]) => {
-        if (properties.output === "Yes" && !properties.aggregate) {
+        if (properties.output === "Yes") {
           selectColumns.add(column);
         }
         if (properties.groupBy === "Yes") {
@@ -218,27 +216,45 @@ export function BusinessFooter() {
         if (properties.aggregate) {
           aggregateColumns.add(column);
         }
+        if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") {
+          sortColumns.add(column);
+      }
+      
       });
     });
 
     selectColumns = [...selectColumns];
     groupByColumns = [...groupByColumns];
     aggregateColumns = [...aggregateColumns];
+    sortColumns = [...sortColumns];
 
-    console.log("select columns ",selectColumns)
-    console.log("group by columns ", groupByColumns)
-    console.log("aggreagte columns ",aggregateColumns)
+    console.log("Select Columns:", selectColumns);
+    console.log("Group By Columns:", groupByColumns);
+    console.log("Aggregate Columns:", aggregateColumns);
+    console.log("Sort Columns:", sortColumns);
 
 
-    // if (groupByColumns.length > 0 && selectColumns.length>0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
-    //   toast.error("Select Field must be aggregate or in Group by");
-    //   return;
-    // }
+    const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
 
-    // if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
-    //   toast.error("Select Field must be aggregate or in Group by");
-    //   return;
-    // }
+    if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
+      toast.error(`${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+      return;
+    }
+
+    const nonAggregatedSelectColumns = selectColumns;
+
+    if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
+      toast.error(`${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+      return;
+    }
+
+
+    const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
+
+    if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
+      toast.error(`${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+      return;
+    }
 
     if (Object.keys(apiPayloadForApi).length > 0) {
       setPreview(true);
@@ -253,12 +269,12 @@ export function BusinessFooter() {
           .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
       );
 
-      console.log("group by array new is =====>",groupByArray)
+      console.log("group by array new is =====>", groupByArray)
 
       let orderBy = [];
       Object.keys(source).forEach(table => {
         Object.entries(source[table]).forEach(([key, column]) => {
-          if (column.order) {
+          if (column.order && parseInt(column.order, 10) > 0 && column.sort.trim() !== "") {
             orderBy.push({
               table,
               key,
@@ -277,6 +293,7 @@ export function BusinessFooter() {
       });
 
       console.log("order by is ====>", { order_by: finalOrderBy });
+
 
       const selectFields = getSelectFields(columnSettings, hasOperation);
 
@@ -318,18 +335,23 @@ export function BusinessFooter() {
         let selectColumns = new Set();
         let groupByColumns = new Set();
         let aggregateColumns = new Set();
+        let sortColumns = new Set();
 
-        const hasOperation = finalPayload?.operation !== undefined;
+        const hasOperation = apiPayloadForApi?.operation !== undefined;
         const source = hasOperation
           ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === "Union"))
           : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
+        if (!source || Object.keys(source).length === 0) {
+          toast.error("Please select columns first before proceeding.");
+          return;
+        }
 
         Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
-          const columns = hasOperation ? { [tableOrColumn]: columnsOrProperties } : columnsOrProperties;
+          const columns = hasOperation ? columnsOrProperties : columnsOrProperties;
 
           Object.entries(columns).forEach(([column, properties]) => {
-            if (properties.output === "Yes" && !properties.aggregate) {
+            if (properties.output === "Yes") {
               selectColumns.add(column);
             }
             if (properties.groupBy === "Yes") {
@@ -338,23 +360,45 @@ export function BusinessFooter() {
             if (properties.aggregate) {
               aggregateColumns.add(column);
             }
+            if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") {
+              sortColumns.add(column);
+          }
+          
           });
         });
 
         selectColumns = [...selectColumns];
         groupByColumns = [...groupByColumns];
         aggregateColumns = [...aggregateColumns];
+        sortColumns = [...sortColumns];
+
+        console.log("Select Columns:", selectColumns);
+        console.log("Group By Columns:", groupByColumns);
+        console.log("Aggregate Columns:", aggregateColumns);
+        console.log("Sort Columns:", sortColumns);
 
 
-        // if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
-        //   toast.error("Select Field must be aggregate or in Group by");
-        //   return;
-        // }
+        const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
 
-        // if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
-        //   toast.error("Select Field must be aggregate or in Group by");
-        //   return;
-        // }
+        if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
+          toast.error(`${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+          return;
+        }
+
+        const nonAggregatedSelectColumns = selectColumns;
+
+        if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
+          toast.error(`${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+          return;
+        }
+
+
+        const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
+
+        if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
+          toast.error(`${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+          return;
+        }
 
         if (Object.keys(finalPayload).length > 0) {
           setPreview(true);
@@ -367,10 +411,12 @@ export function BusinessFooter() {
               .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
           );
 
+          console.log("group by array new is =====>", groupByArray)
+
           let orderBy = [];
           Object.keys(source).forEach(table => {
             Object.entries(source[table]).forEach(([key, column]) => {
-              if (column.order) {
+              if (column.order && parseInt(column.order, 10) > 0 && column.sort.trim() !== "") {
                 orderBy.push({
                   table,
                   key,
@@ -388,9 +434,7 @@ export function BusinessFooter() {
             return hasOperation ? `${col.key} ${sortOrder}` : `${col.table}.${col.key} ${sortOrder}`;
           });
 
-
           console.log("order by is ====>", { order_by: finalOrderBy });
-          console.log("second time calling the",finalOrderBy)
 
           const selectFields = getSelectFields(columnSettings, hasOperation);
 

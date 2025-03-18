@@ -498,10 +498,13 @@ export function ConsolidationNode({ id }) {
  
   useEffect(() => {
     if (columnSettings["Union"]) {
-      const columnsWithOutputYes = Object.keys(columnSettings["Union"]).filter(
-        column => columnSettings["Union"][column].output === "Yes"
+      const columnsWithOutputOrAggregate = Object.keys(columnSettings["Union"]).filter(
+        column => {
+          const columnData = columnSettings["Union"][column] || {};
+          return columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+        }
       );
-      setSelectedUnionColumns(columnsWithOutputYes);
+      setSelectedUnionColumns(columnsWithOutputOrAggregate);
     }
   }, [columnSettings]);
  
