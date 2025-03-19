@@ -504,6 +504,13 @@ export function BusinessFooter() {
       return null;
     }
 
+    
+    const newPayload = {
+      ...finalPayload,
+      project: "default",
+      created_by: "sabhyata"
+    }
+
     const response = await fetch(
       `${import.meta.env.VITE_FAST_API_V2}/save-view`,
       {
@@ -513,7 +520,7 @@ export function BusinessFooter() {
           Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
             }`,
         },
-        body: JSON.stringify(finalPayload),
+        body: JSON.stringify(newPayload),
       }
     );
 

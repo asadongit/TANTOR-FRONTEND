@@ -392,6 +392,13 @@ export default function Source() {
 
       // Save the view
       console.log("Final apiPayload ===> ", apiPayload);
+
+      const newPayload = {
+        ...apiPayload,
+        project: "df_test",
+        created_by: "sabhyata"
+      }
+  
       const response = await fetch(
         `${import.meta.env.VITE_FAST_API_V2}/generate-base-view`,
         {
@@ -402,7 +409,7 @@ export default function Source() {
               import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
             }`,
           },
-          body: JSON.stringify(apiPayload),
+          body: JSON.stringify(newPayload),
         }
       );
 

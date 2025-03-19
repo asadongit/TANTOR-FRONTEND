@@ -92,8 +92,13 @@ export function SourceViewNode({ id, onSave }) {
   useEffect(() => {
     const fetchViews = async () => {
       try {
-        var viewType = 'Base';
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/get-all-views?view_type=${viewType}`);
+        const params = new URLSearchParams({
+          view_type: "Base",
+          project: "df_test",
+          created_by: "sabhyata",
+        });
+
+        const response = await fetch(`${import.meta.env.VITE_FAST_API_V2}/get-all-views_v2?${params}`);
         const data = await response.json();
         if (data && data.result) {
           setViews(data.result);

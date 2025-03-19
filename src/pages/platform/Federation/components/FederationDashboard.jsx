@@ -25,8 +25,8 @@ import { useStateContext } from "../context/contextViewProvider";
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const FederationDashBoard = () => {
-    const { handleViewPayload, handleConnectionPayload, handleConsolidationPayload,handleFinalPayload, setColumnSettings} = useStateContext("");
-  
+  const { handleViewPayload, handleConnectionPayload, handleConsolidationPayload, handleFinalPayload, setColumnSettings } = useStateContext("");
+
   const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -180,16 +180,20 @@ const FederationDashBoard = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          "connection_names": connectionNames
+          "connection_names": connectionNames,
+          "created_by": "sabhyata",
+          "project": "df_test"
         })
       });
+
       let data = await response.json();
-      console.log("views are  ===>", data)
-      setViewList(data)
+      console.log("views are  ===>", data);
+      setViewList(data);
     } catch (error) {
       console.log(error);
     }
   };
+
 
   const getTableCount = (tableList, connectionId) => {
     if (!tableList || !tableList[connectionId]) {
@@ -217,7 +221,7 @@ const FederationDashBoard = () => {
 
       const totalViewsCount = Object.values(viewList).reduce((sum, views) => sum + views.length, 0);
       const totalSchemaCount = Object.values(schemaList).reduce((acc, schemas) => acc + schemas.length, 0);
-      const totalTableCount = Object.values(tableList).reduce((acc, db) =>  acc + Object.values(db).reduce((sum, tables) => sum + tables.length, 0), 0);
+      const totalTableCount = Object.values(tableList).reduce((acc, db) => acc + Object.values(db).reduce((sum, tables) => sum + tables.length, 0), 0);
 
       setCount({
         connections: connectionNames,
@@ -245,70 +249,39 @@ const FederationDashBoard = () => {
 
 
 
-  const [cards, setCards] = useState([
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#d8d3e4]",
-      iconcolor: "text-purple-700",
-      title: "Connections",
-      count: "0"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#d8d3e4]",
-      iconcolor: "text-purple-700",
-      title: "Schemas",
-      count: "0"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#d8d3e4]",
-      iconcolor: "text-purple-700",
-      title: "Tables",
-      count: "0"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#d8d3e4]",
-      iconcolor: "text-purple-700",
-      title: "Views",
-      count: "0"
-    }
-  ]);
+  const [cards, setCards] = useState([]);
 
   useEffect(() => {
-    if (count.connections && count.totalViewsCount) {
-      setCards([
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#d8d3e4]",
-          iconcolor: "text-purple-700",
-          title: "Connections",
-          count: `${count.connections.length}` || 0
-        },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#d8d3e4]",
-          iconcolor: "text-purple-700",
-          title: "Schemas",
-          count: `${count.totalSchemaCount}` || 0
-        },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#d8d3e4]",
-          iconcolor: "text-purple-700",
-          title: "Tables",
-          count: `${count.totalTableCount}` || 0
-        },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#d8d3e4]",
-          iconcolor: "text-purple-700",
-          title: "Views",
-          count: `${count.totalViewsCount}` || 0
-        }
-      ]);
-    }
+    setCards([
+      {
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#d8d3e4]",
+        iconcolor: "text-purple-700",
+        title: "Connections",
+        count: `${count?.connections?.length ?? 0}`
+      },
+      {
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#d8d3e4]",
+        iconcolor: "text-purple-700",
+        title: "Schemas",
+        count: `${count?.totalSchemaCount ?? 0}`
+      },
+      {
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#d8d3e4]",
+        iconcolor: "text-purple-700",
+        title: "Tables",
+        count: `${count?.totalTableCount ?? 0}`
+      },
+      {
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#d8d3e4]",
+        iconcolor: "text-purple-700",
+        title: "Views",
+        count: `${count?.totalViewsCount ?? 0}`
+      }
+    ]);
   }, [count]);
 
   const [rowData, setRowData] = useState([]);
@@ -740,7 +713,7 @@ const FederationDashBoard = () => {
 
       <Modal open={viewOpen} onClose={handleViewsClose}>
 
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
           <div className="flex text-center justify-center">
             <h2 className="text-xl font-bold text-gray-900">Views Details</h2>
           </div>
@@ -765,7 +738,7 @@ const FederationDashBoard = () => {
           {selectedConnection && (
             <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
               {viewList[selectedConnection]?.length > 0 ? (
-                  viewList[selectedConnection].map((view, index) => (
+                viewList[selectedConnection].map((view, index) => (
                   <div
                     key={index}
                     className="p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition flex items-center gap-2"

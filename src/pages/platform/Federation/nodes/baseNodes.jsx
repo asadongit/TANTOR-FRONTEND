@@ -14,7 +14,7 @@ import { useStateContext } from "../context/contextViewProvider";
 import { defaultSetting } from "../BaseView/ColumnSettings";
 
 const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-const FAST_BACKEND = import.meta.env.VITE_FAST_API;
+const FAST_BACKEND = import.meta.env.VITE_FAST_API_V2;
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -107,40 +107,38 @@ export function BaseNode({ id, data }) {
     }
     return [];
   };
+
   useEffect(() => {
     (async () => {
-      let response;
       try {
-        const VIEW_TYPE = "Base";
-        response = await fetch(
-          `${FAST_BACKEND}/get-all-views?view_type=${VIEW_TYPE}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              authorization: `Bearer ${AUTH_TOKEN}`,
-            },
-          }
-        );
-
+        const params = new URLSearchParams({
+          view_type: "Base",
+          project: "df_test",
+          created_by: "sabhyata",
+        });
+  
+        const response = await fetch(`${FAST_BACKEND}/get-all-views_v2?${params}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${AUTH_TOKEN}`,
+          },
+        });
+  
         const data = await response.json();
-
-        if (response.status == 200) {
-          const sortedViews = data.result.sort((a, b) => {
-            if (a.toUpperCase() < b.toUpperCase()) return -1;
-            if (a.toUpperCase() > b.toUpperCase()) return 1;
-            return 0;
-          });
-          setApiViews(sortedViews);
+        if (response.ok) {
+          setApiViews(data.result.sort((a, b) => a.localeCompare(b)));
         } else {
-          data.toast.error("Error occurred while trying to fetch views");
+          toast.error("Error fetching views");
         }
       } catch (error) {
-        console.error("Error occurred while trying to fetch views", error);
-        data.toast.error("Error occurred while trying to fetch views");
+        console.error("Fetch error", error);
+        toast.error("Error fetching views");
       }
     })();
   }, []);
+
+  
 
   useEffect(() => {
     if (selectedView) {
