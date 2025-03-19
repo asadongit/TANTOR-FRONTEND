@@ -6,7 +6,7 @@ import {
 const components = [{ id: 'define', name: 'Define', icon: FileSpreadsheet }, { id: 'source', name: 'Source', icon: FileSpreadsheet }, { id: 'target', name: 'Target', icon: FileSpreadsheet }, { id: 'schedule', name: 'Schedule', icon: FileSpreadsheet }];
 
 
-export function TransformationSidebar() {
+export function ArchivalSidebar() {
   const [expanded, setExpanded] = useState(true);
 
   const onDragStart = (event, nodeType) => {

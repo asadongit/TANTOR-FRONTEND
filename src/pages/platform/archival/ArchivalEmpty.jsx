@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-const TransformationEmpty = () => {
+const ArchivalEmpty = () => {
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -22,4 +22,4 @@ const TransformationEmpty = () => {
   );
 };
 
-export default TransformationEmpty;
+export default ArchivalEmpty;

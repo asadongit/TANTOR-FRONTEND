@@ -8,7 +8,7 @@ import Reports from '../pages/platform/reports/Reports';
 import GenerateReport from '../pages/platform/reports/GenerateReport';
 
 import Migration from '../pages/platform/migration/Migration';
-import Transformation from '../pages/platform/transformation/Transformation';
+import Transformation from '../pages/platform/archival/Archival';
 import Purge from '../pages/platform/Purge';
 import CDC from '../pages/platform/CDC';
 import Source from '../pages/platform/Federation/BaseView/Source';

@@ -3,14 +3,12 @@ import { useState } from "react";
 import { ReactFlowProvider } from "reactflow";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
-import { MigrationSidebar } from "./pages/platform/migration/MigrationSidebar";
-import { TransformationSidebar } from "./pages/platform/transformation/TransformationSidebar";
 import Dashboard from "./pages/Dashboard";
 import { PlatformRoutes } from "./routes/PlatformRoutes";
 import { DataGovernanceRoutes } from "./routes/DataGovernanceRoutes";
 import MigrationCanvas from "./pages/platform/migration/MigrationCanvas";
 
-import TransformationCanvas from "./pages/platform/transformation/TransformationCanvas";
+import TransformationCanvas from "./pages/platform/archival/ArchivalCanvas";
 import { WelcomeModal } from "./pages/platform/react-flow/WelcomeModal";
 import { DrawerProvider } from "./pages/platform/react-flow/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/react-flow/context/ThemeContext";

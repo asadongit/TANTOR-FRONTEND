@@ -479,12 +479,12 @@ const handleOk = () => {
                           {table.table_name}
                         </label>
                       </div>
-                      <button
+                      {/* <button
                         onClick={() => openDrawer(id, table)}
                         className="text-purple-600 hover:text-purple-700"
                       >
                         <Pencil className="w-4 h-4" />
-                      </button>
+                      </button> */}
 
 
 

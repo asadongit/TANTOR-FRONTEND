@@ -15,7 +15,7 @@ import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
 import { useTableContext } from "../react-flow/context/TableContext";
 import TableDrawer from "../react-flow/dialog/TableDrawer";
 import Success from "../react-flow/dialog/success";
-import { TransformationSidebar } from "./TransformationSidebar";
+import { ArchivalSidebar } from "./ArchivalSidebar";
 
 const nodeTypes = {
   define: DefineNode,
@@ -99,7 +99,7 @@ const TransformationCanvas = () => {
       >
         <Controls className="fill-white stroke-black" />
         <Panel position="top-left">
-          <TransformationSidebar />
+          <ArchivalSidebar />
         </Panel>
       </ReactFlow>
       <DrawerContainer />

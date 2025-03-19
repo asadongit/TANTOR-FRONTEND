@@ -702,8 +702,9 @@ const Connections = () => {
               </div>
               <div>
                 <div className="relative">
-                  <label className="block text-sm text-black mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Behaviour
+                    <span className="text-red-500">*</span>
                   </label>
                   <select
                     name="behaviour"

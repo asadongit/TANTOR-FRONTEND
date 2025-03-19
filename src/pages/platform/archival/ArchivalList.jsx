@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 
-const TransformationList = () => {
+const ArchivalList = () => {
 
   const navigate = useNavigate();
 
@@ -219,5 +219,5 @@ const TransformationList = () => {
   );
 };
 
-export default TransformationList;
+export default ArchivalList;
     
