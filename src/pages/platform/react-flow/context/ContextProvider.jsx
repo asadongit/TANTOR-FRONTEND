@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState } from "react";
 
 const StateContext = createContext();
 
@@ -9,10 +9,24 @@ export const ContextProvider = ({ children }) => {
     secondaryColor:'hover:bg-[#96CF7B]',
   })
 
+  const [ selectedTables, setSelectedTables] = useState([]);
+  const handleSelectedTables = (table) => {
+    setSelectedTables(table);
+  }
+
+  const [sourceConnectionName, setSourceConnectionName] = useState("");
+  const handleSourceConnectionName = (conn_name) => {
+    setSourceConnectionName(conn_name)
+  }
+
   return (
     <StateContext.Provider
       value={{
-        buttonColors
+        buttonColors,
+        selectedTables,
+        handleSelectedTables,
+        sourceConnectionName,
+        handleSourceConnectionName
       }}
     >
       {children}

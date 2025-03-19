@@ -19,9 +19,9 @@ import { ViewDrawer } from "./pages/platform/Federation/context/DrawerContext";
 import { FlowDataProvider } from "./pages/platform/react-flow/context/FlowDataContext";
 import Source from "./pages/platform/Federation/BaseView/Source";
 import { BusinessFooter } from "./pages/platform/Federation/BusinessView/BusinessFooter";
-import PurgeSidebar from "./pages/platform/purge/PurgeSidebar";
 import PurgeCanvas from "./pages/platform/purge/PurgeCanvas";
 import { ContextViewProvider } from "./pages/platform/Federation/context/contextViewProvider";
+import { ContextProvider } from "./pages/platform/react-flow/context/ContextProvider";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -138,10 +138,10 @@ function App() {
               <FlowDataProvider>
                 <ThemeProvider>
                   <DrawerProvider>
+                    <ContextProvider>
                     <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
                       <Header className="h-16 flex-shrink-0" />{" "}
                       <div className="flex-1 flex">
-                        <PurgeSidebar className="w-64 flex-shrink-0" />{" "}
                         <div className="flex-1 relative">
                           {" "}
                           <ReactFlowProvider>
@@ -151,6 +151,7 @@ function App() {
                       </div>
                       <WelcomeModal />
                     </div>
+                    </ContextProvider>
                   </DrawerProvider>
                 </ThemeProvider>
               </FlowDataProvider>
