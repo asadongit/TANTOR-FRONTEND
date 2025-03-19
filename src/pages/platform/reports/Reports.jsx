@@ -14,6 +14,7 @@ const Reports = () => {
       iconcolor: "text-purple-700",
       title: "Reports",
       count: "27",
+      route: "/generateReport"
     },
     {
       icon: "material-symbols-light:two-pager-store-outline",
@@ -21,6 +22,7 @@ const Reports = () => {
       iconcolor: "text-orange-700",
       title: "Projects",
       count: "11",
+      route: "/project"
     },
     {
       icon: "material-symbols:cloud-sync-outline",
@@ -28,6 +30,7 @@ const Reports = () => {
       iconcolor: "text-green-700",
       title: "Users",
       count: "07",
+      route: "/migration-report"
     },
     {
       icon: "material-symbols:tab-group-outline",
@@ -35,6 +38,7 @@ const Reports = () => {
       iconcolor: "text-cyan-700",
       title: "Source Table",
       count: "17",
+      route: "/migration-report"
     },
     {
       icon: "material-symbols:tab-group-outline",
@@ -42,12 +46,13 @@ const Reports = () => {
       iconcolor: "text-cyan-700",
       title: "Target Table",
       count: "06",
+      route: "/migration-report"
     },
   ];
 
 
-  const handleCreateReport = () => {
-    navigate('/generateReport'); 
+  const handleCreateReport = (route) => {
+    navigate(route);
   };
 
   const trendData = [
@@ -173,7 +178,7 @@ const Reports = () => {
             <p className="text-black text-5xl font-bold">{card.count}</p>
             <div className="flex items-center justify-between">
               <button className="mt-4 text-purple-600 text-sm hover:text-purple-700"
-              onClick={handleCreateReport}>
+              onClick={() => handleCreateReport(card.route)}>
                 See details
               </button>
             </div>
