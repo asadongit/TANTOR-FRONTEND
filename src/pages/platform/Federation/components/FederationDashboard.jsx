@@ -475,27 +475,27 @@ const FederationDashBoard = () => {
           <table className="w-full">
             <thead className="text-sm">
               <tr className="bg-[#29304a] text-white">
-                <th className="text-left p-4">ID</th>
-                <th className="text-left p-4">Connections</th>
-                <th className="text-left p-4">Descriptions</th>
-                <th className="text-left p-4">Schema</th>
-                <th className="text-left p-4">Tables</th>
-                <th className="text-left p-4">Views</th>
-                <th className="text-left p-4">Created</th>
-                <th className="text-left p-4 last:rounded-tr-lg">Actions</th>
+                <th className="text-center p-4">ID</th>
+                <th className="text-center p-4">Connections</th>
+                <th className="text-center p-4">Descriptions</th>
+                <th className="text-center p-4">Schema</th>
+                <th className="text-center p-4">Tables</th>
+                <th className="text-center p-4">Views</th>
+                <th className="text-center p-4">Created</th>
+                <th className="text-center p-4 last:rounded-tr-lg">Actions</th>
               </tr>
             </thead>
             <tbody className="text-sm">
               {rowData.map((user, index) => (
                 <tr key={index} className="border-b">
-                  <td className="p-4 text-left">{user.ID}</td>
-                  <td className="p-4 text-left">{user.Connections}</td>
-                  <td className="p-4 text-left">{user.Descriptions}</td>
-                  <td className="p-4 text-left">{user.Schema}</td>
-                  <td className="p-4 text-left">{user.Tables}</td>
-                  <td className="p-4 text-left">{user.Views}</td>
-                  <td className="p-4 text-left">{user.Created}</td>
-                  <td className="p-4 text-left">
+                  <td className="p-4 text-center">{user.ID}</td>
+                  <td className="p-4 text-center">{user.Connections}</td>
+                  <td className="p-4 text-center">{user.Descriptions}</td>
+                  <td className="p-4 text-center">{user.Schema}</td>
+                  <td className="p-4 text-center">{user.Tables}</td>
+                  <td className="p-4 text-center">{user.Views}</td>
+                  <td className="p-4 text-center">{user.Created}</td>
+                  <td className="p-4 text-center">
                     <div className="relative">
                       <button
                         onClick={() =>
