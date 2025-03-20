@@ -92,14 +92,18 @@ export function SourceViewNode({ id, onSave }) {
   useEffect(() => {
     const fetchViews = async () => {
       try {
+          const project = sessionStorage.getItem("project") || "default";
+          const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
+  
         const params = new URLSearchParams({
           view_type: "Base",
-          project: "df_test",
-          created_by: "sabhyata",
+          project: project,
+          created_by: createdBy,
         });
-
+  
         const response = await fetch(`${import.meta.env.VITE_FAST_API_V2}/get-all-views_v2?${params}`);
         const data = await response.json();
+        
         if (data && data.result) {
           setViews(data.result);
         } else {
@@ -109,8 +113,10 @@ export function SourceViewNode({ id, onSave }) {
         console.error("Error fetching views:", error);
       }
     };
+  
     fetchViews();
-  }, []);
+  }, []); 
+  
 
   const handleViewChange = (e) => {
     setSelectedColumns([])

@@ -504,25 +504,25 @@ export function BusinessFooter() {
       return null;
     }
 
-    
+
     const newPayload = {
       ...finalPayload,
-      project: "default",
-      created_by: "sabhyata"
-    }
-
+      project: sessionStorage.getItem("project") || "default",
+      created_by: sessionStorage.getItem("created_by") || "sabhyata",
+    };
+    
     const response = await fetch(
       `${import.meta.env.VITE_FAST_API_V2}/save-view`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+          Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
         },
         body: JSON.stringify(newPayload),
       }
     );
+    
 
     const data = await response.json();
 

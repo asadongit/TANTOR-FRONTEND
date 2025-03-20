@@ -108,13 +108,17 @@ export function BaseNode({ id, data }) {
     return [];
   };
 
+
   useEffect(() => {
     (async () => {
       try {
+        const project = sessionStorage.getItem("project") || "default";
+        const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
+  
         const params = new URLSearchParams({
           view_type: "Base",
-          project: "df_test",
-          created_by: "sabhyata",
+          project: project,
+          created_by: createdBy,
         });
   
         const response = await fetch(`${FAST_BACKEND}/get-all-views_v2?${params}`, {
@@ -137,9 +141,9 @@ export function BaseNode({ id, data }) {
       }
     })();
   }, []);
-
   
 
+  
   useEffect(() => {
     if (selectedView) {
       (async () => {

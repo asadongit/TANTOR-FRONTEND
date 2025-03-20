@@ -24,21 +24,32 @@ export default function Builder({ handleSwitch, checked }) {
 
     useEffect(() => {
         const fetchViews = async () => {
-            try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/get-all-views`);
-                const data = await response.json();
-                if (data && data.result) {
-                    console.log("Views are ====>", data.result);
-                    setShownViews(data.result);
-                } else {
-                    console.error("Invalid response from the API");
-                }
-            } catch (error) {
-                console.error("Error fetching views:", error);
+          try {
+            const project = sessionStorage.getItem("project") || "default";
+            const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
+      
+            const params = new URLSearchParams({
+              view_type: "Base",
+              project: project,
+              created_by: createdBy,
+            });
+      
+            const response = await fetch(`${import.meta.env.VITE_FAST_API_V2}/get-all-views_v2?${params}`);
+            const data = await response.json();
+            
+            if (data && data.result) {
+              setShownViews(data.result);
+            } else {
+              console.error("Invalid response from the API");
             }
+          } catch (error) {
+            console.error("Error fetching views:", error);
+          }
         };
+      
         fetchViews();
-    }, []);
+      }, []);
+      
 
     const handleViewChange = async (event, value) => {
         // setData([])

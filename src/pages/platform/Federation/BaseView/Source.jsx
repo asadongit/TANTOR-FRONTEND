@@ -136,19 +136,19 @@ export default function Source() {
     const basePayload =
       userSelections.get("viewType") === "Source"
         ? {
-            view_type: "Source",
-            view: userSelections.get("viewName"),
-            select_fields: [],
-            group_by: [],
-          }
+          view_type: "Source",
+          view: userSelections.get("viewName"),
+          select_fields: [],
+          group_by: [],
+        }
         : {
-            view_type: "Connection",
-            connection_name: userSelections.get("connection"),
-            schema_name: userSelections.get("schema"),
-            table_name: userSelections.get("table"),
-            select_fields: [],
-            group_by: [],
-          };
+          view_type: "Connection",
+          connection_name: userSelections.get("connection"),
+          schema_name: userSelections.get("schema"),
+          table_name: userSelections.get("table"),
+          select_fields: [],
+          group_by: [],
+        };
 
     // Add complex query if exists
     if (
@@ -292,16 +292,14 @@ export default function Source() {
 
     try {
       const response = await fetch(
-        `${
-          import.meta.env.VITE_FAST_API_V2
+        `${import.meta.env.VITE_FAST_API_V2
         }/generate-base-view?execute_query=true`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${
-              import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+              }`,
           },
           body: JSON.stringify(cleanApiPayload),
         }
@@ -370,9 +368,8 @@ export default function Source() {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${
-              import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+              }`,
           },
         }
       );
@@ -395,19 +392,17 @@ export default function Source() {
 
       const newPayload = {
         ...apiPayload,
-        project: "df_test",
-        created_by: "sabhyata"
-      }
-  
+        project: sessionStorage.getItem("project") || "default",
+        created_by: sessionStorage.getItem("created_by") || "sabhyata",
+      };
+
       const response = await fetch(
         `${import.meta.env.VITE_FAST_API_V2}/generate-base-view`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${
-              import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
           },
           body: JSON.stringify(newPayload),
         }
@@ -417,6 +412,7 @@ export default function Source() {
         toast.error("Error while saving view..");
         return null;
       }
+
 
       const data = await response.json();
       console.log("Save View Result ==> ", data);
@@ -524,9 +520,8 @@ export default function Source() {
       </div>
 
       <div
-        className={`${
-          showPreview ? "h-[60vh]" : "h-[calc(100vh-6rem)]"
-        } transition-all duration-300`}
+        className={`${showPreview ? "h-[60vh]" : "h-[calc(100vh-6rem)]"
+          } transition-all duration-300`}
       >
         <div className="w-full h-[calc(100%-2.5rem)]">
           <ReactFlow

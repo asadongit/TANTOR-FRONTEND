@@ -173,6 +173,9 @@ const FederationDashBoard = () => {
 
   const fetchViewCount = async (connectionNames) => {
     try {
+      const project = sessionStorage.getItem("project") || "default";
+      const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
+  
       const response = await fetch(`${import.meta.env.VITE_FAST_API_V2}/connections/views`, {
         method: "POST",
         headers: {
@@ -180,19 +183,20 @@ const FederationDashBoard = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          "connection_names": connectionNames,
-          "created_by": "sabhyata",
-          "project": "df_test"
+          connection_names: connectionNames,
+          created_by: createdBy || "",
+          project: project || ""
         })
       });
-
+  
       let data = await response.json();
       console.log("views are  ===>", data);
       setViewList(data);
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching views:", error);
     }
   };
+  
 
 
   const getTableCount = (tableList, connectionId) => {
