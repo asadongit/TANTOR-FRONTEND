@@ -10,7 +10,7 @@ import GenerateReport from '../pages/platform/reports/GenerateReport';
 import Migration from '../pages/platform/migration/Migration';
 import Transformation from '../pages/platform/archival/Archival';
 import Purge from '../pages/platform/purge/Purge';
-import CDC from '../pages/platform/CDC';
+import CDC from '../pages/platform/cdc/CDC'
 import Source from '../pages/platform/Federation/BaseView/Source';
 import MigrationCanvas from '../pages/platform/migration/MigrationCanvas';
 
