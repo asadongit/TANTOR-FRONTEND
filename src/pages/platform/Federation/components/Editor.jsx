@@ -906,7 +906,8 @@ export default function Editor() {
                           type="button"
                           onClick={handleNextPage}
                           disabled={!hasMore}
-                          className="text-white px-8 py-1.5 bg-[#8e78b7] hover:bg-[#7a63a8] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm"
+                          className={`px-8 py-1.5 rounded-lg text-sm
+                            ${!hasMore ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white focus:ring-1 focus:ring-[#8e78b7] bg-[#8e78b7] hover:bg-[#7a63a8]"} `}
                         >
                           Next
                         </button>
