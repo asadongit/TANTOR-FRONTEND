@@ -25,18 +25,20 @@ export function SourceNode({ id }) {
   const [loading, setLoading] = useState(true);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
-  const [schemaLoading, setSchemaLoading] = useState(false);  
-  const { openDrawer } = useTableContext();  
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const { openDrawer } = useTableContext();
   const [metadata, setMetaData] = useState([]);
   const [selectedPurgeScope, setSelectedPurgeScope] = useState("");
-  const { handleSelectedTables, handleSourceConnectionName } = useStateContext("");
+  const { handleSelectedTables, handleSourceConnectionName, handleSelectedDataSetName, handleSelectedScopeName } = useStateContext("");
+  const [selectedTables, setSelectedTables] = useState("");
 
-  
+
 
   let connectionsData;
   let schemacount;
   let schemadetails;
   let tabledetails;
+  let metadatalist;
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -74,28 +76,28 @@ export function SourceNode({ id }) {
         return;
       }
 
-    //   setSchemaLoading(true);
+      //   setSchemaLoading(true);
 
       try {
 
         const cachedschemacount =
-        sessionStorage.getItem("schemacount");
-      if (cachedschemacount) {
-        schemacount = JSON.parse(cachedschemacount);
-      } else {
+          sessionStorage.getItem("schemacount");
+        if (cachedschemacount) {
+          schemacount = JSON.parse(cachedschemacount);
+        } else {
 
-        const response = await fetch(`${hostname}/schema/${connectionName}/count`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+          const response = await fetch(`${hostname}/schema/${connectionName}/count`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
 
-        schemacount = await response.json();
-        sessionStorage.setItem(
+          schemacount = await response.json();
+          sessionStorage.setItem(
             "schemacount",
             JSON.stringify(schemacount)
           );
@@ -127,23 +129,23 @@ export function SourceNode({ id }) {
       try {
 
         const cachedschemalist =
-        sessionStorage.getItem("schemalist");
-      if (cachedschemalist) {
-        schemadetails = JSON.parse(cachedschemalist);
-      } else {
+          sessionStorage.getItem("schemalist");
+        if (cachedschemalist) {
+          schemadetails = JSON.parse(cachedschemalist);
+        } else {
 
-        const response = await fetch(`${hostname}/schema/${connectionName}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+          const response = await fetch(`${hostname}/schema/${connectionName}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
 
-        schemadetails = await response.json();
-        sessionStorage.setItem(
+          schemadetails = await response.json();
+          sessionStorage.setItem(
             "schemalist",
             JSON.stringify(schemadetails)
           );
@@ -166,25 +168,25 @@ export function SourceNode({ id }) {
       try {
 
         const cachedtablelist =
-        sessionStorage.getItem("tablelist");
-      if (cachedtablelist) {
-        tabledetails = JSON.parse(cachedtablelist);
-      } else {
-        const fetchTableResponse = await fetch(
-          `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+          sessionStorage.getItem("tablelist");
+        if (cachedtablelist) {
+          tabledetails = JSON.parse(cachedtablelist);
+        } else {
+          const fetchTableResponse = await fetch(
+            `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (!fetchTableResponse.ok) {
+            throw new Error(`HTTP error! status: ${fetchTableResponse.status}`);
           }
-        );
 
-        if (!fetchTableResponse.ok) {
-          throw new Error(`HTTP error! status: ${fetchTableResponse.status}`);
-        }
-
-        tabledetails = await fetchTableResponse.json();
-        sessionStorage.setItem(
+          tabledetails = await fetchTableResponse.json();
+          sessionStorage.setItem(
             "tablelist",
             JSON.stringify(tabledetails)
           );
@@ -201,23 +203,38 @@ export function SourceNode({ id }) {
   );
 
   const fetchMetadata = useCallback(async () => {
+    setLoading(true);
     try {
-      const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
-        method : "GET",
-        headers : {
-          Authorization : `Bearer ${token}`,
-          "Content-Type" : "application/json"
-        }
-      });
-
-      if (!metaDataResponse.ok) {
-        throw new Error(`HTTP error! status: ${metaDataResponse.status}`);
+      const cachedmetadatalist =
+        sessionStorage.getItem("metadatalist");
+      if (cachedmetadatalist) {
+        metadatalist = JSON.parse(cachedmetadatalist);
       }
+      else {
+        const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
 
-      const response = await metaDataResponse.json();
-      setMetaData(response)
+        if (!metaDataResponse.ok) {
+          throw new Error(`HTTP error! status: ${metaDataResponse.status}`);
+        }
+
+        metadatalist = await metaDataResponse.json();
+        sessionStorage.setItem(
+          "metadatalist",
+          JSON.stringify(metadatalist)
+        );
+      }
+      setMetaData(metadatalist)
     } catch (error) {
       console.error("Error fetching tables:", error);
+      setMetaData([])
+    } finally {
+      setLoading(false);
     }
   }, [])
 
@@ -226,16 +243,32 @@ export function SourceNode({ id }) {
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
   );
 
-  const filterMetaData = metadata.filter((sourceTable) => 
+  const filterMetaData = metadata.filter((sourceTable) =>
     sourceTable.source_table.toLowerCase().includes(searchTerm?.toLowerCase() || "")
   );
 
-  useEffect(()=> {
+  useEffect(() => {
     handleSelectedTables(selectedItems);
     handleSourceConnectionName(selectedConnection)
-  }, [selectedItems])
+  }, [selectedItems]);
 
+  useEffect(() => {
+    handleSelectedScopeName(selectedPurgeScope)
+    handleSourceConnectionName(selectedConnection)
+  }, [selectedPurgeScope])
 
+  const handleTableSelection = (tableName) => {
+    if (selectedPurgeScope === "subset") {
+      setSelectedTables([tableName]);
+    } else {
+      setSelectedTables((prev) =>
+        prev.includes(tableName)
+          ? prev.filter((item) => item !== tableName)
+          : [...prev, tableName]
+      );
+    }
+  };
+  
   return (
     <div
       className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
@@ -270,7 +303,8 @@ export function SourceNode({ id }) {
               setSelectedSchema(""); // Reset schema selection
               setTables([]); // Clear previous tables
               fetchschema(connectionName);
-              fetchschemacount(connectionName); 
+              fetchschemacount(connectionName);
+
             }}
           >
             <option value="">Select</option>
@@ -292,8 +326,6 @@ export function SourceNode({ id }) {
               onChange={(e) => {
                 const schemaName = e.target.value;
                 setSelectedSchema(schemaName);
-                fetchTables(selectedConnection, schemaName);
-                //fetchMetadata();
               }}
               disabled={!selectedConnection || schemaLoading}
             >
@@ -349,6 +381,11 @@ export function SourceNode({ id }) {
               id="table-subset"
               name="table"
               value="subset"
+              onChange={(e) => {
+                const scopeName = e.target.value;
+                setSelectedPurgeScope(scopeName);
+                fetchTables(selectedConnection, selectedSchema)
+              }}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label
@@ -360,6 +397,8 @@ export function SourceNode({ id }) {
           </div>
         </div>
       </div>
+
+      {/* Column to be used later */}
 
       {/* <div className="flex gap-4 items-center mt-3">
         <label className="text-xs text-black font-medium">Column</label>
@@ -390,7 +429,111 @@ export function SourceNode({ id }) {
         </div>
       </div> */}
 
-      {selectedConnection && selectedSchema && selectedPurgeScope && (
+      {selectedConnection && selectedSchema && selectedPurgeScope === "bulk" && (
+        filterMetaData
+        .filter((table) => table !== null)
+        .filter((connection) => connection.source_conn_name == selectedConnection)
+        .length === 0 
+        ? 
+        <div className="text-xs font-semibold text-black mt-4"> No Data Set Found </div> 
+        :
+        <div>
+          <div className="flex items-center gap-2 mb-0.5 mt-4">
+            <Search size={14} className="text-gray-500" />
+            <label className="text-xs font-semibold text-black">Data Set</label>
+          </div>
+          <div>
+            <input
+              type="search"
+              placeholder="Search datasets..."
+              className="w-full p-2 mb-2 text-xs text-black border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {loading ? (
+                <>
+                  <SkeletonLoader />
+                  <SkeletonLoader />
+                  <SkeletonLoader />
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 mt-2">
+                      <input
+                        type="checkbox"
+                        id="select-all"
+                        className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        checked={selectedItems.length === filterMetaData.length} // Check if all items are selected
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          if (isChecked) {
+                            setSelectedItems(
+                              filterMetaData
+                                .filter((table) => table !== null) // Filter out null responses
+                                .map((table) => table.source_table)
+                            );
+                          } else {
+                            setSelectedItems([]);
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="select-all"
+                        className="text-xs font-semibold text-black"
+                      >
+                        Select all
+                      </label>
+                    </div>
+                  </div>
+
+                  {filterMetaData
+                    .filter((table) => table !== null)
+                    .filter((connection) => connection.source_conn_name == selectedConnection)
+                    .map((table, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`table-${idx}`}
+                            checked={selectedItems.includes(table.source_table)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setSelectedItems(prev => checked
+                                ? [...prev, table.source_table]
+                                : prev.filter(i => i !== table.source_table)
+                              );
+                            }}
+                            className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <label
+                            htmlFor={`table-${idx}`}
+                            className="text-xs font-semibold text-black"
+                          >
+                            {table.source_table}
+                          </label>
+                        </div>
+                        <button
+                          onClick={() => openDrawer(id, table)}
+                          className="text-purple-600 hover:text-purple-700"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedConnection && selectedSchema && selectedPurgeScope === "subset" && (
         <div>
           <div className="flex items-center gap-2 mb-0.5 mt-4">
             <Search size={14} className="text-gray-500" />
@@ -413,38 +556,8 @@ export function SourceNode({ id }) {
               </>
             ) : (
               <>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 mt-2">
-                    <input
-                      type="checkbox"
-                      id="select-all"
-                      className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                      checked={selectedItems.length === filterMetaData.length} // Check if all items are selected
-                      onChange={(e) => {
-                        const isChecked = e.target.checked;
-                        if (isChecked) {
-                          setSelectedItems(
-                            filterMetaData
-                              .filter((table) => table !== null) // Filter out null responses
-                              .map((table) => table.source_table)
-                          );
-                        } else {
-                          setSelectedItems([]);
-                        }
-                      }}
-                    />
-                    <label
-                      htmlFor="select-all"
-                      className="text-xs font-semibold text-black"
-                    >
-                      Select all
-                    </label>
-                  </div>
-                </div>
-
-                {filterMetaData
+                {filteredTables
                   .filter((table) => table !== null)
-                  .filter((connection) => connection.source_conn_name == selectedConnection)
                   .map((table, idx) => (
                     <div
                       key={idx}
@@ -454,21 +567,18 @@ export function SourceNode({ id }) {
                         <input
                           type="checkbox"
                           id={`table-${idx}`}
-                          checked={selectedItems.includes(table.source_table)}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setSelectedItems(prev => checked 
-                              ? [...prev, table.source_table]
-                              : prev.filter(i => i !== table.source_table)
-                            );
-                          }}
+                          checked={selectedTables.includes(table.table_name)}
+                          onChange={() => {handleTableSelection(table.table_name)
+                            handleSelectedDataSetName([table.table_name])}
+                          }
                           className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          disabled={selectedPurgeScope === "subset" && table.length > 0 && !selectedTables.includes(selectedTables.table_name)}
                         />
                         <label
                           htmlFor={`table-${idx}`}
                           className="text-xs font-semibold text-black"
                         >
-                          {table.source_table}
+                          {table.table_name}
                         </label>
                       </div>
                       <button
@@ -477,17 +587,15 @@ export function SourceNode({ id }) {
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
-
-
-
                     </div>
                   ))}
               </>
             )}
           </div>
-          
+
         </div>
       )}
+
       <div className="flex space-x-2 mt-4">
         <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           Cancel
