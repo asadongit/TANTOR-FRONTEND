@@ -94,7 +94,7 @@ export function ViewCanvas() {
 
   return (
     <div className="h-full relative">
-      <div className="fixed left-1 bottom-16 transform -translate-y-1/2 z-50">
+      <div className="fixed left-1 bottom-16 transform -translate-y-1/2">
         <Controls className="fill-black text-black stroke-black" />
       </div>
 

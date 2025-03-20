@@ -171,7 +171,7 @@ export function ConsolidationNode({ id }) {
     if (columnSettings?.Union) {
       setSelectedUnionColumns(
         Object.entries(columnSettings.Union)
-          .filter(([_, value]) => value.output === "Yes")
+          .filter(([_, value]) => (value.output === "Yes" || value.aggregate != ""))
           .map(([key]) => key)
       );
     } else {
