@@ -1,9 +1,8 @@
-import PurgeEmpty from "./purge/PurgeEmpty";
-import PurgeList from "./purge/PurgeList";
-
+import PurgeEmpty from "./PurgeEmpty";
+import PurgeList from "./PurgeList";
 const Purge = () => {
 
-  const isLoggedIn = false;
+  const isLoggedIn = true;
 
   return (
     <div>
