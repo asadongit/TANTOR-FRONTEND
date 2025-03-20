@@ -14,7 +14,8 @@ import { useStateContext } from "../context/contextViewProvider";
 import { defaultSetting } from "../BaseView/ColumnSettings";
 
 const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-const FAST_BACKEND = import.meta.env.VITE_FAST_API_V2;
+const FAST_BACKEND = import.meta.env.VITE_FAST_API;
+const FAST_BACKEND_v2 = import.meta.env.VITE_FAST_API_V2;
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -121,7 +122,7 @@ export function BaseNode({ id, data }) {
           created_by: createdBy,
         });
   
-        const response = await fetch(`${FAST_BACKEND}/get-all-views_v2?${params}`, {
+        const response = await fetch(`${FAST_BACKEND_v2}/get-all-views_v2?${params}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
