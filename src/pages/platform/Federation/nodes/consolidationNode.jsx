@@ -528,8 +528,18 @@ export function ConsolidationNode({ id }) {
   };
  
   const handleMappingSave = () => {
+    const selectedTargets = Object.values(mapping);
+    const duplicates = selectedTargets.filter(
+      (item, index) => item && selectedTargets.indexOf(item) !== index
+    );
+  
+    if (duplicates.length > 0) {
+      toast.error("Duplicate column mappings found. Please select unique mappings.");
+      return;
+    }
+  
     const updatedFields = finalPayload.union_fields[firstView].map((col) => mapping[col] || "");
- 
+  
     handleFinalPayload((prev) => {
       const updatedFinalPayload = {
         ...prev,
@@ -538,28 +548,28 @@ export function ConsolidationNode({ id }) {
           [secondView]: updatedFields,
         },
       };
- 
+  
       handleViewPayload((prevView) =>
         prevView.map((item) => ({
           ...item,
           selectedColumns: updatedFinalPayload.union_fields[item.view] || item.selectedColumns,
         }))
       );
- 
+  
       handleConnectionPayload((prevConn) =>
         prevConn.map((item) => ({
           ...item,
           selectedColumns: updatedFinalPayload.union_fields[item.view] || item.selectedColumns,
         }))
       );
- 
+  
       return updatedFinalPayload;
     });
- 
- 
-    setIsUnionModalOpen(false)
-    setIsConsolidationModalOpen(false)
-  }
+  
+    setIsUnionModalOpen(false);
+    setIsConsolidationModalOpen(false);
+  };
+  
  
   useEffect(() => {
     if (firstView && secondView && finalPayload?.union_fields?.[firstView] && finalPayload?.union_fields?.[secondView]) {
@@ -877,14 +887,6 @@ export function ConsolidationNode({ id }) {
             {firstView && secondView && finalPayload?.union_fields?.[firstView] && finalPayload?.union_fields?.[secondView] ? (
               finalPayload.union_fields[firstView].map((col) => (
                 <div key={col} className="flex justify-between items-center py-3 border-b last:border-b-0">
-                  {/* Left Side - First View Columns */}
-                  {/* <select
-              className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-white transition shadow-md text-gray-700 font-medium"
-              value={col}
-              disabled
-            >
-              <option value={col}>{col}</option>
-            </select> */}
                   <input
                     type="text"
                     className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-gray-100 text-gray-500 transition shadow-md font-medium"
@@ -892,22 +894,8 @@ export function ConsolidationNode({ id }) {
                     disabled
                   />
  
- 
- 
                   <MoveHorizontal className="w-6 h-4" />
  
-                  {/* <select
-                    className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-white transition shadow-md text-gray-700 font-medium"
-                    value={mapping[col] || ""}
-                    onChange={(e) => handleMappingChange(col, e.target.value)}
-                  >
-                    <option value="">Select column</option>
-                    {finalPayload.union_fields[secondView].map((targetCol) => (
-                      <option key={targetCol} value={targetCol}>
-                        {targetCol}
-                      </option>
-                    ))}
-                  </select> */}
                   <Autocomplete
                     options={finalPayload.union_fields[secondView]}
                     value={mapping[col] || null}
