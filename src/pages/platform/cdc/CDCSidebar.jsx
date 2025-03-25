@@ -55,7 +55,7 @@ export function CDCSidebar({ canvasType }) {
 
   useEffect(() => {
     if (!hasRun.current && canvasType) {
-      // addPipeline(canvasType);
+      addPipeline(canvasType);
       hasRun.current = true;
     }
   }, [canvasType, addPipeline]);
