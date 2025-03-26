@@ -62,19 +62,10 @@ export const WorkflowProvider = ({ children }) => {
 
   const updatePipelineData = (pipelineId, nodeType, nodeData) => {
     setPipelines((prevPipelines) => {
-      console.log(" Previous Pipelines:", prevPipelines);
 
       if (!prevPipelines[pipelineId]) {
-        console.error(` Pipeline ${pipelineId} not found!`, prevPipelines);
         return prevPipelines;
       }
-
-      console.log(` Updating pipeline: ${pipelineId}, nodeType: ${nodeType}`);
-      console.log(
-        " Previous Node Data:",
-        prevPipelines[pipelineId].data[nodeType]
-      );
-      console.log(" New Node Data:", nodeData);
 
       return {
         ...prevPipelines,
@@ -106,71 +97,100 @@ export const WorkflowProvider = ({ children }) => {
       prevEdges.filter((edge) => !edge.id.includes(pipelineId))
     );
 
-    console.log(`Pipeline ${pipelineId} deleted successfully.`);
   };
 
-
-
-  const selectSource = (pipelineId, sourceTable) => {
+  const selectSource = (ID, sourceTable, connectedTargets, isPipelineMode = true) => {  
     setInProgressMappings((prev) => ({
       ...prev,
-      [pipelineId]: { ...prev[pipelineId], sourceTable },
+      [ID]: {
+        sourceTable,
+        ...(isPipelineMode ? {} : { remainingTargets: new Set(connectedTargets) }),
+      },
     }));
   };
+  
 
-  const completeMapping = (ID, targetTable) => {
-    const sourceTable = inProgressMappings[ID]?.sourceTable;
-    if (!sourceTable) return;
+  const completeMapping = (ID, sourceID, targetTable, isPipelineMode = true) => {
+
+    const sourceData = isPipelineMode? inProgressMappings[ID] : inProgressMappings[sourceID];
+
+    if (!sourceData || !sourceData.sourceTable) {
+        console.warn("No source data found or source table missing!");
+        return;
+    }
+
+    const mappingKey = isPipelineMode ? ID : `${sourceID}-${ID}`;
 
     const newMapping = {
-      sourceTable,
-      targetTable,
-      schedule: {},
-      wherecondition: {},
+        sourceTable: sourceData.sourceTable,
+        targetTable,
+        schedule: {},
+        scope:{},
+        whereCondition: {},
     };
 
-    setPipelineMappings((prev) => ({
-      ...prev,
-      [ID]: [...(prev[ID] || []), newMapping],
-    }));
+
+    setPipelineMappings((prev) => {
+        const updatedMappings = {
+            ...prev,
+            [mappingKey]: [...(prev[mappingKey] || []), newMapping],
+        };
+        return updatedMappings;
+    });
 
     setInProgressMappings((prev) => {
-      const result = { ...prev };
-      delete result[ID].sourceTable;
-      return result;
+        if (isPipelineMode) {
+            return {}; 
+        }
+
+        const updated = { ...prev };
+
+        if (!updated[sourceID].remainingTargets) {
+            return updated;
+        }
+
+        updated[sourceID].remainingTargets.delete(ID); 
+
+        if (updated[sourceID].remainingTargets.size === 0) {
+            delete updated[sourceID]; 
+        }
+
+        return updated;
     });
-  };
+};
 
-  const deleteMapping = (pipelineId, idx) => {
+
+  const deleteMapping = (sourceId, ID, idx, isPipelineMode=true) => {
+    const key = isPipelineMode ? ID : `${sourceId}-${ID}`;
     setPipelineMappings((prev) => {
-      if (!prev[pipelineId]) return prev;
-
-      const updatedMappings = prev[pipelineId].filter(
-        (_, index) => index !== idx
-      );
-
+      if (!prev[key]) return prev;
+  
+      const updatedMappings = prev[key].filter((_, index) => index !== idx);
+  
       const newState = { ...prev };
       if (updatedMappings.length > 0) {
-        newState[pipelineId] = updatedMappings;
+        newState[key] = updatedMappings;
       } else {
-        delete newState[pipelineId];
+        delete newState[key];
       }
-
+  
       return newState;
     });
   };
+  
 
-  const updateMappingDetails = (pipelineId, idx, newDetails) => {
+  const updateMappingDetails = (sourceId, targetId, idx, newDetails, isPipelineMode, pipelineId) => {
+    const key = isPipelineMode ? pipelineId : `${sourceId}-${targetId}`;
+  
     setPipelineMappings((prev) => {
-      if (!prev[pipelineId] || idx >= prev[pipelineId].length) return prev;
-
-      const updatedMappings = [...prev[pipelineId]];
+      if (!prev[key] || idx >= prev[key].length) return prev;
+  
+      const updatedMappings = [...prev[key]];
       updatedMappings[idx] = { ...updatedMappings[idx], ...newDetails };
-
-      return { ...prev, [pipelineId]: updatedMappings };
+  
+      return { ...prev, [key]: updatedMappings };
     });
   };
-
 
   const addNode = (type, category) => {
     const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
@@ -187,12 +207,10 @@ export const WorkflowProvider = ({ children }) => {
         category,
       },
     };
-    console.log("nodededede------------", newNode);
     setNodes((nodes) => [...nodes, newNode]);
   };
 
   const updateCustomNode = (nodeId, nodeType, updatedData) => {
-    console.log("called for node",nodeId,nodeType,updatedData)
     setNodes((prevNodes) => {
       let updatedNodes = prevNodes.map((node) =>
         node.id === nodeId
@@ -200,7 +218,10 @@ export const WorkflowProvider = ({ children }) => {
             ...node,
             data: {
               ...node.data,
-              [nodeType]: updatedData,
+              [nodeType]:{
+                id:nodeId,
+                ...updatedData
+              } ,
             },
           }
           : node
@@ -216,7 +237,10 @@ export const WorkflowProvider = ({ children }) => {
             ...node,
             data: {
               ...node.data,
-              [nodeType]: updatedData,
+              [nodeType]: {
+                id:nodeId,
+                ...updatedData
+              } ,
             },
           }
           : node

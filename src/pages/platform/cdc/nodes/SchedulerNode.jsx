@@ -9,6 +9,8 @@ import { useNavigate } from 'react-router-dom';
 
 
 export function SchedulerNode({ id, data, selected}) {
+
+  // console.log("SCHEDULAR DATA---------",data)
   const hostname = import.meta.env.VITE_FAST_API;
   const token = import.meta.env.VITE_ACCESS_TOKEN;
   const pipelineId = data?.pipelineId;

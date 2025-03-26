@@ -333,15 +333,29 @@ export function SourceNode({ id, data, selected }) {
     selectedConnection && selectedSchema && selectedMode
   );
 
+  const connectedTargets = data?.target?.map(target => target.id) || []; 
+  
+  const firstTargetID = connectedTargets.length > 0 ? connectedTargets[0] : null; 
+  
+  const constructedKey = firstTargetID ? `${data?.source?.id}-${firstTargetID}` : null;
+
+  
+  const pipelineData = isPipelineNode
+    ? pipelineMappings[pipelineId] || []
+    : constructedKey && pipelineMappings[constructedKey] ? pipelineMappings[constructedKey] : [];
+  
+  
+  const sourceTables = pipelineData.map((mapping) => mapping.sourceTable);
+  
   const showTablesList = Boolean(
     selectedMode === "bulk"
       ? tables.length > 0 || loading
-      : (pipelineMappings[pipelineId]?.length ?? 0) > 0
+      : (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
+        (constructedKey && (pipelineMappings[constructedKey]?.length ?? 0) > 0) 
   );
+  
 
-  const pipelineData = pipelineMappings[pipelineId] || [];
-  const sourceTables = pipelineData.map((mapping) => mapping.sourceTable);
-
+  
   return (
     <div
       className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
@@ -504,7 +518,7 @@ export function SourceNode({ id, data, selected }) {
             <select
               id="table-select"
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              onChange={(e) => selectSource(ID, e.target.value)}
+              onChange={(e) => selectSource(ID, e.target.value, connectedTargets, isPipelineNode)}
             >
               <option value="">Select Table</option>
               {filteredTables.map((table, idx) => (
@@ -697,13 +711,13 @@ export function SourceNode({ id, data, selected }) {
                                 <Pencil className="w-4 h-4" />
                               </button>
 
-                              <button
-                                onClick={() => deleteMapping(pipelineId, idx)}
+                              {/* <button
+                                onClick={() => deleteMapping(ID, dataidx)}
                                 className="text-red-600 hover:text-red-700"
                                 aria-label={`Delete ${sourceTable}`}
                               >
                                 <Trash2 className="w-4 h-4" />
-                              </button>
+                              </button> */}
                             </div>
                           </div>
                         ))}
