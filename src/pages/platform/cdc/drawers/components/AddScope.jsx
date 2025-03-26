@@ -1,4 +1,9 @@
-export const CDCDrawerScopeContent = ({
+import { useEffect, useState } from "react";
+import { Drawer, Divider, Checkbox } from "@mui/material";
+import { useWorkflow } from "../../context/WorkflowContext";
+import { useDrawerContext } from "../../context/DrawerContext";
+
+const AddScope = ({
     drawerState,
     handleSave
   }) => {
@@ -68,9 +73,9 @@ export const CDCDrawerScopeContent = ({
   
         <div className="mt-6 flex justify-end">
           <button
-            className="bg-[#6753a8] text-white px-6 py-2 rounded-md hover:bg-[#5a4691] transition-colors"
+            className="bg-[#8d77ba] text-white px-6 py-2 rounded-md hover:bg-gray-400  transition-colors"
             onClick={() => {
-              handleSave();
+              handleSave()
               closeDrawer("cdc");
             }}
           >
@@ -81,3 +86,5 @@ export const CDCDrawerScopeContent = ({
     );
   };
   
+
+  export default AddScope;
