@@ -4,12 +4,10 @@ import { List, RefreshCcw } from "lucide-react";
 import Charts from "./components/Charts";
 import { Navigate } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-// import { Toaster, toast as hotToast } from "react-hot-toast";
+import toast from "react-hot-toast";
 
-import { ToastContainer, toast as notifyToast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
-const CDCDashboard = ({ setActivePage }) => {
+const CDCDashboard = () => {
   const navigate = useNavigate();
 
   const cards = [
@@ -50,8 +48,8 @@ const CDCDashboard = ({ setActivePage }) => {
     },
   ];
 
-  const handleCreateCDC = () => {
-    navigate("/canvas/CDCcanvas");
+  const handleRefresh = () => {
+    toast.success("refreshed successfully!")
   };
 
   return (
@@ -62,24 +60,19 @@ const CDCDashboard = ({ setActivePage }) => {
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-            onClick={() => setActivePage("list")}
+            onClick={() => navigate("/cdclist")}
           >
             <List className="h-5 w-5" />
           </button>
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-            // onClick={handleRefresh}
-            // onClick={() => {
-            //   hotToast.success("Refreshed successfully!");
-            //   // hotToast.error("Something went wrong!");
-
-            // }}
+            onClick={handleRefresh}
           >
             <RefreshCcw className="h-5 w-5" />
           </button>
           <button
-            onClick={handleCreateCDC}
+            onClick={() => navigate("/canvas/CDCcanvas")}
             type="button"
             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >

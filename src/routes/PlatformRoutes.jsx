@@ -11,6 +11,7 @@ import Migration from '../pages/platform/migration/Migration';
 import Transformation from '../pages/platform/archival/Archival';
 import Purge from '../pages/platform/purge/Purge';
 import CDC from '../pages/platform/cdc/CDC'
+import CDCList from '../pages/platform/cdc/CDCList';
 import Source from '../pages/platform/Federation/BaseView/Source';
 import MigrationCanvas from '../pages/platform/migration/MigrationCanvas';
 
@@ -35,6 +36,7 @@ export const PlatformRoutes = (
     <Route path="/transformation" element={<Transformation />} />
     <Route path="/purge" element={<Purge />} />
     <Route path="/cdc" element={<CDC />} />
+    <Route path="/cdclist" element={<CDCList />} />
     <Route path="/editor" element ={<Editor />} />
     <Route path="/federation" element={<FederationDashBoard />}/>
     <Route path='/federation/view/source' element={<Source />} />

@@ -10,8 +10,12 @@ import {
   RefreshCcw,
   X,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const CDCList = () => {
+    const navigate = useNavigate();
+  
   const [data, setData] = useState([
     {
       id: "#01",
@@ -156,15 +160,83 @@ const CDCList = () => {
     setPage(page + 1);
   };
 
+  const handleRefresh=()=>{
+    toast.success("Refreshed successfully!")
+  }
   return (
-    <div className="container mx-auto p-4">
+    <div>
+          <nav className="flex" aria-label="Breadcrumb">
+        <ol className="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+          <li className="inline-flex items-center">
+            <span
+              onClick={() => navigate("/")}
+              className="inline-flex items-center text-sm font-medium text-gray-700 cursor-pointer hover:text-blue-600 dark:text-gray-400 dark:hover:text-white"
+            >
+              Platform
+            </span>
+          </li>
+
+          <li>
+            <div className="flex items-center">
+              <svg
+                className="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 6 10"
+              >
+                <path
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="m1 9 4-4-4-4"
+                />
+              </svg>
+              <span
+              onClick={() => navigate("/cdc")}
+              className={`ms-1 text-sm font-medium cursor-pointer md:ms-2 text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white"
+                }`}
+              >
+                CDC
+              </span>
+            </div>
+          </li>
+          <li>
+            <div className="flex items-center">
+              <svg
+                className="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 6 10"
+              >
+                <path
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="m1 9 4-4-4-4"
+                />
+              </svg>
+              <span
+              onClick={() => navigate("/cdclist")}
+              className={`ms-1 text-sm font-medium cursor-pointer md:ms-2 text-[#8e78b7] hover:text-blue-600 dark:text-gray-400 dark:hover:text-white"
+                }`}
+              >
+                Details
+              </span>
+            </div>
+          </li>
+        </ol>
+      </nav>
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h4 className="text-2xl font-medium">CDC</h4>
         <div>
           <button
             type="button"
             className="text-[#818181] shadow-lg  border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-            // onClick={handleRefresh}
+            onClick={handleRefresh}
           >
             <RefreshCcw className="h-5 w-5 " />
           </button>
