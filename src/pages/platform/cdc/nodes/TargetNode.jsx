@@ -4,7 +4,7 @@ import { Position } from "reactflow";
 import { useDrawerContext } from "../context/DrawerContext";
 import { CustomHandle } from "../components/CustomHandle";
 import { useWorkflow } from "../context/WorkflowContext";
-import { Minus, X, Search, Pencil } from "lucide-react";
+import { Minus, X, Search, Pencil, Trash2 } from "lucide-react";
 import { toast as hotToast } from "react-hot-toast";
 import { SkeletonLoader } from "../components/skeltonLoader";
 export function TargetNode({ id, data, selected }) {
@@ -46,6 +46,7 @@ export function TargetNode({ id, data, selected }) {
     pipelineMappings,
     inProgressMappings,
     updateData,
+    deleteMapping
   } = useWorkflow();
 
   useEffect(() => {
@@ -117,11 +118,7 @@ export function TargetNode({ id, data, selected }) {
     }
 
     try {
-      const cachedschemacount = sessionStorage.getItem("schemacount");
-      if (cachedschemacount) {
-        const schemacount = JSON.parse(cachedschemacount);
-        setSchemacount(schemacount);
-      } else {
+
         const response = await fetch(
           `${hostname}/schema/${connectionName}/count`,
           {
@@ -136,9 +133,8 @@ export function TargetNode({ id, data, selected }) {
         }
 
         const schemacount = await response.json();
-        sessionStorage.setItem("schemacount", JSON.stringify(schemacount));
         setSchemacount(schemacount);
-      }
+      
     } catch (error) {
       console.error("Error fetching schemas:", error);
       setSchemacount([]);
@@ -154,7 +150,6 @@ export function TargetNode({ id, data, selected }) {
         !bulkList ||
         bulkList.length === 0
       ) {
-        console.log("EMPTY MODE ENTERINGNGINGINGI");
         setSelectedItems([]);
         setTables([]);
         setLoading(false);
@@ -178,8 +173,6 @@ export function TargetNode({ id, data, selected }) {
         }
 
         const ddlData = await connectionResponse.json();
-        console.log("DDL Data:", ddlData);
-
         const filteredData =
           Array.isArray(ddlData) && Array.isArray(bulkList)
             ? ddlData.filter((item) =>
@@ -290,20 +283,29 @@ export function TargetNode({ id, data, selected }) {
     }
   };
 
-  const showTablesList = Boolean(
-    selectedMode === "bulk"
-      ? tables.length > 0 || loading
-      : (pipelineMappings[pipelineId]?.length ?? 0) > 0
-  );
-
-  const pipelineData = pipelineMappings[pipelineId] || [];
+  const constructedKey = `${data?.source?.id}-${ID}`;
+  
+  const pipelineData = isPipelineNode
+    ? pipelineMappings[pipelineId] || []
+    : pipelineMappings[constructedKey] || [];
+  
+  
   const targetTables = pipelineData.map((mapping) => mapping.targetTable);
   const sourceTables = pipelineData.map((mapping) => mapping.sourceTable);
+
+  
   const sourceTable = isPipelineNode
     ? inProgressMappings[pipelineId]?.sourceTable
     : inProgressMappings[data?.source?.id]?.sourceTable;
-
-  console.log("slectedModeTARGET", selectedMode);
+  
+  
+  const showTablesList = Boolean(
+    selectedMode === "bulk"
+      ? tables.length > 0 || loading
+      : (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
+        (pipelineMappings[constructedKey]?.length ?? 0) > 0 
+  );
+  
   return (
     <div
       className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
@@ -422,7 +424,7 @@ export function TargetNode({ id, data, selected }) {
         filteredTables.length > 0 &&
         selectedMode === "subset" && (
           <div>
-            <div className="flex items-center space-x-2 mb-2">
+            <div className="flex items-center space-x-2 my-2">
               <span className="text-sm font-semibold text-black">Map for:</span>
               <span className="text-sm text-gray-700">
                 {sourceTable || "No source selected"}
@@ -432,7 +434,14 @@ export function TargetNode({ id, data, selected }) {
               id="connection-select"
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
               // value={selectedConnection}
-              onChange={(e) => completeMapping(pipelineId, e.target.value)}
+              onChange={(e) =>
+                completeMapping(
+                  ID,
+                  data?.source?.id,
+                  e.target.value,
+                  isPipelineNode
+                )
+              }
             >
               <option value="">Select Table</option>
               {filteredTables.map((table, idx) => (
@@ -566,22 +575,20 @@ export function TargetNode({ id, data, selected }) {
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
-
-                              {/* <button
-                                                            onClick={() =>
-                                                              openDrawer(
-                                                                data.category,
-                                                                "editTable",
-                                                                id,
-                                                                data.pipelineId,
-                                                                sourceTable
-                                                              )
-                                                            }
-                                                            className="text-red-600 hover:text-red-700"
-                                                            aria-label={`Delete ${sourceTable}`}
-                                                          >
-                                                            <Trash2 className="w-4 h-4" />
-                                                          </button> */}
+                              <button
+                                onClick={() =>
+                                  deleteMapping(
+                                    data?.source?.id,
+                                    ID,
+                                    idx,
+                                    isPipelineNode
+                                  )
+                                }
+                                className="text-red-600 hover:text-red-700"
+                                aria-label={`Delete ${sourceTable}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -594,7 +601,7 @@ export function TargetNode({ id, data, selected }) {
           </div>
         </div>
       )}
-      {selectedMode == "subset" && (
+      {selectedMode == "subset" && selectedSchema && (
         <button
           className="w-full py-1 px-4 flex items-center justify-center border border-dashed border-[#8e78b7]  text-[#8e78b7] rounded-md  bg-transparent transition-all duration-200 ease-in-out
                                                           hover:bg-[#8e78b7] hover:text-white mt-2"

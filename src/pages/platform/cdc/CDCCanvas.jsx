@@ -80,32 +80,31 @@ const Canvas = () => {
   const onConnect = useCallback(
     (connection) => {
       setEdges((prevEdges) => addEdge(connection, prevEdges));
-
+  
       setNodes((prevNodes) => {
+        const sourceNode = prevNodes.find((n) => n.id === connection.source);
+        const targetNode = prevNodes.find((n) => n.id === connection.target);
+  
+        if (!sourceNode || !targetNode) {
+          console.log(
+            `Node not found: ${!sourceNode ? `Source (ID: ${connection.source})` : ''} ${!targetNode ? `Target (ID: ${connection.target})` : ''}`
+          );
+          return prevNodes;
+        }
+  
         return prevNodes.map((node) => {
           if (node.id === connection.target) {
-            const sourceNode = prevNodes.find(
-              (n) => n.id === connection.source
-            );
-            if (!sourceNode) {
-              console.log(` Source Node (ID: ${connection.source}) Not Found`);
-              return node;
-            }
-
-            const existingData = node.data || {};
-            const existingSourceData = Array.isArray(
-              existingData[sourceNode.type]
-            )
-              ? existingData[sourceNode.type]
+            const updatedSourceData = Array.isArray(node.data?.[sourceNode.type])
+              ? node.data[sourceNode.type].filter((s) => s.id !== sourceNode.id)
               : [];
-
+  
             return {
               ...node,
               data: {
-                ...existingData,
+                ...node.data,
                 [sourceNode.type]: 
-                // []
-                  // ...existingSourceData.filter((s) => s.id !== sourceNode.id),
+                // [
+                  // ...updatedSourceData,
                   {
                     id: sourceNode.id,
                     ...sourceNode.data[sourceNode.type],
@@ -114,12 +113,34 @@ const Canvas = () => {
               },
             };
           }
+  
+          if (node.id === connection.source) {
+            const updatedTargetData = Array.isArray(node.data?.[targetNode.type])
+              ? node.data[targetNode.type].filter((t) => t.id !== targetNode.id)
+              : [];
+  
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                [targetNode.type]: [
+                  ...updatedTargetData,
+                  {
+                    id: targetNode.id,
+                    ...targetNode.data[targetNode.type],
+                  },
+                ],
+              },
+            };
+          }
+  
           return node;
         });
       });
     },
     [setNodes, setEdges]
   );
+  
 
   return (
     <div className="w-full h-full" ref={reactFlowWrapper}>
