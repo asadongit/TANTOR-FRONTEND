@@ -2,12 +2,19 @@
 import { useEffect, useState } from "react";
 import { useTableContext } from "../context/TableContext";
 import { Drawer } from "@mui/material";
-import { Info, Edit2, Trash2 } from "lucide-react";
+import { Info, Edit2, Trash2, CloudCog } from "lucide-react";
 
 const TableDrawer = ({ nodes, setNodes }) => {
   const { drawerState, closeDrawer } = useTableContext();
   const [localTable, setLocalTable] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [selectedRows, setSelectedRows] = useState([0]);
+  const [selectedColumn, setSelectedColumn] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState("");
+  const [value, setValue] = useState("");
+  const [isQueryPreview, setIsQueryPreview] = useState(false);
+  const [complexQuery, setComplexQuery] = useState("");
+
 
   // Initialize filters state
   const [filterEntries, setFilterEntries] = useState([]);
@@ -38,7 +45,8 @@ const TableDrawer = ({ nodes, setNodes }) => {
       // Find the current table's filters in the nodes data
       const currentNode = nodes.find((node) => node.id === drawerState.nodeId);
       const currentTable = currentNode?.data.tables?.find(
-        (t) => t.table_name === drawerState.selectedTable.table_name
+        (t) =>
+          t.table_name === drawerState.selectedTable.table_name
       );
 
       // Set filters from the table's existing filters or initialize empty
@@ -104,6 +112,7 @@ const TableDrawer = ({ nodes, setNodes }) => {
     setFilterEntries(filterEntries.filter((_, i) => i !== index));
   };
 
+
   const handleSave = () => {
     if (!localTable || !drawerState.nodeId) return;
 
@@ -119,10 +128,10 @@ const TableDrawer = ({ nodes, setNodes }) => {
           const updatedTables = existingTables.map((t) =>
             t.table_name === localTable.table_name
               ? {
-                  ...t,
-                  filters: filterEntries,
-                  whereCondition: whereConditions.join(" AND "),
-                }
+                ...t,
+                filters: filterEntries,
+                whereCondition: whereConditions.join(" AND "),
+              }
               : t
           );
 
@@ -148,7 +157,11 @@ const TableDrawer = ({ nodes, setNodes }) => {
         return node;
       })
     );
-
+    setSelectedColumn('');
+    setSelectedFilter('');
+    setValue('')
+    setIsQueryPreview(false);
+    setComplexQuery("");
     closeDrawer();
   };
 
@@ -168,6 +181,10 @@ const TableDrawer = ({ nodes, setNodes }) => {
     console.log("Add condition");
   };
 
+  const handleCheckboxChange = (index) => {
+    setSelectedRows((prev) => prev.includes(index) ? prev.filter((i) => i != index) : [...prev, index])
+  }
+
   const headers = [
     "Partition Name",
     "Column Name",
@@ -177,43 +194,71 @@ const TableDrawer = ({ nodes, setNodes }) => {
     "Select",
   ];
 
-  const sampleData = [
-    {
-      partition_name: "P1",
-      column_name: "DateChefDate",
-      high_value: "2024-01-01",
-      partition_type: "RANGE",
-      table_name: "RECIPETABLE_001",
-    },
-    {
-      partition_name: "P2",
-      column_name: "DateChefDate",
-      high_value: "2024-04-01",
-      partition_type: "RANGE",
-      table_name: "RECIPETABLE_001",
-    },
-    {
-      partition_name: "P3",
-      column_name: "DateChefDate",
-      high_value: "2024-07-01",
-      partition_type: "RANGE",
-      table_name: "RECIPETABLE_001",
-    },
-    {
-      partition_name: "P4",
-      column_name: "DateChefDate",
-      high_value: "2024-10-01",
-      partition_type: "RANGE",
-      table_name: "RECIPETABLE_001",
-    },
-    {
-      partition_name: "P5",
-      column_name: "DateChefDate",
-      high_value: "2025-01-01",
-      partition_type: "RANGE",
-      table_name: "RECIPETABLE_001",
-    },
-  ];
+  // const sampleData = [
+  //   {
+  //     partition_name: "P1",
+  //     column_name: "DateChefDate",
+  //     high_value: "2024-01-01",
+  //     partition_type: "RANGE",
+  //     table_name: "RECIPETABLE_001",
+  //   },
+  //   {
+  //     partition_name: "P2",
+  //     column_name: "DateChefDate",
+  //     high_value: "2024-04-01",
+  //     partition_type: "RANGE",
+  //     table_name: "RECIPETABLE_001",
+  //   },
+  //   {
+  //     partition_name: "P3",
+  //     column_name: "DateChefDate",
+  //     high_value: "2024-07-01",
+  //     partition_type: "RANGE",
+  //     table_name: "RECIPETABLE_001",
+  //   },
+  //   {
+  //     partition_name: "P4",
+  //     column_name: "DateChefDate",
+  //     high_value: "2024-10-01",
+  //     partition_type: "RANGE",
+  //     table_name: "RECIPETABLE_001",
+  //   },
+  //   {
+  //     partition_name: "P5",
+  //     column_name: "DateChefDate",
+  //     high_value: "2025-01-01",
+  //     partition_type: "RANGE",
+  //     table_name: "RECIPETABLE_001",
+  //   },
+  // ];
+
+  const hasPartitionData = drawerState.selectedTable?.metadatas?.partition_json &&
+    drawerState.selectedTable.metadatas.partition_json.length > 0 ||
+    drawerState.selectedTable?.partition_json &&
+    drawerState.selectedTable.partition_json.length > 0;
+
+  const filterBy = {
+    "neq": "!=",
+    "gt": ">",
+    "lt": "<",
+    "gte": "≥",
+    "lte": "≤",
+    "like": "LIKE",
+    "in": "IN"
+  }
+
+  const handleQueryPreview = () => {
+    setIsQueryPreview(true)
+  }
+
+  const handleCancel = () => {
+    setSelectedColumn("");
+    setSelectedFilter("");
+    setValue("");
+    setIsQueryPreview(false);
+    setComplexQuery("")
+    closeDrawer();
+  }
 
   return (
     // <Drawer anchor="right" open={drawerState.isOpen} onClose={closeDrawer}>
@@ -326,15 +371,14 @@ const TableDrawer = ({ nodes, setNodes }) => {
       <header className="p-5 border-b border-gray-200">
         <h1 className="m-0 text-xl font-semibold">Edit Table</h1>
         <div className="text-gray-500 text-sm mt-1">
-          {localTable?.table_name || ""}
+          {localTable?.table_name || localTable?.source_table || ""}
         </div>
       </header>
 
       <div className="flex border-b border-gray-200">
         <div
-          className={`py-4 px-6 text-sm font-medium cursor-pointer relative ${
-            activeTab === "filter-tab" ? "text-[#8e78b7]" : ""
-          }`}
+          className={`py-4 px-6 text-sm font-medium cursor-pointer relative ${activeTab === "filter-tab" ? "text-[#8e78b7]" : ""
+            }`}
           onClick={() => switchTab("filter-tab")}
         >
           Add Filter
@@ -343,10 +387,10 @@ const TableDrawer = ({ nodes, setNodes }) => {
           )}
         </div>
         <div
-          className={`py-4 px-6 text-sm font-medium cursor-pointer relative ${
-            activeTab === "partition-tab" ? "text-[#8e78b7]" : ""
-          }`}
-          onClick={() => switchTab("partition-tab")}
+          className={`py-4 px-6 text-sm font-medium cursor-pointer relative ${activeTab === "partition-tab" ? "text-[#8e78b7]" : ""}
+            ${!hasPartitionData ? "text-gray-400 cursor-not-allowed" : "cursor-pointer"}
+          `}
+          onClick={() => hasPartitionData && switchTab("partition-tab")}
         >
           Drop Partition
           {activeTab === "partition-tab" && (
@@ -358,17 +402,15 @@ const TableDrawer = ({ nodes, setNodes }) => {
       <div className={`p-6 ${activeTab !== "filter-tab" ? "hidden" : ""}`}>
         <div className="flex bg-gray-100 rounded-md overflow-hidden mb-5">
           <div
-            className={`flex-1 text-center py-3 px-3 cursor-pointer text-sm font-medium transition-colors ${
-              queryMode === "simple" ? "bg-[#8e78b7] text-white" : ""
-            }`}
+            className={`flex-1 text-center py-3 px-3 cursor-pointer text-sm font-medium transition-colors ${queryMode === "simple" ? "bg-[#8e78b7] text-white" : ""
+              }`}
             onClick={() => switchQueryMode("simple")}
           >
             Regular Filter
           </div>
           <div
-            className={`flex-1 text-center py-3 px-3 cursor-pointer text-sm font-medium transition-colors ${
-              queryMode === "advanced" ? "bg-[#8e78b7] text-white" : ""
-            }`}
+            className={`flex-1 text-center py-3 px-3 cursor-pointer text-sm font-medium transition-colors ${queryMode === "advanced" ? "bg-[#8e78b7] text-white" : ""
+              }`}
             onClick={() => switchQueryMode("advanced")}
           >
             Complex Query
@@ -382,13 +424,23 @@ const TableDrawer = ({ nodes, setNodes }) => {
             </label>
             <select
               id="column"
+              value={selectedColumn}
+              onChange={(e) => {
+                const columnName = e.target.value;
+                setSelectedColumn(columnName);
+              }}
               className="w-full p-3 border border-gray-300 rounded-md text-sm"
             >
               <option value="">Select a column</option>
-              <option value="id">ID</option>
+              {/* <option value="id">ID</option>
               <option value="name">Name</option>
               <option value="date">Date</option>
-              <option value="status">Status</option>
+              <option value="status">Status</option> */}
+              {(drawerState.selectedTable?.column_json || drawerState.selectedTable?.metadatas?.column_json || [])
+                .map((column, idx) =>
+                  <option key={idx} value={column.column_name}>
+                    {column.column_name}
+                  </option>)}
             </select>
           </div>
 
@@ -401,6 +453,12 @@ const TableDrawer = ({ nodes, setNodes }) => {
             </label>
             <select
               id="operator"
+              value={selectedFilter}
+              onChange={(e) => {
+                const filter = e.target.value;
+                setSelectedFilter(filter)
+              }
+              }
               className="w-full p-3 border border-gray-300 rounded-md text-sm"
             >
               <option value="eq">= Equal to</option>
@@ -421,12 +479,17 @@ const TableDrawer = ({ nodes, setNodes }) => {
             <input
               type="text"
               id="value"
+              value={value}
+              onChange={(e) => {
+                const val = e.target.value;
+                setValue(val)
+              }}
               placeholder="Enter value"
               className="w-full p-3 border border-gray-300 rounded-md text-sm"
             />
           </div>
 
-          <div className="mt-4">
+          {/* <div className="mt-4">
             <label className="inline-block mr-3">
               <input
                 type="radio"
@@ -440,35 +503,35 @@ const TableDrawer = ({ nodes, setNodes }) => {
             <label className="inline-block">
               <input type="radio" name="logic" value="or" className="mr-1" /> OR
             </label>
-          </div>
+          </div> */}
 
           <button
             className="bg-[#8e78b7] text-white border-none rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-[#8e78b7] mt-4"
-            onClick={addCondition}
+            onClick={handleQueryPreview}
           >
             Add Condition
           </button>
 
-          <div className="mt-5 p-4 bg-gray-50 rounded-md border border-gray-200">
+          {isQueryPreview && <div className="mt-5 p-4 bg-gray-50 rounded-md border border-gray-200">
             <h3 className="mt-0 mb-3 text-base font-medium">Query Preview</h3>
             <div className="flex flex-wrap">
               <div className="inline-flex items-center bg-purple-50 rounded px-2.5 py-1.5 mr-2 mb-2 text-sm">
-                status = 'active'{" "}
+                Column Name = {selectedColumn}
                 <span className="ml-2 cursor-pointer text-[#8e78b7] font-bold">
                   ×
                 </span>
               </div>
               <div className="inline-flex items-center bg-purple-50 rounded px-2.5 py-1.5 mr-2 mb-2 text-sm">
-                date &gt; '2023-01-01'{" "}
+                {selectedColumn} {filterBy[selectedFilter]} {value}
                 <span className="ml-2 cursor-pointer text-[#8e78b7] font-bold">
                   ×
                 </span>
               </div>
             </div>
-            <pre className="m-0 whitespace-pre-wrap font-mono text-sm">
-              WHERE status = 'active' AND date &gt; '2023-01-01'
+            <pre className="m-0 px-2.5 whitespace-pre-wrap font-mono text-sm">
+              WHERE {selectedColumn} {filterBy[selectedFilter]} {value}
             </pre>
-          </div>
+          </div>}
         </div>
 
         <div className={queryMode !== "advanced" ? "hidden" : ""}>
@@ -483,97 +546,132 @@ const TableDrawer = ({ nodes, setNodes }) => {
               id="complex-query"
               rows="6"
               placeholder="Enter a complex WHERE clause starting with the 'WHERE' keyword"
+              value={complexQuery}
+              onChange={(e) => {
+                const query = e.target.value;
+                setComplexQuery(query)
+              }}
               className="w-full p-3 border border-gray-300 rounded-md text-sm"
             ></textarea>
           </div>
 
-          <div className="mt-5 p-4 bg-gray-50 rounded-md border border-gray-200">
+          <button
+            className="bg-[#8e78b7] text-white border-none rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-[#8e78b7] mt-4"
+            onClick={handleQueryPreview}
+          >
+            Add Condition
+          </button>
+
+          {isQueryPreview && <div className="mt-5 p-4 bg-gray-50 rounded-md border border-gray-200">
             <h3 className="mt-0 mb-3 text-base font-medium">Query Preview</h3>
             <pre className="m-0 whitespace-pre-wrap font-mono text-sm">
-              WHERE status = 'active' AND (date &gt; '2023-01-01' OR priority =
-              'high')
+              {complexQuery}
             </pre>
-          </div>
+          </div>}
         </div>
 
-        <div className="flex justify-end mt-6 gap-3">
-          <button className="bg-gray-100 text-gray-800 border border-gray-300 rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-gray-200">
+        {isQueryPreview && <div className="flex justify-end mt-6 gap-3">
+          <button
+            onClick={handleCancel}
+            className="bg-gray-100 text-gray-800 border border-gray-300 rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-gray-200">
             Cancel
           </button>
-          <button className="bg-[#8e78b7] text-white border-none rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-[#8e78b7]">
+          <button
+            onClick={handleSave}
+            className="bg-[#8e78b7] text-white border-none rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-[#8e78b7]">
             Save
           </button>
-        </div>
+        </div>}
       </div>
 
+      {!hasPartitionData ?
       <div className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}>
-        <div className="flex items-start bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+        <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
           <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
-
           <div>
             <strong>
-              Sequential Partition Drop is enforced for this database.
+              Sequential Partition Drop is not enforced for this database.
             </strong>{" "}
-            The first available partition is auto-selected.
           </div>
         </div>
+        </div>
+        : <div className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}>
+          <div className="flex items-start bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+            <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
 
-        <div className="w-full overflow-x-auto shadow rounded-lg">
-          <table className="w-full bg-white">
-            <thead>
-              <tr className="bg-gray-800 text-white">
-                {headers.map((header) => (
-                  <th key={header} className="py-3 px-4 text-center">
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sampleData.map((item, index) => (
-                <tr
-                  key={index}
-                  className={
-                    index === 0 ? "bg-[#daf5ce]" : "bg-gray-100 opacity-50"
-                  }
-                >
-                  <td className="border border-gray-200 p-3 text-center">
-                    {item.partition_name}
-                  </td>
-                  <td className="border border-gray-200 p-3 text-center">
-                    {item.column_name}
-                  </td>
-                  <td className="border border-gray-200 p-3 text-center">
-                    {item.high_value}
-                  </td>
-                  <td className="border border-gray-200 p-3 text-center">
-                    {item.partition_type}
-                  </td>
-                  <td className="border border-gray-200 p-3 text-center">
-                    {item.table_name}
-                  </td>
-                  <td className="border border-gray-200 p-3 text-center">
-                    <input
-                      type="checkbox"
-                      disabled={index !== 0}
-                      checked={index === 0}
-                    />
-                  </td>
+            <div>
+              <strong>
+                Sequential Partition Drop is enforced for this database.
+              </strong>{" "}
+              The first available partition is auto-selected.
+            </div>
+          </div>
+
+          <div className="w-full overflow-x-auto shadow rounded-lg">
+            <table className="w-full bg-white">
+              <thead>
+                <tr className="bg-gray-800 text-white">
+                  {headers.map((header) => (
+                    <th key={header} className="py-3 px-4 text-center">
+                      {header}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {hasPartitionData && (drawerState.selectedTable?.metadatas?.partition_json || drawerState.selectedTable?.partition_json || [])
+                  .map((item, index) => (
+                    <tr
+                      key={index}
+                      className={
+                        //index === 0 
+                        selectedRows.includes(index) ? "bg-[#daf5ce]" : "bg-gray-100 opacity-50"
+                      }
+                    >
+                      <td className="border border-gray-200 p-3 text-center">
+                        {item.partition_name}
+                      </td>
+                      <td className="border border-gray-200 p-3 text-center">
+                        {item.column_name}
+                      </td>
+                      <td className="border border-gray-200 p-3 text-center">
+                        {item.high_value}
+                      </td>
+                      <td className="border border-gray-200 p-3 text-center">
+                        {item.partition_type}
+                      </td>
+                      <td className="border border-gray-200 p-3 text-center">
+                        {item.table_name}
+                      </td>
+                      <td className="border border-gray-200 p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedRows.includes(index)}
+                          onChange={() => handleCheckboxChange(index)}
+                        //disabled={index !== 0}
+                        //checked={index === 0}
+                        />
+                      </td>
+                    </tr>))}
+              </tbody>
+            </table>
+          </div>
 
-        <div className="flex justify-end mt-6 gap-3">
-          <button className="bg-gray-100 text-gray-800 border border-gray-300 rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-gray-200">
-            Cancel
-          </button>
-          <button className="bg-[#8e78b7] text-white border-none rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-[#8e78b7]">
-            SAVE
-          </button>
-        </div>
-      </div>
+          {<div className="flex justify-end mt-6 gap-3">
+            <button
+              onClick={() => {
+                handleCancel()
+              }}
+              className="bg-gray-100 text-gray-800 border border-gray-300 rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-gray-200">
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="bg-[#8e78b7] text-white border-none rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-[#8e78b7]">
+              SAVE
+            </button>
+          </div>}
+        </div>}
     </Drawer>
   );
 };

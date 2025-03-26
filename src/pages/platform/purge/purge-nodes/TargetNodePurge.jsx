@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
-import { Search, Upload, X } from "lucide-react";
+import { Pencil, Search, Upload, X } from "lucide-react";
 import { useStateContext } from "../../react-flow/context/ContextProvider";
 import { SkeletonLoader } from "../../react-flow/SkeletonLoader";
+import { useTableContext } from "../../react-flow/context/TableContext";
 
 export function TargetNode({ id }) {
 
@@ -21,7 +22,8 @@ export function TargetNode({ id }) {
     const [selectedTableName, setSelectedTableName] = useState("")
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-
+    const { openDrawer } = useTableContext();
+    
     let connectionsData;
     let schemadetails;
     let tabledetails;
@@ -186,27 +188,27 @@ export function TargetNode({ id }) {
         const { name } = defineNode;
         const { source_conn_name, purge_scope: source_purge_scope, selectedTables: sourceTables } = sourceNode;
         const { target_conn_name, purge_scope: target_purge_scope, selectedTables: targetTables } = targetNode;
-    
+
         if (!name) {
             return { valid: false, message: "Name must be selected on Define Node." };
         }
-    
+
         if (!source_conn_name) {
             return { valid: false, message: "Source connection name must be selected on Source Node." };
         }
-    
+
         if (source_purge_scope === "subset" && (!sourceTables || sourceTables.length !== 1)) {
             return { valid: false, message: "For Source Node with 'subset' purge scope, one table must be selected." };
         }
-    
+
         if (!target_conn_name) {
             return { valid: false, message: "Target connection name must be selected on Target Node." };
         }
-    
+
         if (target_purge_scope === "subset" && (!targetTables || targetTables.length !== 1)) {
             return { valid: false, message: "For Target Node with 'subset' purge scope, one table must be selected." };
         }
-    
+
         return { valid: true, message: "Selection is valid." };
     };
 
@@ -214,21 +216,21 @@ export function TargetNode({ id }) {
         const defineNode = {
             name: sourceName || ""
         };
-    
+
         const sourceNode = {
             source_conn_name: sourceConnectionName || "",
-            purge_scope: selectedScope  || "",
+            purge_scope: selectedScope || "",
             selectedTables: selectedScope === "subset" ? selectedDataSet : selectedTables
         };
-    
+
         const targetNode = {
             target_conn_name: targetConnection || "",
             purge_scope: selectedScope || "",
             selectedTables: selectedScope === "subset" ? selectedTableName : selectedTables || []
         };
-    
+
         const validationResult = validateSelection(defineNode, sourceNode, targetNode);
-    
+
         if (!validationResult.valid) {
             alert(validationResult.message); // Show error message
             return;
@@ -237,7 +239,7 @@ export function TargetNode({ id }) {
             handleIsVisibleFooter(true)
         }
     };
-    
+
 
 
     return (
@@ -371,6 +373,12 @@ export function TargetNode({ id }) {
                                                     {table.table_name}
                                                 </label>
                                             </div>
+                                            <button
+                                                onClick={() => openDrawer(id, table)}
+                                                className="text-purple-600 hover:text-purple-700"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     ))}
                             </>

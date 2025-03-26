@@ -4,14 +4,7 @@ import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
 import { useTableContext } from '../../react-flow/context/TableContext';
 import { useStateContext } from "../../react-flow/context/ContextProvider";
-
-const SkeletonLoader = () => (
-  <div className="animate-pulse space-y-4">
-    <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-    <div className="h-4 bg-gray-300 rounded w-1/2"></div>
-    <div className="h-4 bg-gray-300 rounded w-2/3"></div>
-  </div>
-);
+import { SkeletonLoader } from "../../react-flow/SkeletonLoader"
 
 export function SourceNode({ id }) {
   const hostname = import.meta.env.VITE_FAST_API;
@@ -237,7 +230,6 @@ export function SourceNode({ id }) {
       setLoading(false);
     }
   }, [])
-
 
   const filteredTables = tables.filter((table) =>
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")

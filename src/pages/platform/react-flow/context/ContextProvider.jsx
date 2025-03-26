@@ -63,8 +63,8 @@ export const ContextProvider = ({ children }) => {
   );
 };
 
-ContextProvider.propTypes = {
-  children : PropTypes.func.isRequired,
-}
+// ContextProvider.propTypes = {
+//   children : PropTypes.func.isRequired,
+// }
 
 export const useStateContext = () => useContext(StateContext);
