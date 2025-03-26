@@ -170,7 +170,7 @@ const CDCList = () => {
           <li className="inline-flex items-center">
             <span
               onClick={() => navigate("/")}
-              className="inline-flex items-center text-sm font-medium text-gray-700 cursor-pointer hover:text-blue-600 dark:text-gray-400 dark:hover:text-white"
+              className="inline-flex items-center text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
             >
               Platform
             </span>
@@ -195,7 +195,7 @@ const CDCList = () => {
               </svg>
               <span
               onClick={() => navigate("/cdc")}
-              className={`ms-1 text-sm font-medium cursor-pointer md:ms-2 text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white"
+              className={`ms-1 text-sm font-medium cursor-pointer md:ms-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
                 }`}
               >
                 CDC
@@ -221,7 +221,7 @@ const CDCList = () => {
               </svg>
               <span
               onClick={() => navigate("/cdclist")}
-              className={`ms-1 text-sm font-medium cursor-pointer md:ms-2 text-[#8e78b7] hover:text-blue-600 dark:text-gray-400 dark:hover:text-white"
+              className={`ms-1 text-sm font-medium cursor-pointer md:ms-2 text-[#8e78b7] hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
                 }`}
               >
                 Details

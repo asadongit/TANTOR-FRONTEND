@@ -95,7 +95,9 @@ const CDCDashboard = () => {
               <h3 className="text-lg font-semibold">{card.title}</h3>
             </div>
             <p className="text-black text-5xl font-bold">{card.count}</p>
-            <button className="mt-4 text-purple-600 text-sm hover:text-purple-700">
+            <button className="mt-4 text-purple-600 text-sm hover:text-purple-700"
+            
+            >
               See details
             </button>
           </div>
