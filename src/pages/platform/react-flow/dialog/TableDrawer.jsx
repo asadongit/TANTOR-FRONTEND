@@ -14,6 +14,7 @@ const TableDrawer = ({ nodes, setNodes }) => {
   const [value, setValue] = useState("");
   const [isQueryPreview, setIsQueryPreview] = useState(false);
   const [complexQuery, setComplexQuery] = useState("");
+  const [isComplexQueryPreview, setIsComplexQueryPreview] = useState(false)
 
 
   // Initialize filters state
@@ -162,6 +163,7 @@ const TableDrawer = ({ nodes, setNodes }) => {
     setValue('')
     setIsQueryPreview(false);
     setComplexQuery("");
+    setIsComplexQueryPreview(false);
     closeDrawer();
   };
 
@@ -251,12 +253,17 @@ const TableDrawer = ({ nodes, setNodes }) => {
     setIsQueryPreview(true)
   }
 
+  const handleComplexQueryPreview = () => {
+    setIsComplexQueryPreview(true)
+  }
+
   const handleCancel = () => {
     setSelectedColumn("");
     setSelectedFilter("");
     setValue("");
     setIsQueryPreview(false);
-    setComplexQuery("")
+    setComplexQuery("");
+    setIsComplexQueryPreview(false);
     closeDrawer();
   }
 
@@ -557,12 +564,12 @@ const TableDrawer = ({ nodes, setNodes }) => {
 
           <button
             className="bg-[#8e78b7] text-white border-none rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-[#8e78b7] mt-4"
-            onClick={handleQueryPreview}
+            onClick={handleComplexQueryPreview}
           >
             Add Condition
           </button>
 
-          {isQueryPreview && <div className="mt-5 p-4 bg-gray-50 rounded-md border border-gray-200">
+          {isComplexQueryPreview && <div className="mt-5 p-4 bg-gray-50 rounded-md border border-gray-200">
             <h3 className="mt-0 mb-3 text-base font-medium">Query Preview</h3>
             <pre className="m-0 whitespace-pre-wrap font-mono text-sm">
               {complexQuery}
@@ -570,7 +577,7 @@ const TableDrawer = ({ nodes, setNodes }) => {
           </div>}
         </div>
 
-        {isQueryPreview && <div className="flex justify-end mt-6 gap-3">
+        {(isComplexQueryPreview || isQueryPreview) && <div className="flex justify-end mt-6 gap-3">
           <button
             onClick={handleCancel}
             className="bg-gray-100 text-gray-800 border border-gray-300 rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-gray-200">
@@ -582,6 +589,7 @@ const TableDrawer = ({ nodes, setNodes }) => {
             Save
           </button>
         </div>}
+
       </div>
 
       {!hasPartitionData ?
