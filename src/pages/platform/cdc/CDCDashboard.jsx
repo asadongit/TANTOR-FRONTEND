@@ -5,51 +5,73 @@ import Charts from "./components/Charts";
 import { Navigate } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-
+import { usePlatform } from "../../../context/platformContext";
 
 const CDCDashboard = () => {
   const navigate = useNavigate();
 
-  const cards = [
+  const [cards, setCards] = useState([
     {
       icon: "material-symbols:database-upload-outline",
       bgcolor: "bg-[#d8d3e4] bg-opacity-25",
       iconcolor: "text-purple-700",
       title: "Oracle",
-      count: "27",
+      count: 0,
     },
     {
       icon: "material-symbols-light:two-pager-store-outline",
       bgcolor: "bg-[#FFC93F] bg-opacity-25",
       iconcolor: "text-orange-700",
       title: "MYSQL",
-      count: "11",
+      count: 0,
     },
     {
       icon: "material-symbols:cloud-sync-outline",
       bgcolor: "bg-[#96CF7B] bg-opacity-25",
       iconcolor: "text-green-700",
       title: "DB2",
-      count: "07",
+      count: 0,
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
-      title: "Hive",
-      count: "17",
+      title: "MSSQL",
+      count: 0,
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
       title: "Postgres",
-      count: "06",
-    },
-  ];
+      count: 0,
+    }
+  ]);
+
+  const { CDCData } = usePlatform();
+
+  useEffect(() => {
+    if (!CDCData) return;
+
+    const connectionTypes = ["oracle", "mysql", "mssql", "db2", "postgres"];
+
+    const connectionCounts = connectionTypes.reduce((acc, type) => {
+      acc[type] = CDCData.filter(
+        (item) => item.source_conn_type === type
+      ).length;
+      return acc;
+    }, {});
+
+    setCards(prevCards => 
+      prevCards.map(card => ({
+        ...card,
+        count: connectionCounts[card.title.toLowerCase()] || 0
+      }))
+    );
+  }, [CDCData]);
 
   const handleRefresh = () => {
-    toast.success("refreshed successfully!")
+    toast.success("refreshed successfully!");
   };
 
   return (
@@ -84,7 +106,7 @@ const CDCDashboard = () => {
         {cards.map((card) => (
           <div
             key={card.title}
-            className={`bg-white p-6 rounded-lg shadow-sm border-gray-200`}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
           >
             <div className="flex items-center mb-2">
               <div
@@ -95,10 +117,13 @@ const CDCDashboard = () => {
               <h3 className="text-lg font-semibold">{card.title}</h3>
             </div>
             <p className="text-black text-5xl font-bold">{card.count}</p>
-            <button className="mt-4 text-purple-600 text-sm hover:text-purple-700"
-            
+
+            <button
+              className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
+              onClick={() => navigate(`/cdcList/${card.title.toLowerCase()}`)}
             >
               See details
+              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
             </button>
           </div>
         ))}

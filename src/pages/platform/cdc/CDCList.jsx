@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,139 +9,73 @@ import {
   Play,
   RefreshCcw,
   X,
+  ArrowUpDown,
+  Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { usePlatform } from "../../../context/platformContext";
 
 const CDCList = () => {
-    const navigate = useNavigate();
-  
-  const [data, setData] = useState([
-    {
-      id: "#01",
-      name: "CDC_JOB",
-      projectName: "DEFAULT",
-      createdBy: "sorv",
-      sourceConn: "Orc_schema",
-      tableConn: "Cust_admin",
-      sourceTable: "Cust_admin",
-      targetTable: "Source",
-      startDate: "2024-11-20 06:44:36.311",
-      status: "Completed",
-    },
-    {
-      id: "#01",
-      name: "CDC_JOB",
-      projectName: "DEFAULT",
-      createdBy: "sorv",
-      sourceConn: "Orc_schema",
-      tableConn: "Cust_admin",
-      sourceTable: "Cust_admin",
-      targetTable: "Source",
-      startDate: "2024-11-20 06:44:36.311",
-      status: "Completed",
-    },
-    {
-      id: "#01",
-      name: "CDC_JOB",
-      projectName: "DEFAULT",
-      createdBy: "sorv",
-      sourceConn: "Orc_schema",
-      tableConn: "Cust_admin",
-      sourceTable: "Cust_admin",
-      targetTable: "Source",
-      startDate: "2024-11-20 06:44:36.311",
-      status: "Completed",
-    },
-    {
-      id: "#01",
-      name: "CDC_JOB",
-      projectName: "DEFAULT",
-      createdBy: "sorv",
-      sourceConn: "Orc_schema",
-      tableConn: "Cust_admin",
-      sourceTable: "Cust_admin",
-      targetTable: "Source",
-      startDate: "2024-11-20 06:44:36.311",
-      status: "Completed",
-    },
-    {
-      id: "#01",
-      name: "CDC_JOB",
-      projectName: "DEFAULT",
-      createdBy: "sorv",
-      sourceConn: "Orc_schema",
-      tableConn: "Cust_admin",
-      sourceTable: "Cust_admin",
-      targetTable: "Source",
-      startDate: "2024-11-20 06:44:36.311",
-      status: "Completed",
-    },
-    {
-      id: "#01",
-      name: "CDC_JOB",
-      projectName: "DEFAULT",
-      createdBy: "sorv",
-      sourceConn: "Orc_schema",
-      tableConn: "Cust_admin",
-      sourceTable: "Cust_admin",
-      targetTable: "Source",
-      startDate: "2024-11-20 06:44:36.311",
-      status: "Completed",
-    },
-    {
-      id: "#01",
-      name: "CDC_JOB",
-      projectName: "DEFAULT",
-      createdBy: "sorv",
-      sourceConn: "Orc_schema",
-      tableConn: "Cust_admin",
-      sourceTable: "Cust_admin",
-      targetTable: "Source",
-      startDate: "2024-11-20 06:44:36.311",
-      status: "Completed",
-    },
-    {
-      id: "#01",
-      name: "CDC_JOB",
-      projectName: "DEFAULT",
-      createdBy: "sorv",
-      sourceConn: "Orc_schema",
-      tableConn: "Cust_admin",
-      sourceTable: "Cust_admin",
-      targetTable: "Source",
-      startDate: "2024-11-20 06:44:36.311",
-      status: "Completed",
-    },
-    {
-      id: "#01",
-      name: "CDC_JOB",
-      projectName: "DEFAULT",
-      createdBy: "sorv",
-      sourceConn: "Orc_schema",
-      tableConn: "Cust_admin",
-      sourceTable: "Cust_admin",
-      targetTable: "Source",
-      startDate: "2024-11-20 06:44:36.311",
-      status: "Completed",
-    },
-    {
-      id: "#01",
-      name: "CDC_JOB",
-      projectName: "DEFAULT",
-      createdBy: "sorv",
-      sourceConn: "Orc_schema",
-      tableConn: "Cust_admin",
-      sourceTable: "Cust_admin",
-      targetTable: "Source",
-      startDate: "2024-11-20 06:44:36.311",
-      status: "Completed",
-    },
-  ]);
-
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeMenu, setActiveMenu] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+
+  const { type } = useParams();
+  const navigate = useNavigate();
+  const { CDCData } = usePlatform();
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    const filteredData = type
+      ? CDCData.filter((item) => item.source_conn_type === type)
+      : CDCData;
+    setData(filteredData);
+  }, [type, CDCData]);
+
+  const processedData = useMemo(() => {
+    let result = [...data];
+
+    if (searchTerm) {
+      const searchTermLower = searchTerm.toLowerCase();
+      result = result.filter((row) =>
+        Object.values(row).some((value) =>
+          String(value).toLowerCase().includes(searchTermLower)
+        )
+      );
+    }
+
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return result;
+  }, [data, searchTerm, sortConfig]);
+
+  const paginatedData = useMemo(() => {
+    const startIndex = (page - 1) * itemsPerPage;
+    return processedData.slice(startIndex, startIndex + itemsPerPage);
+  }, [processedData, page, itemsPerPage]);
+
+  const handleSort = (key) => {
+    setSortConfig((prevConfig) => ({
+      key,
+      direction:
+        prevConfig.key === key && prevConfig.direction === "asc"
+          ? "desc"
+          : "asc",
+    }));
+  };
 
   const handleItemsPerPageChange = (e) => {
     setItemsPerPage(Number(e.target.value));
@@ -157,25 +91,26 @@ const CDCList = () => {
   };
 
   const handleNextPage = () => {
-    setPage(page + 1);
+    const maxPage = Math.ceil(processedData.length / itemsPerPage);
+    if (page < maxPage) setPage(page + 1);
   };
 
-  const handleRefresh=()=>{
-    toast.success("Refreshed successfully!")
-  }
+  const handleRefresh = () => {
+    toast.success("Refreshed successfully!");
+  };
+
   return (
-    <div>
-          <nav className="flex" aria-label="Breadcrumb">
-        <ol className="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
+    <div >
+      <nav className="flex" aria-label="Breadcrumb">
+      <ol className="inline-flex items-center space-x-1 md:space-x-2">
           <li className="inline-flex items-center">
             <span
               onClick={() => navigate("/")}
-              className="inline-flex items-center text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+              className="inline-flex items-center text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700"
             >
               Platform
             </span>
           </li>
-
           <li>
             <div className="flex items-center">
               <svg
@@ -194,9 +129,8 @@ const CDCList = () => {
                 />
               </svg>
               <span
-              onClick={() => navigate("/cdc")}
-              className={`ms-1 text-sm font-medium cursor-pointer md:ms-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
-                }`}
+                onClick={() => navigate("/cdc")}
+                className="ms-1 text-sm font-medium cursor-pointer text-gray-500 hover:text-gray-700"
               >
                 CDC
               </span>
@@ -219,105 +153,156 @@ const CDCList = () => {
                   d="m1 9 4-4-4-4"
                 />
               </svg>
-              <span
-              onClick={() => navigate("/cdclist")}
-              className={`ms-1 text-sm font-medium cursor-pointer md:ms-2 text-[#8e78b7] hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
-                }`}
-              >
+              <span className="ms-1 text-sm font-medium text-[#8e78b7]">
                 Details
               </span>
             </div>
           </li>
         </ol>
       </nav>
-      <div className="flex gap-2 mb-6 items-center justify-between">
+
+      <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
         <h4 className="text-2xl font-medium">CDC</h4>
-        <div>
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+            />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={20}
+            />
+          </div>
+
           <button
             type="button"
-            className="text-[#818181] shadow-lg  border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
             onClick={handleRefresh}
           >
-            <RefreshCcw className="h-5 w-5 " />
+            <RefreshCcw className="h-5 w-5" />
           </button>
         </div>
       </div>
+
       <div className="w-full overflow-x-auto shadow rounded-lg">
         <table className="w-full bg-white">
-          <thead>
-            <tr className="bg-gray-800 text-white">
-              <th className="py-3 px-4 text-left">ID</th>
-              <th className="py-3 px-4 text-left">Name</th>
-              <th className="py-3 px-4 text-left">DEFAULT</th>
-              <th className="py-3 px-4 text-left">Created by</th>
-              <th className="py-3 px-4 text-left">Source connection</th>
-              <th className="py-3 px-4 text-left">Table connection</th>
-              <th className="py-3 px-4 text-left">Source table</th>
-              <th className="py-3 px-4 text-left">Target table</th>
-              <th className="py-3 px-4 text-left">Start date</th>
-              <th className="py-3 px-4 text-left">Status</th>
-              <th className="py-3 px-4 text-center">Action</th>
+          <thead className="bg-gray-800 text-white">
+            <tr>
+              {[
+                { key: "workflow_name", label: "Name" },
+                { key: "project", label: "Project" },
+                { key: "created_by", label: "Created by" },
+                { key: "source_conn_name", label: "Source connection" },
+                { key: "target_conn_name", label: "Table connection" },
+                { key: "source_table", label: "Source table" },
+                { key: "target_table", label: "Target table" },
+                { key: "created_at", label: "Start date" },
+                { key: "status", label: "Status" },
+                { label: "Action", sortable: false },
+              ].map((column) => (
+                <th
+                  key={column.label}
+                  className="py-3 px-4 text-left"
+                  onClick={() => column.key && handleSort(column.key)}
+                >
+                  <div className="flex items-center">
+                    {column.label}
+                    {column.key && (
+                      <ArrowUpDown
+                        className="ml-2 cursor-pointer"
+                        size={16}
+                        color="white"
+                      />
+                    )}
+                  </div>
+                </th>
+              ))}
             </tr>
           </thead>
-
           <tbody>
-            {data.map((row, index) => (
-              <tr key={index} className="border-b hover:bg-gray-50 relative">
-                <td className="py-3 px-4 text-gray-500">{row.id}</td>
-                <td className="py-3 px-4 text-gray-600">{row.name}</td>
-                <td className="py-3 px-4 text-gray-600">{row.projectName}</td>
-                <td className="py-3 px-4 text-gray-600">{row.createdBy}</td>
-                <td className="py-3 px-4 text-gray-600">{row.sourceConn}</td>
-                <td className="py-3 px-4 text-gray-600">{row.tableConn}</td>
-                <td className="py-3 px-4 text-gray-600">{row.sourceTable}</td>
-                <td className="py-3 px-4 text-gray-600">{row.targetTable}</td>
-                <td className="py-3 px-4 text-gray-600">{row.startDate}</td>
-                <td className="py-3 px-4">
-                  <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm">
-                    {row.status}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-center relative">
-                  <button
-                    className="p-1 text-gray-600 hover:text-gray-800"
-                    onClick={() => toggleActionMenu(index)}
-                  >
-                    <MoreHorizontal size={18} />
-                  </button>
-
-                  {activeMenu === index && (
-                    <div className="absolute right-4 mt-2 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border">
-                      {/* <div className="flex justify-between items-center mb-1">
-              <span className="text-xs font-medium text-gray-500">Actions</span>
-              <button 
-                className="text-gray-400 hover:text-gray-600" 
-                onClick={() => toggleActionMenu(null)}
-              >
-                <X size={14} />
-              </button>
-            </div> */}
-                      <div className="flex items-center space-x-3">
-                        <button className="p-1 text-gray-500 hover:text-gray-800">
-                          <Pencil size={18} />
-                        </button>
-                        <button className="p-1 text-gray-500 hover:text-gray-800">
-                          <Trash2 size={18} />
-                        </button>
-                        <button className="p-1 text-gray-500 hover:text-gray-800">
-                          <Play size={18} fill="currentColor" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+            {paginatedData.length === 0 ? (
+              <tr>
+                <td
+                  colSpan="11"
+                  className="py-4 px-4 text-center text-gray-500"
+                >
+                  No data found
                 </td>
               </tr>
-            ))}
+            ) : (
+              paginatedData.map((row, index) => (
+                <tr key={index} className="border-b hover:bg-gray-50">
+                  {[
+                    row.workflow_name,
+                    row.project,
+                    row.created_by,
+                    row.source_conn_name,
+                    row.target_conn_name,
+                    row.source_table,
+                    row.target_table,
+                    row.created_at,
+                    row.status,
+                  ].map((cell, cellIndex) => (
+                    <td
+                      key={cellIndex}
+                      className="py-3 px-4 text-gray-600 max-w-xs"
+                    >
+                      <div
+                        className="truncate max-w-[200px] overflow-hidden"
+                        title={cell}
+                      >
+                        {cellIndex === 8 ? (
+                          <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm">
+                            {cell}
+                          </span>
+                        ) : (
+                          cell
+                        )}
+                      </div>
+                    </td>
+                  ))}
+                  <td className="py-3 px-4 text-center relative">
+                    <button
+                      className="p-1 text-gray-600 hover:text-gray-800"
+                      onClick={() => toggleActionMenu(index)}
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+
+                    {activeMenu === index && (
+                      <div className="absolute right-4 mt-2 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border">
+                        <div className="flex items-center space-x-3">
+                          <button className="p-1 text-gray-500 hover:text-gray-800">
+                            <Pencil size={18} />
+                          </button>
+                          <button className="p-1 text-gray-500 hover:text-gray-800">
+                            <Trash2 size={18} />
+                          </button>
+                          <button className="p-1 text-gray-500 hover:text-gray-800">
+                            <Play size={18} fill="currentColor" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
-      <div className="flex items-center justify-between p-4 mt-2">
-        <div className="text-sm text-gray-500">1 to 1 of results</div>
+      <div className="flex flex-col md:flex-row items-center justify-between p-4 mt-2">
+        <div className="text-sm text-gray-500 mb-2 md:mb-0">
+          {`${(page - 1) * itemsPerPage + 1} to ${Math.min(
+            page * itemsPerPage,
+            processedData.length
+          )} of ${processedData.length} results`}
+        </div>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-500">Show per page</span>
           <select
@@ -343,8 +328,16 @@ const CDCList = () => {
             <button
               onClick={handleNextPage}
               className="p-1 border rounded-r border-l-0 hover:bg-gray-100"
+              disabled={page >= Math.ceil(processedData.length / itemsPerPage)}
             >
-              <ChevronRight size={20} className="text-gray-600" />
+              <ChevronRight
+                size={20}
+                className={
+                  page >= Math.ceil(processedData.length / itemsPerPage)
+                    ? "text-gray-300"
+                    : "text-gray-600"
+                }
+              />
             </button>
           </div>
         </div>

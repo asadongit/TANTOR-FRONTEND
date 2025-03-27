@@ -1,10 +1,41 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import CDCDashboard from "./CDCDashboard.jsx";
-import CDCList from "./CDCList.jsx";
+import { usePlatform } from "../../../context/platformContext.jsx";
 
 const CDC = () => {
   const navigate = useNavigate();
+  const { CDCData, setCDCData } = usePlatform();
+  const hostname = import.meta.env.VITE_FAST_API;
+  const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
+  const token = import.meta.env.VITE_ACCESS_TOKEN;
+
+  const fetchCDC = useCallback(async () => {
+    try {
+      const response = await fetch(`${hostname}/cdc`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch connections: ${response.status}`);
+      }
+
+      const CDCData = await response.json();
+      const filteredData=CDCData.filter((item)=>item.created_by==='sorv')
+      setCDCData(filteredData);
+    } catch (error) {
+      console.error("Error fetching connections:", error);
+      hotToast.error("Failed to fetch data");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCDC();
+  }, [fetchCDC]);
   return (
     <div>
       <nav className="flex" aria-label="Breadcrumb">
@@ -36,8 +67,8 @@ const CDC = () => {
                 />
               </svg>
               <span
-              onClick={() => navigate("/cdc")}
-              className={`ms-1 text-sm font-medium cursor-pointer md:ms-2 text-[#8e78b7] hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+                onClick={() => navigate("/cdc")}
+                className={`ms-1 text-sm font-medium cursor-pointer md:ms-2 text-[#8e78b7] hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
                 }`}
               >
                 CDC
@@ -46,7 +77,7 @@ const CDC = () => {
           </li>
         </ol>
       </nav>
-        <CDCDashboard />
+      <CDCDashboard />
     </div>
   );
 };
