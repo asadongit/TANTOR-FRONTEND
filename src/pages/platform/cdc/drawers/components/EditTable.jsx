@@ -4,7 +4,7 @@ import { useWorkflow } from "../../context/WorkflowContext";
 import { useDrawerContext } from "../../context/DrawerContext";
 
 const EditTable = ({ data }) => {
-  const filteredColumns = data.metadatas.column_json.map(
+  const filteredColumns = data?.metadatas?.column_json.map(
     (item) => item.column_name
   );
   const { updatePipelineData, pipelines } = useWorkflow();

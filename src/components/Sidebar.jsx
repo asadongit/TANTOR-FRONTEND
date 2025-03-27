@@ -42,7 +42,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Connections', icon: LinkIcon, path: '/connections' },
     { name: 'Jobs', icon: BriefcaseIcon, path: '/jobs' },
     { name: 'Pipeline', icon: ArrowPathIcon, path: '/pipeline' },
-    { name: 'Reports', icon: DocumentTextIcon, path: '/reports' },
+    { name: 'Reports', icon: DocumentTextIcon, path: '/report' },
     { type: 'divider' },
     { name: 'Migration', icon: ArrowsUpDownIcon, path: '/migration' },
     { name: 'Transformation', icon: ArrowsRightLeftIcon, path: '/transformation' },
