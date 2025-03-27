@@ -12,7 +12,7 @@ const Header = () => {
           src={Logo}
           alt="Tantor"
           className="h-8 cursor-pointer"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/dashboard')}
         />
       </div>
       <div className="flex items-center gap-4">
