@@ -37,7 +37,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   };
 
   const platformRoutes = [
-    { name: 'Dashboard', icon: ChartBarIcon, path: '/' },
+    { name: 'Dashboard', icon: ChartBarIcon, path: '/dashboard' },
     { name: 'Project', icon: CubeIcon, path: '/project' },
     { name: 'Connections', icon: LinkIcon, path: '/connections' },
     { name: 'Jobs', icon: BriefcaseIcon, path: '/jobs' },
@@ -52,7 +52,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   ];
 
   const dataGovernanceRoutes = [
-    { name: 'Dashboard', icon: ChartBarIcon, path: '/' },
+    { name: 'Dashboard', icon: ChartBarIcon, path: '/dashboard' },
     {
       name: 'User',
       icon: UserIcon,
