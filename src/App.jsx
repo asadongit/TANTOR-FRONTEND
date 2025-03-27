@@ -52,7 +52,7 @@ function App() {
                     toggleSidebar={toggleSidebar}
                   />
                   <main
-                    className={`flex-1 p-4 transition-all duration-300 ${
+                    className={`flex-1 p-4 transition-all duration-300 overflow-hidden ${
                       isSidebarCollapsed ? "ml-16" : "ml-64"
                     }`}
                   >
@@ -66,7 +66,7 @@ function App() {
                           />
                         }
                       />
-                      {PlatformRoutes}
+                      <Route path="/*" element={<PlatformRoutes />} />
                       {DataGovernanceRoutes}
                     </Routes>
                   </main>
