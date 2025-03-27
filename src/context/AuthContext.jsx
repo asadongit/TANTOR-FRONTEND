@@ -18,11 +18,14 @@ const AuthContext = createContext({
 
 export const AuthProvider = ({ children }) => {
   const hostname = import.meta.env.VITE_FAST_API;
-  const [token, setToken] = useState(() => {
-    const storedToken = localStorage.getItem("token");
-    if (storedToken) {
+
+  const [token, setToken] = useState(
+    () => localStorage.getItem("token") || null
+  );
+  const [decodedToken, setDecodedToken] = useState(() => {
+    if (token) {
       try {
-        return jwtDecode(storedToken);
+        return jwtDecode(token);
       } catch (error) {
         console.error("Invalid token:", error);
         return null;
@@ -30,7 +33,6 @@ export const AuthProvider = ({ children }) => {
     }
     return null;
   });
-
   const [loginString, setLoginString] = useState("");
   const navigate = useNavigate();
   const inactivityTimerRef = useRef(null);
@@ -81,8 +83,9 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
       if (response.ok && data.access_token) {
         try {
+          setToken(data.access_token);
           const decodedToken = jwtDecode(data.access_token);
-          setToken(decodedToken);
+          setDecodedToken(decodedToken);
           localStorage.setItem("token", data.access_token);
           return true;
         } catch (error) {
@@ -108,6 +111,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         isAuthenticated: !!token,
         token,
+        decodedToken,
         login,
         logout,
         loginString,
