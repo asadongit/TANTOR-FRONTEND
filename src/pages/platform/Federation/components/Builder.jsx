@@ -54,6 +54,8 @@ export default function Builder({ handleSwitch, checked }) {
     const handleViewChange = async (event, value) => {
         // setData([])
         setSelectedView(value);
+        setColumnDefs([]);
+        setData([]);
     };
 
     const checkCaching = async (pay) => {
