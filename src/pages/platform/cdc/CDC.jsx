@@ -2,14 +2,12 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import CDCDashboard from "./CDCDashboard.jsx";
 import { usePlatform } from "../../../context/platformContext.jsx";
-
+import { useAuth } from "../../../context/AuthContext.jsx";
 const CDC = () => {
   const navigate = useNavigate();
-  const { CDCData, setCDCData } = usePlatform();
+  const { setCDCData } = usePlatform();
   const hostname = import.meta.env.VITE_FAST_API;
-  const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
-
+  const { token } = useAuth();
   const fetchCDC = useCallback(async () => {
     try {
       const response = await fetch(`${hostname}/cdc`, {
@@ -25,7 +23,7 @@ const CDC = () => {
       }
 
       const CDCData = await response.json();
-      const filteredData=CDCData.filter((item)=>item.created_by==='sorv')
+      const filteredData = CDCData.filter((item) => item.created_by === "sorv");
       setCDCData(filteredData);
     } catch (error) {
       console.error("Error fetching connections:", error);
