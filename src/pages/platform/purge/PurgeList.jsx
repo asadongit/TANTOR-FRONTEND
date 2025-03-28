@@ -12,7 +12,7 @@ import {
   RefreshCcw,
   X,
 } from "lucide-react";
-
+import { encrypt } from "../../../utils/Crypto";
 const PurgeList = () => {
   const hostname = import.meta.env.VITE_FAST_API;
   const token = import.meta.env.VITE_ACCESS_TOKEN;
@@ -252,7 +252,7 @@ const PurgeList = () => {
         {cards.map((card) => (
           <div
             key={card.title}
-            className={`bg-white p-6 rounded-lg shadow-sm border-gray-200`}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
           >
             <div className="flex items-center mb-2">
               <div
@@ -263,8 +263,16 @@ const PurgeList = () => {
               <h3 className="text-lg font-semibold">{card.title}</h3>
             </div>
             <p className="text-black text-5xl font-bold">{card.count}</p>
-            <button className="mt-4 text-purple-600 text-sm hover:text-purple-700">
+
+            <button
+              className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
+              onClick={() => {
+                const url = `/componentType=purge&dataScope=${card.title.replace(/\s+/g, '').toLowerCase()}&heading=${card.title}`;
+                const encryptedUrl = encodeURIComponent(encrypt(url));
+                navigate(`/details?${encryptedUrl}`);
+              }}              >
               See details
+              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
             </button>
           </div>
         ))}

@@ -11,13 +11,14 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import successBackground from "../../assets/green.png";
-
+import { useNavigate } from "react-router-dom";
+import { encrypt } from "../../utils/Crypto";
 const Project = () => {
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
     modal2: false,
   });
-
+const navigate= useNavigate();
   // Function to open a specific modal
   const openModal = (modalName) => {
     setIsModalOpen((prevState) => ({ ...prevState, [modalName]: true }));
@@ -28,7 +29,6 @@ const Project = () => {
     setIsModalOpen((prevState) => ({ ...prevState, [modalName]: false }));
   };
 
-  // const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [refresh, setRefresh] = useState(0);
   const handleRefresh = () => {
@@ -126,6 +126,7 @@ const Project = () => {
       iconcolor: "text-purple-700",
       title: "Purge",
       count: "27",
+      endpoint: "purges"
     },
     {
       icon: "material-symbols-light:two-pager-store-outline",
@@ -133,6 +134,7 @@ const Project = () => {
       iconcolor: "text-orange-700",
       title: "Migration",
       count: "11",
+      endpoint: "metadata-archivals"
     },
     {
       icon: "material-symbols:cloud-sync-outline",
@@ -140,6 +142,8 @@ const Project = () => {
       iconcolor: "text-green-700",
       title: "CDC",
       count: "07",
+      endpoint: "cdc"
+
     },
     {
       icon: "material-symbols:tab-group-outline",
@@ -147,6 +151,8 @@ const Project = () => {
       iconcolor: "text-cyan-700",
       title: "Federation",
       count: "17",
+      endpoint: "federation"
+
     },
     {
       icon: "material-symbols:tab-group-outline",
@@ -154,6 +160,8 @@ const Project = () => {
       iconcolor: "text-cyan-700",
       title: "Transformation",
       count: "06",
+      endpoint: "migrations"
+
     },
   ];
 
@@ -184,11 +192,12 @@ const Project = () => {
           </button>
         </div>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {cards.map((card) => (
           <div
             key={card.title}
-            className={`bg-white p-6 rounded-lg shadow-sm border-gray-200`}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
           >
             <div className="flex items-center mb-2">
               <div
@@ -199,13 +208,22 @@ const Project = () => {
               <h3 className="text-lg font-semibold">{card.title}</h3>
             </div>
             <p className="text-black text-5xl font-bold">{card.count}</p>
-            <button className="mt-4 text-purple-600 text-sm hover:text-purple-700">
+
+            <button
+              className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
+              onClick={() => {
+                const url = `/componentType=project&cardType=${card.endpoint}&heading=${card.title}`;
+                const encryptedUrl = encodeURIComponent(encrypt(url));
+                navigate(`/details?${encryptedUrl}`);
+              }}
+              
+                            >
               See details
+              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
             </button>
           </div>
         ))}
       </div>
-
       {/* Add Project Model */}
 
       {isModalOpen.modal1 && (

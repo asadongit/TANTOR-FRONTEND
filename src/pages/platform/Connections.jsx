@@ -20,7 +20,8 @@ import Snowflake from "../../assets/connector/snowflake-connector.png";
 import MSSQL from "../../assets/connector/mssql-connector.png";
 import DB2 from "../../assets/connector/db2-connector.png";
 import Kafka from "../../assets/connector/kafka-connector.png";
-
+import { useNavigate } from "react-router-dom";
+import { encrypt } from "../../utils/Crypto";
 const Connections = () => {
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
@@ -28,7 +29,7 @@ const Connections = () => {
     modal3: false,
     modal4: false,
   });
-
+  const navigate = useNavigate();
   // State for modal data
   const [modalData, setModalData] = useState({
     modal1: null,
@@ -333,7 +334,9 @@ const Connections = () => {
     return fieldConfig[connectorType] || [];
   };
 
-  { /*-------------------Edit Connection----------------*/}
+  {
+    /*-------------------Edit Connection----------------*/
+  }
   const [tableData, setTableData] = useState([
     {
       tableName: "sales_sorv",
@@ -392,9 +395,8 @@ const Connections = () => {
       CDC: true,
     },
   ]);
-  
 
-  const handleServiceCheckboxChange  = (tableName, columnName) => {
+  const handleServiceCheckboxChange = (tableName, columnName) => {
     const updatedSelection = tableData.map((row) => {
       if (row.tableName === tableName) {
         return { ...row, [columnName]: !row[columnName] };
@@ -419,11 +421,10 @@ const Connections = () => {
 
     const updatedTables = tableData.map((row) => ({
       ...row,
-      [columnName]: !serviceSelection[columnName], 
+      [columnName]: !serviceSelection[columnName],
     }));
     setTableData(updatedTables);
   };
-
 
   const handleUpdateConnection = () => {
     alert("Connection updated successfully!");
@@ -465,11 +466,11 @@ const Connections = () => {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 ">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {cards.map((card) => (
           <div
             key={card.title}
-            className={`bg-white p-6 rounded-lg shadow-sm border-gray-200`}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
           >
             <div className="flex items-center mb-2">
               <div
@@ -480,16 +481,24 @@ const Connections = () => {
               <h3 className="text-lg font-semibold">{card.title}</h3>
             </div>
             <p className="text-black text-5xl font-bold">{card.count}</p>
-            <div className="flex items-center justify-between">
-              <button className="mt-4 text-purple-600 text-sm hover:text-purple-700">
-                See details
-              </button>
-            </div>
+
+            <button
+              className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
+              onClick={() => {
+                const url = `/componentType=connection&dataScope=${card.title
+                  .replace(/\s+/g, "")
+                  .toLowerCase()}&heading=${card.title}`;
+                const encryptedUrl = encodeURIComponent(encrypt(url));
+                navigate(`/details?${encryptedUrl}`);
+              }}
+            >
+              See details
+              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
+            </button>
           </div>
         ))}
       </div>
 
-      {/* Add Connector Model */}
 
       {isModalOpen.modal1 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -916,7 +925,9 @@ const Connections = () => {
                               <div className="flex items-center">
                                 <input
                                   type="checkbox"
-                                  onChange={() => handleSelectAllServices(column)}
+                                  onChange={() =>
+                                    handleSelectAllServices(column)
+                                  }
                                   checked={serviceSelection[column]}
                                   className="w-4 h-4"
                                 />
@@ -947,7 +958,10 @@ const Connections = () => {
                                   type="checkbox"
                                   checked={row[column]}
                                   onChange={() =>
-                                    handleServiceCheckboxChange (row.tableName, column)
+                                    handleServiceCheckboxChange(
+                                      row.tableName,
+                                      column
+                                    )
                                   }
                                   className="w-4 h-4"
                                 />
@@ -981,8 +995,6 @@ const Connections = () => {
         </div>
       )}
       {/*End---------------------------Edit Connection Modal--------------------------End */}
-
-
 
       {/* Project Listing Table */}
 
@@ -1043,13 +1055,13 @@ const Connections = () => {
                         />
                         <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                           <div className="flex items-center p-1 gap-1">
-                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                            onClick={() => openModal("modal4")}>
-                              <Eye className="h-4 w-4" />
-                            </button>
                             <button
                               className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                              onClick={() => openModal("modal4")}
                             >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                               <Pencil className="h-4 w-4" />
                             </button>
                             <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
