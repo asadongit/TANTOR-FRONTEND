@@ -1,9 +1,17 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X } from "lucide-react";
 
-export function DefineNode({ id }) {
+export function DefineNode({ id, data }) {
+  const [name, setName] = useState(data?.name || "");
+  const [description, setDescription] = useState(data?.description || "");
+
+  useEffect(() => {
+    if (data?.onDataChange) {
+      data.onDataChange({ name, description });
+    }
+  }, [name, description, data]);
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
       <button
@@ -25,6 +33,8 @@ export function DefineNode({ id }) {
           <label className="text-xs font-semibold text-black mb-0.5 block">Name</label>
           <input
             type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             placeholder="Source Name"
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
           />
@@ -35,6 +45,8 @@ export function DefineNode({ id }) {
           </label>
           <input
             type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
             placeholder="Add Description"
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
           />
@@ -46,4 +58,5 @@ export function DefineNode({ id }) {
 
 DefineNode.propTypes = {
   id: PropTypes.string.isRequired,
+  data: PropTypes.object,
 };

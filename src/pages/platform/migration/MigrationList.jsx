@@ -8,7 +8,9 @@ import {
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 
-const MigrationList = () => {
+const MigrationList = ({ records }) => {
+
+  console.log(records);
 
   const navigate = useNavigate();
 
