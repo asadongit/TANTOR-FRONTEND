@@ -20,9 +20,10 @@ export function PlatformProvider({ children }) {
   const [archivalData, setArchivalData] = useState([]);
   const [reportData, setReportData] = useState([]);
   const [connectionData, setConnectionData] = useState([]);
+  const [federationData, setFederationData] = useState([]);
 
   const requestHandler = useCallback(
-    async ({ endpoint, method = "GET", setState, body = null }) => {
+    async ({ endpoint, method = "GET", setState = null, body = null }) => {
       try {
         const options = {
           method,
@@ -39,17 +40,22 @@ export function PlatformProvider({ children }) {
             `API Error: ${response.status} ${response.statusText}`
           );
         }
+
         const data = await response.json();
-        const filteredData = data.filter(
-          (item) => item.created_by === decodedToken.preferred_username
-        );
-        setState(filteredData);
+
+        if (setState) {
+          setState(data);
+        }
+
+        return data;
       } catch (error) {
         console.error(`Error fetching data from ${endpoint}:`, error);
+        return null;
       }
     },
     []
   );
+
   const dataMap = {
     cdc: { data: CDCData, setData: setCDCData, endpoint: "/cdc" },
     migration: {
@@ -74,7 +80,14 @@ export function PlatformProvider({ children }) {
       endpoint: "/migrations",
     },
     report: { data: reportData, setData: setReportData, endpoint: "/reports" },
+    federation: {
+      data: federationData,
+      setData: setFederationData,
+      endpoint: "/federation",
+    },
   };
+
+
   return (
     <PlatformContext.Provider
       value={{
@@ -92,6 +105,11 @@ export function PlatformProvider({ children }) {
         setPurgeData,
         archivalData,
         setArchivalData,
+        federationData,
+        setFederationData,
+        projectCounts,
+        setProjectCounts,
+        connectionTypes,
         requestHandler,
         dataMap,
       }}
