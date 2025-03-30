@@ -2,17 +2,21 @@ import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X } from "lucide-react";
-import { toast } from 'react-hot-toast';
+import { toast } from "react-hot-toast";
 
 export function TargetNode({ id, data }) {
   const hostname = import.meta.env.VITE_FAST_API;
   const token = import.meta.env.VITE_ACCESS_TOKEN;
   const [connections, setConnections] = useState([]);
-  const [settings, setSettings] = useState(data?.settings?.type || "Prefix/Suffix");
-  const [settingsValue, setSettingsValue] = useState(data?.settings?.value || "");
+  const [settings, setSettings] = useState(
+    data?.settings?.type || "Prefix/Suffix"
+  );
+  const [settingsValue, setSettingsValue] = useState(
+    data?.settings?.value || ""
+  );
   const [selectedConnection, setSelectedConnection] = useState({
-    name: '',
-    id: ''
+    name: "",
+    id: "",
   });
   const [selectedSchema, setSelectedSchema] = useState(data?.schema || "");
   const [schemaLoading, setSchemaLoading] = useState(false);
@@ -46,14 +50,14 @@ export function TargetNode({ id, data }) {
       new Promise((resolve, reject) => {
         try {
           updateNodeData();
-          
+
           const apiPromise = window.handleTargetSubmit?.(id);
-          
+
           if (!apiPromise) {
-            reject(new Error('Submission handler not found'));
+            reject(new Error("Submission handler not found"));
             return;
           }
-  
+
           apiPromise
             .then((result) => {
               resolve(result);
@@ -64,7 +68,7 @@ export function TargetNode({ id, data }) {
         } catch (error) {
           reject(error);
         }
-      }),
+      })
       // {
       //   loading: 'Submitting...',
       //   success: 'Migration submitted successfully!',
@@ -72,7 +76,6 @@ export function TargetNode({ id, data }) {
       // }
     );
   };
-  
 
   // Update parent when connection/schema changes
   useEffect(() => {
@@ -81,24 +84,14 @@ export function TargetNode({ id, data }) {
 
   const fetchOptions = useCallback(async () => {
     try {
-      const cachedconnectionResponse =
-        sessionStorage.getItem("connectionResponse");
-      if (cachedconnectionResponse) {
-        connectionsData = JSON.parse(cachedconnectionResponse);
-      } else {
-        const connectionResponse = await fetch(`${hostname}/connection-saves`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        connectionsData = await connectionResponse.json();
-        sessionStorage.setItem(
-          "connectionResponse",
-          JSON.stringify(connectionsData)
-        );
-      }
+      const connectionResponse = await fetch(`${hostname}/connection-saves`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      connectionsData = await connectionResponse.json();
 
       setConnections(connectionsData);
     } catch (error) {
@@ -116,23 +109,18 @@ export function TargetNode({ id, data }) {
       setSchemaLoading(true);
 
       try {
-        const cachedschemalist = sessionStorage.getItem("schemalist");
-        if (cachedschemalist) {
-          schemadetails = JSON.parse(cachedschemalist);
-        } else {
-          const response = await fetch(`${hostname}/schema/${connectionName}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+        const response = await fetch(`${hostname}/schema/${connectionName}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          schemadetails = await response.json();
-          sessionStorage.setItem("schemalist", JSON.stringify(schemadetails));
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        schemadetails = await response.json();
+
         setSchema(schemadetails);
         setSchemaLoading(false);
       } catch (error) {
@@ -177,17 +165,19 @@ export function TargetNode({ id, data }) {
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
             value={selectedConnection.name}
             onChange={(e) => {
-              const connectionName = connections.find(c => c.connection_name === e.target.value);
+              const connectionName = connections.find(
+                (c) => c.connection_name === e.target.value
+              );
               setSelectedConnection({
                 name: connectionName.connection_name,
-                id: connectionName.connection_id
+                id: connectionName.connection_id,
               });
               data.onDataChange({
-                connectionId: connectionName.connection_id
+                connectionId: connectionName.connection_id,
               });
               setSelectedConnection(connectionName);
               setSelectedSchema("");
-              fetchschema(connectionName);
+              fetchschema(connectionName.connection_name);
             }}
           >
             <option value="">Select</option>
@@ -252,8 +242,8 @@ export function TargetNode({ id, data }) {
                 data.onDataChange({
                   settings: {
                     type: settings,
-                    value: e.target.value
-                  }
+                    value: e.target.value,
+                  },
                 });
               }}
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
@@ -262,10 +252,16 @@ export function TargetNode({ id, data }) {
         )}
       </div>
       <div className="flex space-x-2 mt-4">
-        <button onClick={handleCancel} className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
+        <button
+          onClick={handleCancel}
+          className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
+        >
           Cancel
         </button>
-        <button onClick={handleOk} className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
+        <button
+          onClick={handleOk}
+          className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
+        >
           OK
         </button>
       </div>

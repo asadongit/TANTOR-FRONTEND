@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
-import toast from 'react-hot-toast';
+import toast from "react-hot-toast";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -24,25 +24,24 @@ export function SourceNode({ id, data }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedSchema, setSelectedSchema] = useState("");
-  const [schemaLoading, setSchemaLoading] = useState(false); 
+  const [schemaLoading, setSchemaLoading] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState({
-    name: '',
-    id: '',
-    type: ''
+    name: "",
+    id: "",
+    type: "",
   });
 
-    // Update handlers to persist data
-    const updateNodeData = (partialData) => {
-      if (data.onDataChange) {
-        data.onDataChange({
-          connection: selectedConnection,
-          schema: selectedSchema,
-          tables: selectedItems,
-          ...partialData
-        });
-      }
-    };
-
+  // Update handlers to persist data
+  const updateNodeData = (partialData) => {
+    if (data.onDataChange) {
+      data.onDataChange({
+        connection: selectedConnection,
+        schema: selectedSchema,
+        tables: selectedItems,
+        ...partialData,
+      });
+    }
+  };
 
   let connectionsData;
   let schemacount;
@@ -51,26 +50,14 @@ export function SourceNode({ id, data }) {
 
   const fetchOptions = useCallback(async () => {
     try {
-      const cachedconnectionResponse =
-        sessionStorage.getItem("connectionResponse");
-      if (cachedconnectionResponse) {
-        connectionsData = JSON.parse(cachedconnectionResponse);
-      } else {
-        const connectionResponse = await fetch(`${hostname}/connection-saves`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        connectionsData = await connectionResponse.json();
-        sessionStorage.setItem(
-          "connectionResponse",
-          JSON.stringify(connectionsData)
-        );
-      }
-
-
+      const connectionResponse = await fetch(`${hostname}/connection-saves`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      connectionsData = await connectionResponse.json();
 
       setConnections(connectionsData);
     } catch (error) {
@@ -85,32 +72,24 @@ export function SourceNode({ id, data }) {
         return;
       }
 
-    //   setSchemaLoading(true);
+      //   setSchemaLoading(true);
 
       try {
-
-        const cachedschemacount =
-        sessionStorage.getItem("schemacount");
-      if (cachedschemacount) {
-        schemacount = JSON.parse(cachedschemacount);
-      } else {
-
-        const response = await fetch(`${hostname}/schema/${connectionName}/count`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          `${hostname}/schema/${connectionName}/count`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         schemacount = await response.json();
-        sessionStorage.setItem(
-            "schemacount",
-            JSON.stringify(schemacount)
-          );
-        }
+
         setSchemacount(schemacount);
         // setSchemaLoading(false);
       } catch (error) {
@@ -120,7 +99,6 @@ export function SourceNode({ id, data }) {
     },
     [hostname, token]
   );
-
 
   useEffect(() => {
     fetchOptions();
@@ -136,13 +114,6 @@ export function SourceNode({ id, data }) {
       setSchemaLoading(true);
 
       try {
-
-        const cachedschemalist =
-        sessionStorage.getItem("schemalist");
-      if (cachedschemalist) {
-        schemadetails = JSON.parse(cachedschemalist);
-      } else {
-
         const response = await fetch(`${hostname}/schema/${connectionName}`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -154,11 +125,6 @@ export function SourceNode({ id, data }) {
         }
 
         schemadetails = await response.json();
-        sessionStorage.setItem(
-            "schemalist",
-            JSON.stringify(schemadetails)
-          );
-        }
         setSchema(schemadetails);
         setSchemaLoading(false);
       } catch (error) {
@@ -172,12 +138,12 @@ export function SourceNode({ id, data }) {
   const fetchTables = useCallback(
     async (connectionName, schemaName) => {
       if (!connectionName || !schemaName) return;
-  
+
       setLoading(true);
       try {
         const cacheKey = `tablelist-${connectionName}-${schemaName}`;
         const cachedtablelist = sessionStorage.getItem(cacheKey);
-        
+
         if (cachedtablelist) {
           setTables(JSON.parse(cachedtablelist));
         } else {
@@ -187,10 +153,10 @@ export function SourceNode({ id, data }) {
               headers: { Authorization: `Bearer ${token}` },
             }
           );
-  
-          if (!response.ok) throw new Error('Failed to fetch tables');
+
+          if (!response.ok) throw new Error("Failed to fetch tables");
           const tabledetails = await response.json();
-          
+
           sessionStorage.setItem(cacheKey, JSON.stringify(tabledetails));
           setTables(tabledetails);
         }
@@ -204,76 +170,70 @@ export function SourceNode({ id, data }) {
     [hostname, token]
   );
 
-
   const filteredTables = tables.filter((table) =>
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
   );
 
-
   const handleScopeChange = (e) => {
     setSelectedScope(e.target.value);
     if (e.target.value === "subset") {
-      setSelectedItems([]); 
+      setSelectedItems([]);
     }
   };
 
-
-const handleSelectAll = (e) => {
-  const isChecked = e.target.checked;
-  if (isChecked) {
-    setSelectedItems(
-      filteredTables
-        .filter((table) => table !== null)
-        .map((table) => table.table_name)
-    );
-  } else {
-    setSelectedItems([]);
-  }
-};
-
-
-const handleTableSelection = (tableName) => {
-  if (selectedScope === "subset") {
-    setSelectedItems([tableName]);
-  } else {
-    setSelectedItems((prev) =>
-      prev.includes(tableName)
-        ? prev.filter((item) => item !== tableName)
-        : [...prev, tableName]
-    );
-  }
-};
-
-
-const handleCancel = () => {
-  setSelectedItems([]);
-  console.log("Selection reset.");
-};
-
-
-const handleOk = () => {
-  toast.promise(
-    new Promise((resolve, reject) => {
-      try {
-        updateNodeData({
-          tables: selectedItems,
-          connection: selectedConnection.name,
-          connectionId: selectedConnection.id,
-          connectionType: selectedConnection.type,
-          schema: selectedSchema
-        });
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
-    }),
-    {
-      loading: 'Updating flow...',
-      success: 'Tables added successfully!',
-      error: (err) => `Update failed: ${err.message}`,
+  const handleSelectAll = (e) => {
+    const isChecked = e.target.checked;
+    if (isChecked) {
+      setSelectedItems(
+        filteredTables
+          .filter((table) => table !== null)
+          .map((table) => table.table_name)
+      );
+    } else {
+      setSelectedItems([]);
     }
-  );
-};
+  };
+
+  const handleTableSelection = (tableName) => {
+    if (selectedScope === "subset") {
+      setSelectedItems([tableName]);
+    } else {
+      setSelectedItems((prev) =>
+        prev.includes(tableName)
+          ? prev.filter((item) => item !== tableName)
+          : [...prev, tableName]
+      );
+    }
+  };
+
+  const handleCancel = () => {
+    setSelectedItems([]);
+    console.log("Selection reset.");
+  };
+
+  const handleOk = () => {
+    toast.promise(
+      new Promise((resolve, reject) => {
+        try {
+          updateNodeData({
+            tables: selectedItems,
+            connection: selectedConnection.name,
+            connectionId: selectedConnection.id,
+            connectionType: selectedConnection.type,
+            schema: selectedSchema,
+          });
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }),
+      {
+        loading: "Updating flow...",
+        success: "Tables added successfully!",
+        error: (err) => `Update failed: ${err.message}`,
+      }
+    );
+  };
 
   return (
     <div
@@ -304,24 +264,26 @@ const handleOk = () => {
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
             value={selectedConnection.name}
             onChange={(e) => {
-              const connection = connections.find(c => c.connection_name === e.target.value);
+              const connection = connections.find(
+                (c) => c.connection_name === e.target.value
+              );
               if (!connection) return;
-          
+
               setSelectedConnection({
                 name: connection.connection_name,
                 id: connection.connection_id,
-                type: connection.connection_type
+                type: connection.connection_type,
               });
-              
+
               // Update node data
               data.onDataChange({
                 connection: connection.connection_name,
                 connectionId: connection.connection_id,
                 connectionType: connection.connection_type,
                 schema: "",
-                tables: []
+                tables: [],
               });
-          
+
               setSelectedSchema("");
               setTables([]);
               fetchschema(connection.connection_name);
@@ -350,7 +312,7 @@ const handleOk = () => {
                 fetchTables(selectedConnection.name, schemaName);
                 updateNodeData({
                   schema: schemaName,
-                  tables: []
+                  tables: [],
                 });
               }}
               disabled={!selectedConnection.name || schemaLoading}
@@ -374,7 +336,9 @@ const handleOk = () => {
                 <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
               </div>
             )}
-            <span className="ml-5 text-black font-bold">{schemaCount.schema_count}</span>
+            <span className="ml-5 text-black font-bold">
+              {schemaCount.schema_count}
+            </span>
           </div>
         </div>
       </div>
@@ -481,10 +445,11 @@ const handleOk = () => {
                       checked={
                         selectedScope === "bulk" &&
                         selectedItems.length ===
-                          filteredTables.filter((table) => table !== null).length
+                          filteredTables.filter((table) => table !== null)
+                            .length
                       } // Check if all items are selected
                       onChange={handleSelectAll}
-                    disabled={selectedScope === "subset"} // Disable in "subset" mode
+                      disabled={selectedScope === "subset"} // Disable in "subset" mode
                     />
                     <label
                       htmlFor="select-all"
@@ -496,7 +461,7 @@ const handleOk = () => {
                 </div>
 
                 {filteredTables
-                  .filter(table => table?.table_name)  
+                  .filter((table) => table?.table_name)
                   .map((table, idx) => (
                     <div
                       key={idx}
@@ -507,10 +472,16 @@ const handleOk = () => {
                           type="checkbox"
                           id={`table-${idx}`}
                           checked={selectedItems.includes(table.table_name)}
-                          onChange={() => handleTableSelection(table.table_name)}
-                        className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        disabled={selectedScope === "subset" && selectedItems.length > 0 && !selectedItems.includes(table.table_name)}
-                      />
+                          onChange={() =>
+                            handleTableSelection(table.table_name)
+                          }
+                          className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          disabled={
+                            selectedScope === "subset" &&
+                            selectedItems.length > 0 &&
+                            !selectedItems.includes(table.table_name)
+                          }
+                        />
                         <label
                           htmlFor={`table-${idx}`}
                           className="text-xs font-semibold text-black"
@@ -524,19 +495,15 @@ const handleOk = () => {
                       >
                         <Pencil className="w-4 h-4" />
                       </button> */}
-
-
-
                     </div>
                   ))}
               </>
             )}
           </div>
-          
         </div>
       )}
       <div className="flex space-x-2 mt-4">
-      <button
+        <button
           onClick={handleCancel}
           className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
         >
@@ -549,8 +516,6 @@ const handleOk = () => {
           OK
         </button>
       </div>
-
-
     </div>
   );
 }
