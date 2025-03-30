@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X } from "lucide-react";
+import { toast } from 'react-hot-toast';
 
 export function TargetNode({ id, data }) {
   const hostname = import.meta.env.VITE_FAST_API;
@@ -9,7 +10,10 @@ export function TargetNode({ id, data }) {
   const [connections, setConnections] = useState([]);
   const [settings, setSettings] = useState(data?.settings?.type || "Prefix/Suffix");
   const [settingsValue, setSettingsValue] = useState(data?.settings?.value || "");
-  const [selectedConnection, setSelectedConnection] = useState(data?.connection || "");
+  const [selectedConnection, setSelectedConnection] = useState({
+    name: '',
+    id: ''
+  });
   const [selectedSchema, setSelectedSchema] = useState(data?.schema || "");
   const [schemaLoading, setSchemaLoading] = useState(false);
   const [schemas, setSchema] = useState([]);
@@ -38,9 +42,37 @@ export function TargetNode({ id, data }) {
   };
 
   const handleOk = () => {
-    updateNodeData();
-    window.handleTargetSubmit?.(id);
+    toast.promise(
+      new Promise((resolve, reject) => {
+        try {
+          updateNodeData();
+          
+          const apiPromise = window.handleTargetSubmit?.(id);
+          
+          if (!apiPromise) {
+            reject(new Error('Submission handler not found'));
+            return;
+          }
+  
+          apiPromise
+            .then((result) => {
+              resolve(result);
+            })
+            .catch((error) => {
+              reject(error);
+            });
+        } catch (error) {
+          reject(error);
+        }
+      }),
+      // {
+      //   loading: 'Submitting...',
+      //   success: 'Migration submitted successfully!',
+      //   error: (err) => `Submission failed: ${err.message}`,
+      // }
+    );
   };
+  
 
   // Update parent when connection/schema changes
   useEffect(() => {
@@ -143,9 +175,16 @@ export function TargetNode({ id, data }) {
           </label>
           <select
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-            value={selectedConnection}
+            value={selectedConnection.name}
             onChange={(e) => {
-              const connectionName = e.target.value;
+              const connectionName = connections.find(c => c.connection_name === e.target.value);
+              setSelectedConnection({
+                name: connectionName.connection_name,
+                id: connectionName.connection_id
+              });
+              data.onDataChange({
+                connectionId: connectionName.connection_id
+              });
               setSelectedConnection(connectionName);
               setSelectedSchema("");
               fetchschema(connectionName);
@@ -207,6 +246,16 @@ export function TargetNode({ id, data }) {
             </label>
             <input
               type="text"
+              value={settingsValue}
+              onChange={(e) => {
+                setSettingsValue(e.target.value);
+                data.onDataChange({
+                  settings: {
+                    type: settings,
+                    value: e.target.value
+                  }
+                });
+              }}
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
             />
           </div>

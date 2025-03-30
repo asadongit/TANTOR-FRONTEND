@@ -11,8 +11,6 @@ import  {encrypt} from '../../../utils/Crypto'
 
 const MigrationList = ({ records }) => {
 
-  console.log(records);
-
   const navigate = useNavigate();
 
   const [activeMenu, setActiveMenu] = useState(null);

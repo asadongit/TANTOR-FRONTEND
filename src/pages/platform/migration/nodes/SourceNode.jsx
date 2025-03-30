@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
-import { useTableContext } from '../../react-flow/context/TableContext';
+import toast from 'react-hot-toast';
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -23,9 +23,13 @@ export function SourceNode({ id, data }) {
   const [schemas, setSchema] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
   const [schemaLoading, setSchemaLoading] = useState(false); 
+  const [selectedConnection, setSelectedConnection] = useState({
+    name: '',
+    id: '',
+    type: ''
+  });
 
     // Update handlers to persist data
     const updateNodeData = (partialData) => {
@@ -168,38 +172,31 @@ export function SourceNode({ id, data }) {
   const fetchTables = useCallback(
     async (connectionName, schemaName) => {
       if (!connectionName || !schemaName) return;
-
+  
       setLoading(true);
       try {
-
-        const cachedtablelist =
-        sessionStorage.getItem("tablelist");
-      if (cachedtablelist) {
-        tabledetails = JSON.parse(cachedtablelist);
-      } else {
-        const fetchTableResponse = await fetch(
-          `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!fetchTableResponse.ok) {
-          throw new Error(`HTTP error! status: ${fetchTableResponse.status}`);
-        }
-
-        tabledetails = await fetchTableResponse.json();
-        sessionStorage.setItem(
-            "tablelist",
-            JSON.stringify(tabledetails)
+        const cacheKey = `tablelist-${connectionName}-${schemaName}`;
+        const cachedtablelist = sessionStorage.getItem(cacheKey);
+        
+        if (cachedtablelist) {
+          setTables(JSON.parse(cachedtablelist));
+        } else {
+          const response = await fetch(
+            `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
           );
+  
+          if (!response.ok) throw new Error('Failed to fetch tables');
+          const tabledetails = await response.json();
+          
+          sessionStorage.setItem(cacheKey, JSON.stringify(tabledetails));
+          setTables(tabledetails);
         }
-        setTables(tabledetails);
       } catch (error) {
         console.error("Error fetching tables:", error);
-        setTables([]); // Clear tables on error
+        setTables([]);
       } finally {
         setLoading(false);
       }
@@ -255,16 +252,27 @@ const handleCancel = () => {
 
 
 const handleOk = () => {
-  console.log("Selected items:", selectedItems);
-  updateNodeData(); 
-  // setShowAlert(true);
-
-  // // Hide the alert after 3 seconds
-  // setTimeout(() => {
-  //   setShowAlert(false);
-  // }, 3000);
-
-  alert("Flow Updated Successfully"); // Temporary alert
+  toast.promise(
+    new Promise((resolve, reject) => {
+      try {
+        updateNodeData({
+          tables: selectedItems,
+          connection: selectedConnection.name,
+          connectionId: selectedConnection.id,
+          connectionType: selectedConnection.type,
+          schema: selectedSchema
+        });
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    }),
+    {
+      loading: 'Updating flow...',
+      success: 'Tables added successfully!',
+      error: (err) => `Update failed: ${err.message}`,
+    }
+  );
 };
 
   return (
@@ -294,19 +302,30 @@ const handleOk = () => {
           </label>
           <select
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-            value={selectedConnection}
+            value={selectedConnection.name}
             onChange={(e) => {
-              const connectionName = e.target.value;
-              setSelectedConnection(connectionName);
-              setSelectedSchema(""); // Reset schema selection
-              setTables([]); // Clear previous tables
-              fetchschema(connectionName);
-              fetchschemacount(connectionName); 
-              updateNodeData({
-                connection: connectionName,
+              const connection = connections.find(c => c.connection_name === e.target.value);
+              if (!connection) return;
+          
+              setSelectedConnection({
+                name: connection.connection_name,
+                id: connection.connection_id,
+                type: connection.connection_type
+              });
+              
+              // Update node data
+              data.onDataChange({
+                connection: connection.connection_name,
+                connectionId: connection.connection_id,
+                connectionType: connection.connection_type,
                 schema: "",
                 tables: []
               });
+          
+              setSelectedSchema("");
+              setTables([]);
+              fetchschema(connection.connection_name);
+              fetchschemacount(connection.connection_name);
             }}
           >
             <option value="">Select</option>
@@ -328,13 +347,13 @@ const handleOk = () => {
               onChange={(e) => {
                 const schemaName = e.target.value;
                 setSelectedSchema(schemaName);
-                fetchTables(selectedConnection, schemaName);
+                fetchTables(selectedConnection.name, schemaName);
                 updateNodeData({
                   schema: schemaName,
                   tables: []
                 });
               }}
-              disabled={!selectedConnection || schemaLoading}
+              disabled={!selectedConnection.name || schemaLoading}
             >
               {schemaLoading ? (
                 <option value="">Loading schemas...</option>
@@ -477,7 +496,7 @@ const handleOk = () => {
                 </div>
 
                 {filteredTables
-                  .filter((table) => table !== null) 
+                  .filter(table => table?.table_name)  
                   .map((table, idx) => (
                     <div
                       key={idx}

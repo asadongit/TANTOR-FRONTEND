@@ -74,14 +74,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      // const response = await fetch(`${hostname}/auth/login`, {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ username, password }),
-      // });
+      const response = await fetch(`${hostname}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
-      // const data = await response.json();
-      // if (response.ok && data.access_token) {
+      const data = await response.json();
+      if (response.ok && data.access_token) {
         try {
           setToken(data.access_token);
           const decodedToken = jwtDecode(data.access_token);
@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }) => {
           console.error("Error decoding token:", error);
           return false;
         }
-      // }
+      }
     } catch (error) {
       console.error("Login error:", error);
     }
