@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Pencil,
   Trash2,
@@ -9,16 +9,28 @@ import {
   ChevronDown,
   Search,
   BadgeCheck,
+  Play
 } from "lucide-react";
 import successBackground from "../../assets/green.png";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../utils/Crypto";
+import DataTable from "../../components/DataTable";
+import { useProjectData } from "../../hooks/platform/project";
+import { useProjectCardData } from "../../hooks/platform/cardCounts";
+import CardGrid from "../../components/CardGrid";
 const Project = () => {
-  const [isModalOpen, setIsModalOpen] = useState({
+  const { data: cardData, isLoading: isCardLoading, error: cardError } = useProjectCardData();
+  const { data: projectData=[], isLoading: isCprojectLoading, error: projectError } = useProjectData();
+
+  const hostname = import.meta.env.VITE_FAST_API;
+  const token = import.meta.env.VITE_ACCESS_TOKEN;
+
+   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
     modal2: false,
   });
-const navigate= useNavigate();
+
+  const navigate = useNavigate();
   // Function to open a specific modal
   const openModal = (modalName) => {
     setIsModalOpen((prevState) => ({ ...prevState, [modalName]: true }));
@@ -30,102 +42,62 @@ const navigate= useNavigate();
   };
 
 
-  const [refresh, setRefresh] = useState(0);
-  const handleRefresh = () => {
-    setRefresh((prev) => prev + 1);
+
+
+  const createProject = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("user"));
+
+      const payload = {
+        project: projectData.project,
+        description: projectData.description,
+        assigned_users: {
+          assigned_users: projectData.assigned_users.assigned_users
+        },
+        created_by: currentUser?.email || "system_default"
+      };
+
+      const response = await fetch(`${hostname}/projects`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error("Failed to create project");
+
+
+      closeModal("modal1");
+
+      sessionStorage.removeItem("projectsList");
+      await fetchProjects(true);
+
+      openModal("modal2");
+
+      setProjectData({
+        project: "",
+        description: "",
+        assigned_users: {
+          assigned_users: ""
+        }
+      });
+  
+    } catch (error) {
+      console.error("Creation failed:", error);
+      alert("Failed to create project. Please try again.");
+    }
   };
 
-  const sampleData = [
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-  ];
-
-  const cards = [
+ 
+  const [cards, setCards] = useState([
     {
       icon: "material-symbols:database-upload-outline",
       bgcolor: "bg-[#d8d3e4] bg-opacity-25",
       iconcolor: "text-purple-700",
       title: "Purge",
-      count: "27",
+      count: cardData?.purge || 0,
       endpoint: "purges"
     },
     {
@@ -133,7 +105,7 @@ const navigate= useNavigate();
       bgcolor: "bg-[#FFC93F] bg-opacity-25",
       iconcolor: "text-orange-700",
       title: "Migration",
-      count: "11",
+      count: cardData?.metadata || 0,
       endpoint: "metadata-archivals"
     },
     {
@@ -141,7 +113,7 @@ const navigate= useNavigate();
       bgcolor: "bg-[#96CF7B] bg-opacity-25",
       iconcolor: "text-green-700",
       title: "CDC",
-      count: "07",
+      count: cardData?.cdc || 0,
       endpoint: "cdc"
 
     },
@@ -150,7 +122,7 @@ const navigate= useNavigate();
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
       title: "Federation",
-      count: "17",
+      count: cardData?.federation || 0,
       endpoint: "federation"
 
     },
@@ -159,11 +131,48 @@ const navigate= useNavigate();
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
       title: "Transformation",
-      count: "06",
+      count: cardData?.migration || 0,
       endpoint: "migrations"
 
     },
+  ]);
+
+  const actions = [
+    {
+      label: "Edit",
+      icon: <Pencil size={16} />,
+      onClick: (row) => console.log("Edit clicked for", row),
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 size={16} />,
+      onClick: (row) => console.log("Delete clicked for", row),
+    },
+    {
+      label: "Run",
+      icon: <Play size={16} fill="currentColor" />,
+      onClick: (row) => console.log("Run clicked for", row),
+    },
   ];
+  
+  
+  
+  const columns = [
+    { key: "project", label: "Project Name" },
+    { key: "created_by", label: "Created By" },
+    { key: "owner", label: "Owner" },
+    { key: "connections", label: "Connnections" },
+    { key: "metadata", label: "Migrations" },
+    { key: "migration", label: "Transformations" },
+    { key: "purge", label: "Purges" },
+    { key: "cdc", label: "CDC" },
+    { label: "Action", sortable: false },
+  ];
+  const handleCardClick = (card) => {
+    const url = `/componentType=project&cardType=${card.endpoint}&heading=${card.title}`;
+    const encryptedUrl = encodeURIComponent(encrypt(url));
+    navigate(`/details?${encryptedUrl}`);
+  };
 
   return (
     <div className="p-6">
@@ -179,7 +188,7 @@ const navigate= useNavigate();
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-            onClick={handleRefresh}
+            // onClick={handleRefresh}
           >
             <RefreshCcw className="h-5 w-5" />
           </button>
@@ -193,37 +202,19 @@ const navigate= useNavigate();
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        {cards.map((card) => (
-          <div
-            key={card.title}
-            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
-          >
-            <div className="flex items-center mb-2">
-              <div
-                className={`flex items-center justify-center aspect-square w-8 md:w-10 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}
-              >
-                <Icon icon={card.icon} />
-              </div>
-              <h3 className="text-lg font-semibold">{card.title}</h3>
-            </div>
-            <p className="text-black text-5xl font-bold">{card.count}</p>
 
-            <button
-              className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
-              onClick={() => {
-                const url = `/componentType=project&cardType=${card.endpoint}&heading=${card.title}`;
-                const encryptedUrl = encodeURIComponent(encrypt(url));
-                navigate(`/details?${encryptedUrl}`);
-              }}
-              
-                            >
-              See details
-              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
-            </button>
-          </div>
-        ))}
-      </div>
+
+      {/* Project Listing Table */}
+      <CardGrid cards={cards} onCardClick={handleCardClick} />
+
+<DataTable
+  columns={columns}
+  data={projectData}
+  actions={actions}
+/>
+
+
+
       {/* Add Project Model */}
 
       {isModalOpen.modal1 && (
@@ -260,6 +251,9 @@ const navigate= useNavigate();
                     </label>
                     <input
                       type="text"
+                      name="project"
+                      value={projectData.project}
+                      onChange={handleInputChange}
                       placeholder="Name"
                       className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
                     />
@@ -269,7 +263,8 @@ const navigate= useNavigate();
                       <label className="block text-sm text-black mb-1.5">
                         Sub Category
                       </label>
-                      <select className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white">
+                      <select
+                        className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white">
                         <option>Select</option>
                       </select>
                       <ChevronDown
@@ -289,6 +284,9 @@ const navigate= useNavigate();
                     </label>
                     <input
                       type="text"
+                      name="description"
+                      value={projectData.description}
+                      onChange={handleInputChange}
                       placeholder="Description"
                       className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
                     />
@@ -300,6 +298,9 @@ const navigate= useNavigate();
                       </label>
                       <input
                         type="text"
+                        name="assigned_users"
+                        value={projectData.assigned_users.assigned_users}
+                        onChange={handleInputChange}
                         placeholder="Manager"
                         className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
                       />
@@ -319,7 +320,8 @@ const navigate= useNavigate();
                       <label className="block text-sm text-black mb-1.5">
                         Category
                       </label>
-                      <select className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white">
+                      <select
+                        className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white">
                         <option>Select</option>
                       </select>
                       <ChevronDown
@@ -340,7 +342,7 @@ const navigate= useNavigate();
                 Cancel
               </button>
               <button
-                onClick={() => openModal("modal2")}
+                onClick={createProject}
                 className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
               >
                 Create
@@ -396,65 +398,6 @@ const navigate= useNavigate();
           </div>
         </div>
       )}
-
-      {/* Project Listing Table */}
-
-      <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
-        <table className="w-full text-sm text-left rtl:text-right text-black">
-          <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
-            <tr>
-              <th scope="col" className="px-6 py-3">
-                ID
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Name
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Description
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Type
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Owner
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Created By
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Updated By
-              </th>
-              <th scope="col" className="px-6 py-3"></th>
-              <th scope="col" className="px-6 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sampleData.map((user, index) => (
-              // <tr key={index} className="border-b"></tr>
-              <tr key={index} className="border-b dark:border-white-700">
-                <th
-                  scope="row"
-                  className="px-6 py-4 font-medium text-black-900 whitespace-nowrap dark:text-black"
-                >
-                  {user.id}
-                </th>
-                <td className="px-6 py-4">{user.name}</td>
-                <td className="px-6 py-4">{user.description}</td>
-                <td className="px-6 py-4">{user.type}</td>
-                <td className="px-6 py-4">{user.owner}</td>
-                <td className="px-6 py-4">{user.created_by}</td>
-                <td className="px-6 py-4">{user.updated_by}</td>
-                <td className="px-6 py-4">
-                  <Pencil className="h-5 w-5" />
-                </td>
-                <td className="px-6 py-4">
-                  <Trash2 className="h-5 w-5" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 };

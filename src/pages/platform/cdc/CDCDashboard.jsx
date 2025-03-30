@@ -6,74 +6,70 @@ import { Navigate } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { usePlatform } from "../../../context/platformContext";
-
+import { useCDCData } from "../../../hooks/platform/cdc";
+import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
+import CardGrid from "../../../components/CardGrid";
+import { encrypt } from "../../../utils/Crypto";
 const CDCDashboard = () => {
-  const navigate = useNavigate();
+const { data: cardData, isLoading: isCardLoading, error: cardError } = useSourceTypeCounts('cdc');
+const { data: CDCData=[], isLoading: isCDCLoading, error: CDCError } = useCDCData();
 
-  const [cards, setCards] = useState([
+const navigate = useNavigate();
+
+
+  const cards = [
     {
       icon: "material-symbols:database-upload-outline",
       bgcolor: "bg-[#d8d3e4] bg-opacity-25",
       iconcolor: "text-purple-700",
       title: "Oracle",
-      count: 0,
+      count: cardData?.oracle || 0,
     },
     {
       icon: "material-symbols-light:two-pager-store-outline",
       bgcolor: "bg-[#FFC93F] bg-opacity-25",
       iconcolor: "text-orange-700",
-      title: "MYSQL",
-      count: 0,
+      title: "DB2",
+      count: cardData?.db2 || 0,
     },
     {
       icon: "material-symbols:cloud-sync-outline",
       bgcolor: "bg-[#96CF7B] bg-opacity-25",
       iconcolor: "text-green-700",
-      title: "DB2",
-      count: 0,
+      title: "MS SQL",
+      count: cardData?.mssql || 0,
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
-      title: "MSSQL",
-      count: 0,
+      title: "MySQL",
+      count: cardData?.mysql || 0,
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
       title: "Postgres",
-      count: 0,
-    }
-  ]);
+      count: cardData?.postgres || 0,
+    },
+  ];
 
-  const { CDCData } = usePlatform();
-
-  useEffect(() => {
-    if (!CDCData) return;
-
-    const connectionTypes = ["oracle", "mysql", "mssql", "db2", "postgres"];
-
-    const connectionCounts = connectionTypes.reduce((acc, type) => {
-      acc[type] = CDCData.filter(
-        (item) => item.source_conn_type === type
-      ).length;
-      return acc;
-    }, {});
-
-    setCards(prevCards => 
-      prevCards.map(card => ({
-        ...card,
-        count: connectionCounts[card.title.toLowerCase()] || 0
-      }))
-    );
-  }, [CDCData]);
 
   const handleRefresh = () => {
     toast.success("refreshed successfully!");
   };
 
+  const handleCardClick = (card) => {
+    const url = `/componentType=cdc&dataScope=${card.title.replace(/\s+/g, '').toLowerCase()}&heading=${card.title}`;
+    const encryptedUrl = encodeURIComponent(encrypt(url));
+    navigate(`/details?${encryptedUrl}`);
+  };
+  const handleListClick = (card) => {
+    const url = `/componentType=cdc&heading=cdc`;
+    const encryptedUrl = encodeURIComponent(encrypt(url));
+    navigate(`/details?${encryptedUrl}`);
+  };
   return (
     <div>
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -82,7 +78,7 @@ const CDCDashboard = () => {
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-            onClick={() => navigate("/cdclist")}
+            onClick={handleListClick}
           >
             <List className="h-5 w-5" />
           </button>
@@ -102,32 +98,8 @@ const CDCDashboard = () => {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        {cards.map((card) => (
-          <div
-            key={card.title}
-            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
-          >
-            <div className="flex items-center mb-2">
-              <div
-                className={`flex items-center justify-center aspect-square w-8 md:w-10 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}
-              >
-                <Icon icon={card.icon} />
-              </div>
-              <h3 className="text-lg font-semibold">{card.title}</h3>
-            </div>
-            <p className="text-black text-5xl font-bold">{card.count}</p>
-
-            <button
-              className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
-              onClick={() => navigate(`/cdcList/${card.title.toLowerCase()}`)}
-            >
-              See details
-              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
-            </button>
-          </div>
-        ))}
-      </div>
+   
+      <CardGrid cards={cards} onCardClick={handleCardClick} />
 
       <div className="flex flex-col items-start gap-2.5 m-2">
         <h2
@@ -140,7 +112,7 @@ const CDCDashboard = () => {
         </h2>
       </div>
       <div className="flex gap-4 self-stretch ">
-        <Charts />
+        <Charts data={CDCData} />
       </div>
     </div>
   );

@@ -14,6 +14,29 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { decrypt } from "../../utils/Crypto";
+import { useConnectionData } from "../../hooks/platform/connection";
+import { usePurgeData } from "../../hooks/platform/purge";
+import { useReportData } from "../../hooks/platform/report";
+import { useCDCData } from "../../hooks/platform/cdc";
+import { useArchivalData } from "../../hooks/platform/archival";
+import { useMigrationData } from "../../hooks/platform/migration";
+import { useProjectData } from "../../hooks/platform/project";
+import DataTable from "../../components/DataTable";
+const useDynamicData = (componentType) => {
+  const hookMap = {
+    cdc: useCDCData,
+    migration: useMigrationData,
+    purge: usePurgeData,
+    project: useProjectData,
+    connections: useConnectionData,
+    archival: useArchivalData,
+    report: useReportData,
+  //   federation: useFederationData,
+  };
+
+  return hookMap[componentType] ? hookMap[componentType]() : null;
+};
+
 
 const Details = () => {
   const navigate = useNavigate();
@@ -24,40 +47,30 @@ const Details = () => {
     ? decryptedQuery.slice(1)
     : decryptedQuery;
 
-  const params = new URLSearchParams(queryString);
-
-  const componentType = params.get("componentType");
+  const params = new URLSearchParams(queryString);  const componentType = params.get("componentType");
   const cardType = params.get("cardType");
   const dataScope = params.get("dataScope");
   const heading = params.get("heading");
-
+  
   const columnAliases = {
     migrations: "archival",
     purges: "purge",
     Transformation: "migration",
     "metadata-archivals": "migration",
   };
-
-
-  const { requestHandler, dataMap } = usePlatform();
-
   const selectedType = columnAliases[cardType] || componentType;
 
-  const { data, setData, endpoint } = dataMap[selectedType] || {
-    data: [],
-    setData: () => {},
-    endpoint: "",
-  };
+  const { data=[], isLoading, isError } = useDynamicData(selectedType);
+
+
+
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [activeMenu, setActiveMenu] = useState(null);
-  let updatedEndpoint;
-  if (cardType) {
-    updatedEndpoint = `/${cardType}`;
-  }
+
 
   const columnConfigurations = {
     common: [],
@@ -75,8 +88,10 @@ const Details = () => {
       { key: "target_conn_name", label: "Target Connection", sortable: true },
       { key: "source_table", label: "Source Table", sortable: true },
       { key: "target_table", label: "Target Table", sortable: true },
+      { label: "Action", sortable: false },
+
     ],
-    connection: [
+    connections: [
       { key: "connection_name", label: "Name", sortable: true },
       { key: "project", label: "Project Name", sortable: true },
       { key: "created_by", label: "Created By", sortable: true },
@@ -85,10 +100,12 @@ const Details = () => {
       { key: "username", label: "Username", sortable: true },
       { key: "host_address", label: "Hostname", sortable: true },
 
-      { key: "", label: "No. of Tables", sortable: true },
+      { key: "table_count", label: "No. of Tables", sortable: true },
       { key: "status", label: "Status", sortable: true },
+      { label: "Action", sortable: false },
+
     ],
-    transformation: [
+    archival: [
       { key: "workflow_name", label: "Name", sortable: true },
       { key: "project", label: "Project Name", sortable: true },
       { key: "created_by", label: "Created By", sortable: true },
@@ -97,6 +114,8 @@ const Details = () => {
       { key: "source_table", label: "Source Table", sortable: true },
       { key: "target_table", label: "Target Table", sortable: true },
       { key: "status", label: "Status", sortable: true },
+      { label: "Action", sortable: false },
+
     ],
     migration: [
       { key: "metadata_name", label: "Name", sortable: true },
@@ -107,6 +126,8 @@ const Details = () => {
       { key: "source_table", label: "Source Table", sortable: true },
       { key: "target_table", label: "Target Table", sortable: true },
       { key: "status", label: "Status", sortable: true },
+      { label: "Action", sortable: false },
+
     ],
     purge: [
       { key: "purge_name", label: "Name", sortable: true },
@@ -117,6 +138,8 @@ const Details = () => {
       { key: "source_table", label: "Source Table", sortable: true },
       { key: "target_table", label: "Target Table", sortable: true },
       { key: "status", label: "Status", sortable: true },
+      { label: "Action", sortable: false },
+
     ],
 
     project: [
@@ -125,6 +148,8 @@ const Details = () => {
       { key: "timestamp", label: "Purge Timestamp", sortable: true },
       { key: "size_before", label: "Size Before", sortable: true },
       { key: "size_after", label: "Size After", sortable: true },
+      { label: "Action", sortable: false },
+
     ],
     federation: [
       { key: "connection_name", label: "Name", sortable: true },
@@ -132,6 +157,7 @@ const Details = () => {
       { key: "schema", label: "Schema", sortable: true },
       { key: "timestamp", label: "Table", sortable: true },
       { key: "Views", label: "Views", sortable: true },
+      { label: "Action", sortable: false },
     ],
   };
 
@@ -143,25 +169,12 @@ const Details = () => {
     ];
   }, []);
 
-  const tableColumns = useMemo(
+  const columns = useMemo(
     () => getColumnConfiguration(cardType || componentType),
     [getColumnConfiguration, cardType, componentType]
   );
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const finalEndpoint = updatedEndpoint || endpoint;
-        await requestHandler({ endpoint: finalEndpoint, setState: setData });
-      } catch (error) {
-        console.error(`Failed to fetch ${componentType} data:`, error);
-      }
-    };
 
-    if (data.length === 0 || updatedEndpoint) {
-      fetchData();
-    }
-  }, [endpoint, updatedEndpoint]);
 
   const processedData = useMemo(() => {
     let result = [...data];
@@ -203,81 +216,6 @@ const Details = () => {
     return processedData.slice(startIndex, startIndex + itemsPerPage);
   }, [processedData, page, itemsPerPage]);
 
-  const handleSort = useCallback((key) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  }, []);
-
-  const handleRefresh = useCallback(() => {
-    requestHandler({ endpoint, setState: setData });
-    toast.success("Data refreshed successfully!");
-  }, [endpoint, requestHandler, setData]);
-
-  const toggleActionMenu = useCallback((index) => {
-    setActiveMenu((prev) => (prev === index ? null : index));
-  }, []);
-
-  const renderPaginationControls = () => (
-    <div className="flex flex-col md:flex-row items-center justify-between">
-      <div className="text-sm text-gray-500 mb-2 md:mb-0">
-        {`${(page - 1) * itemsPerPage + 1} to ${Math.min(
-          page * itemsPerPage,
-          processedData.length
-        )} of ${processedData.length} results`}
-      </div>
-      <div className="flex items-center space-x-2">
-        <span className="text-sm text-gray-500">Show per page</span>
-        <select
-          className="border rounded p-1 text-sm"
-          value={itemsPerPage}
-          onChange={(e) => {
-            setItemsPerPage(Number(e.target.value));
-            setPage(1);
-          }}
-        >
-          {[10, 25, 50].map((num) => (
-            <option key={num} value={num}>
-              {num}
-            </option>
-          ))}
-        </select>
-        <div className="flex">
-          <button
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            className="p-1 border rounded-l hover:bg-gray-100"
-            disabled={page === 1}
-          >
-            <ChevronLeft
-              size={20}
-              className={page === 1 ? "text-gray-300" : "text-gray-600"}
-            />
-          </button>
-          <button
-            onClick={() =>
-              setPage((prev) =>
-                prev < Math.ceil(processedData.length / itemsPerPage)
-                  ? prev + 1
-                  : prev
-              )
-            }
-            className="p-1 border rounded-r border-l-0 hover:bg-gray-100"
-            disabled={page >= Math.ceil(processedData.length / itemsPerPage)}
-          >
-            <ChevronRight
-              size={20}
-              className={
-                page >= Math.ceil(processedData.length / itemsPerPage)
-                  ? "text-gray-300"
-                  : "text-gray-600"
-              }
-            />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="flex flex-col h-full p-4">
@@ -326,7 +264,7 @@ const Details = () => {
       </nav>
 
       <div className="flex flex-col md:flex-row gap-4 mb-4 items-center justify-between">
-        <h4 className="text-2xl font-medium">{heading}</h4>
+        <h4 className="text-2xl font-medium">{heading?.toUpperCase()}</h4>
         <div className="flex items-center space-x-4">
           <div className="relative">
             <input
@@ -344,113 +282,20 @@ const Details = () => {
           <button
             type="button"
             className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
-            onClick={handleRefresh}
+            // onClick={handleRefresh}
           >
             <RefreshCcw className="h-5 w-5" />
           </button>
         </div>
       </div>
 
-      <div
-        className="overflow-auto border rounded-lg mb-4"
-        style={{ maxHeight: "calc(100vh - 240px)" }}
-      >
-        <table className="w-full bg-white table-fixed">
-          <thead>
-            <tr className="bg-gray-800 text-white sticky top-0 z-10">
-              {tableColumns.map((column) => (
-                <th
-                  key={column.label}
-                  className="py-3 px-4 text-left sticky top-0 bg-gray-800 z-10"
-                  style={{ minWidth: "120px" }}
-                  onClick={() => column.sortable && handleSort(column.key)}
-                >
-                  <div className="flex items-center">
-                    {column.label}
-                    {column.sortable && (
-                      <ArrowUpDown
-                        className="ml-2 cursor-pointer"
-                        size={16}
-                        color="white"
-                      />
-                    )}
-                  </div>
-                </th>
-              ))}
-              <th className="py-3 px-4 text-left sticky top-0 bg-gray-800 z-10 w-[100px]">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedData.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={tableColumns.length + 1}
-                  className="py-4 px-4 text-center text-gray-500"
-                >
-                  No data found
-                </td>
-              </tr>
-            ) : (
-              paginatedData.map((row, rowIndex) => (
-                <tr
-                  key={rowIndex}
-                  className="border-b hover:bg-gray-50 relative group"
-                >
-                  {tableColumns.map((column) => (
-                    <td
-                      key={column.key}
-                      className="py-3 px-4 text-gray-600 truncate"
-                    >
-                      <div
-                        className="truncate max-w-[200px]"
-                        title={row[column.key] || "N/A"}
-                      >
-                        {row[column.key] || "N/A"}
-                      </div>
-                    </td>
-                  ))}
-                  <td className="py-3 px-4 text-center relative">
-                    <div className="relative">
-                      <button
-                        className="p-1 text-gray-600 hover:text-gray-800"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleActionMenu(rowIndex);
-                        }}
-                      >
-                        <MoreHorizontal size={18} />
-                      </button>
+  
+<DataTable
+  columns={columns}
+  data={paginatedData}
+  // actions={actions}
+/>
 
-                      {activeMenu === rowIndex && (
-                        <div
-                          className="absolute right-4 mt-2 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <button className="p-1 text-gray-500 hover:text-gray-800">
-                              <Pencil size={18} />
-                            </button>
-                            <button className="p-1 text-gray-500 hover:text-gray-800">
-                              <Trash2 size={18} />
-                            </button>
-                            <button className="p-1 text-gray-500 hover:text-gray-800">
-                              <Play size={18} fill="currentColor" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {renderPaginationControls()}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -12,33 +12,187 @@ import {
   Cell,
 } from "recharts";
 
-const Charts = () => {
-  const statusMetrics = [
-    { name: "Ready to run", percentage: 21.8, color: "bg-[#ECE9FF]" },
-    { name: "Completed", percentage: 16.8, color: "bg-[#D3CCF5]" },
-    { name: "Created", percentage: 20.8, color: "bg-[#A698EB]" },
-    { name: "Running", percentage: 8.8, color: "bg-[#8F7EE1]" },
-    { name: "Stopped", percentage: 26.8, color: "bg-[#735ABF]" },
-  ];
+const Charts = ({ data }) => {
+  const [statusData, setStatusData] = useState([]);
+  const [lineChartData, setLineChartData] = useState([]);
+  const [timeFilter, setTimeFilter] = useState("Yearly");
+  const [filteredData, setFilteredData] = useState([]);
 
-  const lineChartData = [
-    { name: "Mon", JOBS: 12, cpc: 3.2 },
-    { name: "Tue", JOBS: 18, cpc: 2.8 },
-    { name: "Wed", JOBS: 9, cpc: 3.6 },
-    { name: "Thu", JOBS: 12, cpc: 3.1 },
-    { name: "Fri", JOBS: 8, cpc: 3.3 },
-    { name: "Sat", JOBS: 17, cpc: 3.8 },
-    { name: "Sun", JOBS: 10, cpc: 0.5 },
-  ];
+  useEffect(() => {
+    if (!data || !Array.isArray(data)) return;
+    
+    filterDataByTimePeriod();
+  }, [data, timeFilter]);
 
-  const pieChartData = statusMetrics.map((item) => ({
-    name: item.name,
-    value: item.percentage,
-  }));
+  useEffect(() => {
+    if (!filteredData.length) return;
+    
+    processStatusData();
+    processTimelineData();
+  }, [filteredData]);
 
-  const COLOR_PALETTE = ["#ECE9FF", "#D3CCF5", "#A698EB", "#8F7EE1", "#735ABF"];
+  const filterDataByTimePeriod = () => {
+    if (!data || !Array.isArray(data)) return;
+    
+    const now = new Date();
+    let filtered = [];
+    
+    switch (timeFilter) {
+      case "Weekly":
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(now.getDate() - 7);
+        
+        filtered = data.filter(item => {
+          if (!item.scheduler || !item.scheduler.startdatetime) return false;
+          const date = new Date(item.scheduler.startdatetime);
+          return date >= oneWeekAgo && date <= now;
+        });
+        break;
+        
+      case "Monthly":
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        filtered = data.filter(item => {
+          if (!item.scheduler || !item.scheduler.startdatetime) return false;
+          const date = new Date(item.scheduler.startdatetime);
+          return date >= firstDayOfMonth && date <= now;
+        });
+        break;
+        
+      case "Yearly":
+        const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
+        
+        filtered = data.filter(item => {
+          if (!item.scheduler || !item.scheduler.startdatetime) return false;
+          const date = new Date(item.scheduler.startdatetime);
+          return date >= firstDayOfYear && date <= now;
+        });
+        break;
+        
+      default:
+        filtered = data.slice(); 
+    }
+    
+    if (filtered.length === 0) {
+      filtered = data.slice(); 
+    }
+    
+    setFilteredData(filtered);
+  };
+
+  const processStatusData = () => {
+    const statusCounts = {};
+    filteredData.forEach(item => {
+      const status = item.status || "Unknown";
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+
+    const total = Object.values(statusCounts).reduce((sum, count) => sum + count, 0);
+    
+    const formattedData = Object.entries(statusCounts).map(([status, count], index) => {
+      return {
+        name: getDisplayStatus(status),
+        value: (count / total) * 100,
+        percentage: (count / total) * 100,
+        color: getColorForStatus(status, index),
+        count
+      };
+    });
+
+    setStatusData(formattedData);
+  };
+
+  const getDisplayStatus = (status) => {
+    const statusMap = {
+      "Pending": "Pending",
+      "Running": "Running",
+      "Stopped": "Stopped",
+      "Completed": "Completed",
+      "Created": "Job Created",
+      "Ready": "Ready to Run",
+    };
+
+    for (const [key, value] of Object.entries(statusMap)) {
+      if (status.startsWith(key)) {
+        return value;
+      }
+    }
+    
+    return status;
+  };
+
+  const getColorForStatus = (status, index) => {
+    const statusColorMap = {
+      "Pending": "bg-[#E6E1FF]",
+      "Running": "bg-[#9D85F2]",
+      "Stopped": "bg-[#735ABF]",
+      "Completed": "bg-[#D3CCF5]",
+      "Created": "bg-[#A698EB]",
+      "Ready": "bg-[#C5BAFF]",
+    };
+    
+    const COLOR_CLASSES = ["bg-[#E6E1FF]", "bg-[#C5BAFF]", "bg-[#9D85F2]", "bg-[#A698EB]", "bg-[#735ABF]"];
+    
+    for (const [key, value] of Object.entries(statusColorMap)) {
+      if (status.startsWith(key)) {
+        return value;
+      }
+    }
+    
+    return COLOR_CLASSES[index % COLOR_CLASSES.length];
+  };
+
+  const processTimelineData = () => {
+    const groupedData = {};
+    
+    filteredData.forEach(item => {
+      if (!item.scheduler || !item.scheduler.startdatetime) return;
+      
+      const date = new Date(item.scheduler.startdatetime);
+      let key;
+      
+      if (timeFilter === "Weekly") {
+        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        key = days[date.getDay()];
+      } else if (timeFilter === "Monthly") {
+        key = `Week ${Math.ceil(date.getDate() / 7)}`;
+      } else {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        key = months[date.getMonth()];
+      }
+      
+      if (!groupedData[key]) {
+        groupedData[key] = { name: key, JOBS: 0, cpc: 0 };
+      }
+      
+      groupedData[key].JOBS += 1;
+    });
+    
+    let result = Object.values(groupedData);
+    
+    if (timeFilter === "Weekly") {
+      const dayOrder = { "Mon": 0, "Tue": 1, "Wed": 2, "Thu": 3, "Fri": 4, "Sat": 5, "Sun": 6 };
+      result.sort((a, b) => dayOrder[a.name] - dayOrder[b.name]);
+    } else if (timeFilter === "Monthly") {
+      const weekOrder = { "Week 1": 0, "Week 2": 1, "Week 3": 2, "Week 4": 3, "Week 5": 4 };
+      result.sort((a, b) => weekOrder[a.name] - weekOrder[b.name]);
+    } else {
+      const monthOrder = { "Jan": 0, "Feb": 1, "Mar": 2, "Apr": 3, "May": 4, "Jun": 5, 
+                          "Jul": 6, "Aug": 7, "Sep": 8, "Oct": 9, "Nov": 10, "Dec": 11 };
+      result.sort((a, b) => monthOrder[a.name] - monthOrder[b.name]);
+    }
+    
+    result.forEach(item => {
+      item.cpc = parseFloat((item.JOBS * 0.2 + Math.random()).toFixed(1));
+    });
+    
+    setLineChartData(result);
+  };
+
+  const COLOR_PALETTE = ["#E6E1FF", "#C5BAFF", "#9D85F2", "#A698EB", "#735ABF", "#5D45DB"];
 
   const RADIAN = Math.PI / 180;
+  
   const PieChartLabel = ({
     cx,
     cy,
@@ -47,60 +201,86 @@ const Charts = () => {
     outerRadius,
     percent,
     index,
+    name
   }) => {
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    
+    const startRadius = outerRadius * 1.05;
+    const startX = cx + startRadius * Math.cos(-midAngle * RADIAN);
+    const startY = cy + startRadius * Math.sin(-midAngle * RADIAN);
 
-    const width = 36;
-    const height = 24;
+    const lineLength = 30;
+    const lineEndX = cx + (outerRadius + lineLength) * Math.cos(-midAngle * RADIAN);
+    const lineEndY = cy + (outerRadius + lineLength) * Math.sin(-midAngle * RADIAN);
+
+    const isRightSide = lineEndX > cx;
+    const horizontalLength = 15;
+    const horizEndX = isRightSide ? lineEndX + horizontalLength : lineEndX - horizontalLength;
+
+    const textX = isRightSide ? horizEndX + 5 : horizEndX - 5;
+    const textAnchor = isRightSide ? "start" : "end";
+
+    const lineColor = COLOR_PALETTE[index % COLOR_PALETTE.length];
+
+ 
+    const angle = Math.abs(midAngle % 360);
+    
+
+    const isSmallValue = percent < 0.05;
 
     return (
       <g>
-        <defs>
-          <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow
-              dx="1"
-              dy="1"
-              stdDeviation="2"
-              floodColor="rgba(0, 0, 0, 0.2)"
-            />
-          </filter>
-        </defs>
-
-        <rect
-          x={x - width / 2}
-          y={y - height / 2}
-          width={width}
-          height={height}
-          rx={6}
-          ry={6}
-          fill="#F9F8FF"
-          // stroke="#A698EB"
-          // strokeWidth="1.5"
-          filter="url(#shadow)"
+        <line
+          x1={startX}
+          y1={startY}
+          x2={lineEndX}
+          y2={lineEndY}
+          stroke={lineColor}
+          strokeWidth={1.5}
         />
-
+        
+        <line
+          x1={lineEndX}
+          y1={lineEndY}
+          x2={horizEndX}
+          y2={lineEndY}
+          stroke={lineColor}
+          strokeWidth={1.5}
+        />
+        
         <text
-          x={x}
-          y={y}
+          x={textX}
+          y={lineEndY}
+          textAnchor={textAnchor}
           fill="#5D45DB"
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={12}
           fontWeight="500"
+          fontSize={12}
         >
-          {`${(percent * 100).toFixed(0)}%`}
+          {`${(percent * 100).toFixed(1)}%`}
         </text>
       </g>
     );
   };
+
+  const getTimeFilterLabel = () => {
+    switch (timeFilter) {
+      case "Weekly":
+        return "This Week";
+      case "Monthly":
+        return "This Month";
+      case "Yearly":
+        return "This Year";
+      default:
+        return "";
+    }
+  };
+
   return (
     <div className="flex flex-wrap w-full gap-4">
       <div className="flex-1 min-w-64 bg-white rounded-lg shadow-sm dark:bg-gray-800 p-4 md:p-6">
         <div className="flex justify-between mb-5">
           <div>
             <h2 className="text-lg font-medium text-gray-800">Creation</h2>
+            {/* <p className="text-sm text-gray-500">{getTimeFilterLabel()}</p> */}
           </div>
         </div>
 
@@ -119,7 +299,7 @@ const Charts = () => {
               <YAxis
                 stroke="#E2E7E7"
                 tickFormatter={(tick) => `${tick}`}
-                domain={[0, 20]}
+                domain={[0, 'auto']}
                 tickCount={5}
               />
               <Tooltip />
@@ -137,9 +317,16 @@ const Charts = () => {
 
       <div className="flex-1 min-w-64 bg-white rounded-lg shadow-sm dark:bg-gray-800 p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-800">Status</h2>
+          <div>
+            <h2 className="text-lg font-medium text-gray-800">Status</h2>
+            {/* <p className="text-sm text-gray-500">{getTimeFilterLabel()}</p> */}
+          </div>
           <div className="relative">
-            <select className="appearance-none rounded-md border border-gray-300 py-1 px-3 pr-8 text-sm bg-white">
+            <select 
+              className="appearance-none rounded-md border border-gray-300 py-1 px-3 pr-8 text-sm bg-white"
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+            >
               <option>Weekly</option>
               <option>Monthly</option>
               <option>Yearly</option>
@@ -163,11 +350,16 @@ const Charts = () => {
         </div>
 
         <div className="flex flex-col md:flex-row items-start">
-          <div className="order-2 md:order-1 w-full md:w-1/3 flex flex-col space-y-4 pt-4 md:pt-16">
-            {statusMetrics.map((item, index) => (
+          <div className="order-2 md:order-1 w-full md:w-1/3 flex flex-col space-y-4 pt-4 md:pt-8">
+            {statusData.map((item, index) => (
               <div key={item.name} className="flex items-center">
                 <div className={`h-6 w-6 rounded ${item.color} mr-3`}></div>
-                <span className="text-sm text-gray-700">{item.name}</span>
+                <span className="text-sm text-gray-700">
+                  {item.name}{" "}
+                  <span className="text-xs text-gray-500">
+                    ({item.percentage.toFixed(1)}%)
+                  </span>
+                </span>
               </div>
             ))}
           </div>
@@ -177,25 +369,29 @@ const Charts = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={pieChartData}
+                    data={statusData}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
                     label={PieChartLabel}
                     innerRadius={60}
-                    outerRadius={140}
+                    outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
+                    nameKey="name"
                     strokeWidth={0}
+                    paddingAngle={1}
                   >
-                    {pieChartData.map((entry, index) => (
+                    {statusData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={COLOR_PALETTE[index % COLOR_PALETTE.length]}
                       />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    formatter={(value, name) => [`${value.toFixed(1)}%`, name]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>

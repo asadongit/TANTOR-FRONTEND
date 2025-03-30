@@ -74,7 +74,7 @@ export function SchedulerNode({ id, data, selected}) {
 
 
     setTimeout(() => {
-      navigate('/CDCList')
+      // navigate('/CDCList')
     }, 500);
   };
   
