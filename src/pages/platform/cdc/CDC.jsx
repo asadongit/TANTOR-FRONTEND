@@ -5,34 +5,7 @@ import { usePlatform } from "../../../context/platformContext.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
 const CDC = () => {
   const navigate = useNavigate();
-  const { setCDCData } = usePlatform();
-  const hostname = import.meta.env.VITE_FAST_API;
-  const { token } = useAuth();
-  const fetchCDC = useCallback(async () => {
-    try {
-      const response = await fetch(`${hostname}/cdc`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch connections: ${response.status}`);
-      }
-
-      const CDCData = await response.json();
-      const filteredData = CDCData.filter((item) => item.created_by === "sorv");
-      setCDCData(filteredData);
-    } catch (error) {
-      console.error("Error fetching connections:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCDC();
-  }, [fetchCDC]);
   return (
     <div>
       <nav className="flex" aria-label="Breadcrumb">
