@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Pencil,
   Trash2,
@@ -9,6 +9,12 @@ import {
   X,
   BadgeCheck,
   ChevronDown,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  RefreshCcw,
+  Search,
 } from "lucide-react";
 import successBackground from "../../assets/green.png";
 import PostgreSQL from "../../assets/connector/postgresql-connector.png";
@@ -22,7 +28,14 @@ import DB2 from "../../assets/connector/db2-connector.png";
 import Kafka from "../../assets/connector/kafka-connector.png";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../utils/Crypto";
+import { useConnectionCardData } from "../../hooks/platform/cardCounts";
+import { useConnectionData } from "../../hooks/platform/connection";
+import DataTable from "../../components/DataTable";
+import CardGrid from "../../components/CardGrid";
 const Connections = () => {
+  const { data: cardData, isLoading: isCardLoading, error: cardError } = useConnectionCardData();
+  const { data: connections=[], isLoading: isConnectionsLoading, error: connectionsError } = useConnectionData();
+
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
     modal2: false,
@@ -52,124 +65,49 @@ const Connections = () => {
 
   const [selectedCard, setSelectedCard] = useState(null);
 
-  const [activeMenu, setActiveMenu] = useState(null);
 
-  const handleClickOutside = () => {
-    setActiveMenu(null);
-  };
 
-  const sampleData = [
-    {
-      name: "Amit Tandon",
-      role: "01",
-      persona: "01",
-      group: "02",
-      subGroup: "01",
-      status: "Completed",
-    },
-    {
-      name: "Amit Tandon",
-      role: "01",
-      persona: "01",
-      group: "02",
-      subGroup: "01",
-      status: "Completed",
-    },
-    {
-      name: "Amit Tandon",
-      role: "01",
-      persona: "01",
-      group: "02",
-      subGroup: "01",
-      status: "Completed",
-    },
-    {
-      name: "Amit Tandon",
-      role: "01",
-      persona: "01",
-      group: "02",
-      subGroup: "01",
-      status: "Completed",
-    },
-    {
-      name: "Amit Tandon",
-      role: "01",
-      persona: "01",
-      group: "02",
-      subGroup: "01",
-      status: "Completed",
-    },
-    {
-      name: "Amit Tandon",
-      role: "01",
-      persona: "01",
-      group: "02",
-      subGroup: "01",
-      status: "Completed",
-    },
-    {
-      name: "Amit Tandon",
-      role: "01",
-      persona: "01",
-      group: "02",
-      subGroup: "01",
-      status: "Completed",
-    },
-    {
-      name: "Amit Tandon",
-      role: "01",
-      persona: "01",
-      group: "02",
-      subGroup: "01",
-      status: "Completed",
-    },
-    {
-      name: "Amit Tandon",
-      role: "01",
-      persona: "01",
-      group: "02",
-      subGroup: "01",
-      status: "Completed",
-    },
-  ];
 
-  const cards = [
-    {
-      icon: "material-symbols:database-upload-outline",
-      bgcolor: "bg-[#d8d3e4] bg-opacity-25",
-      iconcolor: "text-purple-700",
-      title: "Active",
-      count: "27",
-    },
-    {
-      icon: "material-symbols-light:two-pager-store-outline",
-      bgcolor: "bg-[#FFC93F] bg-opacity-25",
-      iconcolor: "text-orange-700",
-      title: "Inactive",
-      count: "11",
-    },
-    {
-      icon: "material-symbols:cloud-sync-outline",
-      bgcolor: "bg-[#96CF7B] bg-opacity-25",
-      iconcolor: "text-green-700",
-      title: "Source",
-      count: "07",
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#16ABC2] bg-opacity-25",
-      iconcolor: "text-cyan-700",
-      title: "Target",
-      count: "17",
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#16ABC2] bg-opacity-25",
-      iconcolor: "text-cyan-700",
-      title: "Both",
-      count: "06",
-    },
-  ];
+  const cards = useMemo(() => {
+    return [
+      {
+        icon: "material-symbols:database-upload-outline",
+        bgcolor: "bg-[#d8d3e4] bg-opacity-25",
+        iconcolor: "text-purple-700",
+        title: "Active",
+        count: cardData?.active || 0,
+      },
+      {
+        icon: "material-symbols-light:two-pager-store-outline",
+        bgcolor: "bg-[#FFC93F] bg-opacity-25",
+        iconcolor: "text-orange-700",
+        title: "Inactive",
+        count: cardData?.inactive || 0,
+      },
+      {
+        icon: "material-symbols:cloud-sync-outline",
+        bgcolor: "bg-[#96CF7B] bg-opacity-25",
+        iconcolor: "text-green-700",
+        title: "Source",
+        count: cardData?.source || 0,
+      },
+      {
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#16ABC2] bg-opacity-25",
+        iconcolor: "text-cyan-700",
+        title: "Target",
+        count: cardData?.target || 0,
+      },
+      {
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#16ABC2] bg-opacity-25",
+        iconcolor: "text-cyan-700",
+        title: "Both",
+        count: cardData?.both || 0,
+      },
+    ];
+  }, [cardData]);
+
 
   const connectorCards = [
     {
@@ -430,6 +368,33 @@ const Connections = () => {
     alert("Connection updated successfully!");
     closeModal("modal4");
   };
+
+
+
+
+
+
+
+  const columns = [
+    { key: "connection_name", label: "Connection Name" },
+    { key: "project", label: "Project Name" },
+    { key: "created_by", label: "Created By" },
+    { key: "database_name", label: "Database" },
+    { key: "connection_type", label: "Connection Type" },
+    { key: "host_address", label: "Host" },
+    { key: "username", label: "Username" },
+    { key: "table_count", label: "No of Table" },
+    { key: "status", label: "Status" },
+    { label: "Action", sortable: false },
+  ];
+
+    const handleCardClick = (card) => {
+      const url = `/componentType=connections&dataScope=${card.title
+        .replace(/\s+/g, "")
+        .toLowerCase()}&heading=${card.title}`;
+      const encryptedUrl = encodeURIComponent(encrypt(url));
+      navigate(`/details?${encryptedUrl}`);
+    };
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -466,41 +431,21 @@ const Connections = () => {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        {cards.map((card) => (
-          <div
-            key={card.title}
-            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
-          >
-            <div className="flex items-center mb-2">
-              <div
-                className={`flex items-center justify-center aspect-square w-8 md:w-10 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}
-              >
-                <Icon icon={card.icon} />
-              </div>
-              <h3 className="text-lg font-semibold">{card.title}</h3>
-            </div>
-            <p className="text-black text-5xl font-bold">{card.count}</p>
 
-            <button
-              className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
-              onClick={() => {
-                const url = `/componentType=connection&dataScope=${card.title
-                  .replace(/\s+/g, "")
-                  .toLowerCase()}&heading=${card.title}`;
-                const encryptedUrl = encodeURIComponent(encrypt(url));
-                navigate(`/details?${encryptedUrl}`);
-              }}
-            >
-              See details
-              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
-            </button>
-          </div>
-        ))}
-      </div>
+      <CardGrid cards={cards} onCardClick={handleCardClick} />
 
 
-      {isModalOpen.modal1 && (
+
+      {/* Connection Listing Table */}
+
+<DataTable
+  columns={columns}
+  data={connections}
+  // actions={actions}
+/>
+
+   
+{isModalOpen.modal1 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-[1000px] p-8">
             <div className="flex items-center justify-between mb-8">
@@ -995,92 +940,6 @@ const Connections = () => {
         </div>
       )}
       {/*End---------------------------Edit Connection Modal--------------------------End */}
-
-      {/* Project Listing Table */}
-
-      <div className="bg-white rounded-lg shadow overflow-hidden mt-10">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-[#29304a] text-white">
-              <th className="text-left p-4">Connection Name</th>
-              <th className="text-left p-4">Project Name</th>
-              <th className="text-left p-4">Created By</th>
-              <th className="text-left p-4">Database</th>
-              <th className="text-left p-4">Connection Type</th>
-              <th className="text-left p-4">Host</th>
-              <th className="text-left p-4">Username</th>
-              <th className="text-left p-4">No of table</th>
-              <th className="text-left p-4">Status</th>
-              <th className="text-left p-4 last:rounded-tr-lg">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sampleData.map((user, index) => (
-              <tr key={index} className="border-b">
-                <td className="p-4 text-center">{user.name}</td>
-                <td className="p-4 text-center">{user.name}</td>
-                <td className="p-4 text-center">{user.role}</td>
-                <td className="p-4 text-center">{user.persona}</td>
-                <td className="p-4 text-center">{user.group}</td>
-                <td className="p-4 text-center">{user.subGroup}</td>
-                <td className="p-4 text-center">{user.subGroup}</td>
-                <td className="p-4 text-center">{user.subGroup}</td>
-                <td className="p-4 text-center">
-                  <span
-                    className={`px-2 py-1 rounded-full text-sm ${
-                      user.status === "Completed"
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {user.status}
-                  </span>
-                </td>
-                <td className="p-4 text-center">
-                  <div className="relative">
-                    <button
-                      onClick={() =>
-                        setActiveMenu(activeMenu === index ? null : index)
-                      }
-                      className="p-1.5 rounded-full hover:bg-gray-100"
-                    >
-                      <MoreHorizontal className="h-5 w-5" />
-                    </button>
-
-                    {activeMenu === index && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-10"
-                          onClick={handleClickOutside}
-                        />
-                        <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                          <div className="flex items-center p-1 gap-1">
-                            <button
-                              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                              onClick={() => openModal("modal4")}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                              <RotateCw className="h-4 w-4" />
-                            </button>
-                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 };

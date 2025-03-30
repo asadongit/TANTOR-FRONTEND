@@ -27,7 +27,6 @@ const CDC = () => {
       setCDCData(filteredData);
     } catch (error) {
       console.error("Error fetching connections:", error);
-      hotToast.error("Failed to fetch data");
     }
   }, []);
 
