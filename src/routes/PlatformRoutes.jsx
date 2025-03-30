@@ -11,7 +11,6 @@ import Migration from '../pages/platform/migration/Migration';
 import Transformation from '../pages/platform/archival/Archival';
 import Purge from '../pages/platform/purge/Purge';
 import CDC from '../pages/platform/cdc/CDC'
-import CDCList from '../pages/platform/cdc/CDCList';
 import Source from '../pages/platform/Federation/BaseView/Source';
 import MigrationCanvas from '../pages/platform/migration/MigrationCanvas';
 
@@ -25,7 +24,6 @@ import { PlatformProvider } from '../context/platformContext';
 import Details from '../pages/platform/Details';
 export function PlatformRoutes() {
   return (
-    <PlatformProvider>
       <Routes>
         <Route path="/project" element={<Project />} />
         <Route path="/connections" element={<Connections />} />
@@ -38,7 +36,6 @@ export function PlatformRoutes() {
         <Route path="/transformation" element={<Transformation />} />
         <Route path="/purge" element={<Purge />} />
         <Route path="/cdc" element={<CDC />} />
-        <Route path="/CDCList/:type?" element={<CDCList />} />
         <Route path="/editor" element={<Editor />} />
         <Route path="/federation" element={<FederationDashBoard />} />
         <Route path="/federation/view/source" element={<Source />} />
@@ -49,6 +46,5 @@ export function PlatformRoutes() {
                 element={<Details />}
               />
       </Routes>
-    </PlatformProvider>
   );
 }
