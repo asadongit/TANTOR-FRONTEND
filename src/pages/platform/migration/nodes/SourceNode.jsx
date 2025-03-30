@@ -25,10 +25,20 @@ export function SourceNode({ id, data }) {
   const [loading, setLoading] = useState(true);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
-  const [schemaLoading, setSchemaLoading] = useState(false);  
-  const { openDrawer } = useTableContext();  
+  const [schemaLoading, setSchemaLoading] = useState(false); 
 
-  
+    // Update handlers to persist data
+    const updateNodeData = (partialData) => {
+      if (data.onDataChange) {
+        data.onDataChange({
+          connection: selectedConnection,
+          schema: selectedSchema,
+          tables: selectedItems,
+          ...partialData
+        });
+      }
+    };
+
 
   let connectionsData;
   let schemacount;
@@ -246,6 +256,7 @@ const handleCancel = () => {
 
 const handleOk = () => {
   console.log("Selected items:", selectedItems);
+  updateNodeData(); 
   // setShowAlert(true);
 
   // // Hide the alert after 3 seconds
@@ -291,6 +302,11 @@ const handleOk = () => {
               setTables([]); // Clear previous tables
               fetchschema(connectionName);
               fetchschemacount(connectionName); 
+              updateNodeData({
+                connection: connectionName,
+                schema: "",
+                tables: []
+              });
             }}
           >
             <option value="">Select</option>
@@ -313,6 +329,10 @@ const handleOk = () => {
                 const schemaName = e.target.value;
                 setSelectedSchema(schemaName);
                 fetchTables(selectedConnection, schemaName);
+                updateNodeData({
+                  schema: schemaName,
+                  tables: []
+                });
               }}
               disabled={!selectedConnection || schemaLoading}
             >
@@ -518,4 +538,5 @@ const handleOk = () => {
 
 SourceNode.propTypes = {
   id: PropTypes.string.isRequired,
+  data: PropTypes.object,
 };

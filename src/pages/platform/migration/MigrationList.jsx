@@ -9,7 +9,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import  {encrypt} from '../../../utils/Crypto'
 
-const MigrationList = () => {
+const MigrationList = ({ records }) => {
+
+  console.log(records);
 
   const navigate = useNavigate();
 

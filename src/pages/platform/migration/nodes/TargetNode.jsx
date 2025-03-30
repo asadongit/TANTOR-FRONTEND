@@ -3,18 +3,49 @@ import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X } from "lucide-react";
 
-export function TargetNode({ id }) {
+export function TargetNode({ id, data }) {
   const hostname = import.meta.env.VITE_FAST_API;
   const token = import.meta.env.VITE_ACCESS_TOKEN;
   const [connections, setConnections] = useState([]);
-  const [settings, setSettings] = useState("Prefix/Suffix");
-  const [selectedConnection, setSelectedConnection] = useState("");
-  const [selectedSchema, setSelectedSchema] = useState("");
+  const [settings, setSettings] = useState(data?.settings?.type || "Prefix/Suffix");
+  const [settingsValue, setSettingsValue] = useState(data?.settings?.value || "");
+  const [selectedConnection, setSelectedConnection] = useState(data?.connection || "");
+  const [selectedSchema, setSelectedSchema] = useState(data?.schema || "");
   const [schemaLoading, setSchemaLoading] = useState(false);
   const [schemas, setSchema] = useState([]);
 
   let connectionsData;
   let schemadetails;
+
+  const updateNodeData = () => {
+    if (data?.onDataChange) {
+      data.onDataChange({
+        connection: selectedConnection,
+        schema: selectedSchema,
+        settings: {
+          type: settings,
+          value: settings !== "Prefix/Suffix" ? settingsValue : undefined,
+        },
+      });
+    }
+  };
+
+  const handleCancel = () => {
+    setSelectedConnection(data?.connection || "");
+    setSelectedSchema(data?.schema || "");
+    setSettings(data?.settings?.type || "Prefix/Suffix");
+    setSettingsValue(data?.settings?.value || "");
+  };
+
+  const handleOk = () => {
+    updateNodeData();
+    window.handleTargetSubmit?.(id);
+  };
+
+  // Update parent when connection/schema changes
+  useEffect(() => {
+    updateNodeData();
+  }, [selectedConnection, selectedSchema, settings, settingsValue]);
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -42,8 +73,6 @@ export function TargetNode({ id }) {
       console.error("Error fetching options:", error);
     }
   }, []);
-
-
 
   const fetchschema = useCallback(
     async (connectionName) => {
@@ -184,10 +213,10 @@ export function TargetNode({ id }) {
         )}
       </div>
       <div className="flex space-x-2 mt-4">
-        <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
+        <button onClick={handleCancel} className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           Cancel
         </button>
-        <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
+        <button onClick={handleOk} className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           OK
         </button>
       </div>
@@ -197,4 +226,5 @@ export function TargetNode({ id }) {
 
 TargetNode.propTypes = {
   id: PropTypes.string.isRequired,
+  data: PropTypes.object,
 };
