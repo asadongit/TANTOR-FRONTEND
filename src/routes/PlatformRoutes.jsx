@@ -22,7 +22,7 @@ import FederationDashBoard from "../pages/platform/Federation/components/Federat
 import DataView from '../pages/platform/DataView';
 import PurgeCanvas from '../pages/platform/purge/PurgeCanvas';
 import { PlatformProvider } from '../context/platformContext';
-
+import Details from '../pages/platform/Details';
 export function PlatformRoutes() {
   return (
     <PlatformProvider>
@@ -44,6 +44,10 @@ export function PlatformRoutes() {
         <Route path="/federation/view/source" element={<Source />} />
         <Route path="/createMigration" element={<MigrationCanvas />} />
         <Route path="/PurgeCanvas" element={<PurgeCanvas />} />
+        <Route
+                path="/details"
+                element={<Details />}
+              />
       </Routes>
     </PlatformProvider>
   );

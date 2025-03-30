@@ -3,12 +3,10 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
-  Edit,
   Pencil,
   Trash2,
   Play,
   RefreshCcw,
-  X,
   ArrowUpDown,
   Search,
 } from "lucide-react";
@@ -29,9 +27,15 @@ const CDCList = () => {
   const [data, setData] = useState([]);
 
   useEffect(() => {
+    if (!CDCData.length > 0) {
+      navigate("/cdc");
+      return;
+    }
+
     const filteredData = type
       ? CDCData.filter((item) => item.source_conn_type === type)
       : CDCData;
+
     setData(filteredData);
   }, [type, CDCData]);
 
@@ -99,114 +103,125 @@ const CDCList = () => {
     toast.success("Refreshed successfully!");
   };
 
+  const tableColumns = [
+    { key: "workflow_name", label: "Name" },
+    { key: "project", label: "Project" },
+    { key: "created_by", label: "Created by" },
+    { key: "source_conn_name", label: "Source connection" },
+    { key: "target_conn_name", label: "Table connection" },
+    { key: "source_table", label: "Source table" },
+    { key: "target_table", label: "Target table" },
+    { key: "created_at", label: "Start date" },
+    { key: "status", label: "Status" },
+    { label: "Action", sortable: false },
+  ];
+
   return (
-    <div >
-      <nav className="flex" aria-label="Breadcrumb">
-      <ol className="inline-flex items-center space-x-1 md:space-x-2">
-          <li className="inline-flex items-center">
-            <span
-              onClick={() => navigate("/")}
-              className="inline-flex items-center text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700"
-            >
-              Platform
-            </span>
-          </li>
-          <li>
-            <div className="flex items-center">
-              <svg
-                className="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 6 10"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="m1 9 4-4-4-4"
-                />
-              </svg>
+    <div className="flex flex-col h-full">
+      <div>
+        <nav className="flex" aria-label="Breadcrumb">
+          <ol className="inline-flex items-center space-x-1 md:space-x-2">
+            <li className="inline-flex items-center">
               <span
-                onClick={() => navigate("/cdc")}
-                className="ms-1 text-sm font-medium cursor-pointer text-gray-500 hover:text-gray-700"
+                onClick={() => navigate("/")}
+                className="inline-flex items-center text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700"
               >
-                CDC
+                Platform
               </span>
-            </div>
-          </li>
-          <li>
-            <div className="flex items-center">
-              <svg
-                className="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 6 10"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="m1 9 4-4-4-4"
-                />
-              </svg>
-              <span className="ms-1 text-sm font-medium text-[#8e78b7]">
-                Details
-              </span>
-            </div>
-          </li>
-        </ol>
-      </nav>
+            </li>
+            <li>
+              <div className="flex items-center">
+                <svg
+                  className="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 6 10"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m1 9 4-4-4-4"
+                  />
+                </svg>
+                <span
+                  onClick={() => navigate("/cdc")}
+                  className="ms-1 text-sm font-medium cursor-pointer text-gray-500 hover:text-gray-700"
+                >
+                  CDC
+                </span>
+              </div>
+            </li>
+            <li>
+              <div className="flex items-center">
+                <svg
+                  className="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 6 10"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m1 9 4-4-4-4"
+                  />
+                </svg>
+                <span className="ms-1 text-sm font-medium text-[#8e78b7]">
+                  Details
+                </span>
+              </div>
+            </li>
+          </ol>
+        </nav>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
-        <h4 className="text-2xl font-medium">CDC</h4>
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
-            />
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={20}
-            />
+        <div className="flex flex-col md:flex-row gap-4 mt-4 mb-4 items-center justify-between">
+          <h4 className="text-2xl font-medium">CDC</h4>
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+              />
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={20}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
+              onClick={handleRefresh}
+            >
+              <RefreshCcw className="h-5 w-5" />
+            </button>
           </div>
-
-          <button
-            type="button"
-            className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
-            onClick={handleRefresh}
-          >
-            <RefreshCcw className="h-5 w-5" />
-          </button>
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto shadow rounded-lg">
-        <table className="w-full bg-white">
-          <thead className="bg-gray-800 text-white">
-            <tr>
-              {[
-                { key: "workflow_name", label: "Name" },
-                { key: "project", label: "Project" },
-                { key: "created_by", label: "Created by" },
-                { key: "source_conn_name", label: "Source connection" },
-                { key: "target_conn_name", label: "Table connection" },
-                { key: "source_table", label: "Source table" },
-                { key: "target_table", label: "Target table" },
-                { key: "created_at", label: "Start date" },
-                { key: "status", label: "Status" },
-                { label: "Action", sortable: false },
-              ].map((column) => (
+      <div
+        className="overflow-auto border rounded-lg mb-4"
+        style={{ maxHeight: "calc(100vh - 240px)" }}
+      >
+        <table className="w-full bg-white table-fixed">
+          <thead>
+            <tr className="bg-gray-800 text-white sticky top-0 z-10">
+              {tableColumns.map((column, index) => (
                 <th
                   key={column.label}
-                  className="py-3 px-4 text-left"
+                  className="py-3 px-4 text-left sticky top-0 bg-gray-800 z-10"
+                  style={{
+                    width: index === tableColumns.length - 1 ? "100px" : "auto",
+                    minWidth: "120px",
+                  }}
                   onClick={() => column.key && handleSort(column.key)}
                 >
                   <div className="flex items-center">
@@ -249,20 +264,17 @@ const CDCList = () => {
                   ].map((cell, cellIndex) => (
                     <td
                       key={cellIndex}
-                      className="py-3 px-4 text-gray-600 max-w-xs"
+                      className="py-3 px-4 text-gray-600 truncate"
                     >
-                      <div
-                        className="truncate max-w-[200px] overflow-hidden"
-                        title={cell}
-                      >
-                        {cellIndex === 8 ? (
-                          <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm">
-                            {cell}
-                          </span>
-                        ) : (
-                          cell
-                        )}
-                      </div>
+                      {cellIndex === 8 ? (
+                        <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm">
+                          {cell}
+                        </span>
+                      ) : (
+                        <div className="truncate max-w-[200px]" title={cell}>
+                          {cell}
+                        </div>
+                      )}
                     </td>
                   ))}
                   <td className="py-3 px-4 text-center relative">
@@ -296,7 +308,7 @@ const CDCList = () => {
         </table>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-between p-4 mt-2">
+      <div className="flex flex-col md:flex-row items-center justify-between">
         <div className="text-sm text-gray-500 mb-2 md:mb-0">
           {`${(page - 1) * itemsPerPage + 1} to ${Math.min(
             page * itemsPerPage,

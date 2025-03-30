@@ -7,6 +7,7 @@ import {
   RotateCw
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import  {encrypt} from '../../../utils/Crypto'
 
 const MigrationList = ({ records }) => {
 
@@ -87,7 +88,7 @@ const MigrationList = ({ records }) => {
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
-        <h1 className="text-2xl font-semibold">Project</h1>
+        <h1 className="text-2xl font-semibold">Migration</h1>
         <div>
           <button
             onClick={handleCreateMigration}
@@ -102,7 +103,7 @@ const MigrationList = ({ records }) => {
         {cards.map((card) => (
           <div
             key={card.title}
-            className={`bg-white p-6 rounded-lg shadow-sm border-gray-200`}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
           >
             <div className="flex items-center mb-2">
               <div
@@ -113,8 +114,17 @@ const MigrationList = ({ records }) => {
               <h3 className="text-lg font-semibold">{card.title}</h3>
             </div>
             <p className="text-black text-5xl font-bold">{card.count}</p>
-            <button className="mt-4 text-purple-600 text-sm hover:text-purple-700">
+
+            <button
+              className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
+              onClick={() => {
+                const url = `/componentType=migration&dataScope=${card.title.replace(/\s+/g, '').toLowerCase()}&heading=${card.title}`;
+                const encryptedUrl = encodeURIComponent(encrypt(url));
+                navigate(`/details?${encryptedUrl}`);
+              }}
+                            >
               See details
+              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
             </button>
           </div>
         ))}

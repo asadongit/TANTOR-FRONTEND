@@ -52,7 +52,7 @@ const TantorLogin = () => {
               height="25"
             ></iconify-icon>
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-500 mb-6">
             Enter your username and password to continue
           </p>
 
