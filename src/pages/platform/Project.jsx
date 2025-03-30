@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Pencil,
   Trash2,
@@ -13,12 +13,21 @@ import {
 import successBackground from "../../assets/green.png";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../utils/Crypto";
+
 const Project = () => {
+
+  const hostname = import.meta.env.VITE_FAST_API;
+  const token = import.meta.env.VITE_ACCESS_TOKEN;
+
+  let projectsList;
+
+  const [projects, setProjects] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
     modal2: false,
   });
-const navigate= useNavigate();
+
+  const navigate = useNavigate();
   // Function to open a specific modal
   const openModal = (modalName) => {
     setIsModalOpen((prevState) => ({ ...prevState, [modalName]: true }));
@@ -32,7 +41,112 @@ const navigate= useNavigate();
 
   const [refresh, setRefresh] = useState(0);
   const handleRefresh = () => {
+    fetchProjects(true);
     setRefresh((prev) => prev + 1);
+  };
+
+  const fetchProjects = useCallback(async (forceRefresh = false) => {
+    try {
+      const cachedProjectsResponse =
+        sessionStorage.getItem("projectsList");
+
+      if (!forceRefresh && cachedProjectsResponse) {
+        projectsList = JSON.parse(cachedProjectsResponse);
+        setProjects(projectsList);
+      }
+      else {
+        const projectsResponse = await fetch(`${hostname}/projects`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        projectsList = await projectsResponse.json();
+        sessionStorage.setItem(
+          "projectsList",
+          JSON.stringify(projectsList)
+        );
+      }
+      setProjects(projectsList);
+    } catch (error) {
+      console.error("Error fetching reports", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProjects(refresh > 0);
+  }, [fetchProjects, refresh]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "assigned_users") {
+      setProjectData(prev => ({
+        ...prev,
+        assigned_users: {
+          assigned_users: value
+        }
+      }));
+    } else {
+      setProjectData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  const [projectData, setProjectData] = useState({
+    project: "",
+    description: "",
+    assigned_users: {
+      assigned_users: ""
+    }
+  });
+
+  const createProject = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("user"));
+
+      const payload = {
+        project: projectData.project,
+        description: projectData.description,
+        assigned_users: {
+          assigned_users: projectData.assigned_users.assigned_users
+        },
+        created_by: currentUser?.email || "system_default"
+      };
+
+      const response = await fetch(`${hostname}/projects`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error("Failed to create project");
+
+
+      closeModal("modal1");
+
+      sessionStorage.removeItem("projectsList");
+      await fetchProjects(true);
+
+      openModal("modal2");
+
+      setProjectData({
+        project: "",
+        description: "",
+        assigned_users: {
+          assigned_users: ""
+        }
+      });
+  
+    } catch (error) {
+      console.error("Creation failed:", error);
+      alert("Failed to create project. Please try again.");
+    }
   };
 
   const sampleData = [
@@ -216,8 +330,8 @@ const navigate= useNavigate();
                 const encryptedUrl = encodeURIComponent(encrypt(url));
                 navigate(`/details?${encryptedUrl}`);
               }}
-              
-                            >
+
+            >
               See details
               <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
             </button>
@@ -260,6 +374,9 @@ const navigate= useNavigate();
                     </label>
                     <input
                       type="text"
+                      name="project"
+                      value={projectData.project}
+                      onChange={handleInputChange}
                       placeholder="Name"
                       className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
                     />
@@ -269,7 +386,8 @@ const navigate= useNavigate();
                       <label className="block text-sm text-black mb-1.5">
                         Sub Category
                       </label>
-                      <select className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white">
+                      <select
+                        className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white">
                         <option>Select</option>
                       </select>
                       <ChevronDown
@@ -289,6 +407,9 @@ const navigate= useNavigate();
                     </label>
                     <input
                       type="text"
+                      name="description"
+                      value={projectData.description}
+                      onChange={handleInputChange}
                       placeholder="Description"
                       className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
                     />
@@ -300,6 +421,9 @@ const navigate= useNavigate();
                       </label>
                       <input
                         type="text"
+                        name="assigned_users"
+                        value={projectData.assigned_users.assigned_users}
+                        onChange={handleInputChange}
                         placeholder="Manager"
                         className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
                       />
@@ -319,7 +443,8 @@ const navigate= useNavigate();
                       <label className="block text-sm text-black mb-1.5">
                         Category
                       </label>
-                      <select className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white">
+                      <select
+                        className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white">
                         <option>Select</option>
                       </select>
                       <ChevronDown
@@ -340,7 +465,7 @@ const navigate= useNavigate();
                 Cancel
               </button>
               <button
-                onClick={() => openModal("modal2")}
+                onClick={createProject}
                 className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
               >
                 Create
