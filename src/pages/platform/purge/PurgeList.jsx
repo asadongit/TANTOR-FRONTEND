@@ -70,7 +70,7 @@ const PurgeList = () => {
   ];
 
   const handleCardClick = (card) => {
-    const url = `/componentType=archival&dataScope=${card.title.replace(/\s+/g, '').toLowerCase()}&heading=${card.title}`;
+    const url = `/componentType=purge&dataScope=${card.title.replace(/\s+/g, '').toLowerCase()}&heading=${card.title}`;
     const encryptedUrl = encodeURIComponent(encrypt(url));
     navigate(`/details?${encryptedUrl}`);
   };
