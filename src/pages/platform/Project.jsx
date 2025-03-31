@@ -162,12 +162,11 @@ const Project = () => {
     refetchProjects();
   };
 
-  const categories = ["Data Migration", "Data Integration", "Data Transformation", "Data Analytics"];
+  const categories = ["Ingestion", "CDC", "Federation"];
   const subCategories = {
-    "Data Migration": ["Database Migration", "Cloud Migration", "App Migration"],
-    "Data Integration": ["API Integration", "System Integration", "ETL Processes"],
-    "Data Transformation": ["Data Cleansing", "Data Enrichment", "Format Conversion"],
-    "Data Analytics": ["BI Reports", "Data Visualization", "Predictive Analytics"]
+    "Ingestion": ["Migration", "Transformation", "Purge"],
+    "CDC": [""],
+    "Federation": [""],
   };
  
   const cards = [
@@ -403,7 +402,7 @@ const Project = () => {
                             assigned_users: { assigned_users: e.target.value },
                           }))
                         }
-                        placeholder="manager@example.com"
+                        placeholder="Manager"
                         className={`w-full p-2.5 border ${errors.assigned_users ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                       />
                       <Search
