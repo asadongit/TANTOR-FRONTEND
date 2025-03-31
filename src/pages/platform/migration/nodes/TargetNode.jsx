@@ -46,35 +46,19 @@ export function TargetNode({ id, data }) {
   };
 
   const handleOk = () => {
-    toast.promise(
-      new Promise((resolve, reject) => {
-        try {
-          updateNodeData();
+    try {
 
-          const apiPromise = window.handleTargetSubmit?.(id);
+      updateNodeData();
+      const apiPromise = window.handleTargetSubmit?.(id);
+  
+      if (!apiPromise) {
+        throw new Error("Submission handler not found");
+      }
 
-          if (!apiPromise) {
-            reject(new Error("Submission handler not found"));
-            return;
-          }
-
-          apiPromise
-            .then((result) => {
-              resolve(result);
-            })
-            .catch((error) => {
-              reject(error);
-            });
-        } catch (error) {
-          reject(error);
-        }
-      })
-      // {
-      //   loading: 'Submitting...',
-      //   success: 'Migration submitted successfully!',
-      //   error: (err) => `Submission failed: ${err.message}`,
-      // }
-    );
+      return apiPromise;
+    } catch (error) {
+      throw error;
+    }
   };
 
   // Update parent when connection/schema changes
