@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
   addEdge,
   useNodesState,
@@ -12,7 +12,7 @@ import { SourceNode } from "./nodes/SourceNode";
 import { TargetNode } from "./nodes/TargetNode";
 import { SchedulerNode } from "./nodes/SchedulerNode";
 import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
-import { useTableContext } from "../react-flow/context/TableContext";
+import axios from "axios";
 import TableDrawer from "../react-flow/dialog/TableDrawer";
 import Success from "../react-flow/dialog/success";
 import { ArchivalSidebar } from "./ArchivalSidebar";
@@ -30,12 +30,34 @@ const getId = () => `node_${id++}`;
 const TransformationCanvas = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const { openDrawer } = useTableContext();
+  const [payload, setPayload] = useState({});
+
+
+  const handleSubmit = useCallback(async () => {
+    try {
+      console.log("Submitting payload:", payload);
+      const response = await axios.post("/api/submit-flow", payload);
+      console.log("API Response:", response.data);
+    } catch (error) {
+      console.error("Error submitting flow:", error);
+    }
+  }, [payload]);
+
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
+
+  const onNodeDataChange = useCallback((nodeId, data) => {
+    console.log(`onNodeDataChange called for nodeId: ${nodeId}, data:`, data);
+    setPayload((prev) => {
+      if (JSON.stringify(prev[nodeId]) !== JSON.stringify(data)) {
+        return { ...prev, [nodeId]: data };
+      }
+      return prev;
+    });
+  }, []);
 
   const onDragOver = useCallback((event) => {
     event.preventDefault();
@@ -58,12 +80,18 @@ const TransformationCanvas = () => {
         id: getId(),
         type,
         position,
-        data: { label: type, tables: [] },
+        data: {
+          label: type,
+          tables: [],
+          onDataChange: onNodeDataChange, // Pass dynamic props here
+          onSubmit: handleSubmit, // Pass dynamic props here
+          payload: payload,
+        },
       };
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [setNodes]
+    [setNodes, onNodeDataChange, handleSubmit, payload]
   );
 
   const onNodeDelete = useCallback(
@@ -82,6 +110,7 @@ const TransformationCanvas = () => {
       window.deleteNode = undefined;
     };
   }, [onNodeDelete]);
+
 
   return (
     <div className="h-full relative">

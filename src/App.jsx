@@ -23,6 +23,7 @@ import { ContextViewProvider } from "./pages/platform/Federation/context/context
 import { ContextProvider } from "./pages/platform/react-flow/context/ContextProvider";
 import CanvasLayout from "./pages/platform/cdc/CanvasLayout";
 import { Toaster } from "react-hot-toast";
+import Chatbot from "./pages/chatbot/Chatbot";
 import {
   AuthProvider,
   ProtectedRoute,
@@ -44,7 +45,6 @@ function App() {
         <ContextViewProvider>
           <Toaster />
           <Routes>
-
             <Route
               path="/"
               element={
@@ -60,6 +60,7 @@ function App() {
                 element={
                   <div className="min-h-screen bg-gray-50">
                     <Header />
+                    <Chatbot />
                     <div className="flex">
                       <Sidebar
                         activeSection={activeSection}
