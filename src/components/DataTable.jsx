@@ -3,7 +3,7 @@ import { ArrowUpDown, MoreHorizontal, Pencil, Trash2, Play, ChevronLeft, Chevron
 
 const DataTable = ({ 
   columns, 
-  data, 
+  data=[], 
   actions = [],  
   title,
   onRowAction
@@ -334,7 +334,7 @@ const DataTable = ({
 const getStatusStyles = (status) => {
   status = String(status || "").toLowerCase();
   
-  if (status === "active" || status === "completed") {
+  if (status === "active" || status === "completed" || status==="created") {
     return "bg-green-100 text-green-600";
   } else if (status === "pending" || status === "in progress" ) {
     return "bg-yellow-100 text-yellow-600";
