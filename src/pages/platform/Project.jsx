@@ -98,7 +98,6 @@ const Project = () => {
       iconcolor: "text-purple-700",
       title: "Purge",
       count: cardData?.purge || 0,
-      endpoint: "purges"
     },
     {
       icon: "material-symbols-light:two-pager-store-outline",
@@ -106,7 +105,6 @@ const Project = () => {
       iconcolor: "text-orange-700",
       title: "Migration",
       count: cardData?.metadata || 0,
-      endpoint: "metadata-archivals"
     },
     {
       icon: "material-symbols:cloud-sync-outline",
@@ -114,7 +112,6 @@ const Project = () => {
       iconcolor: "text-green-700",
       title: "CDC",
       count: cardData?.cdc || 0,
-      endpoint: "cdc"
 
     },
     {
@@ -123,7 +120,6 @@ const Project = () => {
       iconcolor: "text-cyan-700",
       title: "Federation",
       count: cardData?.federation || 0,
-      endpoint: "federation"
 
     },
     {
@@ -132,7 +128,6 @@ const Project = () => {
       iconcolor: "text-cyan-700",
       title: "Transformation",
       count: cardData?.migration || 0,
-      endpoint: "migrations"
 
     },
   ]);
@@ -169,7 +164,7 @@ const Project = () => {
     { label: "Action", sortable: false },
   ];
   const handleCardClick = (card) => {
-    const url = `/componentType=project&cardType=${card.endpoint}&heading=${card.title}`;
+    const url = `/componentType=project&cardType=${card.title}&heading=${card.title}`;
     const encryptedUrl = encodeURIComponent(encrypt(url));
     navigate(`/details?${encryptedUrl}`);
   };

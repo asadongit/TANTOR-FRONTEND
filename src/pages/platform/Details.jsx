@@ -29,14 +29,13 @@ const useDynamicData = (componentType) => {
     purge: usePurgeData,
     project: useProjectData,
     connections: useConnectionData,
-    archival: useArchivalData,
+    transformation: useArchivalData,
     report: useReportData,
-  //   federation: useFederationData,
+    //   federation: useFederationData,
   };
 
-  return hookMap[componentType] ? hookMap[componentType]() : null;
+  return hookMap[componentType] ? hookMap[componentType]() : [];
 };
-
 
 const Details = () => {
   const navigate = useNavigate();
@@ -47,30 +46,28 @@ const Details = () => {
     ? decryptedQuery.slice(1)
     : decryptedQuery;
 
-  const params = new URLSearchParams(queryString);  const componentType = params.get("componentType");
-  const cardType = params.get("cardType");
+  const params = new URLSearchParams(queryString);
+  const componentType = params.get("componentType");
+  const cardType = params.get("cardType")?.toLowerCase();
   const dataScope = params.get("dataScope");
   const heading = params.get("heading");
-  
+
   const columnAliases = {
-    migrations: "archival",
-    purges: "purge",
-    Transformation: "migration",
+    migration: "migration",
+    cdc: "cdc",
+    purge: "purge",
+    transformation: "transformation",
     "metadata-archivals": "migration",
   };
-  const selectedType = columnAliases[cardType] || componentType;
+  const selectedType = cardType || componentType;
 
-  const { data=[], isLoading, isError } = useDynamicData(selectedType);
-
-
-
+  const { data = [], isLoading, isError } = useDynamicData(selectedType);
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [activeMenu, setActiveMenu] = useState(null);
-
 
   const columnConfigurations = {
     common: [],
@@ -88,8 +85,8 @@ const Details = () => {
       { key: "target_conn_name", label: "Target Connection", sortable: true },
       { key: "source_table", label: "Source Table", sortable: true },
       { key: "target_table", label: "Target Table", sortable: true },
+      { key: "status", label: "Status", sortable: true },
       { label: "Action", sortable: false },
-
     ],
     connections: [
       { key: "connection_name", label: "Name", sortable: true },
@@ -103,9 +100,8 @@ const Details = () => {
       { key: "table_count", label: "No. of Tables", sortable: true },
       { key: "status", label: "Status", sortable: true },
       { label: "Action", sortable: false },
-
     ],
-    archival: [
+    transformation: [
       { key: "workflow_name", label: "Name", sortable: true },
       { key: "project", label: "Project Name", sortable: true },
       { key: "created_by", label: "Created By", sortable: true },
@@ -115,7 +111,6 @@ const Details = () => {
       { key: "target_table", label: "Target Table", sortable: true },
       { key: "status", label: "Status", sortable: true },
       { label: "Action", sortable: false },
-
     ],
     migration: [
       { key: "metadata_name", label: "Name", sortable: true },
@@ -127,7 +122,6 @@ const Details = () => {
       { key: "target_table", label: "Target Table", sortable: true },
       { key: "status", label: "Status", sortable: true },
       { label: "Action", sortable: false },
-
     ],
     purge: [
       { key: "purge_name", label: "Name", sortable: true },
@@ -139,7 +133,6 @@ const Details = () => {
       { key: "target_table", label: "Target Table", sortable: true },
       { key: "status", label: "Status", sortable: true },
       { label: "Action", sortable: false },
-
     ],
 
     project: [
@@ -149,7 +142,6 @@ const Details = () => {
       { key: "size_before", label: "Size Before", sortable: true },
       { key: "size_after", label: "Size After", sortable: true },
       { label: "Action", sortable: false },
-
     ],
     federation: [
       { key: "connection_name", label: "Name", sortable: true },
@@ -174,48 +166,25 @@ const Details = () => {
     [getColumnConfiguration, cardType, componentType]
   );
 
-
-
   const processedData = useMemo(() => {
     let result = [...data];
     if (dataScope) {
-      result = result.filter((row) => {
+      result = result?.filter((row) => {
         const filterMap = {
-          connection: row.status === dataScope || row.pool_type === dataScope,
+          connections:
+            row?.status?.toLowerCase() === dataScope?.toLowerCase() ||
+            row.pool_type?.toLowerCase() === dataScope?.toLowerCase(),
           cdc: row.source_conn_type === dataScope,
           migration: row.source_conn_type === dataScope,
           purge: row.source_conn_type === dataScope,
           transformation: row.source_conn_type === dataScope,
         };
-
-        return filterMap[componentType] ?? true;
-      });
-    }
-
-    if (searchTerm) {
-      const searchTermLower = searchTerm.toLowerCase();
-      result = result.filter((row) =>
-        Object.values(row).some((value) =>
-          String(value).toLowerCase().includes(searchTermLower)
-        )
-      );
-    }
-
-    if (sortConfig.key) {
-      result.sort((a, b) => {
-        const comparison = a[sortConfig.key] > b[sortConfig.key] ? 1 : -1;
-        return sortConfig.direction === "asc" ? comparison : -comparison;
+        return filterMap[selectedType] ?? true;
       });
     }
 
     return result;
-  }, [data, searchTerm, sortConfig, dataScope, componentType]);
-
-  const paginatedData = useMemo(() => {
-    const startIndex = (page - 1) * itemsPerPage;
-    return processedData.slice(startIndex, startIndex + itemsPerPage);
-  }, [processedData, page, itemsPerPage]);
-
+  }, [data, dataScope, componentType]);
 
   return (
     <div className="flex flex-col h-full p-4">
@@ -289,13 +258,11 @@ const Details = () => {
         </div>
       </div>
 
-  
-<DataTable
-  columns={columns}
-  data={paginatedData}
-  // actions={actions}
-/>
-
+      <DataTable
+        columns={columns}
+        data={processedData}
+        // actions={actions}
+      />
     </div>
   );
 };
