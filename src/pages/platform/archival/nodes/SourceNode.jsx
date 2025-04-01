@@ -13,6 +13,7 @@ const SkeletonLoader = () => (
 );
 
 export function SourceNode({ id, data }) {
+  const { onDataChange } = data;
   const hostname = import.meta.env.VITE_FAST_API;
   const token = import.meta.env.VITE_ACCESS_TOKEN;
   const [connections, setConnections] = useState([]);
@@ -35,13 +36,17 @@ export function SourceNode({ id, data }) {
   let schemadetails;
   let tabledetails;
 
+  useEffect(() => {
+    onDataChange(id, {
+      connection: selectedConnection,
+      schema: selectedSchema,
+      migrationScope: selectedScope,
+      selectedTables: selectedItems,
+    });
+  }, [id, selectedConnection, selectedSchema, selectedScope, selectedItems, onDataChange]);
+
   const fetchOptions = useCallback(async () => {
     try {
-      const cachedconnectionResponse =
-        sessionStorage.getItem("connectionResponse");
-      if (cachedconnectionResponse) {
-        connectionsData = JSON.parse(cachedconnectionResponse);
-      } else {
         const connectionResponse = await fetch(`${hostname}/connection-saves`, {
           method: "GET",
           headers: {
@@ -50,13 +55,6 @@ export function SourceNode({ id, data }) {
           },
         });
         connectionsData = await connectionResponse.json();
-        sessionStorage.setItem(
-          "connectionResponse",
-          JSON.stringify(connectionsData)
-        );
-      }
-
-
 
       setConnections(connectionsData);
     } catch (error) {
@@ -75,12 +73,6 @@ export function SourceNode({ id, data }) {
 
       try {
 
-        const cachedschemacount =
-        sessionStorage.getItem("schemacount");
-      if (cachedschemacount) {
-        schemacount = JSON.parse(cachedschemacount);
-      } else {
-
         const response = await fetch(`${hostname}/schema/${connectionName}/count`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -92,11 +84,7 @@ export function SourceNode({ id, data }) {
         }
 
         schemacount = await response.json();
-        sessionStorage.setItem(
-            "schemacount",
-            JSON.stringify(schemacount)
-          );
-        }
+
         setSchemacount(schemacount);
         // setSchemaLoading(false);
       } catch (error) {
@@ -123,12 +111,6 @@ export function SourceNode({ id, data }) {
 
       try {
 
-        const cachedschemalist =
-        sessionStorage.getItem("schemalist");
-      if (cachedschemalist) {
-        schemadetails = JSON.parse(cachedschemalist);
-      } else {
-
         const response = await fetch(`${hostname}/schema/${connectionName}`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -140,11 +122,6 @@ export function SourceNode({ id, data }) {
         }
 
         schemadetails = await response.json();
-        sessionStorage.setItem(
-            "schemalist",
-            JSON.stringify(schemadetails)
-          );
-        }
         setSchema(schemadetails);
         setSchemaLoading(false);
       } catch (error) {
@@ -161,12 +138,6 @@ export function SourceNode({ id, data }) {
 
       setLoading(true);
       try {
-
-        const cachedtablelist =
-        sessionStorage.getItem("tablelist");
-      if (cachedtablelist) {
-        tabledetails = JSON.parse(cachedtablelist);
-      } else {
         const fetchTableResponse = await fetch(
           `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
           {
@@ -181,11 +152,7 @@ export function SourceNode({ id, data }) {
         }
 
         tabledetails = await fetchTableResponse.json();
-        sessionStorage.setItem(
-            "tablelist",
-            JSON.stringify(tabledetails)
-          );
-        }
+
         setTables(tabledetails);
       } catch (error) {
         console.error("Error fetching tables:", error);

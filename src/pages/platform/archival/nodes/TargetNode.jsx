@@ -2,9 +2,9 @@ import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
-import { useTableContext } from '../../react-flow/context/TableContext';
 
-export function TargetNode({ id }) {
+export function TargetNode({ id, data }) {
+  const { onDataChange } = data;
   const hostname = import.meta.env.VITE_FAST_API;
   const token = import.meta.env.VITE_ACCESS_TOKEN;
   const [connections, setConnections] = useState([]);
@@ -19,20 +19,30 @@ export function TargetNode({ id }) {
   const [selectedSchema, setSelectedSchema] = useState("");
   const [schemaLoading, setSchemaLoading] = useState(false);  
 
-  
+  const SkeletonLoader = () => (
+    <div className="animate-pulse space-y-4">
+      <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+      <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+      <div className="h-4 bg-gray-300 rounded w-2/3"></div>
+    </div>
+  );
 
   let connectionsData;
   let schemacount;
   let schemadetails;
   let tabledetails;
 
+  useEffect(() => {
+    onDataChange(id, {
+      connection: selectedConnection,
+      schema: selectedSchema,
+      migrationScope: selectedScope,
+      selectedTables: selectedItems,
+    });
+  }, [id, selectedConnection, selectedSchema, selectedScope, selectedItems, onDataChange]);
+
   const fetchOptions = useCallback(async () => {
     try {
-      const cachedconnectionResponse =
-        sessionStorage.getItem("connectionResponse");
-      if (cachedconnectionResponse) {
-        connectionsData = JSON.parse(cachedconnectionResponse);
-      } else {
         const connectionResponse = await fetch(`${hostname}/connection-saves`, {
           method: "GET",
           headers: {
@@ -41,11 +51,6 @@ export function TargetNode({ id }) {
           },
         });
         connectionsData = await connectionResponse.json();
-        sessionStorage.setItem(
-          "connectionResponse",
-          JSON.stringify(connectionsData)
-        );
-      }
 
 
 
@@ -66,12 +71,6 @@ export function TargetNode({ id }) {
 
       try {
 
-        const cachedschemacount =
-        sessionStorage.getItem("schemacount");
-      if (cachedschemacount) {
-        schemacount = JSON.parse(cachedschemacount);
-      } else {
-
         const response = await fetch(`${hostname}/schema/${connectionName}/count`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -83,11 +82,7 @@ export function TargetNode({ id }) {
         }
 
         schemacount = await response.json();
-        sessionStorage.setItem(
-            "schemacount",
-            JSON.stringify(schemacount)
-          );
-        }
+
         setSchemacount(schemacount);
         // setSchemaLoading(false);
       } catch (error) {
@@ -114,12 +109,6 @@ export function TargetNode({ id }) {
 
       try {
 
-        const cachedschemalist =
-        sessionStorage.getItem("schemalist");
-      if (cachedschemalist) {
-        schemadetails = JSON.parse(cachedschemalist);
-      } else {
-
         const response = await fetch(`${hostname}/schema/${connectionName}`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -131,11 +120,7 @@ export function TargetNode({ id }) {
         }
 
         schemadetails = await response.json();
-        sessionStorage.setItem(
-            "schemalist",
-            JSON.stringify(schemadetails)
-          );
-        }
+
         setSchema(schemadetails);
         setSchemaLoading(false);
       } catch (error) {
@@ -152,12 +137,6 @@ export function TargetNode({ id }) {
 
       setLoading(true);
       try {
-
-        const cachedtablelist =
-        sessionStorage.getItem("tablelist");
-      if (cachedtablelist) {
-        tabledetails = JSON.parse(cachedtablelist);
-      } else {
         const fetchTableResponse = await fetch(
           `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
           {
@@ -172,11 +151,6 @@ export function TargetNode({ id }) {
         }
 
         tabledetails = await fetchTableResponse.json();
-        sessionStorage.setItem(
-            "tablelist",
-            JSON.stringify(tabledetails)
-          );
-        }
         setTables(tabledetails);
       } catch (error) {
         console.error("Error fetching tables:", error);
