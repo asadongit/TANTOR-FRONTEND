@@ -1,7 +1,21 @@
 import { Icon } from "@iconify-icon/react";
 import { useState, useEffect, useMemo } from "react";
-import { X, BadgeCheck, ChevronDown } from "lucide-react";
-import successBackground from "../../assets/green.png";
+import {
+  Pencil,
+  Trash2,
+  MoreHorizontal,
+  RotateCw,
+  Eye,
+  X,
+  BadgeCheck,
+  ChevronDown,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  RefreshCcw,
+  Search,
+} from "lucide-react";import successBackground from "../../assets/green.png";
 import PostgreSQL from "../../assets/connector/postgresql-connector.png";
 import Oracle from "../../assets/connector/oracle-connector.png";
 import Hive from "../../assets/connector/hive-connector.png";
@@ -17,6 +31,7 @@ import { useConnectionCardData } from "../../hooks/platform/cardCounts";
 import { useConnectionData } from "../../hooks/platform/connection";
 import DataTable from "../../components/DataTable";
 import CardGrid from "../../components/CardGrid";
+import toast  from "react-hot-toast";
 const Connections = () => {
   const hostname = import.meta.env.VITE_FAST_API;
   const {
@@ -385,7 +400,7 @@ const Connections = () => {
   };
 
   const handleUpdateConnection = () => {
-    alert("Connection updated successfully!");
+toast.success("Connection updated Successfully")
     closeModal("modal4");
   };
 
