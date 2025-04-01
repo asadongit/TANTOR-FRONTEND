@@ -4,11 +4,10 @@ import CreationChart from "./Components/CreationChart";
 import RemarksChart from "./Components/RemarksChart";
 import StatusChart from "./Components/StatusChart";
 import { useNavigate } from 'react-router-dom';
-import { encrypt } from "../../../utils/Crypto";
+
 const Reports = () => {
   const navigate = useNavigate();
-  const cards = 
-  [
+  const cards = [
     {
       icon: "material-symbols:database-upload-outline",
       bgcolor: "bg-[#d8d3e4] bg-opacity-25",
@@ -162,11 +161,11 @@ const Reports = () => {
 
   return (
     <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 ">
         {cards.map((card) => (
           <div
             key={card.title}
-            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
+            className={`bg-white p-6 rounded-lg shadow-sm border-gray-200`}
           >
             <div className="flex items-center mb-2">
               <div
@@ -177,19 +176,12 @@ const Reports = () => {
               <h3 className="text-lg font-semibold">{card.title}</h3>
             </div>
             <p className="text-black text-5xl font-bold">{card.count}</p>
-
-            <button
-              className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
-
-                            onClick={() => {
-                              const url = `/componentType=report&dataScope=${card.title}&heading=${card.title}`;
-                              const encryptedUrl = encodeURIComponent(encrypt(url));
-                              navigate(`/details?${encryptedUrl}`);
-                            }}
-              >
-              See details
-              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-purple-600 transition-all duration-300 group-hover:w-full"></span>
-            </button>
+            <div className="flex items-center justify-between">
+              <button className="mt-4 text-purple-600 text-sm hover:text-purple-700"
+              onClick={() => handleCreateReport(card.route)}>
+                See details
+              </button>
+            </div>
           </div>
         ))}
       </div>
