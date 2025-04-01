@@ -6,6 +6,7 @@ const DataTable = ({
   data=[], 
   actions = [],  
   title,
+  selectedProject = "Project",
   isLoading = false,
   isError = false,
   refetch = () => {},
@@ -33,7 +34,7 @@ const DataTable = ({
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, selectedProject]);
 
   const handleSort = useCallback((key) => {
     setSortConfig((prev) => ({
@@ -44,6 +45,10 @@ const DataTable = ({
 
   const processedData = useMemo(() => {
     let result = [...data];
+
+    if (selectedProject && selectedProject !== "Project") {
+      result = result.filter(row => row.project === selectedProject);
+    }
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
@@ -73,7 +78,7 @@ const DataTable = ({
     }
 
     return result;
-  }, [data, searchTerm, sortConfig]);
+  }, [data, searchTerm, sortConfig, selectedProject]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (page - 1) * itemsPerPage;
@@ -207,7 +212,12 @@ const DataTable = ({
             ) : paginatedData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="py-4 px-4 text-center text-gray-500">
-                  No data found
+                  {data.length === 0
+                  ? "No connections available"
+                  : selectedProject !== "Project"
+                    ? "No connections found for the selected project"
+                    : "No connections available"
+                  }
                 </td>
               </tr>
             ) : (

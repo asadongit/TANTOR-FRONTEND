@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Pencil,
   Trash2,
@@ -33,7 +33,9 @@ import DataTable from "../../components/DataTable";
 import CardGrid from "../../components/CardGrid";
 import toast  from "react-hot-toast";
 const Connections = () => {
-  const hostname = import.meta.env.VITE_FAST_API;
+  const hostname = import.meta.env.VITE_FAST_API_V2;
+  const token = import.meta.env.VITE_ACCESS_TOKEN;
+
   const {
     data: cardData,
     isLoading: isCardLoading,
@@ -452,17 +454,56 @@ toast.success("Connection updated Successfully")
     const encryptedUrl = encodeURIComponent(encrypt(url));
     navigate(`/details?${encryptedUrl}`);
   };
+
+  let projectsList;
+  let [projects, setProjects] = useState([]);
+  let [selectedProject, setSelectedProject] = useState("Project")
+
+  const fetchProjects = useCallback(async () => {
+    try {
+      const projectsResponse = await fetch(`${hostname}/projects/listing`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-type": "application/json",
+        },
+      });
+      if (!projectsResponse.ok) {
+        throw new Error('Failed to fetch projects');
+      }
+      projectsList = await projectsResponse.json();
+      setProjects(projectsList);
+    } catch (error) {
+      console.error("Error fetching options:", error)
+    }
+  }, [])
+
+  useEffect(() => { 
+    fetchProjects() 
+  }, [fetchProjects])
+
+  const filteredConnections = useMemo(() => {
+    if (selectedProject === "Project" || !selectedProject) {
+      return connections;
+    }
+    return connections.filter((conn) => conn.project === selectedProject)
+  }, [connections, selectedProject])
+
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Connections</h1>
         <div className="flex items-center gap-4">
-          <button
-            className="text-slate-500 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 text-center inline-flex items-center dark:bg-white shadow-md"
-            type="button"
+          <select
+            value={selectedProject}
+            onChange={(e) => {
+              const projectName = e.target.value;
+              setSelectedProject(projectName);
+            }}
+            className=" w-44 text-slate-500 font-medium rounded-lg text-sm px-1 py-2.5 me-2 mb-2 text-center inline-flex items-center dark:bg-white shadow-md"
           >
-            Project{" "}
-            <svg
+            <option value="Project">All Project{" "}</option>
+            {/* <svg
               className="w-2.5 h-2.5 ms-3"
               aria-hidden="true"
               xmlns="http://www.w3.org/2000/svg"
@@ -476,8 +517,17 @@ toast.success("Connection updated Successfully")
                 strokeWidth="2"
                 d="m1 1 4 4 4-4"
               />
-            </svg>
-          </button>
+            </svg> */}
+             {projects.map((project, idx) => (
+              <option key={idx} value={project?.project}
+              >
+                {project?.project}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 mr-2 mb-2">
+            <ChevronDown className="h-4 w-4 text-gray-500" />
+          </div>
 
           <button
             onClick={() => openModal("modal1")}
@@ -495,7 +545,8 @@ toast.success("Connection updated Successfully")
 
 <DataTable
   columns={columns}
-  data={connections}
+  data={filteredConnections}
+  selectedProject={selectedProject}
   actions={actions}
   isLoading={isConnectionsLoading}
   isError={connectionsError}
