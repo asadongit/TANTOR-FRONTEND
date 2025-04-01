@@ -395,6 +395,30 @@ const Connections = () => {
       const encryptedUrl = encodeURIComponent(encrypt(url));
       navigate(`/details?${encryptedUrl}`);
     };
+
+
+    const actions = [
+      {
+        label: "View",
+        icon: <Eye size={16} />,
+        onClick: (row) => openModal("modal4"),
+      },
+      {
+        label: "Edit",
+        icon: <Pencil size={16} />,
+        onClick: (row) => console.log("Edit clicked for", row),
+      },
+      {
+        label: "Delete",
+        icon: <Trash2 size={16} />,
+        onClick: (row) => console.log("Delete clicked for", row),
+      },
+      {
+        label: "Run",
+        icon: <RotateCw size={16}  />,
+        onClick: (row) => console.log("Run clicked for", row),
+      },
+    ];
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -441,7 +465,7 @@ const Connections = () => {
 <DataTable
   columns={columns}
   data={connections}
-  // actions={actions}
+  actions={actions}
 />
 
    

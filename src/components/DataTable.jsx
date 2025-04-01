@@ -5,8 +5,7 @@ const DataTable = ({
   columns, 
   data=[], 
   actions = [],  
-  title,
-  onRowAction
+  title
 }) => {
 
   const [sortConfig, setSortConfig] = useState({ key: "", direction: "asc" });
@@ -85,11 +84,12 @@ const DataTable = ({
   }, []);
 
   const handleAction = useCallback((action, row) => {
-    if (onRowAction) {
-      onRowAction(action, row);
+
+    if (action) {
+      action.onClick(row); 
     }
     setActiveMenu(null);
-  }, [onRowAction]);
+  }, [actions]);
 
   const handleItemsPerPageChange = (e) => {
     setItemsPerPage(Number(e.target.value));
