@@ -21,10 +21,9 @@ import { useProjectCardData } from "../../hooks/platform/cardCounts";
 import CardGrid from "../../components/CardGrid";
 import { useAuth } from "../../context/AuthContext";
 const Project = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError } = useProjectCardData();
+  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
   const { data: projectData = [], isLoading: isProjectLoading, error: projectError, refetch: refetchProjects } = useProjectData();
   const {token, decodedToken} = useAuth();
-
   const initialFormState = {
     project: "",
     description: "",
@@ -160,6 +159,7 @@ const Project = () => {
   
   const handleRefresh = () => {
     refetchProjects();
+    refetchCardData();
   };
 
   const categories = ["Ingestion", "CDC", "Federation"];
@@ -275,15 +275,17 @@ const Project = () => {
    
 
     
-        <CardGrid cards={cards} onCardClick={handleCardClick} />
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
 
      
         <DataTable
           columns={columns}
           data={projectData}
           actions={actions}
-          emptyMessage="No projects found. Create your first project to get started!"
-        />
+          isLoading={isProjectLoading}
+          isError={projectError}
+          refetch={refetchProjects}
+/>
 
       {/* Add Project Modal */}
       {isModalOpen.modal1 && (

@@ -38,11 +38,14 @@ const Connections = () => {
     data: cardData,
     isLoading: isCardLoading,
     error: cardError,
+    refetch: refetchCardData, 
   } = useConnectionCardData();
+  
   const {
     data: connections = [],
     isLoading: isConnectionsLoading,
     error: connectionsError,
+    refetch: refetchConnections, 
   } = useConnectionData();
 
   const [isModalOpen, setIsModalOpen] = useState({
@@ -486,7 +489,7 @@ toast.success("Connection updated Successfully")
         </div>
       </div>
 
-      <CardGrid cards={cards} onCardClick={handleCardClick} />
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
 
       {/* Connection Listing Table */}
 
@@ -494,6 +497,9 @@ toast.success("Connection updated Successfully")
   columns={columns}
   data={connections}
   actions={actions}
+  isLoading={isConnectionsLoading}
+  isError={connectionsError}
+  refetch={refetchConnections}
 />
  
 

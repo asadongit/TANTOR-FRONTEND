@@ -61,7 +61,7 @@ const Details = () => {
   };
   const selectedType = cardType || componentType;
 
-  const { data = [], isLoading, isError } = useDynamicData(selectedType);
+  const { data = [], isLoading, isError, refetch } = useDynamicData(selectedType);
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -186,6 +186,23 @@ const Details = () => {
     return result;
   }, [data, dataScope, componentType]);
 
+  const actions = [
+    {
+      label: "Edit",
+      icon: <Pencil size={16} />,
+      onClick: (row) => console.log("Edit clicked for", row),
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 size={16} />,
+      onClick: (row) => console.log("Delete clicked for", row),
+    },
+    {
+      label: "Run",
+      icon: <Play size={16} fill="currentColor" />,
+      onClick: (row) => console.log("Run clicked for", row),
+    },
+  ];
   return (
     <div className="flex flex-col h-full p-4">
       <nav className="flex mb-4" aria-label="Breadcrumb">
@@ -194,7 +211,7 @@ const Details = () => {
             { label: "Platform", path: "/" },
             {
               label:
-                componentType.charAt(0).toUpperCase() + componentType.slice(1),
+                componentType?.charAt(0).toUpperCase() + componentType.slice(1),
               path: `/${componentType}`,
             },
             { label: "Details", path: null },
@@ -251,7 +268,9 @@ const Details = () => {
           <button
             type="button"
             className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
-            // onClick={handleRefresh}
+            onClick={()=>{refetch() 
+              toast.success('Refreshed sucessfully!')
+            }}
           >
             <RefreshCcw className="h-5 w-5" />
           </button>
@@ -261,7 +280,12 @@ const Details = () => {
       <DataTable
         columns={columns}
         data={processedData}
-        // actions={actions}
+        actions={actions}
+        isLoading={isLoading}
+        isError={isError}
+        refetch={refetch}
+
+
       />
     </div>
   );

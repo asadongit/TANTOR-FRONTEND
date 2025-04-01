@@ -99,7 +99,7 @@ const navigate = useNavigate();
         </div>
       </div>
    
-      <CardGrid cards={cards} onCardClick={handleCardClick} />
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
 
       <div className="flex flex-col items-start gap-2.5 m-2">
         <h2
