@@ -5,6 +5,7 @@ import { Pencil, Search, Upload, X } from "lucide-react";
 import { useStateContext } from "../../react-flow/context/ContextProvider";
 import { SkeletonLoader } from "../../react-flow/SkeletonLoader";
 import { useTableContext } from "../../react-flow/context/TableContext";
+import toast from "react-hot-toast";
 
 export function TargetNode({ id }) {
   const hostname = import.meta.env.VITE_FAST_API;
@@ -172,7 +173,7 @@ export function TargetNode({ id }) {
     } = targetNode;
 
     if (!name) {
-      return { valid: false, message: "Name must be selected on Define Node." };
+      return {valid : false, message:"Name must be selected on Define Node."};
     }
 
     if (!source_conn_name) {
@@ -240,7 +241,8 @@ export function TargetNode({ id }) {
     );
 
     if (!validationResult.valid) {
-      alert(validationResult.message); // Show error message
+      //alert(validationResult.message);
+      toast.error(validationResult.message) // Show error message
       return;
     } else {
       handleIsVisibleFooter(true);
@@ -248,7 +250,15 @@ export function TargetNode({ id }) {
   };
 
   return (
-    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
+    <div 
+    // className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
+    // min-w-[250px] max-w-[280px] relative group"
+    className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
+                             w-fit min-w-min max-w-[90vw] 
+                             relative group 
+                             grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))] 
+                             "
+    >
       <button
         onClick={() => window.deleteNode?.(id)}
         className="absolute top-1.5 right-2 p-1"
