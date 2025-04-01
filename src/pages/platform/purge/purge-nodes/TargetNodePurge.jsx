@@ -251,8 +251,6 @@ export function TargetNode({ id }) {
 
   return (
     <div 
-    // className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
-    // min-w-[250px] max-w-[280px] relative group"
     className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
                              w-fit min-w-min max-w-[90vw] 
                              relative group 
