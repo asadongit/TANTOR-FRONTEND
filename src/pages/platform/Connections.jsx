@@ -1,21 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useState, useEffect, useMemo } from "react";
-import {
-  Pencil,
-  Trash2,
-  MoreHorizontal,
-  RotateCw,
-  Eye,
-  X,
-  BadgeCheck,
-  ChevronDown,
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  Play,
-  RefreshCcw,
-  Search,
-} from "lucide-react";
+import { X, BadgeCheck, ChevronDown } from "lucide-react";
 import successBackground from "../../assets/green.png";
 import PostgreSQL from "../../assets/connector/postgresql-connector.png";
 import Oracle from "../../assets/connector/oracle-connector.png";
@@ -33,8 +18,17 @@ import { useConnectionData } from "../../hooks/platform/connection";
 import DataTable from "../../components/DataTable";
 import CardGrid from "../../components/CardGrid";
 const Connections = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError } = useConnectionCardData();
-  const { data: connections=[], isLoading: isConnectionsLoading, error: connectionsError } = useConnectionData();
+  const hostname = import.meta.env.VITE_FAST_API;
+  const {
+    data: cardData,
+    isLoading: isCardLoading,
+    error: cardError,
+  } = useConnectionCardData();
+  const {
+    data: connections = [],
+    isLoading: isConnectionsLoading,
+    error: connectionsError,
+  } = useConnectionData();
 
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
@@ -64,9 +58,6 @@ const Connections = () => {
   };
 
   const [selectedCard, setSelectedCard] = useState(null);
-
-
-
 
   const cards = useMemo(() => {
     return [
@@ -107,7 +98,6 @@ const Connections = () => {
       },
     ];
   }, [cardData]);
-
 
   const connectorCards = [
     {
@@ -166,6 +156,7 @@ const Connections = () => {
       .map((field) => field.name);
 
     requiredFields.push("name", "description", "behaviour");
+    console.log("fields==>", formData);
 
     const isValid = requiredFields.every((field) => formData[field]);
 
@@ -178,9 +169,12 @@ const Connections = () => {
 
     try {
       // Mock API call - replace with your actual API call
-      let response = await fetch("/api/test-connection", {
+      let response = await fetch(`${hostname}/test-connection`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
         body: JSON.stringify(formData),
       });
 
@@ -208,9 +202,12 @@ const Connections = () => {
 
     try {
       // Your save API call
-      let response = await fetch("/api/save-connection", {
+      let response = await fetch(`${hostname}/create-connection`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
         body: JSON.stringify(formData),
       });
 
@@ -232,6 +229,29 @@ const Connections = () => {
   const getConnectorFields = (connectorType) => {
     const fieldConfig = {
       Oracle: [
+        {
+          name: "host",
+          label: "Host",
+          required: true,
+          placeholder: "Enter host address",
+        },
+        {
+          name: "port",
+          label: "Port",
+          type: "number",
+          required: true,
+          placeholder: "Enter port number",
+        },
+        { name: "username", label: "Username", required: true },
+        {
+          name: "password",
+          label: "Password",
+          type: "password",
+          required: true,
+        },
+        { name: "dbname", label: "Database Name", required: true },
+      ],
+      PostgreSQL: [
         {
           name: "host",
           label: "Host",
@@ -369,12 +389,6 @@ const Connections = () => {
     closeModal("modal4");
   };
 
-
-
-
-
-
-
   const columns = [
     { key: "connection_name", label: "Connection Name" },
     { key: "project", label: "Project Name" },
@@ -388,13 +402,7 @@ const Connections = () => {
     { label: "Action", sortable: false },
   ];
 
-    const handleCardClick = (card) => {
-      const url = `/componentType=connections&dataScope=${card.title
-        .replace(/\s+/g, "")
-        .toLowerCase()}&heading=${card.title}`;
-      const encryptedUrl = encodeURIComponent(encrypt(url));
-      navigate(`/details?${encryptedUrl}`);
-    };
+
 
 
     const actions = [
@@ -419,6 +427,13 @@ const Connections = () => {
         onClick: (row) => console.log("Run clicked for", row),
       },
     ];
+  const handleCardClick = (card) => {
+    const url = `/componentType=connections&dataScope=${card.title
+      .replace(/\s+/g, "")
+      .toLowerCase()}&heading=${card.title}`;
+    const encryptedUrl = encodeURIComponent(encrypt(url));
+    navigate(`/details?${encryptedUrl}`);
+  };
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -458,8 +473,6 @@ const Connections = () => {
 
       <CardGrid cards={cards} onCardClick={handleCardClick} />
 
-
-
       {/* Connection Listing Table */}
 
 <DataTable
@@ -467,9 +480,9 @@ const Connections = () => {
   data={connections}
   actions={actions}
 />
+ 
 
-   
-{isModalOpen.modal1 && (
+      {isModalOpen.modal1 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-[1000px] p-8">
             <div className="flex items-center justify-between mb-8">
@@ -552,7 +565,7 @@ const Connections = () => {
                     className={`bg-white p-4 rounded-lg shadow-sm border-gray-200 outline outline-slate-200 flex items-center justify-center cursor-pointer
                       ${
                         selectedCard === card.title
-                          ? "outline-2 outline outline-black"
+                          ? "outline-2 outline outline-[#8e78b7]"
                           : "outline outline-slate-200"
                       }`}
                     onClick={() => setSelectedCard(card.title)}
