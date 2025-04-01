@@ -2,7 +2,18 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { encrypt } from "../utils/Crypto";
 
-const CardGrid = ({ cards, onCardClick }) => {
+const CardSkeleton = () => (
+  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 animate-pulse">
+    <div className="flex items-center mb-2">
+      <div className="w-8 md:w-10 h-8 md:h-10 bg-gray-200 rounded-full mr-2"></div>
+      <div className="h-5 bg-gray-200 rounded w-24"></div>
+    </div>
+    <div className="h-10 bg-gray-200 rounded w-16 my-2"></div>
+    <div className="mt-4 h-4 bg-gray-200 rounded w-20"></div>
+  </div>
+);
+
+const CardGrid = ({ cards, onCardClick, isLoading=false }) => {
   const navigate = useNavigate();
 
   return (
@@ -20,7 +31,11 @@ const CardGrid = ({ cards, onCardClick }) => {
             </div>
             <h3 className="text-lg font-semibold">{card.title}</h3>
           </div>
-          <p className="text-black text-5xl font-bold">{card.count}</p>
+          {isLoading ? (
+            <div className="w-8 md:w-10 h-8 md:h-10 bg-gray-200 rounded-full mr-2"></div>
+          ) : (
+            <p className="text-black text-5xl font-bold">{card.count}</p>
+          )}
 
           <button
             className="mt-4 text-purple-600 text-sm font-normal relative transition-all duration-300 group hover:scale-105 hover:font-medium"
