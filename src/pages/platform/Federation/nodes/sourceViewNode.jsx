@@ -8,6 +8,7 @@ import { Modal } from "@mui/material";
 import { Columns } from "../BusinessView/Columns";
 import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
+import { useLocation } from "react-router-dom";
 
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
@@ -74,7 +75,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload } = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -85,25 +86,33 @@ export function SourceViewNode({ id, onSave }) {
   const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [previousView, setPreviousView] = useState("");
 
-  // useEffect(() => {
-  //   console.log("MY PREVIOUS VIEWWW IS ==========>", previousView)
-  // }, [])
+  const modalState = useLocation().state || {
+    queryType: "Regular",
+    viewType: "Business",
+  };
+
+  useEffect(() => {
+    handleFinalPayload((prevData) => ({
+      ...prevData,
+      view_type: "Integrated View"
+    }));
+  }, [])
 
   useEffect(() => {
     const fetchViews = async () => {
       try {
-          const project = sessionStorage.getItem("project") || "default";
-          const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
-  
+        const project = sessionStorage.getItem("project") || "default";
+        const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
+
         const params = new URLSearchParams({
           view_type: "Base",
           project: project,
           created_by: createdBy,
         });
-  
+
         const response = await fetch(`${import.meta.env.VITE_FAST_API_V2}/get-all-views_v2?${params}`);
         const data = await response.json();
-        
+
         if (data && data.result) {
           setViews(data.result);
         } else {
@@ -113,14 +122,14 @@ export function SourceViewNode({ id, onSave }) {
         console.error("Error fetching views:", error);
       }
     };
-  
+
     fetchViews();
-  }, []); 
-  
+  }, []);
+
 
   const handleViewChange = (e) => {
     setSelectedColumns([])
-    console.log("selected view $$$$$$$$$$$$",selectedView)
+    console.log("selected view $$$$$$$$$$$$", selectedView)
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
       delete updatedSettings[selectedView];
@@ -280,19 +289,19 @@ export function SourceViewNode({ id, onSave }) {
       setSelectedColumns(columnsWithOutputOrAggregate);
     }
   }, [columnSettings, selectedView]);
-  
-  
+
+
 
 
   const handleSave = () => {
 
-    console.log("MY PREVIOUS VIEWWW IS ==========>",previousView)
+    console.log("MY PREVIOUS VIEWWW IS ==========>", previousView)
 
     // if (selectedColumns.length === 0) {
     //   toast.error("Select atleast one column");
     //   return;
     // }
-    if (!finalPayload.operation && previousView!=selectedView) {
+    if (!finalPayload.operation && previousView != selectedView) {
       console.log("URR VIEW IS CHANGEDDD")
       handleFinalPayload((prevData) => ({
         ...prevData,
@@ -301,7 +310,7 @@ export function SourceViewNode({ id, onSave }) {
         ),
       }));
     }
-    else if(finalPayload.operation){
+    else if (finalPayload.operation) {
       handleFinalPayload({});
       const updatedSettings = { ...columnSettings };
       delete updatedSettings.Union;
@@ -309,7 +318,7 @@ export function SourceViewNode({ id, onSave }) {
     }
 
 
-    console.log("vcolumn data is&&&&&&&&&&&&&&&&&",columnData)
+    console.log("vcolumn data is&&&&&&&&&&&&&&&&&", columnData)
     if (selectedView) {
       const view = selectedView;
       const newPayload = {
@@ -375,17 +384,17 @@ export function SourceViewNode({ id, onSave }) {
     handleViewPayload(updatedPayload);
 
     if (!finalPayload.operation) {
-    handleFinalPayload((prevData) => ({
-      ...prevData,
-      joins: prevData?.joins?.filter(
-        (join) => join.view1 !== selectedView && join.view2 !== selectedView
-      ),
-    }));
-  }
-  else if(finalPayload.operation){
-    const cleanedPayload = cleanFinalPayload(finalPayload, selectedView);
-    handleFinalPayload(cleanedPayload)
-  }
+      handleFinalPayload((prevData) => ({
+        ...prevData,
+        joins: prevData?.joins?.filter(
+          (join) => join.view1 !== selectedView && join.view2 !== selectedView
+        ),
+      }));
+    }
+    else if (finalPayload.operation) {
+      const cleanedPayload = cleanFinalPayload(finalPayload, selectedView);
+      handleFinalPayload(cleanedPayload)
+    }
 
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
@@ -435,7 +444,7 @@ export function SourceViewNode({ id, onSave }) {
             <h3 className="text-black font-medium">Source View</h3>
           </div>
           <div>
-            {complexCheck && (
+            {modalState.queryType == "Complex" && (
               <button
                 onClick={() => toggleEditorModal(true)}
                 className="p-1 rounded-md hover:bg-gray-200"

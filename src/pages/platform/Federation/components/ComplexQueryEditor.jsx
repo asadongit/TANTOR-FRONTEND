@@ -6,7 +6,7 @@ import { X, FileCode } from "lucide-react";
 function ComplexQueryEditor({setShowQueryEditor}) {
   const [query, setQuery] = useState("");
   
-  const {userSelections, setUserSelections, finalPayload, handleFinalPayload, complexCheck} = useStateContext("");
+  const {userSelections, setUserSelections, finalPayload, handleFinalPayload} = useStateContext("");
   
   useEffect(() => {
 
@@ -24,7 +24,7 @@ function ComplexQueryEditor({setShowQueryEditor}) {
   
   const handelExecute = () => {
 
-    if(complexCheck){
+    if(finalPayload?.view_type == 'Integrated View'){
       console.log("query is ======>",query) 
       const updatedPayload = { ...finalPayload,  "complex_query" : query};
       console.log("Updated final payload with query is ===>", updatedPayload);

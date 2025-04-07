@@ -20,12 +20,10 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Modal } from "@mui/material";
 import { MenuItem, Select, InputLabel, FormControl } from "@mui/material";
-import { useStateContext } from "../context/contextViewProvider";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const FederationDashBoard = () => {
-  const { handleViewPayload, handleConnectionPayload, handleConsolidationPayload, handleFinalPayload, setColumnSettings } = useStateContext("");
 
   const navigate = useNavigate();
 
@@ -42,11 +40,6 @@ const FederationDashBoard = () => {
     }
     )
     setIsModalOpen(!isModalOpen);
-    handleViewPayload([])
-    handleConnectionPayload([])
-    handleConsolidationPayload([])
-    handleFinalPayload({})
-    setColumnSettings({})
   };
 
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;

@@ -36,7 +36,6 @@ function App() {
 
   return (
     <Router>
-    <ContextViewProvider >
       <Routes>
         {/* Main layout with header/sidebar */}
         <Route
@@ -164,6 +163,7 @@ function App() {
         <Route
           path="/viewcanvas"
           element={
+            <ContextViewProvider >
               <ViewDrawer>
                 <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
                   <Header className="h-16 flex-shrink-0" />{" "}
@@ -180,6 +180,7 @@ function App() {
                   <BusinessFooter />
                 </div>
               </ViewDrawer>
+              </ContextViewProvider>
           }
         />
         <Route
@@ -199,7 +200,6 @@ function App() {
         />
 
       </Routes>
-      </ContextViewProvider>
     </Router>
   );
 }

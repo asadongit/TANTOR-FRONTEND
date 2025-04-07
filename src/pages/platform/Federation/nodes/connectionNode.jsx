@@ -8,6 +8,7 @@ import { Columns } from "../BusinessView/Columns";
 import { Modal } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
+import { useLocation } from "react-router-dom";
 
 export function ConnectionNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
@@ -27,6 +28,18 @@ export function ConnectionNode({ id, onSave }) {
   const [colId, setColId] = useState("")
 
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
+
+  const modalState = useLocation().state || {
+    queryType: "Regular",
+    viewType: "Business",
+  };
+
+    useEffect(() => {
+      handleFinalPayload((prevData) => ({
+        ...prevData,
+        view_type: "Integrated View"
+      }));
+    }, [])
 
   const handleColumnChange = (column) => {
     setSelectedColumns((prev) => {
@@ -487,7 +500,7 @@ export function ConnectionNode({ id, onSave }) {
             <h3 className="text-black font-medium">Connection</h3>
           </div>
           <div>
-          {complexCheck && (
+          {modalState.queryType == "Complex" && (
           <button
               onClick={() => toggleEditorModal(true)}
               className="p-1 rounded-md hover:bg-gray-200"
