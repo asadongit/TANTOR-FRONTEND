@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { ArrowUpDown, MoreHorizontal, Pencil, Trash2, Play, ChevronLeft, ChevronRight, Search } from "lucide-react";
-
+import { useAuth } from "../context/AuthContext";
 const DataTable = ({ 
   columns, 
   data=[], 
   actions = [],  
   title,
-  selectedProject = "Project",
   isLoading = false,
   isError = false,
   refetch = () => {},
@@ -18,7 +17,7 @@ const DataTable = ({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeMenu, setActiveMenu] = useState(null);
   const menuRef = useRef(null);
-
+  const {project}= useAuth()
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -34,7 +33,7 @@ const DataTable = ({
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, selectedProject]);
+  }, [searchTerm]);
 
   const handleSort = useCallback((key) => {
     setSortConfig((prev) => ({
@@ -46,8 +45,8 @@ const DataTable = ({
   const processedData = useMemo(() => {
     let result = [...data];
 
-    if (selectedProject && selectedProject !== "Project") {
-      result = result.filter(row => row.project === selectedProject);
+    if (project && project !== 'none') {
+      result = result.filter(row => row.project === project);
     }
 
     if (searchTerm) {
@@ -78,7 +77,7 @@ const DataTable = ({
     }
 
     return result;
-  }, [data, searchTerm, sortConfig, selectedProject]);
+  }, [data, searchTerm, sortConfig, project]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (page - 1) * itemsPerPage;
@@ -212,12 +211,7 @@ const DataTable = ({
             ) : paginatedData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="py-4 px-4 text-center text-gray-500">
-                  {data.length === 0
-                  ? "No connections available"
-                  : selectedProject !== "Project"
-                    ? "No connections found for the selected project"
-                    : "No connections available"
-                  }
+                No data found
                 </td>
               </tr>
             ) : (

@@ -32,9 +32,10 @@ import { useConnectionData } from "../../hooks/platform/connection";
 import DataTable from "../../components/DataTable";
 import CardGrid from "../../components/CardGrid";
 import toast  from "react-hot-toast";
+import { useAuth } from "../../context/AuthContext";
 const Connections = () => {
-  const hostname = import.meta.env.VITE_FAST_API_V2;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
+
+const {token, project, setSelectedProject, hostnameV1 }= useAuth();
 
   const {
     data: cardData,
@@ -176,7 +177,6 @@ const Connections = () => {
       .map((field) => field.name);
 
     requiredFields.push("name", "description", "behaviour");
-    console.log("fields==>", formData);
 
     const isValid = requiredFields.every((field) => formData[field]);
 
@@ -189,7 +189,7 @@ const Connections = () => {
 
     try {
       // Mock API call - replace with your actual API call
-      let response = await fetch(`${hostname}/test-connection`, {
+      let response = await fetch(`${hostnameV1}/test-connection`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -202,7 +202,6 @@ const Connections = () => {
       response = { ok: true };
 
       if (response.ok) {
-        console.log("Test Connection==>", formData);
         setIsTestSuccessful(true);
       } else {
         alert("Connection test failed");
@@ -222,7 +221,7 @@ const Connections = () => {
 
     try {
       // Your save API call
-      let response = await fetch(`${hostname}/create-connection`, {
+      let response = await fetch(`${hostnameV1}/create-connection`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -235,7 +234,6 @@ const Connections = () => {
       response = { ok: true };
 
       if (response.ok) {
-        console.log("Submit Connection==>", formData);
         setFormData({});
         setIsTestSuccessful(false);
         closeModal("modal2");
@@ -457,11 +455,10 @@ toast.success("Connection updated Successfully")
 
   let projectsList;
   let [projects, setProjects] = useState([]);
-  let [selectedProject, setSelectedProject] = useState("Project")
 
   const fetchProjects = useCallback(async () => {
     try {
-      const projectsResponse = await fetch(`${hostname}/projects/listing`, {
+      const projectsResponse = await fetch(`${hostnameV1}/projects`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -483,11 +480,11 @@ toast.success("Connection updated Successfully")
   }, [fetchProjects])
 
   const filteredConnections = useMemo(() => {
-    if (selectedProject === "Project" || !selectedProject) {
+    if (project === "none" || !project) {
       return connections;
     }
-    return connections.filter((conn) => conn.project === selectedProject)
-  }, [connections, selectedProject])
+    return connections.filter((conn) => conn.project === project)
+  }, [connections, project])
 
   return (
     <div className="p-6">
@@ -495,14 +492,14 @@ toast.success("Connection updated Successfully")
         <h1 className="text-2xl font-semibold">Connections</h1>
         <div className="flex items-center gap-4">
           <select
-            value={selectedProject}
+            value={project}
             onChange={(e) => {
               const projectName = e.target.value;
               setSelectedProject(projectName);
             }}
             className=" w-44 text-slate-500 font-medium rounded-lg text-sm px-1 py-2.5 me-2 mb-2 text-center inline-flex items-center dark:bg-white shadow-md"
           >
-            <option value="Project">All Project{" "}</option>
+            <option value="none">Default{" "}</option>
             {/* <svg
               className="w-2.5 h-2.5 ms-3"
               aria-hidden="true"
@@ -518,7 +515,7 @@ toast.success("Connection updated Successfully")
                 d="m1 1 4 4 4-4"
               />
             </svg> */}
-             {projects.map((project, idx) => (
+             {projects?.map((project, idx) => (
               <option key={idx} value={project?.project}
               >
                 {project?.project}
@@ -546,7 +543,6 @@ toast.success("Connection updated Successfully")
 <DataTable
   columns={columns}
   data={filteredConnections}
-  selectedProject={selectedProject}
   actions={actions}
   isLoading={isConnectionsLoading}
   isError={connectionsError}
