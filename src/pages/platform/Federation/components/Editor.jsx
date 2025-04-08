@@ -9,7 +9,8 @@ import {
   Hash,
   X,
   Play,
-  Trash2
+  Trash2,
+  Download
 } from "lucide-react";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-mysql";
@@ -508,11 +509,11 @@ export default function Editor() {
         </div>
 
         <span
-        onDoubleClick={() => {
-          if (!loading) {
-            handleTableClick(connection, schema, table)
-          }
-        }}
+          onDoubleClick={() => {
+            if (!loading) {
+              handleTableClick(connection, schema, table)
+            }
+          }}
           style={{
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -578,6 +579,33 @@ export default function Editor() {
       executeQuery(query, prevPage);
     }
   };
+
+  const convertToCSV = (jsonData) => {
+    const headers = Object.keys(jsonData[0]).join(',');
+    
+    const csvRows = jsonData.map(obj => 
+      Object.values(obj).map(val => 
+        `"${val}"`
+      ).join(',')
+    );
+
+    return [headers, ...csvRows].join('\n');
+  };
+
+  const handleDownloadCSV = () =>{
+    const csvContent = convertToCSV(data);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'data.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 
 
   return (
@@ -763,14 +791,30 @@ export default function Editor() {
 
             <main className="flex-1 pl-5 w-3/4">
               <div className={`${(data?.length > 0 || loading) ? "h-[41%]" : "h-[100%]"} flex flex-col`}>
-                <div className="w-[100%] flex justify-between">
+                <div className="w-[100%] flex justify-between pr-3">
                   <h2 className="text-xl font-bold">Query Editor</h2>
-                  <div>
+                  <div className="flex justify-center items-center">
+                    <button
+                      type="button"
+                      onClick={handleDownloadCSV}
+                      className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 mr-1 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
                     <Switch
                       checked={checked}
                       onChange={handleSwitch}
                       inputProps={{ "aria-label": "controlled" }}
+                      sx={{
+                        '& .MuiSwitch-switchBase.Mui-checked': {
+                          color: '#8e78b7',
+                        },
+                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                          backgroundColor: '#8e78b7',
+                        },
+                      }}
                     />
+
                     <span
                       style={{
                         display: "inline-block",
