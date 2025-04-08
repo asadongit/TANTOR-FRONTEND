@@ -305,7 +305,7 @@ export function ConsolidationNode({ id }) {
       console.log("temp array 2===>", tempArray2);
  
       const baseJoin = Array.from(tempArray1)[0];
-      const connection = connectionPayload.find(conn => conn.id === baseJoin);
+      const connection = connectionPayload.find(conn => conn.view === baseJoin);
  
       console.log("base join is===>", baseJoin);
  
