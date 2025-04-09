@@ -21,7 +21,11 @@ const TantorLogin = () => {
     try {
       const success = await login(username, password);
       if (success) {
-        const origin = location.state?.from?.pathname || "/dashboard";
+        let origin = location.state?.from?.pathname || "/dashboard";
+        const unsafePaths = ["/login"];
+        if (unsafePaths.includes(origin.toLowerCase())) {
+          origin = "/dashboard";
+        }
         navigate(origin);
       } else {
         setLoginString("Invalid username or password");
