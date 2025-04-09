@@ -18,6 +18,10 @@ export function BusinessFooter() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const modalState = useLocation().state || {
+    queryType: "Regular",
+    viewType: "Business",
+  };
 
   // const getSelectFields = (columnSettings, hasOperation) => {
   //   console.log("hase operation isss =====>",hasOperation)
@@ -218,8 +222,8 @@ export function BusinessFooter() {
         }
         if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") {
           sortColumns.add(column);
-      }
-      
+        }
+
       });
     });
 
@@ -326,8 +330,9 @@ export function BusinessFooter() {
   const handleClick = async () => {
 
     if (finalPayload && Object.keys(finalPayload).length > 0) {
-      if (!complexCheck) setIsFilterModalOpen(true);
+      if (modalState.queryType == "Regular") setIsFilterModalOpen(true);
       else {
+        
         const connections = connectionPayload.map(item => item.selectedConnection);
         const views = viewPayload.map(item => item.view);
         const metadata = { connections, views };
@@ -362,8 +367,8 @@ export function BusinessFooter() {
             }
             if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") {
               sortColumns.add(column);
-          }
-          
+            }
+
           });
         });
 
@@ -510,7 +515,7 @@ export function BusinessFooter() {
       project: sessionStorage.getItem("project") || "default",
       created_by: sessionStorage.getItem("created_by") || "sabhyata",
     };
-    
+
     const response = await fetch(
       `${import.meta.env.VITE_FAST_API_V2}/save-view`,
       {
@@ -522,7 +527,7 @@ export function BusinessFooter() {
         body: JSON.stringify(newPayload),
       }
     );
-    
+
 
     const data = await response.json();
 

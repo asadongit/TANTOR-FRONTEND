@@ -8,7 +8,7 @@ export function BusinessHeader() {
       <div className="flex items-center gap-6 px-4 py-2">
         {/* Dashboard Button */}
         <Link
-          to="/dashboard"
+          to="/"
           className="flex items-center border-solid border gap-2 px-4 py-2 bg-white text-[#8E77BB] font-semibold rounded-md hover:bg-[#E8E4F1] transition-colors"
         >
           <LayoutDashboard size={20} />
