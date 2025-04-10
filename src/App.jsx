@@ -6,7 +6,7 @@ import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import { PlatformRoutes } from "./routes/PlatformRoutes";
 import { DataGovernanceRoutes } from "./routes/DataGovernanceRoutes";
-import MigrationCanvas from "./pages/platform/migration/MigrationCanvas";
+import ArchivalCanvas from "./pages/platform/archival/ArchivalCanvas";
 import TransformationCanvas from "./pages/platform/archival/ArchivalCanvas";
 import { WelcomeModal } from "./pages/platform/react-flow/WelcomeModal";
 import { DrawerProvider } from "./pages/platform/react-flow/context/DrawerContext";
@@ -104,7 +104,7 @@ function App() {
                             <div className="flex-1 flex">
                               <div className="flex-1 relative">
                                 <ReactFlowProvider>
-                                  <MigrationCanvas />
+                                  <ArchivalCanvas />
                                 </ReactFlowProvider>
                               </div>
                             </div>

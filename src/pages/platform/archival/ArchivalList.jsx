@@ -79,7 +79,7 @@ const ArchivalList = () => {
     ]
 
     const handleCardClick = (card) => {
-      const url = `/componentType=transformation&dataScope=${card.title.replace(/\s+/g, '').toLowerCase()}&heading=${card.title}`;
+      const url = `/componentType=migration&dataScope=${card.title.replace(/\s+/g, '').toLowerCase()}&heading=${card.title}`;
       const encryptedUrl = encodeURIComponent(encrypt(url));
       navigate(`/details?${encryptedUrl}`);
     };
@@ -104,14 +104,14 @@ const ArchivalList = () => {
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
-        <h1 className="text-2xl font-semibold">Transformation</h1>
+        <h1 className="text-2xl font-semibold">Migration</h1>
         <div>
           <button
             onClick={handleCreateMigration}
             type="button"
             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            Create Transformation
+            Create Migration
           </button>
         </div>
       </div>

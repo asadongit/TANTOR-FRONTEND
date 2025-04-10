@@ -1,5 +1,5 @@
-import MigrationList from './MigrationList';
-import MigrationEmpty from './MigrationEmpty';
+import MetadataList from './MetadataList';
+import MetadataEmpty from './MetadataEmpty';
 
 const Migration = () => {
 
@@ -9,10 +9,10 @@ const Migration = () => {
   return (
       <div>
         {isLoggedIn ? (
-          <MigrationList/>
+          <MetadataList/>
         ) : (
           <>
-            <MigrationEmpty/>
+            <MetadataEmpty/>
           </>
         )}
       </div>

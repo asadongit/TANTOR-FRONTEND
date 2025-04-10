@@ -28,7 +28,7 @@ export function ArchivalSidebar() {
                   >
                       {expanded && (
                           <div className="flex items-center space-x-2">
-                              <span className="text-black font-medium text-lg">Transformation</span>
+                              <span className="text-black font-medium text-lg">Migration</span>
                           </div>
                       )}
                       {expanded ? (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import Logo from '../../assets/tantor_favicon.png';
+import Logo from "../../assets/tantor_favicon.png";
 
 const Chatbot = () => {
   const hostname = import.meta.env.VITE_CHATBOT_API;
@@ -68,15 +68,60 @@ const Chatbot = () => {
     }
   };
 
-  const LoadingSkeleton = () => (
-    <div className="flex items-start space-x-2 p-3">
-      <div className="flex-1 space-y-2">
-        <div className="h-3 bg-gray-200 rounded w-4/5 animate-pulse"></div>
-        <div className="h-3 bg-gray-200 rounded w-3/5 animate-pulse"></div>
-        <div className="h-3 bg-gray-200 rounded w-2/5 animate-pulse"></div>
-      </div>
+
+  const LoadingDots = () => (
+    <div className="flex space-x-1 p-3">
+      <span className="w-2 h-2 bg-[#8e78b7] rounded-full animate-bounce"></span>
+      <span
+        className="w-2 h-2 bg-[#8e78b7] rounded-full animate-bounce"
+        style={{ animationDelay: "0.1s" }}
+      ></span>
+      <span
+        className="w-2 h-2 bg-[#8e78b7] rounded-full animate-bounce"
+        style={{ animationDelay: "0.2s" }}
+      ></span>
     </div>
   );
+
+  const formatResponse = (text) => {
+    // Split response into parts with interactive elements
+    const parts = text.split(/(```[\s\S]*?```|\[\[.*?\]\])/g);
+
+    return parts.map((part, index) => {
+      if (part.startsWith("```") && part.endsWith("```")) {
+        // Code block formatting
+        const code = part.slice(3, -3);
+        return (
+          <pre
+            key={index}
+            className="bg-gray-800 text-gray-100 p-3 rounded-lg overflow-x-auto my-2 text-sm"
+          >
+            <code>{code}</code>
+          </pre>
+        );
+      } else if (part.startsWith("[[") && part.endsWith("]]")) {
+        // Interactive button
+        const buttonText = part.slice(2, -2);
+        return (
+          <button
+            key={index}
+            onClick={() => handleSendMessage(buttonText)}
+            className="mt-2 px-4 py-2 bg-[#8e78b7] text-white rounded-full hover:bg-[#78649c] transition-colors"
+          >
+            {buttonText}
+          </button>
+        );
+      }
+
+      // Regular text with line breaks
+      return part.split("\n").map((line, lineIndex) => (
+        <p key={`${index}-${lineIndex}`} className="mb-2">
+          {line}
+          {lineIndex < part.split("\n").length - 1 && <br />}
+        </p>
+      ));
+    });
+  };
 
   return (
     <div className="fixed bottom-6 right-6 z-[9999]">
@@ -86,24 +131,11 @@ const Chatbot = () => {
           <div className="bg-[#8e78b7] text-white p-4 rounded-t-xl flex justify-between items-center">
             <div className="flex items-center space-x-3">
               <div className="relative">
-                {/* <svg
-                  className="w-8 h-8"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg> */}
-                <img 
-                src={Logo} 
-                alt="Tantor Logo" 
-                className="w-8 h-8 filter brightness-0 invert"
-              />
+                <img
+                  src={Logo}
+                  alt="Tantor Logo"
+                  className="w-8 h-8 filter brightness-0 invert"
+                />
               </div>
               <h3 className="text-lg font-semibold">Tantor Bot</h3>
             </div>
@@ -134,13 +166,15 @@ const Chatbot = () => {
                 key={index}
                 className={`mb-3 p-3 rounded-2xl max-w-[85%] ${
                   msg.isUser
-                    ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white ml-auto"
+                    ? "bg-[#8e78b7] text-white ml-auto"
                     : `bg-white text-gray-800 shadow-md mr-auto ${
                         msg.isError ? "border border-red-200 bg-red-50" : ""
                       }`
                 }`}
               >
-                {msg.text}
+                {!msg.isUser && !msg.isError
+                  ? formatResponse(msg.text)
+                  : msg.text}
                 {msg.isError && retryMessage && (
                   <button
                     onClick={() => handleSendMessage(retryMessage, true)}
@@ -151,7 +185,7 @@ const Chatbot = () => {
                 )}
               </div>
             ))}
-            {isLoading && <LoadingSkeleton />}
+            {isLoading && <LoadingDots />}
             <div ref={messagesEndRef} />
           </div>
 

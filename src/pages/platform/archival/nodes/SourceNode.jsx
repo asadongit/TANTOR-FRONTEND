@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useAuth } from "../../../../context/AuthContext";
 import { useTableContext } from '../../react-flow/context/TableContext';
 
 const SkeletonLoader = () => (
@@ -16,7 +17,7 @@ const SkeletonLoader = () => (
 export function SourceNode({ id, data }) {
   const { onDataChange } = data;
   const hostname = import.meta.env.VITE_FAST_API;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
+  const { token, decodedToken } = useAuth();
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);
   const [selectedScope, setSelectedScope] = useState("bulk");
@@ -327,28 +328,28 @@ const handleOk = () => {
           <div className="flex items-center">
             <input
               type="radio"
-              id="table-bulk"
-              name="table"
-              value="bulk"
+              id="srctable-bulk"
+              name="srctable"
+              value="srcbulk"
               defaultChecked
               onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
             />
-            <label htmlFor="table-bulk" className="ml-2 text-xs text-gray-700">
+            <label htmlFor="srctable-bulk" className="ml-2 text-xs text-gray-700">
               Bulk
             </label>
           </div>
           <div className="flex items-center">
             <input
               type="radio"
-              id="table-subset"
-              name="table"
-              value="subset"
+              id="srctable-subset"
+              name="srctable"
+              value="srcsubset"
               onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label
-              htmlFor="table-subset"
+              htmlFor="srctable-subset"
               className="ml-2 text-xs text-gray-700"
             >
               Subset

@@ -2,11 +2,12 @@ import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
+import { useAuth } from "../../../../context/AuthContext";
 
 export function TargetNode({ id, data }) {
   const { onDataChange } = data;
   const hostname = import.meta.env.VITE_FAST_API;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
+  const { token, decodedToken } = useAuth();
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);
   const [selectedScope, setSelectedScope] = useState("bulk");
@@ -313,28 +314,28 @@ export function TargetNode({ id, data }) {
           <div className="flex items-center">
             <input
               type="radio"
-              id="table-bulk"
-              name="table"
-              value="bulk"
+              id="tartable-bulk"
+              name="tartable"
+              value="tarbulk"
               defaultChecked
               onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
             />
-            <label htmlFor="table-bulk" className="ml-2 text-xs text-gray-700">
+            <label htmlFor="tartable-bulk" className="ml-2 text-xs text-gray-700">
               Bulk
             </label>
           </div>
           <div className="flex items-center">
             <input
               type="radio"
-              id="table-subset"
-              name="table"
-              value="subset"
+              id="tartable-subset"
+              name="tartable"
+              value="tarsubset"
               onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label
-              htmlFor="table-subset"
+              htmlFor="tartable-subset"
               className="ml-2 text-xs text-gray-700"
             >
               Subset
