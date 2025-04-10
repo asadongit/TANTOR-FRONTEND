@@ -14,10 +14,16 @@ const AuthContext = createContext({
   login: async () => false,
   logout: () => {},
   loginString: "",
+  project: "none",
+  setSelectedProject: () => {},
+  hostnameV1: "",
+  hostnameV2: ""
 });
 
 export const AuthProvider = ({ children }) => {
-  const hostname = import.meta.env.VITE_FAST_API;
+  const hostnameV1 = import.meta.env.VITE_FAST_API;
+  const hostnameV2 = import.meta.env.VITE_FAST_API;
+
   const [token, setToken] = useState(
     () => localStorage.getItem("token") || null
   );
@@ -35,6 +41,30 @@ export const AuthProvider = ({ children }) => {
   const [loginString, setLoginString] = useState("");
   const navigate = useNavigate();
   const inactivityTimerRef = useRef(null);
+
+
+  const [project, setProject] = useState(() => {
+    if (decodedToken?.preferred_username) {
+      return localStorage.getItem(`project_${decodedToken.preferred_username}`) || "none";
+    }
+    return "none";
+  });
+
+  const setSelectedProject = (projectId) => {
+    if (decodedToken?.preferred_username) {
+      localStorage.setItem(`project_${decodedToken.preferred_username}`, projectId);
+    }
+    setProject(projectId);
+  };
+
+  useEffect(() => {
+    if (decodedToken?.preferred_username) {
+      const savedProject = localStorage.getItem(`project_${decodedToken.preferred_username}`);
+      if (savedProject) {
+        setProject(savedProject);
+      }
+    }
+  }, [decodedToken]);
 
   useEffect(() => {
     const logoutDueToInactivity = () => {
@@ -73,7 +103,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await fetch(`${hostname}/auth/login`, {
+      const response = await fetch(`${hostnameV1}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -86,6 +116,12 @@ export const AuthProvider = ({ children }) => {
           const decodedToken = jwtDecode(data.access_token);
           setDecodedToken(decodedToken);
           localStorage.setItem("token", data.access_token);
+          
+          const savedProject = localStorage.getItem(`project_${decodedToken.preferred_username}`);
+          if (savedProject) {
+            setProject(savedProject);
+          }
+          
           return true;
         } catch (error) {
           console.error("Error decoding token:", error);
@@ -95,27 +131,16 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Login API error:", error);
     }
-  
-    if (window.location.hostname === "localhost") {
-      const fallbackToken = import.meta.env.VITE_ACCESS_TOKEN;
-      try {
-        setToken(fallbackToken);
-        const decodedToken = jwtDecode(fallbackToken);
-        setDecodedToken(decodedToken);
-        localStorage.setItem("token", fallbackToken);
-        return true;
-      } catch (error) {
-        console.error("Error decoding fallback token:", error);
-      }
-    }
-  
+
     return false;
   };
   
-
   const logout = () => {
     setToken(null);
+    setDecodedToken(null);
+    setProject("none");
     localStorage.removeItem("token");
+    localStorage.removeItem(`project_${decodedToken.preferred_username}`);
     navigate("/");
   };
 
@@ -129,6 +154,10 @@ export const AuthProvider = ({ children }) => {
         logout,
         loginString,
         setLoginString,
+        project,
+        setSelectedProject,
+        hostnameV1,
+        hostnameV2
       }}
     >
       {children}

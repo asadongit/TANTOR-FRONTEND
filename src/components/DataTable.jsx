@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { ArrowUpDown, MoreHorizontal, Pencil, Trash2, Play, ChevronLeft, ChevronRight, Search } from "lucide-react";
-
+import { useAuth } from "../context/AuthContext";
 const DataTable = ({ 
   columns, 
   data=[], 
   actions = [],  
-  title
+  title,
+  isLoading = false,
+  isError = false,
+  refetch = () => {},
 }) => {
 
   const [sortConfig, setSortConfig] = useState({ key: "", direction: "asc" });
@@ -14,7 +17,7 @@ const DataTable = ({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeMenu, setActiveMenu] = useState(null);
   const menuRef = useRef(null);
-
+  const {project}= useAuth()
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -41,6 +44,10 @@ const DataTable = ({
 
   const processedData = useMemo(() => {
     let result = [...data];
+
+    if (project && project !== 'none') {
+      result = result.filter(row => row.project === project);
+    }
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
@@ -70,21 +77,18 @@ const DataTable = ({
     }
 
     return result;
-  }, [data, searchTerm, sortConfig]);
+  }, [data, searchTerm, sortConfig, project]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (page - 1) * itemsPerPage;
     return processedData.slice(startIndex, startIndex + itemsPerPage);
   }, [processedData, page, itemsPerPage]);
   
-  
-
   const toggleActionMenu = useCallback((index) => {
     setActiveMenu((prev) => (prev === index ? null : index));
   }, []);
 
   const handleAction = useCallback((action, row) => {
-
     if (action) {
       action.onClick(row); 
     }
@@ -109,6 +113,26 @@ const DataTable = ({
   const startItem = totalItems === 0 ? 0 : (page - 1) * itemsPerPage + 1;
   const endItem = Math.min(page * itemsPerPage, totalItems);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const renderSkeletonRows = () => {
+    return Array.from({ length: itemsPerPage }).map((_, rowIndex) => (
+      <tr key={`skeleton-${rowIndex}`} className="border-b animate-pulse">
+        {columns.map((column, colIndex) => (
+          <td key={`skeleton-cell-${rowIndex}-${colIndex}`} className="py-3 px-4">
+            {column.label === "Action" ? (
+              <div className="flex justify-center">
+                <div className="h-8 w-8 rounded-full bg-gray-200"></div>
+              </div>
+            ) : column.key === "status" ? (
+              <div className="h-6 w-16 bg-gray-200 rounded-full mx-auto"></div>
+            ) : (
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            )}
+          </td>
+        ))}
+      </tr>
+    ));
+  };
 
   return (
     <div className="w-full mt-6">
@@ -170,10 +194,24 @@ const DataTable = ({
             </tr>
           </thead>
           <tbody>
-            {paginatedData.length === 0 ? (
+            {isLoading ? (
+              renderSkeletonRows()
+            ) : isError ? (
+              <tr>
+                <td colSpan={columns.length} className="py-6 px-4 text-center">
+                  <div className="text-red-500 mb-2">Error loading data</div>
+                  <button 
+                    onClick={refetch} 
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium"
+                  >
+                    Try Again
+                  </button>
+                </td>
+              </tr>
+            ) : paginatedData.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="py-4 px-4 text-center text-gray-500">
-                  No data found
+                No data found
                 </td>
               </tr>
             ) : (
@@ -203,16 +241,16 @@ const DataTable = ({
                               role="menu"
                               aria-orientation="horizontal"
                             >
-                          <div className="flex items-center space-x-3">
-                          {actions.map((action, actionIndex) => (
-                            <button className="p-1 text-gray-500 hover:text-gray-800"
+                              <div className="flex items-center space-x-3">
+                                {actions.map((action, actionIndex) => (
+                                  <button className="p-1 text-gray-500 hover:text-gray-800"
                                     key={actionIndex}
                                     onClick={() => handleAction(action, row)}
                                     aria-label={action.label}
                                     role="menuitem"
                                   >
                                     {action.icon && (
-                                      <span >
+                                      <span>
                                         {action.icon}
                                       </span>
                                     )}
@@ -286,7 +324,9 @@ const DataTable = ({
 
       <div className="flex flex-col md:flex-row items-center justify-between">
         <div className="text-sm text-gray-500 mb-2 md:mb-0">
-          {totalItems > 0 ? (
+          {isLoading ? (
+            <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
+          ) : totalItems > 0 ? (
             `Showing ${startItem} to ${endItem} of ${totalItems} results`
           ) : (
             "No results found"
@@ -299,6 +339,7 @@ const DataTable = ({
             value={itemsPerPage}
             onChange={handleItemsPerPageChange}
             aria-label="Show per page"
+            disabled={isLoading}
           >
             {[10, 25, 50].map(option => (
               <option key={option} value={option}>{option}</option>
@@ -308,7 +349,7 @@ const DataTable = ({
             <button
               onClick={handlePrevPage}
               className="p-1 border rounded-l hover:bg-gray-100 disabled:opacity-50"
-              disabled={page === 1}
+              disabled={page === 1 || isLoading}
               aria-label="Previous page"
             >
               <ChevronLeft size={20} />
@@ -319,7 +360,7 @@ const DataTable = ({
             <button
               onClick={handleNextPage}
               className="p-1 border rounded-r border-l-0 hover:bg-gray-100 disabled:opacity-50"
-              disabled={page >= totalPages}
+              disabled={page >= totalPages || isLoading}
               aria-label="Next page"
             >
               <ChevronRight size={20} />

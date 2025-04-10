@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Pencil,
   Trash2,
@@ -32,17 +32,23 @@ import { useConnectionData } from "../../hooks/platform/connection";
 import DataTable from "../../components/DataTable";
 import CardGrid from "../../components/CardGrid";
 import toast  from "react-hot-toast";
+import { useAuth } from "../../context/AuthContext";
 const Connections = () => {
-  const hostname = import.meta.env.VITE_FAST_API;
+
+const {token, project, setSelectedProject, hostnameV1 }= useAuth();
+
   const {
     data: cardData,
     isLoading: isCardLoading,
     error: cardError,
+    refetch: refetchCardData, 
   } = useConnectionCardData();
+  
   const {
     data: connections = [],
     isLoading: isConnectionsLoading,
     error: connectionsError,
+    refetch: refetchConnections, 
   } = useConnectionData();
 
   const [isModalOpen, setIsModalOpen] = useState({
@@ -171,7 +177,6 @@ const Connections = () => {
       .map((field) => field.name);
 
     requiredFields.push("name", "description", "behaviour");
-    console.log("fields==>", formData);
 
     const isValid = requiredFields.every((field) => formData[field]);
 
@@ -184,7 +189,7 @@ const Connections = () => {
 
     try {
       // Mock API call - replace with your actual API call
-      let response = await fetch(`${hostname}/test-connection`, {
+      let response = await fetch(`${hostnameV1}/test-connection`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -197,7 +202,6 @@ const Connections = () => {
       response = { ok: true };
 
       if (response.ok) {
-        console.log("Test Connection==>", formData);
         setIsTestSuccessful(true);
       } else {
         alert("Connection test failed");
@@ -217,7 +221,7 @@ const Connections = () => {
 
     try {
       // Your save API call
-      let response = await fetch(`${hostname}/create-connection`, {
+      let response = await fetch(`${hostnameV1}/create-connection`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -230,7 +234,6 @@ const Connections = () => {
       response = { ok: true };
 
       if (response.ok) {
-        console.log("Submit Connection==>", formData);
         setFormData({});
         setIsTestSuccessful(false);
         closeModal("modal2");
@@ -449,17 +452,55 @@ toast.success("Connection updated Successfully")
     const encryptedUrl = encodeURIComponent(encrypt(url));
     navigate(`/details?${encryptedUrl}`);
   };
+
+  let projectsList;
+  let [projects, setProjects] = useState([]);
+
+  const fetchProjects = useCallback(async () => {
+    try {
+      const projectsResponse = await fetch(`${hostnameV1}/projects`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-type": "application/json",
+        },
+      });
+      if (!projectsResponse.ok) {
+        throw new Error('Failed to fetch projects');
+      }
+      projectsList = await projectsResponse.json();
+      setProjects(projectsList);
+    } catch (error) {
+      console.error("Error fetching options:", error)
+    }
+  }, [])
+
+  useEffect(() => { 
+    fetchProjects() 
+  }, [fetchProjects])
+
+  const filteredConnections = useMemo(() => {
+    if (project === "none" || !project) {
+      return connections;
+    }
+    return connections.filter((conn) => conn.project === project)
+  }, [connections, project])
+
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Connections</h1>
         <div className="flex items-center gap-4">
-          <button
-            className="text-slate-500 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 text-center inline-flex items-center dark:bg-white shadow-md"
-            type="button"
+          <select
+            value={project}
+            onChange={(e) => {
+              const projectName = e.target.value;
+              setSelectedProject(projectName);
+            }}
+            className=" w-44 text-slate-500 font-medium rounded-lg text-sm px-1 py-2.5 me-2 mb-2 text-center inline-flex items-center dark:bg-white shadow-md"
           >
-            Project{" "}
-            <svg
+            <option value="none">Default{" "}</option>
+            {/* <svg
               className="w-2.5 h-2.5 ms-3"
               aria-hidden="true"
               xmlns="http://www.w3.org/2000/svg"
@@ -473,8 +514,17 @@ toast.success("Connection updated Successfully")
                 strokeWidth="2"
                 d="m1 1 4 4 4-4"
               />
-            </svg>
-          </button>
+            </svg> */}
+             {projects?.map((project, idx) => (
+              <option key={idx} value={project?.project}
+              >
+                {project?.project}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 mr-2 mb-2">
+            <ChevronDown className="h-4 w-4 text-gray-500" />
+          </div>
 
           <button
             onClick={() => openModal("modal1")}
@@ -486,14 +536,17 @@ toast.success("Connection updated Successfully")
         </div>
       </div>
 
-      <CardGrid cards={cards} onCardClick={handleCardClick} />
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
 
       {/* Connection Listing Table */}
 
 <DataTable
   columns={columns}
-  data={connections}
+  data={filteredConnections}
   actions={actions}
+  isLoading={isConnectionsLoading}
+  isError={connectionsError}
+  refetch={refetchConnections}
 />
  
 

@@ -21,8 +21,8 @@ import DataTable from "../../../components/DataTable";
 
 
 const PurgeList = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError } = useSourceTypeCounts('purge');
-  const { data: purgeData=[], isLoading: isPurgeLoading, error: purgeError } = usePurgeData();
+  const { data: cardData, isLoading: isCardLoading, error: cardError,refetch : refetchCardData } = useSourceTypeCounts('purge');
+  const { data: purgeData=[], isLoading: isPurgeLoading, error: purgeError, refetch : refetchPurges } = usePurgeData();
 
 
   const navigate = useNavigate();
@@ -102,12 +102,13 @@ const PurgeList = () => {
           </button>
         </div>
       </div>
-        <CardGrid cards={cards} onCardClick={handleCardClick} />
+        <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
             <DataTable
         columns={columns}
         data={purgeData}
-        // actions={actions}
-      />
+        isLoading={isPurgeLoading}
+        isError={purgeError}
+        refetch={refetchPurges}      />
     </div>
   );
 };

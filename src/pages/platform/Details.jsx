@@ -22,6 +22,8 @@ import { useArchivalData } from "../../hooks/platform/archival";
 import { useMigrationData } from "../../hooks/platform/migration";
 import { useProjectData } from "../../hooks/platform/project";
 import DataTable from "../../components/DataTable";
+import { getActionConfigurations } from "../../components/actionsConfig";
+import columnConfigurations from "../../components/columnsConfig";
 const useDynamicData = (componentType) => {
   const hookMap = {
     cdc: useCDCData,
@@ -61,7 +63,7 @@ const Details = () => {
   };
   const selectedType = cardType || componentType;
 
-  const { data = [], isLoading, isError } = useDynamicData(selectedType);
+  const { data = [], isLoading, isError, refetch } = useDynamicData(selectedType);
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -69,89 +71,7 @@ const Details = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [activeMenu, setActiveMenu] = useState(null);
 
-  const columnConfigurations = {
-    common: [],
-    //  [
-    //   { key: "created_by", label: "Created By", sortable: true },
-    //   { key: "created_at", label: "Created At", sortable: true },
-    //   { key: "project", label: "Project", sortable: true },
-    // ],
 
-    cdc: [
-      { key: "workflow_name", label: "Name", sortable: true },
-      { key: "project", label: "Project Name", sortable: true },
-      { key: "created_by", label: "Created By", sortable: true },
-      { key: "source_conn_name", label: "Source Connection", sortable: true },
-      { key: "target_conn_name", label: "Target Connection", sortable: true },
-      { key: "source_table", label: "Source Table", sortable: true },
-      { key: "target_table", label: "Target Table", sortable: true },
-      { key: "status", label: "Status", sortable: true },
-      { label: "Action", sortable: false },
-    ],
-    connections: [
-      { key: "connection_name", label: "Name", sortable: true },
-      { key: "project", label: "Project Name", sortable: true },
-      { key: "created_by", label: "Created By", sortable: true },
-      { key: "connection_type", label: "connection Type", sortable: true },
-      { key: "database_name", label: "database Name", sortable: true },
-      { key: "username", label: "Username", sortable: true },
-      { key: "host_address", label: "Hostname", sortable: true },
-
-      { key: "table_count", label: "No. of Tables", sortable: true },
-      { key: "status", label: "Status", sortable: true },
-      { label: "Action", sortable: false },
-    ],
-    transformation: [
-      { key: "workflow_name", label: "Name", sortable: true },
-      { key: "project", label: "Project Name", sortable: true },
-      { key: "created_by", label: "Created By", sortable: true },
-      { key: "source_conn_name", label: "Source Connection", sortable: true },
-      { key: "target_conn_name", label: "Target Connection", sortable: true },
-      { key: "source_table", label: "Source Table", sortable: true },
-      { key: "target_table", label: "Target Table", sortable: true },
-      { key: "status", label: "Status", sortable: true },
-      { label: "Action", sortable: false },
-    ],
-    migration: [
-      { key: "metadata_name", label: "Name", sortable: true },
-      { key: "project", label: "Project ", sortable: true },
-      { key: "created_by", label: "Created By", sortable: true },
-      { key: "source_conn_name", label: "Source Connection", sortable: true },
-      { key: "target_conn_name", label: "Target Connection", sortable: true },
-      { key: "source_table", label: "Source Table", sortable: true },
-      { key: "target_table", label: "Target Table", sortable: true },
-      { key: "status", label: "Status", sortable: true },
-      { label: "Action", sortable: false },
-    ],
-    purge: [
-      { key: "purge_name", label: "Name", sortable: true },
-      { key: "project", label: "Project Name", sortable: true },
-      { key: "created_by", label: "Created By", sortable: true },
-      { key: "source_conn_name", label: "Source Connection", sortable: true },
-      { key: "target_conn_name", label: "Target Connection", sortable: true },
-      { key: "source_table", label: "Source Table", sortable: true },
-      { key: "target_table", label: "Target Table", sortable: true },
-      { key: "status", label: "Status", sortable: true },
-      { label: "Action", sortable: false },
-    ],
-
-    project: [
-      { key: "project_name", label: "Project Name", sortable: true },
-      { key: "records_purged", label: "Records Purged", sortable: true },
-      { key: "timestamp", label: "Purge Timestamp", sortable: true },
-      { key: "size_before", label: "Size Before", sortable: true },
-      { key: "size_after", label: "Size After", sortable: true },
-      { label: "Action", sortable: false },
-    ],
-    federation: [
-      { key: "connection_name", label: "Name", sortable: true },
-      { key: "project", label: "Project", sortable: true },
-      { key: "schema", label: "Schema", sortable: true },
-      { key: "timestamp", label: "Table", sortable: true },
-      { key: "Views", label: "Views", sortable: true },
-      { label: "Action", sortable: false },
-    ],
-  };
 
   const getColumnConfiguration = useCallback((type) => {
     const resolvedType = columnAliases[type] || type;
@@ -186,6 +106,11 @@ const Details = () => {
     return result;
   }, [data, dataScope, componentType]);
 
+  const actions = useMemo(() => {
+    return getActionConfigurations(navigate)[selectedType] || [];
+  }, [selectedType]);
+  
+
   return (
     <div className="flex flex-col h-full p-4">
       <nav className="flex mb-4" aria-label="Breadcrumb">
@@ -194,7 +119,7 @@ const Details = () => {
             { label: "Platform", path: "/" },
             {
               label:
-                componentType.charAt(0).toUpperCase() + componentType.slice(1),
+                componentType?.charAt(0).toUpperCase() + componentType.slice(1),
               path: `/${componentType}`,
             },
             { label: "Details", path: null },
@@ -251,7 +176,9 @@ const Details = () => {
           <button
             type="button"
             className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
-            // onClick={handleRefresh}
+            onClick={()=>{refetch() 
+              toast.success('Refreshed sucessfully!')
+            }}
           >
             <RefreshCcw className="h-5 w-5" />
           </button>
@@ -261,7 +188,12 @@ const Details = () => {
       <DataTable
         columns={columns}
         data={processedData}
-        // actions={actions}
+        actions={actions}
+        isLoading={isLoading}
+        isError={isError}
+        refetch={refetch}
+
+
       />
     </div>
   );

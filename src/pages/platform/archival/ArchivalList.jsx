@@ -3,8 +3,7 @@ import { useState } from "react";
 import {
   Pencil,
   Trash2,
-  MoreHorizontal,
-  RotateCw
+  Play,
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { encrypt } from "../../../utils/Crypto";
@@ -14,8 +13,8 @@ import DataTable from "../../../components/DataTable";
 import CardGrid from "../../../components/CardGrid";
 
 const ArchivalList = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError } = useSourceTypeCounts('migration');
-  const { data: archivalData=[], isLoading: isArchivalLoading, error: archivalError } = useArchivalData();
+  const { data: cardData, isLoading: isCardLoading, error: cardError, refetchCardData } = useSourceTypeCounts('migration');
+  const { data: archivalData=[], isLoading: isArchivalLoading, error: archivalError, refetch:refetchArchival } = useArchivalData();
 
   const navigate = useNavigate();
 
@@ -84,7 +83,24 @@ const ArchivalList = () => {
       const encryptedUrl = encodeURIComponent(encrypt(url));
       navigate(`/details?${encryptedUrl}`);
     };
-
+    const actions = [
+      {
+        label: "Edit",
+        icon: <Pencil size={16} />,
+        onClick: (row) => console.log("Edit clicked for", row),
+      },
+      {
+        label: "Delete",
+        icon: <Trash2 size={16} />,
+        onClick: (row) => console.log("Delete clicked for", row),
+      },
+      {
+        label: "Run",
+        icon: <Play size={16} fill="currentColor" />,
+        onClick: (row) => console.log("Run clicked for", row),
+      },
+    ];
+    
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -101,10 +117,13 @@ const ArchivalList = () => {
       </div>
 
 
-      <CardGrid cards={cards} onCardClick={handleCardClick} />
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
 
       <DataTable columns={columns} data={archivalData}
-  // actions={actions}
+          actions={actions}
+          isLoading={isArchivalLoading}
+          isError={archivalError}
+          refetch={refetchArchival}
 />
     </div>
   );

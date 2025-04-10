@@ -5,6 +5,7 @@ import { Upload, X, Search, Pencil } from "lucide-react";
 import { useTableContext } from "../../react-flow/context/TableContext";
 import { useStateContext } from "../../react-flow/context/ContextProvider";
 import { SkeletonLoader } from "../../react-flow/SkeletonLoader";
+import { toast } from "react-hot-toast"
 
 export function SourceNode({ id }) {
   const hostname = import.meta.env.VITE_FAST_API;
@@ -216,6 +217,67 @@ export function SourceNode({ id }) {
           ? prev.filter((item) => item !== tableName)
           : [...prev, tableName]
       );
+    }
+  };
+
+  const validateSelection = (defineNode, sourceNode) => {
+    const { name } = defineNode;
+    const {
+      source_conn_name,
+      purge_scope: source_purge_scope,
+      selectedTables: sourceTables,
+    } = sourceNode;
+
+    if (!name) {
+      return {valid : false, message:"Name must be selected on Define Node."};
+    }
+
+    if (!source_conn_name) {
+      return {
+        valid: false,
+        message: "Source connection name must be selected on Source Node.",
+      };
+    }
+
+    if (
+      source_purge_scope === "subset" &&
+      (!sourceTables || sourceTables.length !== 1)
+    ) {
+      return {
+        valid: false,
+        message:
+          "For Source Node with 'subset' purge scope, one table must be selected.",
+      };
+    }
+
+    return { valid: true, message: "Selection is valid." };
+  };
+
+  const {sourceName} = useStateContext("")
+
+  const handleOKSlection = () => {
+    const defineNode = {
+      name: sourceName || "",
+    };
+
+    const sourceNode = {
+      source_conn_name: selectedConnection || "",
+      purge_scope: selectedPurgeScope || "",
+      selectedTables:
+      selectedPurgeScope === "subset" && selectedTables,
+    };
+
+    const validationResult = validateSelection(
+      defineNode,
+      sourceNode,
+    );
+
+    if (!validationResult.valid) {
+      toast.error(validationResult.message)
+      return;
+    } 
+    else {
+      toast.success("Table updated successfully")
     }
   };
 
@@ -573,15 +635,17 @@ export function SourceNode({ id }) {
             </div>
           </div>
         )}
-
       <div className="flex space-x-2 mt-4">
         <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           Cancel
         </button>
-        <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
+        <button 
+        onClick={handleOKSlection}
+        className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           OK
         </button>
       </div>
+
     </div>
   );
 }

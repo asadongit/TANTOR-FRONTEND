@@ -5,12 +5,15 @@ import { useNavigate } from 'react-router-dom';
 import  {encrypt} from '../../../utils/Crypto'
 import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
 import { useMigrationData } from "../../../hooks/platform/migration";
-
+import {
+  Pencil,
+  Trash2,
+  Play} from "lucide-react";
 import DataTable from "../../../components/DataTable";
 import CardGrid from "../../../components/CardGrid";
 const MigrationList = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError } = useSourceTypeCounts('metadata');
-  const { data: migrationData=[], isLoading: isMigrationLoading, error: migrationError } = useMigrationData();
+  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useSourceTypeCounts('metadata');
+  const { data: migrationData=[], isLoading: isMigrationLoading, error: migrationError, refetch: refetchMigrations } = useMigrationData();
 
   const navigate = useNavigate();
 
@@ -79,6 +82,23 @@ const MigrationList = () => {
       const encryptedUrl = encodeURIComponent(encrypt(url));
       navigate(`/details?${encryptedUrl}`);
     };
+    const actions = [
+      {
+        label: "Edit",
+        icon: <Pencil size={16} />,
+        onClick: (row) => console.log("Edit clicked for", row),
+      },
+      {
+        label: "Delete",
+        icon: <Trash2 size={16} />,
+        onClick: (row) => console.log("Delete clicked for", row),
+      },
+      {
+        label: "Run",
+        icon: <Play size={16} fill="currentColor" />,
+        onClick: (row) => console.log("Run clicked for", row),
+      },
+    ];
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -95,14 +115,17 @@ const MigrationList = () => {
       </div>
 
 
-      <CardGrid cards={cards} onCardClick={handleCardClick} />
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
 
       {/* Migration Listing Table */}
 
       <DataTable
   columns={columns}
   data={migrationData}
-  // actions={actions}
+  actions={actions}
+  isLoading={isMigrationLoading}
+  isError={migrationError}
+  refetch={refetchMigrations}
 />
 
     </div>
