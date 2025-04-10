@@ -580,7 +580,7 @@ toast.success("Connection updated Successfully")
                     className={`bg-white p-4 rounded-lg shadow-sm border-gray-200 outline outline-slate-200 flex items-center justify-center cursor-pointer
                       ${
                         selectedCard === card.title
-                          ? "outline-2 outline outline-[#8e78b7]"
+                          ? "outline-2 outline outline-purple-400"
                           : "outline outline-slate-200"
                       }`}
                     onClick={() => setSelectedCard(card.title)}

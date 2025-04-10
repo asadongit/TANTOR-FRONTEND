@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
+import { toast } from "react-hot-toast";
 import { useTableContext } from '../../react-flow/context/TableContext';
 
 const SkeletonLoader = () => (
@@ -220,7 +221,18 @@ const handleOk = () => {
   //   setShowAlert(false);
   // }, 3000);
 
-  alert("Flow Updated Successfully"); // Temporary alert
+  toast.success('Flow Updated Successfully! 🎉', {
+    duration: 3000,
+    position: 'top-center',
+    style: {
+      background: '#4CAF50',
+      color: '#fff',
+    },
+    iconTheme: {
+      primary: '#fff',
+      secondary: '#4CAF50',
+    },
+  });
 };
 
   return (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Logo from '../../assets/tantor_favicon.png';
 
 const Chatbot = () => {
   const hostname = import.meta.env.VITE_CHATBOT_API;
@@ -82,10 +83,10 @@ const Chatbot = () => {
       {isOpen ? (
         <div className="w-80 h-[500px] bg-white rounded-xl shadow-2xl flex flex-col transform transition-all duration-300">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-t-xl flex justify-between items-center">
+          <div className="bg-[#8e78b7] text-white p-4 rounded-t-xl flex justify-between items-center">
             <div className="flex items-center space-x-3">
               <div className="relative">
-                <svg
+                {/* <svg
                   className="w-8 h-8"
                   fill="none"
                   stroke="currentColor"
@@ -97,9 +98,14 @@ const Chatbot = () => {
                     strokeWidth={2}
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                   />
-                </svg>
+                </svg> */}
+                <img 
+                src={Logo} 
+                alt="Tantor Logo" 
+                className="w-8 h-8 filter brightness-0 invert"
+              />
               </div>
-              <h3 className="text-lg font-semibold">Support Assistant</h3>
+              <h3 className="text-lg font-semibold">Tantor Bot</h3>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -164,7 +170,7 @@ const Chatbot = () => {
               <button
                 onClick={() => handleSendMessage()}
                 disabled={isLoading}
-                className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 bg-[#8e78b7] text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg
                   className="w-5 h-5"
@@ -186,7 +192,7 @@ const Chatbot = () => {
       ) : (
         <button
           onClick={() => setIsOpen(true)}
-          className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center relative group"
+          className="w-16 h-16 bg-[#8e78b7] to-purple-600 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center relative group"
         >
           <svg
             className="w-8 h-8 text-white transform group-hover:scale-110 transition-transform"
