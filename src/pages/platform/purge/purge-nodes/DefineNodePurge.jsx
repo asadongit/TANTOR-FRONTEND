@@ -5,7 +5,7 @@ import { useStateContext } from "../../react-flow/context/ContextProvider";
 
 export function DefineNodePurge({ id }) {
 
-  const { handleSourceName } = useStateContext("");
+  const { handleDefineNodeName, handleDefineNodeDesc } = useStateContext("");
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
@@ -29,7 +29,7 @@ export function DefineNodePurge({ id }) {
           <input
             type="text"
             placeholder="Source Name"
-            onChange={(e) => handleSourceName(e.target.value)}
+            onChange={(e) => handleDefineNodeName(e.target.value)}
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
           />
         </div>
@@ -40,6 +40,7 @@ export function DefineNodePurge({ id }) {
           <input
             type="text"
             placeholder="Add Description"
+            onChange={(e) => handleDefineNodeDesc(e.target.value)}
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
           />
         </div>
