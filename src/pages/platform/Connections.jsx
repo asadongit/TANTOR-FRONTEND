@@ -421,7 +421,26 @@ toast.success("Connection updated Successfully")
   ];
 
 
-
+  const handleRefresh = (id) => {
+    fetch(`${hostnameV1}/refresh/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+      .then((response) => {
+        if (response.status === 200) {
+          toast.success("Reload Successful");
+        } else {
+          return response.json().then((data) => {
+            throw new Error(data.errorMessage || "Reload Failed");
+          });
+        }
+      })
+      .catch((error) => {
+        toast.error(error.message);
+      });
+  };
 
     const actions = [
       {
@@ -442,7 +461,7 @@ toast.success("Connection updated Successfully")
       {
         label: "Run",
         icon: <RotateCw size={16}  />,
-        onClick: (row) => console.log("Run clicked for", row),
+        onClick: (row) => handleRefresh(row.connection_id),
       },
     ];
   const handleCardClick = (card) => {
