@@ -23,7 +23,7 @@ import { useAuth } from "../../context/AuthContext";
 const Project = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
   const { data: projectData = [], isLoading: isProjectLoading, error: projectError, refetch: refetchProjects } = useProjectData();
-  const {token, decodedToken} = useAuth();
+  const {token, decodedToken,hostnameV1} = useAuth();
   const initialFormState = {
     project: "",
     description: "",
@@ -37,7 +37,6 @@ const Project = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const hostname = import.meta.env.VITE_FAST_API;
 
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
@@ -128,7 +127,7 @@ const Project = () => {
     try {
       setIsSubmitting(true);
            
-      const response = await fetch(`${hostname}/projects`, {
+      const response = await fetch(`${hostnameV1}/projects`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

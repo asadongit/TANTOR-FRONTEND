@@ -2,7 +2,7 @@ const columnConfigurations = {
     common: [],
   
     cdc: [
-      { key: "workflow_name", label: "Name", sortable: true },
+      { key: "cdc_name", label: "Name", sortable: true },
       { key: "project", label: "Project Name", sortable: true },
       { key: "created_by", label: "Created By", sortable: true },
       { key: "source_conn_name", label: "Source Connection", sortable: true },
@@ -78,6 +78,14 @@ const columnConfigurations = {
       { key: "timestamp", label: "Table", sortable: true },
       { key: "Views", label: "Views", sortable: true },
       { label: "Action", sortable: false },
+    ],
+    viewconnections: [
+      { key: "table_name", label: "Table Name", sortable: true },
+      { key: "project", label: "View Columns", sortable: true },
+      { key: "is_migrated", label: "Migration", sortable: true },
+      { key: "is_purged", label: "Purge", sortable: true },
+      { key: "is_virtualization", label: "Data Federation", sortable: true },
+      { key: "cdc_enabled", label: "CDC", sortable: true },
     ],
   };
   

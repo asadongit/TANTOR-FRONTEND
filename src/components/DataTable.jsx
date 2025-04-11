@@ -308,7 +308,7 @@ const DataTable = ({
                             </span>
                           ) : (
                             <div className="truncate max-w-[200px]" title={row[column.key]}>
-                              {row[column.key]}
+                            {row[column.key] === 0 ? 0 : row[column.key] || '-'}
                             </div>
                           )
                         ) : null}
