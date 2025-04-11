@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
 import Project from '../pages/platform/Project';
-import Connections from '../pages/platform/Connections';
+import Connections from '../pages/platform/connection/Connections';
 import Jobs from '../pages/platform/Jobs';
 import Pipeline from '../pages/platform/Pipeline';
 
