@@ -22,6 +22,7 @@ import PurgeCanvas from "./pages/platform/purge/PurgeCanvas";
 import { ContextViewProvider } from "./pages/platform/Federation/context/contextViewProvider";
 import { ContextProvider } from "./pages/platform/react-flow/context/ContextProvider";
 import CanvasLayout from "./pages/platform/cdc/CanvasLayout";
+import { PurgeContextProvider } from "./pages/platform/react-flow/context/PurgeContext";
 import { Toaster } from "react-hot-toast";
 import Chatbot from "./pages/chatbot/Chatbot";
 import {
@@ -150,6 +151,7 @@ function App() {
                       <ThemeProvider>
                         <DrawerProvider>
                           <ContextProvider>
+                          <PurgeContextProvider>
                             <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
                               <Header className="h-16 flex-shrink-0" />
                               <div className="flex-1 flex">
@@ -161,6 +163,7 @@ function App() {
                               </div>
                               <WelcomeModal />
                             </div>
+                          </PurgeContextProvider>
                           </ContextProvider>
                         </DrawerProvider>
                       </ThemeProvider>
