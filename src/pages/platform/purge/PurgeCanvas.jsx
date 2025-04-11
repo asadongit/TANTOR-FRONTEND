@@ -5,7 +5,7 @@ import { SourceNode } from "../purge/purge-nodes/SourceNodePurge";
 import { TargetNode } from "../purge/purge-nodes/TargetNodePurge";
 import { SchedulerNode } from "../purge/purge-nodes/SchedulerNodePurge"
 import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
-import TableDrawer from "../react-flow/dialog/TableDrawer";
+import PurgeDrawer from "../react-flow/dialog/PurgeDrawer"
 import PurgeSidebar from "./PurgeSidebar";
 import PurgeFooter from "./PurgeFooter";
 import { useStateContext } from "../react-flow/context/ContextProvider";
@@ -95,7 +95,7 @@ function PurgeCanvas() {
         </Panel>)}
       </ReactFlow>
       <DrawerContainer />
-      <TableDrawer nodes={nodes} setNodes={setNodes}/>
+      <PurgeDrawer nodes={nodes} setNodes={setNodes}/>
     </div>
   )
 }

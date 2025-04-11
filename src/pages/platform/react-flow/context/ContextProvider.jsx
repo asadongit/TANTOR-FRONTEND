@@ -10,9 +10,14 @@ export const ContextProvider = ({ children }) => {
     secondaryColor:'hover:bg-[#96CF7B]',
   })
 
-  const [sourceName, setSourceName] = useState("");
-  const handleSourceName = (name) => {
-    setSourceName(name);
+  const [defineNodeName, setDefineNodeName] = useState("");
+  const handleDefineNodeName = (name) => {
+    setDefineNodeName(name);
+  }
+
+  const [defineNodeDesc, setDefineNodeDesc] = useState("");
+  const handleDefineNodeDesc = (desc) => {
+    setDefineNodeDesc(desc);
   }
 
   const [ selectedTables, setSelectedTables] = useState([]);
@@ -40,6 +45,21 @@ export const ContextProvider = ({ children }) => {
     setIsVisibleFooter(value)
   }
 
+  const [ purgeNode, setPurgeNode ] = useState("");
+  const handlePurgeNode = (node) => {
+    setPurgeNode(node);
+  }
+
+  const [firstSourcePartitionName, setFirstSourcePartitionName] = useState("");
+  const handleFirstSourcePartitionName = (name) => {
+    setFirstSourcePartitionName(name)
+  }
+
+  const [ sourceSelectedTable, setSourceSelectedTable ] = useState(null);
+  const handleSourceSelectedTable = (table) => {
+    setSourceSelectedTable(table)
+  }
+
   return (
     <StateContext.Provider
       value={{
@@ -54,8 +74,16 @@ export const ContextProvider = ({ children }) => {
         handleSelectedScopeName,
         isVisibleFooter,
         handleIsVisibleFooter,
-        sourceName,
-        handleSourceName
+        defineNodeDesc,
+        handleDefineNodeDesc,
+        defineNodeName,
+        handleDefineNodeName,
+        purgeNode,
+        handlePurgeNode,
+        firstSourcePartitionName,
+        handleFirstSourcePartitionName,
+        sourceSelectedTable,
+        handleSourceSelectedTable
       }}
     >
       {children}

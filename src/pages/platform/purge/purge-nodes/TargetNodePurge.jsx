@@ -6,18 +6,25 @@ import { useStateContext } from "../../react-flow/context/ContextProvider";
 import { SkeletonLoader } from "../../react-flow/SkeletonLoader";
 import { useTableContext } from "../../react-flow/context/TableContext";
 import toast from "react-hot-toast";
+import { usePurgeContext } from "../../react-flow/context/PurgeContext";
+import { useAuth } from "../../../../context/AuthContext";
 
 export function TargetNode({ id }) {
   const hostname = import.meta.env.VITE_FAST_API;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
+  const {token, decodedToken} = useAuth();  
 
   const {
     selectedTables,
     sourceConnectionName,
     selectedScope,
     handleIsVisibleFooter,
-    sourceName,
+    defineNodeName, 
+    defineNodeDesc,
     selectedDataSet,
+    firstSourcePartitionName,
+    sourceSelectedTable,
+    handlePurgeNode,
+    targetData,
   } = useStateContext("");
   const [connections, setConnections] = useState([]);
   const [targetConnection, setTargetConnection] = useState("");
@@ -29,10 +36,13 @@ export function TargetNode({ id }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const { openDrawer } = useTableContext();
+  const {saveTargetData} = usePurgeContext("");
 
   let connectionsData;
   let schemadetails;
   let tabledetails;
+
+  const node = "Target node";
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -215,9 +225,18 @@ export function TargetNode({ id }) {
     return { valid: true, message: "Selection is valid." };
   };
 
+  const saveNode = () => {
+
+    const connectionId = targetConnection?.connection_id;
+    const connectionType = targetConnection?.connection_type;
+    const tableName = selectedTableName[0];
+
+    saveTargetData(connectionId, targetConnection, connectionType, tableName, selectedSchema, connectionType)
+  }
+
   const handleOkClick = () => {
     const defineNode = {
-      name: sourceName || "",
+      name: defineNodeName || "",
     };
 
     const sourceNode = {
@@ -245,6 +264,9 @@ export function TargetNode({ id }) {
       toast.error(validationResult.message) // Show error message
       return;
     } else {
+      saveNode();
+      console.log("data saved on purge node --- ", targetData);
+      toast.success("Saved successfully") // Show error message
       handleIsVisibleFooter(true);
     }
   };
@@ -397,7 +419,11 @@ export function TargetNode({ id }) {
                         </label>
                       </div>
                       <button
-                        onClick={() => openDrawer(id, table)}
+                        onClick={() => 
+                          {
+                            handlePurgeNode("Target node")
+                            openDrawer(id, table);
+                          }}
                         className="text-purple-600 hover:text-purple-700"
                       >
                         <Pencil className="w-4 h-4" />

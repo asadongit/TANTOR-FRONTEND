@@ -5,11 +5,14 @@ import { Upload, X, Search, Pencil } from "lucide-react";
 import { useTableContext } from "../../react-flow/context/TableContext";
 import { useStateContext } from "../../react-flow/context/ContextProvider";
 import { SkeletonLoader } from "../../react-flow/SkeletonLoader";
-import { toast } from "react-hot-toast"
+import { toast } from "react-hot-toast";
+import { useAuth } from "../../../../context/AuthContext";
+import { usePurgeContext } from "../../react-flow/context/PurgeContext";
 
 export function SourceNode({ id }) {
   const hostname = import.meta.env.VITE_FAST_API;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
+  const {token, decodedToken} = useAuth();
+  
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -28,7 +31,12 @@ export function SourceNode({ id }) {
     handleSourceConnectionName,
     handleSelectedDataSetName,
     handleSelectedScopeName,
+    handlePurgeNode,
+    handleFirstSourcePartitionName,
+    //firstSourcePartitionName,
+    handleSourceSelectedTable
   } = useStateContext("");
+  const { saveSourceData, sourceData } = usePurgeContext("")
   const [selectedTables, setSelectedTables] = useState("");
 
   let connectionsData;
@@ -36,6 +44,8 @@ export function SourceNode({ id }) {
   let schemadetails;
   let tabledetails;
   let metadatalist;
+
+  const node = "Source Node";
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -221,7 +231,7 @@ export function SourceNode({ id }) {
   };
 
   const validateSelection = (defineNode, sourceNode) => {
-    const { name } = defineNode;
+    const { name, desc } = defineNode;
     const {
       source_conn_name,
       purge_scope: source_purge_scope,
@@ -230,6 +240,10 @@ export function SourceNode({ id }) {
 
     if (!name) {
       return {valid : false, message:"Name must be selected on Define Node."};
+    }
+
+    if(!desc) {
+      return {valid : false, message:"Description should be selected on Define Node."};
     }
 
     if (!source_conn_name) {
@@ -253,18 +267,29 @@ export function SourceNode({ id }) {
     return { valid: true, message: "Selection is valid." };
   };
 
-  const {sourceName} = useStateContext("")
+  const { defineNodeName, defineNodeDesc } = useStateContext("")
+
+  const saveNode = () => {
+    const tableName = selectedTables[0];
+    const selectedConnectionData = 
+      connections.find((connection) => 
+        connection.connection_name === selectedConnection);
+    const connectionType = selectedConnectionData?.connection_type;
+    const connectionId = selectedConnectionData?.connection_id;
+
+    saveSourceData(connectionId, selectedConnection, connectionType, tableName, selectedSchema, connectionType)
+  }
 
   const handleOKSlection = () => {
     const defineNode = {
-      name: sourceName || "",
+      name: defineNodeName || "",
+      desc: defineNodeDesc || "",
     };
 
     const sourceNode = {
       source_conn_name: selectedConnection || "",
       purge_scope: selectedPurgeScope || "",
-      selectedTables:
-      selectedPurgeScope === "subset" && selectedTables,
+      selectedTables: selectedPurgeScope === "subset" && selectedTables,
     };
 
     const validationResult = validateSelection(
@@ -277,9 +302,22 @@ export function SourceNode({ id }) {
       return;
     } 
     else {
+      saveNode();
       toast.success("Table updated successfully")
     }
   };
+  
+  const [firstSourcePartitionName, setFirstSourcePartitionName] = useState("");
+
+  const getFirstPartitionNameFromTable = (table) => {
+    if(!table?.partition_json) return null;
+
+    if(table.partition_json.length === 0) return null;
+
+    const sortedPartitions = [...table.partition_json].sort((a, b) => a.partition_id - b.partition_id); 
+
+    return (sortedPartitions[0]?.partition_name || null);
+  }
 
   return (
     <div
@@ -494,7 +532,7 @@ export function SourceNode({ id }) {
                             if (isChecked) {
                               setSelectedItems(
                                 filterMetaData
-                                  .filter((table) => table !== null) // Filter out null responses
+                                  .filter((table) => table !== null)
                                   .map((table) => table.source_table)
                               );
                             } else {
@@ -604,6 +642,8 @@ export function SourceNode({ id }) {
                             checked={selectedTables.includes(table.table_name)}
                             onChange={() => {
                               handleTableSelection(table.table_name);
+                              handleFirstSourcePartitionName(getFirstPartitionNameFromTable(table))
+                              handleSourceSelectedTable(table)
                               handleSelectedDataSetName([table.table_name]);
                             }}
                             className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
@@ -623,7 +663,10 @@ export function SourceNode({ id }) {
                           </label>
                         </div>
                         <button
-                          onClick={() => openDrawer(id, table)}
+                          onClick={() => {
+                            openDrawer(id, table);
+                            handlePurgeNode("Source Node")
+                          }}
                           className="text-purple-600 hover:text-purple-700"
                         >
                           <Pencil className="w-4 h-4" />
