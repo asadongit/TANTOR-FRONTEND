@@ -169,7 +169,7 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
         }, []);
 
 const handleEditConnection=(connection)=>{
-  setEditConnectionData(connection);
+  // setEditConnectionData(connection);
   openModal('editCreate', connection);
 
 }
