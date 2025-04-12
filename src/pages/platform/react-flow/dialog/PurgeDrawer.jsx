@@ -15,8 +15,12 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
   const [isQueryPreview, setIsQueryPreview] = useState(false);
   const [complexQuery, setComplexQuery] = useState("");
   const [isComplexQueryPreview, setIsComplexQueryPreview] = useState(false);
-  const { purgeNode, firstSourcePartitionName, sourceSelectedTable } =
-    useStateContext("");
+  const {
+    purgeNode,
+    firstSourcePartitionName,
+    sourceSelectedTable,
+    selectedScope,
+  } = useStateContext("");
 
   const selectedNode = purgeNode;
   const [filterEntries, setFilterEntries] = useState([]);
@@ -131,8 +135,6 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
                 }
               : t
           );
-
-          // If the table wasn't found, add it (in case tables were empty)
           if (
             !existingTables.some((t) => t.table_name === localTable.table_name)
           ) {
@@ -163,13 +165,12 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
     closeDrawer();
   };
 
-  //   const [ tableSort, setTableSort ] = useState([]);
-  //   const [partitionMismatch, setPartitionMismatch] = useState(false);
-
-  const currentPartitions =
+  const partitionData = 
     drawerState.selectedTable?.metadatas?.partition_json ||
     drawerState.selectedTable?.partition_json ||
     [];
+
+  const currentPartitions = Array.isArray(partitionData) ? partitionData : [];
   const hasPartitions = currentPartitions.length > 0;
 
   const sortedCurrentPartitions = [...currentPartitions].sort(
@@ -201,7 +202,6 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
         );
       });
       setSelectedRows(matchingIndex !== -1 ? [matchingIndex] : []);
-      console.log("partition mismatch -- ", partitionMismatch)
       setPartitionMismatch(matchingIndex === -1);
     }
   }, [drawerState?.selectedTable, selectedNode]);
@@ -643,7 +643,20 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
         </div>
       )}
 
-      {selectedNode === "Source Node" && !isMSSQLConnection && (
+      {selectedScope === "bulk" &&(
+        <div
+        className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}
+      >
+        <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+          <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
+          <div>
+            <strong>Partition for this scope not supported!</strong>
+          </div>
+        </div>
+      </div>
+      )}
+
+      {selectedNode === "Source Node" && !isMSSQLConnection && selectedScope === "subset" && (
         <>
           {!hasPartitions && (
             <div
@@ -652,7 +665,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
               <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
                 <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
                 <div>
-                  <strong>Partition for this database doesn't exist.</strong>
+                  <strong>Partition for source database doesn't exist.</strong>
                 </div>
               </div>
             </div>
@@ -711,7 +724,9 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
                         <td className="border border-gray-200 p-3 text-center">
                           <input
                             type="checkbox"
-                            checked={index === 0 || selectedRows.includes(index)}
+                            checked={
+                              index === 0 || selectedRows.includes(index)
+                            }
                             readOnly
                             //onChange={() => handleCheckboxChange(index)}
                             //disabled={index !== 0}
@@ -744,7 +759,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
         </>
       )}
 
-      {selectedNode === "Target node" && !isMSSQLConnection && (
+      {selectedNode === "Target node" && !isMSSQLConnection && selectedScope === "subset" && (
         <>
           <div
             className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}
@@ -754,7 +769,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
                 <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
                 <div>
                   <strong>
-                    Partition for this database doesn't exist in source table.
+                    Partition for this database doesn't exist in source table!
                   </strong>
                 </div>
               </div>
@@ -765,7 +780,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
                 <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
                 <div>
                   <strong>
-                    Partition for this database doesn't exist target node.
+                    Partition for target database doesn't exist!
                   </strong>
                 </div>
               </div>
@@ -776,8 +791,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
                 <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
                 <div>
                   <strong>
-                    Partition for this database doesn't exist for both source
-                    and target table.
+                    Partition doesn't exist for both source and target database!
                   </strong>
                 </div>
               </div>

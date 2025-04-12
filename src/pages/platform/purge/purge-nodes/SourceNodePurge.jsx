@@ -11,8 +11,8 @@ import { usePurgeContext } from "../../react-flow/context/PurgeContext";
 
 export function SourceNode({ id }) {
   const hostname = import.meta.env.VITE_FAST_API;
-  const {token, decodedToken} = useAuth();
-  
+  const { token, decodedToken } = useAuth();
+
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -34,9 +34,9 @@ export function SourceNode({ id }) {
     handlePurgeNode,
     handleFirstSourcePartitionName,
     //firstSourcePartitionName,
-    handleSourceSelectedTable
+    handleSourceSelectedTable,
   } = useStateContext("");
-  const { saveSourceData, sourceData } = usePurgeContext("")
+  const { saveSourceData, sourceData } = usePurgeContext("");
   const [selectedTables, setSelectedTables] = useState("");
 
   let connectionsData;
@@ -67,12 +67,9 @@ export function SourceNode({ id }) {
   const fetchschemacount = useCallback(
     async (connectionName) => {
       if (!connectionName) {
-        setSchemacount([]); // Clear schemas when no connection selected
+        setSchemacount([]);
         return;
       }
-
-      //   setSchemaLoading(true);
-
       try {
         const response = await fetch(
           `${hostname}/schema/${connectionName}/count`,
@@ -90,10 +87,9 @@ export function SourceNode({ id }) {
         schemacount = await response.json();
 
         setSchemacount(schemacount);
-        // setSchemaLoading(false);
       } catch (error) {
         console.error("Error fetching schemas:", error);
-        setSchemacount([]); // Clear schemas on error
+        setSchemacount([]);
       }
     },
     [hostname, token]
@@ -106,12 +102,10 @@ export function SourceNode({ id }) {
   const fetchschema = useCallback(
     async (connectionName) => {
       if (!connectionName) {
-        setSchema([]); // Clear schemas when no connection selected
+        setSchema([]);
         return;
       }
-
       setSchemaLoading(true);
-
       try {
         const response = await fetch(`${hostname}/schema/${connectionName}`, {
           headers: {
@@ -124,12 +118,11 @@ export function SourceNode({ id }) {
         }
 
         schemadetails = await response.json();
-
         setSchema(schemadetails);
         setSchemaLoading(false);
       } catch (error) {
         console.error("Error fetching schemas:", error);
-        setSchema([]); // Clear schemas on error
+        setSchema([]);
       }
     },
     [hostname, token]
@@ -155,7 +148,6 @@ export function SourceNode({ id }) {
         }
 
         tabledetails = await fetchTableResponse.json();
-
         setTables(tabledetails);
       } catch (error) {
         console.error("Error fetching tables:", error);
@@ -171,24 +163,23 @@ export function SourceNode({ id }) {
     setLoading(true);
     try {
       const cachedmetadatalist = sessionStorage.getItem("metadatalist");
-      if (cachedmetadatalist) {
-        metadatalist = JSON.parse(cachedmetadatalist);
-      } else {
-        const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+      // if (cachedmetadatalist) {
+      //   metadatalist = JSON.parse(cachedmetadatalist);
+      // }
+      const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-        if (!metaDataResponse.ok) {
-          throw new Error(`HTTP error! status: ${metaDataResponse.status}`);
-        }
-
-        metadatalist = await metaDataResponse.json();
-        sessionStorage.setItem("metadatalist", JSON.stringify(metadatalist));
+      if (!metaDataResponse.ok) {
+        throw new Error(`HTTP error! status: ${metaDataResponse.status}`);
       }
+
+      metadatalist = await metaDataResponse.json();
+      //sessionStorage.setItem("metadatalist", JSON.stringify(metadatalist));
       setMetaData(metadatalist);
     } catch (error) {
       console.error("Error fetching tables:", error);
@@ -196,7 +187,7 @@ export function SourceNode({ id }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hostname, token]);
 
   const filteredTables = tables.filter((table) =>
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
@@ -239,11 +230,14 @@ export function SourceNode({ id }) {
     } = sourceNode;
 
     if (!name) {
-      return {valid : false, message:"Name must be selected on Define Node."};
+      return { valid: false, message: "Name must be selected on Define Node." };
     }
 
-    if(!desc) {
-      return {valid : false, message:"Description should be selected on Define Node."};
+    if (!desc) {
+      return {
+        valid: false,
+        message: "Description should be selected on Define Node.",
+      };
     }
 
     if (!source_conn_name) {
@@ -267,18 +261,25 @@ export function SourceNode({ id }) {
     return { valid: true, message: "Selection is valid." };
   };
 
-  const { defineNodeName, defineNodeDesc } = useStateContext("")
+  const { defineNodeName, defineNodeDesc } = useStateContext("");
 
   const saveNode = () => {
     const tableName = selectedTables[0];
-    const selectedConnectionData = 
-      connections.find((connection) => 
-        connection.connection_name === selectedConnection);
+    const selectedConnectionData = connections.find(
+      (connection) => connection.connection_name === selectedConnection
+    );
     const connectionType = selectedConnectionData?.connection_type;
     const connectionId = selectedConnectionData?.connection_id;
 
-    saveSourceData(connectionId, selectedConnection, connectionType, tableName, selectedSchema, connectionType)
-  }
+    saveSourceData(
+      connectionId,
+      selectedConnection,
+      connectionType,
+      tableName,
+      selectedSchema,
+      connectionType
+    );
+  };
 
   const handleOKSlection = () => {
     const defineNode = {
@@ -292,32 +293,31 @@ export function SourceNode({ id }) {
       selectedTables: selectedPurgeScope === "subset" && selectedTables,
     };
 
-    const validationResult = validateSelection(
-      defineNode,
-      sourceNode,
-    );
+    const validationResult = validateSelection(defineNode, sourceNode);
 
     if (!validationResult.valid) {
-      toast.error(validationResult.message)
+      toast.error(validationResult.message);
       return;
-    } 
-    else {
+    } else {
       saveNode();
-      toast.success("Table updated successfully")
+      toast.success("Table updated successfully");
     }
   };
-  
+
   const [firstSourcePartitionName, setFirstSourcePartitionName] = useState("");
 
   const getFirstPartitionNameFromTable = (table) => {
-    if(!table?.partition_json) return null;
+    if (!table?.partition_json) return null;
+    console.log("table in source node ---> ", table);
 
-    if(table.partition_json.length === 0) return null;
+    if (table.partition_json.length === 0) return null;
 
-    const sortedPartitions = [...table.partition_json].sort((a, b) => a.partition_id - b.partition_id); 
+    const sortedPartitions = [...table.partition_json].sort(
+      (a, b) => a.partition_id - b.partition_id
+    );
 
-    return (sortedPartitions[0]?.partition_name || null);
-  }
+    return sortedPartitions[0]?.partition_name || null;
+  };
 
   return (
     <div
@@ -482,17 +482,7 @@ export function SourceNode({ id }) {
 
       {selectedConnection &&
         selectedSchema &&
-        selectedPurgeScope === "bulk" &&
-        (filterMetaData
-          .filter((table) => table !== null)
-          .filter(
-            (connection) => connection.source_conn_name == selectedConnection
-          ).length === 0 ? (
-          <div className="text-xs font-semibold text-black mt-4">
-            {" "}
-            No Data Set Found{" "}
-          </div>
-        ) : (
+        selectedPurgeScope === "bulk" && (
           <div>
             <div className="flex items-center gap-2 mb-0.5 mt-4">
               <Search size={14} className="text-gray-500" />
@@ -518,88 +508,102 @@ export function SourceNode({ id }) {
                   </>
                 ) : (
                   <>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 mt-2">
-                        <input
-                          type="checkbox"
-                          id="select-all"
-                          className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          checked={
-                            selectedItems.length === filterMetaData.length
-                          } // Check if all items are selected
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            if (isChecked) {
-                              setSelectedItems(
-                                filterMetaData
-                                  .filter((table) => table !== null)
-                                  .map((table) => table.source_table)
-                              );
-                            } else {
-                              setSelectedItems([]);
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor="select-all"
-                          className="text-xs font-semibold text-black"
-                        >
-                          Select all
-                        </label>
-                      </div>
-                    </div>
-
                     {filterMetaData
                       .filter((table) => table !== null)
                       .filter(
                         (connection) =>
                           connection.source_conn_name == selectedConnection
-                      )
-                      .map((table, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between"
-                        >
-                          <div className="flex items-center space-x-2">
+                      ).length === 0 ? (
+                      <div className="text-xs font-semibold text-black mt-2">
+                        {" "}
+                        No Data Set Found{" "}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2 mt-2">
                             <input
                               type="checkbox"
-                              id={`table-${idx}`}
-                              checked={selectedItems.includes(
-                                table.source_table
-                              )}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setSelectedItems((prev) =>
-                                  checked
-                                    ? [...prev, table.source_table]
-                                    : prev.filter(
-                                        (i) => i !== table.source_table
-                                      )
-                                );
-                              }}
+                              id="select-all"
                               className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                              checked={
+                                selectedItems.length === filterMetaData.length
+                              } // Check if all items are selected
+                              onChange={(e) => {
+                                const isChecked = e.target.checked;
+                                if (isChecked) {
+                                  setSelectedItems(
+                                    filterMetaData
+                                      .filter((table) => table !== null)
+                                      .map((table) => table.source_table)
+                                  );
+                                } else {
+                                  setSelectedItems([]);
+                                }
+                              }}
                             />
                             <label
-                              htmlFor={`table-${idx}`}
+                              htmlFor="select-all"
                               className="text-xs font-semibold text-black"
                             >
-                              {table.source_table}
+                              Select all
                             </label>
                           </div>
-                          <button
-                            onClick={() => openDrawer(id, table)}
-                            className="text-purple-600 hover:text-purple-700"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
                         </div>
-                      ))}
+
+                        {filterMetaData
+                          .filter((table) => table !== null)
+                          .filter(
+                            (connection) =>
+                              connection.source_conn_name == selectedConnection
+                          )
+                          .map((table, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id={`table-${idx}`}
+                                  checked={selectedItems.includes(
+                                    table.source_table
+                                  )}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setSelectedItems((prev) =>
+                                      checked
+                                        ? [...prev, table.source_table]
+                                        : prev.filter(
+                                            (i) => i !== table.source_table
+                                          )
+                                    );
+                                  }}
+                                  className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                />
+                                <label
+                                  htmlFor={`table-${idx}`}
+                                  className="text-xs font-semibold text-black"
+                                >
+                                  {table.source_table}
+                                </label>
+                              </div>
+                              <button
+                                onClick={() => openDrawer(id, table)}
+                                className="text-purple-600 hover:text-purple-700"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                      </>
+                    )}
                   </>
                 )}
               </div>
             </div>
           </div>
-        ))}
+        )}
 
       {selectedConnection &&
         selectedSchema &&
@@ -642,8 +646,10 @@ export function SourceNode({ id }) {
                             checked={selectedTables.includes(table.table_name)}
                             onChange={() => {
                               handleTableSelection(table.table_name);
-                              handleFirstSourcePartitionName(getFirstPartitionNameFromTable(table))
-                              handleSourceSelectedTable(table)
+                              handleFirstSourcePartitionName(
+                                getFirstPartitionNameFromTable(table)
+                              );
+                              handleSourceSelectedTable(table);
                               handleSelectedDataSetName([table.table_name]);
                             }}
                             className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
@@ -665,7 +671,7 @@ export function SourceNode({ id }) {
                         <button
                           onClick={() => {
                             openDrawer(id, table);
-                            handlePurgeNode("Source Node")
+                            handlePurgeNode("Source Node");
                           }}
                           className="text-purple-600 hover:text-purple-700"
                         >
@@ -682,13 +688,13 @@ export function SourceNode({ id }) {
         <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           Cancel
         </button>
-        <button 
-        onClick={handleOKSlection}
-        className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
+        <button
+          onClick={handleOKSlection}
+          className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
+        >
           OK
         </button>
       </div>
-
     </div>
   );
 }
