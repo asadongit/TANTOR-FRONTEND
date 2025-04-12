@@ -35,8 +35,8 @@ import CardGrid from "../../../components/CardGrid";
 import toast  from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 import columnConfigurations from "../../../components/columnsConfig";
-import ViewConnection from "./viewConnection";
-import ConnectionWizard from "./ConnectionWizard";
+import ViewConnection from "./components/viewConnection";
+import ConnectionWizard from "./components/ConnectionWizard";
 const Connections = () => {
 
 const {token, project, setSelectedProject, hostnameV1 }= useAuth();
