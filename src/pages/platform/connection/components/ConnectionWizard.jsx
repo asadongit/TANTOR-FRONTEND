@@ -7,7 +7,7 @@ import { connectorConfig } from "./connectorConfig";
 import Modal from "../../cdc/components/Modal";
 import { useConnectionData } from "../../../../hooks/platform/connection";
 
-const ConnectionWizard = ({editConnectionData , closeModal}) => {
+const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
 /*
  * Create or Edit a connection.
  */
@@ -35,7 +35,7 @@ const ConnectionWizard = ({editConnectionData , closeModal}) => {
     password: "",
     pool_type: "",
     project: project,
-    status: "",
+    status: "fetching",
     source_schema: "",
     service_principal: "",
     client_principal: "",
@@ -233,11 +233,11 @@ const ConnectionWizard = ({editConnectionData , closeModal}) => {
   const handleCompleteClose = () => {
     closeInternalModal();
     
-    if (closeModal) {
-      closeModal("modal1");
+    if (closeLocalModal) {
+      closeLocalModal("modal1");
       
       if (isEditMode) {
-        closeModal("modal2");
+        closeLocalModal("modal2");
       }
     }
     
@@ -455,8 +455,8 @@ const ConnectionWizard = ({editConnectionData , closeModal}) => {
         <div className="flex justify-end gap-3 mt-4">
           <button
             onClick={()=>{
-                closeModal('modal1');
-                isEditMode && closeModal('modal2');
+                closeLocalModal('modal1');
+                isEditMode && closeLocalModal('modal2');
             }} 
            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-[#8e78b7] hover:text-white transition-colors"
           >
@@ -689,7 +689,7 @@ return (
     <>
       {activeModal === "selection" && renderConnectorSelectionModal()}
       {activeModal === "details"  && renderConnectionDetailsModal()}
-      {activeModal === "success" && <Modal  isOpen={true}  onClose={handleCompleteClose}  type={"success"} title={"Congratulations!"} message={"You have successfully created a connection."} confirmText={"Alright"} onConfirm={handleCompleteClose} />}
+       <Modal  isOpen={activeModal === "success"}  onClose={handleCompleteClose}  type={"success"} title={"Congratulations!"} message={"You have successfully created a connection."} confirmText={"Alright"} onConfirm={handleCompleteClose} />
     </>
   );
 };

@@ -1,31 +1,11 @@
-import { Icon } from "@iconify-icon/react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Pencil,
   Trash2,
-  MoreHorizontal,
   RotateCw,
   Eye,
-  X,
-  BadgeCheck,
   ChevronDown,
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  Play,
-  RefreshCcw,
-  Search,
 } from "lucide-react";
-import successBackground from "../../../assets/green.png";
-import PostgreSQL from "../../../assets/connector/postgresql-connector.png";
-import Oracle from "../../../assets/connector/oracle-connector.png";
-import Hive from "../../../assets/connector/hive-connector.png";
-import MongoDB from "../../../assets/connector/mongodb-connector.png";
-import MySQL from "../../../assets/connector/mysql-connector.png";
-import Snowflake from "../../../assets/connector/snowflake-connector.png";
-import MSSQL from "../../../assets/connector/mssql-connector.png";
-import DB2 from "../../../assets/connector/db2-connector.png";
-import Kafka from "../../../assets/connector/kafka-connector.png";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
 import { useConnectionCardData } from "../../../hooks/platform/cardCounts";
@@ -37,10 +17,13 @@ import { useAuth } from "../../../context/AuthContext";
 import columnConfigurations from "../../../components/columnsConfig";
 import ViewConnection from "./components/viewConnection";
 import ConnectionWizard from "./components/ConnectionWizard";
+import Modal from "../cdc/components/Modal";
+import axios from "axios";
+import { useModal } from "../cdc/context/ModalProvider";
 const Connections = () => {
 
 const {token, project, setSelectedProject, hostnameV1 }= useAuth();
-
+  const {openModal, closeModal}= useModal()
   const {
     data: cardData,
     isLoading: isCardLoading,
@@ -59,11 +42,12 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
   const [activeModal, setActiveModal] = useState(null); 
   const navigate = useNavigate();
 
-  const openModal = (modalName, data = null) => {
+  const openLocalModal = (modalName, data = null) => {
     setActiveModal({ name: modalName, data });
   };
   
-  const closeModal = () => {
+  const closeLocalModal = () => {
+    closeModal()   
     setActiveModal(null);
   };
 
@@ -109,18 +93,7 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
   }, [cardData]);
 
 
-  const columns = [
-    { key: "connection_name", label: "Connection Name" },
-    { key: "project", label: "Project Name" },
-    { key: "created_by", label: "Created By" },
-    { key: "database_name", label: "Database" },
-    { key: "connection_type", label: "Connection Type" },
-    { key: "host_address", label: "Host" },
-    { key: "username", label: "Username" },
-    { key: "table_count", label: "No of Table" },
-    { key: "status", label: "Status" },
-    { label: "Action", sortable: false },
-  ];
+  const columns = columnConfigurations['connections']
 
 
   const handleRefresh = (id) => {
@@ -133,6 +106,7 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
       .then((response) => {
         if (response.status === 200) {
           toast.success("Reload Successful");
+          refetchConnections();
         } else {
           return response.json().then((data) => {
             throw new Error(data.errorMessage || "Reload Failed");
@@ -149,7 +123,7 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
       const fetchViewConnections = useCallback(async (connection) => {
         setConnectionDetails(connection)
         setViewConnectionData(null)
-        openModal('view')
+        openLocalModal('view')
         fetch(
           `${hostnameV1}/connection-master-metadata/find-by-conn-name-type?conn_name=${connection.connection_name}`, {
           headers: {
@@ -168,11 +142,7 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
           });
         }, []);
 
-const handleEditConnection=(connection)=>{
-  // setEditConnectionData(connection);
-  openModal('editCreate', connection);
 
-}
     const actions = [
       {
         label: "View",
@@ -182,12 +152,18 @@ const handleEditConnection=(connection)=>{
       {
         label: "Edit",
         icon: <Pencil size={16} />,
-        onClick: (row) => handleEditConnection(row),
+        onClick: (row) => openLocalModal('editCreate', row),
       },
       {
         label: "Delete",
         icon: <Trash2 size={16} />,
-        onClick: (row) => console.log("Delete clicked for", row),
+        onClick: (row) =>  openModal({
+          title: "Confirm Deletion",
+          message: `Are you sure you want to delete this connection ${row.connection_name}?`,
+          type: "question",
+          onConfirm: () => deleteConnection(row.connection_id),
+           loadingText : "Deleting....."
+        }),
       },
       {
         label: "Run",
@@ -240,7 +216,35 @@ const handleEditConnection=(connection)=>{
 
 
 
+  const deleteConnection = async (id) => {
+    try {
+      const response = await axios.delete(`${hostnameV1}/connection-saves/${id}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
+      if (response.status === 200) {
+        // toast.success("Connection deleted successfully");
+        refetchConnections(); 
+      } else {
+        toast.error("Failed to delete connection");
+      }
+    } catch (error) {
+      console.error("Error deleting connection:", error);
+      toast.error("Error deleting connection");
+    }
+    finally{
+      openModal({
+        title: "Success",
+        message: `Your connection has been deleted successfully!`,
+        type: "success",
+        onConfirm: ()=> closeLocalModal,
+        loadingText:'Deleting'
+      })
+    }
+  };
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -254,7 +258,7 @@ const handleEditConnection=(connection)=>{
             }}
             className=" w-44 text-slate-500 font-medium rounded-lg text-sm px-1 py-2.5 me-2 mb-2 text-center inline-flex items-center dark:bg-white shadow-md"
           >
-            <option value="none">Default{" "}</option>
+            <option value="default">Default{" "}</option>
              {projects?.map((project, idx) => (
               <option key={idx} value={project?.project}
               >
@@ -268,7 +272,7 @@ const handleEditConnection=(connection)=>{
 
           <button
             onClick={() =>{
-              openModal("editCreate", null)
+              openLocalModal("editCreate", null)
             }}
             type="button"
             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
@@ -285,7 +289,7 @@ const handleEditConnection=(connection)=>{
 {activeModal?.name === 'editCreate' && (
   <ConnectionWizard 
     editConnectionData={activeModal.data} 
-    closeModal={closeModal} 
+    closeLocalModal={closeLocalModal} 
   />
 )}
 
@@ -295,7 +299,7 @@ const handleEditConnection=(connection)=>{
     viewConnectionData={viewConnectionData} 
     setViewConnectionData={setViewConnectionData} 
     connectionDetails={connectionDetails} 
-    closeModal={closeModal} 
+    closeModal={closeLocalModal} 
   />
 )}
 
