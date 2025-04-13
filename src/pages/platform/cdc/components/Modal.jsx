@@ -10,8 +10,9 @@ const Modal = ({
   title, 
   message,
   onConfirm = () => {},
+  loadingText,
   confirmText = "Yes",
-  cancelText = "No"
+  cancelText = "No",
 }) => {
   const [animationClass, setAnimationClass] = useState("scale-0");
   const [currentType, setCurrentType] = useState(type);
@@ -126,7 +127,8 @@ const Modal = ({
                   {isLoading ? (
                     <>
                       <Loader className="w-5 h-5 mr-2 animate-spin" />
-                  Saving.....                    </>
+                      {loadingText}
+                      </>
                   ) : confirmText}
                 </button>
               </>

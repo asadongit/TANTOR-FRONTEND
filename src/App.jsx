@@ -25,6 +25,7 @@ import CanvasLayout from "./pages/platform/cdc/CanvasLayout";
 import { PurgeContextProvider } from "./pages/platform/react-flow/context/PurgeContext";
 import { Toaster } from "react-hot-toast";
 import Chatbot from "./pages/chatbot/Chatbot";
+import { ModalProvider } from "./pages/platform/cdc/context/ModalProvider";
 import {
   AuthProvider,
   ProtectedRoute,
@@ -45,175 +46,177 @@ function App() {
       <AuthProvider>
         <ContextViewProvider>
           <Toaster />
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <PublicRoute>
-                  <TantorLogin />
-                </PublicRoute>
-              }
-            />
-
-            <Route element={<ProtectedRoute />}>
+          <ModalProvider>
+            <Routes>
               <Route
-                path="/*"
+                path="/"
                 element={
-                  <div className="min-h-screen bg-gray-50">
-                    <Header />
-                    <Chatbot />
-                    <div className="flex">
-                      <Sidebar
-                        activeSection={activeSection}
-                        isCollapsed={isSidebarCollapsed}
-                        toggleSidebar={toggleSidebar}
-                      />
-                      <main
-                        className={`flex-1 p-4 transition-all duration-300 overflow-hidden ${
-                          isSidebarCollapsed ? "ml-16" : "ml-64"
-                        }`}
-                      >
-                        <Routes>
-                          <Route
-                            path="/dashboard"
-                            element={
-                              <Dashboard
-                                activeSection={activeSection}
-                                setActiveSection={setActiveSection}
-                              />
-                            }
-                          />
-                          <Route path="/*" element={<PlatformRoutes />} />
-                          {DataGovernanceRoutes}
-                        </Routes>
-                      </main>
+                  <PublicRoute>
+                    <TantorLogin />
+                  </PublicRoute>
+                }
+              />
+
+              <Route element={<ProtectedRoute />}>
+                <Route
+                  path="/*"
+                  element={
+                    <div className="min-h-screen bg-gray-50">
+                      <Header />
+                      <Chatbot />
+                      <div className="flex">
+                        <Sidebar
+                          activeSection={activeSection}
+                          isCollapsed={isSidebarCollapsed}
+                          toggleSidebar={toggleSidebar}
+                        />
+                        <main
+                          className={`flex-1 p-4 transition-all duration-300 overflow-hidden ${
+                            isSidebarCollapsed ? "ml-16" : "ml-64"
+                          }`}
+                        >
+                          <Routes>
+                            <Route
+                              path="/dashboard"
+                              element={
+                                <Dashboard
+                                  activeSection={activeSection}
+                                  setActiveSection={setActiveSection}
+                                />
+                              }
+                            />
+                            <Route path="/*" element={<PlatformRoutes />} />
+                            {DataGovernanceRoutes}
+                          </Routes>
+                        </main>
+                      </div>
                     </div>
-                  </div>
-                }
-              />
+                  }
+                />
 
-              {/* Standalone drag-and-drop routes */}
-              <Route
-                path="/Migrationcanvas"
-                element={
-                  <TableProvider>
-                    <FlowDataProvider>
-                      <ThemeProvider>
-                        <DrawerProvider>
-                          <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-                            <Header className="h-16 flex-shrink-0" />
-                            <div className="flex-1 flex">
-                              <div className="flex-1 relative">
-                                <ReactFlowProvider>
-                                  <ArchivalCanvas />
-                                </ReactFlowProvider>
-                              </div>
-                            </div>
-                            <WelcomeModal />
-                          </div>
-                        </DrawerProvider>
-                      </ThemeProvider>
-                    </FlowDataProvider>
-                  </TableProvider>
-                }
-              />
-
-              <Route
-                path="/Transformationcanvas"
-                element={
-                  <TableProvider>
-                    <FlowDataProvider>
-                      <ThemeProvider>
-                        <DrawerProvider>
-                          <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-                            <Header className="h-16 flex-shrink-0" />
-                            <div className="flex-1 flex">
-                              <div className="flex-1 relative">
-                                <ReactFlowProvider>
-                                  <TransformationCanvas />
-                                </ReactFlowProvider>
-                              </div>
-                            </div>
-                            <WelcomeModal />
-                          </div>
-                        </DrawerProvider>
-                      </ThemeProvider>
-                    </FlowDataProvider>
-                  </TableProvider>
-                }
-              />
-
-              <Route
-                path="/PurgeCanvas"
-                element={
-                  <TableProvider>
-                    <FlowDataProvider>
-                      <ThemeProvider>
-                        <DrawerProvider>
-                          <ContextProvider>
-                          <PurgeContextProvider>
+                {/* Standalone drag-and-drop routes */}
+                <Route
+                  path="/Migrationcanvas"
+                  element={
+                    <TableProvider>
+                      <FlowDataProvider>
+                        <ThemeProvider>
+                          <DrawerProvider>
                             <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
                               <Header className="h-16 flex-shrink-0" />
                               <div className="flex-1 flex">
                                 <div className="flex-1 relative">
                                   <ReactFlowProvider>
-                                    <PurgeCanvas />
+                                    <ArchivalCanvas />
                                   </ReactFlowProvider>
                                 </div>
                               </div>
                               <WelcomeModal />
                             </div>
-                          </PurgeContextProvider>
-                          </ContextProvider>
-                        </DrawerProvider>
-                      </ThemeProvider>
-                    </FlowDataProvider>
-                  </TableProvider>
-                }
-              />
+                          </DrawerProvider>
+                        </ThemeProvider>
+                      </FlowDataProvider>
+                    </TableProvider>
+                  }
+                />
 
-              <Route
-                path="/canvas/:canvasTypeParam"
-                element={<CanvasLayout />}
-              />
+                <Route
+                  path="/Transformationcanvas"
+                  element={
+                    <TableProvider>
+                      <FlowDataProvider>
+                        <ThemeProvider>
+                          <DrawerProvider>
+                            <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
+                              <Header className="h-16 flex-shrink-0" />
+                              <div className="flex-1 flex">
+                                <div className="flex-1 relative">
+                                  <ReactFlowProvider>
+                                    <TransformationCanvas />
+                                  </ReactFlowProvider>
+                                </div>
+                              </div>
+                              <WelcomeModal />
+                            </div>
+                          </DrawerProvider>
+                        </ThemeProvider>
+                      </FlowDataProvider>
+                    </TableProvider>
+                  }
+                />
 
-              <Route
-                path="/viewcanvas"
-                element={
-                  <ViewDrawer>
-                    <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
-                      <Header className="h-16 flex-shrink-0" />
-                      <div className="flex-1 flex mt-8">
-                        <BusinessSidebar className="w-64" />
-                        <div className="flex-1 relative">
+                <Route
+                  path="/PurgeCanvas"
+                  element={
+                    <TableProvider>
+                      <FlowDataProvider>
+                        <ThemeProvider>
+                          <DrawerProvider>
+                            <ContextProvider>
+                              <PurgeContextProvider>
+                                <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
+                                  <Header className="h-16 flex-shrink-0" />
+                                  <div className="flex-1 flex">
+                                    <div className="flex-1 relative">
+                                      <ReactFlowProvider>
+                                        <PurgeCanvas />
+                                      </ReactFlowProvider>
+                                    </div>
+                                  </div>
+                                  <WelcomeModal />
+                                </div>
+                              </PurgeContextProvider>
+                            </ContextProvider>
+                          </DrawerProvider>
+                        </ThemeProvider>
+                      </FlowDataProvider>
+                    </TableProvider>
+                  }
+                />
+
+                <Route
+                  path="/canvas/:canvasTypeParam"
+                  element={<CanvasLayout />}
+                />
+
+                <Route
+                  path="/viewcanvas"
+                  element={
+                    <ViewDrawer>
+                      <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
+                        <Header className="h-16 flex-shrink-0" />
+                        <div className="flex-1 flex mt-8">
+                          <BusinessSidebar className="w-64" />
+                          <div className="flex-1 relative">
+                            <ReactFlowProvider>
+                              <ViewCanvas />
+                            </ReactFlowProvider>
+                          </div>
+                        </div>
+                        <BusinessFooter />
+                      </div>
+                    </ViewDrawer>
+                  }
+                />
+
+                <Route
+                  path="/federation/view/source"
+                  element={
+                    <ContextViewProvider>
+                      <div className="h-screen flex flex-col">
+                        <Header className="flex-shrink-0 h-16" />
+                        <div className="flex-1 relative overflow-hidden">
                           <ReactFlowProvider>
-                            <ViewCanvas />
+                            <Source />
                           </ReactFlowProvider>
                         </div>
                       </div>
-                      <BusinessFooter />
-                    </div>
-                  </ViewDrawer>
-                }
-              />
-
-              <Route
-                path="/federation/view/source"
-                element={
-                  <ContextViewProvider>
-                    <div className="h-screen flex flex-col">
-                      <Header className="flex-shrink-0 h-16" />
-                      <div className="flex-1 relative overflow-hidden">
-                        <ReactFlowProvider>
-                          <Source />
-                        </ReactFlowProvider>
-                      </div>
-                    </div>
-                  </ContextViewProvider>
-                }
-              />
-            </Route>
-          </Routes>
+                    </ContextViewProvider>
+                  }
+                />
+              </Route>
+            </Routes>
+          </ModalProvider>
         </ContextViewProvider>
       </AuthProvider>
     </Router>
