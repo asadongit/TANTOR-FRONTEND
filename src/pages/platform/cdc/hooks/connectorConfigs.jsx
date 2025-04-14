@@ -21,7 +21,7 @@ export const useCDCConfigs = (cdcId) => {
   const { token } = useAuth();
 
   return useQuery({
-    queryKey: ["CDCConfigs", cdcId],
+    queryKey: [`CDCConfigs${cdcId}`, cdcId],
     queryFn: () => fetchCDCConfigs(token, cdcId),
     enabled: !!token && !!cdcId,
     staleTime: 30 * 1000,
