@@ -41,9 +41,7 @@ export const createPipeline = (category, pipelineId, pipelineIndex) => {
       },
     ];
 
-    console.log("pipelineNodes---------------------------------------", pipelineNodes)
-    console.log("pipelineEdges---------------------------------------", pipelineEdges)
-    
+
     return { 
       nodes: pipelineNodes, 
       edges: pipelineEdges 

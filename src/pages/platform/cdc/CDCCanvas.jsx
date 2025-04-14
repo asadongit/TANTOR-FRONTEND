@@ -77,71 +77,60 @@ const Canvas = () => {
     };
   }, [onNodeDelete]);
 
-  const onConnect = useCallback(
-    (connection) => {
-      setEdges((prevEdges) => addEdge(connection, prevEdges));
   
-      setNodes((prevNodes) => {
-        const sourceNode = prevNodes.find((n) => n.id === connection.source);
-        const targetNode = prevNodes.find((n) => n.id === connection.target);
-  
-        if (!sourceNode || !targetNode) {
-          console.log(
-            `Node not found: ${!sourceNode ? `Source (ID: ${connection.source})` : ''} ${!targetNode ? `Target (ID: ${connection.target})` : ''}`
-          );
-          return prevNodes;
-        }
-  
-        return prevNodes.map((node) => {
-          if (node.id === connection.target) {
-            const updatedSourceData = Array.isArray(node.data?.[sourceNode.type])
-              ? node.data[sourceNode.type].filter((s) => s.id !== sourceNode.id)
-              : [];
-  
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                [sourceNode.type]: 
-                // [
-                  // ...updatedSourceData,
-                  {
-                    id: sourceNode.id,
-                    ...sourceNode.data[sourceNode.type],
-                  },
-                // ],
-              },
-            };
-          }
-  
-          if (node.id === connection.source) {
-            const updatedTargetData = Array.isArray(node.data?.[targetNode.type])
-              ? node.data[targetNode.type].filter((t) => t.id !== targetNode.id)
-              : [];
-  
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                [targetNode.type]: [
-                  ...updatedTargetData,
-                  {
-                    id: targetNode.id,
-                    ...targetNode.data[targetNode.type],
-                  },
-                ],
-              },
-            };
-          }
-  
-          return node;
-        });
-      });
-    },
-    [setNodes, setEdges]
-  );
-  
+const onConnect = useCallback(
+  (connection) => {
+    setEdges((prevEdges) => addEdge(connection, prevEdges));
 
+    setNodes((prevNodes) => {
+      const sourceNode = prevNodes.find((n) => n.id === connection.source);
+      const targetNode = prevNodes.find((n) => n.id === connection.target);
+      if (!sourceNode || !targetNode) {
+        return prevNodes;
+      }
+
+      const sourceType = sourceNode.type;
+      const targetType = targetNode.type;
+
+      const sourceData = sourceNode.data[sourceType]|| sourceNode.data;
+      const targetData =  targetNode.data[targetType]|| targetNode.data;
+
+      if (!sourceData || !targetData) {
+        return prevNodes;
+      }
+
+      const updatedNodes = prevNodes.map((node) => {
+        if (node.id === connection.target) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              [sourceType]: [...(node.data[sourceType] || []), sourceData],
+            },
+          };
+        }
+
+        if (node.id === connection.source) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              [targetType]: [...(node.data[targetType] || []), targetData],
+            },
+          };
+        }
+
+        return node;
+      });
+
+      return updatedNodes;
+    });
+  },
+  [setNodes, setEdges]
+);
+
+  
+  
   return (
     <div className="w-full h-full" ref={reactFlowWrapper}>
       <ReactFlow
@@ -158,6 +147,8 @@ const Canvas = () => {
         selectionOnDrag
         // isValidConnection={isValidConnection}
         elementsSelectable={isSelectable}
+        // nodeDragThreshold={10}
+
         className="bg-gray-50"
       >
         <Controls className="fill-white stroke-black" />

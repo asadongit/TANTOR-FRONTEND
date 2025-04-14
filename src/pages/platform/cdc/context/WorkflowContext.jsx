@@ -66,7 +66,6 @@ export const WorkflowProvider = ({ children }) => {
       if (!prevPipelines[pipelineId]) {
         return prevPipelines;
       }
-
       return {
         ...prevPipelines,
         [pipelineId]: {
@@ -210,47 +209,59 @@ export const WorkflowProvider = ({ children }) => {
     setNodes((nodes) => [...nodes, newNode]);
   };
 
+  
   const updateCustomNode = (nodeId, nodeType, updatedData) => {
+
     setNodes((prevNodes) => {
       let updatedNodes = prevNodes.map((node) =>
         node.id === nodeId
           ? {
+              ...node,
+              data: {
+                ...node.data,
+                [nodeType]: {
+                  id: nodeId,
+                  ...updatedData, 
+                },
+              },
+            }
+          : node
+      );
+  
+  
+      const connectedNodes = edges
+        .filter((edge) => edge.source === nodeId || edge.target === nodeId)
+        .map((edge) => (edge.source === nodeId ? edge.target : edge.source));
+  
+  
+      updatedNodes = updatedNodes.map((node) => {
+        if (connectedNodes.includes(node.id)) {
+  
+          const existingData = Array.isArray(node.data[nodeType]) ? node.data[nodeType] : [];
+          const existingIndex = existingData.findIndex((item) => item.id === nodeId);
+  
+          let updatedArray;
+          if (existingIndex !== -1) {
+            updatedArray = [...existingData];
+            updatedArray[existingIndex] = { id: nodeId, ...updatedData };
+          } else {
+            updatedArray = [...existingData, { id: nodeId, ...updatedData }];
+          }
+          return {
             ...node,
             data: {
               ...node.data,
-              [nodeType]:{
-                id:nodeId,
-                ...updatedData
-              } ,
+              [nodeType]: updatedArray,
             },
-          }
-          : node
-      );
-
-      const connectedTargets = edges
-        .filter((edge) => edge.source === nodeId)
-        .map((edge) => edge.target);
-
-      updatedNodes = updatedNodes.map((node) =>
-        connectedTargets.includes(node.id)
-          ? {
-            ...node,
-            data: {
-              ...node.data,
-              [nodeType]: {
-                id:nodeId,
-                ...updatedData
-              } ,
-            },
-          }
-          : node
-      );
-
+          };
+        }
+        return node;
+      });
+  
       return updatedNodes;
     });
   };
-
-
+  
 
   const updateData = (ID, isPipelineNode = false, type, updatedNodeData) => {
     isPipelineNode

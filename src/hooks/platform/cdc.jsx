@@ -2,13 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 
-const hostname = import.meta.env.VITE_FAST_API;
 
-const fetchCDCData = async (token) => {
+const fetchCDCData = async (token, hostnameV2) => {
   if (!token) throw new Error("Token is missing");
 
   try {
-    const response = await axios.get(`${hostname}/cdc`, {
+    const response = await axios.get(`${hostnameV2}/cdc`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -20,11 +19,11 @@ const fetchCDCData = async (token) => {
 };
 
 export const useCDCData = () => {
-  const { token } = useAuth();
+  const { token, hostnameV2 } = useAuth();
 
   return useQuery({
     queryKey: ["cdcData"],
-    queryFn: () => fetchCDCData(token), 
+    queryFn: () => fetchCDCData(token, hostnameV2), 
     enabled: !!token, 
     staleTime: 30 * 1000, 
     retry: 2, 
