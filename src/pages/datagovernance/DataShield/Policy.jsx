@@ -15,11 +15,13 @@ import {
     X,
     User, Group, Users, Shield,
     UserPlus,
-    UserRoundCog
+    UserRoundCog,
+    BadgeCheck
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
 import { Stepper, Step, StepLabel, Button, Box, Typography } from '@mui/material';
+import successBackground from "../../../assets/green.png";
 
 
 const Toggle = ({ enabled, onToggle }) => {
@@ -108,12 +110,14 @@ const Policy = () => {
 
     const [isOpen, setIsOpen] = useState(false);
 
-    const steps = ['Policy Type', 'User', 'Data', 'Step 4', 'Step 5', 'Step 6'];
+    const steps = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Confirmation'];
 
     const [activeStep, setActiveStep] = useState(0);
 
     const handleNext = () => {
-        setActiveStep((prevActiveStep) => prevActiveStep + 1);
+        if (activeStep < 6) {
+            setActiveStep(prev => prev + 1);
+        }
     };
 
     const handleBack = () => {
@@ -443,9 +447,43 @@ const Policy = () => {
                         </div>
                     </Box>
                 );
+            case 6:
+                return (
+                    <Box>
+                        <div className="relative h-24">
+                            <div
+                                className="absolute inset-0 bg-cover bg-center"
+                                style={{ backgroundImage: `url(${successBackground})` }}
+                            >
+                            </div>
+                        </div>
 
+                        <div>
+                            <div className="flex items-center space-x-4 mb-4">
+                                <BadgeCheck className="w-8 h-8 text-green-500" />{" "}
+                                <h2 className="text-2xl font-bold">Confirmation submission</h2>
+                            </div>
+                            <p className="text-lg text-gray-800">
+                                Are you sure want to save this Policy?
+                            </p>
+
+
+                            <div className="flex justify-start gap-4 mt-5">
+                                <button className="px-7 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
+                                    No
+                                </button>
+                                <button
+                                    onClick={() => setIsOpen(false)}
+                                    className="px-7 py-1.5 text-lg bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a66a3] transition-colors"
+                                >
+                                    Yes
+                                </button>
+                            </div>
+                        </div>
+                    </Box>
+                )
             default:
-                return <Typography>Step {step + 1} Content</Typography>;
+                return
         }
     };
     return (
@@ -477,7 +515,10 @@ const Policy = () => {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setIsOpen(true)}
+                            onClick={() => {
+                                setIsOpen(true)
+                                setActiveStep(0)
+                            }}
                             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                         >
                             <div className="flex justify-between">
@@ -614,52 +655,67 @@ const Policy = () => {
                         >
                             <X className="h-5 w-5" />
                         </button>
-                        <h2 className="text-lg font-bold text-[#8e78b7] flex items-center mb-3">
-                            Add Policy
-                        </h2>
-                        <Stepper activeStep={activeStep} alternativeLabel>
-                            {steps.map((_, index) => {
-                                const isCompleted = index < activeStep;
-                                const isActive = index === activeStep;
+                        {activeStep !== 6 && (
+                            <h2 className="text-lg font-bold text-[#8e78b7] flex items-center mb-3">
+                                Add Policy
+                            </h2>
+                        )}
+                        {activeStep !== 6 && (
+                            <Stepper
+                                activeStep={activeStep}
+                                alternativeLabel
+                            >
+                                {steps.map((_, index) => {
+                                    const isCompleted = index < activeStep;
+                                    const isActive = index === activeStep;
 
-                                return (
-                                    <Step key={index} completed={isCompleted}>
-                                        <StepLabel
-                                            sx={{
-                                                '.MuiStepIcon-root': {
-                                                    color: isCompleted ? 'green' : isActive ? '#8e78b7' : '#cfd8dc', // gray fallback
-                                                },
-                                            }}
-                                        />
-                                    </Step>
-                                );
-                            })}
-                        </Stepper>
+                                    return (
+                                        <Step key={index} completed={isCompleted}>
+                                            <StepLabel
+                                                sx={{
+                                                    color: isActive ? '#8e78b7' : 'inherit',
+                                                    '.MuiStepIcon-root': {
+                                                        color: isCompleted ? 'green' : isActive ? '#8e78b7' : '#cfd8dc',
+                                                    },
+                                                    '.MuiStepLabel-label': {
+                                                        color: isActive ? '#8e78b7' : undefined,
+                                                    },
+                                                }}
+                                            />
+                                        </Step>
+                                    );
+                                })}
+                            </Stepper>
+                        )}
+
+
 
                         <div className="mt-6">
                             {renderStepContent(activeStep)}
                         </div>
 
-                        <div className="flex justify-between mt-7">
-                            <div className="flex gap-3">
-                                <button className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleNext}
-                                    className="px-6 py-1.5 rounded-md bg-[#8e78b7] text-white">
-                                    Next
-                                </button>
-                            </div>
+                        {activeStep != 6 && (
+                            <div className="flex justify-between mt-7">
+                                <div className="flex gap-3">
+                                    <button className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleNext}
+                                        className="px-6 py-1.5 rounded-md bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]">
+                                        Next
+                                    </button>
+                                </div>
 
-                            {activeStep != 0 && (
-                                <button
-                                    onClick={handleBack}
-                                    className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
-                                    Back
-                                </button>
-                            )}
-                        </div>
+                                {activeStep != 0 && (
+                                    <button
+                                        onClick={handleBack}
+                                        className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
+                                        Back
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
