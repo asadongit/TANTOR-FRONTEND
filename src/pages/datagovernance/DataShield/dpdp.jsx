@@ -46,8 +46,11 @@ export default function DPDP() {
     );
 
     const [componentsModal, setComponentsModal] = useState(false);
-    const toggleSelect = (name) => {
-        setComponentsModal(true)
+    const toggleSelect = (name, id) => {
+        console.log("id is ====>", id)
+        if (id == 0) {
+            setComponentsModal(true)
+        }
         setSelected((prev) =>
             prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
         );
@@ -217,7 +220,7 @@ export default function DPDP() {
                                         <input
                                             type="checkbox"
                                             checked={selected.includes(component)}
-                                            onChange={() => toggleSelect(component)}
+                                            onChange={() => toggleSelect(component, index)}
                                             className="form-checkbox h-4 w-4 text-blue-600"
                                         />
                                         <span className="text-sm text-gray-800">{component}</span>
@@ -736,7 +739,7 @@ export default function DPDP() {
                                             Back
                                         </button>
                                         <button
-                                           onClick={() => setComponentsModal(false)}
+                                            onClick={() => setComponentsModal(false)}
                                             className="px-5 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2"
                                         >
                                             Save
