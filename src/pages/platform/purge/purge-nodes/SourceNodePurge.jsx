@@ -45,8 +45,6 @@ export function SourceNode({ id }) {
   let tabledetails;
   let metadatalist;
 
-  const node = "Source Node";
-
   const fetchOptions = useCallback(async () => {
     try {
       const connectionResponse = await fetch(`${hostname}/connection-saves`, {
@@ -308,7 +306,6 @@ export function SourceNode({ id }) {
 
   const getFirstPartitionNameFromTable = (table) => {
     if (!table?.partition_json) return null;
-    console.log("table in source node ---> ", table);
 
     if (table.partition_json.length === 0) return null;
 
@@ -589,7 +586,10 @@ export function SourceNode({ id }) {
                                 </label>
                               </div>
                               <button
-                                onClick={() => openDrawer(id, table)}
+                                onClick={() => {
+                                  openDrawer(id, table);
+                                  handlePurgeNode("Source Node");
+                                }}
                                 className="text-purple-600 hover:text-purple-700"
                               >
                                 <Pencil className="w-4 h-4" />

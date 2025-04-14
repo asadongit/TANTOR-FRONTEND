@@ -79,9 +79,9 @@ export const PurgeContextProvider = ({ children }) => {
     connectionId: null,
     connectionName: null,
     connectionType: null,
-    table: null,
-    schema: null,
-    type: null
+    tableName: null,
+    schemaName: null,
+    targetType: null
   })
   const saveTargetData = (connectionId, connectionName, connectionType, tableName, schemaName, targetType) => {
     setTargetData({
@@ -93,7 +93,9 @@ export const PurgeContextProvider = ({ children }) => {
   <PurgeContext.Provider 
     value={{
       saveDefineNode,
+      filters,
       saveFilter,
+      dropPartitions,
       saveDropPartitions,
       sourceData,
       saveSourceData,

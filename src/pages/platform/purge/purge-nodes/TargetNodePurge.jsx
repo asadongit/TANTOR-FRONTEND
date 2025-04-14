@@ -36,13 +36,12 @@ export function TargetNode({ id }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const { openDrawer } = useTableContext();
-  const {saveTargetData} = usePurgeContext("");
+  const {saveTargetData, filters, dropPartitions, sourceData} = usePurgeContext("");
+
 
   let connectionsData;
   let schemadetails;
   let tabledetails;
-
-  const node = "Target node";
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -168,9 +167,9 @@ export function TargetNode({ id }) {
     }
   };
 
-  const validateSelection = (defineNode, sourceNode, targetNode) => {
+  const validateSelection = (sourceData, defineNode, sourceNode, targetNode) => {
     // Extracting values from nodes
-    const { name } = defineNode;
+    const { name, desc } = defineNode;
     const {
       source_conn_name,
       purge_scope: source_purge_scope,
@@ -182,8 +181,21 @@ export function TargetNode({ id }) {
       selectedTables: targetTables,
     } = targetNode;
 
+    if (!sourceData.connectionId && !sourceData.connectionName && !sourceData.schemaName &&
+       !sourceData.sourceType && !sourceData.tableName
+    ) {
+      return {
+        valid: false,
+        message: "Please save source node data!"
+      }
+    }
+
     if (!name) {
       return {valid : false, message:"Name must be selected on Define Node."};
+    }
+
+    if (!desc) {
+      return {valid : false, message:"Description must be selected on Define Node."};
     }
 
     if (!source_conn_name) {
@@ -237,6 +249,7 @@ export function TargetNode({ id }) {
   const handleOkClick = () => {
     const defineNode = {
       name: defineNodeName || "",
+      desc: defineNodeDesc || ""
     };
 
     const sourceNode = {
@@ -254,6 +267,7 @@ export function TargetNode({ id }) {
     };
 
     const validationResult = validateSelection(
+      sourceData,
       defineNode,
       sourceNode,
       targetNode
@@ -265,7 +279,6 @@ export function TargetNode({ id }) {
       return;
     } else {
       saveNode();
-      console.log("data saved on purge node --- ", targetData);
       toast.success("Saved successfully") // Show error message
       handleIsVisibleFooter(true);
     }

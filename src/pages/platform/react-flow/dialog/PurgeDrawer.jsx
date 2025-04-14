@@ -3,6 +3,8 @@ import { useTableContext } from "../context/TableContext";
 import { Drawer } from "@mui/material";
 import { Info, Edit2, Trash2, CloudCog } from "lucide-react";
 import { useStateContext } from "../context/ContextProvider";
+import { usePurgeContext } from "../context/PurgeContext";
+import toast from "react-hot-toast";
 
 const PurgeDrawer = ({ nodes, setNodes }) => {
   const { drawerState, closeDrawer } = useTableContext();
@@ -21,6 +23,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
     sourceSelectedTable,
     selectedScope,
   } = useStateContext("");
+  const { saveDropPartitions, saveFilter, filters, dropPartitions } = usePurgeContext("");
 
   const selectedNode = purgeNode;
   const [filterEntries, setFilterEntries] = useState([]);
@@ -33,6 +36,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
   const [queryMode, setQueryMode] = useState("simple");
   const [tableSort, setTableSort] = useState([]);
   const [partitionMismatch, setPartitionMismatch] = useState(false);
+  const [filterTabDetails, setfilterTabDetails] = useState(null);
 
   useEffect(() => {
     if (!drawerState.isOpen) {
@@ -114,48 +118,104 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
     setFilterEntries(filterEntries.filter((_, i) => i !== index));
   };
 
+  // const handleSave = () => {
+  //   if (!localTable || !drawerState.nodeId) return;
+
+  //   const whereConditions = filterEntries.map(
+  //     (entry) => `${entry.columnName} ${entry.filterOperator} ${entry.value}`
+  //   );
+
+  //   setNodes((prevNodes) =>
+  //     prevNodes.map((node) => {
+  //       if (node.id === drawerState.nodeId) {
+  //         // Correctly handle undefined tables
+  //         const existingTables = node.data.tables || [];
+  //         const updatedTables = existingTables.map((t) =>
+  //           t.table_name === localTable.table_name
+  //             ? {
+  //                 ...t,
+  //                 filters: filterEntries,
+  //                 whereCondition: whereConditions.join(" AND "),
+  //               }
+  //             : t
+  //         );
+  //         if (
+  //           !existingTables.some((t) => t.table_name === localTable.table_name)
+  //         ) {
+  //           updatedTables.push({
+  //             ...localTable,
+  //             filters: filterEntries,
+  //             whereCondition: whereConditions.join(" AND "),
+  //           });
+  //         }
+
+  //         return {
+  //           ...node,
+  //           data: {
+  //             ...node.data,
+  //             tables: updatedTables,
+  //           },
+  //         };
+  //       }
+  //       return node;
+  //     })
+  //   );
+  //   setSelectedColumn("");
+  //   setSelectedFilter("");
+  //   setValue("");
+  //   setIsQueryPreview(false);
+  //   setComplexQuery("");
+  //   setIsComplexQueryPreview(false);
+  //   closeDrawer();
+  // };
+
+  //const [dropPartitions, setDropPartitions] = useState(null);
+
   const handleSave = () => {
-    if (!localTable || !drawerState.nodeId) return;
+    const nodeKey = purgeNode === "Source Node" ? "source" : "target";
+    if (activeTab === "filter-tab") {
+      if (queryMode === "simple") {
+        const filterDetails = {
+          columnName: selectedColumn,
+          filter: filterBy[selectedFilter],
+          value: value,
+        };
+  
+        saveFilter(nodeKey, false, filterDetails)
+      } else {
+        const filterDetails = complexQuery
+        saveFilter(nodeKey, true, filterDetails);
+      }
+      saveDropPartitions(nodeKey) //clear drop data when filter is saved
+      toast.success("Filter added successfully!")
+    } else if (activeTab === "partition-tab") {
+      if (purgeNode === "Source Node" && hasPartitions) {
+        const partition = sortedCurrentPartitions[0];
 
-    const whereConditions = filterEntries.map(
-      (entry) => `${entry.columnName} ${entry.filterOperator} ${entry.value}`
-    );
+        saveDropPartitions(
+          nodeKey,
+          partition?.partition_name,
+          partition?.column_name,
+          partition?.high_value,
+          partition?.partition_type,
+          partition?.table_name
+        )
+      } else if (purgeNode === "Target node" && hasPartitions && dropPartitions.source.partitionName) {
+        const partition = sortedCurrentPartitions[0];
 
-    setNodes((prevNodes) =>
-      prevNodes.map((node) => {
-        if (node.id === drawerState.nodeId) {
-          // Correctly handle undefined tables
-          const existingTables = node.data.tables || [];
-          const updatedTables = existingTables.map((t) =>
-            t.table_name === localTable.table_name
-              ? {
-                  ...t,
-                  filters: filterEntries,
-                  whereCondition: whereConditions.join(" AND "),
-                }
-              : t
-          );
-          if (
-            !existingTables.some((t) => t.table_name === localTable.table_name)
-          ) {
-            updatedTables.push({
-              ...localTable,
-              filters: filterEntries,
-              whereCondition: whereConditions.join(" AND "),
-            });
-          }
+        saveDropPartitions(
+          nodeKey,
+          partition?.partition_name,
+          partition?.column_name,
+          partition?.high_value,
+          partition?.partition_type,
+          partition?.table_name
+        )
+      }
+      saveFilter(nodeKey); 
+      toast.success("Drop Partition added successfully!")
+    }
 
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              tables: updatedTables,
-            },
-          };
-        }
-        return node;
-      })
-    );
     setSelectedColumn("");
     setSelectedFilter("");
     setValue("");
@@ -165,7 +225,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
     closeDrawer();
   };
 
-  const partitionData = 
+  const partitionData =
     drawerState.selectedTable?.metadatas?.partition_json ||
     drawerState.selectedTable?.partition_json ||
     [];
@@ -270,6 +330,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
   // ];
 
   const filterBy = {
+    eq: "=",
     neq: "!=",
     gt: ">",
     lt: "<",
@@ -501,6 +562,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
               }}
               className="w-full p-3 border border-gray-300 rounded-md text-sm"
             >
+              <option value="">Select filter</option>
               <option value="eq">= Equal to</option>
               <option value="neq">!= Not equal to</option>
               <option value="gt">&gt; Greater than</option>
@@ -643,161 +705,38 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
         </div>
       )}
 
-      {selectedScope === "bulk" &&(
-        <div
-        className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}
-      >
-        <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
-          <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
-          <div>
-            <strong>Partition for this scope not supported!</strong>
+      {selectedScope === "bulk" && (
+        <div className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}>
+          <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+            <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
+            <div>
+              <strong>Partition for this scope not supported!</strong>
+            </div>
           </div>
         </div>
-      </div>
       )}
 
-      {selectedNode === "Source Node" && !isMSSQLConnection && selectedScope === "subset" && (
-        <>
-          {!hasPartitions && (
-            <div
-              className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}
-            >
-              <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
-                <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
-                <div>
-                  <strong>Partition for source database doesn't exist.</strong>
-                </div>
-              </div>
-            </div>
-          )}
-          {hasPartitions && (
-            <div
-              className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}
-            >
-              <div className="flex items-start bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
-                <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
-
-                <div>
-                  <strong>
-                    Sequential Partition Drop is enforced for this database.
-                  </strong>{" "}
-                  The first available partition is auto-selected.
-                </div>
-              </div>
-
-              <div className="w-full overflow-x-auto shadow rounded-lg">
-                <table className="w-full bg-white">
-                  <thead>
-                    <tr className="bg-gray-800 text-white">
-                      {headers.map((header) => (
-                        <th key={header} className="py-3 px-4 text-center">
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tableSort.map((item, index) => (
-                      <tr
-                        key={index}
-                        className={
-                          index === 0 || selectedRows.includes(index)
-                            ? "bg-[#daf5ce]"
-                            : "bg-gray-100 opacity-50"
-                        }
-                      >
-                        <td className="border border-gray-200 p-3 text-center">
-                          {item.partition_name}
-                        </td>
-                        <td className="border border-gray-200 p-3 text-center">
-                          {item.column_name}
-                        </td>
-                        <td className="border border-gray-200 p-3 text-center">
-                          {item.high_value}
-                        </td>
-                        <td className="border border-gray-200 p-3 text-center">
-                          {item.partition_type}
-                        </td>
-                        <td className="border border-gray-200 p-3 text-center">
-                          {item.table_name}
-                        </td>
-                        <td className="border border-gray-200 p-3 text-center">
-                          <input
-                            type="checkbox"
-                            checked={
-                              index === 0 || selectedRows.includes(index)
-                            }
-                            readOnly
-                            //onChange={() => handleCheckboxChange(index)}
-                            //disabled={index !== 0}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex justify-end mt-6 gap-3">
-                <button
-                  onClick={() => {
-                    handleCancel();
-                  }}
-                  className="bg-gray-100 text-gray-800 border border-gray-300 rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="bg-[#8e78b7] text-white border-none rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-[#8e78b7]"
-                >
-                  SAVE
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {selectedNode === "Target node" && !isMSSQLConnection && selectedScope === "subset" && (
-        <>
-          <div
-            className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}
-          >
-            {!sourceHasPartitions && hasPartitions && (
-              <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
-                <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
-                <div>
-                  <strong>
-                    Partition for this database doesn't exist in source table!
-                  </strong>
+      {selectedNode === "Source Node" &&
+        !isMSSQLConnection &&
+        selectedScope === "subset" && (
+          <>
+            {!hasPartitions && (
+              <div
+                className={`p-6 ${
+                  activeTab !== "partition-tab" ? "hidden" : ""
+                }`}
+              >
+                <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+                  <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
+                  <div>
+                    <strong>
+                      Partition for source database doesn't exist.
+                    </strong>
+                  </div>
                 </div>
               </div>
             )}
-
-            {sourceHasPartitions && !hasPartitions && (
-              <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
-                <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
-                <div>
-                  <strong>
-                    Partition for target database doesn't exist!
-                  </strong>
-                </div>
-              </div>
-            )}
-
-            {!sourceHasPartitions && !hasPartitions && (
-              <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
-                <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
-                <div>
-                  <strong>
-                    Partition doesn't exist for both source and target database!
-                  </strong>
-                </div>
-              </div>
-            )}
-
-            {sourceHasPartitions && hasPartitions && !partitionMismatch && (
+            {hasPartitions && (
               <div
                 className={`p-6 ${
                   activeTab !== "partition-tab" ? "hidden" : ""
@@ -830,8 +769,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
                         <tr
                           key={index}
                           className={
-                            //index === 0 ||
-                            selectedRows.includes(index)
+                            index === 0 || selectedRows.includes(index)
                               ? "bg-[#daf5ce]"
                               : "bg-gray-100 opacity-50"
                           }
@@ -854,8 +792,12 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
                           <td className="border border-gray-200 p-3 text-center">
                             <input
                               type="checkbox"
-                              checked={selectedRows.includes(index)}
+                              checked={
+                                index === 0 || selectedRows.includes(index)
+                              }
                               readOnly
+                              //onChange={() => handleCheckboxChange(index)}
+                              //disabled={index !== 0}
                             />
                           </td>
                         </tr>
@@ -882,20 +824,149 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
                 </div>
               </div>
             )}
+          </>
+        )}
 
-            {sourceHasPartitions && hasPartitions && partitionMismatch && (
-              <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
-                <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
-                <div>
-                  <strong>
-                    Partitions for both source and target do not match!
-                  </strong>
+      {selectedNode === "Target node" &&
+        !isMSSQLConnection &&
+        selectedScope === "subset" && (
+          <>
+            <div
+              className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}
+            >
+              {!sourceHasPartitions && hasPartitions && (
+                <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+                  <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
+                  <div>
+                    <strong>
+                      Partition for this database doesn't exist in source table!
+                    </strong>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+              )}
+
+              {sourceHasPartitions && !hasPartitions && (
+                <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+                  <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
+                  <div>
+                    <strong>
+                      Partition for target database doesn't exist!
+                    </strong>
+                  </div>
+                </div>
+              )}
+
+              {!sourceHasPartitions && !hasPartitions && (
+                <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+                  <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
+                  <div>
+                    <strong>
+                      Partition doesn't exist for both source and target
+                      database!
+                    </strong>
+                  </div>
+                </div>
+              )}
+
+              {sourceHasPartitions && hasPartitions && !partitionMismatch && (
+                <div
+                  className={`p-6 ${
+                    activeTab !== "partition-tab" ? "hidden" : ""
+                  }`}
+                >
+                  <div className="flex items-start bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+                    <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
+
+                    <div>
+                      <strong>
+                        Sequential Partition Drop is enforced for this database.
+                      </strong>{" "}
+                      The first available partition is auto-selected.
+                    </div>
+                  </div>
+
+                  <div className="w-full overflow-x-auto shadow rounded-lg">
+                    <table className="w-full bg-white">
+                      <thead>
+                        <tr className="bg-gray-800 text-white">
+                          {headers.map((header) => (
+                            <th key={header} className="py-3 px-4 text-center">
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tableSort.map((item, index) => (
+                          <tr
+                            key={index}
+                            className={
+                              //index === 0 ||
+                              selectedRows.includes(index)
+                                ? "bg-[#daf5ce]"
+                                : "bg-gray-100 opacity-50"
+                            }
+                          >
+                            <td className="border border-gray-200 p-3 text-center">
+                              {item.partition_name}
+                            </td>
+                            <td className="border border-gray-200 p-3 text-center">
+                              {item.column_name}
+                            </td>
+                            <td className="border border-gray-200 p-3 text-center">
+                              {item.high_value}
+                            </td>
+                            <td className="border border-gray-200 p-3 text-center">
+                              {item.partition_type}
+                            </td>
+                            <td className="border border-gray-200 p-3 text-center">
+                              {item.table_name}
+                            </td>
+                            <td className="border border-gray-200 p-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedRows.includes(index)}
+                                readOnly
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex justify-end mt-6 gap-3">
+                    <button
+                      onClick={() => {
+                        handleCancel();
+                      }}
+                      className="bg-gray-100 text-gray-800 border border-gray-300 rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      className="bg-[#8e78b7] text-white border-none rounded-md py-3 px-6 text-sm font-medium cursor-pointer transition-colors hover:bg-[#8e78b7]"
+                    >
+                      SAVE
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {sourceHasPartitions && hasPartitions && partitionMismatch && (
+                <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+                  <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
+                  <div>
+                    <strong>
+                      Partitions for both source and target do not match!
+                    </strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
     </Drawer>
   );
 };
