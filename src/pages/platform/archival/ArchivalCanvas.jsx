@@ -7,6 +7,7 @@ import ReactFlow, {
   Panel,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { useNavigate } from 'react-router-dom';
 import { DefineNode } from "./nodes/DefineNode";
 import { SourceNode } from "./nodes/SourceNode";
 import { TargetNode } from "./nodes/TargetNode";
@@ -27,12 +28,12 @@ const nodeTypes = {
 let id = 0;
 const getId = () => `node_${id++}`;
 
-const TransformationCanvas = () => {
+const ArchivalCanvas = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [payload, setPayload] = useState({});
 
-
+  const navigate = useNavigate();
   const handleSubmit = useCallback(async () => {
     try {
       console.log("Submitting payload:", payload);
@@ -112,6 +113,16 @@ const TransformationCanvas = () => {
   }, [onNodeDelete]);
 
 
+
+  const handleCancel = useCallback(() => {
+    navigate('/migration'); 
+  }, [payload]);
+
+  const handleMetadata = useCallback(() => {
+    navigate('/Metadatacanvas'); 
+  }, [payload]);
+
+
   return (
     <div className="h-full relative">
       <ReactFlow
@@ -130,6 +141,29 @@ const TransformationCanvas = () => {
         <Panel position="top-left">
           <ArchivalSidebar />
         </Panel>
+        {/* Add bottom button panel */}
+        <Panel position="bottom-center">
+          <div className="flex gap-4 p-4 bg-white/90 shadow-lg rounded-lg m-4">
+            <button
+              onClick={handleCancel}
+              className="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleMetadata}
+              className="px-6 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
+            >
+              Create Metadata
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+            >
+              Save Migration
+            </button>
+          </div>
+        </Panel>
       </ReactFlow>
       <DrawerContainer />
       <TableDrawer nodes={nodes} setNodes={setNodes} />
@@ -137,4 +171,4 @@ const TransformationCanvas = () => {
     </div>
   );
 };
-export default TransformationCanvas;
+export default ArchivalCanvas;

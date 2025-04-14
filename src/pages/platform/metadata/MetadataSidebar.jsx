@@ -12,7 +12,7 @@ const components = [
   { id: "target", name: "Target", icon: FileSpreadsheet },
 ];
 
-export function MigrationSidebar() {
+export function MetadataSidebar() {
   const [expanded, setExpanded] = useState(true);
 
   const onDragStart = (event, nodeType) => {
@@ -35,7 +35,7 @@ export function MigrationSidebar() {
             {expanded && (
               <div className="flex items-center space-x-2">
                 <span className="text-black font-medium text-lg">
-                  Migration
+                  Metadata
                 </span>
               </div>
             )}

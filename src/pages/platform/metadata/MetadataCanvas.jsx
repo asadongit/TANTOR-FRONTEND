@@ -12,7 +12,7 @@ import { SourceNode } from "./nodes/SourceNode";
 import { TargetNode } from "./nodes/TargetNode";
 import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
 import TableDrawer from "../react-flow/dialog/TableDrawer";
-import { MigrationSidebar } from "./MigrationSidebar";
+import { MetadataSidebar } from "./MetadataSidebar";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 // import { useUserInfo } from '../hooks/useUserInfo';
@@ -253,7 +253,7 @@ const MigrationCanvas = () => {
                 icon: "✅", 
               }
             );
-            setTimeout(() => navigate("/migration"), 2000);
+            setTimeout(() => navigate("/Migrationcanvas"), 2000);
             return "";
           },
           error: (err) => (
@@ -327,7 +327,7 @@ const MigrationCanvas = () => {
       >
         <Controls className="fill-white stroke-black" />
         <Panel position="top-left">
-          <MigrationSidebar />
+          <MetadataSidebar />
         </Panel>
       </ReactFlow>
       <DrawerContainer />

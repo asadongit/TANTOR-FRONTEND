@@ -4,7 +4,7 @@ import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../../../context/AuthContext";
-import { useTableContext } from '../../react-flow/context/TableContext';
+import { useTableContext } from "../../react-flow/context/TableContext";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -28,10 +28,8 @@ export function SourceNode({ id, data }) {
   const [loading, setLoading] = useState(true);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
-  const [schemaLoading, setSchemaLoading] = useState(false);  
-  const { openDrawer } = useTableContext();  
-
-  
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const { openDrawer } = useTableContext();
 
   let connectionsData;
   let schemacount;
@@ -45,18 +43,25 @@ export function SourceNode({ id, data }) {
       migrationScope: selectedScope,
       selectedTables: selectedItems,
     });
-  }, [id, selectedConnection, selectedSchema, selectedScope, selectedItems, onDataChange]);
+  }, [
+    id,
+    selectedConnection,
+    selectedSchema,
+    selectedScope,
+    selectedItems,
+    onDataChange,
+  ]);
 
   const fetchOptions = useCallback(async () => {
     try {
-        const connectionResponse = await fetch(`${hostname}/connection-saves`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        connectionsData = await connectionResponse.json();
+      const connectionResponse = await fetch(`${hostname}/connection-saves`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      connectionsData = await connectionResponse.json();
 
       setConnections(connectionsData);
     } catch (error) {
@@ -71,15 +76,17 @@ export function SourceNode({ id, data }) {
         return;
       }
 
-    //   setSchemaLoading(true);
+      //   setSchemaLoading(true);
 
       try {
-
-        const response = await fetch(`${hostname}/schema/${connectionName}/count`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          `${hostname}/schema/${connectionName}/count`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -97,7 +104,6 @@ export function SourceNode({ id, data }) {
     [hostname, token]
   );
 
-
   useEffect(() => {
     fetchOptions();
   }, [fetchOptions]);
@@ -112,7 +118,6 @@ export function SourceNode({ id, data }) {
       setSchemaLoading(true);
 
       try {
-
         const response = await fetch(`${hostname}/schema/${connectionName}`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -166,75 +171,73 @@ export function SourceNode({ id, data }) {
     [hostname, token]
   );
 
-
   const filteredTables = tables.filter((table) =>
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
   );
 
-
   const handleScopeChange = (e) => {
     setSelectedScope(e.target.value);
     if (e.target.value === "subset") {
-      setSelectedItems([]); 
+      setSelectedItems([]);
     }
   };
 
+  const handleSelectAll = (e) => {
+    const isChecked = e.target.checked;
+    if (selectedScope === "bulk") {
+      setSelectedItems(
+        isChecked
+          ? filteredTables
+              .filter((table) => table !== null)
+              .map((table) => table.table_name)
+          : []
+      );
+    }
+  };
 
-const handleSelectAll = (e) => {
-  const isChecked = e.target.checked;
-  if (isChecked) {
-    setSelectedItems(
-      filteredTables
-        .filter((table) => table !== null)
-        .map((table) => table.table_name)
-    );
-  } else {
+  const handleTableSelection = (tableName) => {
+    if (selectedScope === "subset") {
+      // Only allow single selection
+      setSelectedItems(
+        (prev) => (prev[0] === tableName ? [] : [tableName]) // Toggle selection
+      );
+    } else {
+      // Toggle multiple selections
+      setSelectedItems((prev) =>
+        prev.includes(tableName)
+          ? prev.filter((item) => item !== tableName)
+          : [...prev, tableName]
+      );
+    }
+  };
+
+  const handleCancel = () => {
     setSelectedItems([]);
-  }
-};
+    console.log("Selection reset.");
+  };
 
+  const handleOk = () => {
+    console.log("Selected items:", selectedItems);
+    // setShowAlert(true);
 
-const handleTableSelection = (tableName) => {
-  if (selectedScope === "subset") {
-    setSelectedItems([tableName]);
-  } else {
-    setSelectedItems((prev) =>
-      prev.includes(tableName)
-        ? prev.filter((item) => item !== tableName)
-        : [...prev, tableName]
-    );
-  }
-};
+    // // Hide the alert after 3 seconds
+    // setTimeout(() => {
+    //   setShowAlert(false);
+    // }, 3000);
 
-
-const handleCancel = () => {
-  setSelectedItems([]);
-  console.log("Selection reset.");
-};
-
-
-const handleOk = () => {
-  console.log("Selected items:", selectedItems);
-  // setShowAlert(true);
-
-  // // Hide the alert after 3 seconds
-  // setTimeout(() => {
-  //   setShowAlert(false);
-  // }, 3000);
-
-  toast.success('Flow Updated Successfully! 🎉', {
-    duration: 3000,
-    position: 'top-center',
-    style: {
-      background: '#4CAF50',
-      color: '#fff',
-    },
-    iconTheme: {
-      primary: '#fff',
-      secondary: '#4CAF50',
-    },
-  });
-};
+    toast.success("Flow Updated Successfully! 🎉", {
+      duration: 3000,
+      position: "top-center",
+      style: {
+        background: "#4CAF50",
+        color: "#fff",
+      },
+      iconTheme: {
+        primary: "#fff",
+        secondary: "#4CAF50",
+      },
+    });
+  };
 
   return (
     <div
@@ -267,10 +270,11 @@ const handleOk = () => {
             onChange={(e) => {
               const connectionName = e.target.value;
               setSelectedConnection(connectionName);
-              setSelectedSchema(""); // Reset schema selection
-              setTables([]); // Clear previous tables
+              setSelectedSchema("");
+              setTables([]);
+              setSelectedItems([]); // Reset selected tables
               fetchschema(connectionName);
-              fetchschemacount(connectionName); 
+              fetchschemacount(connectionName);
             }}
           >
             <option value="">Select</option>
@@ -292,6 +296,7 @@ const handleOk = () => {
               onChange={(e) => {
                 const schemaName = e.target.value;
                 setSelectedSchema(schemaName);
+                setSelectedItems([]); // Reset selected tables
                 fetchTables(selectedConnection, schemaName);
               }}
               disabled={!selectedConnection || schemaLoading}
@@ -315,7 +320,9 @@ const handleOk = () => {
                 <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
               </div>
             )}
-            <span className="ml-5 text-black font-bold">{schemaCount.schema_count}</span>
+            <span className="ml-5 text-black font-bold">
+              {schemaCount.schema_count}
+            </span>
           </div>
         </div>
       </div>
@@ -335,7 +342,10 @@ const handleOk = () => {
               onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
             />
-            <label htmlFor="srctable-bulk" className="ml-2 text-xs text-gray-700">
+            <label
+              htmlFor="srctable-bulk"
+              className="ml-2 text-xs text-gray-700"
+            >
               Bulk
             </label>
           </div>
@@ -422,10 +432,11 @@ const handleOk = () => {
                       checked={
                         selectedScope === "bulk" &&
                         selectedItems.length ===
-                          filteredTables.filter((table) => table !== null).length
-                      } // Check if all items are selected
+                          filteredTables.filter((table) => table !== null)
+                            .length
+                      }
                       onChange={handleSelectAll}
-                    disabled={selectedScope === "subset"} // Disable in "subset" mode
+                      disabled={selectedScope === "subset"} // This implements point 4
                     />
                     <label
                       htmlFor="select-all"
@@ -437,7 +448,7 @@ const handleOk = () => {
                 </div>
 
                 {filteredTables
-                  .filter((table) => table !== null) 
+                  .filter((table) => table !== null)
                   .map((table, idx) => (
                     <div
                       key={idx}
@@ -448,10 +459,16 @@ const handleOk = () => {
                           type="checkbox"
                           id={`table-${idx}`}
                           checked={selectedItems.includes(table.table_name)}
-                          onChange={() => handleTableSelection(table.table_name)}
-                        className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        disabled={selectedScope === "subset" && selectedItems.length > 0 && !selectedItems.includes(table.table_name)}
-                      />
+                          onChange={() =>
+                            handleTableSelection(table.table_name)
+                          }
+                          className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          disabled={
+                            selectedScope === "subset" &&
+                            selectedItems.length > 0 &&
+                            !selectedItems.includes(table.table_name) // This implements point 4
+                          }
+                        />
                         <label
                           htmlFor={`table-${idx}`}
                           className="text-xs font-semibold text-black"
@@ -465,19 +482,15 @@ const handleOk = () => {
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
-
-
-
                     </div>
                   ))}
               </>
             )}
           </div>
-          
         </div>
       )}
       <div className="flex space-x-2 mt-4">
-      <button
+        <button
           onClick={handleCancel}
           className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
         >
@@ -490,8 +503,6 @@ const handleOk = () => {
           OK
         </button>
       </div>
-
-
     </div>
   );
 }

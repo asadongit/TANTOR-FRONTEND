@@ -7,7 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import { PlatformRoutes } from "./routes/PlatformRoutes";
 import { DataGovernanceRoutes } from "./routes/DataGovernanceRoutes";
 import ArchivalCanvas from "./pages/platform/archival/ArchivalCanvas";
-import TransformationCanvas from "./pages/platform/archival/ArchivalCanvas";
+import MetadataCanvas from "./pages/platform/metadata/MetadataCanvas";
 import { WelcomeModal } from "./pages/platform/react-flow/WelcomeModal";
 import { DrawerProvider } from "./pages/platform/react-flow/context/DrawerContext";
 import { ThemeProvider } from "./pages/platform/react-flow/context/ThemeContext";
@@ -96,7 +96,7 @@ function App() {
 
                 {/* Standalone drag-and-drop routes */}
                 <Route
-                  path="/Migrationcanvas"
+                  path="/Metadatacanvas"
                   element={
                     <TableProvider>
                       <FlowDataProvider>
@@ -107,7 +107,7 @@ function App() {
                               <div className="flex-1 flex">
                                 <div className="flex-1 relative">
                                   <ReactFlowProvider>
-                                    <ArchivalCanvas />
+                                    <MetadataCanvas />
                                   </ReactFlowProvider>
                                 </div>
                               </div>
@@ -121,7 +121,7 @@ function App() {
                 />
 
                 <Route
-                  path="/Transformationcanvas"
+                  path="/Migrationcanvas"
                   element={
                     <TableProvider>
                       <FlowDataProvider>
@@ -132,7 +132,7 @@ function App() {
                               <div className="flex-1 flex">
                                 <div className="flex-1 relative">
                                   <ReactFlowProvider>
-                                    <TransformationCanvas />
+                                    <ArchivalCanvas />
                                   </ReactFlowProvider>
                                 </div>
                               </div>

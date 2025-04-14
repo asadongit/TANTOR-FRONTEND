@@ -24,7 +24,7 @@ const ArchivalList = () => {
 
   
   const handleCreateMigration = () => {
-    navigate('/Transformationcanvas'); 
+    navigate('/Migrationcanvas'); 
   };
 
   
