@@ -71,7 +71,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     ] },
     { name: 'Data Assurance', icon: ShieldCheckIcon, path: '/data-assurance' },
     { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: '/business-catalogue' },
-    { name: 'Data Shield', icon: ShieldCheckIcon, path: '/data-shield' },
+    { name: 'Data Shield', icon: ShieldCheckIcon, path: '/data-shield',subItems: [
+      { name: 'Protection', path: '/data-shield/protection' },
+      { name: 'Policy', path: '/data-shield/policy' },
+      { name: 'Collaboration', path: '/data-shield/collaboration' }
+    ]  },
     { type: 'divider' },
     { name: 'Databot', icon: ShieldCheckIcon, path: '/databot' },
     { name: 'Reports', icon: DocumentTextIcon, path: '/reports' },
