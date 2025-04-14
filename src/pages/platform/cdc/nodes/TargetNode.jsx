@@ -2,22 +2,16 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { Position } from "reactflow";
 import { useDrawerContext } from "../context/DrawerContext";
-import { CustomHandle } from "../components/CustomHandle";
+import { Handle } from "../components/CustomHandle";
 import { useWorkflow } from "../context/WorkflowContext";
 import { Minus, X, Search, Pencil, Trash2 } from "lucide-react";
 import { toast as hotToast } from "react-hot-toast";
 import { SkeletonLoader } from "../components/skeltonLoader";
-export function TargetNode({ id, data, selected }) {
-  // console.log("Target-Data--------------------------------", data);
-  const hostname = import.meta.env.VITE_FAST_API;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
-  const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
+import { useAuth } from "../../../../context/AuthContext";
+import { useConnections, useDDL, useSchemaCount, useSchemas, useTables } from "../hooks/DataFetch";
 
-  const [connections, setConnections] = useState([]);
-  const [schemaCount, setSchemacount] = useState([]);
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [tables, setTables] = useState([]);
-  const [schemas, setSchema] = useState([]);
+export function TargetNode({ id, data, selected }) {
+  const {token, hostnameV1, hostnameV2}=useAuth()
   const [loading, setLoading] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
@@ -28,18 +22,25 @@ export function TargetNode({ id, data, selected }) {
   const { openDrawer } = useDrawerContext();
   const [sourceConnection, setSourceConnection] = useState("");
   const [bulkList, setBulkList] = useState([]);
+  const [selectedConnectionObj, setSelectedConnectionObj] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
+
   const [nodeData, setNodeData] = useState(() => ({
     connection: "",
     schema: "",
     mode: "",
     bulk_list: [],
     subset_list: [],
+    target_conn_id:"",
   }));
+  const { data: connections, isLoading: isLoadingConnections } = useConnections();
+  const { data: schemaCount } = useSchemaCount(selectedConnection);
+  const { data: schemas, isLoading: isLoadingSchemas } = useSchemas(selectedConnection);
+  const { data: tables } = useTables(selectedConnection, selectedSchema, selectedMode);
 
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id;
-
   const {
     pipelines,
     completeMapping,
@@ -50,97 +51,19 @@ export function TargetNode({ id, data, selected }) {
   } = useWorkflow();
 
   useEffect(() => {
-    let sourceData = isPipelineNode
-      ? pipelines?.[pipelineId]?.data?.source
+    let sourceArray = isPipelineNode
+      ? pipelines?.[ID]?.data?.source
       : data?.source;
-    if (sourceData) {
-      setSourceConnection(sourceData?.connection || "");
-      setBulkList(sourceData?.bulk_list || []);
-      setSelectedMode(sourceData?.mode || "bulk");
+    const firstSource =isPipelineNode?sourceArray : Array.isArray(sourceArray) ? sourceArray[0] : undefined;
+
+    if (firstSource) {
+      setSourceConnection(firstSource?.connection || "");
+      setBulkList(firstSource?.bulk_list || []);
+      setSelectedMode(firstSource?.mode || "bulk");
     }
-  }, [pipelines, pipelineId, data?.source]);
-
-  const fetchConnections = useCallback(async () => {
-    try {
-      const connectionResponse = await fetch(`${hostname}/connection-saves`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const connectionsData = await connectionResponse.json();
-      sessionStorage.setItem(
-        "connectionResponse",
-        JSON.stringify(connectionsData)
-      );
-      setConnections(connectionsData);
-    } catch (error) {
-      console.error("Error fetching options:", error);
-      setConnections([]);
-    }
-  }, []);
-
-  const fetchschemas = useCallback(async (connectionName) => {
-    if (!connectionName) {
-      setSchema([]);
-      return;
-    }
-
-    setSchemaLoading(true);
-
-    try {
-      const response = await fetch(`${hostname}/schema/${connectionName}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const schemadetails = await response.json();
-      sessionStorage.setItem("schemalist", JSON.stringify(schemadetails));
-      setSchema(schemadetails);
-    } catch (error) {
-      console.error("Error fetching schemas:", error);
-      setSchema([]);
-    } finally {
-      setSchemaLoading(false);
-    }
-  }, []);
-
-  const fetchschemascount = useCallback(async (connectionName) => {
-    if (!connectionName) {
-      setSchemacount([]);
-      return;
-    }
-
-    try {
-
-        const response = await fetch(
-          `${hostname}/schema/${connectionName}/count`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const schemacount = await response.json();
-        setSchemacount(schemacount);
-      
-    } catch (error) {
-      console.error("Error fetching schemas:", error);
-      setSchemacount([]);
-    }
-  }, []);
-
+  }, [pipelines, pipelineId, data?.source, isPipelineNode]);
+  
+ 
   const fetchDDL = useCallback(
     async (sourceConnection, selectedConnection, schemaName, bulkList) => {
       if (
@@ -151,41 +74,23 @@ export function TargetNode({ id, data, selected }) {
         bulkList.length === 0
       ) {
         setSelectedItems([]);
-        setTables([]);
         setLoading(false);
         return;
       }
 
       try {
-        const connectionResponse = await fetch(
-          `${hostnamev2}/metadata-archivals-tables?source_conn_name=${sourceConnection}&target_conn_name=${selectedConnection}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!connectionResponse.ok) {
-          throw new Error(`HTTP error! status: ${connectionResponse.status}`);
-        }
-
-        const ddlData = await connectionResponse.json();
+       
         const filteredData =
-          Array.isArray(ddlData) && Array.isArray(bulkList)
-            ? ddlData.filter((item) =>
+          Array.isArray(tables) && Array.isArray(bulkList)
+            ? tables.filter((item) =>
                 bulkList.some((bulk) => bulk.metadata_id === item.metadata_id)
               )
             : [];
-
+                console.log("PURANANANANA",filteredData)
         setSelectedItems(filteredData);
-        setTables(filteredData);
       } catch (error) {
         console.error("Error fetching DDL data:", error);
         setSelectedItems([]);
-        setTables([]);
       } finally {
         setLoading(false);
       }
@@ -193,44 +98,6 @@ export function TargetNode({ id, data, selected }) {
     []
   );
 
-  const fetchTables = useCallback(async (connectionName, schemaName) => {
-    if (!connectionName || !schemaName) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch tables: ${response.status}`);
-      }
-
-      const tableDetails = await response.json();
-      const normalizedTables = tableDetails.map((item) => ({
-        target_table: item.table_name,
-        connection_name: item.connection_name,
-        connection_id: item.connection_id,
-        source_schema: item.source_schema,
-      }));
-
-      setTables(normalizedTables);
-    } catch (error) {
-      console.error("Error fetching tables:", error);
-      setTables([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchConnections();
-  }, [fetchConnections]);
 
   useEffect(() => {
     if (selectedConnection && selectedSchema && ID) {
@@ -238,7 +105,8 @@ export function TargetNode({ id, data, selected }) {
         connection: selectedConnection,
         schema: selectedSchema,
         mode: selectedMode,
-        bulk_list: selectedItems.map((item) => item.metadata_id),
+        bulk_list: selectedItems?.map((item) => item.metadata_id),
+        target_conn_id:nodeData.target_conn_id,
       };
       setNodeData(updatedNodeData);
 
@@ -255,21 +123,43 @@ export function TargetNode({ id, data, selected }) {
             selectedSchema,
             bulkList
           )
-        : fetchTables(selectedConnection, selectedSchema);
+        : null;
     }
   }, [selectedSchema, bulkList]);
 
   const filteredTables = useMemo(() => {
-    if (!tables || !tables.length) return [];
+    if (!Array.isArray(tables) || tables.length === 0) return [];
+  
+    let dataSource = tables;
+    console.log("selectedModeeeeeeeeee",bulkList)
 
-    return tables
-      .filter((table) => table && table.target_table)
-      .filter((table) =>
-        table.target_table
-          .toLowerCase()
-          .includes(searchTerm?.toLowerCase() || "")
-      );
-  }, [tables, searchTerm, bulkList]);
+  console.log("selectedModeeeeeeeeee",selectedMode)
+    if (selectedMode === "bulk" && Array.isArray(bulkList) && bulkList.length > 0) {
+      const bulkIds = new Set(bulkList.map(bulk => bulk.metadata_id));
+      dataSource = tables.filter(item => bulkIds.has(item.metadata_id));
+    }
+    const processedData = selectedMode === "subset" 
+      ? dataSource.map(item => ({
+          target_table: item.source_table,
+          connection_name: item.connection_name,
+          connection_id: item.connection_id,
+          source_schema: item.source_schema,
+        }))
+      : dataSource;
+  
+    return processedData.filter(table => 
+      table?.target_table?.toLowerCase().includes(searchTerm?.toLowerCase() || "")
+    );
+  
+  }, [selectedMode, tables, bulkList, searchTerm, selectedSchema]);
+  
+  useEffect(() => {
+    if (filteredTables) {
+      setLoading(false);
+    }
+  }, [filteredTables]);
+  
+  console.log("FFFFFFFFFFFFFFF",filteredTables)
 
   const handleOkClick = () => {
     if (selectedConnection && selectedSchema && selectedMode) {
@@ -282,8 +172,9 @@ export function TargetNode({ id, data, selected }) {
       updateData(ID, isPipelineNode, "target", updatedNodeData);
     }
   };
+  const firstSource = Array.isArray(data?.source) ? data.source[0] : undefined;
 
-  const constructedKey = `${data?.source?.id}-${ID}`;
+  const constructedKey = `${firstSource?.id}-${ID}`;
   
   const pipelineData = isPipelineNode
     ? pipelineMappings[pipelineId] || []
@@ -293,19 +184,19 @@ export function TargetNode({ id, data, selected }) {
   const targetTables = pipelineData.map((mapping) => mapping.targetTable);
   const sourceTables = pipelineData.map((mapping) => mapping.sourceTable);
 
-  
+
   const sourceTable = isPipelineNode
     ? inProgressMappings[pipelineId]?.sourceTable
-    : inProgressMappings[data?.source?.id]?.sourceTable;
+    : inProgressMappings[firstSource?.id]?.sourceTable;
   
   
   const showTablesList = Boolean(
     selectedMode === "bulk"
-      ? tables.length > 0 || loading
+      ? filteredTables?.length > 0 || loading
       : (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
         (pipelineMappings[constructedKey]?.length ?? 0) > 0 
   );
-  
+
   return (
     <div
       className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
@@ -335,8 +226,8 @@ export function TargetNode({ id, data, selected }) {
         )}
       </div>
 
-      <CustomHandle type="target" position={Position.Left} />
-      <CustomHandle type="source" position={Position.Right} />
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
 
       <div className="space-y-1.5">
         <div>
@@ -346,22 +237,28 @@ export function TargetNode({ id, data, selected }) {
           <div className="w-full">
             <select
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              value={selectedConnection}
+              value={selectedConnectionObj ? JSON.stringify(selectedConnectionObj) : ""}
               onChange={(e) => {
-                const connectionName = e.target.value;
-                setSelectedConnection(connectionName);
+                const selectedConnection = JSON.parse(e.target.value);
+                setSelectedConnectionObj(selectedConnection);
+                setSelectedConnection(selectedConnection.connection_name);
                 setSelectedSchema("");
-                setTables([]);
-                fetchschemas(connectionName);
-                fetchschemascount(connectionName);
+                setNodeData((prevData) => ({
+                  ...prevData,
+                  "target_conn_id": selectedConnection.connection_id,
+                }));
               }}
             >
               <option value="">Select Connection</option>
-              {connections.map((connection, idx) => (
-                <option key={idx} value={connection.connection_name}>
-                  {connection.connection_name}
-                </option>
-              ))}
+              {connections?.length > 0 ? (
+      connections.map((connection, idx) => (
+        <option key={idx} value={JSON.stringify(connection)}>
+          {connection.connection_name}
+        </option>
+      ))
+    ) : (
+      <option disabled>No connections available</option>
+    )}
             </select>
           </div>
         </div>
@@ -387,7 +284,7 @@ export function TargetNode({ id, data, selected }) {
                 ) : (
                   <>
                     <option value="">Select Schema</option>
-                    {schemas.map((schema, idx) => (
+                    {schemas?.map((schema, idx) => (
                       <option key={idx} value={schema.table_schema}>
                         {schema.table_schema}
                       </option>
@@ -404,13 +301,13 @@ export function TargetNode({ id, data, selected }) {
             </div>
 
             <span className="text-black font-bold">
-              {schemaCount.schema_count}
+              {schemaCount?.schema_count}
             </span>
           </div>
         </div>
       </div>
 
-      {showSearch && tables.length > 0 && (
+      {showSearch && tables?.length > 0 && (
         <input
           type="search"
           placeholder="Search datasets..."
@@ -437,7 +334,7 @@ export function TargetNode({ id, data, selected }) {
               onChange={(e) =>
                 completeMapping(
                   ID,
-                  data?.source?.id,
+                  firstSource?.id,
                   e.target.value,
                   isPipelineNode
                 )

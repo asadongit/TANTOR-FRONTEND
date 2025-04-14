@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { Handle, Position } from "reactflow";
+import { Position } from "reactflow";
 import { useWorkflow } from "../context/WorkflowContext";
 import { Minus, X } from "lucide-react";
-import { CustomHandle } from "../components/CustomHandle";
+import { Handle } from "../components/CustomHandle";
+import { useCDCData } from "../../../../hooks/platform/cdc";
 export function DefineNode({ id, data, selected }) {
-  // console.log("Define-Data----------", data);
-
+const { data: CDCData=[], isLoading: isCDCLoading, error: CDCError } = useCDCData();
   const [nodeData, setNodeData] = useState({
     name: data.define?.name || "",
     description: data.define?.description || "",
@@ -16,8 +16,8 @@ export function DefineNode({ id, data, selected }) {
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id;
 
-  const { updateData } = useWorkflow();
-
+  const { updateData, pipelines } = useWorkflow();
+  // console.log("Define-Data----------", data);
   const handleInputChange = (e, field) => {
     const value = e.target.value;
     setNodeData((prevState) => ({
@@ -26,15 +26,52 @@ export function DefineNode({ id, data, selected }) {
     }));
   };
 
-  // const handleBlur = () => {
-  //   updateData(ID, isPipelineNode, "define", nodeData);
-  // };
 
-  useEffect(() => {
-    if (nodeData) {
-      updateData(ID, isPipelineNode, "define", nodeData);
+useEffect(() => {
+  const cdcAutoNames = CDCData.map(item => item.cdc_auto_name);
+  const sourceData = isPipelineNode 
+    ? pipelines[ID]?.data?.source 
+    : data?.source;
+
+  const firstSource = sourceData
+    ? Array.isArray(sourceData)
+      ? sourceData[0]
+      : sourceData
+    : null;
+
+
+    const sourceName = firstSource?.connection && firstSource?.schema && firstSource?.mode
+    ? `${firstSource.connection}_${firstSource.schema}_${firstSource.mode}`
+    : nodeData.name;
+    let nameCount = cdcAutoNames.filter(name => name.toLowerCase() === sourceName.toLowerCase()).length;
+  if (isPipelineNode) {
+    if (sourceName && sourceName !== nodeData.name) {
+      setNodeData((prevData) => ({
+        ...prevData,
+        name: `${sourceName}${nameCount}`,
+      }));
     }
-  }, [nodeData,pipelineId]);
+  } else {
+
+    if (sourceName && (!nodeData.name || nodeData.name.trim() === "" || sourceName !== nodeData.name)) {
+      setNodeData((prevData) => ({
+        ...prevData,
+        name: `${sourceName}${nameCount}`,
+      }));
+    }
+  }
+
+  updateData(ID, isPipelineNode, "define", nodeData);
+
+}, [
+  pipelines[ID]?.data?.define?.name, 
+  pipelines[ID]?.data?.source, 
+  data?.source, 
+  isPipelineNode, 
+  nodeData.name, 
+]);
+
+  
 
 
   return (
@@ -67,7 +104,7 @@ export function DefineNode({ id, data, selected }) {
         )}
       </div>
 
-      <CustomHandle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Right} />
 
       <div>
         <label className="text-xs font-semibold text-black mb-0.5 block">

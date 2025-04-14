@@ -3,22 +3,21 @@ import PropTypes from "prop-types";
 import { Position } from "reactflow";
 import { Minus, X } from "lucide-react";
 import { useWorkflow } from "../context/WorkflowContext";
-import { CustomHandle } from "../components/CustomHandle";
-import { toast as hotToast } from "react-hot-toast";
+import { Handle } from "../components/CustomHandle";
+import { toast } from "react-hot-toast";
 import { useNavigate } from 'react-router-dom';
+import { useModal } from "../context/ModalProvider";
+import { encrypt } from "../../../../utils/Crypto";
 
-
+import { useAuth } from "../../../../context/AuthContext";
 export function SchedulerNode({ id, data, selected}) {
-
   // console.log("SCHEDULAR DATA---------",data)
-  const hostname = import.meta.env.VITE_FAST_API;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id; 
-
-
+const {token,decodedToken ,project, hostnameV2}= useAuth()
   const navigate = useNavigate();
+  const {openModal, closeModal}= useModal()
 
   const { updatePipelineData,deletePipeline, pipelines,setNodes,setEdge,deleteMappings} = useWorkflow();
   
@@ -28,56 +27,80 @@ export function SchedulerNode({ id, data, selected}) {
   const handleOptionChange = useCallback((event) => {
     setSelectedOption(event.target.value);
   }, []);
-
   
-  const handleSave =async () => {
-    const pipelineData = pipelines[pipelineId]?.data || {};
-
-    if(!pipelineData.define?.name && !pipelineData.source?.bulk_list || !pipelineData.source?.subset_list || !pipelineData.source?.op_types){
-      hotToast.error("Please fill all the required fields!",{  duration: 4000,
-      })
-    return;
-    }
-
+  const handleSave = async () => {
+    const pipelineData = pipelines[ID]?.data || {};
   
+    if (
+    isPipelineNode && 
+    (
+      !pipelineData?.define?.name || 
+      !pipelineData?.source?.bulk_list || 
+      !pipelineData?.source?.subset_list || 
+      !pipelineData?.source?.op_types
+    )
+  ) {
+    toast.error("Please fill all the required fields!", { duration: 4000 });
+    return; 
+  }
+
     const finalPayload = {
-      project: "default",
-      created_by: "sorv",
-      workflow_name: pipelineData.define?.name ,
+      project: project,
+      created_by: decodedToken.preferred_username,
+      cdc_name: pipelineData.define?.name,
       cdc_description: pipelineData.define?.description || "",
+      source_conn_id:pipelineData.source?.source_conn_id,
+      target_conn_id:pipelineData.target?.target_conn_id,
+      source_schema:pipelineData.source?.schema,
+      target_schema:pipelineData.target?.schema,
       cdc_list: pipelineData.source?.bulk_list || [],
-      subset_list: pipelineData.source?.subset_list|| [],
-      op_types: pipelineData.source?.op_types || {}
+      subset_list: pipelineData.source?.subset_list || [],
+      op_types: pipelineData.source?.op_types || {},
     };
-  
+ 
     console.log("Final Payload:", finalPayload);
-
+  
     try {
-      const response = await fetch(`${hostname}/create-cdc`, {
+      const response = await fetch(`${hostnameV2}/create-cdc`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(finalPayload)
+        body: JSON.stringify(finalPayload),
       });
   
       const data = await response.json();
       console.log("Response:", data);
   
+      // toast.success("CDC pipeline created successfully!", { duration: 4000 });
+  
+  
+  
     } catch (error) {
       console.error("Error:", error);
     }
-    hotToast.success("cdc Pipeline ceated successfully!",{  duration: 4000,
-    })
-    deletePipeline(pipelineId)
-
-
+  
     setTimeout(() => {
-      // navigate('/CDCList')
-    }, 500);
+      setNodes([])
+      openModal({
+        title: "Success!",
+        message: "Your CDC has been saved successfully.",
+        type: "success",
+        onConfirm: () => handleClose(),
+      });
+    }, 800);
   };
   
+
+  const handleClose =()=>{
+    closeModal()   
+    deletePipeline(ID);
+     setTimeout(() => {
+          navigate(`/details?${encodeURIComponent(encrypt("componentType=cdc&heading=cdc"))}`);
+    }, 800)
+      }
+
   return (
 <div
   className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
@@ -101,7 +124,7 @@ export function SchedulerNode({ id, data, selected}) {
       </div>
     </div>
   
-    <CustomHandle type="target" position={Position.Left} />
+    <Handle type="target" position={Position.Left} />
 
 
 
@@ -173,11 +196,19 @@ export function SchedulerNode({ id, data, selected}) {
         <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           Cancel
         </button>
-        <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
-        onClick={handleSave}
-        >
-          SAVE
-        </button>
+        <button 
+  className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
+  onClick={() => openModal({
+    title: "Save Confirmation",
+    message: "Are you sure you want to save this CDC?",
+    type: "question",
+    confirmText: "Yes",
+    onConfirm: () => handleSave(), 
+  })}
+>
+  SAVE
+</button>
+
       </div>
     </div>
   );
