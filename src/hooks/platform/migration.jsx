@@ -2,13 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 
-const hostname = import.meta.env.VITE_FAST_API;
 
-const fetchMigrationData = async (token) => {
+const fetchMigrationData = async (token, hostnameV1) => {
   if (!token) throw new Error("Token is missing");
 
   try {
-    const response = await axios.get(`${hostname}/metadata-archivals`, {
+    const response = await axios.get(`${hostnameV1}/metadata-archivals`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -20,11 +19,11 @@ const fetchMigrationData = async (token) => {
 };
 
 export const useMigrationData = () => {
-  const { token } = useAuth();
+  const { token, hostnameV1 } = useAuth();
 
   return useQuery({
     queryKey: ["migrationData"],
-    queryFn: () => fetchMigrationData(token), 
+    queryFn: () => fetchMigrationData(token, hostnameV1), 
     enabled: !!token, 
     staleTime: 30 * 1000, 
     retry: 2, 

@@ -2,13 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 
-const hostname = import.meta.env.VITE_FAST_API;
 
-const fetchReportData = async (token) => {
+const fetchReportData = async (token, hostnameV1) => {
   if (!token) throw new Error("Token is missing");
 
   try {
-    const response = await axios.get(`${hostname}/report`, {
+    const response = await axios.get(`${hostnameV1}/report`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -20,11 +19,11 @@ const fetchReportData = async (token) => {
 };
 
 export const useReportData = () => {
-  const { token } = useAuth();
+  const { token, hostnameV1 } = useAuth();
 
   return useQuery({
     queryKey: ["reportData"],
-    queryFn: () => fetchReportData(token), 
+    queryFn: () => fetchReportData(token, hostnameV1), 
     enabled: !!token, 
     staleTime: 30 * 1000, 
     retry: 2, 
