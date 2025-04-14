@@ -170,7 +170,7 @@ const Policy = () => {
                                 Policy
                             </h2>
                             <button
-                                className="flex items-center bg-[#8e78b7] text-white px-4 py-1.5 rounded-lg hover:bg-[#7b67a3] focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="flex items-center bg-[#8e78b7] text-white px-4 py-1.5 rounded-lg hover:bg-[#7b67a3] focus:outline-none"
                             >
                                 <Plus className="h-4 w-4 mr-2" />
                                 Add policy
@@ -181,7 +181,7 @@ const Policy = () => {
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">Policy type</label>
                                 <select
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                 >
                                     <option value="">Select</option>
                                     <option value="data">Data</option>
@@ -193,7 +193,7 @@ const Policy = () => {
                                 <input
                                     type="text"
                                     placeholder="Write here"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                 />
                             </div>
                         </div>
@@ -207,7 +207,7 @@ const Policy = () => {
                                 <input
                                     type="text"
                                     placeholder="Name"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                 />
                             </div>
                             <div>
@@ -215,7 +215,7 @@ const Policy = () => {
                                 <input
                                     type="text"
                                     placeholder="Write here"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                                 />
                             </div>
                         </div>
@@ -291,7 +291,7 @@ const Policy = () => {
                         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Connection</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Connection</option>
                                     <option value="conn1">Connection 1</option>
                                     <option value="conn2">Connection 2</option>
@@ -301,7 +301,7 @@ const Policy = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Schema</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Schema</option>
                                     <option value="schema1">Schema 1</option>
                                     <option value="schema2">Schema 2</option>
@@ -311,7 +311,7 @@ const Policy = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Table</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Table</option>
                                     <option value="table1">Table 1</option>
                                     <option value="table2">Table 2</option>
@@ -321,7 +321,7 @@ const Policy = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Column</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Column</option>
                                     <option value="col1">Column 1</option>
                                     <option value="col2">Column 2</option>
@@ -340,7 +340,7 @@ const Policy = () => {
                         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Connection</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Connection</option>
                                     <option value="conn1">Connection 1</option>
                                     <option value="conn2">Connection 2</option>
@@ -350,7 +350,7 @@ const Policy = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Schema</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Schema</option>
                                     <option value="schema1">Schema 1</option>
                                     <option value="schema2">Schema 2</option>
@@ -360,7 +360,7 @@ const Policy = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Table</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Table</option>
                                     <option value="table1">Table 1</option>
                                     <option value="table2">Table 2</option>
@@ -370,7 +370,7 @@ const Policy = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Column</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Column</option>
                                     <option value="col1">Column 1</option>
                                     <option value="col2">Column 2</option>
@@ -389,7 +389,7 @@ const Policy = () => {
                         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Connection</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Connection</option>
                                     <option value="conn1">Connection 1</option>
                                     <option value="conn2">Connection 2</option>
@@ -399,7 +399,7 @@ const Policy = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Schema</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Schema</option>
                                     <option value="schema1">Schema 1</option>
                                     <option value="schema2">Schema 2</option>
@@ -409,7 +409,7 @@ const Policy = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Table</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Table</option>
                                     <option value="table1">Table 1</option>
                                     <option value="table2">Table 2</option>
@@ -419,7 +419,7 @@ const Policy = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Column</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
                                     <option value="">Select Column</option>
                                     <option value="col1">Column 1</option>
                                     <option value="col2">Column 2</option>
@@ -498,7 +498,7 @@ const Policy = () => {
                             <input
                                 type="text"
                                 placeholder="Search Policy"
-                                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none"
                             />
                         </div>
                         <button
