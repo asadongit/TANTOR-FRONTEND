@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Code, Copy, Save, Check, X, Edit2, Play, Pause, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-const EditCDC = ({ connectorId }) => {
+import { useCDCConfigs } from '../hooks/connectorConfigs';
+import { useParams } from 'react-router-dom';
+const EditCDC = () => {
+  const { cdcId } = useParams();
+  const { data, isLoading, isError, error } = useCDCConfigs(cdcId);
+// tbr
   const [sourceConfig, setSourceConfig] = useState(null);
   const [targetConfig, setTargetConfig] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   
   const [sourceStatus, setSourceStatus] = useState(null);
   const [targetStatus, setTargetStatus] = useState(null);
@@ -21,46 +25,12 @@ const EditCDC = ({ connectorId }) => {
   const [activeTab, setActiveTab] = useState('source');
   
   useEffect(() => {
-    const fetchData = async () => {
       try {
         setLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 800));
         
-        const sampleSourceConfig = {
-          "name": "cdc22222222_employee_base",
-          "config": {
-            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-            "tasks.max": "1",
-            "database.hostname": "postgres-host",
-            "database.port": "5432",
-            "database.user": "dbuser",
-            "database.password": "dbpassword",
-            "database.dbname": "employeedb",
-            "database.server.name": "H19_POSTGRESQL_employee_base",
-            "table.include.list": "employee_base",
-            "database.history.kafka.topic": "cdc22222222_employee_base",
-            "database.history.kafka.bootstrap.servers": "kafka:9092",
-            "snapshot.mode": "Initial",
-            "decimal.handling.mode": "double",
-          }
-        };
+        const sampleSourceConfig =data?.source_connector?.config
 
-        const sampleTargetConfig = {
-          "name": "sink_employee_base",
-          "config": {
-            "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
-            "tasks.max": "3",
-            "connection.url": "jdbc:postgresql://target-host:5432/employeedb",
-            "connection.user": "targetuser",
-            "connection.password": "targetpassword",
-            "topics": "H19_POSTGRESQL_employee_base.employee_base",
-            "insert.mode": "upsert",
-            "pk.mode": "record_key",
-            "pk.fields": "id",
-            "auto.create": "true",
-            "auto.evolve": "true",
-          }
-        };
+        const sampleTargetConfig = data?.target_connector?.config
         
         const sampleSourceStatus = {
           "name": "cdc22222222_employee_base",
@@ -110,14 +80,13 @@ const EditCDC = ({ connectorId }) => {
         setTargetStatus(sampleTargetStatus);
         setLoading(false);
       } catch (err) {
-        setError("Failed to load connector configurations");
         setLoading(false);
       }
-    };
     
-    fetchData();
-  }, [connectorId]);
+  }, [cdcId]);
   
+
+
   const handleSourceConfigChange = (e) => {
     try {
       const parsed = JSON.parse(e.target.value);
@@ -165,7 +134,6 @@ const EditCDC = ({ connectorId }) => {
      toast.success("Configuration saved successfully!");
     } catch (err) {
       setSaving(false);
-      setError("Failed to save configuration changes");
     }
   };
 
@@ -188,7 +156,6 @@ const EditCDC = ({ connectorId }) => {
         sourceStatus.connector.state : targetStatus.connector.state;
      toast.success(`Connector ${currentState === "RUNNING" ? 'stopped' : 'started'} successfully!`);
     } catch (err) {
-      setError(`Failed to update connector status`);
     }
   };
 
@@ -211,35 +178,43 @@ const EditCDC = ({ connectorId }) => {
       "RUNNING": {
         bg: "bg-green-100",
         text: "text-green-800",
-        icon: <CheckCircle size={14} className="mr-1" />
+        dot: "bg-green-500", 
       },
       "STOPPED": {
         bg: "bg-yellow-100",
         text: "text-yellow-800",
-        icon: <Pause size={14} className="mr-1" />
+        dot: "bg-yellow-800", 
       },
       "FAILED": {
         bg: "bg-red-100",
         text: "text-red-800",
-        icon: <XCircle size={14} className="mr-1" />
+        dot: "bg-red-800", 
       },
       "PAUSED": {
         bg: "bg-blue-100",
         text: "text-blue-800",
-        icon: <Pause size={14} className="mr-1" />
+        dot: "bg-blue-800", 
       }
     };
     
     const state = status.connector.state;
     const statusStyle = statusColors[state] || statusColors["FAILED"];
+    const isRunning = state === "RUNNING"; 
     
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center ${statusStyle.bg} ${statusStyle.text}`}>
-        {statusStyle.icon}
-        {state}
+        <span className="relative ml-1 flex h-2 w-2">
+          {isRunning && (
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusStyle.dot} opacity-75`}></span>
+          )}
+          <span className={`relative inline-flex rounded-full h-2 w-2 ${statusStyle.dot}`}></span>
+        </span>
+        <span className="ml-2 capitalize">{state}</span>
       </span>
     );
   };
+  
+  
 
   const renderConfigFields = (config, isSource) => {
     if (!config) return null;
@@ -402,12 +377,12 @@ const EditCDC = ({ connectorId }) => {
               onClick={() => setActiveTab('target')}
               className={`py-4 px-6 text-sm font-medium relative ${
                 activeTab === 'target'
-                  ? 'text-green-500 border-b-2 border-green-400'
+                  ? 'text-[#8e78b7] border-b-2 border-[#8e78b7]'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <div className="flex items-center">
-                <div className={`w-2 h-6 ${activeTab === 'target' ? 'bg-green-400' : 'bg-gray-300'} rounded-sm mr-3`}></div>
+                <div className={`w-2 h-6 ${activeTab === 'target' ? 'bg-[#8e78b7]' : 'bg-gray-300'} rounded-sm mr-3`}></div>
                 Target Connector
                 <span className="ml-2 text-xs font-normal text-gray-500">
                   ({targetConfig?.config["connector.class"].split('.').pop()})
@@ -427,11 +402,11 @@ const EditCDC = ({ connectorId }) => {
                     <div className="flex items-center">
                       <h4 className="font-medium text-gray-700">Source Configuration</h4>
                       <div className="ml-3">
-                        {renderStatusBadge(sourceStatus)}
+                        {/* {renderStatusBadge(sourceStatus)} */}
                       </div>
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
-                      Topic: {sourceConfig?.config["database.history.kafka.topic"]}
+                      Topic: {data?.topic}
                     </p>
                   </div>
                   <div className="flex space-x-2">
@@ -509,7 +484,7 @@ const EditCDC = ({ connectorId }) => {
                 </div>
                 
 
-                {renderTasksTable(sourceStatus)}
+                {/* {renderTasksTable(sourceStatus)} */}
               </div>
             </div>
           )}
@@ -522,11 +497,11 @@ const EditCDC = ({ connectorId }) => {
                     <div className="flex items-center">
                       <h4 className="font-medium text-gray-700">Target Configuration</h4>
                       <div className="ml-3">
-                        {renderStatusBadge(targetStatus)}
+                        {/* {renderStatusBadge(targetStatus)} */}
                       </div>
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
-                      Topic: {targetConfig?.config["topics"]}
+                    Topic: {data?.topic}
                     </p>
                   </div>
                   <div className="flex space-x-2">
@@ -603,7 +578,7 @@ const EditCDC = ({ connectorId }) => {
                   )}
                 </div>
                 
-                {renderTasksTable(targetStatus)}
+                {/* {renderTasksTable(targetStatus)} */}
               </div>
             </div>
           )}
@@ -621,8 +596,8 @@ const EditCDC = ({ connectorId }) => {
               disabled={(!editingSource && !editingTarget) || saving}
               className={`px-6 py-2 rounded-md shadow-sm text-sm font-medium text-white flex items-center ${
                 (editingSource || editingTarget) && !saving
-                ? 'bg-blue-600 hover:bg-blue-700' 
-                : 'bg-blue-400 cursor-not-allowed'
+                ? 'bg-[#8e78b7] hover:bg-gray-400' 
+                : 'bg-[#8e78b7] cursor-not-allowed'
               }`}
             >
               {saving ? (

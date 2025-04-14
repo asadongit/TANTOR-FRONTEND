@@ -36,16 +36,13 @@ export function PlatformRoutes() {
         <Route path="/metadata" element={<Metadata />} />
         <Route path="/purge" element={<Purge />} />
         <Route path="/cdc" element={<CDC />} />
-        <Route path="/editcdc" element={<EditCDC />} />
+        <Route path="/cdc/editcdc/:cdcId" element={<EditCDC />} />
         <Route path="/editor" element={<Editor />} />
         <Route path="/federation" element={<FederationDashBoard />} />
         <Route path="/federation/view/source" element={<Source />} />
         <Route path="/createMigration" element={<ArchivalCanvas />} />
         <Route path="/PurgeCanvas" element={<PurgeCanvas />} />
-        <Route
-                path="/details"
-                element={<Details />}
-              />
+        <Route path="/details" element={<Details />}/>
       </Routes>
   );
 }

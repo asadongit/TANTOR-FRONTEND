@@ -6,7 +6,7 @@ export const getActionConfigurations = (navigate) => ({
     {
       label: "Edit",
       icon: React.createElement(Pencil, { size: 16 }),
-      onClick: (row) => navigate(`/editcdc`),
+      onClick: (row) => navigate(`/cdc/editcdc/${row.cdc_id}`),
     },
     {
       label: "Delete",
