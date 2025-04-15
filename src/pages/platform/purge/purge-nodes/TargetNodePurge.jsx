@@ -51,7 +51,6 @@ export function TargetNode({ id }) {
         },
       });
       connectionsData = await connectionResponse.json();
-
       setConnections(connectionsData);
     } catch (error) {
       console.error("Error fetching options", error);
@@ -318,7 +317,9 @@ export function TargetNode({ id }) {
             }}
           >
             <option value="">Select</option>
-            {connections.map((connection, idx) => (
+            {connections
+              .filter((connection) => connection.created_by === decodedToken.preferred_username)
+              .map((connection, idx) => (
               <option key={idx} value={connection.connection_name}>
                 {connection.connection_name}
               </option>
