@@ -3,10 +3,10 @@ import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X } from "lucide-react";
 import { toast } from "react-hot-toast";
-
+import { useAuth } from "../../../../context/AuthContext";
 export function TargetNode({ id, data }) {
-  const hostname = import.meta.env.VITE_FAST_API;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
+const {token, hostnameV1}= useAuth();
+
   const [connections, setConnections] = useState([]);
   const [settings, setSettings] = useState(
     data?.settings?.type || "Prefix/Suffix"
@@ -68,7 +68,7 @@ export function TargetNode({ id, data }) {
 
   const fetchOptions = useCallback(async () => {
     try {
-      const connectionResponse = await fetch(`${hostname}/connection-saves`, {
+      const connectionResponse = await fetch(`${hostnameV1}/connection-saves`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -93,7 +93,7 @@ export function TargetNode({ id, data }) {
       setSchemaLoading(true);
 
       try {
-        const response = await fetch(`${hostname}/schema/${connectionName}`, {
+        const response = await fetch(`${hostnameV1}/schema/${connectionName}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -112,7 +112,7 @@ export function TargetNode({ id, data }) {
         setSchema([]); // Clear schemas on error
       }
     },
-    [hostname, token]
+    [hostnameV1, token]
   );
 
   useEffect(() => {
