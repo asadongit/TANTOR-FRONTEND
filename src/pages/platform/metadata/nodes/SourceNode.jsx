@@ -46,14 +46,13 @@ export function SourceNode({ id, data }) {
   let connectionsData;
   let schemacount;
   let schemadetails;
-  let tabledetails;
 
   const fetchOptions = useCallback(async () => {
     try {
       const connectionResponse = await fetch(`${hostname}/connection-saves`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
           "Content-Type": "application/json",
         },
       });
@@ -79,7 +78,7 @@ export function SourceNode({ id, data }) {
           `${hostname}/schema/${connectionName}/count`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
           }
         );
@@ -116,7 +115,7 @@ export function SourceNode({ id, data }) {
       try {
         const response = await fetch(`${hostname}/schema/${connectionName}`, {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
 
@@ -150,7 +149,7 @@ export function SourceNode({ id, data }) {
           const response = await fetch(
             `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
             {
-              headers: { Authorization: `Bearer ${token}` },
+              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
             }
           );
 

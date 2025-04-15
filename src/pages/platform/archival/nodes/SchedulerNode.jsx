@@ -33,20 +33,8 @@ export function SchedulerNode({ id, data }) {
   
       await onSubmit(finalPayload);
   
-      toast.success("Flow Submitted Successfully", {
-        duration: 3000,
-        position: "top-right",
-      });
-  
-      setTimeout(() => {
-        navigate("/transformation");
-      }, 3000);
     } catch (error) {
       console.error("Error submitting flow:", error);
-      toast.error("An error occurred while submitting the flow", {
-        duration: 3000,
-        position: "top-right",
-      });
     } finally {
       setLoading(false);
     }

@@ -6,7 +6,6 @@ import { toast } from "react-hot-toast";
 
 export function TargetNode({ id, data }) {
   const hostname = import.meta.env.VITE_FAST_API;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
   const [connections, setConnections] = useState([]);
   const [settings, setSettings] = useState(
     data?.settings?.type || "Prefix/Suffix"
@@ -71,7 +70,7 @@ export function TargetNode({ id, data }) {
       const connectionResponse = await fetch(`${hostname}/connection-saves`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
           "Content-Type": "application/json",
         },
       });
@@ -95,7 +94,7 @@ export function TargetNode({ id, data }) {
       try {
         const response = await fetch(`${hostname}/schema/${connectionName}`, {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
 
@@ -112,7 +111,7 @@ export function TargetNode({ id, data }) {
         setSchema([]); // Clear schemas on error
       }
     },
-    [hostname, token]
+    [hostname]
   );
 
   useEffect(() => {
