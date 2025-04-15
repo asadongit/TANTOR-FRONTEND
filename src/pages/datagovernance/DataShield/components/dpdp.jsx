@@ -12,7 +12,7 @@ import {
     X,
     Pencil
 } from "lucide-react";
-import Breadcrumb from "../../../components/Breadcrumb";
+import Breadcrumb from "../../../../components/Breadcrumb";
 
 const Toggle = ({ enabled, onToggle }) => {
     return (

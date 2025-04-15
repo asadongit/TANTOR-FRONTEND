@@ -21,7 +21,11 @@ import {
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
 import { Stepper, Step, StepLabel, Button, Box, Typography } from '@mui/material';
-import successBackground from "../../../assets/green.png";
+import Step1 from "./PolicyStepper/step1";
+import Step2 from "./PolicyStepper/step2";
+import Step3 from "./PolicyStepper/step3";
+import Step5 from "./PolicyStepper/step5";
+import Step6 from "./PolicyStepper/step6";
 
 
 const Toggle = ({ enabled, onToggle }) => {
@@ -124,363 +128,38 @@ const Policy = () => {
         setActiveStep((prevActiveStep) => prevActiveStep - 1);
     };
 
-    const [selectedTab, setSelectedTab] = useState('Role');
-    const [selectedItems, setSelectedItems] = useState([]);
-
-    const toggleItem = (item) => {
-        setSelectedItems((prev) =>
-            prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
-        );
-    };
-
-    const toggleSelectAll = () => {
-        if (selectedItems.length === items.length) {
-            setSelectedItems([]);
-        } else {
-            setSelectedItems(items);
-        }
-    };
-
-    const items = ['Audit_msg', 'Audit_msg', 'Audit_msg'];
-    const roleDetails = [
-        { role: 'Role', icon: User },
-        { role: 'Group', icon: Users },
-        { role: 'Sub-group', icon: UserPlus },
-        { role: 'Persona', icon: UserRoundCog },
-    ];
-
-    const checkbox_options = [
-        'Read',
-        'Write',
-        'Execute',
-        'Update',
-        'Delete',
-        'Select All',
-    ];
-
     const renderStepContent = (step) => {
         switch (step) {
             case 0:
                 return (
-                    <Box>
-                        <Typography variant="h6 text-lg font-medium" className="mb-4">Policy type</Typography>
-
-                        <div className="mt-1 flex justify-between w-full">
-                            <h2 className="font-medium text-[#8e78b7] flex items-center mb-3">
-                                Policy
-                            </h2>
-                            <button
-                                className="flex items-center bg-[#8e78b7] text-white px-4 py-1.5 rounded-lg hover:bg-[#7b67a3] focus:outline-none"
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add policy
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">Policy type</label>
-                                <select
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                >
-                                    <option value="">Select</option>
-                                    <option value="data">Data</option>
-                                    <option value="security">Security</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <input
-                                    type="text"
-                                    placeholder="Write here"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <h2 className="font-medium text-[#8e78b7] flex items-center mt-4">
-                            Sub Policy
-                        </h2>
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                <input
-                                    type="text"
-                                    placeholder="Name"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <input
-                                    type="text"
-                                    placeholder="Write here"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                                />
-                            </div>
-                        </div>
-
-                    </Box>
+                    <Step1 />
                 );
 
             case 1:
                 return (
-                    <Box>
-                        <div className="mb-6">
-                            <h3 className="text-lg font-medium text-gray-700 mb-2">User</h3>
-                            <div className="flex space-x-4 items-start">
-                                <div className="flex flex-col w-1/4 space-y-2 bg-white">
-                                    {roleDetails.map(({ role, icon: IconComponent }) => {
-                                        return (
-                                            <button
-                                                key={role}
-                                                className={`text-left px-4 py-2 rounded-lg border ${selectedTab === role
-                                                    ? 'bg-purple-100 text-[#8e78b7] border-[#8e78b7]'
-                                                    : 'hover:bg-gray-100 text-gray-600 border-gray-200'
-                                                    }`}
-                                                onClick={() => setSelectedTab(role)}
-                                            >
-                                                <IconComponent className=" h-5 w-5 mr-2 inline-block" />
-                                                {role}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="w-3/4">
-                                    <div className="flex flex-col h-full">
-                                        <div className="bg-gray-800 text-white rounded-t-md px-4 py-2 flex items-center justify-between">
-                                            <span className="font-medium">Name</span>
-                                            <label className="flex items-center space-x-2 cursor-pointer">
-                                                <span className="text-sm">Select all</span>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedItems.length === items.length}
-                                                    onChange={toggleSelectAll}
-                                                />
-                                            </label>
-                                        </div>
-
-                                        <div className="border border-t-0 border-gray-300 rounded-b-md overflow-y-auto" style={{ maxHeight: '100%' }}>
-                                            {items.map((item, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="flex items-center justify-between px-4 py-2 border-t border-gray-200"
-                                                >
-                                                    <span>{item}</span>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedItems.includes(item)}
-                                                        onChange={() => toggleItem(item)}
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </Box>
-
-
+                    <Step2 />
                 );
             case 2:
                 return (
-                    <Box>
-                        <h3 className="text-lg font-medium text-gray-700 mb-2">Data</h3>
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Connection</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Connection</option>
-                                    <option value="conn1">Connection 1</option>
-                                    <option value="conn2">Connection 2</option>
-                                    <option value="conn3">Connection 3</option>
-                                    <option value="conn4">Connection 4</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Schema</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Schema</option>
-                                    <option value="schema1">Schema 1</option>
-                                    <option value="schema2">Schema 2</option>
-                                    <option value="schema3">Schema 3</option>
-                                    <option value="schema4">Schema 4</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Table</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Table</option>
-                                    <option value="table1">Table 1</option>
-                                    <option value="table2">Table 2</option>
-                                    <option value="table3">Table 3</option>
-                                    <option value="table4">Table 4</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Column</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Column</option>
-                                    <option value="col1">Column 1</option>
-                                    <option value="col2">Column 2</option>
-                                    <option value="col3">Column 3</option>
-                                    <option value="col4">Column 4</option>
-                                </select>
-                            </div>
-                        </div>
-                    </Box>
+                    <Step3 name='Data' />
                 );
 
             case 3:
                 return (
-                    <Box>
-                        <h3 className="text-lg font-medium text-gray-700 mb-2">Access control - Raw</h3>
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Connection</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Connection</option>
-                                    <option value="conn1">Connection 1</option>
-                                    <option value="conn2">Connection 2</option>
-                                    <option value="conn3">Connection 3</option>
-                                    <option value="conn4">Connection 4</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Schema</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Schema</option>
-                                    <option value="schema1">Schema 1</option>
-                                    <option value="schema2">Schema 2</option>
-                                    <option value="schema3">Schema 3</option>
-                                    <option value="schema4">Schema 4</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Table</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Table</option>
-                                    <option value="table1">Table 1</option>
-                                    <option value="table2">Table 2</option>
-                                    <option value="table3">Table 3</option>
-                                    <option value="table4">Table 4</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Column</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Column</option>
-                                    <option value="col1">Column 1</option>
-                                    <option value="col2">Column 2</option>
-                                    <option value="col3">Column 3</option>
-                                    <option value="col4">Column 4</option>
-                                </select>
-                            </div>
-                        </div>
-                    </Box>
+                    <Step3 name='Access control - Raw' />
                 );
 
             case 4:
                 return (
-                    <Box>
-                        <h3 className="text-lg font-medium text-gray-700 mb-2">Access control - Column</h3>
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Connection</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Connection</option>
-                                    <option value="conn1">Connection 1</option>
-                                    <option value="conn2">Connection 2</option>
-                                    <option value="conn3">Connection 3</option>
-                                    <option value="conn4">Connection 4</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Schema</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Schema</option>
-                                    <option value="schema1">Schema 1</option>
-                                    <option value="schema2">Schema 2</option>
-                                    <option value="schema3">Schema 3</option>
-                                    <option value="schema4">Schema 4</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Table</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Table</option>
-                                    <option value="table1">Table 1</option>
-                                    <option value="table2">Table 2</option>
-                                    <option value="table3">Table 3</option>
-                                    <option value="table4">Table 4</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Column</label>
-                                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none">
-                                    <option value="">Select Column</option>
-                                    <option value="col1">Column 1</option>
-                                    <option value="col2">Column 2</option>
-                                    <option value="col3">Column 3</option>
-                                    <option value="col4">Column 4</option>
-                                </select>
-                            </div>
-                        </div>
-                    </Box>
-
+                    <Step3 name='Access control - Column' />
                 );
             case 5:
                 return (
-                    <Box>
-                        <h3 className="text-lg font-medium text-gray-700 mb-2">Permission</h3>
-                        <div className="grid grid-cols-2 gap-4 py-4">
-                            {checkbox_options.map((item, index) => (
-                                <div key={index} className="flex items-center space-x-2">
-                                    <input type="checkbox" id={`checkbox-${index}`} className="w-4 h-4" />
-                                    <label htmlFor={`checkbox-${index}`} className="text-sm font-medium text-gray-600">
-                                        {item}
-                                    </label>
-                                </div>
-                            ))}
-                        </div>
-                    </Box>
+                    <Step5 />
                 );
             case 6:
                 return (
-                    <Box>
-                        <div className="relative h-24">
-                            <div
-                                className="absolute inset-0 bg-cover bg-center"
-                                style={{ backgroundImage: `url(${successBackground})` }}
-                            >
-                            </div>
-                        </div>
-
-                        <div>
-                            <div className="flex items-center space-x-4 mb-4">
-                                <BadgeCheck className="w-8 h-8 text-green-500" />{" "}
-                                <h2 className="text-2xl font-bold">Confirmation submission</h2>
-                            </div>
-                            <p className="text-lg text-gray-800">
-                                Are you sure want to save this Policy?
-                            </p>
-
-
-                            <div className="flex justify-start gap-4 mt-5">
-                                <button className="px-7 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
-                                    No
-                                </button>
-                                <button
-                                    onClick={() => setIsOpen(false)}
-                                    className="px-7 py-1.5 text-lg bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a66a3] transition-colors"
-                                >
-                                    Yes
-                                </button>
-                            </div>
-                        </div>
-                    </Box>
+                    <Step6 setIsOpen={setIsOpen} />
                 )
             default:
                 return
@@ -573,8 +252,8 @@ const Policy = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow overflow-hidden mt-5">
-                    <table className="w-full">
+                <div className="bg-white rounded-lg shadow mt-5 overflow-x-auto">
+                    <table className="w-full table-auto">
                         <thead>
                             <tr className="bg-[#29304a] text-white">
                                 <th className="text-left p-4">Id</th>

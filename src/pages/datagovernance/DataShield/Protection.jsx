@@ -67,7 +67,7 @@ const Protection = () => {
         setCards(newCards);
     };
 
-     const navigate = useNavigate();
+    const navigate = useNavigate();
 
     const [sampleData, setSampleData] = useState([
         { id: '1', Name: 'Data agent', Description: 'Outline was access data', CreatedDate: '26/01/2025', updatedDate: '27/01/2025', EffectiveDate: '27/01/2025', Status: 'Active', Creator: 'John Doe', Approver: 'Vivek Raj', Select: false },
@@ -104,7 +104,7 @@ const Protection = () => {
         setActiveMenu(null);
     };
     return (
-        <div>
+        <div className="w-full h-full">
             <Breadcrumb title="Data Governance" link="/" />
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-semibold">Protection</h1>
@@ -190,8 +190,8 @@ const Protection = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden mt-5">
-                <table className="w-full">
+            <div className="bg-white rounded-lg shadow mt-5 overflow-x-auto">
+                <table className="w-full table-auto">
                     <thead>
                         <tr className="bg-[#29304a] text-white">
                             <th className="text-left p-4">Id</th>
@@ -229,8 +229,8 @@ const Protection = () => {
                                 <td className="p-4 text-center">
                                     <span
                                         className={`px-5 py-1 rounded text-sm font-normal inline-block ${user.Status === "Active"
-                                                ? "text-green-600 bg-green-200"
-                                                : "text-gray-400 bg-gray-200"
+                                            ? "text-green-600 bg-green-200"
+                                            : "text-gray-400 bg-gray-200"
                                             }`}
                                     >
                                         {user.Status}
