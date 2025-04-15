@@ -10,6 +10,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import { usePurgeContext } from "../../react-flow/context/PurgeContext";
 
 export function SourceNode({ id }) {
+
   const hostname = import.meta.env.VITE_FAST_API;
   const { token, decodedToken } = useAuth();
 
@@ -160,10 +161,6 @@ export function SourceNode({ id }) {
   const fetchMetadata = useCallback(async () => {
     setLoading(true);
     try {
-      const cachedmetadatalist = sessionStorage.getItem("metadatalist");
-      // if (cachedmetadatalist) {
-      //   metadatalist = JSON.parse(cachedmetadatalist);
-      // }
       const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
         method: "GET",
         headers: {
@@ -177,7 +174,6 @@ export function SourceNode({ id }) {
       }
 
       metadatalist = await metaDataResponse.json();
-      //sessionStorage.setItem("metadatalist", JSON.stringify(metadatalist));
       setMetaData(metadatalist);
     } catch (error) {
       console.error("Error fetching tables:", error);

@@ -118,59 +118,6 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
     setFilterEntries(filterEntries.filter((_, i) => i !== index));
   };
 
-  // const handleSave = () => {
-  //   if (!localTable || !drawerState.nodeId) return;
-
-  //   const whereConditions = filterEntries.map(
-  //     (entry) => `${entry.columnName} ${entry.filterOperator} ${entry.value}`
-  //   );
-
-  //   setNodes((prevNodes) =>
-  //     prevNodes.map((node) => {
-  //       if (node.id === drawerState.nodeId) {
-  //         // Correctly handle undefined tables
-  //         const existingTables = node.data.tables || [];
-  //         const updatedTables = existingTables.map((t) =>
-  //           t.table_name === localTable.table_name
-  //             ? {
-  //                 ...t,
-  //                 filters: filterEntries,
-  //                 whereCondition: whereConditions.join(" AND "),
-  //               }
-  //             : t
-  //         );
-  //         if (
-  //           !existingTables.some((t) => t.table_name === localTable.table_name)
-  //         ) {
-  //           updatedTables.push({
-  //             ...localTable,
-  //             filters: filterEntries,
-  //             whereCondition: whereConditions.join(" AND "),
-  //           });
-  //         }
-
-  //         return {
-  //           ...node,
-  //           data: {
-  //             ...node.data,
-  //             tables: updatedTables,
-  //           },
-  //         };
-  //       }
-  //       return node;
-  //     })
-  //   );
-  //   setSelectedColumn("");
-  //   setSelectedFilter("");
-  //   setValue("");
-  //   setIsQueryPreview(false);
-  //   setComplexQuery("");
-  //   setIsComplexQueryPreview(false);
-  //   closeDrawer();
-  // };
-
-  //const [dropPartitions, setDropPartitions] = useState(null);
-
   const handleSave = () => {
     const nodeKey = purgeNode === "Source Node" ? "source" : "target";
     if (activeTab === "filter-tab") {
@@ -188,6 +135,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
       }
       saveDropPartitions(nodeKey) //clear drop data when filter is saved
       toast.success("Filter added successfully!")
+      
     } else if (activeTab === "partition-tab") {
       if (purgeNode === "Source Node" && hasPartitions) {
         const partition = sortedCurrentPartitions[0];
@@ -290,44 +238,6 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
     "Table Name",
     "Select",
   ];
-
-  // const sampleData = [
-  //   {
-  //     partition_name: "P1",
-  //     column_name: "DateChefDate",
-  //     high_value: "2024-01-01",
-  //     partition_type: "RANGE",
-  //     table_name: "RECIPETABLE_001",
-  //   },
-  //   {
-  //     partition_name: "P2",
-  //     column_name: "DateChefDate",
-  //     high_value: "2024-04-01",
-  //     partition_type: "RANGE",
-  //     table_name: "RECIPETABLE_001",
-  //   },
-  //   {
-  //     partition_name: "P3",
-  //     column_name: "DateChefDate",
-  //     high_value: "2024-07-01",
-  //     partition_type: "RANGE",
-  //     table_name: "RECIPETABLE_001",
-  //   },
-  //   {
-  //     partition_name: "P4",
-  //     column_name: "DateChefDate",
-  //     high_value: "2024-10-01",
-  //     partition_type: "RANGE",
-  //     table_name: "RECIPETABLE_001",
-  //   },
-  //   {
-  //     partition_name: "P5",
-  //     column_name: "DateChefDate",
-  //     high_value: "2025-01-01",
-  //     partition_type: "RANGE",
-  //     table_name: "RECIPETABLE_001",
-  //   },
-  // ];
 
   const filterBy = {
     eq: "=",
