@@ -4,27 +4,27 @@ import successBackground from "../../../assets/green.png";
 import PropTypes from "prop-types";
 import { usePurgeContext } from "../react-flow/context/PurgeContext";
 import { useAuth } from "../../../context/AuthContext";
+import { useStateContext } from "../react-flow/context/ContextProvider";
 
 
 const PurgeFooter = ({ onCancel }) => {
+
   const hostname = import.meta.env.VITE_FAST_API;
-
-  const {sourceData, targetData, filters, dropPartitions, defineNode} = usePurgeContext("");
-
   const { token, decodedToken, project } = useAuth();
+
+  const {sourceData, targetData, filters, dropPartitions} = usePurgeContext("");
+  const { defineNodeName, defineNodeDesc } = useStateContext("");  
 
   const buildPurgeSavePayload = () => {
     return {
-      created_at: "2025-03-26T09:52:50.501740",
-      created_by: decodedToken.name,
-      description: defineNode.description,
+      created_by: decodedToken.preferred_username,
+      description: defineNodeDesc,
       extra_info: {},
       gather_stats: false,
       is_paused: false,
       project: project,
-      purge_auto_name: defineNode.name,
-      purge_name: defineNode.name,
-      remarks: null,
+      purge_auto_name: defineNodeName,
+      purge_name: defineNodeName,
       scheduler: {
         endLoadDate: "",
         scheduleinterval: {},
@@ -37,7 +37,7 @@ const PurgeFooter = ({ onCancel }) => {
       source_conn_type: sourceData.connectionType,
       source_purge_info: {
         iscomplexwherecondition: filters.source.isComplex ? filters.source.details : "No",
-        partition_details: dropPartitions.source,
+        partition_details: dropPartitions?.source || [],
         sourceConnName: sourceData.connectionName,
         sourceObjectName: sourceData.tableName,
         sourcePath: "",
@@ -45,9 +45,9 @@ const PurgeFooter = ({ onCancel }) => {
         sourceType: sourceData.sourceType,
         wherecondition: [
           {
-            wherecolumn: filters.source.details.columnName || "",
-            whereoperator: filters.source.details.filter || "",
-            wherevalues: filters.source.details.value || "",
+            wherecolumn: filters?.source?.details?.columnName || "",
+            whereoperator: filters?.source?.details?.filter || "",
+            wherevalues: filters?.source?.details?.value || "",
           },
         ],
       },
@@ -65,7 +65,7 @@ const PurgeFooter = ({ onCancel }) => {
           surrogateKey: "",
           targetPk: "",
         },
-        partition_details: {},
+        partition_details: dropPartitions?.target || "",
         sourceDF: "s_df_1",
         targetConnName: targetData.connectionName,
         targetObjectName: targetData.tableName,
@@ -80,13 +80,13 @@ const PurgeFooter = ({ onCancel }) => {
 
   const createPurge = async () => {
     try {
-      const res = await fetch(`${hostname}/connection-saves`, {
+      const res = await fetch(`${hostname}/purges`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(buildPurgeSavePayload),
+        body: JSON.stringify(buildPurgeSavePayload()),
       });
 
       if (!res.ok) throw new Error('Failed to post data');

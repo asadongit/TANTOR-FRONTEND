@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
+import { useAuth } from "../../../../context/AuthContext";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -13,8 +14,7 @@ const SkeletonLoader = () => (
 );
 
 export function SourceNode({ id, data }) {
-  const hostname = import.meta.env.VITE_FAST_API;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
+const {token, hostnameV1}= useAuth();
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);
   const [selectedScope, setSelectedScope] = useState("bulk");
@@ -49,7 +49,7 @@ export function SourceNode({ id, data }) {
 
   const fetchOptions = useCallback(async () => {
     try {
-      const connectionResponse = await fetch(`${hostname}/connection-saves`, {
+      const connectionResponse = await fetch(`${hostnameV1}/connection-saves`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -75,7 +75,7 @@ export function SourceNode({ id, data }) {
 
       try {
         const response = await fetch(
-          `${hostname}/schema/${connectionName}/count`,
+          `${hostnameV1}/schema/${connectionName}/count`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -96,7 +96,7 @@ export function SourceNode({ id, data }) {
         setSchemacount([]); // Clear schemas on error
       }
     },
-    [hostname, token]
+    [hostnameV1, token]
   );
 
   useEffect(() => {
@@ -113,7 +113,7 @@ export function SourceNode({ id, data }) {
       setSchemaLoading(true);
 
       try {
-        const response = await fetch(`${hostname}/schema/${connectionName}`, {
+        const response = await fetch(`${hostnameV1}/schema/${connectionName}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -131,7 +131,7 @@ export function SourceNode({ id, data }) {
         setSchema([]); // Clear schemas on error
       }
     },
-    [hostname, token]
+    [hostnameV1, token]
   );
 
   const fetchTables = useCallback(
@@ -147,7 +147,7 @@ export function SourceNode({ id, data }) {
           setTables(JSON.parse(cachedtablelist));
         } else {
           const response = await fetch(
-            `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
+            `${hostnameV1}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
             {
               headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
             }
@@ -166,7 +166,7 @@ export function SourceNode({ id, data }) {
         setLoading(false);
       }
     },
-    [hostname, token]
+    [hostnameV1, token]
   );
 
   const filteredTables = tables.filter((table) =>

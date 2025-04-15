@@ -10,6 +10,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import { usePurgeContext } from "../../react-flow/context/PurgeContext";
 
 export function SourceNode({ id }) {
+
   const hostname = import.meta.env.VITE_FAST_API;
   const { token, decodedToken } = useAuth();
 
@@ -33,10 +34,9 @@ export function SourceNode({ id }) {
     handleSelectedScopeName,
     handlePurgeNode,
     handleFirstSourcePartitionName,
-    //firstSourcePartitionName,
     handleSourceSelectedTable,
   } = useStateContext("");
-  const { saveSourceData, sourceData } = usePurgeContext("");
+  const { saveSourceData } = usePurgeContext("");
   const [selectedTables, setSelectedTables] = useState("");
 
   let connectionsData;
@@ -55,7 +55,6 @@ export function SourceNode({ id }) {
         },
       });
       connectionsData = await connectionResponse.json();
-
       setConnections(connectionsData);
     } catch (error) {
       console.error("Error fetching options:", error);
@@ -160,10 +159,6 @@ export function SourceNode({ id }) {
   const fetchMetadata = useCallback(async () => {
     setLoading(true);
     try {
-      const cachedmetadatalist = sessionStorage.getItem("metadatalist");
-      // if (cachedmetadatalist) {
-      //   metadatalist = JSON.parse(cachedmetadatalist);
-      // }
       const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
         method: "GET",
         headers: {
@@ -177,7 +172,6 @@ export function SourceNode({ id }) {
       }
 
       metadatalist = await metaDataResponse.json();
-      //sessionStorage.setItem("metadatalist", JSON.stringify(metadatalist));
       setMetaData(metadatalist);
     } catch (error) {
       console.error("Error fetching tables:", error);
@@ -302,8 +296,6 @@ export function SourceNode({ id }) {
     }
   };
 
-  const [firstSourcePartitionName, setFirstSourcePartitionName] = useState("");
-
   const getFirstPartitionNameFromTable = (table) => {
     if (!table?.partition_json) return null;
 
@@ -354,7 +346,9 @@ export function SourceNode({ id }) {
             }}
           >
             <option value="">Select</option>
-            {connections.map((connection, idx) => (
+            {connections
+              .filter((connection) => connection.created_by === decodedToken.preferred_username)
+              .map((connection, idx) => (
               <option key={idx} value={connection.connection_name}>
                 {connection.connection_name}
               </option>

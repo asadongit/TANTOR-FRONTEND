@@ -16,7 +16,7 @@ import { MetadataSidebar } from "./MetadataSidebar";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 // import { useUserInfo } from '../hooks/useUserInfo';
-
+import { createPipeline } from "../cdc/components/CreatePipeline";
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
@@ -55,6 +55,19 @@ const MigrationCanvas = () => {
         x: event.clientX - 500,
         y: event.clientY - 80,
       };
+
+
+      if (type === 'pipeline') {
+        const { nodes: pipelineNodes, edges: pipelineEdges } = createPipeline(
+          'metadata',
+          `pipeline-${getId()}`, 
+        );
+        
+        setNodes((prevNodes) => [...prevNodes, ...pipelineNodes]);
+        setEdges((prevEdges) => [...prevEdges, ...pipelineEdges]);
+        
+        return;
+      }
 
       const baseData = {
         onDataChange: (newData) => {

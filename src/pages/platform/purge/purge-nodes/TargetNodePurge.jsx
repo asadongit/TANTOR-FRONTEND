@@ -10,6 +10,7 @@ import { usePurgeContext } from "../../react-flow/context/PurgeContext";
 import { useAuth } from "../../../../context/AuthContext";
 
 export function TargetNode({ id }) {
+
   const hostname = import.meta.env.VITE_FAST_API;
   const {token, decodedToken} = useAuth();  
 
@@ -21,10 +22,7 @@ export function TargetNode({ id }) {
     defineNodeName, 
     defineNodeDesc,
     selectedDataSet,
-    firstSourcePartitionName,
-    sourceSelectedTable,
     handlePurgeNode,
-    targetData,
   } = useStateContext("");
   const [connections, setConnections] = useState([]);
   const [targetConnection, setTargetConnection] = useState("");
@@ -53,7 +51,6 @@ export function TargetNode({ id }) {
         },
       });
       connectionsData = await connectionResponse.json();
-
       setConnections(connectionsData);
     } catch (error) {
       console.error("Error fetching options", error);
@@ -168,22 +165,21 @@ export function TargetNode({ id }) {
   };
 
   const validateSelection = (sourceData, defineNode, sourceNode, targetNode) => {
-    // Extracting values from nodes
     const { name, desc } = defineNode;
+
     const {
       source_conn_name,
       purge_scope: source_purge_scope,
       selectedTables: sourceTables,
     } = sourceNode;
+
     const {
       target_conn_name,
       purge_scope: target_purge_scope,
       selectedTables: targetTables,
     } = targetNode;
 
-    if (!sourceData.connectionId && !sourceData.connectionName && !sourceData.schemaName &&
-       !sourceData.sourceType && !sourceData.tableName
-    ) {
+    if (!sourceData.connectionId && !sourceData.connectionName && !sourceData.schemaName && !sourceData.sourceType && !sourceData.tableName) {
       return {
         valid: false,
         message: "Please save source node data!"
@@ -205,10 +201,7 @@ export function TargetNode({ id }) {
       };
     }
 
-    if (
-      source_purge_scope === "subset" &&
-      (!sourceTables || sourceTables.length !== 1)
-    ) {
+    if (source_purge_scope === "subset" &&(!sourceTables || sourceTables.length !== 1)) {
       return {
         valid: false,
         message:
@@ -223,10 +216,7 @@ export function TargetNode({ id }) {
       };
     }
 
-    if (
-      target_purge_scope === "subset" &&
-      (!targetTables || targetTables.length !== 1)
-    ) {
+    if (target_purge_scope === "subset" &&(!targetTables || targetTables.length !== 1)) {
       return {
         valid: false,
         message:
@@ -238,9 +228,12 @@ export function TargetNode({ id }) {
   };
 
   const saveNode = () => {
+    let selectedConnectionData = connections.find(
+      (connection) => connection.connection_name === targetConnection
+    );
 
-    const connectionId = targetConnection?.connection_id;
-    const connectionType = targetConnection?.connection_type;
+    const connectionId = selectedConnectionData?.connection_id;
+    const connectionType = selectedConnectionData?.connection_type;
     const tableName = selectedTableName[0];
 
     saveTargetData(connectionId, targetConnection, connectionType, tableName, selectedSchema, connectionType)
@@ -275,11 +268,11 @@ export function TargetNode({ id }) {
 
     if (!validationResult.valid) {
       //alert(validationResult.message);
-      toast.error(validationResult.message) // Show error message
+      toast.error(validationResult.message);
       return;
     } else {
       saveNode();
-      toast.success("Saved successfully") // Show error message
+      toast.success("Saved successfully");
       handleIsVisibleFooter(true);
     }
   };
@@ -324,7 +317,9 @@ export function TargetNode({ id }) {
             }}
           >
             <option value="">Select</option>
-            {connections.map((connection, idx) => (
+            {connections
+              .filter((connection) => connection.created_by === decodedToken.preferred_username)
+              .map((connection, idx) => (
               <option key={idx} value={connection.connection_name}>
                 {connection.connection_name}
               </option>
