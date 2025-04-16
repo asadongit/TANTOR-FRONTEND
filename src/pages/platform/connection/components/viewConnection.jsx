@@ -43,7 +43,7 @@ const ViewConnection = ({
   useEffect(() => {
     if (viewConnectionData) {
       setIsLoadingConnection(false);
-      const filtered = viewConnectionData.filter(row => 
+      const filtered = viewConnectionData.filter((row) =>
         row.table_name.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredData(filtered);
@@ -82,9 +82,9 @@ const ViewConnection = ({
   };
 
   const openSchemaModal = (connection) => {
-    setViewSchema({}); 
+    setViewSchema({});
     setIsLoadingSchema(true);
-    
+
     fetch(
       `${hostnameV1}/connection-master-metadata/find-column-json?conn_name=${connection.connection_name}&table_name=${connection.table_name}`,
       {
@@ -97,8 +97,8 @@ const ViewConnection = ({
       .then((response) => response.json())
       .then((data) => {
         if (data && data.column_json) {
-          setTimeout(() => { 
-            setViewSchema({...data, table_name: connection.table_name});
+          setTimeout(() => {
+            setViewSchema({ ...data, table_name: connection.table_name });
             setIsLoadingSchema(false);
           }, 300);
         } else {
@@ -127,22 +127,36 @@ const ViewConnection = ({
 
   const TableRowSkeleton = ({ colCount }) => (
     <tr className="border-b animate-pulse">
-      {Array(colCount).fill(0).map((_, i) => (
-        <td key={i} className="p-4">
-          <div className="h-4 bg-gray-200 rounded w-full"></div>
-        </td>
-      ))}
+      {Array(colCount)
+        .fill(0)
+        .map((_, i) => (
+          <td key={i} className="p-4">
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+          </td>
+        ))}
     </tr>
   );
 
   const SchemaRowSkeleton = () => (
     <tr className="border-b animate-pulse">
-      <td className="p-3"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
-      <td className="p-3"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-      <td className="p-3"><div className="h-4 bg-gray-200 rounded w-10"></div></td>
-      <td className="p-3"><div className="h-4 bg-gray-200 rounded w-10"></div></td>
-      <td className="p-3"><div className="h-4 bg-gray-200 rounded w-10"></div></td>
-      <td className="p-3"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+      <td className="p-3">
+        <div className="h-4 bg-gray-200 rounded w-32"></div>
+      </td>
+      <td className="p-3">
+        <div className="h-4 bg-gray-200 rounded w-24"></div>
+      </td>
+      <td className="p-3">
+        <div className="h-4 bg-gray-200 rounded w-10"></div>
+      </td>
+      <td className="p-3">
+        <div className="h-4 bg-gray-200 rounded w-10"></div>
+      </td>
+      <td className="p-3">
+        <div className="h-4 bg-gray-200 rounded w-10"></div>
+      </td>
+      <td className="p-3">
+        <div className="h-4 bg-gray-200 rounded w-16"></div>
+      </td>
     </tr>
   );
 
@@ -179,7 +193,9 @@ const ViewConnection = ({
                 {isLoadingConnection ? (
                   <div className="h-5 bg-gray-200 rounded w-24 animate-pulse mt-1"></div>
                 ) : (
-                  <div className="font-semibold text-gray-800">{connectionDetails?.connection_type.toUpperCase()}</div>
+                  <div className="font-semibold text-gray-800">
+                    {connectionDetails?.connection_type.toUpperCase()}
+                  </div>
                 )}
               </div>
               <div>
@@ -187,7 +203,9 @@ const ViewConnection = ({
                 {isLoadingConnection ? (
                   <div className="h-5 bg-gray-200 rounded w-32 animate-pulse mt-1"></div>
                 ) : (
-                  <div className="font-semibold text-gray-800">{connectionDetails?.connection_name.toUpperCase()}</div>
+                  <div className="font-semibold text-gray-800">
+                    {connectionDetails?.connection_name.toUpperCase()}
+                  </div>
                 )}
               </div>
               <div>
@@ -195,7 +213,9 @@ const ViewConnection = ({
                 {isLoadingConnection ? (
                   <div className="h-5 bg-gray-200 rounded w-8 animate-pulse mt-1"></div>
                 ) : (
-                  <div className="font-semibold text-gray-800">{connectionDetails?.table_count || 0}</div>
+                  <div className="font-semibold text-gray-800">
+                    {connectionDetails?.table_count || 0}
+                  </div>
                 )}
               </div>
             </div>
@@ -228,18 +248,25 @@ const ViewConnection = ({
                       <div className="flex items-center">
                         {col.key !== "table_name" && col.key !== "viewTable" ? (
                           <div className="flex flex-col items-center mr-2">
-                            {viewConnectionData?.length>0 && <input
-                              type="checkbox"
-                              onChange={() => handleSelectAllServices(col.key)}
-                              checked={serviceSelection?.[col.key] || false}
-                              className="w-4 h-4"
-                              disabled={isLoadingConnection}
-                            />}
+                            {viewConnectionData?.length > 0 && (
+                              <input
+                                type="checkbox"
+                                onChange={() =>
+                                  handleSelectAllServices(col.key)
+                                }
+                                checked={serviceSelection?.[col.key] || false}
+                                className="w-4 h-4"
+                                disabled={isLoadingConnection}
+                              />
+                            )}
                           </div>
                         ) : null}
                         <span>{col.label}</span>
                         {col.sortable && (
-                          <ArrowUpDown size={14} className="ml-1 text-gray-300" />
+                          <ArrowUpDown
+                            size={14}
+                            className="ml-1 text-gray-300"
+                          />
                         )}
                       </div>
                     </th>
@@ -249,13 +276,18 @@ const ViewConnection = ({
 
               <tbody>
                 {isLoadingConnection ? (
-                  Array(5).fill(0).map((_, index) => (
-                    <TableRowSkeleton key={index} colCount={viewColumns.length} />
-                  ))
+                  Array(5)
+                    .fill(0)
+                    .map((_, index) => (
+                      <TableRowSkeleton
+                        key={index}
+                        colCount={viewColumns.length}
+                      />
+                    ))
                 ) : filteredData?.length > 0 ? (
                   filteredData.map((row, rowIndex) => (
-                    <tr 
-                      key={rowIndex} 
+                    <tr
+                      key={rowIndex}
                       className="border-b hover:bg-gray-50 transition-colors"
                     >
                       {viewColumns.map((col, colIndex) => (
@@ -268,19 +300,23 @@ const ViewConnection = ({
                                 height="20"
                                 className="text-gray-500 mr-2"
                               />
-                              <span className="font-medium">{row[col.key]}</span>
+                              <span className="font-medium">
+                                {row[col.key]}
+                              </span>
                             </div>
                           ) : col.key === "viewTable" ? (
                             <div className="flex justify-center">
-                            <button
-                              onClick={() => openSchemaModal(row)}
-                              className="p-1.5 hover:bg-gray-200 rounded-full transition-all transform hover:scale-110 active:scale-95"
-                              title="View Schema"
-                            >
-                              <Eye size={18} className="text-gray-500 hover:text-gray-600 transition-colors" />
-                            </button>
-                          </div>
-                          
+                              <button
+                                onClick={() => openSchemaModal(row)}
+                                className="p-1.5 hover:bg-gray-200 rounded-full transition-all transform hover:scale-110 active:scale-95"
+                                title="View Schema"
+                              >
+                                <Eye
+                                  size={18}
+                                  className="text-gray-500 hover:text-gray-600 transition-colors"
+                                />
+                              </button>
+                            </div>
                           ) : (
                             <div className="flex flex-col items-center">
                               <input
@@ -302,8 +338,13 @@ const ViewConnection = ({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={viewColumns.length} className="p-8 text-center text-gray-500">
-                      {searchTerm ? "No matching tables found" : "No tables available"}
+                    <td
+                      colSpan={viewColumns.length}
+                      className="p-8 text-center text-gray-500"
+                    >
+                      {searchTerm
+                        ? "No matching tables found"
+                        : "No tables available"}
                     </td>
                   </tr>
                 )}
@@ -335,15 +376,36 @@ const ViewConnection = ({
           <div className="bg-white w-3/4 p-6 rounded-lg shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center mb-6 sticky top-0 bg-white z-10 pb-2 border-b">
               <div>
-                <h2 className="text-xl font-bold text-[#8e78b7]">Schema Details</h2>
-                <div className="text-sm  text-gray-500 mt-2">
-                  Table: {isLoadingSchema ? (
-                    <div className="inline-block h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
-                  ) : (
-                    <span className="font-semibold text-gray-800">{viewSchema?.table_name?.toUpperCase()}</span>
-                  )}
+                <h2 className="text-xl font-bold text-[#8e78b7]">
+                  Schema Details
+                </h2>
+
+                <div>
+                  <div className="text-sm text-gray-500 mt-2 flex flex-wrap gap-10">
+                    <div>
+                      Table:{" "}
+                      {isLoadingSchema ? (
+                        <span className="inline-block h-4 bg-gray-200 rounded w-32 animate-pulse align-middle"></span>
+                      ) : (
+                        <span className="font-semibold text-gray-800">
+                          {viewSchema?.table_name?.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      No. of Columns:{" "}
+                      {isLoadingSchema ? (
+                        <span className="inline-block h-4 bg-gray-200 rounded w-16 animate-pulse align-middle"></span>
+                      ) : (
+                        <span className="font-semibold text-gray-800">
+                          {viewSchema?.column_json?.length}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
+
               <button
                 className="text-gray-500 hover:text-black rounded-full p-1 hover:bg-gray-100 transition-all"
                 onClick={() => setViewSchema(null)}
@@ -366,22 +428,26 @@ const ViewConnection = ({
                 </thead>
                 <tbody>
                   {isLoadingSchema ? (
-                    Array(8).fill(0).map((_, index) => (
-                      <SchemaRowSkeleton key={index} />
-                    ))
+                    Array(8)
+                      .fill(0)
+                      .map((_, index) => <SchemaRowSkeleton key={index} />)
                   ) : viewSchema?.column_json?.length > 0 ? (
                     viewSchema.column_json.map((column, index) => (
-                      <tr 
-                        key={index} 
-                        className={`border-b ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                      <tr
+                        key={index}
+                        className={`border-b ${
+                          index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                        }`}
                       >
-                        <td className="p-3 font-medium">{column.column_name}</td>
+                        <td className="p-3 font-medium">
+                          {column.column_name}
+                        </td>
                         <td className="p-3">{column.DATA_TYPE}</td>
-                        <td className="p-3">{column.DATA_LENGTH || '-'}</td>
-                        <td className="p-3">{column.DATA_PRECISION || '-'}</td>
-                        <td className="p-3">{column.DATA_SCALE || '-'}</td>
+                        <td className="p-3">{column.DATA_LENGTH || "-"}</td>
+                        <td className="p-3">{column.DATA_PRECISION || "-"}</td>
+                        <td className="p-3">{column.DATA_SCALE || "-"}</td>
                         <td className="p-3">
-                          {column.is_nullable?.toLowerCase() === 'yes' ? (
+                          {column.is_nullable?.toLowerCase() === "yes" ? (
                             <span className="text-green-600">Yes</span>
                           ) : (
                             <span className="text-red-600">No</span>
