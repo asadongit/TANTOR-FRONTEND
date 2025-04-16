@@ -301,7 +301,7 @@ const Policy = () => {
                                             {activeMenu === index && (
                                                 <>
                                                     <div className="fixed inset-0 z-100" onClick={handleClickOutside} />
-                                                    <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                                    <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                                                         <div className="flex items-center p-1 gap-1">
                                                             <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                                                                 <Pencil className="h-4 w-4" />
