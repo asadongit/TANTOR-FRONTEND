@@ -1,34 +1,26 @@
 import { Icon } from "@iconify-icon/react";
 import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  X,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { X, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import ReportDownloader from "./ReportDownloader";
+import { useAuth } from "../../../context/AuthContext";
 
 const GenerateReport = () => {
-
   const hostname = import.meta.env.VITE_FAST_API;
-  const token = import.meta.env.VITE_ACCESS_TOKEN;
-  const [reportType, setReportType] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const { token } = useAuth();
+
+  const [reportType, setReportType] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const abortController = useRef(new AbortController());
-  const [reports, setReports] = useState([])
+  const [reports, setReports] = useState([]);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
-  let reportsData;
-  //const itemsPerPage = 10;
-
-
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
-    modal2: false
+    modal2: false,
   });
 
   const openModal = (modalName) => {
@@ -40,15 +32,14 @@ const GenerateReport = () => {
   };
 
   const handleCancel = () => {
-    setReportType('');
-    setStartDate('');
-    setEndDate('');
-  }
-
+    setReportType("");
+    setStartDate("");
+    setEndDate("");
+  };
 
   const handleGenerateReport = async () => {
     if (!reportType || !startDate || !endDate) {
-      setError('Please fill all required fields');
+      setError("Please fill all required fields");
       return;
     }
 
@@ -57,24 +48,28 @@ const GenerateReport = () => {
       setError(null);
 
       const payload = { reportType, startDate, endDate };
-      console.log("payload",payload)
-      const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: abortController.current.signal,
-      });
+      console.log("payload", payload);
+      const response = await fetch(
+        "https://jsonplaceholder.typicode.com/posts",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: abortController.current.signal,
+        }
+      );
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
-      console.log('Success:', data);
+      console.log("Success:", data);
       closeModal("modal1");
       // Add any success handling here
     } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('Error:', error);
-        setError(error.message || 'Failed to generate report');
+      if (error.name !== "AbortError") {
+        console.error("Error:", error);
+        setError(error.message || "Failed to generate report");
       }
     } finally {
       setLoading(false);
@@ -83,43 +78,33 @@ const GenerateReport = () => {
 
   const fetchReports = useCallback(async () => {
     try {
-      const cachedReportsResponse =
-        sessionStorage.getItem("reportsData");
-      if (cachedReportsResponse) {
-        reportsData = JSON.parse(cachedReportsResponse);
-      } else {
-        const reportsResponse = await fetch(`${hostname}/reports`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+      const reportsResponse = await fetch(`${hostname}/reports`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-        reportsData = await reportsResponse.json();
-        sessionStorage.setItem(
-          "reportsData",
-          JSON.stringify(reportsData)
-        );
-      }
+      let reportsData = await reportsResponse.json();
       setReports(reportsData);
-      console.log("reports data", reportsData)
-      openModal("modal2")
+      console.log("reports data", reportsData);
+      openModal("modal2");
     } catch (error) {
       console.error("Error fetching reports:", error);
     }
   }, []);
 
-  const filteredReports = reports.filter((workflow) => workflow.workflow_type == reportType)
+  const filteredReports = reports.filter(
+    (workflow) => workflow.workflow_type == reportType
+  );
 
-                    
   useEffect(() => {
     return () => {
       abortController.current.abort();
       abortController.current = new AbortController();
     };
   }, []);
-
 
   const sampleData = [
     {
@@ -280,24 +265,21 @@ const GenerateReport = () => {
   const handleItemsPerPageChange = (e) => {
     const newItemsPerPage = Number(e.target.value);
     setItemsPerPage(newItemsPerPage);
-    setPage(1); // Reset to first page when changing items per page
+    setPage(1);
   };
 
   const handlePrevPage = () => {
-    setPage(prevPage => Math.max(prevPage - 1, 1));
+    setPage((prevPage) => Math.max(prevPage - 1, 1));
   };
 
   const handleNextPage = () => {
-    setPage(prevPage => Math.min(prevPage + 1, totalPages));
+    setPage((prevPage) => Math.min(prevPage + 1, totalPages));
   };
-
 
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
-        <h1 className="text-2xl font-semibold">
-          Details
-        </h1>
+        <h1 className="text-2xl font-semibold">Details</h1>
         <div>
           <button
             onClick={() => openModal("modal1")}
@@ -324,7 +306,9 @@ const GenerateReport = () => {
                     width="24"
                     height="24"
                   />
-                  <h2 className="text-xl font-bold text-[#8e78b7]">Generate Report</h2>
+                  <h2 className="text-xl font-bold text-[#8e78b7]">
+                    Generate Report
+                  </h2>
                 </div>
                 <button
                   onClick={() => closeModal("modal1")}
@@ -338,7 +322,9 @@ const GenerateReport = () => {
 
               {/* Report Type */}
               <div className="relative mb-4">
-                <label className="block text-sm text-black mb-1.5">Report Type</label>
+                <label className="block text-sm text-black mb-1.5">
+                  Report Type
+                </label>
                 <select
                   value={reportType}
                   onChange={(e) => setReportType(e.target.value)}
@@ -357,7 +343,9 @@ const GenerateReport = () => {
               {/* Date Inputs */}
               <div className="flex gap-4 mb-4">
                 <div className="relative w-1/2">
-                  <label className="block text-sm text-black mb-1.5">Start Date</label>
+                  <label className="block text-sm text-black mb-1.5">
+                    Start Date
+                  </label>
                   <input
                     type="date"
                     value={startDate}
@@ -366,7 +354,9 @@ const GenerateReport = () => {
                   />
                 </div>
                 <div className="relative w-1/2">
-                  <label className="block text-sm text-black mb-1.5">End Date</label>
+                  <label className="block text-sm text-black mb-1.5">
+                    End Date
+                  </label>
                   <input
                     type="date"
                     value={endDate}
@@ -380,9 +370,7 @@ const GenerateReport = () => {
             {/* Body Content */}
             <div className="flex-1 overflow-y-auto px-8">
               <div className="space-y-6">
-                <div className="h-96">
-                  {/* Your content here */}
-                </div>
+                <div className="h-96">{/* Your content here */}</div>
               </div>
             </div>
 
@@ -404,15 +392,16 @@ const GenerateReport = () => {
                 </button>
                 <button
                   onClick={() => {
-                    fetchReports()
-                    console.log("fetched reports",reports)
-                    handleGenerateReport()
+                    fetchReports();
+                    console.log("fetched reports", reports);
+                    handleGenerateReport();
                   }}
                   disabled={loading || !reportType || !startDate || !endDate}
-                  className={`px-6 py-2 rounded-lg transition-colors ${loading
-                      ? 'bg-gray-300 cursor-not-allowed'
-                      : 'border border-gray-400 hover:bg-[#8e78b7] hover:text-white'
-                    }`}
+                  className={`px-6 py-2 rounded-lg transition-colors ${
+                    loading
+                      ? "bg-gray-300 cursor-not-allowed"
+                      : "border border-gray-400 hover:bg-[#8e78b7] hover:text-white"
+                  }`}
                 >
                   {loading ? (
                     <div className="flex items-center gap-2">
@@ -423,7 +412,7 @@ const GenerateReport = () => {
                       Creating...
                     </div>
                   ) : (
-                    'Create'
+                    "Create"
                   )}
                 </button>
               </div>
@@ -437,91 +426,105 @@ const GenerateReport = () => {
       {isModalOpen.modal2 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-auto p-5 mx-9">
-        <table className="w-full text-sm text-left rtl:text-right text-black">
-          <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
-            <tr>
-              <th scope="col" className="px-2 py-2">
-                Workflow Name
-              </th>
-              <th scope="col" className="px-2 py-2">
-                 Report For
-              </th>
-              <th scope="col" className="px-2 py-2">
-                Execute Type
-              </th>
-              <th scope="col" className="px-2 py-2">
-                Project
-              </th>
-              <th scope="col" className="px-2 py-2">
-                Users
-              </th>
-              <th scope="col" className="px-2 py-2">
-                Start date
-              </th>
-              <th scope="col" className="px-2 py-2">
-                End date
-              </th>
-              <th scope="col" className="px-2 py-2">
-                Before Source table Count
-              </th>
-              <th scope="col" className="px-2 py-2">
-                After Target table Count
-              </th>
-              <th scope="col" className="px-2 py-2">
-                Table Size Before
-              </th>
-              <th scope="col" className="px-2 py-2">
-                Table Size After
-              </th>
-              <th scope="col" className="pl-6 py-2">
-                Status
-              </th>
-              <th scope="col" className="px-3 py-2">
-                Remark
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedReports.map((user, index) => (
-              // <tr key={index} className="border-b"></tr>
-              <tr key={index} className="border-b dark:border-white-700">
-                {/* <th
+            <table className="w-full text-sm text-left rtl:text-right text-black">
+              <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
+                <tr>
+                  <th scope="col" className="px-2 py-2">
+                    Workflow Name
+                  </th>
+                  <th scope="col" className="px-2 py-2">
+                    Report For
+                  </th>
+                  <th scope="col" className="px-2 py-2">
+                    Execute Type
+                  </th>
+                  <th scope="col" className="px-2 py-2">
+                    Project
+                  </th>
+                  <th scope="col" className="px-2 py-2">
+                    Users
+                  </th>
+                  <th scope="col" className="px-2 py-2">
+                    Start date
+                  </th>
+                  <th scope="col" className="px-2 py-2">
+                    End date
+                  </th>
+                  <th scope="col" className="px-2 py-2">
+                    Before Source table Count
+                  </th>
+                  <th scope="col" className="px-2 py-2">
+                    After Target table Count
+                  </th>
+                  <th scope="col" className="px-2 py-2">
+                    Table Size Before
+                  </th>
+                  <th scope="col" className="px-2 py-2">
+                    Table Size After
+                  </th>
+                  <th scope="col" className="pl-6 py-2">
+                    Status
+                  </th>
+                  <th scope="col" className="px-3 py-2">
+                    Remark
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedReports.map((user, index) => (
+                  // <tr key={index} className="border-b"></tr>
+                  <tr key={index} className="border-b dark:border-white-700">
+                    {/* <th
                   scope="row"
                   className="px-3 py-2 font-medium text-black-900 whitespace-nowrap dark:text-black"
                 >
                   {user.id}
                 </th> */}
-                <td className="px-2 py-2">{user.workflow_name}</td>
-                <td className="px-2 py-2">{user.workflow_type}</td>
-                <td className="px-2 py-2">{user.execute_type}</td>
-                <td className="px-2 py-2">{user.project}</td>
-                <td className="px-2 py-2">{user.created_by}</td>
-                <td className="px-2 py-2">{user.start_time ? user.start_time.split("T")[0] : user.start_time}</td>
-                <td className="px-2 py-2">{user.end_time ? user.end_time.split("T")[0] : user.end_time}</td>
-                <td className="px-2 py-2">{user.before_source_table_count}</td>
-                <td className="px-2 py-2">{user.after_target_table_count}</td>
-                <td className="px-2 py-2">{user.table_size_before}</td>
-                <td className="px-2 py-2">{user.table_size_after}</td>
-                <td className="p-4 text-center">
-                  <span
-                    className={`pr-4 py-1 rounded-full text-sm ${user.status_choices === "Completed"
-                        ? "text-green-600"
-                        : "text-red-600"
-                      }`}
-                  >
-                    {user.status_choices}
-                  </span>
-                </td>
-                <td className="px-3 py-2">{user.remarks}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <td className="px-2 py-2">{user.workflow_name}</td>
+                    <td className="px-2 py-2">{user.workflow_type}</td>
+                    <td className="px-2 py-2">{user.execute_type}</td>
+                    <td className="px-2 py-2">{user.project}</td>
+                    <td className="px-2 py-2">{user.created_by}</td>
+                    <td className="px-2 py-2">
+                      {user.start_time
+                        ? user.start_time.split("T")[0]
+                        : user.start_time}
+                    </td>
+                    <td className="px-2 py-2">
+                      {user.end_time
+                        ? user.end_time.split("T")[0]
+                        : user.end_time}
+                    </td>
+                    <td className="px-2 py-2">
+                      {user.before_source_table_count}
+                    </td>
+                    <td className="px-2 py-2">
+                      {user.after_target_table_count}
+                    </td>
+                    <td className="px-2 py-2">{user.table_size_before}</td>
+                    <td className="px-2 py-2">{user.table_size_after}</td>
+                    <td className="p-4 text-center">
+                      <span
+                        className={`pr-4 py-1 rounded-full text-sm ${
+                          user.status_choices === "Completed"
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {user.status_choices}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">{user.remarks}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-        {/* Pagination */}
-      <div className="flex items-center justify-between p-4 mt-2">
+            {/* Pagination */}
+            <div className="flex items-center justify-between p-4 mt-2">
               <div className="text-sm text-gray-500">
-                {startIndex + 1} to {Math.min(endIndex, filteredReports.length)} of {filteredReports.length} results
+                {startIndex + 1} to {Math.min(endIndex, filteredReports.length)}{" "}
+                of {filteredReports.length} results
               </div>
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-500">Show per page</span>
@@ -549,20 +552,22 @@ const GenerateReport = () => {
                     className="p-1 border rounded-r border-l-0 hover:bg-gray-100"
                     disabled={page === totalPages}
                   >
-                    <ChevronRight 
-                      size={20} 
-                      className={page === totalPages ? "text-gray-300" : "text-gray-600"}
+                    <ChevronRight
+                      size={20}
+                      className={
+                        page === totalPages ? "text-gray-300" : "text-gray-600"
+                      }
                     />
                   </button>
                 </div>
               </div>
             </div>
 
-        <div className="flex justify-end gap-4 mt-8">
+            <div className="flex justify-end gap-4 mt-8">
               <button
                 onClick={() => {
-                  closeModal("modal2")
-                  handleCancel()
+                  closeModal("modal2");
+                  handleCancel();
                 }}
                 className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
               >
@@ -572,10 +577,9 @@ const GenerateReport = () => {
                 <ReportDownloader data={filteredReports} />
               </button>
             </div>
+          </div>
         </div>
-      </div>
       )}
-
 
       {/* Project Listing Table */}
 
@@ -642,10 +646,11 @@ const GenerateReport = () => {
                 <td className="px-6 py-4">{user.updated_by}</td>
                 <td className="p-4 text-center">
                   <span
-                    className={`px-2 py-1 rounded-full text-sm ${user.status === "Completed"
+                    className={`px-2 py-1 rounded-full text-sm ${
+                      user.status === "Completed"
                         ? "text-green-600"
                         : "text-red-600"
-                      }`}
+                    }`}
                   >
                     {user.status}
                   </span>
