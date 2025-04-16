@@ -219,12 +219,13 @@ const Policy = () => {
                                     <div className="flex items-start justify-between">
                                         <div className="flex gap-1">
                                             <div
-                                                className={`flex items-center justify-center w-8 h-8 md:w-9 md:h-9 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}
+                                                className={`flex items-center justify-center w-9 h-9 rounded-full ${card.bgcolor} ${card.iconcolor} mr-2 shrink-0`}
                                             >
-                                                <Icon icon={card.icon} />
+                                                <Icon icon={card.icon} className="w-5 h-4" />
                                             </div>
                                             <h3 className="text-lg font-semibold">{card.title}</h3>
                                         </div>
+
                                         <button className="p-1 rounded-lg hover:bg-gray-100">
                                             <MoreVertical className="h-4 w-4" />
                                         </button>
