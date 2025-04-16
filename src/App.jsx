@@ -34,7 +34,7 @@ function App() {
   };
 
   return (
-    <Router>
+    <Router basename="/tantor2">
     <ContextViewProvider >
       <Routes>
         {/* Main layout with header/sidebar */}
