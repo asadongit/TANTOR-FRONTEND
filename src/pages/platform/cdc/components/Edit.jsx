@@ -76,14 +76,14 @@ const EditCDC = () => {
         
         setSourceConfig(sampleSourceConfig);
         setTargetConfig(sampleTargetConfig);
-        setSourceStatus(sampleSourceStatus);
-        setTargetStatus(sampleTargetStatus);
+        setSourceStatus(data?.source_connector?.status);
+        setTargetStatus(data?.target_connector?.status);
         setLoading(false);
       } catch (err) {
         setLoading(false);
       }
     
-  }, [cdcId]);
+  }, [data]);
   
 
 
@@ -173,7 +173,6 @@ const EditCDC = () => {
 
   const renderStatusBadge = (status) => {
     if (!status) return null;
-    
     const statusColors = {
       "RUNNING": {
         bg: "bg-green-100",
@@ -194,13 +193,18 @@ const EditCDC = () => {
         bg: "bg-blue-100",
         text: "text-blue-800",
         dot: "bg-blue-800", 
+      },
+      "CREATED": {
+        bg: "bg-blue-100",
+        text: "text-blue-800",
+        dot: "bg-blue-800", 
       }
     };
     
-    const state = status.connector.state;
+    const state = status?.toUpperCase()|| 'unknown';
     const statusStyle = statusColors[state] || statusColors["FAILED"];
     const isRunning = state === "RUNNING"; 
-    
+    console.log("stststtstststtsts",state,statusStyle)
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center ${statusStyle.bg} ${statusStyle.text}`}>
         <span className="relative ml-1 flex h-2 w-2">
@@ -413,12 +417,12 @@ const EditCDC = () => {
                     <button
                       onClick={() => toggleConnectorStatus(sourceConfig?.name, true)}
                       className={`p-2 rounded-md text-sm flex items-center ${
-                        sourceStatus?.connector.state === "RUNNING" 
+                        sourceStatus?.toUpperCase() === "RUNNING" 
                         ? 'bg-red-50 text-red-700 hover:bg-red-100' 
                         : 'bg-green-50 text-green-700 hover:bg-green-100'
                       }`}
                     >
-                      {sourceStatus?.connector.state === "RUNNING" ? (
+                      {sourceStatus?.toUpperCase() === "RUNNING" ? (
                         <><Pause size={16} className="mr-1" /> Stop</>
                       ) : (
                         <><Play size={16} className="mr-1" /> Start</>
@@ -508,12 +512,12 @@ const EditCDC = () => {
                     <button
                       onClick={() => toggleConnectorStatus(targetConfig?.name, false)}
                       className={`p-2 rounded-md text-sm flex items-center ${
-                        targetStatus?.connector.state === "RUNNING" 
+                        targetStatus?.toUpperCase() === "RUNNING" 
                         ? 'bg-red-50 text-red-700 hover:bg-red-100' 
                         : 'bg-green-50 text-green-700 hover:bg-green-100'
                       }`}
                     >
-                      {targetStatus?.connector.state === "RUNNING" ? (
+                      {targetStatus?.toUpperCase() === "RUNNING" ? (
                         <><Pause size={16} className="mr-1" /> Stop</>
                       ) : (
                         <><Play size={16} className="mr-1" /> Start</>
