@@ -10,16 +10,15 @@ import { usePurgeContext } from "../../react-flow/context/PurgeContext";
 import { useAuth } from "../../../../context/AuthContext";
 
 export function TargetNode({ id }) {
-
   const hostname = import.meta.env.VITE_FAST_API;
-  const {token, decodedToken} = useAuth();  
+  const { token, decodedToken } = useAuth();
 
   const {
     selectedTables,
     sourceConnectionName,
     selectedScope,
     handleIsVisibleFooter,
-    defineNodeName, 
+    defineNodeName,
     defineNodeDesc,
     selectedDataSet,
     handlePurgeNode,
@@ -33,9 +32,11 @@ export function TargetNode({ id }) {
   const [selectedTableName, setSelectedTableName] = useState("");
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const { openDrawer } = useTableContext();
-  const {saveTargetData, filters, dropPartitions, sourceData} = usePurgeContext("");
+  const [selectedTargetTables, setSelectedTargetTables] = useState([]);
 
+  const { openDrawer } = useTableContext();
+  const { saveTargetData, filters, dropPartitions, sourceData } =
+    usePurgeContext("");
 
   let connectionsData;
   let schemadetails;
@@ -134,6 +135,14 @@ export function TargetNode({ id }) {
     setMetaData(response);
   }, []);
 
+  const filterMetaData = metadata.filter((targetTable) =>
+    targetTable.target_table
+      .toLowerCase()
+      .includes(searchTerm?.toLowerCase() || "")
+  );
+  console.log("selected tables from source node -- ", selectedTables); //make it selectedSourceTable
+  console.log("selected tables from target node -- ", selectedTargetTables);
+
   const filteredTables = tables.filter((table) =>
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
   );
@@ -147,6 +156,42 @@ export function TargetNode({ id }) {
   const mappedTargetTables = filterConnection
     .filter((conn) => selectedTables.includes(conn.source_table))
     .map((conn) => conn.target_table);
+
+  const validateBulkSourceTargetConnectionsExist = (
+    selectedSourceTables,
+    selectedTargetTables,
+    allConnections
+  ) => {
+    const filteredConnectionsByTargetTable = allConnections.filter(
+      (connection) => selectedTargetTables.includes(connection?.target_table)
+    );
+    console.log("filteredConnectionsByTargetTable -- ",filteredConnectionsByTargetTable);
+
+    if(filteredConnectionsByTargetTable.length === 0) {
+      return {
+        valid: false,
+        message: `No connections found for target tables!`,
+      };
+    }
+
+    const connectionSourceTables = filteredConnectionsByTargetTable.map((connection) => connection?.source_table)
+    console.log("connectionSourceTables ", connectionSourceTables)
+    console.log("selectedSourceTables -- ", selectedSourceTables)
+
+    for (const table of selectedSourceTables) {
+      if (!connectionSourceTables.includes(table)) {
+        return {
+          valid: false,
+          message: `No valid connection found for ${table} `,
+        };
+      }
+    }
+    console.log("All selected source tables found in connections!")
+    return {
+      valid: true,
+      message: `All selected source tables found in connections!`,
+    };
+  };
 
   useEffect(() => {
     fetchTables(targetConnection, selectedSchema);
@@ -164,7 +209,12 @@ export function TargetNode({ id }) {
     }
   };
 
-  const validateSelection = (sourceData, defineNode, sourceNode, targetNode) => {
+  const validateSelection = (
+    sourceData,
+    defineNode,
+    sourceNode,
+    targetNode
+  ) => {
     const { name, desc } = defineNode;
 
     const {
@@ -179,19 +229,28 @@ export function TargetNode({ id }) {
       selectedTables: targetTables,
     } = targetNode;
 
-    if (!sourceData.connectionId && !sourceData.connectionName && !sourceData.schemaName && !sourceData.sourceType && !sourceData.tableName) {
+    if (
+      !sourceData.connectionId &&
+      !sourceData.connectionName &&
+      !sourceData.schemaName &&
+      !sourceData.sourceType &&
+      !sourceData.tableName
+    ) {
       return {
         valid: false,
-        message: "Please save source node data!"
-      }
+        message: "Please save source node data!",
+      };
     }
 
     if (!name) {
-      return {valid : false, message:"Name must be selected on Define Node."};
+      return { valid: false, message: "Name must be selected on Define Node." };
     }
 
     if (!desc) {
-      return {valid : false, message:"Description must be selected on Define Node."};
+      return {
+        valid: false,
+        message: "Description must be selected on Define Node.",
+      };
     }
 
     if (!source_conn_name) {
@@ -201,7 +260,10 @@ export function TargetNode({ id }) {
       };
     }
 
-    if (source_purge_scope === "subset" &&(!sourceTables || sourceTables.length !== 1)) {
+    if (
+      source_purge_scope === "subset" &&
+      (!sourceTables || sourceTables.length !== 1)
+    ) {
       return {
         valid: false,
         message:
@@ -216,7 +278,7 @@ export function TargetNode({ id }) {
       };
     }
 
-    if (target_purge_scope === "subset" &&(!targetTables || targetTables.length !== 1)) {
+    if (target_purge_scope === "subset" && (!targetTables || targetTables.length !== 1)) {
       return {
         valid: false,
         message:
@@ -236,13 +298,20 @@ export function TargetNode({ id }) {
     const connectionType = selectedConnectionData?.connection_type;
     const tableName = selectedTableName[0];
 
-    saveTargetData(connectionId, targetConnection, connectionType, tableName, selectedSchema, connectionType)
-  }
+    saveTargetData(
+      connectionId,
+      targetConnection,
+      connectionType,
+      tableName,
+      selectedSchema,
+      connectionType
+    );
+  };
 
   const handleOkClick = () => {
     const defineNode = {
       name: defineNodeName || "",
-      desc: defineNodeDesc || ""
+      desc: defineNodeDesc || "",
     };
 
     const sourceNode = {
@@ -259,7 +328,7 @@ export function TargetNode({ id }) {
         selectedScope === "subset" ? selectedTableName : selectedTables || [],
     };
 
-    const validationResult = validateSelection(
+    let validationResult = validateSelection(
       sourceData,
       defineNode,
       sourceNode,
@@ -267,19 +336,30 @@ export function TargetNode({ id }) {
     );
 
     if (!validationResult.valid) {
-      //alert(validationResult.message);
+      alert(validationResult.message);
       toast.error(validationResult.message);
       return;
-    } else {
-      saveNode();
-      toast.success("Saved successfully");
-      handleIsVisibleFooter(true);
     }
+
+    if(selectedScope === "bulk") {
+      let validationResultForBulk = validateBulkSourceTargetConnectionsExist(selectedTables, selectedTargetTables, metadata);
+
+      if (!validationResultForBulk.valid) {
+        toast.error(validationResultForBulk.message);
+        return;
+      }
+      toast.success(validationResultForBulk.message)
+    }
+
+    //success
+    saveNode();
+    toast.success("Saved successfully");
+    handleIsVisibleFooter(true);
   };
 
   return (
-    <div 
-    className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
+    <div
+      className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
                              w-fit min-w-min max-w-[90vw] 
                              relative group 
                              grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))] 
@@ -318,12 +398,15 @@ export function TargetNode({ id }) {
           >
             <option value="">Select</option>
             {connections
-              .filter((connection) => connection.created_by === decodedToken.preferred_username)
+              .filter(
+                (connection) =>
+                  connection.created_by === decodedToken.preferred_username
+              )
               .map((connection, idx) => (
-              <option key={idx} value={connection.connection_name}>
-                {connection.connection_name}
-              </option>
-            ))}
+                <option key={idx} value={connection.connection_name}>
+                  {connection.connection_name}
+                </option>
+              ))}
           </select>
         </div>
         <div>
@@ -348,9 +431,7 @@ export function TargetNode({ id }) {
         </div>
       </div>
 
-      {targetConnection &&
-        selectedSchema &&
-        selectedScope === "bulk" &&
+      {/* {targetConnection && selectedSchema && selectedScope === "bulk" &&
         (mappedTargetTables.length === 0 ? (
           <div className="text-xs font-semibold text-black mt-4">
             {" "}
@@ -372,7 +453,132 @@ export function TargetNode({ id }) {
               </div>
             ))}
           </div>
-        ))}
+        ))} */}
+
+      {targetConnection && selectedSchema && selectedScope === "bulk" && (
+        <div>
+          <div className="flex items-center gap-2 mb-0.5 mt-4">
+            <Search size={14} className="text-gray-500" />
+            <label className="text-xs font-semibold text-black">Data Set</label>
+          </div>
+          <div>
+            <input
+              type="search"
+              placeholder="Search datasets..."
+              className="w-full p-2 mb-2 text-xs text-black border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {loading ? (
+                <>
+                  <SkeletonLoader />
+                  <SkeletonLoader />
+                  <SkeletonLoader />
+                </>
+              ) : (
+                <>
+                  {filterMetaData
+                    .filter((table) => table !== null)
+                    .filter(
+                      (connection) =>
+                        connection.target_conn_name == targetConnection
+                    ).length === 0 ? (
+                    <div className="text-xs font-semibold text-black mt-2">
+                      {" "}
+                      No Data Set Found{" "}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 mt-2">
+                          <input
+                            type="checkbox"
+                            id="select-all"
+                            className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            checked={
+                              selectedTargetTables.length ===
+                              filterMetaData.length
+                            } // Check if all items are selected
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              if (isChecked) {
+                                setSelectedTargetTables(
+                                  filterMetaData
+                                    .filter((table) => table !== null)
+                                    .map((table) => table.target_table)
+                                );
+                              } else {
+                                setSelectedTargetTables([]);
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="select-all"
+                            className="text-xs font-semibold text-black"
+                          >
+                            Select all
+                          </label>
+                        </div>
+                      </div>
+
+                      {filterMetaData
+                        .filter((table) => table !== null)
+                        .filter(
+                          (connection) =>
+                            connection.target_conn_name == targetConnection
+                        )
+                        .map((table, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={`table-${idx}`}
+                                checked={selectedTargetTables.includes(
+                                  table.target_table
+                                )}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setSelectedTargetTables((prev) =>
+                                    checked
+                                      ? [...prev, table.target_table]
+                                      : prev.filter(
+                                          (i) => i !== table.target_table
+                                        )
+                                  );
+                                }}
+                                className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                              />
+                              <label
+                                htmlFor={`table-${idx}`}
+                                className="text-xs font-semibold text-black"
+                              >
+                                {table.target_table}
+                              </label>
+                            </div>
+                            {/* <button
+                                onClick={() => {
+                                  openDrawer(id, table);
+                                  handlePurgeNode("Target Node");
+                                }}
+                                className="text-purple-600 hover:text-purple-700"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button> */}
+                          </div>
+                        ))}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {targetConnection && selectedSchema && selectedScope === "subset" && (
         <div>
@@ -427,11 +633,10 @@ export function TargetNode({ id }) {
                         </label>
                       </div>
                       <button
-                        onClick={() => 
-                          {
-                            handlePurgeNode("Target node")
-                            openDrawer(id, table);
-                          }}
+                        onClick={() => {
+                          handlePurgeNode("Target node");
+                          openDrawer(id, table);
+                        }}
                         className="text-purple-600 hover:text-purple-700"
                       >
                         <Pencil className="w-4 h-4" />

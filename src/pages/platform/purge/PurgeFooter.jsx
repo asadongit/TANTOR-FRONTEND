@@ -92,7 +92,7 @@ const PurgeFooter = ({ onCancel }) => {
       if (!res.ok) throw new Error('Failed to post data');
 
       const data = await res.json();
-      console.log("Response -- ", data)
+      console.log("Response -- ", data);
     } catch (err) {
       console.error('Error:', err.message);
     }
@@ -249,7 +249,7 @@ const PurgeFooter = ({ onCancel }) => {
 };
 
 PurgeFooter.propTypes = {
-  onCancel: PropTypes.func.isRequired, // Ensures `onCancel` is a required function
+  onCancel: PropTypes.func.isRequired,
 };
 
 export default PurgeFooter;
