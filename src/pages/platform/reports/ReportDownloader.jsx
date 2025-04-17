@@ -69,18 +69,18 @@ const ReportDownloader = ({ data }) => {
       {isDropdownOpen && (
         <div className="absolute z-10 right-0 mt-2 w-40 origin-top-right rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
           <div className="py-1">
-            <button
+            <div
               onClick={downloadCSV}
               className="block cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
             >
               Download CSV
-            </button>
-            <button
+            </div>
+            <div
               onClick={downloadExcel}
               className="block cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
             >
               Download Excel
-            </button>
+            </div>
           </div>
         </div>
       )}

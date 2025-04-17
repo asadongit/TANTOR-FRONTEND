@@ -141,7 +141,6 @@ export function TargetNode({ id }) {
       .includes(searchTerm?.toLowerCase() || "")
   );
   console.log("selected tables from source node -- ", selectedTables); //make it selectedSourceTable
-  console.log("selected tables from target node -- ", selectedTargetTables);
 
   const filteredTables = tables.filter((table) =>
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
@@ -162,10 +161,9 @@ export function TargetNode({ id }) {
     selectedTargetTables,
     allConnections
   ) => {
-    const filteredConnectionsByTargetTable = allConnections.filter(
-      (connection) => selectedTargetTables.includes(connection?.target_table)
-    );
-    console.log("filteredConnectionsByTargetTable -- ",filteredConnectionsByTargetTable);
+    const filteredConnectionsByTargetTable = allConnections.filter((connection) => selectedTargetTables.includes(connection?.target_table));
+
+    const filteredConnectionsBySourceTable = allConnections.filter((connection) => selectedSourceTables.includes(connection?.source_table));
 
     if(filteredConnectionsByTargetTable.length === 0) {
       return {
@@ -174,22 +172,38 @@ export function TargetNode({ id }) {
       };
     }
 
-    const connectionSourceTables = filteredConnectionsByTargetTable.map((connection) => connection?.source_table)
-    console.log("connectionSourceTables ", connectionSourceTables)
-    console.log("selectedSourceTables -- ", selectedSourceTables)
+    if(filteredConnectionsBySourceTable.length === 0) {
+      return {
+        valid: false,
+        message: `No connections found for source tables!`,
+      };
+    }
+
+    const connectionSourceTables = filteredConnectionsByTargetTable.map((connection) => connection?.source_table);
+    const connectionTargetTables = filteredConnectionsBySourceTable.map((connection) => connection?.target_table);
+
+    const filteredConnectionSourceTables = connectionSourceTables.filter((table) => selectedSourceTables.includes(table));
+    const filteredConnectionTargetTables = connectionTargetTables.filter((table) => selectedTargetTables.includes(table));
 
     for (const table of selectedSourceTables) {
-      if (!connectionSourceTables.includes(table)) {
+      if (!filteredConnectionSourceTables.includes(table)) {
         return {
           valid: false,
           message: `No valid connection found for ${table} `,
         };
       }
     }
-    console.log("All selected source tables found in connections!")
+    for (const table of selectedTargetTables) {
+      if (!filteredConnectionTargetTables.includes(table)) {
+        return {
+          valid: false,
+          message: `No valid connection found for ${table} `,
+        };
+      }
+    }
     return {
       valid: true,
-      message: `All selected source tables found in connections!`,
+      message: `All selected source tables & target tables found in connections!`,
     };
   };
 
