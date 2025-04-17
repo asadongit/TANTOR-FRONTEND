@@ -18,12 +18,20 @@ import axios from "axios";
 import TableDrawer from "../react-flow/dialog/TableDrawer";
 import Success from "../react-flow/dialog/success";
 import { ArchivalSidebar } from "./ArchivalSidebar";
+import { createPipeline } from "../cdc/components/CreatePipeline";
+import { DefineNode as MetadataDefineNode } from "../metadata/nodes/DefineNode";
+import { SourceNode as MetadataSourceNode } from "../metadata/nodes/SourceNode";
+import { TargetNode as MetadataTargetNode } from "../metadata/nodes/TargetNode";
 
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
   target: TargetNode,
   schedule: SchedulerNode,
+  metadataDefine: MetadataDefineNode,
+  metadataSource: MetadataSourceNode,
+  metadataTarget: MetadataTargetNode,
+
 };
 
 let id = 0;
@@ -157,7 +165,26 @@ const handleSubmit = useCallback(async () => {
         x: event.clientX - 500,
         y: event.clientY - 80,
       };
+      if (type === 'pipeline') {
+        let { nodes: pipelineNodes, edges: pipelineEdges } = createPipeline(
+          'metadata',
+          `pipeline_${getId()}`, 
+        );
 
+        pipelineNodes = pipelineNodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            tables: [],
+            onDataChange: onNodeDataChange,
+            onSubmit: handleSubmit,
+            payload: payload,
+          },
+        }));
+        setNodes((prevNodes) => [...prevNodes, ...pipelineNodes]);
+        setEdges((prevEdges) => [...prevEdges, ...pipelineEdges]);
+        return;
+      }
       const newNode = {
         id: getId(),
         type,
