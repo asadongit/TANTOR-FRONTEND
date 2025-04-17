@@ -56,19 +56,6 @@ const MigrationCanvas = () => {
         y: event.clientY - 80,
       };
 
-
-      if (type === 'pipeline') {
-        const { nodes: pipelineNodes, edges: pipelineEdges } = createPipeline(
-          'metadata',
-          `pipeline-${getId()}`, 
-        );
-        
-        setNodes((prevNodes) => [...prevNodes, ...pipelineNodes]);
-        setEdges((prevEdges) => [...prevEdges, ...pipelineEdges]);
-        
-        return;
-      }
-
       const baseData = {
         onDataChange: (newData) => {
           setNodes((nds) =>

@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 
 const components = [
-  { id: "pipeline", name: "Add a Pipeline", icon: FileSpreadsheet },
   { id: "define", name: "Define", icon: FileSpreadsheet },
   { id: "source", name: "Source", icon: FileSpreadsheet },
   { id: "target", name: "Target", icon: FileSpreadsheet },

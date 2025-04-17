@@ -18,7 +18,7 @@ import axios from "axios";
 import TableDrawer from "../react-flow/dialog/TableDrawer";
 import Success from "../react-flow/dialog/success";
 import { ArchivalSidebar } from "./ArchivalSidebar";
-
+import { createPipeline } from "../cdc/components/CreatePipeline";
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
@@ -157,7 +157,26 @@ const handleSubmit = useCallback(async () => {
         x: event.clientX - 500,
         y: event.clientY - 80,
       };
+      if (type === 'pipeline') {
+        let { nodes: pipelineNodes, edges: pipelineEdges } = createPipeline(
+          'metadata',
+          `pipeline_${getId()}`, 
+        );
 
+        pipelineNodes = pipelineNodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            tables: [],
+            onDataChange: onNodeDataChange,
+            onSubmit: handleSubmit,
+            payload: payload,
+          },
+        }));
+        setNodes((prevNodes) => [...prevNodes, ...pipelineNodes]);
+        setEdges((prevEdges) => [...prevEdges, ...pipelineEdges]);
+        return;
+      }
       const newNode = {
         id: getId(),
         type,
