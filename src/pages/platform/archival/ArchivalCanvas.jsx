@@ -19,11 +19,19 @@ import TableDrawer from "../react-flow/dialog/TableDrawer";
 import Success from "../react-flow/dialog/success";
 import { ArchivalSidebar } from "./ArchivalSidebar";
 import { createPipeline } from "../cdc/components/CreatePipeline";
+import { DefineNode as MetadataDefineNode } from "../metadata/nodes/DefineNode";
+import { SourceNode as MetadataSourceNode } from "../metadata/nodes/SourceNode";
+import { TargetNode as MetadataTargetNode } from "../metadata/nodes/TargetNode";
+
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
   target: TargetNode,
   schedule: SchedulerNode,
+  metadataDefine: MetadataDefineNode,
+  metadataSource: MetadataSourceNode,
+  metadataTarget: MetadataTargetNode,
+
 };
 
 let id = 0;
