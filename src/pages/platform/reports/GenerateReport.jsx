@@ -48,9 +48,7 @@ const GenerateReport = () => {
       setError(null);
 
       const payload = { reportType, startDate, endDate };
-      console.log("payload", payload);
-      const response = await fetch(
-        "https://jsonplaceholder.typicode.com/posts",
+      const response = await fetch("https://jsonplaceholder.typicode.com/posts",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -65,7 +63,6 @@ const GenerateReport = () => {
       const data = await response.json();
       console.log("Success:", data);
       closeModal("modal1");
-      // Add any success handling here
     } catch (error) {
       if (error.name !== "AbortError") {
         console.error("Error:", error);
@@ -88,7 +85,6 @@ const GenerateReport = () => {
 
       let reportsData = await reportsResponse.json();
       setReports(reportsData);
-      console.log("reports data", reportsData);
       openModal("modal2");
     } catch (error) {
       console.error("Error fetching reports:", error);
@@ -426,99 +422,86 @@ const GenerateReport = () => {
       {isModalOpen.modal2 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-auto p-5 mx-9">
-            <table className="w-full text-sm text-left rtl:text-right text-black">
-              <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
-                <tr>
-                  <th scope="col" className="px-2 py-2">
-                    Workflow Name
-                  </th>
-                  <th scope="col" className="px-2 py-2">
-                    Report For
-                  </th>
-                  <th scope="col" className="px-2 py-2">
-                    Execute Type
-                  </th>
-                  <th scope="col" className="px-2 py-2">
-                    Project
-                  </th>
-                  <th scope="col" className="px-2 py-2">
-                    Users
-                  </th>
-                  <th scope="col" className="px-2 py-2">
-                    Start date
-                  </th>
-                  <th scope="col" className="px-2 py-2">
-                    End date
-                  </th>
-                  <th scope="col" className="px-2 py-2">
-                    Before Source table Count
-                  </th>
-                  <th scope="col" className="px-2 py-2">
-                    After Target table Count
-                  </th>
-                  <th scope="col" className="px-2 py-2">
-                    Table Size Before
-                  </th>
-                  <th scope="col" className="px-2 py-2">
-                    Table Size After
-                  </th>
-                  <th scope="col" className="pl-6 py-2">
-                    Status
-                  </th>
-                  <th scope="col" className="px-3 py-2">
-                    Remark
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedReports.map((user, index) => (
-                  // <tr key={index} className="border-b"></tr>
-                  <tr key={index} className="border-b dark:border-white-700">
-                    {/* <th
+        <table className="w-full text-sm text-left rtl:text-right text-black">
+          <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
+            <tr>
+              <th scope="col" className="px-2 py-2">
+                Workflow Name
+              </th>
+              <th scope="col" className="px-2 py-2">
+                 Report For
+              </th>
+              <th scope="col" className="px-2 py-2">
+                Execute Type
+              </th>
+              <th scope="col" className="px-2 py-2">
+                Project
+              </th>
+              <th scope="col" className="px-2 py-2">
+                Users
+              </th>
+              <th scope="col" className="px-2 py-2">
+                Start date
+              </th>
+              <th scope="col" className="px-2 py-2">
+                End date
+              </th>
+              <th scope="col" className="px-2 py-2">
+                Before Source table Count
+              </th>
+              <th scope="col" className="px-2 py-2">
+                After Target table Count
+              </th>
+              <th scope="col" className="px-2 py-2">
+                Table Size Before
+              </th>
+              <th scope="col" className="px-2 py-2">
+                Table Size After
+              </th>
+              <th scope="col" className="pl-6 py-2">
+                Status
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Remark
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedReports.map((user, index) => (
+              // <tr key={index} className="border-b"></tr>
+              <tr key={index} className="border-b dark:border-white-700">
+                {/* <th
                   scope="row"
                   className="px-3 py-2 font-medium text-black-900 whitespace-nowrap dark:text-black"
                 >
                   {user.id}
                 </th> */}
-                    <td className="px-2 py-2">{user.workflow_name}</td>
-                    <td className="px-2 py-2">{user.workflow_type}</td>
-                    <td className="px-2 py-2">{user.execute_type}</td>
-                    <td className="px-2 py-2">{user.project}</td>
-                    <td className="px-2 py-2">{user.created_by}</td>
-                    <td className="px-2 py-2">
-                      {user.start_time
-                        ? user.start_time.split("T")[0]
-                        : user.start_time}
-                    </td>
-                    <td className="px-2 py-2">
-                      {user.end_time
-                        ? user.end_time.split("T")[0]
-                        : user.end_time}
-                    </td>
-                    <td className="px-2 py-2">
-                      {user.before_source_table_count}
-                    </td>
-                    <td className="px-2 py-2">
-                      {user.after_target_table_count}
-                    </td>
-                    <td className="px-2 py-2">{user.table_size_before}</td>
-                    <td className="px-2 py-2">{user.table_size_after}</td>
-                    <td className="p-4 text-center">
-                      <span
-                        className={`pr-4 py-1 rounded-full text-sm ${
-                          user.status_choices === "Completed"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {user.status_choices}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">{user.remarks}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                <td className="px-2 py-2">{user.workflow_name}</td>
+                <td className="px-2 py-2">{user.workflow_type}</td>
+                <td className="px-2 py-2">{user.execute_type}</td>
+                <td className="px-2 py-2">{user.project}</td>
+                <td className="px-2 py-2">{user.created_by}</td>
+                <td className="px-2 py-2">{user.start_time ? user.start_time.split("T")[0] : user.start_time}</td>
+                <td className="px-2 py-2">{user.end_time ? user.end_time.split("T")[0] : user.end_time}</td>
+                <td className="px-2 py-2">{user.before_source_table_count}</td>
+                <td className="px-2 py-2">{user.after_target_table_count}</td>
+                <td className="px-2 py-2">{user.table_size_before}</td>
+                <td className="px-2 py-2">{user.table_size_after}</td>
+                <td className="p-4 text-center">
+                  <span
+                    className={`pr-4 py-1 rounded-full text-sm ${user.status_choices === "Completed"
+                        ? "text-green-600"
+                        : "text-red-600"
+                      }`}
+                  >
+                    {user.status_choices}
+                  </span>
+                </td>
+                <td className="px-3 py-2">{user.remarks}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
             {/* Pagination */}
             <div className="flex items-center justify-between p-4 mt-2">
