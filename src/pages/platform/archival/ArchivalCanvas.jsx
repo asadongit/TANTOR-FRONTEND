@@ -16,7 +16,7 @@ import { SchedulerNode } from "./nodes/SchedulerNode";
 import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
 import axios from "axios";
 import TableDrawer from "../react-flow/dialog/TableDrawer";
-import Success from "../react-flow/dialog/success";
+import Success from "../react-flow/dialog/Success";
 import { ArchivalSidebar } from "./ArchivalSidebar";
 import { createPipeline } from "../cdc/components/CreatePipeline";
 import { DefineNode as MetadataDefineNode } from "../metadata/nodes/DefineNode";
