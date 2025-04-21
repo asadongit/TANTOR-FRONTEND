@@ -42,7 +42,7 @@ function App() {
   };
 
   return (
-    <Router>
+    <Router basename="/tantor2">
       <AuthProvider>
         <ContextViewProvider>
           <Toaster />
