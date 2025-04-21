@@ -16,7 +16,8 @@ const SkeletonLoader = () => (
 
 export function SourceNode({ id, data }) {
   const { onDataChange } = data;
-  const hostname = import.meta.env.VITE_FAST_API;
+  const hostnamev1 = import.meta.env.VITE_FAST_API;
+  const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
   const { token, decodedToken } = useAuth();
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);
@@ -28,33 +29,60 @@ export function SourceNode({ id, data }) {
   const [loading, setLoading] = useState(true);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
+  const [whereConditions, setWhereConditions] = useState({});
   const [schemaLoading, setSchemaLoading] = useState(false);
   const { openDrawer } = useTableContext();
 
   let connectionsData;
   let schemacount;
   let schemadetails;
-  let tabledetails;
 
   useEffect(() => {
-    onDataChange(id, {
+    const nodeData = {
       connection: selectedConnection,
       schema: selectedSchema,
-      migrationScope: selectedScope,
       selectedTables: selectedItems,
-    });
-  }, [
-    id,
-    selectedConnection,
-    selectedSchema,
-    selectedScope,
-    selectedItems,
-    onDataChange,
-  ]);
+      migrationScope: selectedScope, // for source node
+      isValid: Boolean(selectedConnection && selectedSchema && selectedItems.length > 0),
+      whereConditions,
+      filters: selectedScope === 'subset' 
+        ? whereConditions[selectedItems[0]] || []
+        : []
+    };
+  
+    onDataChange(id, nodeData);
+  }, [selectedConnection, selectedSchema, selectedItems, selectedScope, id, onDataChange]);
+
+    // When opening table drawer
+    const handleOpenDrawer = (table) => {
+      openDrawer(id, {
+        table,
+        conditions: whereConditions[table.table_name] || [],
+        isBulk: selectedScope === 'bulk'
+      });
+    };
+  
+    // When saving conditions from drawer
+    useEffect(() => {
+      const handleConditionSave = (tableName, conditions) => {
+        setWhereConditions(prev => ({
+          ...prev,
+          [tableName]: conditions
+        }));
+        
+        // For subset mode, replace previous conditions
+        if (selectedScope === 'subset') {
+          setSelectedItems([tableName]);
+        }
+      };
+  
+      window.addEventListener('tableConditionsSaved', handleConditionSave);
+      return () => window.removeEventListener('tableConditionsSaved', handleConditionSave);
+    }, [selectedScope]);
 
   const fetchOptions = useCallback(async () => {
     try {
-      const connectionResponse = await fetch(`${hostname}/connection-saves`, {
+      const connectionResponse = await fetch(`${hostnamev1}/connection-saves`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -80,7 +108,7 @@ export function SourceNode({ id, data }) {
 
       try {
         const response = await fetch(
-          `${hostname}/schema/${connectionName}/count`,
+          `${hostnamev1}/schema/${connectionName}/count`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -101,7 +129,7 @@ export function SourceNode({ id, data }) {
         setSchemacount([]); // Clear schemas on error
       }
     },
-    [hostname, token]
+    [hostnamev1, token]
   );
 
   useEffect(() => {
@@ -118,7 +146,7 @@ export function SourceNode({ id, data }) {
       setSchemaLoading(true);
 
       try {
-        const response = await fetch(`${hostname}/schema/${connectionName}`, {
+        const response = await fetch(`${hostnamev1}/schema/${connectionName}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -136,79 +164,79 @@ export function SourceNode({ id, data }) {
         setSchema([]); // Clear schemas on error
       }
     },
-    [hostname, token]
+    [hostnamev1, token]
   );
 
   const fetchTables = useCallback(
     async (connectionName, schemaName) => {
       if (!connectionName || !schemaName) return;
-
+  
       setLoading(true);
       try {
-        const fetchTableResponse = await fetch(
-          `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!fetchTableResponse.ok) {
-          throw new Error(`HTTP error! status: ${fetchTableResponse.status}`);
+        // Determine endpoint based on selected scope
+        const endpoint = selectedScope === 'bulk'
+          ? `${hostnamev2}/metadata-archivals-tables`
+          : `${hostnamev1}/connection-master-metadata/find-by-conn-name-type`;
+  
+        // Create appropriate query parameters
+        const params = new URLSearchParams();
+        if (selectedScope === 'bulk') {
+          params.append('source_conn_name', connectionName);
+          params.append('schema_name', schemaName);
+        } else {
+          params.append('conn_name', connectionName);
+          params.append('schema_name', schemaName);
         }
-
-        tabledetails = await fetchTableResponse.json();
-
-        setTables(tabledetails);
+  
+        const response = await fetch(`${endpoint}?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+  
+        if (!response.ok) throw new Error(`HTTP error! ${response.status}`);
+  
+        const data = await response.json();
+        const tablesData = selectedScope === 'bulk' 
+          ? data.results || []
+          : data;
+  
+        setTables(Array.isArray(tablesData) ? tablesData : []);
       } catch (error) {
-        console.error("Error fetching tables:", error);
-        setTables([]); // Clear tables on error
+        console.error("Table fetch error:", error);
+        setTables([]);
+        toast.error(`Failed to load tables: ${error.message}`);
       } finally {
         setLoading(false);
       }
     },
-    [hostname, token]
+    [hostnamev1, token, selectedScope]
   );
-
-  const filteredTables = tables.filter((table) =>
-    table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
+  
+  const filteredTables = (tables || []).filter((table) =>
+    table?.table_name?.toLowerCase().includes(searchTerm?.toLowerCase() || "")
   );
 
   const handleScopeChange = (e) => {
-    setSelectedScope(e.target.value);
-    if (e.target.value === "subset") {
-      setSelectedItems([]);
-    }
+    const newScope = e.target.value; // Direct value 'bulk' or 'subset'
+    setSelectedScope(newScope);
+    setSelectedItems([]);
   };
 
   const handleSelectAll = (e) => {
     const isChecked = e.target.checked;
-    if (selectedScope === "bulk") {
-      setSelectedItems(
-        isChecked
-          ? filteredTables
-              .filter((table) => table !== null)
-              .map((table) => table.table_name)
-          : []
-      );
-    }
+    setSelectedItems(
+      isChecked ? filteredTables.map((table) => table.table_name) : []
+    );
   };
 
   const handleTableSelection = (tableName) => {
-    if (selectedScope === "subset") {
-      // Only allow single selection
-      setSelectedItems(
-        (prev) => (prev[0] === tableName ? [] : [tableName]) // Toggle selection
-      );
-    } else {
-      // Toggle multiple selections
-      setSelectedItems((prev) =>
-        prev.includes(tableName)
-          ? prev.filter((item) => item !== tableName)
-          : [...prev, tableName]
-      );
-    }
+    setSelectedItems((prev) => {
+      if (selectedScope === "subset") {
+        return prev.includes(tableName) ? [] : [tableName];
+      }
+      return prev.includes(tableName)
+        ? prev.filter((item) => item !== tableName)
+        : [...prev, tableName];
+    });
   };
 
   const handleCancel = () => {
@@ -238,6 +266,13 @@ export function SourceNode({ id, data }) {
       },
     });
   };
+
+
+  useEffect(() => {
+    if (selectedConnection && selectedSchema) {
+      fetchTables(selectedConnection, selectedSchema);
+    }
+  }, [selectedScope, selectedConnection, selectedSchema, fetchTables]);
 
   return (
     <div
@@ -337,8 +372,8 @@ export function SourceNode({ id, data }) {
               type="radio"
               id="srctable-bulk"
               name="srctable"
-              value="srcbulk"
-              defaultChecked
+              value="bulk" 
+              checked={selectedScope === "bulk"}
               onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
             />
@@ -354,7 +389,8 @@ export function SourceNode({ id, data }) {
               type="radio"
               id="srctable-subset"
               name="srctable"
-              value="srcsubset"
+              value="subset" 
+              checked={selectedScope === "subset"}
               onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
             />

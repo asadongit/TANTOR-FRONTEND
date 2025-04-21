@@ -45,67 +45,165 @@ const ArchivalCanvas = () => {
   const navigate = useNavigate();
 
 
-  // Add this validation function in ArchivalCanvas.jsx
-const validatePayload = (nodes, edges, payload) => {
-  // Check node presence
-  const nodeTypesPresent = nodes.map(n => n.type);
-  const requiredTypes = ['define', 'source', 'target', 'schedule'];
-  if (!requiredTypes.every(type => nodeTypesPresent.includes(type))) {
-    toast.error('Missing required nodes!');
-    return false;
-  }
+  const API_ENDPOINTS = {
+    bulk: '/api/v1/bulk-migration',
+    subset: '/api/v1/migrations'
+  };
 
-  // Validate connections
-  const expectedConnections = [
-    ['define', 'source'],
-    ['source', 'target'],
-    ['target', 'schedule']
-  ];
 
-  const actualConnections = edges.map(edge => {
-    const sourceType = nodes.find(n => n.id === edge.source)?.type;
-    const targetType = nodes.find(n => n.id === edge.target)?.type;
-    return [sourceType, targetType];
-  });
-
-  if (!expectedConnections.every(conn => 
-    actualConnections.some(([src, tgt]) => src === conn[0] && tgt === conn[1])
-  )) {
-    toast.error('Nodes must be connected in sequence: Define → Source → Target → Scheduler');
-    return false;
-  }
-
-  // Validate individual node data
-  return nodes.every(node => {
-    const nodeData = payload[node.id];
-    switch (node.type) {
-      case 'define':
-        if (!nodeData?.name || !nodeData?.description) {
-          toast.error('Define node requires both name and description');
-          return false;
-        }
-        break;
-      case 'source':
-      case 'target':
-        if (!nodeData?.connection || !nodeData?.schema || nodeData?.selectedTables?.length === 0) {
-          toast.error(`${node.type} node requires connection, schema, and tables selection`);
-          return false;
-        }
-        break;
-      case 'schedule':
-        if (nodeData?.scheduleType === 'manual' && (!nodeData?.startLoadDate || !nodeData?.endLoadDate)) {
-          toast.error('Manual schedule requires both start and end dates');
-          return false;
-        }
-        break;
+  const migrationValidators = {
+    common: (source, target) => {
+      const errors = [];
+      if (!source || !target) errors.push("Missing source or target configuration");
+      if (source?.migrationScope !== target?.migrationScope) {
+        errors.push("Source and Target must have the same migration scope");
+      }
+      return errors;
+    },
+    bulk: (source, target) => {
+      const errors = [];
+      if (source.selectedTables.length < 1) errors.push("Bulk migration requires at least one table");
+      return errors;
+    },
+    subset: (source, target) => {
+      const errors = [];
+      if (source.selectedTables.length !== 1) errors.push("Subset migration requires exactly one table");
+      return errors;
     }
+  };
+
+
+
+
+  const payloadBuilders = {
+    bulk: (data) => ({
+      project: "default",
+      created_by: "to_be_fetched_from_token", 
+      migration_name: data.definition.name,
+      migration_description: data.definition.description,
+      migrations: data.source.selectedTables.map(table => ({
+        metadata_id: table.metadataId, 
+        schedule: data.schedule.startLoadDate,
+        wherecondition: ""
+      })),
+      migration_groups: {},
+      op_types: {
+        datafederation: false
+      },
+      source_conn_name: data.source.connection,
+      target_conn_name: data.target.connection,
+      source_conn_type: "oracle", 
+      target_conn_type: "oracle", 
+      scheduler: {
+        startdatetime: data.schedule.startLoadDate,
+        scheduleinterval: {},
+        schedulerColumn: "none",
+        startLoadDate: data.schedule.startLoadDate,
+        endLoadDate: data.schedule.endLoadDate
+      }
+    }),
+  
+    subset: (data) => ({
+      workflow_name: data.definition.name,
+      // migration_auto_name: `${data.definition.name}_auto`,
+      migration_auto_name: data.definition.name,
+      description: data.definition.description,
+      project: "Federal_Unit_Testing",
+      created_by: "novijoth", 
+      status: "Pending",
+      source_conn_id: data.source.connectionId, 
+      target_conn_id: data.target.connectionId, 
+      source_migr_info: {
+        sourceType: "mysql", 
+        sourceConnName: data.source.connection,
+        sourcePath: "",
+        sourceObjectName: data.source.selectedTables[0],
+        iscomplexwherecondition: "No",
+        wherecondition: data.source.filters?.map(filter => ({
+          wherecolumn: filter.column,
+          whereoperator: filter.operator,
+          wherevalues: filter.value
+        })) || [],
+        sourceSchemaName: data.source.schema
+      },
+      target_migr_info: {
+        targetType: "mysql", // Should be dynamic
+        targetConnName: data.target.connection,
+        targetPath: "",
+        targetObjectName: data.target.selectedTables[0],
+        targetschema: [],
+        sourceDF: "s_df_1",
+        partition: {
+          columns: [],
+          strategy: "",
+          type: "",
+          hashColumn: "",
+          recNum: 1000
+        },
+        loadParams: {
+          loadType: "FULL",
+          targetPk: "",
+          surrogateKey: "",
+          changeType: "",
+          checksumColumns: "",
+          changeCondition: ""
+        }
+      },
+      source_table: data.source.selectedTables[0],
+      target_table: data.target.selectedTables[0],
+      source_conn_name: data.source.connection,
+      target_conn_name: data.target.connection,
+      source_conn_type: "mysql", // Should be dynamic
+      target_conn_type: "mysql", // Should be dynamic
+      scheduler: {
+        startdatetime: "",
+        scheduleinterval: {},
+        schedulerColumn: "none",
+        startLoadDate: "",
+        endLoadDate: ""
+      },
+      retention: {
+        retention_on: "",
+        retention_duration: "",
+        retention_type: ""
+      },
+      transformation: {},
+      workflow_type: "manual"
+    })
+  };
+
+
+
+
+  const validatePayload = (nodes, edges, payload) => {
+    // Node presence and connection validation
+    const requiredNodes = ['define', 'source', 'target', 'schedule'];
+    if (!requiredNodes.every(type => nodes.some(n => n.type === type))) {
+      toast.error('Missing required nodes!');
+      return false;
+    }
+
+    // Get node data
+    const sourceData = payload[nodes.find(n => n.type === 'source').id];
+    const targetData = payload[nodes.find(n => n.type === 'target').id];
+
+    // Validate scope match
+    const scopeErrors = migrationValidators.common(sourceData, targetData);
+    if (scopeErrors.length > 0) {
+      scopeErrors.forEach(e => toast.error(e));
+      return false;
+    }
+
+    // Validate scope-specific rules
+    const scope = sourceData?.migrationScope;
+    const scopeValidationErrors = migrationValidators[scope](sourceData, targetData);
+    if (scopeValidationErrors.length > 0) {
+      scopeValidationErrors.forEach(e => toast.error(e));
+      return false;
+    }
+
     return true;
-  });
-};
-
-
-
-
+  };
 
 // Update handleSubmit in ArchivalCanvas.jsx
 const handleSubmit = useCallback(async () => {
@@ -115,18 +213,40 @@ const handleSubmit = useCallback(async () => {
       return;
     }
 
-    // Transform payload to API format
-    const apiPayload = {
+    // Collect node data
+    const collectedData = {
       definition: payload[nodes.find(n => n.type === 'define').id],
       source: payload[nodes.find(n => n.type === 'source').id],
       target: payload[nodes.find(n => n.type === 'target').id],
       schedule: payload[nodes.find(n => n.type === 'schedule').id]
     };
 
+    // Determine migration scope
+    const migrationScope = collectedData.source.migrationScope;
+    if (!['bulk', 'subset'].includes(migrationScope)) {
+      throw new Error(`Invalid migration scope: ${migrationScope}`);
+    }
+
+
+    // Build scope-specific payload
+    const apiPayload = payloadBuilders[migrationScope](collectedData);
     console.log("Submitting payload:", apiPayload);
-    const response = await axios.post("/api/submit-flow", apiPayload);
+
+
+    // Submit to correct endpoint
+    const response = await axios.post(
+      API_ENDPOINTS[migrationScope],
+      apiPayload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      }
+    );
+
     console.log("API Response:", response.data);
-    toast.success('Flow submitted successfully!');
+    toast.success('Migration submitted successfully!');
   } catch (error) {
     console.error("Error submitting flow:", error);
     toast.error('Submission failed: ' + error.message);
