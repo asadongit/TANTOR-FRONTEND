@@ -4,9 +4,18 @@ import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 
+const SkeletonLoader = () => (
+  <div className="animate-pulse space-y-4">
+    <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+    <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+    <div className="h-4 bg-gray-300 rounded w-2/3"></div>
+  </div>
+);
+
 export function TargetNode({ id, data }) {
   const { onDataChange } = data;
-  const hostname = import.meta.env.VITE_FAST_API;
+  const hostnamev1 = import.meta.env.VITE_FAST_API;
+  const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
   const { token, decodedToken } = useAuth();
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);
@@ -18,42 +27,35 @@ export function TargetNode({ id, data }) {
   const [loading, setLoading] = useState(true);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
-  const [schemaLoading, setSchemaLoading] = useState(false);  
-
-  const SkeletonLoader = () => (
-    <div className="animate-pulse space-y-4">
-      <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-      <div className="h-4 bg-gray-300 rounded w-1/2"></div>
-      <div className="h-4 bg-gray-300 rounded w-2/3"></div>
-    </div>
-  );
+  const [schemaLoading, setSchemaLoading] = useState(false);
 
   let connectionsData;
   let schemacount;
   let schemadetails;
-  let tabledetails;
+
 
   useEffect(() => {
-    onDataChange(id, {
+    const nodeData = {
       connection: selectedConnection,
       schema: selectedSchema,
-      migrationScope: selectedScope,
       selectedTables: selectedItems,
-    });
-  }, [id, selectedConnection, selectedSchema, selectedScope, selectedItems, onDataChange]);
+      migrationScope: selectedScope, // for target node
+      isValid: Boolean(selectedConnection && selectedSchema && selectedItems.length > 0)
+    };
+  
+    onDataChange(id, nodeData);
+  }, [selectedConnection, selectedSchema, selectedItems, selectedScope, id, onDataChange]);
 
   const fetchOptions = useCallback(async () => {
     try {
-        const connectionResponse = await fetch(`${hostname}/connection-saves`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        connectionsData = await connectionResponse.json();
-
-
+      const connectionResponse = await fetch(`${hostnamev1}/connection-saves`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      connectionsData = await connectionResponse.json();
 
       setConnections(connectionsData);
     } catch (error) {
@@ -68,15 +70,17 @@ export function TargetNode({ id, data }) {
         return;
       }
 
-    //   setSchemaLoading(true);
+      //   setSchemaLoading(true);
 
       try {
-
-        const response = await fetch(`${hostname}/schema/${connectionName}/count`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          `${hostnamev1}/schema/${connectionName}/count`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -88,12 +92,11 @@ export function TargetNode({ id, data }) {
         // setSchemaLoading(false);
       } catch (error) {
         console.error("Error fetching schemas:", error);
-        setSchemacount([]);
+        setSchemacount([]); // Clear schemas on error
       }
     },
-    [hostname, token]
+    [hostnamev1, token]
   );
-
 
   useEffect(() => {
     fetchOptions();
@@ -102,15 +105,14 @@ export function TargetNode({ id, data }) {
   const fetchschema = useCallback(
     async (connectionName) => {
       if (!connectionName) {
-        setSchema([]);
+        setSchema([]); // Clear schemas when no connection selected
         return;
       }
 
       setSchemaLoading(true);
 
       try {
-
-        const response = await fetch(`${hostname}/schema/${connectionName}`, {
+        const response = await fetch(`${hostnamev1}/schema/${connectionName}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -121,94 +123,92 @@ export function TargetNode({ id, data }) {
         }
 
         schemadetails = await response.json();
-
         setSchema(schemadetails);
         setSchemaLoading(false);
       } catch (error) {
         console.error("Error fetching schemas:", error);
-        setSchema([]);
+        setSchema([]); // Clear schemas on error
       }
     },
-    [hostname, token]
+    [hostnamev1, token]
   );
 
   const fetchTables = useCallback(
     async (connectionName, schemaName) => {
       if (!connectionName || !schemaName) return;
-
+  
       setLoading(true);
       try {
-        const fetchTableResponse = await fetch(
-          `${hostname}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!fetchTableResponse.ok) {
-          throw new Error(`HTTP error! status: ${fetchTableResponse.status}`);
+        // Determine endpoint based on selected scope
+        const endpoint = selectedScope === 'bulk'
+          ? `${hostnamev2}/metadata-archivals-tables`
+          : `${hostnamev1}/connection-master-metadata/find-by-conn-name-type`;
+  
+        // Create appropriate query parameters
+        const params = new URLSearchParams();
+        if (selectedScope === 'bulk') {
+          params.append('target_conn_name', connectionName);
+          params.append('schema_name', schemaName);
+        } else {
+          params.append('conn_name', connectionName);
+          params.append('schema_name', schemaName);
         }
-
-        tabledetails = await fetchTableResponse.json();
-        setTables(tabledetails);
+  
+        const response = await fetch(`${endpoint}?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+  
+        if (!response.ok) throw new Error(`HTTP error! ${response.status}`);
+  
+        const data = await response.json();
+        const tablesData = selectedScope === 'bulk' 
+          ? data.results || []
+          : data;
+  
+        setTables(Array.isArray(tablesData) ? tablesData : []);
       } catch (error) {
-        console.error("Error fetching tables:", error);
+        console.error("Table fetch error:", error);
         setTables([]);
+        toast.error(`Failed to load tables: ${error.message}`);
       } finally {
         setLoading(false);
       }
     },
-    [hostname, token]
+    [hostnamev1, token, selectedScope]
+  );
+  
+  const filteredTables = (tables || []).filter((table) =>
+    table?.table_name?.toLowerCase().includes(searchTerm?.toLowerCase() || "")
   );
 
-
-  const filteredTables = tables.filter((table) =>
-    table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
-  );
-
-
-    const handleScopeChange = (e) => {
-      setSelectedScope(e.target.value);
-      if (e.target.value === "subset") {
-        setSelectedItems([]); 
-      }
-    };
-
+  const handleScopeChange = (e) => {
+    const newScope = e.target.value; // Direct value 'bulk' or 'subset'
+    setSelectedScope(newScope);
+    setSelectedItems([]);
+  };
 
   const handleSelectAll = (e) => {
     const isChecked = e.target.checked;
-    if (isChecked) {
-      setSelectedItems(
-        filteredTables
-          .filter((table) => table !== null)
-          .map((table) => table.table_name)
-      );
-    } else {
-      setSelectedItems([]);
-    }
+    setSelectedItems(
+      isChecked ? filteredTables.map((table) => table.table_name) : []
+    );
   };
-
 
   const handleTableSelection = (tableName) => {
-    if (selectedScope === "subset") {
-      setSelectedItems([tableName]);
-    } else {
-      setSelectedItems((prev) =>
-        prev.includes(tableName)
-          ? prev.filter((item) => item !== tableName)
-          : [...prev, tableName]
-      );
-    }
+    setSelectedItems((prev) => {
+      if (selectedScope === "subset") {
+        return prev.includes(tableName) ? [] : [tableName];
+      }
+      return prev.includes(tableName)
+        ? prev.filter((item) => item !== tableName)
+        : [...prev, tableName];
+    });
   };
-
 
   const handleCancel = () => {
     setSelectedItems([]);
     console.log("Selection reset.");
   };
-
 
   const handleOk = () => {
     console.log("Selected items:", selectedItems);
@@ -219,8 +219,26 @@ export function TargetNode({ id, data }) {
     //   setShowAlert(false);
     // }, 3000);
 
-    alert("Flow Updated Successfully"); // Temporary alert
+    toast.success("Flow Updated Successfully! 🎉", {
+      duration: 3000,
+      position: "top-center",
+      style: {
+        background: "#4CAF50",
+        color: "#fff",
+      },
+      iconTheme: {
+        primary: "#fff",
+        secondary: "#4CAF50",
+      },
+    });
   };
+
+
+  useEffect(() => {
+    if (selectedConnection && selectedSchema) {
+      fetchTables(selectedConnection, selectedSchema);
+    }
+  }, [selectedScope, selectedConnection, selectedSchema, fetchTables]);
 
   return (
     <div
@@ -253,10 +271,11 @@ export function TargetNode({ id, data }) {
             onChange={(e) => {
               const connectionName = e.target.value;
               setSelectedConnection(connectionName);
-              setSelectedSchema(""); // Reset schema selection
-              setTables([]); // Clear previous tables
+              setSelectedSchema("");
+              setTables([]);
+              setSelectedItems([]); // Reset selected tables
               fetchschema(connectionName);
-              fetchschemacount(connectionName); 
+              fetchschemacount(connectionName);
             }}
           >
             <option value="">Select</option>
@@ -278,6 +297,7 @@ export function TargetNode({ id, data }) {
               onChange={(e) => {
                 const schemaName = e.target.value;
                 setSelectedSchema(schemaName);
+                setSelectedItems([]); // Reset selected tables
                 fetchTables(selectedConnection, schemaName);
               }}
               disabled={!selectedConnection || schemaLoading}
@@ -301,7 +321,9 @@ export function TargetNode({ id, data }) {
                 <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
               </div>
             )}
-            <span className="ml-5 text-black font-bold">{schemaCount.schema_count}</span>
+            <span className="ml-5 text-black font-bold">
+              {schemaCount.schema_count}
+            </span>
           </div>
         </div>
       </div>
@@ -316,12 +338,15 @@ export function TargetNode({ id, data }) {
               type="radio"
               id="tartable-bulk"
               name="tartable"
-              value="tarbulk"
-              defaultChecked
+              value="bulk" 
+              checked={selectedScope === "bulk"}
               onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
             />
-            <label htmlFor="tartable-bulk" className="ml-2 text-xs text-gray-700">
+            <label
+              htmlFor="tartable-bulk"
+              className="ml-2 text-xs text-gray-700"
+            >
               Bulk
             </label>
           </div>
@@ -330,7 +355,8 @@ export function TargetNode({ id, data }) {
               type="radio"
               id="tartable-subset"
               name="tartable"
-              value="tarsubset"
+              value="subset" 
+              checked={selectedScope === "subset"}
               onChange={handleScopeChange}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
             />
@@ -344,7 +370,38 @@ export function TargetNode({ id, data }) {
         </div>
       </div>
 
+      {/* <div className="flex gap-4 items-center mt-3">  
+        <label className="text-xs text-black font-medium">Column</label>
+        <div className="flex items-center">
+          <input
+            type="radio"
+            id="column-bulk"
+            name="column"
+            value="bulk"
+            defaultChecked
+            className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
+          />
+          <label htmlFor="column-bulk" className="ml-2 text-xs text-gray-700">
+            Bulk
+          </label>
+        </div>
+        <div className="flex items-center">
+          <input
+            type="radio"
+            id="column-subset"
+            name="column"
+            value="subset"
+            className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="column-subset" className="ml-2 text-xs text-gray-700">
+            Subset
+          </label>
+        </div>
+      </div> */}
 
+      {/* <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-24 border border-gray-700 hover:border-transparent rounded mt-4">
+        OK
+      </button> */}
       {selectedConnection && selectedSchema && (
         <div>
           <div className="flex items-center gap-2 mb-0.5 mt-4">
@@ -377,10 +434,11 @@ export function TargetNode({ id, data }) {
                       checked={
                         selectedScope === "bulk" &&
                         selectedItems.length ===
-                          filteredTables.filter((table) => table !== null).length
-                      } // Check if all items are selected
+                          filteredTables.filter((table) => table !== null)
+                            .length
+                      }
                       onChange={handleSelectAll}
-                    disabled={selectedScope === "subset"} // Disable in "subset" mode
+                      disabled={selectedScope === "subset"} // This implements point 4
                     />
                     <label
                       htmlFor="select-all"
@@ -392,7 +450,7 @@ export function TargetNode({ id, data }) {
                 </div>
 
                 {filteredTables
-                  .filter((table) => table !== null) 
+                  .filter((table) => table !== null)
                   .map((table, idx) => (
                     <div
                       key={idx}
@@ -403,10 +461,16 @@ export function TargetNode({ id, data }) {
                           type="checkbox"
                           id={`table-${idx}`}
                           checked={selectedItems.includes(table.table_name)}
-                          onChange={() => handleTableSelection(table.table_name)}
-                        className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        disabled={selectedScope === "subset" && selectedItems.length > 0 && !selectedItems.includes(table.table_name)}
-                      />
+                          onChange={() =>
+                            handleTableSelection(table.table_name)
+                          }
+                          className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          disabled={
+                            selectedScope === "subset" &&
+                            selectedItems.length > 0 &&
+                            !selectedItems.includes(table.table_name) // This implements point 4
+                          }
+                        />
                         <label
                           htmlFor={`table-${idx}`}
                           className="text-xs font-semibold text-black"
@@ -414,25 +478,15 @@ export function TargetNode({ id, data }) {
                           {table.table_name}
                         </label>
                       </div>
-                      {/* <button
-                        onClick={() => openDrawer(id, table)}
-                        className="text-purple-600 hover:text-purple-700"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button> */}
-
-
-
                     </div>
                   ))}
               </>
             )}
           </div>
-          
         </div>
       )}
       <div className="flex space-x-2 mt-4">
-      <button
+        <button
           onClick={handleCancel}
           className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
         >
@@ -444,12 +498,11 @@ export function TargetNode({ id, data }) {
         >
           OK
         </button>
-        
       </div>
-
     </div>
   );
 }
+
 
 
 TargetNode.propTypes = {
