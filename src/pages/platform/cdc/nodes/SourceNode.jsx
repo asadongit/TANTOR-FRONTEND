@@ -33,7 +33,6 @@ export function SourceNode({ id, data, selected }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectedConnectionObj, setSelectedConnectionObj] = useState(null);
-
   const [nodeData, setNodeData] = useState(() => ({
     connection: "",
     schema: "",
@@ -103,7 +102,6 @@ export function SourceNode({ id, data, selected }) {
       "source_conn_id": selectedConnection.connection_id,
     }));
   };
-
   const handleSelectSchema = (schemaName) => {
     setSelectedSchema(schemaName);
     setSelectedItems([]);
@@ -122,22 +120,20 @@ export function SourceNode({ id, data, selected }) {
       const validTables = filteredTables.filter((table) => table !== null);
 
       setSelectedItems(
-        validTables.map((table) => ({
-          metadata_id: table.metadata_id,
-          schedule: {},
-        }))
-      );
+        validTables.map((item) =>item.source_table))
     } else {
       setSelectedItems([]);
     }
   };
 
-  const handleItemSelection = (checked, tableId) => {
+  const handleItemSelection = (checked, table) => {
     setSelectedItems((prev) => {
       if (checked) {
-        return [...prev, { metadata_id: tableId, schedule: {} }];
+        // return [...prev, { metadata_id: tableId, schedule: {} }];
+        return [...prev, table];
+
       } else {
-        return prev.filter((item) => item.metadata_id !== tableId);
+        return prev.filter((item) => item!== table);
       }
     });
   };
@@ -169,7 +165,6 @@ export function SourceNode({ id, data, selected }) {
   );
 
   const connectedTargets = data?.target?.map(target => target.id) || []; 
-  
   const firstTargetID = connectedTargets.length > 0 ? connectedTargets[0] : null; 
   
   const constructedKey = firstTargetID ? `${data?.source?.id}-${firstTargetID}` : null;
@@ -178,7 +173,7 @@ export function SourceNode({ id, data, selected }) {
     ? pipelineMappings[pipelineId] || []
     : constructedKey && pipelineMappings[constructedKey] ? pipelineMappings[constructedKey] : [];
   
-  const sourceTables = pipelineData.map((mapping) => mapping.sourceTable);
+  const sourceTables = pipelineData.map((mapping) => mapping.source_table);
   const showTablesList = Boolean(
     selectedMode === "bulk"
       ? tables && tables.length > 0 || loading
@@ -240,6 +235,7 @@ export function SourceNode({ id, data, selected }) {
                 handleSelectConnection(selectedConnection)
               }}
             >
+              
               <option value="">Select Connection</option>
               {connections?.length > 0 ? (
                 connections.map((connection, idx) => (
@@ -469,12 +465,15 @@ export function SourceNode({ id, data, selected }) {
                             type="checkbox"
                             id={`table-${idx}`}
                             checked={selectedItems.some(
-                              (item) => item.metadata_id === table.metadata_id
+                              // (item) => item.metadata_id === table.metadata_id
+                              (item) => item === table.source_table
+                              
                             )}
                             onChange={(e) =>
                               handleItemSelection(
                                 e.target.checked,
-                                table.metadata_id
+                                // table.metadata_id
+                                table.source_table
                               )
                             }
                             className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"

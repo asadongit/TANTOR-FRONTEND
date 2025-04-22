@@ -53,8 +53,8 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       target_conn_id:pipelineData.target?.target_conn_id,
       source_schema:pipelineData.source?.schema,
       target_schema:pipelineData.target?.schema,
-      cdc_list: pipelineData.source?.bulk_list || [],
-      subset_list: pipelineData.source?.subset_list || [],
+      cdc_list: pipelineData.target?.bulk_list || [],
+      // subset_list: pipelineData.source?.subset_list || [],
       op_types: pipelineData.source?.op_types || {},
     };
  
@@ -87,7 +87,7 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
         title: "Success!",
         message: "Your CDC has been saved successfully.",
         type: "success",
-        onConfirm: () => handleClose(),
+        onClose: () => handleClose(),
       });
     }, 800);
   };
