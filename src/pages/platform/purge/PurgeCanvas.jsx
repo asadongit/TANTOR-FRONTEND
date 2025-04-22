@@ -1,11 +1,14 @@
 import { useCallback, useEffect } from "react";
-import ReactFlow, { addEdge, Controls, useEdgesState, useNodesState } from "reactflow";
+import ReactFlow, { addEdge, Controls, Panel, useEdgesState, useNodesState } from "reactflow";
 import { DefineNodePurge } from "../purge/purge-nodes/DefineNodePurge";
 import { SourceNode } from "../purge/purge-nodes/SourceNodePurge";
 import { TargetNode } from "../purge/purge-nodes/TargetNodePurge";
 import { SchedulerNode } from "../purge/purge-nodes/SchedulerNodePurge"
 import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
-import TableDrawer from "../react-flow/dialog/TableDrawer";
+import PurgeDrawer from "../react-flow/dialog/PurgeDrawer"
+import PurgeSidebar from "./PurgeSidebar";
+import PurgeFooter from "./PurgeFooter";
+import { useStateContext } from "../react-flow/context/ContextProvider";
 
 
 const nodeTypes = {
@@ -22,6 +25,7 @@ function PurgeCanvas() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const {isVisibleFooter, handleIsVisibleFooter} = useStateContext("");
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
@@ -83,9 +87,15 @@ function PurgeCanvas() {
         className="bg-gray-50"
       >
         <Controls className="fill-white stroke-black" />
+        <Panel position="top-left">
+          <PurgeSidebar />
+        </Panel>
+        {isVisibleFooter && (<Panel position="bottom-right" className="w-full">
+          <PurgeFooter onCancel = {() => handleIsVisibleFooter(false)}/>
+        </Panel>)}
       </ReactFlow>
       <DrawerContainer />
-      <TableDrawer nodes={nodes} setNodes={setNodes}/>
+      <PurgeDrawer nodes={nodes} setNodes={setNodes}/>
     </div>
   )
 }

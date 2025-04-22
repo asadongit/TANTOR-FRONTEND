@@ -9,208 +9,287 @@ import {
   ChevronDown,
   Search,
   BadgeCheck,
+  Play,
+  AlertCircle
 } from "lucide-react";
 import successBackground from "../../assets/green.png";
-
+import { useNavigate } from "react-router-dom";
+import { encrypt } from "../../utils/Crypto";
+import DataTable from "../../components/DataTable";
+import { useProjectData } from "../../hooks/platform/project";
+import { useProjectCardData } from "../../hooks/platform/cardCounts";
+import CardGrid from "../../components/CardGrid";
+import { useAuth } from "../../context/AuthContext";
 const Project = () => {
+  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
+  const { data: projectData = [], isLoading: isProjectLoading, error: projectError, refetch: refetchProjects } = useProjectData();
+  const {token, decodedToken,hostnameV1} = useAuth();
+  const initialFormState = {
+    project: "",
+    description: "",
+    // category: "",
+    // subCategory: "",
+    assigned_users: { assigned_users: "" },
+    created_by:decodedToken?.preferred_username
+  };
+
+  const [formData, setFormData] = useState(initialFormState);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
     modal2: false,
   });
 
-  // Function to open a specific modal
+  const navigate = useNavigate();
+
   const openModal = (modalName) => {
+    if (modalName === "modal1") {
+      setFormData(initialFormState);
+      setErrors({});
+    }
     setIsModalOpen((prevState) => ({ ...prevState, [modalName]: true }));
   };
 
-  // Function to close a specific modal
   const closeModal = (modalName) => {
     setIsModalOpen((prevState) => ({ ...prevState, [modalName]: false }));
   };
 
-  // const [isModalOpen, setIsModalOpen] = useState(false);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+  
+    setFormData((prev) => {
+      if (name === "assigned_users") {
+        return {
+          ...prev,
+          assigned_users: {
+            ...prev.assigned_users,
+            assigned_users: value,  
+          },
+        };
+      }
+  
+      return {
+        ...prev,
+        [name]: value,
+      };
+    });
 
-  const [refresh, setRefresh] = useState(0);
-  const handleRefresh = () => {
-    setRefresh((prev) => prev + 1);
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: ""
+      });
+    }
+  };
+  
+  const validateForm = () => {
+    let formErrors = {};
+    let isValid = true;
+
+    if (!formData.project.trim()) {
+      formErrors.project = "Project name is required";
+      isValid = false;
+    } 
+
+    // if (!formData.description.trim()) {
+    //   formErrors.description = "Description is required";
+    //   isValid = false;
+    // }
+
+    const email = formData.assigned_users.assigned_users;
+    if (!email.trim()) {
+      formErrors.assigned_users = "Manager email is required";
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      formErrors.assigned_users = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    // if (!formData.category || formData.category === "Select") {
+    //   formErrors.category = "Please select a category";
+    //   isValid = false;
+    // }
+
+    // if (!formData.subCategory || formData.subCategory === "Select") {
+    //   formErrors.subCategory = "Please select a sub-category";
+    //   isValid = false;
+    // }
+
+    setErrors(formErrors);
+    return isValid;
   };
 
-  const sampleData = [
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-    {
-      id: "01",
-      name: "Amit Tandon",
-      description: "MySQL Connection",
-      type: "mysql",
-      owner: "novi",
-      created_by: "novi",
-      updated_by: "novi",
-    },
-  ];
+  const createProject = async () => {
+    if (!validateForm()) return;
+    try {
+      setIsSubmitting(true);
+           
+      const response = await fetch(`${hostnameV1}/projects`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || "Failed to create project");
+      }
+  
+      refetchProjects();
+      
+      closeModal("modal1");
+      openModal("modal2");
+    } catch (error) {
+      console.error("Creation failed:", error);
+      setErrors({
+        ...errors,
+        api: error.message || "Failed to create project. Please try again."
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleRefresh = () => {
+    refetchProjects();
+    refetchCardData();
+  };
 
+  const categories = ["Ingestion", "CDC", "Federation"];
+  const subCategories = {
+    "Ingestion": ["Migration", "Transformation", "Purge"],
+    "CDC": [""],
+    "Federation": [""],
+  };
+ 
   const cards = [
     {
       icon: "material-symbols:database-upload-outline",
       bgcolor: "bg-[#d8d3e4] bg-opacity-25",
       iconcolor: "text-purple-700",
       title: "Purge",
-      count: "27",
+      count: cardData?.purge || 0,
     },
     {
       icon: "material-symbols-light:two-pager-store-outline",
       bgcolor: "bg-[#FFC93F] bg-opacity-25",
       iconcolor: "text-orange-700",
       title: "Migration",
-      count: "11",
+      count: cardData?.metadata || 0,
     },
     {
       icon: "material-symbols:cloud-sync-outline",
       bgcolor: "bg-[#96CF7B] bg-opacity-25",
       iconcolor: "text-green-700",
       title: "CDC",
-      count: "07",
+      count: cardData?.cdc || 0,
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
       title: "Federation",
-      count: "17",
+      count: cardData?.federation || 0,
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
       title: "Transformation",
-      count: "06",
+      count: cardData?.migration || 0,
     },
   ];
+
+  const actions = [
+    {
+      label: "Edit",
+      icon: <Pencil size={16} />,
+      onClick: (row) => console.log("Edit clicked for", row),
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 size={16} />,
+      onClick: (row) => console.log("Delete clicked for", row),
+    },
+    {
+      label: "Run",
+      icon: <Play size={16} fill="currentColor" />,
+      onClick: (row) => console.log("Run clicked for", row),
+    },
+  ];
+  
+  const columns = [
+    { key: "project", label: "Project Name" },
+    { key: "created_by", label: "Created By" },
+    { key: "owner", label: "Owner" },
+    { key: "connections", label: "Connections" },
+    { key: "metadata", label: "Migrations" },
+    { key: "migration", label: "Transformations" },
+    { key: "purge", label: "Purges" },
+    { key: "cdc", label: "CDC" },
+    { label: "Action", sortable: false },
+  ];
+  
+  const handleCardClick = (card) => {
+    const url = `/componentType=project&cardType=${card.title}&heading=${card.title}`;
+    const encryptedUrl = encodeURIComponent(encrypt(url));
+    navigate(`/details?${encryptedUrl}`);
+  };
 
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Project</h1>
-        <div>
+        <div className="flex items-center">
+       
           <button
             type="button"
-            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
           >
             <List className="h-5 w-5" />
           </button>
           <button
             type="button"
-            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
             onClick={handleRefresh}
           >
-            <RefreshCcw className="h-5 w-5" />
+            <RefreshCcw className={`h-5 w-5 ${isProjectLoading ? 'animate-spin' : ''}`} />
           </button>
           <button
             onClick={() => openModal("modal1")}
             type="button"
-            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-white bg-[#8e78b7] hover:bg-[#7a66a3] focus:ring-2 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#7a66a3] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
           >
             + Create Project
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        {cards.map((card) => (
-          <div
-            key={card.title}
-            className={`bg-white p-6 rounded-lg shadow-sm border-gray-200`}
-          >
-            <div className="flex items-center mb-2">
-              <div
-                className={`flex items-center justify-center aspect-square w-8 md:w-10 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}
-              >
-                <Icon icon={card.icon} />
-              </div>
-              <h3 className="text-lg font-semibold">{card.title}</h3>
-            </div>
-            <p className="text-black text-5xl font-bold">{card.count}</p>
-            <button className="mt-4 text-purple-600 text-sm hover:text-purple-700">
-              See details
-            </button>
-          </div>
-        ))}
-      </div>
 
-      {/* Add Project Model */}
+   
 
+    
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
+
+     
+        <DataTable
+          columns={columns}
+          data={projectData}
+          actions={actions}
+          isLoading={isProjectLoading}
+          isError={projectError}
+          refetch={refetchProjects}
+/>
+
+      {/* Add Project Modal */}
       {isModalOpen.modal1 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-[1000px] p-8">
+          <div className="bg-white rounded-2xl w-[1000px] p-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
                 <div>
@@ -233,31 +312,58 @@ const Project = () => {
               </button>
             </div>
 
+            {errors.api && (
+              <div className="mb-6 p-3 bg-red-100 text-red-700 rounded-lg flex items-center">
+                <AlertCircle className="mr-2 h-5 w-5" />
+                {errors.api}
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-8">
               <div className="space-y-6">
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm text-black mb-1.5">
-                      Name
+                      Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
+                      name="project"
+                      value={formData.project}
+                      onChange={handleInputChange}
                       placeholder="Name"
-                      className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
+                      className={`w-full p-2.5 border ${errors.project ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                     />
+                    {errors.project && (
+                      <p className="mt-1 text-sm text-red-500">{errors.project}</p>
+                    )}
                   </div>
                   <div>
                     <div className="relative">
                       <label className="block text-sm text-black mb-1.5">
-                        Sub Category
+                        Sub Category 
+                        {/* <span className="text-red-500">*</span> */}
                       </label>
-                      <select className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white">
-                        <option>Select</option>
+                      <select
+                        name="subCategory"
+                        value={formData.subCategory}
+                        onChange={handleInputChange}
+                        className={`w-full p-2.5 border ${errors.subCategory ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white`}
+                      >
+                        <option value="Select">Select</option>
+                        {formData.category && formData.category !== "Select" && 
+                          subCategories[formData.category]?.map(sub => (
+                            <option key={sub} value={sub}>{sub}</option>
+                          ))
+                        }
                       </select>
                       <ChevronDown
                         className="absolute right-3 top-10 pointer-events-none text-gray-500"
                         size={18}
                       />
+                      {errors.subCategory && (
+                        <p className="mt-1 text-sm text-red-500">{errors.subCategory}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -268,27 +374,45 @@ const Project = () => {
                   <div>
                     <label className="block text-sm text-black mb-1.5">
                       Description
+                       {/* <span className="text-red-500">*</span> */}
                     </label>
                     <input
+                      name="description"
                       type="text"
+                      value={formData.description}
+                      onChange={handleInputChange}
                       placeholder="Description"
-                      className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
+                      className={`w-full p-2.5 border ${errors.description ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                     />
+                    {errors.description && (
+                      <p className="mt-1 text-sm text-red-500">{errors.description}</p>
+                    )}
                   </div>
                   <div>
                     <div className="relative">
                       <label className="block text-sm text-black mb-1.5">
-                        Manager
+                        Manager <span className="text-red-500">*</span>
                       </label>
                       <input
-                        type="text"
+                        type="email"
+                        name="assigned_users"
+                        value={formData.assigned_users.assigned_users}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            assigned_users: { assigned_users: e.target.value },
+                          }))
+                        }
                         placeholder="Manager"
-                        className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
+                        className={`w-full p-2.5 border ${errors.assigned_users ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                       />
                       <Search
                         className="absolute right-3 top-10 pointer-events-none text-gray-500"
                         size={18}
                       />
+                      {errors.assigned_users && (
+                        <p className="mt-1 text-sm text-red-500">{errors.assigned_users}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -299,15 +423,27 @@ const Project = () => {
                   <div>
                     <div className="relative">
                       <label className="block text-sm text-black mb-1.5">
-                        Category
+                        Category 
+                        {/* <span className="text-red-500">*</span> */}
                       </label>
-                      <select className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white">
-                        <option>Select</option>
+                      <select
+                        name="category"
+                        value={formData.category}
+                        onChange={handleInputChange}
+                        className={`w-full p-2.5 border ${errors.category ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white`}
+                      >
+                        <option value="Select">Select</option>
+                        {categories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
                       </select>
                       <ChevronDown
                         className="absolute right-3 top-10 pointer-events-none text-gray-500"
                         size={18}
                       />
+                      {errors.category && (
+                        <p className="mt-1 text-sm text-red-500">{errors.category}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -317,36 +453,35 @@ const Project = () => {
             <div className="flex justify-start gap-4 mt-8">
               <button
                 onClick={() => closeModal("modal1")}
-                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
+                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors"
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
-                onClick={() => openModal("modal2")}
-                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
+                onClick={createProject}
+                disabled={isSubmitting}
+                className={`px-6 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a66a3] transition-colors ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                Create
+                {isSubmitting ? 'Creating...' : 'Create'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Success Project Model */}
 
       {isModalOpen.modal2 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-[600px] overflow-hidden">
+          <div className="bg-white rounded-2xl w-[600px] overflow-hidden shadow-xl">
             <div className="relative h-24">
-              {" "}
-              {/* Increased height */}
               <div
                 className="absolute inset-0 bg-cover bg-center"
                 style={{ backgroundImage: `url(${successBackground})` }}
               >
                 <button
                   onClick={() => closeModal("modal2")}
-                  className="absolute top-4 right-4 text-black p-1"
+                  className="absolute top-4 right-4 text-black p-1 hover:bg-white hover:bg-opacity-20 rounded-full"
                 >
                   <X className="h-6 w-6" />
                 </button>
@@ -355,21 +490,18 @@ const Project = () => {
 
             <div className="p-8">
               <div className="flex items-center space-x-4 mb-4">
-                <BadgeCheck className="w-8 h-8 text-green-500" />{" "}
-                {/* Increased icon size */}
-                <h2 className="text-2xl font-bold">Congratulations!</h2>{" "}
-                {/* Larger text */}
+                   <BadgeCheck className="w-8 h-8 text-green-500" />{" "}
+                <h2 className="text-2xl font-bold">Congratulations!</h2>
               </div>
-              <p className="text-lg text-gray-800">
-                {" "}
-                {/* Larger text */}
-                You have successfully created a project.
+              <p className="text-lg text-gray-800 mb-2">
+                Your have successfully created a project  "{formData.project}".
               </p>
+
 
               <div className="flex justify-start gap-4 mt-8">
                 <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-3 text-lg border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
+                  onClick={() => closeModal("modal2")}
+                  className="px-6 py-3 text-lg bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a66a3] transition-colors"
                 >
                   Alright
                 </button>
@@ -378,65 +510,6 @@ const Project = () => {
           </div>
         </div>
       )}
-
-      {/* Project Listing Table */}
-
-      <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
-        <table className="w-full text-sm text-left rtl:text-right text-black">
-          <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
-            <tr>
-              <th scope="col" className="px-6 py-3">
-                ID
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Name
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Description
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Type
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Owner
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Created By
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Updated By
-              </th>
-              <th scope="col" className="px-6 py-3"></th>
-              <th scope="col" className="px-6 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sampleData.map((user, index) => (
-              // <tr key={index} className="border-b"></tr>
-              <tr key={index} className="border-b dark:border-white-700">
-                <th
-                  scope="row"
-                  className="px-6 py-4 font-medium text-black-900 whitespace-nowrap dark:text-black"
-                >
-                  {user.id}
-                </th>
-                <td className="px-6 py-4">{user.name}</td>
-                <td className="px-6 py-4">{user.description}</td>
-                <td className="px-6 py-4">{user.type}</td>
-                <td className="px-6 py-4">{user.owner}</td>
-                <td className="px-6 py-4">{user.created_by}</td>
-                <td className="px-6 py-4">{user.updated_by}</td>
-                <td className="px-6 py-4">
-                  <Pencil className="h-5 w-5" />
-                </td>
-                <td className="px-6 py-4">
-                  <Trash2 className="h-5 w-5" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 };
