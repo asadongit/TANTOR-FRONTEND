@@ -113,7 +113,7 @@ const PurgeFooter = ({ onCancel }) => {
   };
 
   return (
-    <div className="bg-white w-full py-2.5 flex justify-end border-solid border-t-2">
+    <div className="bg-gray-50 w-full py-2.5 flex justify-end border-solid border-t-2">
       <div className="mr-3">
         <button
           type="button"

@@ -140,7 +140,6 @@ export function TargetNode({ id }) {
       .toLowerCase()
       .includes(searchTerm?.toLowerCase() || "")
   );
-  console.log("selected tables from source node -- ", selectedTables); //make it selectedSourceTable
 
   const filteredTables = tables.filter((table) =>
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
