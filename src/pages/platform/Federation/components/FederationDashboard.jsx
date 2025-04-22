@@ -53,9 +53,10 @@ const FederationDashBoard = () => {
   const [count, setCount] = useState({});
 
   useEffect(() => {
-    var project = "dummy";
-    var preferred_username = "sabhyata";
     const fetchData = async () => {
+      console.log("token is ====>",token)
+      console.log("project is ====>",project)
+      console.log("username is =====>",decodedToken?.preferred_username)
       try {
         const response = await fetch(`${hostnameV1}/connection-saves`, {
           headers: {
@@ -69,13 +70,13 @@ const FederationDashBoard = () => {
           data = data.filter(
             (item) =>
               item.project.toUpperCase() === project.toUpperCase() &&
-              item.created_by.toUpperCase() === decodedToken?.preferred_username &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
               !item.is_deleted
           );
         } else {
           data = data.filter(
             (item) =>
-              item.created_by.toUpperCase() === decodedToken?.preferred_username &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
               !item.is_deleted
           );
         }
@@ -92,8 +93,6 @@ const FederationDashBoard = () => {
 
   useEffect(() => {
     if (connectionData.length === 0) return;
-
-    var project = "dummy";
     connectionData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     var extractedData;
     if (project !== "none") {
@@ -505,7 +504,7 @@ const FederationDashBoard = () => {
                             className="fixed inset-0 z-10"
                             onClick={handleClickOutside}
                           />
-                          <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                          <div className="absolute top-0 right-14 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                             <div className="flex items-center p-1 gap-1">
                               {/* <button
                                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"

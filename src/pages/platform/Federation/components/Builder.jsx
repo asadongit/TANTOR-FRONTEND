@@ -27,19 +27,20 @@ export default function Builder({ handleSwitch, checked }) {
     useEffect(() => {
         const fetchViews = async () => {
           try {
-            // const project = sessionStorage.getItem("project") || "default";
-            // const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
+            // const project = sessionStorage.getItem("project");
+            // const createdBy = sessionStorage.getItem("created_by");
       
             const params = new URLSearchParams({
               view_type: "Base",
               project: project,
-              created_by: createdBy,
+              created_by: decodedToken?.preferred_username,
             });
       
             const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`);
             const data = await response.json();
             
             if (data && data.result) {
+                console.log("views in builder is =-====>",data.result)
               setShownViews(data.result);
             } else {
               console.error("Invalid response from the API");

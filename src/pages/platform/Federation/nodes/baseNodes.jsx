@@ -14,9 +14,9 @@ import { useStateContext } from "../context/contextViewProvider";
 import { defaultSetting } from "../BaseView/ColumnSettings";
 import { useAuth } from "../../../../context/AuthContext";
 
-const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-const FAST_BACKEND = import.meta.env.VITE_FAST_API;
-const FAST_BACKEND_v2 = import.meta.env.VITE_FAST_API_V2;
+// const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+// const FAST_BACKEND = import.meta.env.VITE_FAST_API;
+// const FAST_BACKEND_v2 = import.meta.env.VITE_FAST_API_V2;
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -115,8 +115,6 @@ export function BaseNode({ id, data }) {
   useEffect(() => {
     (async () => {
       try {
-        // const project = sessionStorage.getItem("project") || "default";
-        // const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
   
         const params = new URLSearchParams({
           view_type: "Base",
@@ -421,6 +419,8 @@ export function ConnectionNode({ id, data }) {
     setUserCheckedColumns,
   } = useStateContext();
 
+  const {token, project, decodedToken, setSelectedProject, hostnameV1,  hostnameV2 }= useAuth();
+
   const getFilterModalColumns = () => {
     if (apiColumns.length > 0) {
       return apiColumns.map((column) => ({
@@ -433,7 +433,6 @@ export function ConnectionNode({ id, data }) {
   useEffect(() => {
     (async () => {
       let response;
-      // var preferred_username = "sabhyata";
       try {
         response = await fetch(`${hostnameV1}/connection-saves`, {
           method: "GET",
@@ -451,8 +450,9 @@ export function ConnectionNode({ id, data }) {
           ];
           const filteredConnections = uniqueConnections.filter(
             (item) =>
-              decodedToken?.preferred_username === item.created_by &&
-              item.is_deleted === false
+              item.project.toUpperCase() === project.toUpperCase() &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+              !item.is_deleted
           );
           console.log(
             "FILTERED CONNECTIONS by username==>> ",

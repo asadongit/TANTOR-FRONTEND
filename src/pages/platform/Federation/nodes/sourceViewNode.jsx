@@ -103,9 +103,6 @@ export function SourceViewNode({ id, onSave }) {
   useEffect(() => {
     const fetchViews = async () => {
       try {
-        // const project = sessionStorage.getItem("project") || "default";
-        // const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
-
         const params = new URLSearchParams({
           view_type: "Base",
           project: project,
