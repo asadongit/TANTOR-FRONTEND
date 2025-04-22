@@ -91,9 +91,9 @@ const onConnect = useCallback(
 
       const sourceType = sourceNode.type;
       const targetType = targetNode.type;
+      const sourceData = sourceNode.data[sourceType]|| sourceNode;
+      const targetData =  targetNode.data[targetType]|| targetNode;
 
-      const sourceData = sourceNode.data[sourceType]|| sourceNode.data;
-      const targetData =  targetNode.data[targetType]|| targetNode.data;
 
       if (!sourceData || !targetData) {
         return prevNodes;
