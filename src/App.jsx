@@ -45,7 +45,6 @@ function App() {
   return (
     <Router basename="/tantor2">
       <AuthProvider>
-        <ContextViewProvider>
           <Toaster />
           <ModalProvider>
             <Routes>
@@ -183,10 +182,11 @@ function App() {
         <Route
           path="/viewcanvas"
           element={
+            <ContextViewProvider >
               <ViewDrawer>
                 <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
                   <Header className="h-16 flex-shrink-0" />{" "}
-                  {/* <BusinessHeader/> */}
+                  <BusinessHeader/>
                   <div className="flex-1 flex mt-8">
                     <BusinessSidebar className="w-64" />{" "}
                     <div className="flex-1 relative">
@@ -199,6 +199,7 @@ function App() {
                   <BusinessFooter />
                 </div>
               </ViewDrawer>
+              </ContextViewProvider>
           }
         />
         <Route
@@ -217,8 +218,10 @@ function App() {
           }
         />
 
+</Route>
       </Routes>
-      </ContextViewProvider>
+      </ModalProvider>
+      </AuthProvider>
     </Router>
   );
 }
