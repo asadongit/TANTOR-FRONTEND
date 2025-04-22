@@ -20,6 +20,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Modal } from "@mui/material";
 import { MenuItem, Select, InputLabel, FormControl } from "@mui/material";
+import { useAuth } from "../../../../context/AuthContext";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -42,13 +43,13 @@ const FederationDashBoard = () => {
     setIsModalOpen(!isModalOpen);
   };
 
-  const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  // const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
   const [data, setData] = useState([]);
   const [connectionData, setconnectionData] = useState([]);
   const [schemaList, setSchemaList] = useState([])
   const [tableList, setTableList] = useState([])
   const [viewList, setViewList] = useState([])
-
+  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
   const [count, setCount] = useState({});
 
   useEffect(() => {
@@ -56,9 +57,9 @@ const FederationDashBoard = () => {
     var preferred_username = "sabhyata";
     const fetchData = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
+        const response = await fetch(`${hostnameV1}/connection-saves`, {
           headers: {
-            Authorization: `Bearer ${encodedToken}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -67,14 +68,14 @@ const FederationDashBoard = () => {
         if (project !== "none") {
           data = data.filter(
             (item) =>
-              // item.project.toUpperCase() === project.toUpperCase() &&
-              item.created_by.toUpperCase() === preferred_username.toUpperCase() &&
+              item.project.toUpperCase() === project.toUpperCase() &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username &&
               !item.is_deleted
           );
         } else {
           data = data.filter(
             (item) =>
-              item.created_by.toUpperCase() === preferred_username.toUpperCase() &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username &&
               !item.is_deleted
           );
         }
@@ -99,16 +100,15 @@ const FederationDashBoard = () => {
       data.map((item) => { });
       extractedData = connectionData.filter(
         (item) =>
-          // item.project.toUpperCase() === project.toUpperCase() &&
-          // item.created_by.toUpperCase() ===
-          // token.preferred_username.toUpperCase() &&
+          item.project.toUpperCase() === project.toUpperCase() &&
+          item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
           item.is_deleted === false
       );
     } else {
       extractedData = connectionData.filter(
         (item) =>
-          // item.created_by.toUpperCase() ===
-          // token.preferred_username.toUpperCase() &&
+          item.created_by.toUpperCase() ===
+        decodedToken?.preferred_username.toUpperCase() &&
           item.is_deleted === false
       );
     }
@@ -125,10 +125,10 @@ const FederationDashBoard = () => {
 
   const fetchSchemaCount = async (connectionNames) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/schema_names`, {
+      const response = await fetch(`${hostnameV1}/schema_names`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${encodedToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -146,10 +146,10 @@ const FederationDashBoard = () => {
 
   const fetchTableCount = async (connectionNames) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/table_names`, {
+      const response = await fetch(`${hostnameV1}/table_names`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${encodedToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -166,18 +166,18 @@ const FederationDashBoard = () => {
 
   const fetchViewCount = async (connectionNames) => {
     try {
-      const project = sessionStorage.getItem("project") || "default";
-      const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
+      // const project = sessionStorage.getItem("project") || "default";
+      // const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
   
-      const response = await fetch(`${import.meta.env.VITE_FAST_API_V2}/connections/views`, {
+      const response = await fetch(`${hostnameV2}/connections/views`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${encodedToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           connection_names: connectionNames,
-          created_by: createdBy || "",
+          created_by: decodedToken?.preferred_username || "",
           project: project || ""
         })
       });

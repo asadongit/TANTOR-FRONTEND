@@ -8,15 +8,18 @@ import { ToastContainer, toast } from "react-toastify";
 import SaveViewModal from "../components/SaveViewModal";
 import { useLocation, useNavigate } from "react-router-dom";
 import FilterComponent from "../components/FilterComponent";
+import { useAuth } from "../../../../context/AuthContext";
 
 export function BusinessFooter() {
 
   const navigate = useNavigate();
-  const { finalPayload, handleFinalPayload, complexCheck, connectionPayload, viewPayload, columnSettings } = useStateContext("");
+  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings } = useStateContext("");
   const [preview, setPreview] = useState(false);
-  const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  // const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
+
 
   const modalState = useLocation().state || {
     queryType: "Regular",
@@ -90,12 +93,12 @@ export function BusinessFooter() {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API_V2}/save-view?execute_query=true`,
+        `${hostnameV2}/save-view?execute_query=true`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(cleanApiPayload),
         }
@@ -487,13 +490,12 @@ export function BusinessFooter() {
     console.log("final payload fainally is =======>", finalPayload)
 
     const viewExistsResponse = await fetch(
-      `${import.meta.env.VITE_FAST_API_V2}/view-exists/${newViewName}`,
+      `${hostnameV2}/view-exists/${newViewName}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -517,12 +519,12 @@ export function BusinessFooter() {
     };
 
     const response = await fetch(
-      `${import.meta.env.VITE_FAST_API_V2}/save-view`,
+      `${hostnameV2}/save-view`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(newPayload),
       }

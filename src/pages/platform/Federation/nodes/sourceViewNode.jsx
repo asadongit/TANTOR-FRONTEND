@@ -9,6 +9,7 @@ import { Columns } from "../BusinessView/Columns";
 import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "../../../../context/AuthContext";
 
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
@@ -85,6 +86,7 @@ export function SourceViewNode({ id, onSave }) {
   const [columnData, setColumnData] = useState([])
   const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [previousView, setPreviousView] = useState("");
+  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
 
   const modalState = useLocation().state || {
     queryType: "Regular",
@@ -101,16 +103,16 @@ export function SourceViewNode({ id, onSave }) {
   useEffect(() => {
     const fetchViews = async () => {
       try {
-        const project = sessionStorage.getItem("project") || "default";
-        const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
+        // const project = sessionStorage.getItem("project") || "default";
+        // const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
 
         const params = new URLSearchParams({
           view_type: "Base",
           project: project,
-          created_by: createdBy,
+          created_by: decodedToken?.preferred_username,
         });
 
-        const response = await fetch(`${import.meta.env.VITE_FAST_API_V2}/get-all-views_v2?${params}`);
+        const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`);
         const data = await response.json();
 
         if (data && data.result) {
@@ -151,10 +153,10 @@ export function SourceViewNode({ id, onSave }) {
     }
     console.log("viewnames aree ===>", temp)
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/fetch_view_columns`, {
+      const response = await fetch(`${hostnameV1}/fetch_view_columns`, {
         method: "POST",
         headers: {
-          'Authorization': `Bearer ${encodedToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(temp)

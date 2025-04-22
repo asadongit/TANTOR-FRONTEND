@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useStateContext } from "../context/contextViewProvider";
 import { defaultSetting } from "../BaseView/ColumnSettings";
+import { useAuth } from "../../../../context/AuthContext";
 
 const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
 const FAST_BACKEND = import.meta.env.VITE_FAST_API;
@@ -91,6 +92,7 @@ export function BaseNode({ id, data }) {
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
   const [apiColumns, setApiColumns] = useState([]);
+  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
   const {
     settingsList,
     setSettingsList,
@@ -113,20 +115,20 @@ export function BaseNode({ id, data }) {
   useEffect(() => {
     (async () => {
       try {
-        const project = sessionStorage.getItem("project") || "default";
-        const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
+        // const project = sessionStorage.getItem("project") || "default";
+        // const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
   
         const params = new URLSearchParams({
           view_type: "Base",
           project: project,
-          created_by: createdBy,
+          created_by: decodedToken?.preferred_username,
         });
   
-        const response = await fetch(`${FAST_BACKEND_v2}/get-all-views_v2?${params}`, {
+        const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            authorization: `Bearer ${AUTH_TOKEN}`,
+            authorization: `Bearer ${token}`,
           },
         });
   
@@ -150,10 +152,10 @@ export function BaseNode({ id, data }) {
       (async () => {
         let response;
         try {
-          response = await fetch(`${FAST_BACKEND}/fetch_view_columns`, {
+          response = await fetch(`${hostnameV2}/fetch_view_columns`, {
             headers: {
               "Content-Type": "application/json",
-              authorization: `Bearer ${AUTH_TOKEN}`,
+              authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ view_names: [selectedView] }),
             method: "POST",
@@ -431,13 +433,13 @@ export function ConnectionNode({ id, data }) {
   useEffect(() => {
     (async () => {
       let response;
-      var preferred_username = "sabhyata";
+      // var preferred_username = "sabhyata";
       try {
-        response = await fetch(`${FAST_BACKEND}/connection-saves`, {
+        response = await fetch(`${hostnameV1}/connection-saves`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            authorization: `Bearer ${AUTH_TOKEN}`,
+            authorization: `Bearer ${token}`,
           },
         });
         let data = await response.json();
@@ -449,7 +451,7 @@ export function ConnectionNode({ id, data }) {
           ];
           const filteredConnections = uniqueConnections.filter(
             (item) =>
-              preferred_username === item.created_by &&
+              decodedToken?.preferred_username === item.created_by &&
               item.is_deleted === false
           );
           console.log(
@@ -476,11 +478,11 @@ export function ConnectionNode({ id, data }) {
       (async () => {
         try {
           let response = await fetch(
-            `${FAST_BACKEND}/${selectedConnection}/schemas`,
+            `${hostnameV1}/${selectedConnection}/schemas`,
             {
               method: "GET",
               headers: {
-                authorization: `Bearer ${AUTH_TOKEN}`,
+                authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
               },
             }
@@ -510,11 +512,11 @@ export function ConnectionNode({ id, data }) {
         let response;
         try {
           response = await fetch(
-            `${FAST_BACKEND}/${selectedConnection}/schemas/${selectedSchema}/tables`,
+            `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables`,
             {
               method: "GET",
               headers: {
-                authorization: `Bearer ${AUTH_TOKEN}`,
+                authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
               },
             }
@@ -545,11 +547,11 @@ export function ConnectionNode({ id, data }) {
         let response;
         try {
           response = await fetch(
-            `${FAST_BACKEND}/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
+            `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
             {
               method: "GET",
               headers: {
-                authorization: `Bearer ${AUTH_TOKEN}`,
+                authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
               },
             }

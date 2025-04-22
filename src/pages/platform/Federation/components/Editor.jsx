@@ -19,9 +19,11 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { ToastContainer, toast } from "react-toastify";
 import Switch from "@mui/material/Switch";
 import Builder from "./Builder";
+import { useAuth } from "../../../../context/AuthContext";
 
 export default function Editor() {
-  var encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  // var encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  const {token, project, decodedToken, setSelectedProject, hostnameV1 }= useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [query, setQuery] = useState("");
   const [history, setHistory] = useState([]);
@@ -38,15 +40,13 @@ export default function Editor() {
   const [expanded, setExpanded] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
 
-  const preferred_username = "sabhyata";
-
   useEffect(() => {
     var project = "me";
     const fetchData = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
+        const response = await fetch(`${hostnameV1}/connection-saves`, {
           headers: {
-            Authorization: `Bearer ${encodedToken}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -55,7 +55,7 @@ export default function Editor() {
         if (project !== "none") {
           data = data.filter(
             (item) =>
-              item.created_by.toUpperCase() === preferred_username.toUpperCase() &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
               !item.is_deleted
           );
         } else {
@@ -96,9 +96,9 @@ export default function Editor() {
   }, [searchTerm]);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_FAST_API}/recent-queries`, {
+    fetch(`${hostnameV1}/recent-queries`, {
       headers: {
-        'Authorization': `Bearer ${encodedToken}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     })
@@ -174,12 +174,12 @@ export default function Editor() {
         query: newquery,
       };
 
-      fetch(`${import.meta.env.VITE_FAST_API}/runQuery`, {
+      fetch(`${hostnameV1}/runQuery`, {
         method: "POST",
         headers: {
           accept: "application/json",
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${encodedToken}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       })
@@ -225,7 +225,7 @@ export default function Editor() {
   useEffect(() => {
     const fetchViews = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/get-all-views`);
+        const response = await fetch(`${hostnameV1}/get-all-views`);
         const data = await response.json();
         if (data && data.result) {
           console.log("Views are ====>", data.result);
@@ -269,9 +269,9 @@ export default function Editor() {
           [connection]: "loading",
         }));
         const response = await fetch(
-          `${import.meta.env.VITE_FAST_API}/${connection}/schemas`, {
+          `${hostnameV1}/${connection}/schemas`, {
           headers: {
-            'Authorization': `Bearer ${encodedToken}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -318,9 +318,9 @@ export default function Editor() {
         }));
 
         const response = await fetch(
-          `${import.meta.env.VITE_FAST_API}/${connection}/schemas/${schema}/tables`, {
+          `${hostnameV1}/${connection}/schemas/${schema}/tables`, {
           headers: {
-            'Authorization': `Bearer ${encodedToken}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -366,9 +366,9 @@ export default function Editor() {
           [`${connection}-${schema}-${table}`]: "loading",
         }));
         const response = await fetch(
-          `${import.meta.env.VITE_FAST_API}/${connection}/schemas/${schema}/tables/${table}/columns`, {
+          `${hostnameV1}/${connection}/schemas/${schema}/tables/${table}/columns`, {
           headers: {
-            'Authorization': `Bearer ${encodedToken}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });

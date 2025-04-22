@@ -143,24 +143,6 @@ export function ConsolidationNode({ id }) {
   }, [view1, view2, joinType, selectedLeft, selectedRight, operator, connectionPayload]);
  
  
-  // useEffect(() => {
-  //   console.log("joins are ===>", joins)
-  //   if (joins.length > 0) {
- 
-  //     handleFinalPayload({
-  //       joins: finalPayload && Array.isArray(finalPayload.joins)
-  //         ? [
-  //           ...finalPayload.joins.filter(
-  //             (existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id)
-  //           ),
-  //           ...joins,
-  //         ]
-  //         : [...joins],
-  //     });
-  //   }
-  // }, [joins]);
- 
- 
   const [isUnionModalOpen, setIsUnionModalOpen] = useState(false);
  
  

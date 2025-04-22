@@ -20,6 +20,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import FilterComponent from "../components/FilterComponent";
+import { useAuth } from "../../../../context/AuthContext";
 
 const nodeTypes = {
   baseNode: BaseNode,
@@ -30,6 +31,8 @@ let id = 0;
 const getId = () => `node_${id++}`;
 
 export default function Source() {
+  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
+
   const modalState = useLocation().state || {
     queryType: "Regular",
     viewType: "Source",
@@ -292,13 +295,13 @@ export default function Source() {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API_V2
+        `${hostnameV2
         }/generate-base-view?execute_query=true`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+            Authorization: `Bearer ${token
               }`,
           },
           body: JSON.stringify(cleanApiPayload),
@@ -361,14 +364,14 @@ export default function Source() {
     try {
       // Check if view already exists
       const viewExistsResponse = await fetch(
-        `${import.meta.env.VITE_FAST_API_V2}/view-exists/${encodeURIComponent(
+        `${hostnameV2}/view-exists/${encodeURIComponent(
           newViewName
         )}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
+            Authorization: `Bearer ${token
               }`,
           },
         }
@@ -397,12 +400,12 @@ export default function Source() {
       };
 
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API_V2}/generate-base-view`,
+        `${hostnameV2}/generate-base-view`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(newPayload),
         }

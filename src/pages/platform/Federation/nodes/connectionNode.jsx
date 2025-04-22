@@ -9,9 +9,11 @@ import { Modal } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "../../../../context/AuthContext";
 
 export function ConnectionNode({ id, onSave }) {
-  const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  // const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  const {token, project, decodedToken, setSelectedProject, hostnameV1 }= useAuth();
   const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload } = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [connections, setConnections] = useState([]);
@@ -145,11 +147,10 @@ export function ConnectionNode({ id, onSave }) {
 
 
   useEffect(() => {
-    var preferred_username = "sabhyata";
 
-    fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
+    fetch(`${hostnameV1}/connection-saves`, {
       headers: {
-        'Authorization': `Bearer ${encodedToken}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     })
@@ -158,8 +159,8 @@ export function ConnectionNode({ id, onSave }) {
         const connectionNames = data
           .filter(
             (item) =>
-              // item.project === project &&
-              preferred_username === item.created_by &&
+              item.project === project &&
+              item.created_by === decodedToken?.preferred_username &&
               item.is_deleted === false
           )
           .map((item) => item.connection_name);
@@ -179,10 +180,10 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedColumns([]);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API}/${conn}/schemas`,
+        `${hostnameV1}/${conn}/schemas`,
         {
           headers: {
-            Authorization: `Bearer ${encodedToken}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -215,10 +216,10 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedColumns([]);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API}/${selectedConnection}/schemas/${temp}/tables`,
+        `${hostnameV1}/${selectedConnection}/schemas/${temp}/tables`,
         {
           headers: {
-            Authorization: `Bearer ${encodedToken}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -255,9 +256,9 @@ export function ConnectionNode({ id, onSave }) {
       var temp = event.target.value;
       setSelectedTable(temp);
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API}/${selectedConnection}/schemas/${selectedSchema}/tables/${temp}/columns`, {
+        `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${temp}/columns`, {
         headers: {
-          'Authorization': `Bearer ${encodedToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
