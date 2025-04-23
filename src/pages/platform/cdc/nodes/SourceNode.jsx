@@ -55,7 +55,6 @@ export function SourceNode({ id, data, selected }) {
   const { data: schemas, isLoading: isLoadingSchemas } = useSchemas(selectedConnection);
   const { data: tables } = useTables(selectedConnection, selectedSchema,selectedMode);
   const { data: ddl } = useDDL(selectedConnection, selectedSchema);
-
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id;
@@ -72,13 +71,15 @@ export function SourceNode({ id, data, selected }) {
         mode: selectedMode,
         bulk_list: selectedItems,
         subset_list: pipelineMappings?.[ID] ?? [],
-        op_types: nodeData.op_types,
-        source_conn_id: nodeData.source_conn_id,
+        op_types: nodeData?.op_types ?? [],
+        source_conn_id: nodeData?.source_conn_id ?? null,
+        define: data?.define?.[0] ?? null,
       };
+      
       setNodeData(updatedNodeData);
       updateData(ID, isPipelineNode, "source", updatedNodeData);
     }
-  }, [selectedConnection, selectedSchema, selectedMode, selectedItems]);
+  }, [selectedConnection, selectedSchema, selectedMode, selectedItems, pipelineMappings]);
 
   const filteredTables = useMemo(() => {
     if (!tables || !tables.length) return [];
@@ -164,7 +165,8 @@ export function SourceNode({ id, data, selected }) {
     selectedConnection && selectedSchema && selectedMode
   );
 
-  const connectedTargets = data?.target?.map(target => target.id) || []; 
+  const connectedTargets = (data?.target || []).filter(target => target && target.id !== undefined).map(target => target.id);
+
   const firstTargetID = connectedTargets.length > 0 ? connectedTargets[0] : null; 
   
   const constructedKey = firstTargetID ? `${data?.source?.id}-${firstTargetID}` : null;
@@ -498,7 +500,7 @@ export function SourceNode({ id, data, selected }) {
                           className="text-purple-600 hover:text-purple-700"
                           aria-label={`Edit ${table.source_table}`}
                         >
-                          <Pencil className="w-4 h-4" />
+                          {/* <Pencil className="w-4 h-4" /> */}
                         </button>
                       </div>
                     ))
@@ -544,7 +546,7 @@ export function SourceNode({ id, data, selected }) {
                                 className="text-purple-600 hover:text-purple-700"
                                 aria-label={`Edit ${sourceTable}`}
                               >
-                                <Pencil className="w-4 h-4" />
+                                {/* <Pencil className="w-4 h-4" /> */}
                               </button>
                             </div>
                           </div>

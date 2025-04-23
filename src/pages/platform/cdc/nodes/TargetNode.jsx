@@ -59,7 +59,6 @@ export function TargetNode({ id, data, selected }) {
       ? pipelines?.[ID]?.data?.source
       : data?.source;
     const firstSource =isPipelineNode? sourceArray : Array.isArray(sourceArray) ? sourceArray[0] : undefined;
-
     if (firstSource) {
       setSourceConnection(firstSource?.connection || "");
       setSourceSchema(firstSource?.schema)
@@ -222,12 +221,15 @@ let temp=[
 
   useEffect(() => {
     if (selectedConnection && selectedSchema && ID) {
+      const key = isPipelineNode ? ID : constructedKey;
       const updatedNodeData = {
         connection: selectedConnection,
         schema: selectedSchema,
         mode: selectedMode,
-        bulk_list:selectedMode === "bulk" ? bulkMappings[isPipelineNode ? ID : constructedKey]: pipelineMappings[isPipelineNode ? ID : constructedKey],
-        target_conn_id:nodeData.target_conn_id,
+        bulk_list: selectedMode === "bulk" ? bulkMappings[key] : pipelineMappings[key],
+        target_conn_id: nodeData?.target_conn_id,
+        source: data?.source?.[0],
+        define: data?.source?.[0]?.define,
       };
       setNodeData(updatedNodeData);
 
@@ -563,7 +565,7 @@ filteredTables.map((sourceGroup, sourceIdx) => {
                   }
                   className="text-purple-600 hover:text-purple-700"
                 >
-                  <Pencil className="w-4 h-4 ml-8" />
+                  {/* <Pencil className="w-4 h-4 ml-8" /> */}
                 </button>
               </div>
             );
@@ -616,7 +618,7 @@ filteredTables.map((sourceGroup, sourceIdx) => {
                                 className="text-purple-600 hover:text-purple-700"
                                 aria-label={`Edit ${sourceTable}`}
                               >
-                                <Pencil className="w-4 h-4" />
+                                {/* <Pencil className="w-4 h-4" /> */}
                               </button>
                               <button
                                 onClick={() =>
