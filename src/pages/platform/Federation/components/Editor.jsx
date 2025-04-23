@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import { 
-  Database, 
-  Search, 
-  ChevronRight, 
-  ChevronDown, 
-  Table, 
-  Type, 
-  Hash, 
+import {
+  Database,
+  Search,
+  ChevronRight,
+  ChevronDown,
+  Table,
+  Type,
+  Hash,
   X,
   Play,
-  Trash2
+  Trash2,
+  Download
 } from "lucide-react";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-mysql";
@@ -18,34 +19,34 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { ToastContainer, toast } from "react-toastify";
 import Switch from "@mui/material/Switch";
 import Builder from "./Builder";
+import { useAuth } from "../../../../context/AuthContext";
 
 export default function Editor() {
-  var encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  // var encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  const {token, project, decodedToken, setSelectedProject, hostnameV1 }= useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [query, setQuery] = useState("");
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
   const [columnDefs, setColumnDefs] = useState([]);
-  
+
   const [displayedConnections, setDisplayedConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [schemas, setSchemas] = useState({});
   const [tables, setTables] = useState({});
   const [columns, setColumns] = useState({});
-  
+
   const [expanded, setExpanded] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
 
-  const preferred_username = "sabhyata";
-  
   useEffect(() => {
     var project = "me";
     const fetchData = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
+        const response = await fetch(`${hostnameV1}/connection-saves`, {
           headers: {
-            Authorization: `Bearer ${encodedToken}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -54,7 +55,7 @@ export default function Editor() {
         if (project !== "none") {
           data = data.filter(
             (item) =>
-              item.created_by.toUpperCase() === preferred_username.toUpperCase() &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
               !item.is_deleted
           );
         } else {
@@ -63,7 +64,7 @@ export default function Editor() {
           );
         }
         console.log("connection data is ===>", data);
-        
+
         const formattedData = data.map((item) => ({
           sourceConnectionId: item.connection_id,
           connection_type: item.connection_type,
@@ -79,7 +80,7 @@ export default function Editor() {
 
     fetchData();
   }, []);
-  
+
   useEffect(() => {
     if (searchTerm.trim() === "") {
       const originalConnections = displayedConnections.length ? displayedConnections : [];
@@ -95,9 +96,9 @@ export default function Editor() {
   }, [searchTerm]);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_FAST_API}/recent-queries`, {
+    fetch(`${hostnameV1}/recent-queries`, {
       headers: {
-        'Authorization': `Bearer ${encodedToken}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     })
@@ -173,12 +174,12 @@ export default function Editor() {
         query: newquery,
       };
 
-      fetch(`${import.meta.env.VITE_FAST_API}/runQuery`, {
+      fetch(`${hostnameV1}/runQuery`, {
         method: "POST",
         headers: {
           accept: "application/json",
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${encodedToken}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       })
@@ -193,9 +194,9 @@ export default function Editor() {
               .map((row) => JSON.parse(row));
 
             const columns = Object.keys(rows[0]);
-
             setColumnDefs(columns);
             setData(rows);
+            setHasMore(rows.length === 100);
           } else {
             if (data) {
               const res = JSON.parse(data);
@@ -214,6 +215,7 @@ export default function Editor() {
 
   const handleHistoryClick = (history) => {
     setQuery(history);
+    setPageNo(1);
     executeQuery(history, 1);
   };
 
@@ -223,7 +225,7 @@ export default function Editor() {
   useEffect(() => {
     const fetchViews = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/get-all-views`);
+        const response = await fetch(`${hostnameV1}/get-all-views`);
         const data = await response.json();
         if (data && data.result) {
           console.log("Views are ====>", data.result);
@@ -248,7 +250,7 @@ export default function Editor() {
   const handleNodeToggle = (event, nodeIds) => {
     setExpanded(nodeIds);
   };
-  
+
   const toggleExpanded = (id) => {
     setExpandedItems(prev => ({
       ...prev,
@@ -259,7 +261,7 @@ export default function Editor() {
   const handleSchema = async (event, connection) => {
     const connectionId = `conn-${connection}`;
     toggleExpanded(connectionId);
-    
+
     if (!expandedItems[connectionId] && !schemas[connection]) {
       try {
         setSchemas((prevSchemas) => ({
@@ -267,9 +269,9 @@ export default function Editor() {
           [connection]: "loading",
         }));
         const response = await fetch(
-          `${import.meta.env.VITE_FAST_API}/${connection}/schemas`, {
+          `${hostnameV1}/${connection}/schemas`, {
           headers: {
-            'Authorization': `Bearer ${encodedToken}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -307,7 +309,7 @@ export default function Editor() {
   const handleTables = async (event, connection, schema) => {
     const schemaId = `schema-${connection}-${schema}`;
     toggleExpanded(schemaId);
-    
+
     if (!expandedItems[schemaId] && !tables[`${connection}-${schema}`]) {
       try {
         setTables((prevTables) => ({
@@ -316,9 +318,9 @@ export default function Editor() {
         }));
 
         const response = await fetch(
-          `${import.meta.env.VITE_FAST_API}/${connection}/schemas/${schema}/tables`, {
+          `${hostnameV1}/${connection}/schemas/${schema}/tables`, {
           headers: {
-            'Authorization': `Bearer ${encodedToken}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -356,7 +358,7 @@ export default function Editor() {
   const handleColumns = async (event, connection, schema, table) => {
     const tableId = `table-${connection}-${schema}-${table}`;
     toggleExpanded(tableId);
-    
+
     if (!expandedItems[tableId] && !columns[`${connection}-${schema}-${table}`]) {
       try {
         setColumns((prevColumns) => ({
@@ -364,9 +366,9 @@ export default function Editor() {
           [`${connection}-${schema}-${table}`]: "loading",
         }));
         const response = await fetch(
-          `${import.meta.env.VITE_FAST_API}/${connection}/schemas/${schema}/tables/${table}/columns`, {
+          `${hostnameV1}/${connection}/schemas/${schema}/tables/${table}/columns`, {
           headers: {
-            'Authorization': `Bearer ${encodedToken}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -409,33 +411,32 @@ export default function Editor() {
   const renderDatabaseLabel = (connection) => {
     const connectionId = `conn-${connection.connection_name}`;
     const isExpanded = expandedItems[connectionId];
-    
+
     return (
       <div
-        style={{ 
+        style={{
           display: "flex",
-          alignItems: "center", 
+          alignItems: "center",
           cursor: "pointer",
           width: "100%",
           overflow: "hidden"
         }}
-        onClick={(e) => handleConnectionChange(e, connection.connection_name)}
       >
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {isExpanded ? (
-            <ChevronDown size={18} />
+            <ChevronDown size={18} onClick={(e) => handleConnectionChange(e, connection.connection_name)} />
           ) : (
-            <ChevronRight size={18} />
+            <ChevronRight size={18} onClick={(e) => handleConnectionChange(e, connection.connection_name)} />
           )}
         </div>
-        
+
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Database size={15} />
         </div>
-        
-        <span style={{ 
-          whiteSpace: "nowrap", 
-          overflow: "hidden", 
+
+        <span style={{
+          whiteSpace: "nowrap",
+          overflow: "hidden",
           textOverflow: "ellipsis"
         }}>
           {connection.connection_name}
@@ -443,37 +444,36 @@ export default function Editor() {
       </div>
     );
   };
-  
+
   const renderSchemaLabel = (connection, schema) => {
     const schemaId = `schema-${connection}-${schema}`;
     const isExpanded = expandedItems[schemaId];
-    
+
     return (
       <div
-        style={{ 
-          display: "flex", 
-          alignItems: "center", 
+        style={{
+          display: "flex",
+          alignItems: "center",
           cursor: "pointer",
           width: "100%",
           overflow: "hidden"
         }}
-        onClick={(e) => handleTables(e, connection, schema)}
       >
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {isExpanded ? (
-            <ChevronDown size={18} />
+            <ChevronDown size={18} onClick={(e) => handleTables(e, connection, schema)} />
           ) : (
-            <ChevronRight size={18} />
+            <ChevronRight size={18} onClick={(e) => handleTables(e, connection, schema)} />
           )}
         </div>
-        
+
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Database size={15} />
         </div>
-        
-        <span style={{ 
-          whiteSpace: "nowrap", 
-          overflow: "hidden", 
+
+        <span style={{
+          whiteSpace: "nowrap",
+          overflow: "hidden",
           textOverflow: "ellipsis"
         }}>
           {schema}
@@ -481,55 +481,68 @@ export default function Editor() {
       </div>
     );
   };
-  
+
   const renderTableLabel = (connection, schema, table) => {
     const tableId = `table-${connection}-${schema}-${table}`;
     const isExpanded = expandedItems[tableId];
-    
+
     return (
       <div
-        style={{ 
-          display: "flex", 
-          alignItems: "center", 
+        style={{
+          display: "flex",
+          alignItems: "center",
           cursor: "pointer",
           width: "100%",
           overflow: "hidden"
         }}
-        onClick={(e) => handleColumns(e, connection, schema, table)}
       >
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {isExpanded ? (
-            <ChevronDown size={18} />
+            <ChevronDown size={18} onClick={(e) => handleColumns(e, connection, schema, table)} />
           ) : (
-            <ChevronRight size={18} />
+            <ChevronRight size={18} onClick={(e) => handleColumns(e, connection, schema, table)} />
           )}
         </div>
-        
+
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Table size={15} />
         </div>
-        
-        <span style={{ 
-          whiteSpace: "nowrap", 
-          overflow: "hidden", 
-          textOverflow: "ellipsis"
-        }}>
+
+        <span
+          onDoubleClick={() => {
+            if (!loading) {
+              handleTableClick(connection, schema, table)
+            }
+          }}
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }}>
           {table}
         </span>
       </div>
     );
   };
-  
+
+  const handleTableClick = (connection, schema, table) => {
+    console.log("Inputs are ===>", connection, schema, table);
+    const query = `Select * from ${connection}.${schema}.${table}`
+    setQuery(query);
+    setPageNo(1);
+    executeQuery(query, 1);
+  }
+
   const renderColumnLabel = (column) => {
     const isNumber = column.datatype.split("(")[0] === "int" ||
       column.datatype.split("(")[0] === "integer" ||
       column.datatype.split("(")[0] === "decimal" ||
       column.datatype.split("(")[0] === "double";
-    
+
     return (
-      <div style={{ 
-        display: "flex", 
-        alignItems: "center", 
+      <div style={{
+        display: "flex",
+        alignItems: "center",
         paddingLeft: "20px",
         width: "100%",
         overflow: "hidden"
@@ -537,11 +550,11 @@ export default function Editor() {
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {isNumber ? <Hash size={18} /> : <Type size={18} />}
         </div>
-        
-        <span style={{ 
+
+        <span style={{
           fontWeight: "normal",
-          whiteSpace: "nowrap", 
-          overflow: "hidden", 
+          whiteSpace: "nowrap",
+          overflow: "hidden",
           textOverflow: "ellipsis"
         }}>
           {column.column}
@@ -549,6 +562,50 @@ export default function Editor() {
       </div>
     );
   };
+
+  const [pageNo, setPageNo] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+
+  const handleNextPage = () => {
+    const nextPage = pageNo + 1;
+    setPageNo(nextPage);
+    executeQuery(query, nextPage);
+  };
+
+  const handlePreviousPage = () => {
+    if (pageNo > 1) {
+      const prevPage = pageNo - 1;
+      setPageNo(prevPage);
+      executeQuery(query, prevPage);
+    }
+  };
+
+  const convertToCSV = (jsonData) => {
+    const headers = Object.keys(jsonData[0]).join(',');
+    
+    const csvRows = jsonData.map(obj => 
+      Object.values(obj).map(val => 
+        `"${val}"`
+      ).join(',')
+    );
+
+    return [headers, ...csvRows].join('\n');
+  };
+
+  const handleDownloadCSV = () =>{
+    const csvContent = convertToCSV(data);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'data.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 
 
   return (
@@ -561,7 +618,7 @@ export default function Editor() {
                 <div className="flex justify-between items-center mb-2">
                   <h2 className="text-xl font-bold">Connection</h2>
                 </div>
-                
+
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
                   <input
@@ -584,79 +641,79 @@ export default function Editor() {
                       const connectionId = `conn-${connection.connection_name}`;
                       const connectionSchemas = schemas[connection.connection_name];
                       const isExpanded = expandedItems[connectionId];
-                      
+
                       return (
                         <div key={connection.sourceConnectionId} className="tree-item" style={{ width: "100%" }}>
                           <div className="p-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
                             {renderDatabaseLabel(connection)}
                           </div>
-                          
+
                           {isExpanded && (
                             <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
                               {connectionSchemas === "loading" && (
                                 <div className="py-1 pl-6 text-gray-500">Loading...</div>
                               )}
-                              
+
                               {connectionSchemas === "error" && (
                                 <div className="py-1 pl-6 text-red-500">Error loading schemas</div>
                               )}
-                              
+
                               {Array.isArray(connectionSchemas) && connectionSchemas.length === 0 && (
                                 <div className="py-1 pl-6 text-gray-500">No Schemas Available</div>
                               )}
-                              
+
                               {Array.isArray(connectionSchemas) && connectionSchemas.length > 0 && (
                                 connectionSchemas.map((schema, schemaIndex) => {
                                   const schemaId = `schema-${connection.connection_name}-${schema}`;
                                   const tableData = tables[`${connection.connection_name}-${schema}`];
                                   const isSchemaExpanded = expandedItems[schemaId];
-                                  
+
                                   return (
                                     <div key={`${schema}-${schemaIndex}`} className="tree-item" style={{ width: "100%" }}>
                                       <div className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
                                         {renderSchemaLabel(connection.connection_name, schema)}
                                       </div>
-                                      
+
                                       {isSchemaExpanded && (
                                         <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
                                           {tableData === "loading" && (
                                             <div className="py-1 pl-6 text-gray-500">Loading...</div>
                                           )}
-                                          
+
                                           {tableData === "error" && (
                                             <div className="py-1 pl-6 text-red-500">Error loading tables</div>
                                           )}
-                                          
+
                                           {Array.isArray(tableData) && tableData.length === 0 && (
                                             <div className="py-1 pl-6 text-gray-500">No Tables Available</div>
                                           )}
-                                          
+
                                           {Array.isArray(tableData) && tableData.length > 0 && (
                                             tableData.map((table, tableIndex) => {
                                               const tableId = `table-${connection.connection_name}-${schema}-${table}`;
                                               const columnData = columns[`${connection.connection_name}-${schema}-${table}`];
                                               const isTableExpanded = expandedItems[tableId];
-                                              
+
                                               return (
                                                 <div key={`${table}-${tableIndex}`} className="tree-item" style={{ width: "100%" }}>
                                                   <div className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
                                                     {renderTableLabel(connection.connection_name, schema, table)}
                                                   </div>
-                                                  
+
                                                   {isTableExpanded && (
                                                     <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
                                                       {columnData === "loading" && (
                                                         <div className="py-1 pl-6 text-gray-500">Loading...</div>
                                                       )}
-                                                      
+
                                                       {columnData === "error" && (
                                                         <div className="py-1 pl-6 text-red-500">Error loading columns</div>
                                                       )}
-                                                      
+
                                                       {Array.isArray(columnData) && columnData.length === 0 && (
                                                         <div className="py-1 pl-6 text-gray-500">No Columns Available</div>
                                                       )}
-                                                      
+
                                                       {Array.isArray(columnData) && columnData.length > 0 && (
                                                         columnData.map((column, columnIndex) => (
                                                           <div key={`${column.column}-${columnIndex}`} className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
@@ -693,9 +750,18 @@ export default function Editor() {
                   ) : (
                     <ul className="list-decimal pl-5">
                       {history.map((query, index) => (
-                        <li key={index} className="text-xs text-gray-700 mb-2 cursor-pointer hover:text-gray-900" onClick={() => handleHistoryClick(query)}>
+                        <li
+                          key={index}
+                          className={`text-xs text-gray-700 mb-2 cursor-pointer ${loading ? "cursor-not-allowed text-gray-400" : "hover:text-gray-900"}`}
+                          onClick={() => {
+                            if (!loading) {
+                              handleHistoryClick(query);
+                            }
+                          }}
+                        >
                           {query}
                         </li>
+
                       ))}
                     </ul>
                   )}
@@ -724,15 +790,31 @@ export default function Editor() {
             </aside>
 
             <main className="flex-1 pl-5 w-3/4">
-              <div className={`${(data?.length > 0 || loading) ? "h-[42%]" : "h-[100%]"} flex flex-col`}>
-                <div className="w-[100%] flex justify-between">
+              <div className={`${(data?.length > 0 || loading) ? "h-[41%]" : "h-[100%]"} flex flex-col`}>
+                <div className="w-[100%] flex justify-between pr-3">
                   <h2 className="text-xl font-bold">Query Editor</h2>
-                  <div>
+                  <div className="flex justify-center items-center">
+                    <button
+                      type="button"
+                      onClick={handleDownloadCSV}
+                      className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-1.5 mr-1 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
                     <Switch
                       checked={checked}
                       onChange={handleSwitch}
                       inputProps={{ "aria-label": "controlled" }}
+                      sx={{
+                        '& .MuiSwitch-switchBase.Mui-checked': {
+                          color: '#8e78b7',
+                        },
+                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                          backgroundColor: '#8e78b7',
+                        },
+                      }}
                     />
+
                     <span
                       style={{
                         display: "inline-block",
@@ -769,7 +851,7 @@ export default function Editor() {
                     boxSizing: "border-box",
                     border: "1px solid #e0e0e0",
                     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                    marginTop: "6px",
+                    marginTop: "2px",
                     flexGrow: 1,
                   }}
                   showLineNumbers
@@ -786,8 +868,8 @@ export default function Editor() {
                       Run
                     </div>
                   </button>
-                  <button 
-                    onClick={handleClearQuery} 
+                  <button
+                    onClick={handleClearQuery}
                     className="bg-gray-400 text-white px-7 py-1.5 rounded-lg hover:bg-gray-500 flex items-center"
                   >
                     <Trash2 size={16} className="mr-2" />
@@ -797,58 +879,87 @@ export default function Editor() {
               </div>
 
               {(data?.length > 0 || loading) && (
-                <div className="h-[58%] flex flex-col">
-                  <h2 className="text-xl font-bold pb-3">Output</h2>
-                  <div className="bg-white rounded-lg shadow w-full flex-1 overflow-hidden">
-                    {loading ? (
+                <div className="h-[60%] flex flex-col">
+                  <h2 className="text-xl font-bold pb-2">Output</h2>
+                  {loading ? (
+                    <div className="bg-white rounded-lg shadow w-full flex-1 overflow-hidden">
                       <div className="flex justify-center items-center h-full">
                         <CircularProgress sx={{ color: "#8e78b7" }} />
                       </div>
-                    ) : (
-                      <div className="h-full overflow-y-auto overflow-x-auto custom-scroll rounded-lg">
-                        <table className="w-full">
-                          <thead className="text-xs sticky top-0 bg-[#29304a] text-white">
-                            <tr>
-                              {columnDefs.map((col, index) => (
-                                <th key={index} className="text-left p-4">
-                                  {col.replace(/_/g, " ").toUpperCase()}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="text-xs">
-                            {data.map((row, rowIndex) => (
-                              <tr key={rowIndex} className="border-b">
-                                {columnDefs.map((col, colIndex) => {
-                                  const cellContent = row[col];
-                                  const isLink =
-                                    typeof cellContent === "string" &&
-                                    cellContent.startsWith("http");
+                    </div>
+                  ) : (
+                    <div className="w-full flex flex-col flex-1 min-h-0">
 
-                                  return (
-                                    <td key={colIndex} className="p-4 text-left">
-                                      {isLink ? (
-                                        <a
-                                          href={cellContent}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-blue-500 underline"
-                                        >
-                                          {cellContent}
-                                        </a>
-                                      ) : (
-                                        cellContent
-                                      )}
-                                    </td>
-                                  );
-                                })}
+                      <div className="flex-1 overflow-hidden">
+                        <div className="overflow-y-auto custom-scroll rounded-lg bg-white shadow h-full">
+                          <table className="w-full">
+                            <thead className="text-xs sticky top-0 bg-[#29304a] text-white">
+                              <tr>
+                                {columnDefs.map((col, index) => (
+                                  <th key={index} className="text-left p-4">
+                                    {col.replace(/_/g, " ").toUpperCase()}
+                                  </th>
+                                ))}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="text-xs">
+                              {data.map((row, rowIndex) => (
+                                <tr key={rowIndex} className="border-b">
+                                  {columnDefs.map((col, colIndex) => {
+                                    const cellContent = row[col];
+                                    const isLink =
+                                      typeof cellContent === "string" &&
+                                      cellContent.startsWith("http");
+
+                                    return (
+                                      <td key={colIndex} className="p-4 text-left">
+                                        {isLink ? (
+                                          <a
+                                            href={cellContent}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-500 underline"
+                                          >
+                                            {cellContent}
+                                          </a>
+                                        ) : (
+                                          cellContent
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    )}
-                  </div>
+
+                      <div className="w-full flex justify-end mt-2 ">
+                        <button
+                          type="button"
+                          onClick={handlePreviousPage}
+                          disabled={pageNo === 1}
+                          className={`px-8 py-1.5 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm focus:outline-none mr-4 
+                         ${pageNo === 1 ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white bg-[#8e78b7] hover:bg-[#7a63a8]"}`}
+                        >
+                          Previous
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleNextPage}
+                          disabled={!hasMore}
+                          className={`px-8 py-1.5 rounded-lg text-sm
+                            ${!hasMore ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white focus:ring-1 focus:ring-[#8e78b7] bg-[#8e78b7] hover:bg-[#7a63a8]"} `}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+
+
+                  )}
                 </div>
               )}
             </main>

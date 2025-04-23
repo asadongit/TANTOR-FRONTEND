@@ -29,7 +29,6 @@ export const ContextViewProvider = ({ children }) => {
         setFinalPayload(val);
       };
 
-      const [complexCheck, setComplexCheck] = useState(false);
 
       const [columnSettings, setColumnSettings] = useState({});
 
@@ -52,8 +51,6 @@ export const ContextViewProvider = ({ children }) => {
             handleConnectionPayload,
             finalPayload,
             handleFinalPayload,
-            complexCheck, 
-            setComplexCheck,
             columnSettings,
             setColumnSettings,
             settingsList, setSettingsList,

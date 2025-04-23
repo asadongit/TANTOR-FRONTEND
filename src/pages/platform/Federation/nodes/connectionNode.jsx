@@ -8,9 +8,12 @@ import { Columns } from "../BusinessView/Columns";
 import { Modal } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
+import { useLocation } from "react-router-dom";
+import { useAuth } from "../../../../context/AuthContext";
 
 export function ConnectionNode({ id, onSave }) {
-  const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  // const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  const {token, project, decodedToken, setSelectedProject, hostnameV1 }= useAuth();
   const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload } = useStateContext("")
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [connections, setConnections] = useState([]);
@@ -23,19 +26,32 @@ export function ConnectionNode({ id, onSave }) {
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [selectedColumn, setSelectedColumn] = useState("");
   const [columnData, setColumnData] = useState([])
-  const [previousTable, setPreviousTable] = useState("");
+  const [previousColId, setPreviousColId] = useState("");
+  const [colId, setColId] = useState("")
 
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
+
+  const modalState = useLocation().state || {
+    queryType: "Regular",
+    viewType: "Business",
+  };
+
+    useEffect(() => {
+      handleFinalPayload((prevData) => ({
+        ...prevData,
+        view_type: "Integrated View"
+      }));
+    }, [])
 
   const handleColumnChange = (column) => {
     setSelectedColumns((prev) => {
       if (prev.includes(column)) {
         setColumnSettings((prevSettings) => {
           const updatedSettings = { ...prevSettings };
-          if (updatedSettings[id]) {
-            delete updatedSettings[id][column];
-            if (Object.keys(updatedSettings[id]).length === 0) {
-              delete updatedSettings[id];
+          if (updatedSettings[colId]) {
+            delete updatedSettings[colId][column];
+            if (Object.keys(updatedSettings[colId]).length === 0) {
+              delete updatedSettings[colId];
             }
           }
           return updatedSettings;
@@ -45,10 +61,10 @@ export function ConnectionNode({ id, onSave }) {
       } else {
         setColumnSettings((prevSettings) => ({
           ...prevSettings,
-          [id]: {
-            ...(prevSettings[id] || {}),
+          [colId]: {
+            ...(prevSettings[colId] || {}),
             [column]: {
-              ...(prevSettings[id]?.[column] || {}),
+              ...(prevSettings[colId]?.[column] || {}),
               output: "Yes",
             },
           },
@@ -72,10 +88,10 @@ export function ConnectionNode({ id, onSave }) {
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         columns.forEach((column) => {
-          updatedSettings[id] = {
-            ...updatedSettings[id],
+          updatedSettings[colId] = {
+            ...updatedSettings[colId],
             [column]: {
-              ...(updatedSettings[id]?.[column] || {}),
+              ...(updatedSettings[colId]?.[column] || {}),
               output: "Yes",
             },
           };
@@ -88,10 +104,10 @@ export function ConnectionNode({ id, onSave }) {
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
         columns.forEach((column) => {
-          updatedSettings[id] = {
-            ...updatedSettings[id],
+          updatedSettings[colId] = {
+            ...updatedSettings[colId],
             [column]: {
-              ...(updatedSettings[id]?.[column] || {}),
+              ...(updatedSettings[colId]?.[column] || {}),
               output: "No",
             },
           };
@@ -103,25 +119,38 @@ export function ConnectionNode({ id, onSave }) {
 
   const isAllSelected = selectedColumns.length === columns.length;
 
+  // -------------------------------------------------------------------------------->
+  // useEffect(() => {
+  //   if (colId && columnSettings[colId]) {
+  //     const columnsWithOutputYes = selectedColumnsOrder.filter(
+  //       (column) => columnSettings[colId][column]?.output === "Yes"
+  //     );
+
+  //     setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
+  //   }
+  // }, [columnSettings, colId]);
+  // --------------------------------------------------------------------------------------->
+
+  useEffect(() => {
+    if (colId && columnSettings[colId]) {
+      const columnsWithOutputOrAggregate = Object.keys(columnSettings[colId]).filter(column => {
+        const columnData = columnSettings[colId][column] || {};
+        return columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+      });
   
-  useEffect(() => {
-    if (id && columnSettings[id]) {
-      const columnsWithOutputYes = selectedColumnsOrder.filter(
-        (column) => columnSettings[id][column]?.output === "Yes"
-      );
-
-      setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
+      setSelectedColumns(columnsWithOutputOrAggregate);
     }
-  }, [columnSettings, id]);
+  }, [columnSettings, colId]);
+  
+  
 
 
 
   useEffect(() => {
-    var preferred_username = "sabhyata";
 
-    fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
+    fetch(`${hostnameV1}/connection-saves`, {
       headers: {
-        'Authorization': `Bearer ${encodedToken}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     })
@@ -130,8 +159,8 @@ export function ConnectionNode({ id, onSave }) {
         const connectionNames = data
           .filter(
             (item) =>
-              // item.project === project &&
-              preferred_username === item.created_by &&
+              item.project === project &&
+              item.created_by === decodedToken?.preferred_username &&
               item.is_deleted === false
           )
           .map((item) => item.connection_name);
@@ -151,10 +180,10 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedColumns([]);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API}/${conn}/schemas`,
+        `${hostnameV1}/${conn}/schemas`,
         {
           headers: {
-            Authorization: `Bearer ${encodedToken}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -187,10 +216,10 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedColumns([]);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API}/${selectedConnection}/schemas/${temp}/tables`,
+        `${hostnameV1}/${selectedConnection}/schemas/${temp}/tables`,
         {
           headers: {
-            Authorization: `Bearer ${encodedToken}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
@@ -219,15 +248,17 @@ export function ConnectionNode({ id, onSave }) {
 
   const handleTableChange = async (event, value) => {
     var temp = event.target.value;
+    const unique = `${selectedConnection}_${selectedSchema}_${temp}`;
+    setColId(unique);
     setColumns([])
     setSelectedColumns([]);
     if (selectedConnection && selectedSchema) {
       var temp = event.target.value;
       setSelectedTable(temp);
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API}/${selectedConnection}/schemas/${selectedSchema}/tables/${temp}/columns`, {
+        `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${temp}/columns`, {
         headers: {
-          'Authorization': `Bearer ${encodedToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -254,13 +285,12 @@ export function ConnectionNode({ id, onSave }) {
     //       toast.error("Select atleast one column");
     //       return;
     // }
-    const view = id;
-    if (!finalPayload.operation && previousTable!=selectedTable) {
+    if (!finalPayload.operation && previousColId!=colId) {
       console.log("URR TABLE IS CHANGEDDD")
       handleFinalPayload((prevData) => ({
         ...prevData,
         joins: prevData?.joins?.filter(
-          (join) => join.view1 !== previousTable && join.view2 !== previousTable
+          (join) => join.view1 !== previousColId && join.view2 !== previousColId
         ),
       }));
     }
@@ -271,12 +301,12 @@ export function ConnectionNode({ id, onSave }) {
       setColumnSettings(updatedSettings);
     }
 
-    if (view && selectedConnection && selectedSchema && selectedTable) {
+    if (selectedConnection && selectedSchema && selectedTable) {
 
       const newPayload = {
         id,
         type: "Connection",
-        view,
+        view: colId,
         selectedConnection,
         selectedSchema,
         selectedTable,
@@ -303,7 +333,7 @@ export function ConnectionNode({ id, onSave }) {
     }
 
     toast.success("Data Saved Successfully");
-    setPreviousTable(selectedTable);
+    setPreviousColId(`${selectedConnection}.${selectedSchema}.${selectedTable}`);
 
   };
 
@@ -345,19 +375,19 @@ export function ConnectionNode({ id, onSave }) {
       handleFinalPayload((prevData) => ({
         ...prevData,
         joins: prevData?.joins?.filter(
-          (join) => join.view1 !== id && join.view2 !== id
+          (join) => join.view1 !== colId && join.view2 !== colId
         ),
       }));
     }
     else if(finalPayload.operation){
-      const cleanedPayload = cleanFinalPayload(finalPayload, id);
+      const cleanedPayload = cleanFinalPayload(finalPayload, colId);
       handleFinalPayload(cleanedPayload)
     }
 
 
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
-      delete updatedSettings[id];
+      delete updatedSettings[colId];
       delete updatedSettings["Union"]
 
       console.log("Updated column settings:", updatedSettings); 
@@ -471,7 +501,7 @@ export function ConnectionNode({ id, onSave }) {
             <h3 className="text-black font-medium">Connection</h3>
           </div>
           <div>
-          {complexCheck && (
+          {modalState.queryType == "Complex" && (
           <button
               onClick={() => toggleEditorModal(true)}
               className="p-1 rounded-md hover:bg-gray-200"
@@ -610,7 +640,7 @@ export function ConnectionNode({ id, onSave }) {
         }}
       >
         <div className="absolute top-0 right-0 h-full w-full sm:w-1/2 md:w-1/3 lg:w-[22%]">
-          <Columns id={id}
+          <Columns id={colId}
             columnName={selectedColumn}
             dataType={columnData.find(col => col.column === selectedColumn)?.datatype}
             toggleModal={toggleModal} />

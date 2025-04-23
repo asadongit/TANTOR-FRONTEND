@@ -94,7 +94,7 @@ export function ConsolidationNode({ id }) {
         }
       });
     }
-    else if (type === "Union") {
+    else if (type === "Union" || type === "Intersect") {
       consolidationPayload.forEach((payload) => {
         if (payload.target === id) {
           const matchingView =
@@ -143,24 +143,6 @@ export function ConsolidationNode({ id }) {
   }, [view1, view2, joinType, selectedLeft, selectedRight, operator, connectionPayload]);
  
  
-  // useEffect(() => {
-  //   console.log("joins are ===>", joins)
-  //   if (joins.length > 0) {
- 
-  //     handleFinalPayload({
-  //       joins: finalPayload && Array.isArray(finalPayload.joins)
-  //         ? [
-  //           ...finalPayload.joins.filter(
-  //             (existingJoin) => !joins.some((newJoin) => newJoin.id === existingJoin.id)
-  //           ),
-  //           ...joins,
-  //         ]
-  //         : [...joins],
-  //     });
-  //   }
-  // }, [joins]);
- 
- 
   const [isUnionModalOpen, setIsUnionModalOpen] = useState(false);
  
  
@@ -171,7 +153,7 @@ export function ConsolidationNode({ id }) {
     if (columnSettings?.Union) {
       setSelectedUnionColumns(
         Object.entries(columnSettings.Union)
-          .filter(([_, value]) => value.output === "Yes")
+          .filter(([_, value]) => (value.output === "Yes" || value.aggregate != ""))
           .map(([key]) => key)
       );
     } else {
@@ -184,7 +166,7 @@ export function ConsolidationNode({ id }) {
     console.log("viewPayload in consolidation is =====>", viewPayload);
     console.log("connection payload in consolidation is ====>", connectionPayload);
  
-    if (type === "Union") {
+    if (type === "Union" || type === "Intersect") {
       const unionData = {};
       [...viewPayload, ...connectionPayload].forEach((item) => {
         if (item.view && Array.isArray(item.selectedColumns)) {
@@ -305,7 +287,7 @@ export function ConsolidationNode({ id }) {
       console.log("temp array 2===>", tempArray2);
  
       const baseJoin = Array.from(tempArray1)[0];
-      const connection = connectionPayload.find(conn => conn.id === baseJoin);
+      const connection = connectionPayload.find(conn => conn.view === baseJoin);
  
       console.log("base join is===>", baseJoin);
  
@@ -332,9 +314,15 @@ export function ConsolidationNode({ id }) {
   };
  
   const handleUnionNext = () => {
+    console.log("type is ====>",type)
+    console.log("inner type is =====>", unionType)
     if (type === "Union" || type === "Intersect" || type === "Union All" || type === "Intersect All") {
-      if (unionType == "") {
+      if (type === "Union" && unionType == "" ) {
         toast.error("Select type first");
+        return;
+      }
+      if(type === "Intersect" && unionType == ""){
+        toast.error("Select type first")
         return;
       }
       if (selectedUnionColumns.length === 0) {
@@ -343,7 +331,6 @@ export function ConsolidationNode({ id }) {
       }
  
       if ((viewPayload && viewPayload.length > 0) || (connectionPayload && connectionPayload.length > 0)) {
-        setIsUnionModalOpen(true)
         const unions = [
           ...(viewPayload ? viewPayload.map(node => node.view) : []),
           ...(connectionPayload ? connectionPayload.map(node => node.view) : [])
@@ -364,6 +351,19 @@ export function ConsolidationNode({ id }) {
             defs[item.view] = item.def;
           }
         });
+
+
+        console.log("UNION ISS  SSSSSS-========>",unionData)
+        console.log("first view is =========>",firstView)
+        console.log("second view is ========>",secondView)
+
+        if (unionData[firstView]?.length !== unionData[secondView]?.length) {
+          console.error(`Column count mismatch: ${firstView} (${unionData[firstView]?.length}) vs ${secondView} (${unionData[secondView]?.length})`);
+          toast.error(`Column count mismatch: ${firstView} (${unionData[firstView]?.length}) and ${secondView} (${unionData[secondView]?.length})`);
+          return;
+      }
+
+      setIsUnionModalOpen(true)
  
         const newPayload = {
           operation: unionType,
@@ -480,10 +480,13 @@ export function ConsolidationNode({ id }) {
  
   useEffect(() => {
     if (columnSettings["Union"]) {
-      const columnsWithOutputYes = Object.keys(columnSettings["Union"]).filter(
-        column => columnSettings["Union"][column].output === "Yes"
+      const columnsWithOutputOrAggregate = Object.keys(columnSettings["Union"]).filter(
+        column => {
+          const columnData = columnSettings["Union"][column] || {};
+          return columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+        }
       );
-      setSelectedUnionColumns(columnsWithOutputYes);
+      setSelectedUnionColumns(columnsWithOutputOrAggregate);
     }
   }, [columnSettings]);
  
@@ -507,8 +510,18 @@ export function ConsolidationNode({ id }) {
   };
  
   const handleMappingSave = () => {
+    const selectedTargets = Object.values(mapping);
+    const duplicates = selectedTargets.filter(
+      (item, index) => item && selectedTargets.indexOf(item) !== index
+    );
+  
+    if (duplicates.length > 0) {
+      toast.error("Duplicate column mappings found. Please select unique mappings.");
+      return;
+    }
+  
     const updatedFields = finalPayload.union_fields[firstView].map((col) => mapping[col] || "");
- 
+  
     handleFinalPayload((prev) => {
       const updatedFinalPayload = {
         ...prev,
@@ -517,28 +530,28 @@ export function ConsolidationNode({ id }) {
           [secondView]: updatedFields,
         },
       };
- 
+  
       handleViewPayload((prevView) =>
         prevView.map((item) => ({
           ...item,
           selectedColumns: updatedFinalPayload.union_fields[item.view] || item.selectedColumns,
         }))
       );
- 
+  
       handleConnectionPayload((prevConn) =>
         prevConn.map((item) => ({
           ...item,
           selectedColumns: updatedFinalPayload.union_fields[item.view] || item.selectedColumns,
         }))
       );
- 
+  
       return updatedFinalPayload;
     });
- 
- 
-    setIsUnionModalOpen(false)
-    setIsConsolidationModalOpen(false)
-  }
+  
+    setIsUnionModalOpen(false);
+    setIsConsolidationModalOpen(false);
+  };
+  
  
   useEffect(() => {
     if (firstView && secondView && finalPayload?.union_fields?.[firstView] && finalPayload?.union_fields?.[secondView]) {
@@ -550,12 +563,27 @@ export function ConsolidationNode({ id }) {
  
     }
   }, [firstView, secondView, finalPayload]);
+
+
+  const handleDelete = (id) => {
+    if (!finalPayload.operation) {
+      handleFinalPayload((prevData) => ({
+          ...prevData,
+          joins: prevData?.joins?.filter((join) => join.id !== id),
+      }));
+  }
+    // else if(finalPayload.operation){
+    // }
+
+    window.deleteNode?.(id)
+
+  };
  
   return (
     <>
       <div className="bg-[#8E77BB] rounded-full p-6 shadow-lg relative group flex justify-center">
         <button
-          onClick={() => window.deleteNode?.(id)}
+          onClick={() => handleDelete(id)}
           className="absolute -top-2 -right-2 bg-black rounded-full p-1 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <X className="w-4 h-4 text-white" />
@@ -789,11 +817,11 @@ export function ConsolidationNode({ id }) {
                   Cancel
                 </button>
                 <button
-                  onClick={(type === "Union") ? handleUnionNext : handleSave}
+                  onClick={(type === "Union" || type === "Intersect") ? handleUnionNext : handleSave}
                   type="button"
                   className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                 >
-                  {type === "Union" ? "Next" : "Save"}
+                  {(type === "Union" || type === "Intersect") ? "Next" : "Save"}
                 </button>
  
               </div>
@@ -841,14 +869,6 @@ export function ConsolidationNode({ id }) {
             {firstView && secondView && finalPayload?.union_fields?.[firstView] && finalPayload?.union_fields?.[secondView] ? (
               finalPayload.union_fields[firstView].map((col) => (
                 <div key={col} className="flex justify-between items-center py-3 border-b last:border-b-0">
-                  {/* Left Side - First View Columns */}
-                  {/* <select
-              className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-white transition shadow-md text-gray-700 font-medium"
-              value={col}
-              disabled
-            >
-              <option value={col}>{col}</option>
-            </select> */}
                   <input
                     type="text"
                     className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-gray-100 text-gray-500 transition shadow-md font-medium"
@@ -856,22 +876,8 @@ export function ConsolidationNode({ id }) {
                     disabled
                   />
  
- 
- 
                   <MoveHorizontal className="w-6 h-4" />
  
-                  {/* <select
-                    className="w-5/12 border border-gray-300 rounded-lg px-4 py-2 bg-white transition shadow-md text-gray-700 font-medium"
-                    value={mapping[col] || ""}
-                    onChange={(e) => handleMappingChange(col, e.target.value)}
-                  >
-                    <option value="">Select column</option>
-                    {finalPayload.union_fields[secondView].map((targetCol) => (
-                      <option key={targetCol} value={targetCol}>
-                        {targetCol}
-                      </option>
-                    ))}
-                  </select> */}
                   <Autocomplete
                     options={finalPayload.union_fields[secondView]}
                     value={mapping[col] || null}

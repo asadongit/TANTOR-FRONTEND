@@ -20,13 +20,12 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Modal } from "@mui/material";
 import { MenuItem, Select, InputLabel, FormControl } from "@mui/material";
-import { useStateContext } from "../context/contextViewProvider";
+import { useAuth } from "../../../../context/AuthContext";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const FederationDashBoard = () => {
-    const { handleViewPayload, handleConnectionPayload, handleConsolidationPayload,handleFinalPayload, setColumnSettings} = useStateContext("");
-  
+
   const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,30 +41,26 @@ const FederationDashBoard = () => {
     }
     )
     setIsModalOpen(!isModalOpen);
-    handleViewPayload([])
-    handleConnectionPayload([])
-    handleConsolidationPayload([])
-    handleFinalPayload({})
-    setColumnSettings({})
   };
 
-  const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  // const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
   const [data, setData] = useState([]);
   const [connectionData, setconnectionData] = useState([]);
   const [schemaList, setSchemaList] = useState([])
   const [tableList, setTableList] = useState([])
   const [viewList, setViewList] = useState([])
-
+  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
   const [count, setCount] = useState({});
 
   useEffect(() => {
-    var project = "dummy";
-    var preferred_username = "sabhyata";
     const fetchData = async () => {
+      console.log("token is ====>",token)
+      console.log("project is ====>",project)
+      console.log("username is =====>",decodedToken?.preferred_username)
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection-saves`, {
+        const response = await fetch(`${hostnameV1}/connection-saves`, {
           headers: {
-            Authorization: `Bearer ${encodedToken}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
@@ -74,14 +69,14 @@ const FederationDashBoard = () => {
         if (project !== "none") {
           data = data.filter(
             (item) =>
-              // item.project.toUpperCase() === project.toUpperCase() &&
-              item.created_by.toUpperCase() === preferred_username.toUpperCase() &&
+              item.project.toUpperCase() === project.toUpperCase() &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
               !item.is_deleted
           );
         } else {
           data = data.filter(
             (item) =>
-              item.created_by.toUpperCase() === preferred_username.toUpperCase() &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
               !item.is_deleted
           );
         }
@@ -98,24 +93,21 @@ const FederationDashBoard = () => {
 
   useEffect(() => {
     if (connectionData.length === 0) return;
-
-    var project = "dummy";
     connectionData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     var extractedData;
     if (project !== "none") {
       data.map((item) => { });
       extractedData = connectionData.filter(
         (item) =>
-          // item.project.toUpperCase() === project.toUpperCase() &&
-          // item.created_by.toUpperCase() ===
-          // token.preferred_username.toUpperCase() &&
+          item.project.toUpperCase() === project.toUpperCase() &&
+          item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
           item.is_deleted === false
       );
     } else {
       extractedData = connectionData.filter(
         (item) =>
-          // item.created_by.toUpperCase() ===
-          // token.preferred_username.toUpperCase() &&
+          item.created_by.toUpperCase() ===
+        decodedToken?.preferred_username.toUpperCase() &&
           item.is_deleted === false
       );
     }
@@ -132,10 +124,10 @@ const FederationDashBoard = () => {
 
   const fetchSchemaCount = async (connectionNames) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/schema_names`, {
+      const response = await fetch(`${hostnameV1}/schema_names`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${encodedToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -153,10 +145,10 @@ const FederationDashBoard = () => {
 
   const fetchTableCount = async (connectionNames) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/table_names`, {
+      const response = await fetch(`${hostnameV1}/table_names`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${encodedToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -173,23 +165,31 @@ const FederationDashBoard = () => {
 
   const fetchViewCount = async (connectionNames) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API_V2}/connections/views`, {
+      // const project = sessionStorage.getItem("project") || "default";
+      // const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
+  
+      const response = await fetch(`${hostnameV2}/connections/views`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${encodedToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          "connection_names": connectionNames
+          connection_names: connectionNames,
+          created_by: decodedToken?.preferred_username || "",
+          project: project || ""
         })
       });
+  
       let data = await response.json();
-      console.log("views are  ===>", data)
-      setViewList(data)
+      console.log("views are  ===>", data);
+      setViewList(data);
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching views:", error);
     }
   };
+  
+
 
   const getTableCount = (tableList, connectionId) => {
     if (!tableList || !tableList[connectionId]) {
@@ -205,62 +205,6 @@ const FederationDashBoard = () => {
     return totalTables;
   };
 
-  const getSchemaMainCount = async (connectionNames) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/schemas/count`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${encodedToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          "connection_names": connectionNames
-        })
-      });
-
-      let data = await response.json();
-      console.log("schema main count is  ===>", data["schema-count"]);
-
-      if (data && data["schema-count"] !== undefined) {
-        return data["schema-count"];
-      } else {
-        return 0;
-      }
-
-    } catch (error) {
-      console.log("Error fetching schema count:", error);
-      return 0;
-    }
-  };
-
-  const getTableMainCount = async (connectionNames) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/tables/count`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${encodedToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          "connection_names": connectionNames
-        })
-      });
-
-      let data = await response.json();
-      console.log("table-count is  ===>", data["table-count"]);
-
-      if (data && data["table-count"] !== undefined) {
-        return data["table-count"];
-      } else {
-        return 0;
-      }
-
-    } catch (error) {
-      console.log("Error fetching schema count:", error);
-      return 0;
-    }
-  };
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -272,13 +216,8 @@ const FederationDashBoard = () => {
       if (!connectionNames.length) return;
 
       const totalViewsCount = Object.values(viewList).reduce((sum, views) => sum + views.length, 0);
-      var totalSchemaCount = 0;
-      var totalTableCount = 0;
-
-      if (connectionNames) {
-        totalSchemaCount = await getSchemaMainCount(connectionNames);
-        totalTableCount = await getTableMainCount(connectionNames);
-      }
+      const totalSchemaCount = Object.values(schemaList).reduce((acc, schemas) => acc + schemas.length, 0);
+      const totalTableCount = Object.values(tableList).reduce((acc, db) => acc + Object.values(db).reduce((sum, tables) => sum + tables.length, 0), 0);
 
       setCount({
         connections: connectionNames,
@@ -306,70 +245,39 @@ const FederationDashBoard = () => {
 
 
 
-  const [cards, setCards] = useState([
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#d8d3e4]",
-      iconcolor: "text-purple-700",
-      title: "Connections",
-      count: "0"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#d8d3e4]",
-      iconcolor: "text-purple-700",
-      title: "Schemas",
-      count: "0"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#d8d3e4]",
-      iconcolor: "text-purple-700",
-      title: "Tables",
-      count: "0"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#d8d3e4]",
-      iconcolor: "text-purple-700",
-      title: "Views",
-      count: "0"
-    }
-  ]);
+  const [cards, setCards] = useState([]);
 
   useEffect(() => {
-    if (count.connections && count.totalViewsCount) {
-      setCards([
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#d8d3e4]",
-          iconcolor: "text-purple-700",
-          title: "Connections",
-          count: `${count.connections.length}` || 0
-        },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#d8d3e4]",
-          iconcolor: "text-purple-700",
-          title: "Schemas",
-          count: `${count.totalSchemaCount}` || 0
-        },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#d8d3e4]",
-          iconcolor: "text-purple-700",
-          title: "Tables",
-          count: `${count.totalTableCount}` || 0
-        },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#d8d3e4]",
-          iconcolor: "text-purple-700",
-          title: "Views",
-          count: `${count.totalViewsCount}` || 0
-        }
-      ]);
-    }
+    setCards([
+      {
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#d8d3e4]",
+        iconcolor: "text-purple-700",
+        title: "Connections",
+        count: `${count?.connections?.length ?? 0}`
+      },
+      {
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#d8d3e4]",
+        iconcolor: "text-purple-700",
+        title: "Schemas",
+        count: `${count?.totalSchemaCount ?? 0}`
+      },
+      {
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#d8d3e4]",
+        iconcolor: "text-purple-700",
+        title: "Tables",
+        count: `${count?.totalTableCount ?? 0}`
+      },
+      {
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#d8d3e4]",
+        iconcolor: "text-purple-700",
+        title: "Views",
+        count: `${count?.totalViewsCount ?? 0}`
+      }
+    ]);
   }, [count]);
 
   const [rowData, setRowData] = useState([]);
@@ -559,27 +467,27 @@ const FederationDashBoard = () => {
           <table className="w-full">
             <thead className="text-sm">
               <tr className="bg-[#29304a] text-white">
-                <th className="text-left p-4">ID</th>
-                <th className="text-left p-4">Connections</th>
-                <th className="text-left p-4">Descriptions</th>
-                <th className="text-left p-4">Schema</th>
-                <th className="text-left p-4">Tables</th>
-                <th className="text-left p-4">Views</th>
-                <th className="text-left p-4">Created</th>
-                <th className="text-left p-4 last:rounded-tr-lg">Actions</th>
+                <th className="text-center p-4">ID</th>
+                <th className="text-center p-4">Connections</th>
+                <th className="text-center p-4">Descriptions</th>
+                <th className="text-center p-4">Schema</th>
+                <th className="text-center p-4">Tables</th>
+                <th className="text-center p-4">Views</th>
+                <th className="text-center p-4">Created</th>
+                <th className="text-center p-4 last:rounded-tr-lg">Actions</th>
               </tr>
             </thead>
             <tbody className="text-sm">
               {rowData.map((user, index) => (
                 <tr key={index} className="border-b">
-                  <td className="p-4 text-left">{user.ID}</td>
-                  <td className="p-4 text-left">{user.Connections}</td>
-                  <td className="p-4 text-left">{user.Descriptions}</td>
-                  <td className="p-4 text-left">{user.Schema}</td>
-                  <td className="p-4 text-left">{user.Tables}</td>
-                  <td className="p-4 text-left">{user.Views}</td>
-                  <td className="p-4 text-left">{user.Created}</td>
-                  <td className="p-4 text-left">
+                  <td className="p-4 text-center">{user.ID}</td>
+                  <td className="p-4 text-center">{user.Connections}</td>
+                  <td className="p-4 text-center">{user.Descriptions}</td>
+                  <td className="p-4 text-center">{user.Schema}</td>
+                  <td className="p-4 text-center">{user.Tables}</td>
+                  <td className="p-4 text-center">{user.Views}</td>
+                  <td className="p-4 text-center">{user.Created}</td>
+                  <td className="p-4 text-center">
                     <div className="relative">
                       <button
                         onClick={() =>
@@ -596,7 +504,7 @@ const FederationDashBoard = () => {
                             className="fixed inset-0 z-10"
                             onClick={handleClickOutside}
                           />
-                          <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                          <div className="absolute top-0 right-14 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                             <div className="flex items-center p-1 gap-1">
                               {/* <button
                                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
@@ -801,7 +709,7 @@ const FederationDashBoard = () => {
 
       <Modal open={viewOpen} onClose={handleViewsClose}>
 
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-lg px-6 pb-5 pt-3 rounded-2xl shadow-xl max-h-[90vh] w-96 border border-gray-200 flex flex-col">
           <div className="flex text-center justify-center">
             <h2 className="text-xl font-bold text-gray-900">Views Details</h2>
           </div>
@@ -826,7 +734,7 @@ const FederationDashBoard = () => {
           {selectedConnection && (
             <div className="mt-4 flex-1 overflow-y-auto py-2 pr-4 space-y-3">
               {viewList[selectedConnection]?.length > 0 ? (
-                  viewList[selectedConnection].map((view, index) => (
+                viewList[selectedConnection].map((view, index) => (
                   <div
                     key={index}
                     className="p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 transition flex items-center gap-2"

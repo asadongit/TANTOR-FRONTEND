@@ -20,6 +20,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import FilterComponent from "../components/FilterComponent";
+import { useAuth } from "../../../../context/AuthContext";
 
 const nodeTypes = {
   baseNode: BaseNode,
@@ -30,6 +31,8 @@ let id = 0;
 const getId = () => `node_${id++}`;
 
 export default function Source() {
+  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
+
   const modalState = useLocation().state || {
     queryType: "Regular",
     viewType: "Source",
@@ -69,13 +72,12 @@ export default function Source() {
 
     settings.forEach((item) => {
       if (item.groupBy === "Yes") groupByColumns.push(item.name);
-      if (item.aggregate && item.output === "Yes")
-        aggregateColumns.push(item.name);
+      if (item.aggregate) aggregateColumns.push(item.name);
       if (item.sort) {
         orderByColumns.push({
           field: item.name,
           sortType: item.sort,
-          order: item.order,
+          order: item.order ? item.order : 1,
         });
       }
     });
@@ -137,19 +139,19 @@ export default function Source() {
     const basePayload =
       userSelections.get("viewType") === "Source"
         ? {
-            view_type: "Source",
-            view: userSelections.get("viewName"),
-            select_fields: [],
-            group_by: [],
-          }
+          view_type: "Source",
+          view: userSelections.get("viewName"),
+          select_fields: [],
+          group_by: [],
+        }
         : {
-            view_type: "Connection",
-            connection_name: userSelections.get("connection"),
-            schema_name: userSelections.get("schema"),
-            table_name: userSelections.get("table"),
-            select_fields: [],
-            group_by: [],
-          };
+          view_type: "Connection",
+          connection_name: userSelections.get("connection"),
+          schema_name: userSelections.get("schema"),
+          table_name: userSelections.get("table"),
+          select_fields: [],
+          group_by: [],
+        };
 
     // Add complex query if exists
     if (
@@ -160,13 +162,19 @@ export default function Source() {
     }
 
     // Configure fields and group by
+
     settings.forEach((item) => {
+      if (item.aggregate) {
+        basePayload.select_fields.push({
+          field: `${item.aggregate.toLowerCase()}(${item.name})`,
+          alias: item.alias,
+          type: item.type,
+        });
+      }
       if (item.output === "Yes") {
         basePayload.select_fields.push({
-          field: item.aggregate
-            ? `${item.aggregate.toLowerCase()}(${item.name})`
-            : item.name,
-          alias: item.alias,
+          field: item.name,
+          alias: item.aggregate ? "" : item.alias,
           type: item.type,
         });
       }
@@ -191,7 +199,10 @@ export default function Source() {
     if (!validateColumns(userCheckedColumns, settings)) return null;
 
     const columnSettings = processColumnSettings(settings, userCheckedColumns);
-    console.log("Sorted Order By Columns ===>>> ", columnSettings.orderByColumns);
+    console.log(
+      "Sorted Order By Columns ===>>> ",
+      columnSettings.orderByColumns
+    );
     if (modalState.queryType === "Regular") {
       if (!validateAggregateAndGroupBy(userCheckedColumns, columnSettings))
         return null;
@@ -284,16 +295,14 @@ export default function Source() {
 
     try {
       const response = await fetch(
-        `${
-          import.meta.env.VITE_FAST_API_V2
+        `${hostnameV2
         }/generate-base-view?execute_query=true`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${
-              import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+            Authorization: `Bearer ${token
+              }`,
           },
           body: JSON.stringify(cleanApiPayload),
         }
@@ -355,16 +364,15 @@ export default function Source() {
     try {
       // Check if view already exists
       const viewExistsResponse = await fetch(
-        `${import.meta.env.VITE_FAST_API_V2}/view-exists/${encodeURIComponent(
+        `${hostnameV2}/view-exists/${encodeURIComponent(
           newViewName
         )}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${
-              import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+            Authorization: `Bearer ${token
+              }`,
           },
         }
       );
@@ -384,17 +392,22 @@ export default function Source() {
 
       // Save the view
       console.log("Final apiPayload ===> ", apiPayload);
+
+      const newPayload = {
+        ...apiPayload,
+        project: project,
+        created_by: decodedToken?.preferred_username,
+      };
+
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API_V2}/generate-base-view`,
+        `${hostnameV2}/generate-base-view`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${
-              import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(apiPayload),
+          body: JSON.stringify(newPayload),
         }
       );
 
@@ -402,6 +415,7 @@ export default function Source() {
         toast.error("Error while saving view..");
         return null;
       }
+
 
       const data = await response.json();
       console.log("Save View Result ==> ", data);
@@ -469,18 +483,18 @@ export default function Source() {
       }))
     );
   }, [userSelection]);
-  
+
   const handleViewLinkClick = useCallback(() => {
     setNodes([]);
   }, [setNodes]);
-  
+
   return (
     <div className="w-full h-screen overflow-hidden bg-[rgba(243,245,247,1)]">
-      <div className="flex items-center gap-6 px-4 py-2 bg-white border-b">
+      <div className="flex items-center gap-6 px-4 pt-2">
         {/* Dashboard Button */}
         <Link
           to="/dashboard"
-          className="flex items-center gap-2 px-4 py-2 bg-white text-[#8E77BB] font-semibold rounded-lg hover:bg-[#E8E4F1] transition-colors"
+          className="flex items-center  border-solid border gap-2 px-4 py-2 bg-white text-[#8E77BB] font-semibold rounded-lg hover:bg-[#E8E4F1] transition-colors"
         >
           <LayoutDashboard size={20} />
           Dashboard
@@ -504,14 +518,13 @@ export default function Source() {
             View
           </Link>
           <span className="mx-2 text-gray-500">&gt;</span>
-          {<span className="text-gray-900 font-medium">Source</span>}
+          {<span className="text-[#8E77BB] font-medium">Source</span>}
         </div>
       </div>
 
       <div
-        className={`${
-          showPreview ? "h-[60vh]" : "h-[calc(100vh-6rem)]"
-        } transition-all duration-300`}
+        className={`${showPreview ? "h-[60vh]" : "h-[calc(100vh-6rem)]"
+          } transition-all duration-300`}
       >
         <div className="w-full h-[calc(100%-2.5rem)]">
           <ReactFlow

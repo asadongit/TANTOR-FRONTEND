@@ -6,7 +6,7 @@ import { X, FileCode } from "lucide-react";
 function ComplexQueryEditor({setShowQueryEditor}) {
   const [query, setQuery] = useState("");
   
-  const {userSelections, setUserSelections, finalPayload, handleFinalPayload, complexCheck} = useStateContext("");
+  const {userSelections, setUserSelections, finalPayload, handleFinalPayload} = useStateContext("");
   
   useEffect(() => {
 
@@ -23,8 +23,8 @@ function ComplexQueryEditor({setShowQueryEditor}) {
   },[]);
   
   const handelExecute = () => {
-
-    if(complexCheck){
+    if(query.trim() != ""){
+    if(finalPayload?.view_type == 'Integrated View'){
       console.log("query is ======>",query) 
       const updatedPayload = { ...finalPayload,  "complex_query" : query};
       console.log("Updated final payload with query is ===>", updatedPayload);
@@ -37,12 +37,18 @@ function ComplexQueryEditor({setShowQueryEditor}) {
         return updatedSelections;
     });
   }
+}
     setShowQueryEditor(false);
+  }
+
+  const handleClear = () =>{
+    setQuery("")
+    delete finalPayload.complex_query;
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end bg-black bg-opacity-0 p-0 h-screen">
-      <div className="w-96 bg-white shadow-lg overflow-hidden h-full"> {/* Increased width to w-96 */}
+      <div className="w-96 bg-white shadow-lg overflow-hidden h-full">
         <div className="h-full flex flex-col">
 
           <div className="h-[10%] border-solid border-b-2">
@@ -93,7 +99,7 @@ function ComplexQueryEditor({setShowQueryEditor}) {
           <div className="flex w-full justify-around">
             <button
               className="w-[43%] px-3 py-1 border rounded-lg hover:bg-gray-50"
-              onClick={(e) => setQuery("")}
+              onClick={handleClear}
             >
               Clear
             </button>
