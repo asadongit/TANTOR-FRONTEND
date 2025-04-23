@@ -5,12 +5,16 @@ import PropTypes from "prop-types";
 import { usePurgeContext } from "../react-flow/context/PurgeContext";
 import { useAuth } from "../../../context/AuthContext";
 import { useStateContext } from "../react-flow/context/ContextProvider";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 
 const PurgeFooter = ({ onCancel }) => {
 
   const hostname = import.meta.env.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
+
+  const navigate = useNavigate();
 
   const {sourceData, targetData, filters, dropPartitions} = usePurgeContext("");
   const { defineNodeName, defineNodeDesc } = useStateContext("");  
@@ -92,6 +96,14 @@ const PurgeFooter = ({ onCancel }) => {
       if (!res.ok) throw new Error('Failed to post data');
 
       const data = await res.json();
+      toast.success("Purge fow submitted successfully!", 
+        {
+          duration: 2000,
+          position: "top-right",
+          icon:"✅"
+        }
+      )
+      setTimeout(() => navigate("/purge"), 2000)
       console.log("Response -- ", data);
     } catch (err) {
       console.error('Error:', err.message);
