@@ -149,3 +149,52 @@ export const useDDL = (connectionName, schemaName) => {
     retry: 2,
   });
 };
+
+
+
+
+
+
+
+
+
+const fetchTargetDDL = async ({  token,  hostnameV2,  sourceConnection,  targetConnection,  sourceSchema,  targetSchema = null,  sourceTables = [] }) => {
+  if (!token || !sourceConnection || !targetConnection || !sourceSchema) return [];
+
+  try {
+    const response = await axios.post(
+      `${hostnameV2}/metadata-archivals/grouped-target-tables`,
+      {
+        source_conn_name: sourceConnection,
+        target_conn_name: targetConnection,
+        source_schema: sourceSchema,
+        ...(targetSchema && { target_schema: targetSchema }), 
+        ...(sourceTables.length > 0 && { selected_source_tables: sourceTables }) 
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching grouped target tables:", error);
+    return [];
+  }
+};
+
+export const useBulkTables = ( sourceConnection, targetConnection, sourceSchema, targetSchema = null, sourceTables = []
+) => {
+  const { token, hostnameV2 } = useAuth();
+  return useQuery({
+    queryKey: ['bulkTables', sourceConnection, targetConnection, sourceSchema, targetSchema, sourceTables
+    ],
+    queryFn: () => fetchTargetDDL({ token, hostnameV2, sourceConnection, targetConnection, sourceSchema, targetSchema, sourceTables }),
+    enabled: !!token && !!sourceConnection && !!targetConnection && !!sourceSchema,
+    staleTime: 30 * 1000,
+    retry: 2,
+  });
+};
