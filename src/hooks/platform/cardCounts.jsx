@@ -5,25 +5,27 @@ import { useAuth } from "../../context/AuthContext";
 const hostnamev2 = import.meta.env.VITE_FAST_API_V2; 
 
 
-const fetchSourceTypeCounts = async (token, modelType) => {
+const fetchSourceTypeCounts = async (token, modelType, project) => {
   if (!token) throw new Error("Token is missing");
   if (!modelType) throw new Error("Model type is required");
 
 
   const response = await axios.get(`${hostnamev2}/connections/source-type-counts`, {
     params: { model_type: modelType }, 
-    headers: { Authorization: `Bearer ${token}` },
-  });
+      headers: {
+         Authorization: `Bearer ${token}`,
+         "x-project": project
+        },  });
 
   return response.data ?? {}; 
 };
 
 export const useSourceTypeCounts = (modelType) => {
-  const { token } = useAuth(); 
+  const { token, project } = useAuth(); 
 
   return useQuery({
-    queryKey: ["sourceTypeCounts", modelType], 
-    queryFn: () => fetchSourceTypeCounts(token, modelType),
+    queryKey: ["sourceTypeCounts", modelType, project], 
+    queryFn: () => fetchSourceTypeCounts(token, modelType, project),
     enabled: !!token && !!modelType, 
     staleTime: 1 * 60 * 1000, 
     retry: 2, 
@@ -31,22 +33,24 @@ export const useSourceTypeCounts = (modelType) => {
 };
 
 
-const fetchConnectionCounts = async (token) => {
+const fetchConnectionCounts = async (token, project) => {
   if (!token) throw new Error("Token is missing");
 
   const response = await axios.get(`${hostnamev2}/connections/dashboard-counts`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+      headers: {
+         Authorization: `Bearer ${token}`,
+         "x-project": project
+        },  });
 
   return response.data ?? [];
 };
 
 export const useConnectionCardData = () => {
-  const { token } = useAuth(); 
+  const { token,project } = useAuth(); 
 
   return useQuery({
-    queryKey: ["connectionDashboard"],
-    queryFn: () => fetchConnectionCounts(token), 
+    queryKey: ["connectionDashboard",project],
+    queryFn: () => fetchConnectionCounts(token,project), 
     enabled: !!token, 
     staleTime: 3 * 60 * 1000, 
     retry: 2, 
@@ -60,18 +64,19 @@ const fetchProjectCounts = async (token) => {
   if (!token) throw new Error("Token is missing");
 
   const response = await axios.get(`${hostnamev2}/project/dashboard-counts`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+      headers: {
+         Authorization: `Bearer ${token}`,
+        },  });
 
   return response.data ?? [];
 };
 
 export const useProjectCardData = () => {
-  const { token } = useAuth(); 
+  const { token,project } = useAuth(); 
 
   return useQuery({
     queryKey: ["ProjectDashboard"],
-    queryFn: () => fetchProjectCounts(token), 
+    queryFn: () => fetchProjectCounts(token,project), 
     enabled: !!token, 
     staleTime: 3 * 60 * 1000, 
     retry: 2, 

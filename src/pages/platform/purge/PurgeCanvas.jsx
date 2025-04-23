@@ -9,6 +9,7 @@ import PurgeDrawer from "../react-flow/dialog/PurgeDrawer"
 import PurgeSidebar from "./PurgeSidebar";
 import PurgeFooter from "./PurgeFooter";
 import { useStateContext } from "../react-flow/context/ContextProvider";
+import toast from "react-hot-toast";
 
 
 const nodeTypes = {
@@ -66,12 +67,89 @@ function PurgeCanvas() {
     setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId))
   }, [setNodes, setEdges]);
 
+  const handleConnectNode = useCallback(() => {
+    return toast.promise(
+      new Promise(async (resolve, reject) => {
+        try {
+          toast.dismiss();
+
+          const defineNodes = nodes.filter((n) => n.type === "define");
+          const sourceNodes = nodes.filter((n) => n.type === "source");
+          const targetNodes = nodes.filter((n) => n.type === "target");
+
+          const validationErrors = [];
+
+          // Validate connections
+          const hasDefineSource = edges.some(
+            (e) =>
+              e.source === defineNodes[0]?.id &&
+              e.target === sourceNodes[0]?.id
+          );
+          const hasSourceTarget = edges.some(
+            (e) =>
+              e.source === sourceNodes[0]?.id &&
+              e.target === targetNodes[0]?.id
+          );
+
+          if (!hasDefineSource)
+            validationErrors.push("Connect Define node to Source node");
+          if (!hasSourceTarget)
+            validationErrors.push("Connect Source node to Target node");
+
+          if (validationErrors.length > 0) {
+            throw new Error(validationErrors.join("\n"));
+          }
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }),
+      {
+        loading: <b>Validating....</b>,
+        success: () => {
+          toast.success("All nodes saved successfully!",
+            {
+              duration: 2000,
+              position: "top-center",
+              icon: "✅", 
+            }
+          );
+          return "";
+        },
+        error: (err) => (
+          <div className="text-sm">
+            <b className="text-red-600">Submission failed:</b>
+            {err.message.split("\n").map((line, idx) => (
+              <div key={idx} className="mt-1 flex items-start gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 flex-shrink-0 text-red-500"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>{line}</span>
+              </div>
+            ))}
+          </div>
+        ),
+      }
+    )
+  }, [nodes, edges])
+
   useEffect(() => {
     window.deleteNode = onNodeDelete;
+    window.handleConnectNode = handleConnectNode;
     return () => {
       window.deleteNode = undefined;
+      window.handleConnectNode = undefined;
     }
-  }, [onNodeDelete]);
+  }, [onNodeDelete, handleConnectNode]);
 
   return (
     <div className="h-full relative">

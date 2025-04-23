@@ -284,7 +284,7 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
 
 <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
 
-<DataTable columns={columns} data={filteredConnections} actions={actions} isLoading={isConnectionsLoading} isError={connectionsError} refetch={refetchConnections}/>
+<DataTable columns={columns} data={connections} actions={actions} isLoading={isConnectionsLoading} isError={connectionsError} refetch={refetchConnections}/>
  
 {activeModal?.name === 'editCreate' && (
   <ConnectionWizard 

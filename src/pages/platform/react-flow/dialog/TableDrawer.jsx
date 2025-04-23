@@ -1,4 +1,3 @@
-// components/TableDrawer.jsx
 import { useEffect, useState } from "react";
 import { useTableContext } from "../context/TableContext";
 import { Drawer } from "@mui/material";

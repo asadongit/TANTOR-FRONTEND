@@ -15,7 +15,7 @@ import {
 const Charts = ({ data }) => {
   const [statusData, setStatusData] = useState([]);
   const [lineChartData, setLineChartData] = useState([]);
-  const [timeFilter, setTimeFilter] = useState("Yearly");
+  const [timeFilter, setTimeFilter] = useState("Weekly");
   const [filteredData, setFilteredData] = useState([]);
 
   useEffect(() => {
@@ -146,9 +146,9 @@ const Charts = ({ data }) => {
     const groupedData = {};
     
     filteredData.forEach(item => {
-      if (!item.scheduler || !item.scheduler.startdatetime) return;
+      if (!item.created_at) return;
       
-      const date = new Date(item.scheduler.startdatetime);
+      const date = new Date(item.created_at);
       let key;
       
       if (timeFilter === "Weekly") {
@@ -188,6 +188,8 @@ const Charts = ({ data }) => {
     
     setLineChartData(result);
   };
+
+
 
   const COLOR_PALETTE = ["#E6E1FF", "#C5BAFF", "#9D85F2", "#A698EB", "#735ABF", "#5D45DB"];
 

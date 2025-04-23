@@ -29,7 +29,6 @@ export function SourceNode({ id, data }) {
   const [loading, setLoading] = useState(true);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
-  const [whereConditions, setWhereConditions] = useState({});
   const [schemaLoading, setSchemaLoading] = useState(false);
   const { openDrawer } = useTableContext();
 
@@ -42,43 +41,19 @@ export function SourceNode({ id, data }) {
       connection: selectedConnection,
       schema: selectedSchema,
       selectedTables: selectedItems,
-      migrationScope: selectedScope, // for source node
+      migrationScope: selectedScope,
       isValid: Boolean(selectedConnection && selectedSchema && selectedItems.length > 0),
-      whereConditions,
-      filters: selectedScope === 'subset' 
-        ? whereConditions[selectedItems[0]] || []
-        : []
+      // Get filters from data.tables for selected items
+      filters: data.tables
+        ?.filter(t => selectedItems.includes(t.table_name))
+        .flatMap(t => t.filters || [])
     };
   
     onDataChange(id, nodeData);
-  }, [selectedConnection, selectedSchema, selectedItems, selectedScope, id, onDataChange]);
+  }, [selectedConnection, selectedSchema, selectedItems, selectedScope, data.tables]);
 
-    // When opening table drawer
-    const handleOpenDrawer = (table) => {
-      openDrawer(id, {
-        table,
-        conditions: whereConditions[table.table_name] || [],
-        isBulk: selectedScope === 'bulk'
-      });
-    };
   
-    // When saving conditions from drawer
-    useEffect(() => {
-      const handleConditionSave = (tableName, conditions) => {
-        setWhereConditions(prev => ({
-          ...prev,
-          [tableName]: conditions
-        }));
-        
-        // For subset mode, replace previous conditions
-        if (selectedScope === 'subset') {
-          setSelectedItems([tableName]);
-        }
-      };
-  
-      window.addEventListener('tableConditionsSaved', handleConditionSave);
-      return () => window.removeEventListener('tableConditionsSaved', handleConditionSave);
-    }, [selectedScope]);
+
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -229,13 +204,22 @@ export function SourceNode({ id, data }) {
   };
 
   const handleTableSelection = (tableName) => {
-    setSelectedItems((prev) => {
-      if (selectedScope === "subset") {
-        return prev.includes(tableName) ? [] : [tableName];
+    setSelectedItems(prev => {
+      const newSelection = selectedScope === "subset" 
+        ? [tableName]
+        : prev.includes(tableName)
+          ? prev.filter(t => t !== tableName)
+          : [...prev, tableName];
+  
+      // Initialize table entry if not exists
+      if (!data.tables?.some(t => t.table_name === tableName)) {
+        onDataChange(id, {
+          ...data,
+          tables: [...(data.tables || []), { table_name: tableName, filters: [] }]
+        });
       }
-      return prev.includes(tableName)
-        ? prev.filter((item) => item !== tableName)
-        : [...prev, tableName];
+  
+      return newSelection;
     });
   };
 

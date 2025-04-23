@@ -5,12 +5,16 @@ import PropTypes from "prop-types";
 import { usePurgeContext } from "../react-flow/context/PurgeContext";
 import { useAuth } from "../../../context/AuthContext";
 import { useStateContext } from "../react-flow/context/ContextProvider";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 
 const PurgeFooter = ({ onCancel }) => {
 
   const hostname = import.meta.env.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
+
+  const navigate = useNavigate();
 
   const {sourceData, targetData, filters, dropPartitions} = usePurgeContext("");
   const { defineNodeName, defineNodeDesc } = useStateContext("");  
@@ -92,8 +96,17 @@ const PurgeFooter = ({ onCancel }) => {
       if (!res.ok) throw new Error('Failed to post data');
 
       const data = await res.json();
+      toast.success("Purge fow submitted successfully!", 
+        {
+          duration: 2000,
+          position: "top-right",
+          icon:"✅"
+        }
+      )
+      setTimeout(() => navigate("/purge"), 2000)
       console.log("Response -- ", data);
     } catch (err) {
+      toast.error("Submission failed!")
       console.error('Error:', err.message);
     }
   };
@@ -113,7 +126,7 @@ const PurgeFooter = ({ onCancel }) => {
   };
 
   return (
-    <div className="bg-white w-full py-2.5 flex justify-end border-solid border-t-2">
+    <div className="bg-gray-50 w-full py-4 flex justify-end border-solid border-t-2">
       <div className="mr-3">
         <button
           type="button"
