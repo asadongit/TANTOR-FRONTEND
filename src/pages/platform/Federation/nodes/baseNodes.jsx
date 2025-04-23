@@ -150,7 +150,7 @@ export function BaseNode({ id, data }) {
       (async () => {
         let response;
         try {
-          response = await fetch(`${hostnameV2}/fetch_view_columns`, {
+          response = await fetch(`${hostnameV1}/fetch_view_columns`, {
             headers: {
               "Content-Type": "application/json",
               authorization: `Bearer ${token}`,

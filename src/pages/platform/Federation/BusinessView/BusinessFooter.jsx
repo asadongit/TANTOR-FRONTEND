@@ -514,8 +514,8 @@ export function BusinessFooter() {
 
     const newPayload = {
       ...finalPayload,
-      project: sessionStorage.getItem("project") || "default",
-      created_by: sessionStorage.getItem("created_by") || "sabhyata",
+      project: project,
+      created_by: decodedToken?.preferred_username,
     };
 
     const response = await fetch(
