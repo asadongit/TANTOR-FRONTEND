@@ -16,6 +16,7 @@ export const defaultSetting = {
 
 const ColumnSettings = ({ columnSetting, queryType }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const [settings, setSettings] = useState(defaultSetting);
 
   const {
@@ -314,7 +315,11 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
               <span className="text-lg font-medium ml-2">Column Settings</span>
             </div>
             <div className="flex items-center">
-              <button onClick={(e) => alert("Info")} className="mr-2">
+              <button
+                onMouseEnter={() => setShowInfo(true)}
+                onMouseLeave={() => setShowInfo(false)}
+                className="text-gray-500 hover:text-gray-700 mr-2"
+              >
                 <Info size={16} />
               </button>
               <button
@@ -346,7 +351,41 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
           </div>
         </div>
       </div>
+      
+      {showInfo && (
+        <div
+          className="absolute top-16 right-23 bg-white px-4 py-5 w-72 shadow-2xl mb-4 mr-4 rounded-2xl border border-gray-300 mx-auto animate-fade-in z-50"
+          onMouseEnter={() => setShowInfo(true)}
+          onMouseLeave={() => setShowInfo(false)}
+        >
+          <div className="space-y-4 text-gray-700 text-xs">
+            {[
+              { label: "Name", text: "Displays the selected column name." },
+              { label: "Type", text: "Displays the selected column type." },
+              { label: "Alias", text: "Allows you to specify the column alias." },
+              { label: "Output", text: "Choose whether to include the column in the query." },
+              { label: "Sort", text: "Specifies the sort order of column values." },
+              { label: "Order", text: "Specifies the order in which columns are sorted." },
+              { label: "Group By", text: "Groups data by column values." },
+              { label: "Aggregate", text: "Specifies the aggregate function." }
+            ].map((item, index) => (
+              <div key={index}>
+                <p className="text-gray-900 font-medium">{item.label}</p>
+                <p className="text-gray-600">{item.text}</p>
+              </div>
+            ))}
+          </div>
+
+          <hr className="border-t border-dotted border-gray-400 my-4" />
+
+          <div className="px-3 py-1 bg-gray-100 text-gray-800 rounded-lg text-xs border border-gray-300">
+            <strong>Note</strong>
+            <p>Aggregated columns should always have an alias.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
-  };
+};
+
 export default ColumnSettings;

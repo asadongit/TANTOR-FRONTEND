@@ -8,6 +8,8 @@ import { Modal } from "@mui/material";
 import { Columns } from "../BusinessView/Columns";
 import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
+import { useLocation } from "react-router-dom";
+import { useAuth } from "../../../../context/AuthContext";
 
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
@@ -74,7 +76,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 
 export function SourceViewNode({ id, onSave }) {
   const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload } = useStateContext("");
+  const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -84,17 +86,32 @@ export function SourceViewNode({ id, onSave }) {
   const [columnData, setColumnData] = useState([])
   const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [previousView, setPreviousView] = useState("");
+  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
 
-  // useEffect(() => {
-  //   console.log("MY PREVIOUS VIEWWW IS ==========>", previousView)
-  // }, [])
+  const modalState = useLocation().state || {
+    queryType: "Regular",
+    viewType: "Business",
+  };
+
+  useEffect(() => {
+    handleFinalPayload((prevData) => ({
+      ...prevData,
+      view_type: "Integrated View"
+    }));
+  }, [])
 
   useEffect(() => {
     const fetchViews = async () => {
       try {
-        var viewType = 'Base';
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/get-all-views?view_type=${viewType}`);
+        const params = new URLSearchParams({
+          view_type: "Base",
+          project: project,
+          created_by: decodedToken?.preferred_username,
+        });
+
+        const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`);
         const data = await response.json();
+
         if (data && data.result) {
           setViews(data.result);
         } else {
@@ -104,12 +121,14 @@ export function SourceViewNode({ id, onSave }) {
         console.error("Error fetching views:", error);
       }
     };
+
     fetchViews();
   }, []);
 
+
   const handleViewChange = (e) => {
     setSelectedColumns([])
-    console.log("selected view $$$$$$$$$$$$",selectedView)
+    console.log("selected view $$$$$$$$$$$$", selectedView)
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
       delete updatedSettings[selectedView];
@@ -117,8 +136,8 @@ export function SourceViewNode({ id, onSave }) {
       console.log("Updated column settings:", updatedSettings);
       return updatedSettings;
     });
-    setSelectedView(e.target.value)
-    fetchColumnsForView(e.target.value);
+    setSelectedView(e.target.value.toLowerCase())
+    fetchColumnsForView(e.target.value.toLowerCase());
     // handleFinalPayload({});
 
   }
@@ -131,10 +150,10 @@ export function SourceViewNode({ id, onSave }) {
     }
     console.log("viewnames aree ===>", temp)
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/fetch_view_columns`, {
+      const response = await fetch(`${hostnameV1}/fetch_view_columns`, {
         method: "POST",
         headers: {
-          'Authorization': `Bearer ${encodedToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(temp)
@@ -241,32 +260,47 @@ export function SourceViewNode({ id, onSave }) {
     }
   };
 
-
   const isAllSelected = selectedColumns.length === (columnsForViews[selectedView]?.length || 0);
 
+  // --------------------------------------------->
+  // useEffect(() => {
+  //   console.log("CHECKING PROBLEM FOR DUPLICATE",selectedColumnsOrder );
+
+  //   if (selectedView && columnSettings[selectedView]) {
+  //     const columnsWithOutputYes = selectedColumnsOrder.filter(
+  //       (column) => columnSettings[selectedView][column]?.output === "Yes"
+  //     );
+
+  //     // Ensure unique values in selectedColumns
+  //     setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
+  //   }
+  // }, [columnSettings, selectedView, selectedColumnsOrder]);
+  // ------------------------------------------------>
+
   useEffect(() => {
-    console.log("CHECKING PROBLEM FOR DUPLICATE");
-
     if (selectedView && columnSettings[selectedView]) {
-      const columnsWithOutputYes = selectedColumnsOrder.filter(
-        (column) => columnSettings[selectedView][column]?.output === "Yes"
+      const columnsWithOutputOrAggregate = Object.keys(columnSettings[selectedView]).filter(
+        column => {
+          const columnData = columnSettings[selectedView][column] || {};
+          return columnData.output === "Yes" || (columnData.aggregate && columnData.aggregate.trim() !== "");
+        }
       );
-
-      // Ensure unique values in selectedColumns
-      setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
+      setSelectedColumns(columnsWithOutputOrAggregate);
     }
-  }, [columnSettings, selectedView, selectedColumnsOrder]);
+  }, [columnSettings, selectedView]);
+
+
 
 
   const handleSave = () => {
 
-    console.log("MY PREVIOUS VIEWWW IS ==========>",previousView)
+    console.log("MY PREVIOUS VIEWWW IS ==========>", previousView)
 
     // if (selectedColumns.length === 0) {
     //   toast.error("Select atleast one column");
     //   return;
     // }
-    if (!finalPayload.operation && previousView!=selectedView) {
+    if (!finalPayload.operation && previousView != selectedView) {
       console.log("URR VIEW IS CHANGEDDD")
       handleFinalPayload((prevData) => ({
         ...prevData,
@@ -275,7 +309,7 @@ export function SourceViewNode({ id, onSave }) {
         ),
       }));
     }
-    else if(finalPayload.operation){
+    else if (finalPayload.operation) {
       handleFinalPayload({});
       const updatedSettings = { ...columnSettings };
       delete updatedSettings.Union;
@@ -283,7 +317,7 @@ export function SourceViewNode({ id, onSave }) {
     }
 
 
-    console.log("vcolumn data is&&&&&&&&&&&&&&&&&",columnData)
+    console.log("vcolumn data is&&&&&&&&&&&&&&&&&", columnData)
     if (selectedView) {
       const view = selectedView;
       const newPayload = {
@@ -349,17 +383,17 @@ export function SourceViewNode({ id, onSave }) {
     handleViewPayload(updatedPayload);
 
     if (!finalPayload.operation) {
-    handleFinalPayload((prevData) => ({
-      ...prevData,
-      joins: prevData?.joins?.filter(
-        (join) => join.view1 !== selectedView && join.view2 !== selectedView
-      ),
-    }));
-  }
-  else if(finalPayload.operation){
-    const cleanedPayload = cleanFinalPayload(finalPayload, selectedView);
-    handleFinalPayload(cleanedPayload)
-  }
+      handleFinalPayload((prevData) => ({
+        ...prevData,
+        joins: prevData?.joins?.filter(
+          (join) => join.view1 !== selectedView && join.view2 !== selectedView
+        ),
+      }));
+    }
+    else if (finalPayload.operation) {
+      const cleanedPayload = cleanFinalPayload(finalPayload, selectedView);
+      handleFinalPayload(cleanedPayload)
+    }
 
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
@@ -409,7 +443,7 @@ export function SourceViewNode({ id, onSave }) {
             <h3 className="text-black font-medium">Source View</h3>
           </div>
           <div>
-            {complexCheck && (
+            {modalState.queryType == "Complex" && (
               <button
                 onClick={() => toggleEditorModal(true)}
                 className="p-1 rounded-md hover:bg-gray-200"

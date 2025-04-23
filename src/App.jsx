@@ -32,6 +32,7 @@ import {
   PublicRoute,
 } from "./context/AuthContext";
 import TantorLogin from "./pages/login";
+import { BusinessHeader } from "./pages/platform/Federation/BusinessView/BusinessHeader";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -44,7 +45,6 @@ function App() {
   return (
     <Router basename="/tantor2">
       <AuthProvider>
-        <ContextViewProvider>
           <Toaster />
           <ModalProvider>
             <Routes>
@@ -179,45 +179,48 @@ function App() {
                   element={<CanvasLayout />}
                 />
 
-                <Route
-                  path="/viewcanvas"
-                  element={
-                    <ViewDrawer>
-                      <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
-                        <Header className="h-16 flex-shrink-0" />
-                        <div className="flex-1 flex mt-8">
-                          <BusinessSidebar className="w-64" />
-                          <div className="flex-1 relative">
-                            <ReactFlowProvider>
-                              <ViewCanvas />
-                            </ReactFlowProvider>
-                          </div>
-                        </div>
-                        <BusinessFooter />
-                      </div>
-                    </ViewDrawer>
-                  }
-                />
+        <Route
+          path="/viewcanvas"
+          element={
+            <ContextViewProvider >
+              <ViewDrawer>
+                <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
+                  <Header className="h-16 flex-shrink-0" />{" "}
+                  <BusinessHeader/>
+                  <div className="flex-1 flex mt-8">
+                    <BusinessSidebar className="w-64" />{" "}
+                    <div className="flex-1 relative">
+                      {" "}
+                      <ReactFlowProvider>
+                        <ViewCanvas />
+                      </ReactFlowProvider>
+                    </div>
+                  </div>
+                  <BusinessFooter />
+                </div>
+              </ViewDrawer>
+              </ContextViewProvider>
+          }
+        />
+        <Route
+          path="/federation/view/source"
+          element={
+            <ContextViewProvider>
+              <div className="h-screen flex flex-col">
+                <Header className="flex-shrink-0 h-16" />
+                <div className="flex-1 relative overflow-hidden">
+                  <ReactFlowProvider>
+                    <Source />
+                  </ReactFlowProvider>
+                </div>
+              </div>
+            </ContextViewProvider>
+          }
+        />
 
-                <Route
-                  path="/federation/view/source"
-                  element={
-                    <ContextViewProvider>
-                      <div className="h-screen flex flex-col">
-                        <Header className="flex-shrink-0 h-16" />
-                        <div className="flex-1 relative overflow-hidden">
-                          <ReactFlowProvider>
-                            <Source />
-                          </ReactFlowProvider>
-                        </div>
-                      </div>
-                    </ContextViewProvider>
-                  }
-                />
-              </Route>
-            </Routes>
-          </ModalProvider>
-        </ContextViewProvider>
+</Route>
+      </Routes>
+      </ModalProvider>
       </AuthProvider>
     </Router>
   );

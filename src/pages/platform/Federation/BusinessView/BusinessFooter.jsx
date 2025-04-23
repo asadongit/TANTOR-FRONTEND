@@ -8,103 +8,157 @@ import { ToastContainer, toast } from "react-toastify";
 import SaveViewModal from "../components/SaveViewModal";
 import { useLocation, useNavigate } from "react-router-dom";
 import FilterComponent from "../components/FilterComponent";
+import { useAuth } from "../../../../context/AuthContext";
 
 export function BusinessFooter() {
 
   const navigate = useNavigate();
-  const { finalPayload, handleFinalPayload, complexCheck, connectionPayload, viewPayload, columnSettings } = useStateContext("");
+  const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings } = useStateContext("");
   const [preview, setPreview] = useState(false);
-  const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  // const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
 
+
+  const modalState = useLocation().state || {
+    queryType: "Regular",
+    viewType: "Business",
+  };
+
+  // const getSelectFields = (columnSettings, hasOperation) => {
+  //   console.log("hase operation isss =====>",hasOperation)
+  //   const selectedViews = hasOperation
+  //     ? { Union: columnSettings.Union }
+  //     : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
+
+
+  //   console.log("selected views column seetings ====>", selectedViews)
+
+  //   return Object.entries(selectedViews || {})
+  //     .flatMap(([view, columns]) =>
+  //       Object.entries(columns)
+  //         .filter(([colName, colProps]) => colProps.output === "Yes")
+  //         .map(([colName, colProps]) => ({
+  //           field: colProps.aggregate
+  //             ? `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`
+  //             : (hasOperation ? colName : `${view}.${colName}`),
+  //           alias: colProps.alias || ""
+  //         }))
+  //     );
+  // };
 
   const getSelectFields = (columnSettings, hasOperation) => {
+    console.log("hasOperation is =====>", hasOperation);
+
     const selectedViews = hasOperation
       ? { Union: columnSettings.Union }
       : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
+    console.log("selected views column settings ====>", selectedViews);
 
-    console.log("selected views column seetings ====>", selectedViews)
+    return Object.entries(selectedViews || {}).flatMap(([view, columns]) =>
+      Object.entries(columns).flatMap(([colName, colProps]) => {
+        let fields = [];
 
-    return Object.entries(selectedViews || {})
-      .flatMap(([view, columns]) =>
-        Object.entries(columns)
-          .filter(([colName, colProps]) => colProps.output === "Yes")
-          .map(([colName, colProps]) => ({
-            field: colProps.aggregate
-              ? `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`
-              : (hasOperation ? colName : `${view}.${colName}`),
+        if (colProps.aggregate) {
+          fields.push({
+            field: `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`,
             alias: colProps.alias || ""
-          }))
-      );
+          });
+        }
+
+        if (colProps.output === "Yes") {
+          fields.push({
+            field: hasOperation ? colName : `${view}.${colName}`,
+            alias: colProps.aggregate ? "" : colProps.alias || ""
+          });
+        }
+
+        return fields;
+      })
+    );
   };
+
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  const helperPreviewData = (cleanApiPayload) => {
+  const [rowData, setRowData] = useState([]);
+
+  const [colDefs, setColumnDefs] = useState([])
+
+  const helperPreviewData = async (cleanApiPayload) => {
 
     console.log("CALLING API VIA PAYLOAD =====>", cleanApiPayload)
-    fetch(`${import.meta.env.VITE_FAST_API_V2}/save-view?execute_query=true`, {
-      method: "POST",
-      headers: {
-        'Authorization': `Bearer ${encodedToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(cleanApiPayload),
-    })
-      .then((response) =>
-        response.text().then((data) => ({ status: response.status, data }))
-      )
-      .then(({ status, data }) => {
-        if (status === 200) {
-          const dataArray = data.split("\n")
-            .filter(item => item.trim() !== "")
-            .map(item => {
-              try {
-                return JSON.parse(item);
-              } catch (e) {
-                console.error("Error parsing JSON:", e, item);
-                return null;
-              }
-            })
-            .filter(item => item !== null);
 
-          if (dataArray.length === 0) {
-            setError("Table is empty");
-            setRowData([]);
-          } else {
-            console.log("Parsed Data Array: ", dataArray);
-            setLoading(false);
-            const rows = data.trim().split("\n").map((row) => JSON.parse(row));
-            const columns = Object.keys(rows[0]);
-            console.log("rows are ===>", rows);
-            console.log("columns are ===>", columns);
-            setColumnDefs(columns);
-            setRowData(rows);
-            setError(null);
-          }
-        } else {
-          if (data) {
-            setLoading(false);
-            const res = JSON.parse(data);
-            toast.error("Select correct inputs");
-            setError(res.detail);
-            setPreview(false);
-          }
+    try {
+      const response = await fetch(
+        `${hostnameV2}/save-view?execute_query=true`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(cleanApiPayload),
         }
-      })
-      .catch((error) => {
-        console.error("Error fetching data:", error);
-        setError("Something went wrong!");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      );
 
-    // } else {
-    //   toast.error("Select inputs first");
-    // }
+      const responseText = await response.text();
+
+      if (response.ok) {
+        const data = responseText
+          .trim()
+          .split("\n")
+          .reduce((validData, jsonString) => {
+            try {
+              validData.push(JSON.parse(jsonString));
+            } catch (error) {
+              console.error("Error parsing JSON object:", error, jsonString);
+            }
+            return validData;
+          }, []);
+
+        if (data.length === 0) {
+          setError("Table is empty");
+          setRowData([]);
+        } else {
+          console.log("Parsed Data Array:", data);
+          setLoading(false);
+          const columns = Object.keys(data[0]);
+          setColumnDefs(columns);
+          setRowData(data);
+          setError(null);
+          toast.success("View Query Executed!");
+        }
+        return data;
+      } else {
+        try {
+          const errorData = JSON.parse(responseText);
+          let errorMessage = errorData.detail || "Unknown error occurred";
+          setError(errorMessage);
+          toast.error(errorMessage);
+          setColumnDefs([]);
+          setRowData([]);
+          setPreview(false);
+        } catch (parseError) {
+          console.error("Error parsing error response:", parseError, responseText);
+          setError("An unexpected error occurred");
+          toast.error("An unexpected error occurred");
+        }
+        return null;
+      }
+    } catch (error) {
+      console.error("Error executing query:", error);
+      setError("Something went wrong!");
+      toast.error("Failed to execute query");
+      setColumnDefs([]);
+      setRowData([]);
+      setPreview(false);
+      return null;
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -144,14 +198,12 @@ export function BusinessFooter() {
     let selectColumns = new Set();
     let groupByColumns = new Set();
     let aggregateColumns = new Set();
+    let sortColumns = new Set();
 
     const hasOperation = apiPayloadForApi?.operation !== undefined;
     const source = hasOperation
-      ? columnSettings["Union"]
+      ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === "Union"))
       : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
-
-    console.log("$$$#####$$$$$#####%%%%",source)
-    console.log("column settings ===>",columnSettings)
 
     if (!source || Object.keys(source).length === 0) {
       toast.error("Please select columns first before proceeding.");
@@ -159,10 +211,10 @@ export function BusinessFooter() {
     }
 
     Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
-      const columns = hasOperation ? { [tableOrColumn]: columnsOrProperties } : columnsOrProperties;
+      const columns = hasOperation ? columnsOrProperties : columnsOrProperties;
 
       Object.entries(columns).forEach(([column, properties]) => {
-        if (properties.output === "Yes" && !properties.aggregate) {
+        if (properties.output === "Yes") {
           selectColumns.add(column);
         }
         if (properties.groupBy === "Yes") {
@@ -171,21 +223,43 @@ export function BusinessFooter() {
         if (properties.aggregate) {
           aggregateColumns.add(column);
         }
+        if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") {
+          sortColumns.add(column);
+        }
+
       });
     });
 
     selectColumns = [...selectColumns];
     groupByColumns = [...groupByColumns];
     aggregateColumns = [...aggregateColumns];
+    sortColumns = [...sortColumns];
+
+    console.log("Select Columns:", selectColumns);
+    console.log("Group By Columns:", groupByColumns);
+    console.log("Aggregate Columns:", aggregateColumns);
+    console.log("Sort Columns:", sortColumns);
 
 
-    if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
-      toast.error("Select Field must be aggregate or in Group by");
+    const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
+
+    if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
+      toast.error(`${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
       return;
     }
 
-    if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
-      toast.error("Select Field must be aggregate or in Group by");
+    const nonAggregatedSelectColumns = selectColumns;
+
+    if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
+      toast.error(`${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+      return;
+    }
+
+
+    const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
+
+    if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
+      toast.error(`${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
       return;
     }
 
@@ -194,16 +268,20 @@ export function BusinessFooter() {
       setLoading(true);
       setRowData([]);
 
+      console.log("source is newwwwwwww =====>", source)
+
       const groupByArray = Object.entries(source).flatMap(([view, columns]) =>
         Object.entries(columns)
           .filter(([col, settings]) => settings.groupBy === "Yes")
           .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
       );
 
+      console.log("group by array new is =====>", groupByArray)
+
       let orderBy = [];
       Object.keys(source).forEach(table => {
         Object.entries(source[table]).forEach(([key, column]) => {
-          if (column.order) {
+          if (column.order && parseInt(column.order, 10) > 0 && column.sort.trim() !== "") {
             orderBy.push({
               table,
               key,
@@ -223,7 +301,10 @@ export function BusinessFooter() {
 
       console.log("order by is ====>", { order_by: finalOrderBy });
 
+
       const selectFields = getSelectFields(columnSettings, hasOperation);
+
+      console.log("selected fields areeee =========>", selectFields)
 
       const updatedPayload = {
         ...apiPayloadForApi,
@@ -252,8 +333,9 @@ export function BusinessFooter() {
   const handleClick = async () => {
 
     if (finalPayload && Object.keys(finalPayload).length > 0) {
-      if (!complexCheck) setIsFilterModalOpen(true);
+      if (modalState.queryType == "Regular") setIsFilterModalOpen(true);
       else {
+        
         const connections = connectionPayload.map(item => item.selectedConnection);
         const views = viewPayload.map(item => item.view);
         const metadata = { connections, views };
@@ -261,18 +343,23 @@ export function BusinessFooter() {
         let selectColumns = new Set();
         let groupByColumns = new Set();
         let aggregateColumns = new Set();
+        let sortColumns = new Set();
 
-        const hasOperation = finalPayload?.operation !== undefined;
+        const hasOperation = apiPayloadForApi?.operation !== undefined;
         const source = hasOperation
-          ? columnSettings["Union"]
+          ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === "Union"))
           : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
+        if (!source || Object.keys(source).length === 0) {
+          toast.error("Please select columns first before proceeding.");
+          return;
+        }
 
         Object.entries(source).forEach(([tableOrColumn, columnsOrProperties]) => {
-          const columns = hasOperation ? { [tableOrColumn]: columnsOrProperties } : columnsOrProperties;
+          const columns = hasOperation ? columnsOrProperties : columnsOrProperties;
 
           Object.entries(columns).forEach(([column, properties]) => {
-            if (properties.output === "Yes" && !properties.aggregate) {
+            if (properties.output === "Yes") {
               selectColumns.add(column);
             }
             if (properties.groupBy === "Yes") {
@@ -281,21 +368,43 @@ export function BusinessFooter() {
             if (properties.aggregate) {
               aggregateColumns.add(column);
             }
+            if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") {
+              sortColumns.add(column);
+            }
+
           });
         });
 
         selectColumns = [...selectColumns];
         groupByColumns = [...groupByColumns];
         aggregateColumns = [...aggregateColumns];
+        sortColumns = [...sortColumns];
+
+        console.log("Select Columns:", selectColumns);
+        console.log("Group By Columns:", groupByColumns);
+        console.log("Aggregate Columns:", aggregateColumns);
+        console.log("Sort Columns:", sortColumns);
 
 
-        if (groupByColumns.length > 0 && JSON.stringify(selectColumns) !== JSON.stringify(groupByColumns)) {
-          toast.error("Select Field must be aggregate or in Group by");
+        const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
+
+        if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
+          toast.error(`${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
           return;
         }
 
-        if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0) {
-          toast.error("Select Field must be aggregate or in Group by");
+        const nonAggregatedSelectColumns = selectColumns;
+
+        if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
+          toast.error(`${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+          return;
+        }
+
+
+        const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
+
+        if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
+          toast.error(`${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
           return;
         }
 
@@ -310,10 +419,12 @@ export function BusinessFooter() {
               .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
           );
 
+          console.log("group by array new is =====>", groupByArray)
+
           let orderBy = [];
           Object.keys(source).forEach(table => {
             Object.entries(source[table]).forEach(([key, column]) => {
-              if (column.order) {
+              if (column.order && parseInt(column.order, 10) > 0 && column.sort.trim() !== "") {
                 orderBy.push({
                   table,
                   key,
@@ -331,9 +442,7 @@ export function BusinessFooter() {
             return hasOperation ? `${col.key} ${sortOrder}` : `${col.table}.${col.key} ${sortOrder}`;
           });
 
-
           console.log("order by is ====>", { order_by: finalOrderBy });
-          console.log("second time calling the",finalOrderBy)
 
           const selectFields = getSelectFields(columnSettings, hasOperation);
 
@@ -358,12 +467,6 @@ export function BusinessFooter() {
   };
 
 
-
-
-  const [rowData, setRowData] = useState([]);
-
-  const [colDefs, setColumnDefs] = useState([])
-
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const toggleModal = () => {
@@ -387,13 +490,12 @@ export function BusinessFooter() {
     console.log("final payload fainally is =======>", finalPayload)
 
     const viewExistsResponse = await fetch(
-      `${import.meta.env.VITE_FAST_API_V2}/view-exists/${newViewName}`,
+      `${hostnameV2}/view-exists/${newViewName}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -409,18 +511,25 @@ export function BusinessFooter() {
       return null;
     }
 
+
+    const newPayload = {
+      ...finalPayload,
+      project: project,
+      created_by: decodedToken?.preferred_username,
+    };
+
     const response = await fetch(
-      `${import.meta.env.VITE_FAST_API_V2}/save-view`,
+      `${hostnameV2}/save-view`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_FEDERATION_ACCESS_TOKEN
-            }`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(finalPayload),
+        body: JSON.stringify(newPayload),
       }
     );
+
 
     const data = await response.json();
 
@@ -438,7 +547,7 @@ export function BusinessFooter() {
       {preview && (
         <>
           <div className="text-black mt-2 mb-2 ml-2 font-semibold">Output Preview</div>
-          <div className="bg-white shadow overflow-hidden h-[32%]">
+          <div className="bg-white shadow overflow-hidden h-[32%] z-50">
             {loading && (
               <div className="flex justify-center w-full h-full items-center">
                 <CircularProgress />

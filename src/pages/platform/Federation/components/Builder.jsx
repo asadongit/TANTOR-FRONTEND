@@ -11,9 +11,11 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from "react";
+import { useAuth } from "../../../../context/AuthContext";
 
 export default function Builder({ handleSwitch, checked }) {
-    var encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+    const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
+    // var encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
     const [columnDefs, setColumnDefs] = useState([]);
@@ -24,44 +26,58 @@ export default function Builder({ handleSwitch, checked }) {
 
     useEffect(() => {
         const fetchViews = async () => {
-            try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/get-all-views`);
-                const data = await response.json();
-                if (data && data.result) {
-                    console.log("Views are ====>", data.result);
-                    setShownViews(data.result);
-                } else {
-                    console.error("Invalid response from the API");
-                }
-            } catch (error) {
-                console.error("Error fetching views:", error);
+          try {
+            // const project = sessionStorage.getItem("project");
+            // const createdBy = sessionStorage.getItem("created_by");
+      
+            const params = new URLSearchParams({
+              view_type: "Base",
+              project: project,
+              created_by: decodedToken?.preferred_username,
+            });
+      
+            const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`);
+            const data = await response.json();
+            
+            if (data && data.result) {
+                console.log("views in builder is =-====>",data.result)
+              setShownViews(data.result);
+            } else {
+              console.error("Invalid response from the API");
             }
+          } catch (error) {
+            console.error("Error fetching views:", error);
+          }
         };
+      
         fetchViews();
-    }, []);
+      }, []);
+      
 
     const handleViewChange = async (event, value) => {
         // setData([])
         setSelectedView(value);
+        setColumnDefs([]);
+        setData([]);
     };
 
     const checkCaching = async (pay) => {
         try {
             console.log("Inside checking caching");
 
-            const cachingResponse = await fetch(`${import.meta.env.VITE_FAST_API}/checkCaching/${selectedView}`);
+            const cachingResponse = await fetch(`${hostnameV1}/checkCaching/${selectedView}`);
             const cachingData = await cachingResponse.json();
 
             console.log("caching response is ====>", cachingData.result)
 
             if (cachingData.result) {
                 console.log("inside iff===>")
-                fetch(`${import.meta.env.VITE_FAST_API}/view/${selectedView}`, {
+                fetch(`${hostnameV1}/view/${selectedView}`, {
                     method: "POST",
                     headers: {
                         accept: "application/json",
                         "Content-Type": "application/json",
-                        "Authorization": `Bearer ${encodedToken}`,
+                        "Authorization": `Bearer ${token}`,
                     },
                     body: JSON.stringify(pay),
                 })
@@ -95,12 +111,12 @@ export default function Builder({ handleSwitch, checked }) {
                     });
             } else {
                 console.log("inside else===>")
-                fetch(`${import.meta.env.VITE_FAST_API}/view/${selectedView}`, {
+                fetch(`${hostnameV1}/view/${selectedView}`, {
                     method: "POST",
                     headers: {
                         accept: "application/json",
                         "Content-Type": "application/json",
-                        'Authorization': `Bearer ${encodedToken}`,
+                        'Authorization': `Bearer ${token}`,
                     },
                     body: JSON.stringify(pay),
                 })
@@ -165,13 +181,13 @@ export default function Builder({ handleSwitch, checked }) {
         };
 
         checkCaching(payload)
-        var url = `${import.meta.env.VITE_FAST_API}/view/${selectedView}`
-        fetch(`${import.meta.env.VITE_FAST_API}/generate_curl`, {
+        var url = `${hostnameV1}/view/${selectedView}`
+        fetch(`${hostnameV1}/generate_curl`, {
             method: "POST",
             headers: {
                 accept: "application/json",
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${encodedToken}`,
+                "Authorization": `Bearer ${token}`,
             },
             body: JSON.stringify({
                 url: url,
@@ -218,7 +234,7 @@ export default function Builder({ handleSwitch, checked }) {
                 setQueryLoading(true)
                 setIsQueryModalOpen(true);
                 const response = await fetch(
-                    `${import.meta.env.VITE_FAST_API}/analyzeQuery/${selectedView}/${pageNo}`)
+                    `${hostnameV1}/analyzeQuery/${selectedView}/${pageNo}`)
                 const data = await response.json();
                 if (data) {
                     setLoading(false)
