@@ -4,11 +4,25 @@ import { Position } from "reactflow";
 import { useDrawerContext } from "../context/DrawerContext";
 import { Handle } from "../components/CustomHandle";
 import { useWorkflow } from "../context/WorkflowContext";
-import { Minus, X, Search, Pencil, Trash2,ChevronDown ,ChevronRight  } from "lucide-react";
+import {
+  Minus,
+  X,
+  Search,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { toast as hotToast } from "react-hot-toast";
 import { SkeletonLoader } from "../components/skeltonLoader";
 import { useAuth } from "../../../../context/AuthContext";
-import { useConnections,  useSchemaCount, useSchemas, useTables, useBulkTables } from "../hooks/DataFetch";
+import {
+  useConnections,
+  useSchemaCount,
+  useSchemas,
+  useTables,
+  useBulkTables,
+} from "../hooks/DataFetch";
 
 export function TargetNode({ id, data, selected }) {
   // console.log("TARGET DATA",data)
@@ -33,13 +47,23 @@ export function TargetNode({ id, data, selected }) {
     mode: "",
     bulk_list: [],
     subset_list: [],
-    target_conn_id:"",
+    target_conn_id: "",
   }));
-  const { data: connections, isLoading: isLoadingConnections } = useConnections();
+  const { data: connections, isLoading: isLoadingConnections } =
+    useConnections();
   const { data: schemaCount } = useSchemaCount(selectedConnection);
-  const { data: schemas, isLoading: isLoadingSchemas } = useSchemas(selectedConnection);
-  const { data: tables } = useTables(selectedConnection, selectedSchema, selectedMode);
-  const { data: bulkTables } = useBulkTables(sourceConnection,selectedConnection, sourceSchema);
+  const { data: schemas, isLoading: isLoadingSchemas } =
+    useSchemas(selectedConnection);
+  const { data: tables } = useTables(
+    selectedConnection,
+    selectedSchema,
+    selectedMode
+  );
+  const { data: bulkTables=[] } = useBulkTables(
+    sourceConnection,
+    selectedConnection,
+    sourceSchema
+  );
 
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
@@ -51,23 +75,29 @@ export function TargetNode({ id, data, selected }) {
     inProgressMappings,
     updateData,
     deleteMapping,
-    addBulkMapping, updateBulkMappings,deselectMapping,bulkMappings
+    addBulkMapping,
+    updateBulkMappings,
+    deselectMapping,
+    bulkMappings,
   } = useWorkflow();
 
   useEffect(() => {
     let sourceArray = isPipelineNode
       ? pipelines?.[ID]?.data?.source
       : data?.source;
-    const firstSource =isPipelineNode? sourceArray : Array.isArray(sourceArray) ? sourceArray[0] : undefined;
+    const firstSource = isPipelineNode
+      ? sourceArray
+      : Array.isArray(sourceArray)
+      ? sourceArray[0]
+      : undefined;
     if (firstSource) {
       setSourceConnection(firstSource?.connection || "");
-      setSourceSchema(firstSource?.schema)
+      setSourceSchema(firstSource?.schema);
       setBulkList(firstSource?.bulk_list || []);
       setSelectedMode(firstSource?.mode || "bulk");
     }
   }, [pipelines, pipelineId, data?.source, isPipelineNode]);
-  
- 
+
   const fetchDDL = useCallback(
     async (sourceConnection, selectedConnection, schemaName, bulkList) => {
       if (
@@ -83,7 +113,6 @@ export function TargetNode({ id, data, selected }) {
       }
 
       try {
-       
         const filteredData =
           Array.isArray(tables) && Array.isArray(bulkList)
             ? tables.filter((item) =>
@@ -103,65 +132,39 @@ export function TargetNode({ id, data, selected }) {
 
 
 
-
-
-let temp=[
-  {
-      "metadata_id": "82cd6243-b34d-4e4c-a884-f1819cae8254",
-      "source_table": "MySQL_DataType_TBL6",
-      "target_tables": [
-          "MySQL_DataType_TBL6_out",
-          "MySQL_DataType_TBL6_tgt"
-      ]
-  },
-  {
-      "metadata_id": "1f5dac17-a4ae-4b0c-84d2-6eeda574ef5f",
-      "source_table": "MySQL_DataType_TBL2",
-      "target_tables": [
-          "MySQL_DataType_TBL2_tgt",
-          "MySQL_DataType_TBL2_out"
-      ]
-  },
-  {
-      "metadata_id": "5cf9699d-31cf-4332-9051-43ac476e74e9",
-      "source_table": "metricss",
-      "target_tables": [
-          "metricss_tgt"
-      ]
-  }
-]
-
-  const filteredTables = 
-  useMemo(() => {
-    if (selectedMode=='bulk') return bulkTables?.filter(item =>
-      bulkList?.includes(item.source_table)
-    );;
+  const filteredTables = useMemo(() => {
+    if (selectedMode == "bulk")
+      return bulkTables?.filter((item) =>
+        bulkList?.includes(item.source_table)
+      );
 
     if (!Array.isArray(tables) || tables.length === 0) return [];
-  
-    let dataSource = tables;
-  
-    const processedData = selectedMode === "subset" 
-      ? dataSource.map(item => ({
-          target_table: item.source_table,
-          connection_name: item.connection_name,
-          connection_id: item.connection_id,
-          source_schema: item.source_schema,
-        }))
-      : temp;
 
-    return processedData.filter(table => 
-      table?.target_table?.toLowerCase().includes(searchTerm?.toLowerCase() || "")
+    let dataSource = tables;
+
+    const processedData =
+      selectedMode === "subset"
+        ? dataSource.map((item) => ({
+            target_table: item.source_table,
+            connection_name: item.connection_name,
+            connection_id: item.connection_id,
+            source_schema: item.source_schema,
+          }))
+        : [];
+
+    return processedData.filter((table) =>
+      table?.target_table
+        ?.toLowerCase()
+        .includes(searchTerm?.toLowerCase() || "")
     );
-  
   }, [selectedMode, tables, bulkList, searchTerm, selectedSchema]);
-  
+
   useEffect(() => {
     if (filteredTables) {
       setLoading(false);
     }
   }, [filteredTables]);
-  
+
 
   const handleOkClick = () => {
     if (selectedConnection && selectedSchema && selectedMode) {
@@ -180,44 +183,38 @@ let temp=[
   const pipelineData = isPipelineNode
     ? pipelineMappings[pipelineId] || []
     : pipelineMappings[constructedKey] || [];
-  
-  
+
   const targetTables = pipelineData.map((mapping) => mapping.target_table);
   const sourceTables = pipelineData.map((mapping) => mapping.source_table);
-
 
   const sourceTable = isPipelineNode
     ? inProgressMappings[pipelineId]?.source_table
     : inProgressMappings[firstSource?.id]?.source_table;
-  
-  
+
+
   const showTablesList = Boolean(
     selectedMode === "bulk"
-      ? filteredTables?.length > 0 || loading
+      ? !loading || filteredTables?.length > 0 
       : (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
-        (pipelineMappings[constructedKey]?.length ?? 0) > 0 
+          (pipelineMappings[constructedKey]?.length ?? 0) > 0
   );
   const handleAddTable = () => {
     if (sourceTable) {
       const tableData = {
         table_name: sourceTable,
-        Data: isPipelineNode?pipelines[ID]?.data : Array.isArray(data?.source) ? data.source[0] : undefined ,
-        pipelineId: data?.pipelineId, 
+        Data: isPipelineNode
+          ? pipelines[ID]?.data
+          : Array.isArray(data?.source)
+          ? data.source[0]
+          : undefined,
+        pipelineId: data?.pipelineId,
       };
-  
-      openDrawer(
-        data?.category,
-        "addtable",
-        id,
-        data?.pipelineId,
-        tableData 
-      );
+
+      openDrawer(data?.category, "addtable", id, data?.pipelineId, tableData);
     } else {
       hotToast.error("No source table selected");
     }
   };
-
-
 
   useEffect(() => {
     if (selectedConnection && selectedSchema && ID) {
@@ -226,7 +223,8 @@ let temp=[
         connection: selectedConnection,
         schema: selectedSchema,
         mode: selectedMode,
-        bulk_list: selectedMode === "bulk" ? bulkMappings[key] : pipelineMappings[key],
+        bulk_list:
+          selectedMode === "bulk" ? bulkMappings[key] : pipelineMappings[key],
         target_conn_id: nodeData?.target_conn_id,
         source: data?.source?.[0],
         define: data?.source?.[0]?.define,
@@ -235,15 +233,20 @@ let temp=[
 
       updateData(ID, isPipelineNode, "target", updatedNodeData);
     }
-  }, [selectedConnection, selectedSchema, selectedItems,bulkMappings,pipelineMappings]);
-
+  }, [
+    selectedConnection,
+    selectedSchema,
+    selectedItems,
+    bulkMappings,
+    pipelineMappings,
+  ]);
 
   const [openSections, setOpenSections] = useState({});
 
   const toggleSection = (sourceIdx) => {
-    setOpenSections(prev => ({
+    setOpenSections((prev) => ({
       ...prev,
-      [sourceIdx]: !prev[sourceIdx]
+      [sourceIdx]: !prev[sourceIdx],
     }));
   };
 
@@ -251,13 +254,11 @@ let temp=[
     if (filteredTables?.length > 0 && Object.keys(openSections).length === 0) {
       const initialState = {};
       filteredTables.forEach((_, idx) => {
-        initialState[idx] = true; 
+        initialState[idx] = true;
       });
       setOpenSections(initialState);
     }
   }, [filteredTables]);
-
-
 
   return (
     <div
@@ -299,7 +300,11 @@ let temp=[
           <div className="w-full">
             <select
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              value={selectedConnectionObj ? JSON.stringify(selectedConnectionObj) : ""}
+              value={
+                selectedConnectionObj
+                  ? JSON.stringify(selectedConnectionObj)
+                  : ""
+              }
               onChange={(e) => {
                 const selectedConnection = JSON.parse(e.target.value);
                 setSelectedConnectionObj(selectedConnection);
@@ -307,20 +312,20 @@ let temp=[
                 setSelectedSchema("");
                 setNodeData((prevData) => ({
                   ...prevData,
-                  "target_conn_id": selectedConnection.connection_id,
+                  target_conn_id: selectedConnection.connection_id,
                 }));
               }}
             >
               <option value="">Select Connection</option>
               {connections?.length > 0 ? (
-      connections.map((connection, idx) => (
-        <option key={idx} value={JSON.stringify(connection)}>
-          {connection.connection_name}
-        </option>
-      ))
-    ) : (
-      <option disabled>No connections available</option>
-    )}
+                connections.map((connection, idx) => (
+                  <option key={idx} value={JSON.stringify(connection)}>
+                    {connection.connection_name}
+                  </option>
+                ))
+              ) : (
+                <option disabled>No connections available</option>
+              )}
             </select>
           </div>
         </div>
@@ -431,6 +436,7 @@ let temp=[
             className="space-y-2 max-h-60 overflow-y-auto mt-2"
             onWheelCapture={(e) => e.stopPropagation()}
           >
+
             {loading ? (
               <>
                 <SkeletonLoader />
@@ -442,139 +448,162 @@ let temp=[
             ) : (
               <div>
                 {selectedMode == "bulk" ? (
-filteredTables.map((sourceGroup, sourceIdx) => {
-  const isOpen = openSections[sourceIdx] ?? true;
-  const allTargetsSelected = sourceGroup.target_tables.every(targetTable => 
-    bulkMappings[isPipelineNode ? ID : constructedKey ]?.some(item => 
-      item.source_table === sourceGroup.source_table && 
-      item.target_table === targetTable
-    )
-  );
-  
-  return (
-    <div key={sourceIdx} className="border rounded-md p-2 m-2">
-      <div className="flex items-center mb-2">
-        <input
-          type="checkbox"
-          id={`source-${sourceIdx}`}
-          checked={allTargetsSelected && sourceGroup.target_tables.length > 0}
-          onChange={(e) => {
-            const checked = e.target.checked;
-            
-            if (checked) {
-              sourceGroup.target_tables.forEach(targetTable => {
-                addBulkMapping(
-                  firstSource?.id,
-                  ID,
-                  {
-                    source_table: sourceGroup.source_table,
-                    target_table: targetTable,
-                  },
-                  isPipelineNode
-                );
-              });
-            } else {
-              sourceGroup.target_tables.forEach(targetTable => {
-                deselectMapping(
-                  ID,
-                  {
-                    source_table: sourceGroup.source_table,
-                    target_table: targetTable,
-                  },
-                  isPipelineNode
-                );
-              });
-            }
-          }}
-          className="h-4 w-4 mr-2 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-        />
-        
-        <button
-          onClick={() => toggleSection(sourceIdx)}
-          className="text-sm font-bold text-black hover:text-purple-600 focus:outline-none"
-        >
-          {sourceGroup.source_table}
-        </button>
-      </div>
-      
-      {isOpen && (
-        <div className="ml-6 space-y-2">
-          {sourceGroup.target_tables.map((targetTable, targetIdx) => {
-            const isTargetSelected = bulkMappings[isPipelineNode ? ID : constructedKey ]?.some(
-              item => 
-                item.source_table === sourceGroup.source_table && 
-                item.target_table === targetTable
-            );
-            
-            return (
-              <div
-                key={targetIdx}
-                className="flex items-center justify-between"
-              >
-                  <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`target-${sourceIdx}-${targetIdx}`}
-                        checked={isTargetSelected}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          if (checked) {
-                            addBulkMapping(
-                              firstSource?.id,
-                              ID,
-                              {
-                                source_table: sourceGroup.source_table,
-                                target_table: targetTable,
-                              },
-                              isPipelineNode
-                            );
-                          } else {
-                            deselectMapping(
-                              ID,
-                              {
-                                target_table: target_table,
-                                source_table: sourceGroup.source_table,
-                              },
-                              isPipelineNode
-                            );
-                          }
-                        }}
-                        className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <label
-                        htmlFor={`target-${sourceIdx}-${targetIdx}`}
-                        className="text-xs font-semibold text-black"
-                      >
-                        {targetTable}
-                      </label>
-                    </div>
+                  filteredTables.map((sourceGroup, sourceIdx) => {
+                    const isOpen = openSections[sourceIdx] ?? true;
+                    const allTargetsSelected = sourceGroup.target_tables.every(
+                      (targetTable) =>
+                        bulkMappings[
+                          isPipelineNode ? ID : constructedKey
+                        ]?.some(
+                          (item) =>
+                            item.source_table === sourceGroup.source_table &&
+                            item.target_table === targetTable
+                        )
+                    );
 
-                <button
-                  onClick={() =>
-                    openDrawer(
-                      data?.category,
-                      "condition",
-                      id,
-                      data?.pipelineId,
-                      {
-                        source_table: sourceGroup.source_table,
-                        target_table: targetTable,
-                        metadata_id: sourceGroup.metadata_id
-                      }
-                    )
-                  }
-                  className="text-purple-600 hover:text-purple-700"
-                >
-                  {/* <Pencil className="w-4 h-4 ml-8" /> */}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-})
+                    return (
+                      <div
+                        key={sourceIdx}
+                        className="border rounded-md p-2 m-2"
+                      >
+                        <div className="flex items-center mb-2">
+                          <input
+                            type="checkbox"
+                            id={`source-${sourceIdx}`}
+                            checked={
+                              allTargetsSelected &&
+                              sourceGroup.target_tables.length > 0
+                            }
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+
+                              if (checked) {
+                                sourceGroup.target_tables.forEach(
+                                  (targetTable) => {
+                                    addBulkMapping(
+                                      firstSource?.id,
+                                      ID,
+                                      {
+                                        source_table: sourceGroup.source_table,
+                                        target_table: targetTable,
+                                      },
+                                      isPipelineNode
+                                    );
+                                  }
+                                );
+                              } else {
+                                sourceGroup.target_tables.forEach(
+                                  (targetTable) => {
+                                    deselectMapping(
+                                      ID,
+                                      {
+                                        source_table: sourceGroup.source_table,
+                                        target_table: targetTable,
+                                      },
+                                      isPipelineNode
+                                    );
+                                  }
+                                );
+                              }
+                            }}
+                            className="h-4 w-4 mr-2 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+
+                          <button
+                            onClick={() => toggleSection(sourceIdx)}
+                            className="text-sm font-bold text-black hover:text-purple-600 focus:outline-none"
+                          >
+                            {sourceGroup.source_table}
+                          </button>
+                        </div>
+
+                        {isOpen && (
+                          <div className="ml-6 space-y-2">
+                            {sourceGroup.target_tables.map(
+                              (targetTable, targetIdx) => {
+                                const isTargetSelected = bulkMappings[
+                                  isPipelineNode ? ID : constructedKey
+                                ]?.some(
+                                  (item) =>
+                                    item.source_table ===
+                                      sourceGroup.source_table &&
+                                    item.target_table === targetTable
+                                );
+
+                                return (
+                                  <div
+                                    key={targetIdx}
+                                    className="flex items-center justify-between"
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="checkbox"
+                                        id={`target-${sourceIdx}-${targetIdx}`}
+                                        checked={isTargetSelected}
+                                        onChange={(e) => {
+                                          const checked = e.target.checked;
+                                          if (checked) {
+                                            addBulkMapping(
+                                              firstSource?.id,
+                                              ID,
+                                              {
+                                                source_table:
+                                                  sourceGroup.source_table,
+                                                target_table: targetTable,
+                                              },
+                                              isPipelineNode
+                                            );
+                                          } else {
+                                            deselectMapping(
+                                              ID,
+                                              {
+                                                target_table: target_table,
+                                                source_table:
+                                                  sourceGroup.source_table,
+                                              },
+                                              isPipelineNode
+                                            );
+                                          }
+                                        }}
+                                        className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                      />
+                                      <label
+                                        htmlFor={`target-${sourceIdx}-${targetIdx}`}
+                                        className="text-xs font-semibold text-black"
+                                      >
+                                        {targetTable}
+                                      </label>
+                                    </div>
+
+                                    <button
+                                      onClick={() =>
+                                        openDrawer(
+                                          data?.category,
+                                          "condition",
+                                          id,
+                                          data?.pipelineId,
+                                          {
+                                            source_table:
+                                              sourceGroup.source_table,
+                                            target_table: targetTable,
+                                            metadata_id:
+                                              sourceGroup.metadata_id,
+                                          }
+                                        )
+                                      }
+                                      className="text-purple-600 hover:text-purple-700"
+                                    >
+                                      {/* <Pencil className="w-4 h-4 ml-8" /> */}
+                                    </button>
+                                  </div>
+                                );
+                              }
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 ) : (
                   <>
                     <div className="max-w-sm mx-auto">
