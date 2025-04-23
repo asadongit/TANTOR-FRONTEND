@@ -5,14 +5,14 @@ import { X, ChevronDown, Search} from "lucide-react";
 import toast from "react-hot-toast";
 import { connectorConfig } from "./connectorConfig"; 
 import Modal from "../../cdc/components/Modal";
-import { useConnectionData } from "../../../../hooks/platform/connection";
+import { useAllConnectionData } from "../../../../hooks/platform/connection";
 
 const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
 /*
  * Create or Edit a connection.
  */
   const isEditMode = !!editConnectionData;
-  const { data: connections = [], isLoading: isConnectionsLoading, error: connectionsError, refetch: refetchConnections} = useConnectionData();
+  const { data: connections = [], isLoading: isConnectionsLoading, error: connectionsError, refetch: refetchConnections} = useAllConnectionData();
   const connectionNames = useMemo(() => {
     return connections.map(connection => connection.connection_name.toLowerCase());
   }, [connections]);

@@ -4,13 +4,15 @@ import { useAuth } from "../../../../context/AuthContext";
 const hostnameV1= import.meta.env.VITE_FAST_API;
 const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
 
-const fetchConnections = async (token,decodedToken) => {
+const fetchConnections = async (token,decodedToken,project) => {
   if (!token) throw new Error("Token is missing");
 
   try {
     const response = await axios.get(`${hostnameV1}/connection-saves`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-project": project
+       },  });  
 
     return response.data.filter(
       (item) =>
@@ -23,11 +25,11 @@ const fetchConnections = async (token,decodedToken) => {
 };
 
 export const useConnections = () => {
-  const { token,decodedToken } = useAuth();
+  const { token,decodedToken,project } = useAuth();
 
   return useQuery({
-    queryKey: ["CDCconnections"],
-    queryFn: () => fetchConnections(token,decodedToken),
+    queryKey: ["CDCconnections",project],
+    queryFn: () => fetchConnections(token,decodedToken,project),
     enabled: !!token,
     staleTime: 30 * 1000,
     retry: 2,

@@ -33,3 +33,43 @@ export const useConnectionData = () => {
     retry: 2, 
   });
 };
+
+
+
+
+
+
+
+
+
+
+
+
+const fetchAllConnectionData = async (token,hostnameV1) => {
+  if (!token) throw new Error("Token is missing");
+
+  try {
+    const response = await axios.get(`${hostnameV1}/connection-saves/all`, {
+      headers: {
+         Authorization: `Bearer ${token}`,
+        },
+    });
+
+    return response.data ?? []; 
+  } catch (error) {
+    console.error("Error fetching connection data:", error);
+    return []; 
+  }
+};
+
+export const useAllConnectionData = () => {
+  const { token, project, hostnameV1 } = useAuth();
+
+  return useQuery({
+    queryKey: ["allConnectionData",project],
+    queryFn: () => fetchAllConnectionData(token,hostnameV1), 
+    enabled: !!token, 
+    staleTime: 30 * 1000, 
+    retry: 2, 
+  });
+};
