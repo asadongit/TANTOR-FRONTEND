@@ -1,0 +1,50 @@
+#test
+stages:
+  - clone
+variables:
+  DEPLOYMENT_REPO: "git@gitlab.tantor.io:root/tantor2-0_frontend_deployment.git"
+  DEPLOYMENT_DIR: "tantor-front-2-0"
+  REGISTRY: "tantor.example.com:5000"
+  IMAGE_NAME: "tantorfront2-0-dev"
+  GIT_USER: "root"
+  GIT_EMAIL: "your-email@example.com"
+ 
+before_script:
+  - sudo yum update && sudo yum install -y git jq
+  - echo "Setting up SSH key for Git access"
+  - mkdir -p ~/.ssh
+  - echo "$DEPLOYMENT_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+  - echo "$DEPLOYMENT_SSH_PRIVATE_KEY"
+  - chmod 600 ~/.ssh/id_rsa
+  - ssh-keyscan -H gitlab.tantor.io >> ~/.ssh/known_hosts
+ 
+clone-deployment:
+  stage: clone
+  script:
+    - export BRANCH="${CI_COMMIT_REF_NAME}"
+    - echo $BRANCH
+    - git clone -b $BRANCH "$DEPLOYMENT_REPO" "$DEPLOYMENT_DIR"
+    - cd "$DEPLOYMENT_DIR/deploy"
+    - export CURRENT_IMAGE=$(grep 'image:' tantorfront2-0-deployment.yml | awk '{print $2}')
+    - export CURRENT_TAG=$(echo "$CURRENT_IMAGE" | rev | cut -d ':' -f1 | rev)
+    - echo "Current image version $CURRENT_IMAGE"
+    - echo "$CURRENT_TAG"
+    - ls
+    # - echo `$(echo "$CURRENT_TAG" | sed 's/^v//')`
+    - cd ../..
+    - export NEW_TAG=$(git rev-parse --short HEAD)
+    - echo "$NEW_TAG"
+    - export NEW_IMAGE="$REGISTRY/$IMAGE_NAME:$NEW_TAG"
+    - echo "Building new image $NEW_IMAGE"
+    - ls
+    - docker build -t "$NEW_IMAGE" .
+    - docker push "$NEW_IMAGE"
+    - cd "$DEPLOYMENT_DIR/deploy"
+    #- sed -i "s@image: $CURRENT_IMAGE@image: $NEW_IMAGE@g" argocd-test-deployment.yaml
+    - sed -i "s| $CURRENT_IMAGE| $NEW_IMAGE|g" tantorfront2-0-deployment.yml
+    - cat tantorfront2-0-deployment.yml
+    - git config --global user.name "$GIT_USER"
+    - git config --global user.email "$GIT_EMAIL"
+    - git add tantorfront2-0-deployment.yml
+    - git commit -m "Update deployment image to $NEW_IMAGE"
+    - git push origin $BRANCH
