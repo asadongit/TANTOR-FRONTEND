@@ -420,7 +420,7 @@ export function TargetNode({ id, data, selected }) {
           </div>
         )}
 
-      {showTablesList && (
+      {showTablesList &&selectedConnection &&selectedSchema && (
         <div className="my-3">
           <div className="flex items-center justify-between mb-2">
             <div

@@ -24,6 +24,7 @@ import { useProjectData } from "../../hooks/platform/project";
 import DataTable from "../../components/DataTable";
 import { getActionConfigurations } from "../../components/actionsConfig";
 import columnConfigurations from "../../components/columnsConfig";
+import { useAuth } from "../../context/AuthContext";
 const useDynamicData = (componentType) => {
   const hookMap = {
     cdc: useCDCData,
@@ -42,6 +43,7 @@ const useDynamicData = (componentType) => {
 const Details = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const {token, project, hostnameV2, hostnameV1}= useAuth()
   const encryptedQuery = location.search.slice(1);
   const decryptedQuery = decrypt(decodeURIComponent(encryptedQuery));
   const queryString = decryptedQuery.startsWith("/")
@@ -107,10 +109,9 @@ const Details = () => {
   }, [data, dataScope, componentType]);
 
   const actions = useMemo(() => {
-    return getActionConfigurations(navigate)[selectedType] || [];
+    return getActionConfigurations({ token, project, hostnameV2,navigate  })[selectedType];;
   }, [selectedType]);
   
-
   return (
     <div className="flex flex-col h-full p-4">
       <nav className="flex mb-4" aria-label="Breadcrumb">
