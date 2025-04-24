@@ -98,38 +98,7 @@ export function TargetNode({ id, data, selected }) {
     }
   }, [pipelines, pipelineId, data?.source, isPipelineNode]);
 
-  const fetchDDL = useCallback(
-    async (sourceConnection, selectedConnection, schemaName, bulkList) => {
-      if (
-        !sourceConnection ||
-        !selectedConnection ||
-        !schemaName ||
-        !bulkList ||
-        bulkList.length === 0
-      ) {
-        setSelectedItems([]);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const filteredData =
-          Array.isArray(tables) && Array.isArray(bulkList)
-            ? tables.filter((item) =>
-                bulkList.some((bulk) => bulk.metadata_id === item.metadata_id)
-              )
-            : [];
-        setSelectedItems(filteredData);
-      } catch (error) {
-        console.error("Error fetching DDL data:", error);
-        setSelectedItems([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
-
+  
 
 
   const filteredTables = useMemo(() => {

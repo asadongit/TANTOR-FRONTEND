@@ -18,6 +18,7 @@ export function CDCSidebar({ canvasType }) {
   const icons = {
     migration: Network,
     cdc: Workflow,
+    metadata: Workflow
   };
 
   const nodes = [
