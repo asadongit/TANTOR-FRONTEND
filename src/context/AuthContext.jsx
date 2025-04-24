@@ -140,7 +140,7 @@ export const AuthProvider = ({ children }) => {
     setDecodedToken(null);
     setProject("none");
     localStorage.removeItem("token");
-    localStorage.removeItem(`project_${decodedToken.preferred_username}`);
+    // localStorage.removeItem(`project_${decodedToken.preferred_username}`);
     navigate("/");
   };
 
