@@ -1,7 +1,7 @@
 const PIPELINE_CONFIG = {
   cdc: ["define", "source", "target", "schedule"],
   metadata: ["metadataDefine", "metadataSource", "metadataTarget"],
-  migration: ["define", "source", "target", "schedule"],
+  migration: ["migrationDefine", "migrationSource", "migrationTarget","migrationSchedule"],
   purge: ["define", "source", "target", "schedule"],
   default: ["define", "source", "target", "schedule"]
 };
@@ -23,6 +23,11 @@ export const createPipeline = (category, pipelineId, pipelineIndex=0 ) => {
     metadataDefine: { type: "metadataDefine", label: "Metadata Define" },
     metadataSource: { type: "metadataSource", label: "Metadata Source" },
     metadataTarget: { type: "metadataTarget", label: "Metadata Target" },
+    migrationDefine: { type: "migrationDefine", label: "Migration Define" },
+    migrationSource: { type: "migrationSource", label: "Migration Source" },
+    migrationTarget: { type: "migrationTarget", label: "Migration Target" },
+    migrationSchedule: { type: "migrationSchedule", label: "Migration Schedule" },
+
   };
 
   const pipelineNodes = nodeTypes.map((nodeType, index) => {

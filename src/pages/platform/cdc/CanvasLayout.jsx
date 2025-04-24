@@ -15,8 +15,8 @@ export function CanvasLayout() {
     migrationcanvas: "Migration",
     purgecanvas: "Purge",
     cdccanvas: "cdc",
+    metadatacanvas: "metadata"
   };
-    
   const canvasType = canvasTypeMap[canvasTypeParam?.toLowerCase()];
   
   return (
