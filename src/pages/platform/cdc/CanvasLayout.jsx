@@ -12,13 +12,13 @@ export function CanvasLayout() {
   const { canvasTypeParam } = useParams();
 
   const canvasTypeMap = {
-    migrationcanvas: "Migration",
+    migrationcanvas: "migration",
     purgecanvas: "Purge",
     cdccanvas: "cdc",
-    metadatacanvas: "metadata"
+    metadatacanvas: "migration"
   };
+    
   const canvasType = canvasTypeMap[canvasTypeParam?.toLowerCase()];
-  
   return (
     <ReactFlowProvider>
       <WorkflowProvider>
@@ -27,7 +27,7 @@ export function CanvasLayout() {
           <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
             <Header className="h-16 flex-shrink-0" />
             <div className="flex-1 relative">
-              <CDCSidebar canvasType={canvasType} className="z-10" />
+              <CDCSidebar initialCanvasType={canvasType} className="z-10" />
               <div className="w-full h-full">
                 <CDCCanvas />
               </div>

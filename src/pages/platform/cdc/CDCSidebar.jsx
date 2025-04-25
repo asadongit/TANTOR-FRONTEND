@@ -6,74 +6,183 @@ import {
   PanelLeftOpen,
   Layers,
   Plus,
+  ChevronDown
 } from "lucide-react";
 import { useWorkflow } from "./context/WorkflowContext";
 
-export function CDCSidebar({ canvasType }) {
-  const { addPipeline, addNode } = useWorkflow();
-  const [collapsed, setCollapsed] = useState(false);
-  const [isHovering, setIsHovering] = useState(null);
-  const hasRun = useRef(false);
+export function CDCSidebar({ initialCanvasType }) {
+   const { addPipeline, addNode, setNodes, setPipelines } = useWorkflow();
+   const [collapsed, setCollapsed] = useState(false);
+   const [isHovering, setIsHovering] = useState(null);
+   const hasRun = useRef(false);
+   const [canvasType, setCanvasType] = useState(initialCanvasType || "cdc");
+   const [dropdownOpen, setDropdownOpen] = useState(false);
+   const dropdownRef = useRef(null);
+ 
+   const icons = {
+     migration: Network,
+     cdc: Workflow,
+     metadata: Workflow
+   };
+ 
+   const nodesByType = {
+     cdc: [
+       {
+         type: "Define",
+         label: "Define",
+         iconType: "iconify",
+         icon: "material-symbols:contract-outline",
+         color: "purple",
+       },
+       {
+         type: "source",
+         label: "Source",
+         iconType: "iconify",
+         icon: "material-symbols:analytics-outline",
+         color: "purple",
+       },
+       {
+         type: "target",
+         label: "Target",
+         iconType: "iconify",
+         icon: "material-symbols:ads-click",
+         color: "purple",
+       },
+       {
+         type: "schedule",
+         label: "Schedule",
+         iconType: "iconify",
+         icon: "material-symbols:alarm-outline",
+         color: "purple",
+       }
+     ],
+     migration: [
+       {
+         type: "Define",
+         label: "Define",
+         iconType: "iconify",
+         icon: "material-symbols:contract-outline",
+         color: "purple",
+       },
+       {
+         type: "source",
+         label: "Source",
+         iconType: "iconify",
+         icon: "material-symbols:analytics-outline",
+         color: "purple",
+       },
+       {
+         type: "target",
+         label: "Target",
+         iconType: "iconify",
+         icon: "material-symbols:ads-click",
+         color: "purple",
+       },
+       {
+         type: "schedule",
+         label: "Schedule",
+         iconType: "iconify",
+         icon: "material-symbols:alarm-outline",
+         color: "purple",
+       }
+     ],
+     metadata: [
+       {
+         type: "Define",
+         label: "Define",
+         iconType: "iconify",
+         icon: "material-symbols:contract-outline",
+         color: "purple",
+       },
+       {
+         type: "source",
+         label: "Source",
+         iconType: "iconify",
+         icon: "material-symbols:analytics-outline",
+         color: "purple",
+       },
+       {
+         type: "target",
+         label: "Target",
+         iconType: "iconify",
+         icon: "material-symbols:ads-click",
+         color: "purple",
+       }
+     ]
+   };
+ 
+   const nodes = nodesByType[canvasType] || nodesByType.cdc;
+ 
+   const getCanvasOptions = () => {
+     const options = [];
+     
+     if (canvasType === "cdc") {
+       options.push({ value: "cdc", label: "CDC" });
+     } else if (canvasType === "migration") {
+       options.push({ value: "migration", label: "Migration" });
+     }
+     
+     if (canvasType !== "metadata") {
+       options.push({ value: "metadata", label: "Metadata" });
+     } else {
+       if (initialCanvasType === "cdc") {
+         options.push({ value: "cdc", label: "CDC" });
+       } else if (initialCanvasType === "migration") {
+         options.push({ value: "migration", label: "Migration" });
+       }
+     }
+     
+     return options;
+   };
+ 
+   const canvasOptions = getCanvasOptions();
+   const IconComponent = icons[canvasType] || Workflow;
+ 
+   useEffect(() => {
+     if (!hasRun.current && canvasType) {
+       setNodes([])
+       setPipelines({})
+       addPipeline(canvasType);
+       hasRun.current = true;
+     }
+   }, [canvasType, addPipeline]);
+ 
+   useEffect(() => {
+     if (initialCanvasType && initialCanvasType !== canvasType) {
+       setCanvasType(initialCanvasType);
+     }
+   }, [initialCanvasType]);
 
-  const icons = {
-    migration: Network,
-    cdc: Workflow,
-    metadata: Workflow
-  };
-
-  const nodes = [
-    {
-      type: "Define",
-      label: "Define",
-      iconType: "iconify",
-      icon: "material-symbols:contract-outline",
-      color: "purple",
-    },
-    {
-      type: "source",
-      label: "Source",
-      iconType: "iconify",
-      icon: "material-symbols:analytics-outline",
-      color: "purple",
-    },
-    {
-      type: "target",
-      label: "Target",
-      iconType: "iconify",
-      icon: "material-symbols:ads-click",
-      color: "purple",
-    },
-    {
-      type: "schedule",
-      label: "Schedule",
-      iconType: "iconify",
-      icon: "material-symbols:alarm-outline",
-      color: "purple",
-    },
-  ];
-
-  const IconComponent = icons[canvasType] || Workflow;
-
-  useEffect(() => {
-    if (!hasRun.current && canvasType) {
-      addPipeline(canvasType);
-      hasRun.current = true;
-    }
-  }, [canvasType, addPipeline]);
-
-  const handleNodeDrag = (nodeType) => (e) => {
-    console.log("CUSTOM NODE INITIATED");
-    e.dataTransfer.setData(
-      "application/reactflow",
-      JSON.stringify({
-        type: nodeType,
-        category: canvasType || "default",
-        isPipeline: false,
-      })
-    );
-    e.dataTransfer.effectAllowed = "move";
-  };
-
+   useEffect(() => {
+     function handleClickOutside(event) {
+       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+         setDropdownOpen(false);
+       }
+     }
+     
+     document.addEventListener("mousedown", handleClickOutside);
+     return () => {
+       document.removeEventListener("mousedown", handleClickOutside);
+     };
+   }, [dropdownRef]);
+ 
+   const handleCanvasTypeChange = (newType) => {
+     setCanvasType(newType);
+     hasRun.current = false; 
+     setDropdownOpen(false);
+   };
+ 
+   const handleNodeDrag = (nodeType) => (e) => {
+     e.dataTransfer.setData(
+       "application/reactflow",
+       JSON.stringify({
+         type: nodeType,
+         category: canvasType || "default",
+         isPipeline: false,
+       })
+     );
+     e.dataTransfer.effectAllowed = "move";
+   };
   return (
     <aside
       className={`
@@ -94,11 +203,31 @@ export function CDCSidebar({ canvasType }) {
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
         {!collapsed && (
-          <div className="flex items-center space-x-3">
-            {/* <IconComponent className="w-5 h-5 text-purple-600" /> */}
-            <span className="text-gray-800  text-lg font-bold">
-              {canvasType?.toUpperCase() || "UNKNOWN"}
-            </span>
+          <div className="flex items-center space-x-3 relative" ref={dropdownRef}>
+            <div 
+              className="flex items-center space-x-2 cursor-pointer" 
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+            >
+              <IconComponent className="w-5 h-5 text-purple-600" />
+              <span className="text-gray-800 text-lg font-bold">
+                {canvasType?.toUpperCase() || "UNKNOWN"}
+              </span>
+              <ChevronDown className="w-4 h-4 text-gray-600" />
+            </div>
+
+            {dropdownOpen && canvasOptions.length > 0 && (
+              <div className="absolute left-0 top-10 w-full bg-white border border-gray-300 rounded-md shadow-lg z-50">
+                {canvasOptions.map((option) => (
+                  <div 
+                    key={option.value}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-800"
+                    onClick={() => handleCanvasTypeChange(option.value)}
+                  >
+                    {option.label}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         <button
@@ -203,7 +332,7 @@ export function CDCSidebar({ canvasType }) {
         </div>
 
         <div className={`${collapsed ? "space-y-3" : "space-y-2 mt-2"}`}>
-          {nodes.map((node, index) => (
+          {nodes.map((node) => (
             <div
               key={node.type}
               className="flex items-center p-3 rounded-lg border border-gray-300 hover:bg-gray-100 transition cursor-move relative"

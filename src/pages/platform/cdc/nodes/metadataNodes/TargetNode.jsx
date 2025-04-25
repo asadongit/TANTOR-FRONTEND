@@ -40,6 +40,7 @@ export function TargetNode({ id, data, selected }) {
     bulkMappings,
     setNodes,
     setPipelines,
+    deletePipeline
   } = useWorkflow();
   const { openModal, closeModal } = useModal();
   const [selectedConnection, setSelectedConnection] = useState("");
@@ -515,8 +516,15 @@ export function TargetNode({ id, data, selected }) {
           ></iconify-icon>
           <h3 className="text-black font-medium">Target</h3>
         </div>
-
-        {!data?.pipelineId && (
+ <div className="flex space-x-2">
+        <button className="p-1">
+          <Minus className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+        </button>
+        <button onClick={() => isPipelineNode ? deletePipeline(pipelineId) : window.deleteNode?.(id)} className="p-1">
+          <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+        </button>
+      </div>
+        {/* {!data?.pipelineId && (
           <div className="flex space-x-2">
             <button className="p-1">
               <Minus className="w-4 h-4 text-gray-400 hover:text-gray-600" />
@@ -525,7 +533,7 @@ export function TargetNode({ id, data, selected }) {
               <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
             </button>
           </div>
-        )}
+        )} */}
       </div>
 
       <Handle type="target" position={Position.Left} />
