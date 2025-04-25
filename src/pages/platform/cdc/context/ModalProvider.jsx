@@ -10,8 +10,10 @@ export function ModalProvider({ children }) {
     onConfirm: () => {},
     onClose: () => {},
     confirmText: "Confirm",
+    cancelText: "Cancel",
     type: 'success',
-    loadingText: ""
+    loadingText: "",
+    customContent: null
   });
 
   const openModal = ({ 
@@ -21,7 +23,9 @@ export function ModalProvider({ children }) {
     onClose, 
     type, 
     confirmText = "Confirm", 
-    loadingText 
+    cancelText = "Cancel",
+    loadingText,
+    customContent
   }) => {
     setModalState({
       isOpen: true,
@@ -30,8 +34,10 @@ export function ModalProvider({ children }) {
       onConfirm,
       onClose: onClose || (() => closeModal()),
       confirmText,
+      cancelText,
       type,
-      loadingText
+      loadingText,
+      customContent
     });
   };
 
@@ -54,6 +60,8 @@ export function ModalProvider({ children }) {
           onConfirm={modalState.onConfirm}
           loadingText={modalState.loadingText}
           confirmText={modalState.confirmText}
+          cancelText={modalState.cancelText}
+          customContent={modalState.customContent}
         />
       )}
     </ModalContext.Provider>
