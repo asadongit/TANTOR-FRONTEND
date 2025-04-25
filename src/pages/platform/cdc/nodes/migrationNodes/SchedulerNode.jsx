@@ -1,45 +1,118 @@
 import React, { useState, useCallback } from "react";
 import PropTypes from "prop-types";
-import {  Position } from "reactflow";
-import { Upload, X,Minus  } from "lucide-react";
-import { toast } from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { Position } from "reactflow";
+import { Minus, X } from "lucide-react";
 import { Handle } from "../../components/CustomHandle";
-
-export function SchedulerNode({ id, data, selected }) {
-
+import { toast } from "react-hot-toast";
+import { useNavigate } from 'react-router-dom';
+import { encrypt } from "../../../../../utils/Crypto";
+import { useModal } from "../../context/ModalProvider";
+import { useWorkflow } from "../../context/WorkflowContext";
+import { useAuth } from "../../../../../context/AuthContext";
+export function SchedulerNode({ id, data, selected}) {
+  // console.log("SCHEDULAR DATA---------",data)
+  const pipelineId = data?.pipelineId;
+  const isPipelineNode = pipelineId !== undefined;
+  const ID = isPipelineNode ? pipelineId : id; 
+const {token,decodedToken ,project, hostnameV2}= useAuth()
   const navigate = useNavigate();
-  
-  const { onSubmit, payload } = data;
-  const [selectedOption, setSelectedOption] = useState("manual");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [loading, setLoading] = useState(true);
+  const {openModal, closeModal}= useModal()
 
+  const { updatePipelineData,deletePipeline, pipelines,setNodes,setEdge,deleteMappings} = useWorkflow();
+  
+  const [selectedOption, setSelectedOption] = useState("manual");
+  // const { minimizePipeline, deletePipeline } = useWorkflow();
+  // const pipelineId = id.split("_").pop();
   const handleOptionChange = useCallback((event) => {
     setSelectedOption(event.target.value);
   }, []);
+  
 
-  const handleOk = async () => {
-    try {
-      setLoading(true);
 
-      const schedulerData = {
-        scheduleType: selectedOption,
-        startLoadDate: startDate,
-        endLoadDate: endDate,
-      };
-  
-      const finalPayload = { ...payload, scheduler: schedulerData };
-  
-      await onSubmit(finalPayload);
-  
-    } catch (error) {
-      console.error("Error submitting flow:", error);
-    } finally {
-      setLoading(false);
+
+  const handleSave = async () => {
+    let pipelineData = {};
+    
+    if (isPipelineNode) {
+      pipelineData = pipelines[ID]?.data || {};
+    } else {
+      if (data?.target && Array.isArray(data.target) && data.target.length > 0) {
+        const targetData = data.target[0];
+        pipelineData = {
+          define: targetData.define || {},
+          source: targetData.source || {},
+          target: targetData
+        };
+      }
     }
+    if (!pipelineData?.define?.name) {
+      toast.error("Please provide a name for the CDC!", { duration: 4000 });
+      return;
+    }
+    
+    if (!pipelineData?.source?.source_conn_id) {
+      toast.error("Source connection is required!", { duration: 4000 });
+      return;
+    }
+    
+    if (!pipelineData?.target?.target_conn_id) {
+      toast.error("Target connection is required!", { duration: 4000 });
+      return;
+    }
+    
+    if (!pipelineData?.target?.bulk_list || pipelineData.target.bulk_list.length === 0) {
+      toast.error("Please select at least one table mapping!", { duration: 4000 });
+      return;
+    }
+  
+    const finalPayload = {
+      project: project,
+      created_by: decodedToken.preferred_username,
+      cdc_name: pipelineData.define?.name,
+      cdc_description: pipelineData.define?.description || "",
+      source_conn_id: pipelineData.source?.source_conn_id,
+      target_conn_id: pipelineData.target?.target_conn_id,
+      source_schema: pipelineData.source?.schema,
+      target_schema: pipelineData.target?.schema,
+      cdc_list: pipelineData.target?.bulk_list || [],
+      op_types: pipelineData.source?.op_types || {},
+    };
+  
+    // console.log("Final Payload:", finalPayload);
+    try {
+      const response = await fetch(`${hostnameV2}/create-cdc`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(finalPayload),
+      });
+  
+      const data = await response.json();
+      console.log("Response:", data);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  
+    setTimeout(() => {
+      setNodes([]);
+      openModal({
+        title: "Success!",
+        message: "Your CDC has been saved successfully.",
+        type: "success",
+        onClose: () => handleClose(),
+      });
+    }, 800);
   };
+  
+  const handleClose =()=>{
+    closeModal()   
+    deletePipeline(ID);
+     setTimeout(() => {
+          navigate(`/details?${encodeURIComponent(encrypt("componentType=cdc&heading=cdc"))}`);
+    }, 800)
+      }
 
   return (
 <div
@@ -66,13 +139,15 @@ export function SchedulerNode({ id, data, selected }) {
   
     <Handle type="target" position={Position.Left} />
 
+
+
       <div className="space-y-1.5">
         <div className="flex gap-4 items-center">
           <div className="flex items-center">
             <input
               type="radio"
               id="manual"
-              name="manual"
+              name="scheduleMode"
               value="manual"
               checked={selectedOption === "manual"}
               onChange={handleOptionChange}
@@ -86,7 +161,7 @@ export function SchedulerNode({ id, data, selected }) {
             <input
               type="radio"
               id="auto"
-              name="auto"
+              name="scheduleMode"
               value="auto"
               checked={selectedOption === "auto"}
               onChange={handleOptionChange}
@@ -111,8 +186,6 @@ export function SchedulerNode({ id, data, selected }) {
             <input
               type="datetime-local"
               id="start-date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
               className="w-full border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-700 focus:ring-2 focus:ring-[#8e78b7]"
             />
           </div>
@@ -126,8 +199,6 @@ export function SchedulerNode({ id, data, selected }) {
             <input
               type="datetime-local"
               id="end-date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
               className="w-full border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-700 focus:ring-2 focus:ring-[#8e78b7]"
             />
           </div>
@@ -138,12 +209,19 @@ export function SchedulerNode({ id, data, selected }) {
         <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           Cancel
         </button>
-        <button
-          onClick={handleOk}
-          className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
-        >
-          OK
-        </button>
+        <button 
+  className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
+  onClick={() => openModal({
+    title: "Save Confirmation",
+    message: "Are you sure you want to save this CDC?",
+    type: "question",
+    confirmText: "Yes",
+    onConfirm: () => handleSave(), 
+  })}
+>
+  SAVE
+</button>
+
       </div>
     </div>
   );
