@@ -13,7 +13,10 @@ import { DefineNode as MigrationDefineNode } from "./nodes/migrationNodes/Define
 import { SourceNode as MigrationSourceNode } from "./nodes/migrationNodes/SourceNode";
 import { TargetNode as MigrationTargetNode } from "./nodes/migrationNodes/TargetNode";
 import { SchedulerNode as MigrationSchedulerNode } from "./nodes/migrationNodes/SchedulerNode";
-
+import { DefineNode as PurgeDefineNode } from "./nodes/purgeNodes/DefineNode";
+import { SourceNode as PurgeSourceNode } from "./nodes/purgeNodes/SourceNode";
+import { TargetNode as PurgeTargetNode } from "./nodes/purgeNodes/TargetNode";
+import { SchedulerNode as PurgeSchedulerNode } from "./nodes/purgeNodes/SchedulerNode";
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
@@ -26,6 +29,10 @@ const nodeTypes = {
   migrationSource: MigrationSourceNode,
   migrationTarget: MigrationTargetNode,
   migrationSchedule: MigrationSchedulerNode,
+  purgeDefine: PurgeDefineNode,
+  purgeSource: PurgeSourceNode,
+  purgeTarget: PurgeTargetNode,
+  purgeSchedule: PurgeSchedulerNode,
 };
 
 const Canvas = () => {
