@@ -57,40 +57,7 @@ export function TargetNode({ id, data, selected }) {
   const [showSearch, setShowSearch] = useState(false);
 
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
-  const [errorTables, setErrorTables] = useState({
-    customer_transactions: [
-      "Foreign key constraint failed on column 'customer_id'",
-      "Missing partitioning key column 'transaction_date'",
-    ],
-    product_inventory: [
-      "Primary key constraint not satisfied: duplicate values found in 'product_id'",
-    ],
-    order_details: [
-      "Invalid data type for column 'price': expected DECIMAL, found VARCHAR",
-    ],
-    shipping_addresses: [
-      "Column 'zip_code' defined as NOT NULL but contains NULL values",
-    ],
-    user_profiles: [
-      "Table contains too many columns (128), maximum allowed is 100",
-    ],
-    customder_transactions: [
-      "Foreign key constraint failed on column 'customer_id'",
-      "Missing partitioning key column 'transaction_date'",
-    ],
-    produdct_inventory: [
-      "Primary key constraint not satisfied: duplicate values found in 'product_id'",
-    ],
-    ordder_details: [
-      "Invalid data type for column 'price': expected DECIMAL, found VARCHAR",
-    ],
-    shidpping_addresses: [
-      "Column 'zip_code' defined as NOT NULL but contains NULL values",
-    ],
-    usder_profiles: [
-      "Table contains too many columns (128), maximum allowed is 100",
-    ],
-  });
+  const [errorTables, setErrorTables] = useState({});
   const [validatedTables, setValidatedTables] = useState([]);
   const [validationInProgress, setValidationInProgress] = useState(false);
 
