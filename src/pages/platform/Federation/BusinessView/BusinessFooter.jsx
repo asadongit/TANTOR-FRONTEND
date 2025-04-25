@@ -478,7 +478,7 @@ export function BusinessFooter() {
     console.log("view name entered is =======>", params)
     const { newViewName } = params;
 
-    finalPayload["view_name"] = newViewName;
+    finalPayload["view_name"] = newViewName.toLowerCase();
 
     if (finalPayload.skip_filter === true) {
       delete finalPayload.filter_data;
