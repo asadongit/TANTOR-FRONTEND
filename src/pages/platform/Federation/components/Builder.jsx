@@ -31,7 +31,6 @@ export default function Builder({ handleSwitch, checked }) {
             // const createdBy = sessionStorage.getItem("created_by");
       
             const params = new URLSearchParams({
-              view_type: "Base",
               project: project,
               created_by: decodedToken?.preferred_username,
             });
