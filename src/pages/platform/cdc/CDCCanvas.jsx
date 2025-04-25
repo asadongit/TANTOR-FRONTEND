@@ -9,10 +9,10 @@ import { SchedulerNode } from "./nodes/SchedulerNode";
 import { DefineNode as MetadataDefineNode } from "./nodes/metadataNodes/DefineNode";
 import { SourceNode as MetadataSourceNode } from "./nodes/metadataNodes/SourceNode";
 import { TargetNode as MetadataTargetNode } from "./nodes/metadataNodes/TargetNode";
-import { DefineNode as MigrationDefineNode } from "../archival/nodes/DefineNode";
-import { SourceNode as MigrationSourceNode } from "../archival/nodes/SourceNode";
-import { TargetNode as MigrationTargetNode } from "../archival/nodes/TargetNode";
-import { SchedulerNode as MigrationSchedulerNode } from "../archival/nodes/SchedulerNode";
+import { DefineNode as MigrationDefineNode } from "./nodes/migrationNodes/DefineNode";
+import { SourceNode as MigrationSourceNode } from "./nodes/migrationNodes/SourceNode";
+import { TargetNode as MigrationTargetNode } from "./nodes/migrationNodes/TargetNode";
+import { SchedulerNode as MigrationSchedulerNode } from "./nodes/migrationNodes/SchedulerNode";
 
 const nodeTypes = {
   define: DefineNode,
