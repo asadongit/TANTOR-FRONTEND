@@ -4,7 +4,7 @@ import { useAuth } from "../../../../context/AuthContext";
 const hostnameV1= import.meta.env.VITE_FAST_API;
 const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
 
-const fetchConnections = async (token,decodedToken,project) => {
+const fetchConnections = async (token,decodedToken,project , poolType='both') => {
   if (!token) throw new Error("Token is missing");
 
   try {
@@ -17,19 +17,19 @@ const fetchConnections = async (token,decodedToken,project) => {
     return response.data.filter(
       (item) =>
         item.pool_type === "both" ||
-        (item.pool_type === "source" && item.created_by === decodedToken.preferred_username));
+        (item.pool_type === poolType && item.created_by === decodedToken.preferred_username));
   } catch (error) {
     console.error("Error fetching connections:", error);
     return [];
   }
 };
 
-export const useConnections = () => {
+export const useConnections = (poolType) => {
   const { token,decodedToken,project } = useAuth();
 
   return useQuery({
-    queryKey: ["CDCconnections",project],
-    queryFn: () => fetchConnections(token,decodedToken,project),
+    queryKey: [`CDCconnections-${poolType}`,project],
+    queryFn: () => fetchConnections(token,decodedToken,project,poolType),
     enabled: !!token,
     staleTime: 30 * 1000,
     retry: 2,

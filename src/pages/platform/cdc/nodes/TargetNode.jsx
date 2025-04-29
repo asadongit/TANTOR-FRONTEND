@@ -50,7 +50,7 @@ export function TargetNode({ id, data, selected }) {
     target_conn_id: "",
   }));
   const { data: connections, isLoading: isLoadingConnections } =
-    useConnections();
+    useConnections('target');
   const { data: schemaCount } = useSchemaCount(selectedConnection);
   const { data: schemas, isLoading: isLoadingSchemas } =
     useSchemas(selectedConnection);
