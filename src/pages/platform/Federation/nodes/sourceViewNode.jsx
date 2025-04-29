@@ -105,7 +105,7 @@ export function SourceViewNode({ id, onSave }) {
       try {
         const params = new URLSearchParams({
           view_type: "Base",
-          project: project,
+          project: (project === "default" || project === "none") ? "default" : project,
           created_by: decodedToken?.preferred_username,
         });
 

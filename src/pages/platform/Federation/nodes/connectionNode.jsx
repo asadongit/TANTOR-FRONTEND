@@ -147,7 +147,6 @@ export function ConnectionNode({ id, onSave }) {
 
 
   useEffect(() => {
-
     fetch(`${hostnameV1}/connection-saves`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -156,20 +155,31 @@ export function ConnectionNode({ id, onSave }) {
     })
       .then((response) => response.json())
       .then((data) => {
-        const connectionNames = data
-          .filter(
+        let filteredData;
+  
+        if (project !== "default" && project !== "none") {
+          filteredData = data.filter(
             (item) =>
-              item.project === project &&
-              item.created_by === decodedToken?.preferred_username &&
-              item.is_deleted === false
-          )
-          .map((item) => item.connection_name);
+              item.project.toUpperCase() === project.toUpperCase() &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+              !item.is_deleted
+          );
+        } else {
+          filteredData = data.filter(
+            (item) =>
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+              !item.is_deleted
+          );
+        }
+  
+        const connectionNames = filteredData.map((item) => item.connection_name);
         setConnections(connectionNames);
       })
       .catch((error) => {
         console.error("Error fetching data:", error);
       });
   }, []);
+  
 
   const handleConnectionChange = async (event, value) => {
     var conn = event.target.value;

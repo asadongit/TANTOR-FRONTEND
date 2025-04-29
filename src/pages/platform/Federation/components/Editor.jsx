@@ -51,7 +51,7 @@ export default function Editor() {
         });
         let data = await response.json();
 
-        if (project !== "none") {
+        if (project !== "default" && project !== "none") {
           data = data.filter(
             (item) =>
               item.project.toUpperCase() === project.toUpperCase() &&
