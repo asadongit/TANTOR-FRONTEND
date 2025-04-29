@@ -43,7 +43,7 @@ export function SourceNode({ id, data, selected }) {
     source_conn_type:""
   }));
 
-  const { data: connections, isLoading: isLoadingConnections } = useConnections();
+  const { data: connections, isLoading: isLoadingConnections } = useConnections('source');
   const { data: schemaCount } = useSchemaCount(selectedConnection);
   const { data: schemas, isLoading: isLoadingSchemas } = useSchemas(selectedConnection);
   const { data: tables,  isLoading: isLoadingTables } = useTables(selectedConnection, selectedSchema);

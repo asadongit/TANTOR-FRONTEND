@@ -13,7 +13,7 @@ export function CanvasLayout() {
 
   const canvasTypeMap = {
     migrationcanvas: "migration",
-    purgecanvas: "Purge",
+    purgecanvas: "purge",
     cdccanvas: "cdc",
     metadatacanvas: "migration"
   };
