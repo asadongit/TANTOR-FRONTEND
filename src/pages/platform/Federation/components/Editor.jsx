@@ -41,7 +41,6 @@ export default function Editor() {
   const [expandedItems, setExpandedItems] = useState({});
 
   useEffect(() => {
-    var project = "me";
     const fetchData = async () => {
       try {
         const response = await fetch(`${hostnameV1}/connection-saves`, {
@@ -52,15 +51,18 @@ export default function Editor() {
         });
         let data = await response.json();
 
-        if (project !== "none") {
+        if (project !== "default" && project !== "none") {
           data = data.filter(
             (item) =>
+              item.project.toUpperCase() === project.toUpperCase() &&
               item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
               !item.is_deleted
           );
         } else {
           data = data.filter(
-            (item) => !item.is_deleted
+            (item) => 
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+              !item.is_deleted
           );
         }
         console.log("connection data is ===>", data);

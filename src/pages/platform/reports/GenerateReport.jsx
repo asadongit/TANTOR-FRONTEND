@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { X, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import ReportDownloader from "./ReportDownloader";
 import { useAuth } from "../../../context/AuthContext";
+import toast from "react-hot-toast";
 
 const GenerateReport = () => {
   const hostname = import.meta.env.VITE_FAST_API;
@@ -16,7 +17,7 @@ const GenerateReport = () => {
   const abortController = useRef(new AbortController());
   const [reports, setReports] = useState([]);
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
@@ -61,12 +62,13 @@ const GenerateReport = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
-      console.log("Success:", data);
       closeModal("modal1");
+      openModal("modal2");
     } catch (error) {
       if (error.name !== "AbortError") {
         console.error("Error:", error);
         setError(error.message || "Failed to generate report");
+        toast.error("Failed to generate report");
       }
     } finally {
       setLoading(false);
@@ -85,7 +87,8 @@ const GenerateReport = () => {
 
       let reportsData = await reportsResponse.json();
       setReports(reportsData);
-      openModal("modal2");
+      //setAllReports(reportsData);
+      //openModal("modal2");
     } catch (error) {
       console.error("Error fetching reports:", error);
     }
@@ -101,6 +104,10 @@ const GenerateReport = () => {
       abortController.current = new AbortController();
     };
   }, []);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
 
   const sampleData = [
     {
@@ -256,7 +263,8 @@ const GenerateReport = () => {
   const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
   const startIndex = (page - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedReports = filteredReports.slice(startIndex, endIndex);
+  const paginatedFilteredReports = filteredReports.slice(startIndex, endIndex);
+  const paginatedReports = reports.slice(startIndex, endIndex)
 
   const handleItemsPerPageChange = (e) => {
     const newItemsPerPage = Number(e.target.value);
@@ -388,8 +396,6 @@ const GenerateReport = () => {
                 </button>
                 <button
                   onClick={() => {
-                    fetchReports();
-                    console.log("fetched reports", reports);
                     handleGenerateReport();
                   }}
                   disabled={loading || !reportType || !startDate || !endDate}
@@ -419,46 +425,48 @@ const GenerateReport = () => {
 
       {/* Add Reports Model */}
 
-      {isModalOpen.modal2 && (
+      {isModalOpen.modal2 && filteredReports.length !== 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-auto p-5 mx-9">
+        <div className="bg-white rounded-2xl w-auto p-5 mx-9">
+        {/* <div className="overflow-x-auto"> */}
+        <div className="overflow-y-auto h-72">
         <table className="w-full text-sm text-left rtl:text-right text-black">
-          <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
+          <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white sticky top-0 z-10">
             <tr>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-1">
                 Workflow Name
               </th>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-2">
                  Report For
               </th>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-2">
                 Execute Type
               </th>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-2">
                 Project
               </th>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-2">
                 Users
               </th>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-2">
                 Start date
               </th>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-2">
                 End date
               </th>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-2">
                 Before Source table Count
               </th>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-2">
                 After Target table Count
               </th>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-2">
                 Table Size Before
               </th>
-              <th scope="col" className="px-2 py-2">
+              <th scope="col" className="px-3 py-2">
                 Table Size After
               </th>
-              <th scope="col" className="pl-6 py-2">
+              <th scope="col" className="px-3 py-2">
                 Status
               </th>
               <th scope="col" className="px-3 py-2">
@@ -467,7 +475,7 @@ const GenerateReport = () => {
             </tr>
           </thead>
           <tbody>
-            {paginatedReports.map((user, index) => (
+            {paginatedFilteredReports.map((user, index) => (
               // <tr key={index} className="border-b"></tr>
               <tr key={index} className="border-b dark:border-white-700">
                 {/* <th
@@ -476,20 +484,20 @@ const GenerateReport = () => {
                 >
                   {user.id}
                 </th> */}
-                <td className="px-2 py-2">{user.workflow_name}</td>
-                <td className="px-2 py-2">{user.workflow_type}</td>
-                <td className="px-2 py-2">{user.execute_type}</td>
-                <td className="px-2 py-2">{user.project}</td>
-                <td className="px-2 py-2">{user.created_by}</td>
-                <td className="px-2 py-2">{user.start_time ? user.start_time.split("T")[0] : user.start_time}</td>
-                <td className="px-2 py-2">{user.end_time ? user.end_time.split("T")[0] : user.end_time}</td>
-                <td className="px-2 py-2">{user.before_source_table_count}</td>
-                <td className="px-2 py-2">{user.after_target_table_count}</td>
-                <td className="px-2 py-2">{user.table_size_before}</td>
-                <td className="px-2 py-2">{user.table_size_after}</td>
-                <td className="p-4 text-center">
+                <td className="px-3 py-2">{user.workflow_name}</td>
+                <td className="px-3 py-2">{user.workflow_type}</td>
+                <td className="px-3 py-2">{user.execute_type}</td>
+                <td className="px-3 py-2">{user.project}</td>
+                <td className="px-3 py-2">{user.created_by}</td>
+                <td className="px-3 py-2">{user.start_time ? user.start_time.split("T")[0] : user.start_time}</td>
+                <td className="px-3 py-2">{user.end_time ? user.end_time.split("T")[0] : user.end_time}</td>
+                <td className="px-3 py-2">{user.before_source_table_count}</td>
+                <td className="px-3 py-2">{user.after_target_table_count}</td>
+                <td className="px-3 py-2">{user.table_size_before}</td>
+                <td className="px-3 py-2">{user.table_size_after}</td>
+                <td className="p-3 text-center">
                   <span
-                    className={`pr-4 py-1 rounded-full text-sm ${user.status_choices === "Completed"
+                    className={`pr-3 py-1 rounded-full text-sm ${user.status_choices === "Completed"
                         ? "text-green-600"
                         : "text-red-600"
                       }`}
@@ -502,6 +510,8 @@ const GenerateReport = () => {
             ))}
           </tbody>
         </table>
+        </div>
+        {/* </div> */}
 
             {/* Pagination */}
             <div className="flex items-center justify-between p-4 mt-2">
@@ -516,8 +526,8 @@ const GenerateReport = () => {
                   value={itemsPerPage}
                   onChange={handleItemsPerPageChange}
                 >
-                  <option value="5">5</option>
                   <option value="10">10</option>
+                  <option value="25">25</option>
                 </select>
                 <div className="flex">
                   <button
@@ -547,18 +557,18 @@ const GenerateReport = () => {
             </div>
 
             <div className="flex justify-end gap-4 mt-8">
-              <button
+              <div
                 onClick={() => {
                   closeModal("modal2");
                   handleCancel();
                 }}
-                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
+                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors cursor-pointer"
               >
                 Cancel
-              </button>
-              <button>
+              </div>
+              <div>
                 <ReportDownloader data={filteredReports} />
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -567,6 +577,134 @@ const GenerateReport = () => {
       {/* Project Listing Table */}
 
       <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
+      <div className="max-h-[calc(100vh-310px)] overflow-y-auto">
+        <table className="w-auto text-sm text-left rtl:text-right text-black">
+          <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
+            <tr>
+              <th scope="col" className="px-6 py-3 w-48">
+                Workflow Name
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Report For
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Execute Type
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Project
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Users
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Start date
+              </th>
+              <th scope="col" className="px-6 py-3">
+                End date
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Before Source table Count
+              </th>
+              <th scope="col" className="px-6 py-3">
+                After Target table Count
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Table Size Before
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Table Size After
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Status
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Remark
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedReports.map((user, index) => (
+              // <tr key={index} className="border-b"></tr>
+              <tr key={index} className="border-b dark:border-white-700">
+                {/* <th
+                  scope="row"
+                  className="px-6 py-4 font-medium text-black-900 whitespace-nowrap dark:text-black"
+                >
+                  {user.workflow_name}
+                </th> */}
+                <td className="px-6 py-4 max-w-48 truncate">{user.workflow_name}</td>
+                <td className="px-6 py-4">{user.workflow_type}</td>
+                <td className="px-6 py-4">{user.execute_type}</td>
+                <td className="px-6 py-4">{user.project}</td>
+                <td className="px-3 py-2">{user.created_by}</td>
+                <td className="px-6 py-4">{user.start_time ? user.start_time.split("T")[0] : user.start_time}</td>
+                <td className="px-6 py-4">{user.end_time ? user.end_time.split("T")[0] : user.end_time}</td>
+                <td className="px-6 py-4">{user.before_source_table_count}</td>
+                <td className="px-6 py-4">{user.after_target_table_count}</td>
+                <td className="px-6 py-4">{user.table_size_before}</td>
+                <td className="px-3 py-2">{user.table_size_after}</td>
+                <td className="p-4 text-center">
+                  <span
+                    className={`px-2 py-1 rounded-full text-sm ${
+                      user.status_choices === "Completed"
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {user.status_choices}
+                  </span>
+                </td>
+                <td className="px-6 py-4">{user.remarks}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between p-4 mt-2">
+              <div className="text-sm text-gray-500">
+                {startIndex + 1} to {Math.min(endIndex, filteredReports.length || reports.length)}{" "}
+                of {filteredReports.length || reports.length} results
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500">Show per page</span>
+                <select
+                  className="border rounded p-1 text-sm"
+                  value={itemsPerPage}
+                  onChange={handleItemsPerPageChange}
+                >
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                </select>
+                <div className="flex">
+                  <button
+                    onClick={handlePrevPage}
+                    className="p-1 border rounded-l hover:bg-gray-100"
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft
+                      size={20}
+                      className={page === 1 ? "text-gray-300" : "text-gray-600"}
+                    />
+                  </button>
+                  <button
+                    onClick={handleNextPage}
+                    className="p-1 border rounded-r border-l-0 hover:bg-gray-100"
+                    disabled={page === totalPages}
+                  >
+                    <ChevronRight
+                      size={20}
+                      className={
+                        page === totalPages ? "text-gray-300" : "text-gray-600"
+                      }
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+      {/* <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
         <table className="w-full text-sm text-left rtl:text-right text-black">
           <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
             <tr>
@@ -643,7 +781,7 @@ const GenerateReport = () => {
             ))}
           </tbody>
         </table>
-      </div>
+      </div> */}
     </div>
   );
 };

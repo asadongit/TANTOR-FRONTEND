@@ -299,7 +299,7 @@ export function SourceNode({ id }) {
   const getFirstPartitionNameFromTable = (table) => {
     if (!table?.partition_json) return null;
 
-    if (table.partition_json.length === 0) return null;
+    if (table.partition_json.length === 0 || !table.partition_json.length) return null;
 
     const sortedPartitions = [...table.partition_json].sort(
       (a, b) => a.partition_id - b.partition_id

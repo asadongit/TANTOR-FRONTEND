@@ -140,7 +140,6 @@ export function TargetNode({ id }) {
       .toLowerCase()
       .includes(searchTerm?.toLowerCase() || "")
   );
-  console.log("selected tables from source node -- ", selectedTables); //make it selectedSourceTable
 
   const filteredTables = tables.filter((table) =>
     table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
@@ -322,7 +321,7 @@ export function TargetNode({ id }) {
     );
   };
 
-  const handleOkClick = () => {
+  const handleOkClick = async () => {
     const defineNode = {
       name: defineNodeName || "",
       desc: defineNodeDesc || "",
@@ -350,7 +349,6 @@ export function TargetNode({ id }) {
     );
 
     if (!validationResult.valid) {
-      alert(validationResult.message);
       toast.error(validationResult.message);
       return;
     }
@@ -365,10 +363,20 @@ export function TargetNode({ id }) {
       toast.success(validationResultForBulk.message)
     }
 
-    //success
-    saveNode();
-    toast.success("Saved successfully");
-    handleIsVisibleFooter(true);
+    try {
+      const apiPromise = window.handleConnectNode?.(id);
+
+      if(!apiPromise) {
+      throw new Error("Submission handler not found"); 
+      }
+      if(apiPromise instanceof Promise) {
+        await apiPromise;
+      }
+      saveNode();
+      handleIsVisibleFooter(true);
+    } catch (error) {
+      throw error;
+    }
   };
 
   return (

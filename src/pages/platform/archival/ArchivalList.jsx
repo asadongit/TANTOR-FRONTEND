@@ -11,7 +11,6 @@ import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
 import { useArchivalData } from "../../../hooks/platform/archival";
 import DataTable from "../../../components/DataTable";
 import CardGrid from "../../../components/CardGrid";
-
 const ArchivalList = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError, refetchCardData } = useSourceTypeCounts('migration');
   const { data: archivalData=[], isLoading: isArchivalLoading, error: archivalError, refetch:refetchArchival } = useArchivalData();
@@ -106,8 +105,15 @@ const ArchivalList = () => {
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Migration</h1>
         <div>
+        <button
+            onClick={()=>navigate(`/details?${encodeURIComponent(encrypt("componentType=migration&heading=metadata"))}`)}
+            type="button"
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+          >
+            View Metadata
+          </button>
           <button
-            onClick={handleCreateMigration}
+            onClick={()=>navigate("/canvas/metadataCanvas")}
             type="button"
             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >

@@ -38,6 +38,8 @@ let id = 0;
 const getId = () => `node_${id++}`;
 
 const ArchivalCanvas = () => {
+  const hostnameV1 = import.meta.env.VITE_FAST_API;
+  const hostnameV2 = import.meta.env.VITE_FAST_API_V2;
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [payload, setPayload] = useState({});
@@ -46,131 +48,119 @@ const ArchivalCanvas = () => {
 
 
   const API_ENDPOINTS = {
-    bulk: '/api/v1/bulk-migration',
-    subset: '/api/v1/migrations'
+    bulk: `${hostnameV1}/metadata-archivals`,
+    subset: `${hostnameV2}/migrations`
   };
 
 
-  const migrationValidators = {
-    common: (source, target) => {
-      const errors = [];
-      if (!source || !target) errors.push("Missing source or target configuration");
-      if (source?.migrationScope !== target?.migrationScope) {
-        errors.push("Source and Target must have the same migration scope");
-      }
-      return errors;
-    },
-    bulk: (source, target) => {
-      const errors = [];
-      if (source.selectedTables.length < 1) errors.push("Bulk migration requires at least one table");
-      return errors;
-    },
-    subset: (source, target) => {
-      const errors = [];
-      if (source.selectedTables.length !== 1) errors.push("Subset migration requires exactly one table");
-      return errors;
+  // Add connection type mapping utility
+const getConnectionType = (connectionName, connections) => {
+  const conn = connections.find(c => c.connection_name === connectionName);
+  return conn?.connection_type?.toLowerCase() || 'unknown';
+};
+
+// Enhanced validation
+const migrationValidators = {
+  common: (source, target) => {
+    const errors = [];
+    if (!source?.connection || !target?.connection) {
+      errors.push("Both source and target connections are required");
     }
-  };
+    if (source?.migrationScope !== target?.migrationScope) {
+      errors.push("Source and target must have matching migration scopes");
+    }
+    return errors;
+  },
+  
+  // bulk: (source, target) => {
+  //   const errors = [];
+  //   const missingFilters = source.selectedTables.some(table => 
+  //     !table.filters?.length
+  //   );
+  //   if (missingFilters) {
+  //     errors.push("All tables in bulk migration require filters");
+  //   }
+  //   return errors;
+  // },
+  
+  // subset: (source, target) => {
+  //   const errors = [];
+  //   if (!source.filters?.length) {
+  //     errors.push("Subset migration requires where conditions");
+  //   }
+  //   return errors;
+  // }
+};
 
 
 
 
-  const payloadBuilders = {
-    bulk: (data) => ({
+// Enhanced payload builders with dynamic connection types
+const payloadBuilders = {
+  bulk: (data, connections) => {
+    // const sourceType = getConnectionType(data.source.connection, connections);
+    // const targetType = getConnectionType(data.target.connection, connections);
+    
+  
+    
+    return {
       project: "default",
-      created_by: "to_be_fetched_from_token", 
+      created_by: "to_be_fetched_from_token",
       migration_name: data.definition.name,
       migration_description: data.definition.description,
       migrations: data.source.selectedTables.map(table => ({
-        metadata_id: table.metadataId, 
+        metadata_id: table.metadataId,
         schedule: data.schedule.startLoadDate,
-        wherecondition: ""
+        wherecondition: data.source.filters?.map(filter => ({
+          wherecolumn: filter.columnName,
+          whereoperator: filter.filterOperator,
+          wherevalues: filter.value
+        })) || []
       })),
-      migration_groups: {},
-      op_types: {
-        datafederation: false
-      },
       source_conn_name: data.source.connection,
       target_conn_name: data.target.connection,
-      source_conn_type: "oracle", 
-      target_conn_type: "oracle", 
+      source_conn_type: sourceType,
+      target_conn_type: targetType,
       scheduler: {
         startdatetime: data.schedule.startLoadDate,
-        scheduleinterval: {},
-        schedulerColumn: "none",
+        endLoadDate: data.schedule.endLoadDate
+      }
+    };
+  },
+
+  subset: (data, connections) => {
+    const sourceType = getConnectionType(data.source.connection, connections);
+    const targetType = getConnectionType(data.target.connection, connections);
+
+    return {
+      workflow_name: data.definition.name,
+      migration_auto_name: data.definition.name,
+      description: data.definition.description,
+      source_conn_id: data.source.connectionId,
+      target_conn_id: data.target.connectionId,
+      source_migr_info: {
+        sourceType,
+        sourceConnName: data.source.connection,
+        sourceObjectName: data.source.selectedTables[0],
+        sourceSchemaName: data.source.schema,
+        wherecondition: data.source.filters?.map(filter => ({
+          wherecolumn: filter.columnName,
+          whereoperator: filter.filterOperator,
+          wherevalues: filter.value
+        })) || []
+      },
+      target_migr_info: {
+        targetType,
+        targetConnName: data.target.connection,
+        targetObjectName: data.target.selectedTables[0]
+      },
+      scheduler: {
         startLoadDate: data.schedule.startLoadDate,
         endLoadDate: data.schedule.endLoadDate
       }
-    }),
-  
-    subset: (data) => ({
-      workflow_name: data.definition.name,
-      // migration_auto_name: `${data.definition.name}_auto`,
-      migration_auto_name: data.definition.name,
-      description: data.definition.description,
-      project: "Federal_Unit_Testing",
-      created_by: "novijoth", 
-      status: "Pending",
-      source_conn_id: data.source.connectionId, 
-      target_conn_id: data.target.connectionId, 
-      source_migr_info: {
-        sourceType: "mysql", 
-        sourceConnName: data.source.connection,
-        sourcePath: "",
-        sourceObjectName: data.source.selectedTables[0],
-        iscomplexwherecondition: "No",
-        wherecondition: data.source.filters?.map(filter => ({
-          wherecolumn: filter.column,
-          whereoperator: filter.operator,
-          wherevalues: filter.value
-        })) || [],
-        sourceSchemaName: data.source.schema
-      },
-      target_migr_info: {
-        targetType: "mysql", // Should be dynamic
-        targetConnName: data.target.connection,
-        targetPath: "",
-        targetObjectName: data.target.selectedTables[0],
-        targetschema: [],
-        sourceDF: "s_df_1",
-        partition: {
-          columns: [],
-          strategy: "",
-          type: "",
-          hashColumn: "",
-          recNum: 1000
-        },
-        loadParams: {
-          loadType: "FULL",
-          targetPk: "",
-          surrogateKey: "",
-          changeType: "",
-          checksumColumns: "",
-          changeCondition: ""
-        }
-      },
-      source_table: data.source.selectedTables[0],
-      target_table: data.target.selectedTables[0],
-      source_conn_name: data.source.connection,
-      target_conn_name: data.target.connection,
-      source_conn_type: "mysql", // Should be dynamic
-      target_conn_type: "mysql", // Should be dynamic
-      scheduler: {
-        startdatetime: "",
-        scheduleinterval: {},
-        schedulerColumn: "none",
-        startLoadDate: "",
-        endLoadDate: ""
-      },
-      retention: {
-        retention_on: "",
-        retention_duration: "",
-        retention_type: ""
-      },
-      transformation: {},
-      workflow_type: "manual"
-    })
-  };
+    };
+  }
+};
 
 
 
@@ -194,26 +184,26 @@ const ArchivalCanvas = () => {
       return false;
     }
 
-    // Validate scope-specific rules
-    const scope = sourceData?.migrationScope;
-    const scopeValidationErrors = migrationValidators[scope](sourceData, targetData);
-    if (scopeValidationErrors.length > 0) {
-      scopeValidationErrors.forEach(e => toast.error(e));
-      return false;
-    }
+    // // Validate scope-specific rules
+    // const scope = sourceData?.migrationScope;
+    // const scopeValidationErrors = migrationValidators[scope](sourceData, targetData);
+    // if (scopeValidationErrors.length > 0) {
+    //   scopeValidationErrors.forEach(e => toast.error(e));
+    //   return false;
+    // }
 
     return true;
   };
 
-// Update handleSubmit in ArchivalCanvas.jsx
+// Enhanced handleSubmit with connection data
 const handleSubmit = useCallback(async () => {
   try {
-    // Validate before submission
-    if (!validatePayload(nodes, edges, payload)) {
-      return;
-    }
+    if (!validatePayload(nodes, edges, payload)) return;
 
-    // Collect node data
+    // Fetch connections data
+    // const connectionsResponse = await axios.get(`${hostnameV1}/connections`);
+    // const connections = connectionsResponse.data;
+
     const collectedData = {
       definition: payload[nodes.find(n => n.type === 'define').id],
       source: payload[nodes.find(n => n.type === 'source').id],
@@ -221,35 +211,27 @@ const handleSubmit = useCallback(async () => {
       schedule: payload[nodes.find(n => n.type === 'schedule').id]
     };
 
-    // Determine migration scope
     const migrationScope = collectedData.source.migrationScope;
-    if (!['bulk', 'subset'].includes(migrationScope)) {
-      throw new Error(`Invalid migration scope: ${migrationScope}`);
-    }
+    const apiPayload = payloadBuilders[migrationScope](collectedData, connections);
+    
+    // Get correct API endpoint
+    const endpoint = migrationScope === 'bulk' 
+      ? `${hostnameV1}/metadata-archivals`
+      : `${hostnameV2}/migrations`;
 
-
-    // Build scope-specific payload
-    const apiPayload = payloadBuilders[migrationScope](collectedData);
-    console.log("Submitting payload:", apiPayload);
-
-
-    // Submit to correct endpoint
-    const response = await axios.post(
-      API_ENDPOINTS[migrationScope],
-      apiPayload,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
+    const response = await axios.post(endpoint, apiPayload, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        'Content-Type': 'application/json'
       }
-    );
+    });
 
-    console.log("API Response:", response.data);
-    toast.success('Migration submitted successfully!');
+    console.log("Submission successful:", response.data);
+    toast.success(`Migration (${migrationScope}) submitted successfully!`);
+    
   } catch (error) {
-    console.error("Error submitting flow:", error);
-    toast.error('Submission failed: ' + error.message);
+    console.error("Submission error:", error);
+    toast.error(`Submission failed: ${error.response?.data?.message || error.message}`);
   }
 }, [payload, nodes, edges]);
 
@@ -260,7 +242,6 @@ const handleSubmit = useCallback(async () => {
   );
 
   const onNodeDataChange = useCallback((nodeId, data) => {
-    console.log(`onNodeDataChange called for nodeId: ${nodeId}, data:`, data);
     setPayload((prev) => {
       if (JSON.stringify(prev[nodeId]) !== JSON.stringify(data)) {
         return { ...prev, [nodeId]: data };

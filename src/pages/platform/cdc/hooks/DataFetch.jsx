@@ -4,30 +4,32 @@ import { useAuth } from "../../../../context/AuthContext";
 const hostnameV1= import.meta.env.VITE_FAST_API;
 const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
 
-const fetchConnections = async (token,decodedToken) => {
+const fetchConnections = async (token,decodedToken,project , poolType='both') => {
   if (!token) throw new Error("Token is missing");
 
   try {
     const response = await axios.get(`${hostnameV1}/connection-saves`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-project": project
+       },  });  
 
     return response.data.filter(
       (item) =>
         item.pool_type === "both" ||
-        (item.pool_type === "source" && item.created_by === decodedToken.preferred_username));
+        (item.pool_type === poolType && item.created_by === decodedToken.preferred_username));
   } catch (error) {
     console.error("Error fetching connections:", error);
     return [];
   }
 };
 
-export const useConnections = () => {
-  const { token,decodedToken } = useAuth();
+export const useConnections = (poolType) => {
+  const { token,decodedToken,project } = useAuth();
 
   return useQuery({
-    queryKey: ["CDCconnections"],
-    queryFn: () => fetchConnections(token,decodedToken),
+    queryKey: [`CDCconnections-${poolType}`,project],
+    queryFn: () => fetchConnections(token,decodedToken,project,poolType),
     enabled: !!token,
     staleTime: 30 * 1000,
     retry: 2,
@@ -145,6 +147,55 @@ export const useDDL = (connectionName, schemaName) => {
     queryKey: ["CDCddl", connectionName, schemaName],
     queryFn: () => fetchDDL(token, connectionName, schemaName),
     enabled: !!token && !!connectionName && !!schemaName,
+    staleTime: 30 * 1000,
+    retry: 2,
+  });
+};
+
+
+
+
+
+
+
+
+
+const fetchTargetDDL = async ({  token,  hostnameV2,  sourceConnection,  targetConnection,  sourceSchema,  targetSchema = null,  sourceTables = [] }) => {
+  if (!token || !sourceConnection || !targetConnection || !sourceSchema) return [];
+
+  try {
+    const response = await axios.post(
+      `${hostnameV2}/metadata-archivals/grouped-target-tables`,
+      {
+        source_conn_name: sourceConnection,
+        target_conn_name: targetConnection,
+        source_schema: sourceSchema,
+        ...(targetSchema && { target_schema: targetSchema }), 
+        ...(sourceTables.length > 0 && { selected_source_tables: sourceTables }) 
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching grouped target tables:", error);
+    return [];
+  }
+};
+
+export const useBulkTables = ( sourceConnection, targetConnection, sourceSchema, targetSchema = null, sourceTables = []
+) => {
+  const { token, hostnameV2 } = useAuth();
+  return useQuery({
+    queryKey: ['bulkTables', sourceConnection, targetConnection, sourceSchema, targetSchema, sourceTables
+    ],
+    queryFn: () => fetchTargetDDL({ token, hostnameV2, sourceConnection, targetConnection, sourceSchema, targetSchema, sourceTables }),
+    enabled: !!token && !!sourceConnection && !!targetConnection && !!sourceSchema,
     staleTime: 30 * 1000,
     retry: 2,
   });

@@ -28,38 +28,58 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
     setSelectedOption(event.target.value);
   }, []);
   
-  const handleSave = async () => {
-    const pipelineData = pipelines[ID]?.data || {};
-  
-    if (
-    isPipelineNode && 
-    (
-      !pipelineData?.define?.name || 
-      !pipelineData?.source?.bulk_list || 
-      !pipelineData?.source?.subset_list || 
-      !pipelineData?.source?.op_types
-    )
-  ) {
-    toast.error("Please fill all the required fields!", { duration: 4000 });
-    return; 
-  }
 
+
+
+  const handleSave = async () => {
+    let pipelineData = {};
+    
+    if (isPipelineNode) {
+      pipelineData = pipelines[ID]?.data || {};
+    } else {
+      if (data?.target && Array.isArray(data.target) && data.target.length > 0) {
+        const targetData = data.target[0];
+        pipelineData = {
+          define: targetData.define || {},
+          source: targetData.source || {},
+          target: targetData
+        };
+      }
+    }
+    if (!pipelineData?.define?.name) {
+      toast.error("Please provide a name for the CDC!", { duration: 4000 });
+      return;
+    }
+    
+    if (!pipelineData?.source?.source_conn_id) {
+      toast.error("Source connection is required!", { duration: 4000 });
+      return;
+    }
+    
+    if (!pipelineData?.target?.target_conn_id) {
+      toast.error("Target connection is required!", { duration: 4000 });
+      return;
+    }
+    
+    if (!pipelineData?.target?.bulk_list || pipelineData.target.bulk_list.length === 0) {
+      toast.error("Please select at least one table mapping!", { duration: 4000 });
+      return;
+    }
+  
     const finalPayload = {
       project: project,
       created_by: decodedToken.preferred_username,
       cdc_name: pipelineData.define?.name,
       cdc_description: pipelineData.define?.description || "",
-      source_conn_id:pipelineData.source?.source_conn_id,
-      target_conn_id:pipelineData.target?.target_conn_id,
-      source_schema:pipelineData.source?.schema,
-      target_schema:pipelineData.target?.schema,
-      cdc_list: pipelineData.source?.bulk_list || [],
-      subset_list: pipelineData.source?.subset_list || [],
+      source_conn_id: pipelineData.source?.source_conn_id,
+      target_conn_id: pipelineData.target?.target_conn_id,
+      source_schema: pipelineData.source?.schema,
+      target_schema: pipelineData.target?.schema,
+      cdc_list: pipelineData.target?.bulk_list || [],
       op_types: pipelineData.source?.op_types || {},
     };
- 
-    console.log("Final Payload:", finalPayload);
   
+    // console.log("Final Payload:", finalPayload);
     try {
       const response = await fetch(`${hostnameV2}/create-cdc`, {
         method: "POST",
@@ -72,27 +92,21 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
   
       const data = await response.json();
       console.log("Response:", data);
-  
-      // toast.success("CDC pipeline created successfully!", { duration: 4000 });
-  
-  
-  
     } catch (error) {
       console.error("Error:", error);
     }
   
     setTimeout(() => {
-      setNodes([])
+      setNodes([]);
       openModal({
         title: "Success!",
         message: "Your CDC has been saved successfully.",
         type: "success",
-        onConfirm: () => handleClose(),
+        onClose: () => handleClose(),
       });
     }, 800);
   };
   
-
   const handleClose =()=>{
     closeModal()   
     deletePipeline(ID);

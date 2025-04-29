@@ -8,39 +8,61 @@ export function ModalProvider({ children }) {
     title: "",
     message: "",
     onConfirm: () => {},
+    onClose: () => {},
     confirmText: "Confirm",
-    type:'success',
-     loadingText : ""
+    cancelText: "Cancel",
+    type: 'success',
+    loadingText: "",
+    customContent: null
   });
 
-  const openModal = ({ title, message, onConfirm, type,confirmText = "Confirm",loadingText }) => {
+  const openModal = ({ 
+    title, 
+    message, 
+    onConfirm, 
+    onClose, 
+    type, 
+    confirmText = "Confirm", 
+    cancelText = "Cancel",
+    loadingText,
+    customContent
+  }) => {
     setModalState({
       isOpen: true,
       title,
       message,
       onConfirm,
+      onClose: onClose || (() => closeModal()),
       confirmText,
+      cancelText,
       type,
-       loadingText
+      loadingText,
+      customContent
     });
   };
 
   const closeModal = () => {
     setModalState(prev => ({ ...prev, isOpen: false }));
   };
+
   return (
     <ModalContext.Provider value={{ modalState, openModal, closeModal }}>
       {children}
       {modalState.isOpen && (
-      <Modal 
-      isOpen={modalState.isOpen} 
-      onClose={() => closeModal()} 
-      type={modalState.type}
-      title={modalState.title}
-      message={modalState.message}
-      onConfirm={modalState.onConfirm}
-       loadingText = {modalState.loadingText}
-    />
+        <Modal 
+          isOpen={modalState.isOpen} 
+          onClose={() => {
+            modalState.onClose();
+          }} 
+          type={modalState.type}
+          title={modalState.title}
+          message={modalState.message}
+          onConfirm={modalState.onConfirm}
+          loadingText={modalState.loadingText}
+          confirmText={modalState.confirmText}
+          cancelText={modalState.cancelText}
+          customContent={modalState.customContent}
+        />
       )}
     </ModalContext.Provider>
   );

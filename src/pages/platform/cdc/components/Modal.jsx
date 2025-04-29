@@ -13,6 +13,7 @@ const Modal = ({
   loadingText,
   confirmText = "Yes",
   cancelText = "No",
+  customContent = null, 
 }) => {
   const [animationClass, setAnimationClass] = useState("scale-0");
   const [currentType, setCurrentType] = useState(type);
@@ -76,79 +77,120 @@ const Modal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-all duration-300">
+    <div className="fixed w-full inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-all duration-300">
       <div 
-        className={`bg-white rounded-2xl w-full max-w-lg overflow-hidden transform transition-all duration-300 ${animationClass} shadow-xl`}
+        className={`bg-white rounded-2xl min-w-[20vw] max-w-[900px] h-auto max-h-[80vh] overflow-hidden transform transition-all duration-300 ${animationClass} shadow-xl`}
       >
-  <div className="relative h-20">
-                             {" "}
-                             <div
-                                 className="absolute inset-0 bg-cover bg-center"
-                                 style={{ backgroundImage: `url(${currentType=='success'? successBackground : failureBackground})` }}
-                             >
-                                 <button
-                                     onClick={onClose}
-                                     className="absolute top-4 right-4 text-black p-1"
-                                 >
-                                     <X className="h-6 w-6" />
-                                 </button>
-                             </div>
-                         </div>
+       
 
-        <div className="p-4">
-          <div className="flex items-center  mb-2">
-          <div className={`w-12 h-12 flex items-center justify-center transform transition-all duration-500 ${isChanging ? "rotate-180 scale-0" : "rotate-0 scale-100"}`}>
-      {isChanging ? (
-        <Loader className="w-8 h-8 text-gray-400 animate-spin" />
-      ) : config.icon}
-    </div>
-            <h2 className="text-2xl text-gray-800 font-bold">{config.title}</h2>
-          </div>
-          
-          <p className="text-lg text-gray-700">
-            {message || "Your CDC has been saved successfully."}
-          </p>
-
-          <div className="flex justify-start gap-4 mt-4">
-            {currentType === "question" ? (
-              <>
+        {customContent ? (
+          <div className="p-4">
+            {customContent}
+            
+            <div className="flex justify-start gap-4 mt-4">
+              {currentType === "question" ? (
+                <>
+                  <button
+                    onClick={onClose}
+                    className="px-6 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
+                    disabled={isLoading}
+                  >
+                    {cancelText}
+                  </button>
+                  <button
+                    onClick={onConfirm}
+                    disabled={isLoading}
+                    className={`px-6 py-3 text-white rounded-lg transition-colors flex items-center justify-center ${config.buttonColor}`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader className="w-5 h-5 mr-2 animate-spin" />
+                        {loadingText}
+                      </>
+                    ) : confirmText}
+                  </button>
+                </>
+              ) : (
                 <button
                   onClick={onClose}
-                  className="px-6 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-[#8e78b7]  hover:text-white transition-colors"
-                  disabled={isLoading}
+                  className={`px-6 py-3 text-white rounded-lg transition-colors ${
+                    currentType === "success" ? "bg-[#8e78b7] hover:bg-gray-400" : "bg-red-500 hover:bg-gray-400"
+                  }`}
                 >
-                  {cancelText}
+                  {currentType === "success" ? "Alright" : "Close"}
                 </button>
-                <button
-                  onClick={handleConfirmClick}
-                  disabled={isLoading}
-                  className={`px-6 py-3 text-white rounded-lg transition-colors flex items-center justify-center ${config.buttonColor}`}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader className="w-5 h-5 mr-2 animate-spin" />
-                      {loadingText}
-                      </>
-                  ) : confirmText}
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={onClose}
-                className={`px-6 py-3 text-white rounded-lg transition-colors ${
-                  currentType === "success" ? "bg-[#8e78b7] hover:bg-gray-400" : "bg-red-500 hover:bg-gray-400"
-                }`}
-              >
-                {currentType === "success" ? "Alright" : "Close"}
-              </button>
-            )}
+              )}
+            </div>
+          </div>
+        ) : (
+
+
+          <div className="p-4">
+             <div className="relative h-20">
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${currentType === 'success' ? successBackground : failureBackground})` }}
+          >
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 text-black p-1"
+            >
+              <X className="h-6 w-6" />
+            </button>
           </div>
         </div>
+            <div className="flex items-center mb-2">
+              <div className={`w-12 h-12 flex items-center justify-center transform transition-all duration-500 ${isChanging ? "rotate-180 scale-0" : "rotate-0 scale-100"}`}>
+                {isChanging ? (
+                  <Loader className="w-8 h-8 text-gray-400 animate-spin" />
+                ) : config.icon}
+              </div>
+              <h2 className="text-2xl text-gray-800 font-bold">{config.title}</h2>
+            </div>
+            
+            <p className="text-lg text-gray-700">
+              {message || "Your CDC has been saved successfully."}
+            </p>
+
+            <div className="flex justify-start gap-4 mt-4">
+              {currentType === "question" ? (
+                <>
+                  <button
+                    onClick={onClose}
+                    className="px-6 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
+                    disabled={isLoading}
+                  >
+                    {cancelText}
+                  </button>
+                  <button
+                    onClick={handleConfirmClick}
+                    disabled={isLoading}
+                    className={`px-6 py-3 text-white rounded-lg transition-colors flex items-center justify-center ${config.buttonColor}`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader className="w-5 h-5 mr-2 animate-spin" />
+                        {loadingText}
+                      </>
+                    ) : confirmText}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={onClose}
+                  className={`px-6 py-3 text-white rounded-lg transition-colors ${
+                    currentType === "success" ? "bg-[#8e78b7] hover:bg-gray-400" : "bg-red-500 hover:bg-gray-400"
+                  }`}
+                >
+                  {currentType === "success" ? "Alright" : "Close"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
 export default Modal;
-
-
-

@@ -92,7 +92,7 @@ export function BaseNode({ id, data }) {
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
   const [apiColumns, setApiColumns] = useState([]);
-  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
+  const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const {
     settingsList,
     setSettingsList,
@@ -115,13 +115,12 @@ export function BaseNode({ id, data }) {
   useEffect(() => {
     (async () => {
       try {
-  
         const params = new URLSearchParams({
           view_type: "Base",
-          project: project,
+          project: (project === "default" || project === "none") ? "default" : project,
           created_by: decodedToken?.preferred_username,
         });
-  
+
         const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`, {
           method: "GET",
           headers: {
@@ -129,7 +128,7 @@ export function BaseNode({ id, data }) {
             authorization: `Bearer ${token}`,
           },
         });
-  
+
         const data = await response.json();
         if (response.ok) {
           setApiViews(data.result.sort((a, b) => a.localeCompare(b)));
@@ -142,9 +141,9 @@ export function BaseNode({ id, data }) {
       }
     })();
   }, []);
-  
 
-  
+
+
   useEffect(() => {
     if (selectedView) {
       (async () => {
@@ -419,7 +418,7 @@ export function ConnectionNode({ id, data }) {
     setUserCheckedColumns,
   } = useStateContext();
 
-  const {token, project, decodedToken, setSelectedProject, hostnameV1,  hostnameV2 }= useAuth();
+  const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
 
   const getFilterModalColumns = () => {
     if (apiColumns.length > 0) {
@@ -430,6 +429,7 @@ export function ConnectionNode({ id, data }) {
     }
     return [];
   };
+
   useEffect(() => {
     (async () => {
       let response;
@@ -441,37 +441,47 @@ export function ConnectionNode({ id, data }) {
             authorization: `Bearer ${token}`,
           },
         });
+
         let data = await response.json();
-        if (response.status == 200) {
+
+        if (response.status === 200) {
           const uniqueConnections = [
             ...new Map(
               data.map((item) => [item.connection_name, item])
             ).values(),
           ];
-          const filteredConnections = uniqueConnections.filter(
-            (item) =>
-              item.project.toUpperCase() === project.toUpperCase() &&
-              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-              !item.is_deleted
-          );
-          console.log(
-            "FILTERED CONNECTIONS by username==>> ",
-            filteredConnections
-          );
-          setApiConnections(filteredConnections); //Data = array of Connection Objects
+
+          const filteredConnections = uniqueConnections.filter((item) => {
+            const createdByMatches = item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase();
+            const notDeleted = !item.is_deleted;
+
+            if (project !== "default") {
+              return (
+                item.project.toUpperCase() === project.toUpperCase() &&
+                createdByMatches &&
+                notDeleted
+              );
+            } else {
+              return createdByMatches && notDeleted;
+            }
+          });
+
+          console.log("FILTERED CONNECTIONS by username==>> ", filteredConnections);
+          setApiConnections(filteredConnections);
         } else {
           console.log(
             `Error fetching connections.\nResponse status: ${response.status}\nData: `,
             data
           );
-          data.toast.error("Error fetching connections.");
+          data.toast?.error?.("Error fetching connections.");
         }
       } catch (error) {
         console.log("Error fetching connections. ", error);
-        data.toast.error("Error fetching connections.");
+        data?.toast?.error?.("Error fetching connections.");
       }
     })();
   }, []);
+
 
   useEffect(() => {
     if (selectedConnection) {

@@ -514,7 +514,7 @@ export function BusinessFooter() {
 
     const newPayload = {
       ...finalPayload,
-      project: project,
+      project: (project === "default" || project === "none") ? "default" : project,
       created_by: decodedToken?.preferred_username,
     };
 

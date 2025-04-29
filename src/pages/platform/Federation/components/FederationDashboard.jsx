@@ -68,7 +68,7 @@ const FederationDashBoard = () => {
         });
         let data = await response.json();
 
-        if (project !== "none") {
+        if (project !== "default") {
           data = data.filter(
             (item) =>
               item.project.toUpperCase() === project.toUpperCase() &&
@@ -97,22 +97,23 @@ const FederationDashBoard = () => {
     if (connectionData.length === 0) return;
     connectionData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     var extractedData;
-    if (project !== "none") {
-      data.map((item) => { });
+    console.log("my project is =====>",project)
+
+    if (project != "default" && project !== "none") {
       extractedData = connectionData.filter(
         (item) =>
-          item.project.toUpperCase() === project.toUpperCase() &&
-          item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+          item.project?.toUpperCase() === project.toUpperCase() &&
+          item.created_by?.toUpperCase() === decodedToken?.preferred_username?.toUpperCase() &&
           item.is_deleted === false
       );
     } else {
       extractedData = connectionData.filter(
         (item) =>
-          item.created_by.toUpperCase() ===
-          decodedToken?.preferred_username.toUpperCase() &&
+          item.created_by?.toUpperCase() === decodedToken?.preferred_username?.toUpperCase() &&
           item.is_deleted === false
       );
     }
+    
     console.log("connection data is ====>", extractedData)
     setData(extractedData);
     const connectionIds = extractedData.map((item) => item.connection_id);
@@ -179,7 +180,7 @@ const FederationDashBoard = () => {
         body: JSON.stringify({
           connection_names: connectionNames,
           created_by: decodedToken?.preferred_username || "",
-          project: project || ""
+          project: project || "default"
         })
       });
 

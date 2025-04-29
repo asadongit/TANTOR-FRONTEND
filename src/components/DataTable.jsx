@@ -44,10 +44,10 @@ const DataTable = ({
 
   const processedData = useMemo(() => {
     let result = [...data];
-
-    if (project && project !== 'none') {
-      result = result.filter(row => row.project === project);
-    }
+// tbr
+    // if (project && !["none","default"].includes(project)) {
+    //   result = result.filter(row => row.project === project);
+    // }
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
