@@ -243,7 +243,7 @@ export function SchedulerNode({ id, data, selected}) {
               htmlFor="schedule-column"
               className="block text-xs text-black font-semibold mb-1"
             >
-              Schedule On (Column Name)
+              Schedule On
             </label>
             <select
               id="schedule-column"
