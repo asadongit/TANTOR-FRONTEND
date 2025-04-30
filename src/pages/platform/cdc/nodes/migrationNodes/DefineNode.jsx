@@ -3,13 +3,14 @@ import PropTypes from "prop-types";
 import { Position } from "reactflow";
 import { Minus, X } from "lucide-react";
 import { Handle } from "../../components/CustomHandle";
-import { useCDCData } from "../../../../../hooks/platform/cdc";
 import { useWorkflow } from "../../context/WorkflowContext";
+import { useArchivalData } from "../../../../../hooks/platform/archival";
 export function DefineNode({ id, data, selected }) {
-const { data: CDCData=[], isLoading: isCDCLoading, error: CDCError } = useCDCData();
+const { data: MigrationData=[], isLoading: isMigrationLoading, error: MigrationError } = useArchivalData();
   const [nodeData, setNodeData] = useState({
     name: data.define?.name || "",
     description: data.define?.description || "",
+    autoName:data.define?.autoName || "",
   });
 
   const pipelineId = data?.pipelineId;
@@ -28,7 +29,7 @@ const { data: CDCData=[], isLoading: isCDCLoading, error: CDCError } = useCDCDat
 
 
 useEffect(() => {
-  const cdcAutoNames = CDCData.map(item => item.cdc_auto_name);
+  const migrationAutoNames = MigrationData?.map(item => item.migration_auto_name)||[];
   const sourceData = isPipelineNode 
     ? pipelines[ID]?.data?.source 
     : data?.source;
@@ -43,12 +44,17 @@ useEffect(() => {
     const sourceName = firstSource?.connection && firstSource?.schema && firstSource?.mode
     ? `${firstSource.connection}_${firstSource.schema}_${firstSource.mode}`
     : nodeData.name;
-    let nameCount = cdcAutoNames.filter(name => name.toLowerCase() === sourceName.toLowerCase()).length;
-  if (isPipelineNode) {
+    let nameCount = migrationAutoNames?.filter(name =>
+      typeof name === 'string' &&
+      name.toLowerCase() === (sourceName || '').toLowerCase()
+    ).length;
+    
+    if (isPipelineNode) {
     if (sourceName && sourceName !== nodeData.name) {
       setNodeData((prevData) => ({
         ...prevData,
-        name: `${sourceName}${nameCount}`,
+        name: `${sourceName}${nameCount+1}`,
+        autoName:sourceName
       }));
     }
   } else {
@@ -57,6 +63,8 @@ useEffect(() => {
       setNodeData((prevData) => ({
         ...prevData,
         name: `${sourceName}${nameCount}`,
+        autoName:sourceName
+
       }));
     }
   }
