@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position } from "reactflow";
-import { Pencil, Search, Upload, X } from "lucide-react";
+import { CloudCog, Pencil, Search, Upload, X } from "lucide-react";
 import { useStateContext } from "../../react-flow/context/ContextProvider";
 import { SkeletonLoader } from "../../react-flow/SkeletonLoader";
 import { useTableContext } from "../../react-flow/context/TableContext";
@@ -11,12 +11,15 @@ import { useAuth } from "../../../../context/AuthContext";
 
 export function TargetNode({ id }) {
   const hostname = import.meta.env.VITE_FAST_API;
+  const hostnameV2 = import.meta.env.VITE_FAST_API_V2;
   const { token, decodedToken } = useAuth();
 
   const {
     selectedTables,
     sourceConnectionName,
+    sourceSchemaName,
     selectedScope,
+    handleTargetConnectionName,
     handleIsVisibleFooter,
     defineNodeName,
     defineNodeDesc,
@@ -33,9 +36,13 @@ export function TargetNode({ id }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTargetTables, setSelectedTargetTables] = useState([]);
+  const [checkedBulkTables, setCheckedBulkTables] = useState(false);
+  const [selectedBulkTablesMap, setSelectedBulkTablesMap] = useState([]);
+  const [selectedBulkTables, setSelectedBulkTables] = useState([]);
+  const [bulkTableMetadata, setBulkTableMetadata] = useState([]);  
 
   const { openDrawer } = useTableContext();
-  const { saveTargetData, filters, dropPartitions, sourceData } =
+  const { saveTargetData, filters, dropPartitions, bulkDropPartitions, sourceData, saveSelectedBulkTargetTablesPayload } =
     usePurgeContext("");
 
   let connectionsData;
@@ -81,7 +88,6 @@ export function TargetNode({ id }) {
         }
 
         schemadetails = await response.json();
-
         setSchema(schemadetails);
       } catch (error) {
         console.error("Error fetching schemas:", error);
@@ -124,16 +130,99 @@ export function TargetNode({ id }) {
   );
 
   const fetchMetadata = useCallback(async () => {
-    const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-    const response = await metaDataResponse.json();
-    setMetaData(response);
+    try {
+      const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const response = await metaDataResponse.json();
+      setMetaData(response);
+    } catch (error) {
+      console.error("Error fetching options ", error);
+    }
   }, []);
+
+  const fetchMetadataAccToConnectionAndBulkTable = async (targetConnection, selectedBulkTables) => {
+    if(!targetConnection || !selectedBulkTables) return;
+    try {
+      const response = await fetch(`${hostname}/connection-master-metadata/${targetConnection}/${selectedBulkTables}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if(!response.ok) {
+        throw new Error(`HTTP error! status: ${metaDataResponse.status}`);
+      };
+
+      let json = await response.json();
+      setBulkTableMetadata(json);
+      return json;
+    } catch (error) {
+      console.error("Error fetching tables ", error);
+    }
+  };
+
+  const buildTargetTablesPayload = () => {
+    return {
+      source_conn_name: sourceConnectionName,
+      target_conn_name: targetConnection,
+      source_schema: sourceSchemaName,
+      selected_source_tables: selectedTables,
+    };
+  };
+
+  const [sourceMappedTargetTables, setSourceMappedTargetTables] = useState([]);
+
+  const initCheckedBulkTables = (sourceTargetTableMap) => {
+    let arr = [];
+    for (const sourceObj of sourceTargetTableMap) {
+      let checkedTableMap = {
+        [sourceObj.source_table]: false,
+        target_tables: {},
+      };
+      for (const target_table_name of sourceObj.target_tables) {
+        checkedTableMap.target_tables[target_table_name] = false;
+      }
+
+      arr.push(checkedTableMap);
+    }
+    return arr;
+  };
+
+  const fetchSourceMappedTargetTables = useCallback(async () => {
+    try {
+      const targetTables = await fetch(
+        `${hostnameV2}/metadata-archivals/grouped-target-tables`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(buildTargetTablesPayload()),
+        }
+      );
+      const response = await targetTables.json();
+      setSourceMappedTargetTables(response);
+      setCheckedBulkTables(initCheckedBulkTables(response));
+    } catch (error) {
+      console.error(error);
+      setSourceMappedTargetTables([]);
+    }
+  }, [
+    sourceConnectionName,
+    targetConnection,
+    sourceSchemaName,
+    selectedTables,
+    token,
+    hostnameV2,
+  ]);
 
   const filterMetaData = metadata.filter((targetTable) =>
     targetTable.target_table
@@ -160,29 +249,41 @@ export function TargetNode({ id }) {
     selectedTargetTables,
     allConnections
   ) => {
-    const filteredConnectionsByTargetTable = allConnections.filter((connection) => selectedTargetTables.includes(connection?.target_table));
+    const filteredConnectionsByTargetTable = allConnections.filter(
+      (connection) => selectedTargetTables.includes(connection?.target_table)
+    );
 
-    const filteredConnectionsBySourceTable = allConnections.filter((connection) => selectedSourceTables.includes(connection?.source_table));
+    const filteredConnectionsBySourceTable = allConnections.filter(
+      (connection) => selectedSourceTables.includes(connection?.source_table)
+    );
 
-    if(filteredConnectionsByTargetTable.length === 0) {
+    if (filteredConnectionsByTargetTable.length === 0) {
       return {
         valid: false,
         message: `No connections found for target tables!`,
       };
     }
 
-    if(filteredConnectionsBySourceTable.length === 0) {
+    if (filteredConnectionsBySourceTable.length === 0) {
       return {
         valid: false,
         message: `No connections found for source tables!`,
       };
     }
 
-    const connectionSourceTables = filteredConnectionsByTargetTable.map((connection) => connection?.source_table);
-    const connectionTargetTables = filteredConnectionsBySourceTable.map((connection) => connection?.target_table);
+    const connectionSourceTables = filteredConnectionsByTargetTable.map(
+      (connection) => connection?.source_table
+    );
+    const connectionTargetTables = filteredConnectionsBySourceTable.map(
+      (connection) => connection?.target_table
+    );
 
-    const filteredConnectionSourceTables = connectionSourceTables.filter((table) => selectedSourceTables.includes(table));
-    const filteredConnectionTargetTables = connectionTargetTables.filter((table) => selectedTargetTables.includes(table));
+    const filteredConnectionSourceTables = connectionSourceTables.filter(
+      (table) => selectedSourceTables.includes(table)
+    );
+    const filteredConnectionTargetTables = connectionTargetTables.filter(
+      (table) => selectedTargetTables.includes(table)
+    );
 
     for (const table of selectedSourceTables) {
       if (!filteredConnectionSourceTables.includes(table)) {
@@ -208,7 +309,27 @@ export function TargetNode({ id }) {
 
   useEffect(() => {
     fetchTables(targetConnection, selectedSchema);
-  }, [selectedSchema]);
+  }, [targetConnection, selectedSchema]);
+
+  useEffect(() => {
+    if (
+      targetConnection &&
+      sourceConnectionName &&
+      sourceSchemaName &&
+      selectedTables.length > 0
+    ) {
+      fetchSourceMappedTargetTables();
+    }
+  }, [
+    sourceConnectionName,
+    sourceSchemaName,
+    selectedTables,
+    fetchSourceMappedTargetTables,
+  ]);
+
+  useEffect(() => {
+    handleTargetConnectionName(targetConnection)
+  }, [targetConnection])
 
   const handleTableSelection = (tableName) => {
     if (selectedScope === "subset") {
@@ -291,7 +412,10 @@ export function TargetNode({ id }) {
       };
     }
 
-    if (target_purge_scope === "subset" && (!targetTables || targetTables.length !== 1)) {
+    if (
+      target_purge_scope === "subset" &&
+      (!targetTables || targetTables.length !== 1)
+    ) {
       return {
         valid: false,
         message:
@@ -302,7 +426,46 @@ export function TargetNode({ id }) {
     return { valid: true, message: "Selection is valid." };
   };
 
-  const saveNode = () => {
+  const saveBulkTableSelection = () => {
+    let selectedBulkTargetTables = [];
+
+    for (const sourceObj of checkedBulkTables) {
+      let source_table_name = Object.keys(sourceObj).find(key => key !== 'target_tables')
+      let is_source_table_selected = sourceObj[source_table_name];
+      if (!is_source_table_selected) continue
+      let selected_target_tables = Object.keys(sourceObj.target_tables).filter(target_table_name => sourceObj.target_tables[target_table_name])
+      selectedBulkTargetTables = [
+        ...selectedBulkTargetTables,
+        ...selected_target_tables
+          .map(target_table_name => ({
+            target_table: target_table_name,
+            source_table: source_table_name
+          }))
+      ]
+    }
+
+    saveSelectedBulkTargetTablesPayload(selectedBulkTargetTables)
+
+    let selectedConnectionData = connections.find(
+      (connection) => connection.connection_name === targetConnection
+    );
+
+    const connectionId = selectedConnectionData?.connection_id;
+    const connectionType = selectedConnectionData?.connection_type;
+
+    saveTargetData(
+      connectionId,
+      targetConnection,
+      connectionType,
+      null,
+      selectedSchema,
+      connectionType
+    );
+
+    return selectedBulkTargetTables;
+  };
+
+  const saveSubsetTableSelection = () => {
     let selectedConnectionData = connections.find(
       (connection) => connection.connection_name === targetConnection
     );
@@ -353,29 +516,124 @@ export function TargetNode({ id }) {
       return;
     }
 
-    if(selectedScope === "bulk") {
-      let validationResultForBulk = validateBulkSourceTargetConnectionsExist(selectedTables, selectedTargetTables, metadata);
+    // if (selectedScope === "bulk") {
+    //   //let validationResultForBulk = validateBulkSourceTargetConnectionsExist(selectedTables, selectedTargetTables, metadata);
+    //   // if (!validationResultForBulk.valid) {
+    //   //   toast.error(validationResultForBulk.message);
+    //   //   return;
+    //   // }
+    //   // toast.success(validationResultForBulk.message)
 
-      if (!validationResultForBulk.valid) {
-        toast.error(validationResultForBulk.message);
-        return;
-      }
-      toast.success(validationResultForBulk.message)
-    }
+    //   savebulkTableSelection(checkedBulkTables);
+    // }
+    
 
     try {
       const apiPromise = window.handleConnectNode?.(id);
 
       if(!apiPromise) {
-      throw new Error("Submission handler not found"); 
+      //throw new Error("Submission handler not found");
+      return apiPromise;
       }
+
       if(apiPromise instanceof Promise) {
         await apiPromise;
       }
-      saveNode();
+
+      if (selectedScope === "bulk") {
+        saveBulkTableSelection();
+      }
+      else if(selectedScope === "subset") {
+        saveSubsetTableSelection();
+      }
+
       handleIsVisibleFooter(true);
     } catch (error) {
       throw error;
+    }
+  };
+
+  const isSourceTableChecked = (source_table_name) => {
+    const checkedSourceTable = checkedBulkTables.find(
+      (el) => source_table_name in el
+    );
+    return checkedSourceTable[source_table_name];
+  };
+
+  const isTargetTableChecked = (source_table_name, target_table_name) => {
+    const checkedSourceTable = checkedBulkTables.find(
+      (el) => source_table_name in el
+    );
+    return checkedSourceTable.target_tables[target_table_name];
+  };
+
+  const toggleSourceTableChecked = (source_table_name) => {
+    const newCheckedBulkTables = [...checkedBulkTables];
+    const checkedSourceTable = newCheckedBulkTables.find(
+      (el) => source_table_name in el
+    );
+    checkedSourceTable[source_table_name] =
+      !checkedSourceTable[source_table_name];
+    setCheckedBulkTables(newCheckedBulkTables);
+  };
+
+  const toggleTargetTableChecked = (source_table_name, target_table_name) => {
+    const newCheckedBulkTables = [...checkedBulkTables];
+    const checkedSourceTable = newCheckedBulkTables.find(
+      (el) => source_table_name in el
+    );
+    checkedSourceTable.target_tables[target_table_name] =
+      !checkedSourceTable.target_tables[target_table_name];
+    setCheckedBulkTables(newCheckedBulkTables);
+  };
+
+  const setAllTargetTablesChecked = (source_table_name, updated_is_checked) => {
+    const newCheckedBulkTables = [...checkedBulkTables];
+    const checkedSourceTable = newCheckedBulkTables.find(
+      (el) => source_table_name in el
+    );
+    for (let target_table_name in checkedSourceTable.target_tables) {
+      checkedSourceTable.target_tables[target_table_name] = updated_is_checked;
+    }
+    setCheckedBulkTables(newCheckedBulkTables);
+  };
+
+  const handleSourceTableOnChange = (e, source_table_name) => {
+    if (isSourceTableChecked(source_table_name)) {
+      setAllTargetTablesChecked(source_table_name, false);
+    } else {
+      setAllTargetTablesChecked(source_table_name, true);
+    }
+    toggleSourceTableChecked(source_table_name);
+  };
+
+  const handleTargetTableOnChange = (e, source_table_name, target_table_name) => {
+    toggleTargetTableChecked(source_table_name, target_table_name);
+
+    // Check/uncheck source based on target tables
+    const checkedSourceTable = checkedBulkTables.find(
+      (el) => source_table_name in el
+    );
+    const targetTables = checkedSourceTable.target_tables;
+
+    // Check if all target tables are checked or all are unchecked
+    const allTargetTablesChecked = Object.values(targetTables).every(
+      (value) => value === true
+    );
+    const allTargetTablesUnchecked = Object.values(targetTables).every(
+      (value) => value === false
+    );
+
+    // Update source table checked state if needed
+    if (allTargetTablesChecked && !checkedSourceTable[source_table_name]) {
+      // If all target tables are checked, mark source table as checked
+      toggleSourceTableChecked(source_table_name);
+    } else if (
+      allTargetTablesUnchecked &&
+      checkedSourceTable[source_table_name]
+    ) {
+      // If all target tables are unchecked, mark source table as unchecked
+      toggleSourceTableChecked(source_table_name);
     }
   };
 
@@ -477,7 +735,7 @@ export function TargetNode({ id }) {
           </div>
         ))} */}
 
-      {targetConnection && selectedSchema && selectedScope === "bulk" && (
+      {/* {targetConnection && selectedSchema && selectedScope === "bulk" && (
         <div>
           <div className="flex items-center gap-2 mb-0.5 mt-4">
             <Search size={14} className="text-gray-500" />
@@ -582,7 +840,7 @@ export function TargetNode({ id }) {
                                 {table.target_table}
                               </label>
                             </div>
-                            {/* <button
+                            <button
                                 onClick={() => {
                                   openDrawer(id, table);
                                   handlePurgeNode("Target Node");
@@ -590,9 +848,173 @@ export function TargetNode({ id }) {
                                 className="text-purple-600 hover:text-purple-700"
                               >
                                 <Pencil className="w-4 h-4" />
-                              </button> */}
+                              </button>
                           </div>
                         ))}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )} */}
+
+      {/* {targetConnection && selectedSchema && selectedScope === "bulk" &&
+        (mappedTargetTables.length === 0 ? (
+          <div className="text-xs font-semibold text-black mt-4">
+            {" "}
+            No Data Set Found{" "}
+          </div>
+        ) : (
+          <div className="flex flex-col space-y-2 mt-3 justify-between">
+            <span className="text-xs font-semibold text-black">Data Set</span>
+            {mappedTargetTables.map((targetTable, idx) => (
+              <div key={idx}>
+                <div className="flex space-x-2 space-y-3">
+                  <label
+                    htmlFor={`table-${idx}`}
+                    className="text-xs font-semibold text-black"
+                  >
+                    {targetTable}
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))} */}
+
+      {targetConnection && selectedSchema && selectedScope === "bulk" && (
+        <div>
+          <div className="flex items-center gap-2 mb-3 mt-4">
+            <label className="text-xs font-semibold text-black">Data Set</label>
+          </div>
+          <div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {loading ? (
+                <>
+                  <SkeletonLoader />
+                  <SkeletonLoader />
+                  <SkeletonLoader />
+                </>
+              ) : (
+                <>
+                  {selectedTables.length === 0 ||
+                  sourceMappedTargetTables.length === 0 ? (
+                    <div className="text-xs font-semibold text-black mt-2">
+                      {" "}
+                      No Data Set Found{" "}
+                    </div>
+                  ) : (
+                    <>
+                      {/* <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 mt-2">
+                          <input
+                            type="checkbox"
+                            id="select-all"
+                            className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            checked={
+                              selectedTargetTables.length ===
+                              filterMetaData.length
+                            } // Check if all items are selected
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              if (isChecked) {
+                                setSelectedTargetTables(
+                                  filterMetaData
+                                    .filter((table) => table !== null)
+                                    .map((table) => table.target_table)
+                                );
+                              } else {
+                                setSelectedTargetTables([]);
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="select-all"
+                            className="text-xs font-semibold text-black"
+                          >
+                            Select all
+                          </label>
+                        </div>
+                      </div> */}
+
+                      {sourceMappedTargetTables.map(
+                        (sourceGroup, sourceIdx) => (
+                          <div
+                            key={sourceIdx}
+                            className="border rounded-md p-2 m-2"
+                          >
+                            <div className="flex items-center mb-2">
+                              <input
+                                type="checkbox"
+                                id={`source-${sourceIdx}`}
+                                checked={isSourceTableChecked(
+                                  sourceGroup.source_table
+                                )}
+                                onChange={(e) =>
+                                  handleSourceTableOnChange(
+                                    e,
+                                    sourceGroup.source_table
+                                  )
+                                }
+                                className="h-4 w-4 mr-2 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                              />
+                              <label
+                                //onClick={() => toggleSection(sourceIdx)}
+                                className="text-sm font-bold text-black hover:text-purple-600 focus:outline-none"
+                              >
+                                {sourceGroup.source_table}
+                              </label>
+                            </div>
+
+                            <div className="ml-6 space-y-4">
+                              {sourceGroup.target_tables.map(
+                                (targetTable, targetIdx) => (
+                                  <div
+                                    key={targetIdx}
+                                    className="flex items-center justify-between"
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="checkbox"
+                                        id={`target-${sourceIdx}-${targetIdx}`}
+                                        checked={isTargetTableChecked(
+                                          sourceGroup.source_table,
+                                          targetTable
+                                        )}
+                                        onChange={(e) => {
+                                          setSelectedBulkTables(targetTable);
+                                          //fetchDropPartitions();
+                                          handleTargetTableOnChange(e, sourceGroup.source_table, targetTable)
+                                        }}
+                                        className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                      />
+                                      <label
+                                        //htmlFor={`target-${sourceIdx}-${targetIdx}`}
+                                        className="text-xs font-semibold text-black"
+                                      >
+                                        {targetTable}
+                                      </label>
+                                    </div>
+                                    <button
+                                      onClick={async () => {
+                                        const table = await fetchMetadataAccToConnectionAndBulkTable(targetConnection, targetTable)
+                                        handlePurgeNode("Target node");
+                                       // openDrawer(id, targetTable);
+                                        openDrawer(id, table[0]);
+                                      }}
+                                      className="text-purple-600 hover:text-purple-700 pl-2"
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )
+                      )}
                     </>
                   )}
                 </>

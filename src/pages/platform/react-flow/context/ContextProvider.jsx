@@ -30,6 +30,16 @@ export const ContextProvider = ({ children }) => {
     setSourceConnectionName(conn_name)
   }
 
+  const [targetConnectionName, setTargetConnectionName] = useState("");
+  const handleTargetConnectionName = (conn_name) => {
+    setTargetConnectionName(conn_name)
+  }
+
+  const [sourceSchemaName, setSourceSchemaName] = useState("");
+  const handleSourceSchemaName = (schema) => {
+    setSourceSchemaName(schema);
+  }
+
   const [selectedDataSet, setSelectedDataset] = useState([]);
   const handleSelectedDataSetName = (dataset_name) => {
     setSelectedDataset(dataset_name)
@@ -60,14 +70,25 @@ export const ContextProvider = ({ children }) => {
     setSourceSelectedTable(table)
   }
 
+  const [ sourceBulkSelectedObjects, setSourceBulkSelectedObjects] = useState([]);
+  const handleSourceBulkSelectedObjects = (table) => {
+    setSourceBulkSelectedObjects(table)
+  }
+
   return (
     <StateContext.Provider
       value={{
         buttonColors,
         selectedTables,
         handleSelectedTables,
+        sourceBulkSelectedObjects,
+        handleSourceBulkSelectedObjects,
         sourceConnectionName,
         handleSourceConnectionName,
+        targetConnectionName,
+        handleTargetConnectionName,
+        sourceSchemaName,
+        handleSourceSchemaName,
         selectedDataSet,
         handleSelectedDataSetName,
         selectedScope,

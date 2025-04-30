@@ -33,6 +33,53 @@ export const PurgeContextProvider = ({ children }) => {
     })
   }
 
+  const [bulkFiltersAndPartitions, setBulkFiltersAndPartitions] = useState({});
+  /**
+   *  {
+   *    source: [
+   *      {
+   *        source_table: <source table name>,
+   *        whereCondition: <where condition>,
+   *        source_partition: <source partition>
+   *      }, ...
+   *    ],
+   *    target: [
+   *      {
+   *        target_table: <target table name>,
+   *        source_table: <source table name>,
+   *        target_partition: <target partition>
+   *      }, ...
+   *    ]
+   * }
+   */
+  const saveBulkFiltersAndPartitions = (nodeType, sourceTableName, targetTableName, partitionData, whereCondition) => {
+    if (nodeType === 'source') {
+      setBulkFiltersAndPartitions({
+        ...bulkFiltersAndPartitions,
+        [nodeType]: [
+          ...(bulkFiltersAndPartitions[nodeType] ?? []).filter(el => el.source_table !== sourceTableName),
+          {
+            source_table: sourceTableName,
+            whereCondition: whereCondition,
+            source_partition: partitionData
+          }
+        ]
+      })
+    } else if (nodeType === 'target') {
+      setBulkFiltersAndPartitions({
+        ...bulkFiltersAndPartitions,
+        [nodeType]: [
+          ...(bulkFiltersAndPartitions[nodeType] ?? []).filter(el => el.target_table !== targetTableName),
+          {
+            target_table: targetTableName,
+            source_table: sourceTableName,
+            target_partition: partitionData
+          }
+        ]
+      })
+    }
+  }
+
   const [ filters, setFilters ] = useState({
     source: {
       isComplex: null,
@@ -51,6 +98,11 @@ export const PurgeContextProvider = ({ children }) => {
         details: details
       }
     })    
+  }
+
+  const [selectedBulkTargetTablesPayload, setSelectedBulkTargetTablesPayload] = useState([]);
+  const saveSelectedBulkTargetTablesPayload = (tables) => {
+    setSelectedBulkTargetTablesPayload(tables)
   }
 
   const [sourceData, setSourceData] = useState({
@@ -95,6 +147,10 @@ export const PurgeContextProvider = ({ children }) => {
       saveDefineNode,
       filters,
       saveFilter,
+      bulkFiltersAndPartitions,
+      saveBulkFiltersAndPartitions,
+      selectedBulkTargetTablesPayload,
+      saveSelectedBulkTargetTablesPayload,
       dropPartitions,
       saveDropPartitions,
       sourceData,
