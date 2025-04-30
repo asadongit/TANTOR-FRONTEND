@@ -579,7 +579,7 @@ const GenerateReport = () => {
       <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
       <div className="max-h-[calc(100vh-310px)] overflow-y-auto">
         <table className="w-auto text-sm text-left rtl:text-right text-black">
-          <thead className="text-xs text-white-700 uppercase bg-black text-white">
+          <thead className="text-xs text-white-700 uppercase bg-black text-white sticky top-0 z-10">
             <tr>
               <th scope="col" className="px-6 py-3 w-48">
                 Workflow Name
