@@ -307,26 +307,30 @@ export const WorkflowProvider = ({ children }) => {
   };
 
   const updateBulkMappings = (
-    nodeid,
+    sourceId,
+    ID,
     target_table,
     updatedData,
-    source_table = null
+    source_table = null,
+    isPipelineMode = true
   ) => {
+    const key = isPipelineMode ? ID : `${sourceId}-${ID}`;
+  
     const validUpdateKeys = ["schedule", "whereCondition"];
     const keysToUpdate = Object.keys(updatedData);
-
+  
     if (!keysToUpdate.every((key) => validUpdateKeys.includes(key))) {
       console.log(
         "Invalid keys in update. Only 'schedule' and 'whereCondition' can be updated."
       );
       return;
     }
-
+  
     setBulkMappings((prevMappings) => {
       const updatedMappings = { ...prevMappings };
-
-      if (updatedMappings[nodeid]) {
-        updatedMappings[nodeid] = updatedMappings[nodeid].map((mapping) => {
+  
+      if (updatedMappings[key]) {
+        updatedMappings[key] = updatedMappings[key].map((mapping) => {
           if (
             mapping.target_table === target_table &&
             (source_table ? mapping.source_table === source_table : true)
@@ -336,13 +340,13 @@ export const WorkflowProvider = ({ children }) => {
           return mapping;
         });
       } else {
-        console.log("Node with id", nodeid, "not found.");
+        console.log("Mapping key", key, "not found.");
       }
-
+  
       return updatedMappings;
     });
   };
-
+  
   const removeBulkMapping = (nodeid, target_table, source_table = null) => {
     setBulkMappings((prevMappings) => {
       const updatedMappings = { ...prevMappings };
@@ -380,7 +384,6 @@ export const WorkflowProvider = ({ children }) => {
     }
     return Array.from(source_tables);
   };
-
   return (
     <WorkflowContext.Provider
       value={{
