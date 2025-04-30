@@ -29,7 +29,7 @@ export const useConnectionData = () => {
     queryKey: ["connectionData",project],
     queryFn: () => fetchConnectionData(token, project), 
     enabled: !!token, 
-    staleTime: 30 * 1000, 
+    staleTime: 10 * 1000, 
     retry: 2, 
   });
 };

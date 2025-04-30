@@ -12,11 +12,13 @@ import { usePurgeContext } from "../../react-flow/context/PurgeContext";
 export function SourceNode({ id }) {
 
   const hostname = import.meta.env.VITE_FAST_API;
+  const hostnameV2 = import.meta.env.VITE_FAST_API_V2;
   const { token, decodedToken } = useAuth();
 
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [selectedBulkSourceTables, setSelectedBulkSourceTables] = useState([]);
   const [tables, setTables] = useState([]);
   const [schemas, setSchema] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -30,11 +32,13 @@ export function SourceNode({ id }) {
   const {
     handleSelectedTables,
     handleSourceConnectionName,
+    handleSourceSchemaName,
     handleSelectedDataSetName,
     handleSelectedScopeName,
     handlePurgeNode,
     handleFirstSourcePartitionName,
     handleSourceSelectedTable,
+    handleSourceBulkSelectedObjects,
   } = useStateContext("");
   const { saveSourceData } = usePurgeContext("");
   const [selectedTables, setSelectedTables] = useState("");
@@ -156,10 +160,11 @@ export function SourceNode({ id }) {
     [hostname, token]
   );
 
-  const fetchMetadata = useCallback(async () => {
+  const fetchMetadata = useCallback(async (connectionName, schemaName) => {
+    if(!connectionName || !schemaName) return;
     setLoading(true);
     try {
-      const metaDataResponse = await fetch(`${hostname}/metadata-archivals`, {
+      const metaDataResponse = await fetch(`${hostnameV2}/metadata-archivals-tables?schema_name=${schemaName}&source_conn_name=${connectionName}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -193,8 +198,10 @@ export function SourceNode({ id }) {
 
   useEffect(() => {
     handleSelectedTables(selectedItems);
+    handleSourceBulkSelectedObjects(selectedBulkSourceTables);
     handleSourceConnectionName(selectedConnection);
-  }, [selectedItems]);
+    handleSourceSchemaName(selectedSchema);
+  }, [selectedItems, selectedBulkSourceTables, selectedConnection, selectedSchema]);
 
   useEffect(() => {
     handleSelectedScopeName(selectedPurgeScope);
@@ -320,7 +327,7 @@ export function SourceNode({ id }) {
         onClick={() => window.deleteNode?.(id)}
         className="absolute top-1.5 right-2 p-1"
       >
-        <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+      <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
       </button>
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
@@ -409,7 +416,7 @@ export function SourceNode({ id }) {
               onChange={(e) => {
                 const scopeName = e.target.value;
                 setSelectedPurgeScope(scopeName);
-                fetchMetadata();
+                fetchMetadata(selectedConnection, selectedSchema);
               }}
               className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
             />
@@ -528,8 +535,13 @@ export function SourceNode({ id }) {
                                       .filter((table) => table !== null)
                                       .map((table) => table.source_table)
                                   );
+                                  setSelectedBulkSourceTables(filterMetaData
+                                    .filter((table) => table !== null)
+                                    .map((table) => table)
+                                );
                                 } else {
                                   setSelectedItems([]);
+                                  setSelectedBulkSourceTables([])
                                 }
                               }}
                             />
@@ -569,6 +581,17 @@ export function SourceNode({ id }) {
                                             (i) => i !== table.source_table
                                           )
                                     );
+                                    setSelectedBulkSourceTables((prev) =>
+                                      checked
+                                        ? [...prev, table]
+                                        : prev.filter(
+                                            (i) => i !== table
+                                          )
+                                    );
+                                    handleFirstSourcePartitionName(
+                                      getFirstPartitionNameFromTable(table)
+                                    );
+                                    handleSourceSelectedTable(table);
                                   }}
                                   className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                                 />
