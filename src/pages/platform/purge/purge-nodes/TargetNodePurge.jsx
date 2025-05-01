@@ -42,12 +42,14 @@ export function TargetNode({ id }) {
   const [bulkTableMetadata, setBulkTableMetadata] = useState([]);  
 
   const { openDrawer } = useTableContext();
-  const { saveTargetData, filters, dropPartitions, bulkDropPartitions, sourceData, saveSelectedBulkTargetTablesPayload } =
+  const { saveTargetData, filters, dropPartitions, bulkDropPartitions, bulkFiltersAndPartitions, sourceData, saveSelectedBulkTargetTablesPayload } =
     usePurgeContext("");
 
   let connectionsData;
   let schemadetails;
   let tabledetails;
+
+  console.log("bulkFiltersAndPartitions ", bulkFiltersAndPartitions)
 
   const fetchOptions = useCallback(async () => {
     try {

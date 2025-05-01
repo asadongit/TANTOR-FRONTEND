@@ -36,12 +36,18 @@ const PurgeFooter = ({ onCancel }) => {
     );
 
     let whereConditionConcat = "";
-    if (sourceMatch?.whereCondition) {
+    if (typeof sourceMatch?.whereCondition === "string") {
+      whereConditionConcat = sourceMatch.whereCondition.trim();
+    } else if (
+      typeof sourceMatch?.whereCondition === "object" &&
+      sourceMatch.whereCondition !== null
+    ) {
       const { columnName, filter, value } = sourceMatch.whereCondition;
-      if (columnName && filter && value) {
-      whereConditionConcat = `WHERE ${columnName}${filter}${value}`;
+      if (columnName && filter && value !== undefined) {
+        whereConditionConcat = `WHERE ${columnName}${filter}${value}`;
       }
     }
+
     return {
       source_table,
       target_table,
