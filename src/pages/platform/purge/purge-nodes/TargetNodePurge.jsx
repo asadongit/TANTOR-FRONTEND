@@ -49,8 +49,6 @@ export function TargetNode({ id }) {
   let schemadetails;
   let tabledetails;
 
-  console.log("bulkFiltersAndPartitions ", bulkFiltersAndPartitions)
-
   const fetchOptions = useCallback(async () => {
     try {
       const connectionResponse = await fetch(`${hostname}/connection-saves`, {
