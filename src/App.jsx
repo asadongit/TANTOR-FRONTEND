@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { ReactFlowProvider } from "reactflow";
 import Header from "./components/Header";
@@ -34,6 +34,9 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* Redirect /datagovernance to root */}
+        <Route path="/datagovernance" element={<Navigate to="/" replace />} />
+
         {/* Main layout with header/sidebar */}
         <Route
           path="/*"
@@ -73,8 +76,7 @@ function App() {
             <TableProvider>
             <ThemeProvider>
               <DrawerProvider>
-               
-                  <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
+                <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
                     <Header className="h-16 flex-shrink-0" />{" "}
                     <div className="flex-1 flex">
                       <MigrationSidebar className="w-64 flex-shrink-0" />{" "}
@@ -87,7 +89,6 @@ function App() {
                     </div>
                     <WelcomeModal />
                   </div>
-                  
               </DrawerProvider>
             </ThemeProvider>
             </TableProvider>

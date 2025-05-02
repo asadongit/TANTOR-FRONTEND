@@ -48,39 +48,40 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Federation', icon: ShareIcon, path: '/federation' },
   ];
 
+  const DATAGOVERNANCE_PREFIX = '/datagovernance';
+
   const dataGovernanceRoutes = [
-    { name: 'Dashboard', icon: ChartBarIcon, path: '/' },
+    { name: 'Dashboard', icon: ChartBarIcon, path: `/` },
     {
       name: 'User',
       icon: UserIcon,
-      path: '/user',
+      path: `${DATAGOVERNANCE_PREFIX}/user`,
       subItems: [
-        { name: 'Role', path: '/user/role' },
-        { name: 'Group', path: '/user/group' },
-        { name: 'Sub-group', path: '/user/sub-group' },
-        { name: 'Persona', path: '/user/persona' },
+        { name: 'Role', path: `${DATAGOVERNANCE_PREFIX}/user/role` },
+        { name: 'Group', path: `${DATAGOVERNANCE_PREFIX}/user/group` },
+        { name: 'Sub-group', path: `${DATAGOVERNANCE_PREFIX}/user/sub-group` },
+        { name: 'Persona', path: `${DATAGOVERNANCE_PREFIX}/user/persona` },
       ]
     },
-    { name: 'Data Catalogue', icon: BookOpenIcon, path: '/data-catalogue', subItems: [
-      { name: 'Database', path: '/data-catalogue/database' },
-      { name: 'Schema', path: '/data-catalogue/schema' },
-      { name: 'Table', path: '/data-catalogue/table' },
-      { name: 'Column', path: '/data-catalogue/column' },
-      { name: 'View', path: '/data-catalogue/view' },
-
+    { name: 'Data Catalogue', icon: BookOpenIcon, path: `${DATAGOVERNANCE_PREFIX}/data-catalogue`, subItems: [
+      { name: 'Database', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/database` },
+      { name: 'Schema', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/schema` },
+      { name: 'Table', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/table` },
+      { name: 'Column', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/column` },
+      { name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
     ] },
-    { name: 'Data Assurance', icon: ShieldCheckIcon, path: '/data-assurance' },
-    { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: '/business-catalogue' },
-    { name: 'Data Shield', icon: ShieldCheckIcon, path: '/data-shield',subItems: [
-      { name: 'Protection', path: '/data-shield/protection' },
-      { name: 'Policy', path: '/data-shield/policy' },
-      { name: 'Collaboration', path: '/data-shield/collaboration' }
-    ]  },
+    { name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance` },
+    { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: `${DATAGOVERNANCE_PREFIX}/business-catalogue` },
+    { name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`, subItems: [
+      { name: 'Protection', path: `${DATAGOVERNANCE_PREFIX}/data-shield/protection` },
+      { name: 'Policy', path: `${DATAGOVERNANCE_PREFIX}/data-shield/policy` },
+      { name: 'Collaboration', path: `${DATAGOVERNANCE_PREFIX}/data-shield/collaboration` }
+    ] },
     { type: 'divider' },
-    { name: 'Databot', icon: ShieldCheckIcon, path: '/databot' },
-    { name: 'Reports', icon: DocumentTextIcon, path: '/reports' },
-    { name: 'Import', icon: ArrowsPointingInIcon, path: '/import' },
-    { name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: '/custom-addition' },
+    { name: 'Databot', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/databot` },
+    { name: 'Reports', icon: DocumentTextIcon, path: `${DATAGOVERNANCE_PREFIX}/reports` },
+    { name: 'Import', icon: ArrowsPointingInIcon, path: `${DATAGOVERNANCE_PREFIX}/import` },
+    { name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
   ];
 
   const currentRoutes = activeSection === 'platform' ? platformRoutes : dataGovernanceRoutes;

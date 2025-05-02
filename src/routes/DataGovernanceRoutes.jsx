@@ -10,17 +10,18 @@ import { UserRoutes } from '../pages/datagovernance/User/UserRoutes';
 import { DataCatalogueRoutes } from '../pages/datagovernance/DataCatalogue/DataCatalogueRoutes';
 import { DataShieldRoutes } from '../pages/datagovernance/DataShield/DataShieldRoutes';
 
+
 export const DataGovernanceRoutes = (
   <>
     {UserRoutes}
     {DataCatalogueRoutes}
     {DataShieldRoutes}
-    <Route path="/data-assurance" element={<DataAssurance />} />
-    <Route path="/business-catalogue" element={<BusinessCatalogue />} />
+    <Route path="/datagovernance/data-assurance" element={<DataAssurance />} />
+    <Route path="/datagovernance/business-catalogue" element={<BusinessCatalogue />} />
     {/* <Route path="/data-shield" element={<DataShield />} /> */}
-    <Route path="/databot" element={<Databot />} />
-    <Route path="/reports" element={<Reports />} />
-    <Route path="/import" element={<Import />} />
-    <Route path="/custom-addition" element={<CustomAddition />} />
+    <Route path="/datagovernance/databot" element={<Databot />} />
+    <Route path="/datagovernance/reports" element={<Reports />} />
+    <Route path="/datagovernance/import" element={<Import />} />
+    <Route path="/datagovernance/custom-addition" element={<CustomAddition />} />
   </>
 );

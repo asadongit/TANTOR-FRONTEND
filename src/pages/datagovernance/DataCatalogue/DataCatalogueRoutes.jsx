@@ -6,7 +6,7 @@ import Tables from './Tables';
 import Columns from './Columns';
 
 
-const PREFIX = '/data-catalogue';
+const PREFIX = '/datagovernance/data-catalogue';
 
 export const DataCatalogueRoutes = (
   <>

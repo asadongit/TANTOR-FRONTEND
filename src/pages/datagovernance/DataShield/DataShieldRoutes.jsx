@@ -8,7 +8,7 @@ import GDPR from './components/gdpr';
 import PCI_DSS from './components/pci_dss';
 
 
-const PREFIX = '/data-shield';
+const PREFIX = '/datagovernance/data-shield';
 
 export const DataShieldRoutes = (
   <>

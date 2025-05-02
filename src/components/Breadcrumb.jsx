@@ -6,6 +6,10 @@ const Breadcrumb = ({ title, link }) => {
   const pathSegments = location.pathname.split("/").filter((segment) => segment);
 
   const formatText = (str) => {
+    if (str === "datagovernance") {
+      return "Data Governance";
+    }
+
     const withSpaces = str.replace(/-/g, ' ');
     return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
   };
@@ -13,12 +17,6 @@ const Breadcrumb = ({ title, link }) => {
   return (
     <nav aria-label="breadcrumb" style={styles.breadcrumbNav}>
       <ol style={styles.breadcrumbList}>
-        <li style={styles.breadcrumbItem}>
-          <Link to={link} style={styles.link}>
-            {title}
-          </Link>
-          <span style={styles.separator}>&gt;</span>
-        </li>
         {pathSegments.map((segment, index) => {
           const to = "/" + pathSegments.slice(0, index + 1).join("/");
           return (
