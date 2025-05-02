@@ -40,6 +40,7 @@ const GenerateReport = () => {
 
   const handleGenerateReport = async () => {
     if (!reportType || !startDate || !endDate) {
+      toast.error("Please fill all required fields")
       setError("Please fill all required fields");
       return;
     }
@@ -398,7 +399,7 @@ const GenerateReport = () => {
                   onClick={() => {
                     handleGenerateReport();
                   }}
-                  disabled={loading || !reportType || !startDate || !endDate}
+                  disabled={loading}
                   className={`px-6 py-2 rounded-lg transition-colors ${
                     loading
                       ? "bg-gray-300 cursor-not-allowed"
