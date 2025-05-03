@@ -48,9 +48,10 @@ export function TargetNode({ id, data, selected }) {
     bulk_list: [],
     subset_list: [],
     target_conn_id: "",
+    type:""
   }));
   const { data: connections, isLoading: isLoadingConnections } =
-    useConnections();
+    useConnections('target');
   const { data: schemaCount } = useSchemaCount(selectedConnection);
   const { data: schemas, isLoading: isLoadingSchemas } =
     useSchemas(selectedConnection);
@@ -195,6 +196,7 @@ export function TargetNode({ id, data, selected }) {
         bulk_list:
           selectedMode === "bulk" ? bulkMappings[key] : pipelineMappings[key],
         target_conn_id: nodeData?.target_conn_id,
+        type: nodeData?.type,
         source: data?.source?.[0],
         define: data?.source?.[0]?.define,
       };
@@ -282,6 +284,7 @@ export function TargetNode({ id, data, selected }) {
                 setNodeData((prevData) => ({
                   ...prevData,
                   target_conn_id: selectedConnection.connection_id,
+                  "type":selectedConnection.connection_type
                 }));
               }}
             >

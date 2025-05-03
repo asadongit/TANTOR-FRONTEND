@@ -6,7 +6,7 @@ import { useWorkflow } from "../context/WorkflowContext";
 import AddTable from "./components/AddTable";
 import AddScope from "./components/AddScope";
 import EditTable from "./components/EditTable";
-
+import AddFilter from "./components/Migration/AddFilter";
 const CDCDrawer = ({ nodes, setNodes }) => {
   const { drawerStates, closeDrawer } = useDrawerContext();
 
@@ -113,7 +113,7 @@ const CDCDrawer = ({ nodes, setNodes }) => {
             open={drawerState.isOpen}
             onClose={() => closeDrawer(canvasType)}
           >
-            <div className="w-[400px]">
+<div className="min-w-[400px] max-w-[800px]">
 
 
               <div className="flex items-center gap-2 text-[#6753a8] p-4">
@@ -157,6 +157,12 @@ const CDCDrawer = ({ nodes, setNodes }) => {
                     handleSave={() =>
                       console.log("Final Scope Settings:", operations)
                     }
+                  />
+                )}
+
+            {canvasType === "migration" && drawerState.drawerType === "AddFilter" && (
+                  <AddFilter
+                  drawerData={drawerState}
                   />
                 )}
               </div>

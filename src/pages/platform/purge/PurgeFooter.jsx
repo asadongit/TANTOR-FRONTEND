@@ -12,14 +12,59 @@ import toast from "react-hot-toast";
 const PurgeFooter = ({ onCancel }) => {
 
   const hostname = import.meta.env.VITE_FAST_API;
+  const hostnameV2 = import.meta.env.VITE_FAST_API_V2;
   const { token, decodedToken, project } = useAuth();
 
   const navigate = useNavigate();
 
-  const {sourceData, targetData, filters, dropPartitions} = usePurgeContext("");
-  const { defineNodeName, defineNodeDesc } = useStateContext("");  
+  const {sourceData, targetData, filters, dropPartitions, selectedBulkTargetTablesPayload, bulkFiltersAndPartitions} = usePurgeContext("");
 
-  const buildPurgeSavePayload = () => {
+  const { defineNodeName, defineNodeDesc, selectedScope } = useStateContext("");  
+
+  const sourceList = Array.isArray(bulkFiltersAndPartitions?.source)
+  ? bulkFiltersAndPartitions.source
+  : [];
+
+  const targetList = Array.isArray(bulkFiltersAndPartitions?.target)
+  ? bulkFiltersAndPartitions.target
+  : [];
+
+  const purgeList = (selectedBulkTargetTablesPayload || []).map(({ source_table, target_table }) => {
+    const sourceMatch = sourceList.find(s => s.source_table === source_table);
+    const targetMatch = targetList.find(
+      t => t.source_table === source_table && t.target_table === target_table
+    );
+
+    let whereConditionConcat = "";
+    if (sourceMatch?.whereCondition) {
+      const { columnName, filter, value } = sourceMatch.whereCondition;
+      if (columnName && filter && value) {
+      whereConditionConcat = `WHERE ${columnName}${filter}${value}`;
+      }
+    }
+    return {
+      source_table,
+      target_table,
+      schedule: {},
+      whereCondition: whereConditionConcat || "",
+      source_partition: sourceMatch?.source_partition ? sourceMatch.source_partition : {},
+      target_partition: targetMatch?.target_partition ? targetMatch.target_partition : {}
+    };
+  });
+
+  function convertDateFormat(dateString) {
+    var date = new Date(dateString);
+    var year = date.getFullYear();
+    var month = ('0' + (date.getMonth() + 1)).slice(-2);
+    var day = ('0' + date.getDate()).slice(-2);
+    var hours = ('0' + date.getHours()).slice(-2);
+    var minutes = ('0' + date.getMinutes()).slice(-2);
+    var seconds = ('0' + date.getSeconds()).slice(-2);
+    var formattedDate = year + '-' + month + '-' + day + 'T' + hours + ':' + minutes + ':' + seconds;
+    return formattedDate;
+  }
+
+  const buildPurgeSubsetSavePayload = () => {
     return {
       created_by: decodedToken.preferred_username,
       description: defineNodeDesc,
@@ -34,7 +79,7 @@ const PurgeFooter = ({ onCancel }) => {
         scheduleinterval: {},
         schedulerColumn: "",
         startLoadDate: "",
-        startdatetime: new Date().toISOString(),
+        startdatetime: convertDateFormat(new Date()),
       },
       source_conn_id: sourceData.connectionId,
       source_conn_name: sourceData.connectionName,
@@ -82,15 +127,31 @@ const PurgeFooter = ({ onCancel }) => {
     };
   };
 
-  const createPurge = async () => {
+  //bulding payload for bulk payload
+  const buildPurgeBulkSavePayload = () => {
+    return {
+        purge_name: defineNodeName,
+        purge_auto_name: defineNodeName,
+        description: defineNodeDesc,
+        project: project,
+        created_by: decodedToken.preferred_username,
+        source_conn_id: sourceData.connectionId,
+        target_conn_id: targetData.connectionId,
+        //source_conn_type: sourceData.connectionType,
+        //target_conn_type: targetData.connectionType,
+        purge_list: purgeList
+    }
+  }
+
+  const createBulkPurge = async () => {
     try {
-      const res = await fetch(`${hostname}/purges`, {
+      const res = await fetch(`${hostnameV2}/create-purge`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(buildPurgeSavePayload()),
+        body: JSON.stringify(buildPurgeBulkSavePayload()),
       });
 
       if (!res.ok) throw new Error('Failed to post data');
@@ -103,13 +164,53 @@ const PurgeFooter = ({ onCancel }) => {
           icon:"✅"
         }
       )
+      openModal("modal2")
       setTimeout(() => navigate("/purge"), 2000)
-      console.log("Response -- ", data);
     } catch (err) {
+      setIsModalOpen(false)
       toast.error("Submission failed!")
       console.error('Error:', err.message);
     }
   };
+
+  const createPurge = async () => {
+    try {
+      const res = await fetch(`${hostname}/purges`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(buildPurgeSubsetSavePayload()),
+      });
+
+      if (!res.ok) throw new Error('Failed to post data');
+
+      const data = await res.json();
+      toast.success("Purge fow submitted successfully!", 
+        {
+          duration: 2000,
+          position: "top-right",
+          icon:"✅"
+        }
+      )
+      openModal("modal2");
+      setTimeout(() => navigate("/purge"), 2000)
+    } catch (err) {
+      setIsModalOpen(false);
+      toast.error("Submission failed!")
+      console.error('Error:', err.message);
+    }
+  };
+
+  const handleCreatePurge = () => {
+    if(selectedScope === "bulk") {
+      createBulkPurge();
+    }
+    else if(selectedScope === "subset") {
+      createPurge();
+    }
+  }
 
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
@@ -195,8 +296,9 @@ const PurgeFooter = ({ onCancel }) => {
                 <button
                   onClick={() => 
                   {
-                    createPurge()
-                    openModal("modal2")
+                    //createPurge()
+                    handleCreatePurge();
+                    //openModal("modal2")
                   }}
                   className="px-6 py-3 text-black text-lg border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
                 >

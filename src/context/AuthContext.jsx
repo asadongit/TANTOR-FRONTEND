@@ -14,7 +14,7 @@ const AuthContext = createContext({
   login: async () => false,
   logout: () => {},
   loginString: "",
-  project: "none",
+  project: "default",
   setSelectedProject: () => {},
   hostnameV1: "",
   hostnameV2: ""
@@ -45,9 +45,9 @@ export const AuthProvider = ({ children }) => {
 
   const [project, setProject] = useState(() => {
     if (decodedToken?.preferred_username) {
-      return localStorage.getItem(`project_${decodedToken.preferred_username}`) || "none";
+      return localStorage.getItem(`project_${decodedToken.preferred_username}`) || "default";
     }
-    return "none";
+    return "default";
   });
 
   const setSelectedProject = (projectId) => {
@@ -134,11 +134,12 @@ export const AuthProvider = ({ children }) => {
 
     return false;
   };
-  
+
+
   const logout = () => {
     setToken(null);
     setDecodedToken(null);
-    setProject("none");
+    setProject("default");
     localStorage.removeItem("token");
     // localStorage.removeItem(`project_${decodedToken.preferred_username}`);
     navigate("/");

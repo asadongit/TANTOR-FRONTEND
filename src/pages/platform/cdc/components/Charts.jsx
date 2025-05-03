@@ -278,7 +278,7 @@ const Charts = ({ data }) => {
 
   return (
     <div className="flex flex-wrap w-full gap-4">
-      <div className="flex-1 min-w-64 bg-white rounded-lg shadow-sm dark:bg-gray-800 p-4 md:p-6">
+      <div className="flex-1 min-w-64 bg-white rounded-lg shadow-sm  p-4 md:p-6">
         <div className="flex justify-between mb-5">
           <div>
             <h2 className="text-lg font-medium text-gray-800">Creation</h2>
@@ -317,7 +317,7 @@ const Charts = ({ data }) => {
         </div>
       </div>
 
-      <div className="flex-1 min-w-64 bg-white rounded-lg shadow-sm dark:bg-gray-800 p-4 md:p-6">
+      <div className="flex-1 min-w-64 bg-white rounded-lg shadow-sm  p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-medium text-gray-800">Status</h2>

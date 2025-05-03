@@ -41,17 +41,14 @@ export function SourceNode({ id, data, selected }) {
     bulk_list: [],
     subset_list: [],
     op_types: {
-      create: false,
-      update: false,
-      delete: false,
-      schemaChanges: false,
-      datafederation: false,
+      datafederation: false
     },
     name:"",
-    source_conn_id:""
+    source_conn_id:"",
+    type:""
   }));
 
-  const { data: connections, isLoading: isLoadingConnections } = useConnections();
+  const { data: connections, isLoading: isLoadingConnections } = useConnections('source');
   const { data: schemaCount } = useSchemaCount(selectedConnection);
   const { data: schemas, isLoading: isLoadingSchemas } = useSchemas(selectedConnection);
   const { data: tables } = useTables(selectedConnection, selectedSchema,selectedMode);
@@ -74,6 +71,7 @@ export function SourceNode({ id, data, selected }) {
         subset_list: pipelineMappings?.[ID] ?? [],
         op_types: nodeData?.op_types ?? [],
         source_conn_id: nodeData?.source_conn_id ?? null,
+        type:nodeData?.type,
         define: data?.define?.[0] ?? null,
       };
       
@@ -102,6 +100,7 @@ export function SourceNode({ id, data, selected }) {
     setNodeData((prevData) => ({
       ...prevData,
       "source_conn_id": selectedConnection.connection_id,
+      "type":selectedConnection.connection_type
     }));
   };
   const handleSelectSchema = (schemaName) => {
@@ -491,8 +490,8 @@ export function SourceNode({ id, data, selected }) {
                         <button
                           onClick={() =>
                             openDrawer(
-                              data.category || 'source',
-                              "editTable",
+                              data?.category || 'migration',
+                              "AddFilter",
                               id,
                               data.pipelineId,
                               table
@@ -537,8 +536,8 @@ export function SourceNode({ id, data, selected }) {
                               <button
                                 onClick={() =>
                                   openDrawer(
-                                    data.category || 'source',
-                                    "editTable",
+                                    data?.category || 'migration',
+                                    "AddFilter",
                                     id,
                                     data.pipelineId,
                                     sourceTable
@@ -547,7 +546,7 @@ export function SourceNode({ id, data, selected }) {
                                 className="text-purple-600 hover:text-purple-700"
                                 aria-label={`Edit ${sourceTable}`}
                               >
-                                {/* <Pencil className="w-4 h-4" /> */}
+                                <Pencil className="w-4 h-4" />
                               </button>
                             </div>
                           </div>
