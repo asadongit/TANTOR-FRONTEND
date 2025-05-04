@@ -345,7 +345,7 @@ export function BusinessFooter() {
         let aggregateColumns = new Set();
         let sortColumns = new Set();
 
-        const hasOperation = apiPayloadForApi?.operation !== undefined;
+        const hasOperation = finalPayload?.operation !== undefined;
         const source = hasOperation
           ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === "Union"))
           : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
