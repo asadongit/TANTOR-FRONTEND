@@ -54,29 +54,29 @@ export const PurgeContextProvider = ({ children }) => {
    */
   const saveBulkFiltersAndPartitions = (nodeType, sourceTableName, targetTableName, partitionData, whereCondition) => {
     if (nodeType === 'source') {
-      setBulkFiltersAndPartitions({
-        ...bulkFiltersAndPartitions,
+      setBulkFiltersAndPartitions(prevBulkFiltersAndPartitions => ({
+        ...prevBulkFiltersAndPartitions,
         [nodeType]: [
-          ...(bulkFiltersAndPartitions[nodeType] ?? []).filter(el => el.source_table !== sourceTableName),
+          ...(prevBulkFiltersAndPartitions[nodeType] ?? []).filter(el => el.source_table !== sourceTableName),
           {
             source_table: sourceTableName,
             whereCondition: whereCondition,
             source_partition: partitionData
           }
         ]
-      })
+      }))
     } else if (nodeType === 'target') {
-      setBulkFiltersAndPartitions({
-        ...bulkFiltersAndPartitions,
+      setBulkFiltersAndPartitions(prevBulkFiltersAndPartitions => ({
+        ...prevBulkFiltersAndPartitions,
         [nodeType]: [
-          ...(bulkFiltersAndPartitions[nodeType] ?? []).filter(el => el.target_table !== targetTableName),
+          ...(prevBulkFiltersAndPartitions[nodeType] ?? []).filter(el => el.target_table !== targetTableName),
           {
             target_table: targetTableName,
             source_table: sourceTableName,
             target_partition: partitionData
           }
         ]
-      })
+      }))
     }
   }
 

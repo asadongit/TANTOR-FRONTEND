@@ -34,12 +34,13 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
 
     const filteredTableMatchesCurrSelectedTable = Array.isArray(bulkFiltersAndPartitions?.source) 
       ? bulkFiltersAndPartitions?.source.find((ele) => ele.source_table === filteredTargetTableMatches[0]?.source_table)
-      : {};
+      : {};    
 
     const ifFoundFilteredTableMatchesCurrSelectedTable = (filteredTableMatchesCurrSelectedTable?.source_partition 
       && Object.keys(filteredTableMatchesCurrSelectedTable?.source_partition).length > 0) 
       || (filteredTableMatchesCurrSelectedTable?.whereCondition 
       && Object.keys(filteredTableMatchesCurrSelectedTable?.whereCondition).length > 0)
+    
 
     return ifFoundFilteredTableMatchesCurrSelectedTable;
   }
@@ -234,7 +235,6 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
         }
         saveBulkFiltersAndPartitions(nodeKey, localTable?.source_table, null, partitionData, null)
 
-        //TODO : && dropPartitions.source.partitionName
       } else if (purgeNode === "Target node" && hasPartitions) {
         const targetTable = localTable?.table_name || localTable?.source_table;
 
@@ -271,7 +271,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
     }
   };
 
-  const metadataExist = drawerState?.selectedTable && selectedNode === "Target node" && selectedScope === "bulk"
+  const metadataExist = typeof drawerState?.selectedTable != "string" && selectedNode === "Target node" && selectedScope === "bulk"
 
   const partitionData =
     drawerState.selectedTable?.metadatas?.partition_json ||
@@ -315,25 +315,6 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
       setPartitionMismatch(matchingIndex === -1);
     }
   }, [drawerState?.selectedTable, selectedNode]);
-
-  // const autoSaveTargetBulkPartition = () => {
-  //   const targetTable = localTable?.table_name || localTable?.source_table;
-
-  //   const matchTargetTable = sourceBulkSelectedObjects.find((table_obj) => table_obj.target_table === targetTable);
-  //   const sourceTable = matchTargetTable ? matchTargetTable?.source_table : null;
-        
-  //   const partition = sortedCurrentPartitions[0];
-  //   console.log("autosaving target bulk partition data ", targetTable)
-  //   saveBulkFiltersAndPartitions("target", sourceTable, targetTable, partition, null);
-  // }
-
-  // useEffect(() => {
-  //   console.log("inside useeffect")
-  //   if(purgeNode === "Target node" && selectedScope === "bulk" && activeTab === "partition-tab" 
-  //     && hasPartitions && !partitionMismatch) {
-  //       autoSaveTargetBulkPartition()
-  //     }
-  // }, [drawerState?.selectedTable])
 
   if (!drawerState.isOpen) return null;
 
@@ -500,10 +481,7 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
       <header className="p-5 border-b border-gray-200">
         <h1 className="m-0 text-xl font-semibold">Edit Table</h1>
         <div className="text-gray-500 text-sm mt-1">
-          {localTable?.table_name ||
-            localTable?.source_table ||
-            localTable ||
-            ""}
+          {localTable?.table_name || localTable?.source_table || localTable || ""}
         </div>
       </header>
 
@@ -758,7 +736,18 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
         </div>
       )}
 
-      {!hasSourceBulkFiltersAndPartitions && selectedNode === "Target node" && selectedScope === "bulk" && (
+      {!metadataExist && selectedNode === "Target node" && selectedScope === "bulk" && (
+        <div className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}>
+          <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
+            <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
+            <div>
+              <strong>Metadata doesn't exist for this database!</strong>
+            </div>
+          </div>
+        </div> )
+      }
+
+      {!hasSourceBulkFiltersAndPartitions && metadataExist && selectedNode === "Target node" && selectedScope === "bulk" && (
         <div className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}>
           <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
             <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
@@ -767,18 +756,6 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
             </div>
           </div>
         </div>
-      )}
-
-
-      {!metadataExist && selectedNode === "Target node" && selectedScope === "bulk" && (
-      <div className={`p-6 ${activeTab !== "partition-tab" ? "hidden" : ""}`}>
-        <div className="flex items-start mt-1 bg-blue-50 border-l-3 border-blue-500 p-3 rounded mb-5 text-sm">
-          <Info className="mr-3 text-blue-500 text-xl h-6 w-6 font-extrabold stroke-2" />
-          <div>
-            <strong>Metadata doesn't exist for this database!</strong>
-          </div>
-        </div>
-      </div>
       )}
 
       {(hasWhereCondition === true || hasSubsetWhereCondition === true) && selectedNode === "Target node" && (
