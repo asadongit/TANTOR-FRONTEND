@@ -80,7 +80,7 @@ const DynamicOptionValues = ({ condition, updateCondition }) => {
           name="date"
           value={condition.value || ''}
           onChange={(e) => updateCondition("value", e.target.value)}
-          className="border p-2 rounded-md text-sm w-40 bg-white"
+          className="border p-2 rounded-md text-sm w-40 bg-white text-black"
           required
         />
         <span className="flex items-center text-gray-500">and</span>
@@ -89,7 +89,7 @@ const DynamicOptionValues = ({ condition, updateCondition }) => {
           name="date"
           value={condition.value2 || ''}
           onChange={(e) => updateCondition("value2", e.target.value)}
-          className="border p-2 rounded-md text-sm w-40 bg-white"
+          className="border p-2 rounded-md text-sm w-40 bg-white text-black"
           required
         />
       </div>
@@ -702,7 +702,7 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
                       <select
                         value={condition.joinType || 'AND'}
                         onChange={e => updateGroupJoinType(condition.id, e.target.value)}
-                        className="border rounded px-2 py-0.5 text-xs bg-white"
+                        className="border rounded px-2 py-0.5 text-xs bg-white text-black"
                       >
                         <option value="AND">AND</option>
                         <option value="OR">OR</option>
