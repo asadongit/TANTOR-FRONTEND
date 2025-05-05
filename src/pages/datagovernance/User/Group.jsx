@@ -1,321 +1,441 @@
-import React, { useState } from "react";
-import {  MoreVertical, Search, Plus, Info, MoreHorizontal, Pencil, Trash2, RotateCw } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { MoreVertical, Search, Plus, Info, MoreHorizontal, Pencil, Trash2, RotateCw, ChevronLeft, ChevronRight } from "lucide-react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
+import AddGroup from "./Components/Group/AddGroup";
 
+const rotateAnimation = `
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .icon-rotate {
+    animation: rotate 1s linear infinite;
+  }
+`;
 
 const Toggle = ({ enabled, onToggle }) => {
-    return (
-      <div
-        onClick={onToggle}
-        className={`relative inline-flex h-5 w-10 cursor-pointer rounded-full transition-colors ease-in-out duration-200 ${
-          enabled ? "bg-[#1a9962]" : "bg-gray-200"
+  return (
+    <div
+      onClick={onToggle}
+      className={`relative inline-flex h-5 w-10 cursor-pointer rounded-full transition-colors ease-in-out duration-200 ${
+        enabled ? "bg-[#1a9962]" : "bg-gray-200"
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ease-in-out duration-200 m-0.5 ${
+          enabled ? "translate-x-5" : "translate-x-0"
         }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition ease-in-out duration-200 m-0.5 ${
-            enabled ? "translate-x-5" : "translate-x-0"
-          }`}
-        />
-      </div>
-    );
-  };
+      />
+    </div>
+  );
+};
 
 function Group() {
+  const [showModal, setShowModal] = useState(false);
+  const [group, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [tableData, setTableData] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'list'
+  const rowsPerPage = 10;
 
-    const [showModal, setShowModal] = useState(false);
-    const [group, setGroups] = useState([
-        {
-          title: "Base",
-          description:
-            "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy",
-          users: 4,
-          enabled: true,
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#8d77ba] bg-opacity-25",
-          iconcolor: "text-[#8d77ba]",
+  const initialFetchDoneRef = useRef(false);
+
+  const filteredGroups = group.filter(item =>
+    item.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const [activeMenu, setActiveMenu] = useState(null);
+  const handleClickOutside = () => {
+    setActiveMenu(null);
+  };
+
+  const toggleRole = (index) => {
+    const newGroup = [...group];
+    newGroup[index].enabled = !newGroup[index].enabled;
+    setGroups(newGroup);
+  };
+
+  useEffect(() => {
+    if (!initialFetchDoneRef.current) {
+      initialFetchDoneRef.current = true;
+      Promise.all([
+        FetchRoleDashboardData(),
+        fetchGroupList()
+      ]).finally(() => {
+        setLoading(false);
+      });
+    }
+  }, []);
+
+  const FetchRoleDashboardData = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/groupshomepage`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
         },
-        {
-          title: "Marketing",
-          description:
-            "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy",
-          users: 4,
-          enabled: true,
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#8d77ba] bg-opacity-25",
-          iconcolor: "text-[#8d77ba]",
+      });
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+
+      const transformedData = data.map((group) => ({
+        title: group.name,
+        description:
+          group.attributes?.Description?.[0] ||
+          group.attributes?.description?.[0] ||
+          "No description available",
+        users: group.user_count,
+        enabled: group.attributes?.Status?.[0] === "Enabled",
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#8d77ba] bg-opacity-25",
+        iconcolor: "text-[#8d77ba]",
+      }));
+
+      setGroups(transformedData);
+      console.log("Fetched group data:", transformedData);
+    } catch (error) {
+      console.error("Error fetching group data:", error);
+    }
+  };
+
+  const fetchGroupList = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/grouplist`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
         },
-        {
-            title: "BI Specialist",
-            description:
-              "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy",
-            users: 4,
-            enabled: true,
-            icon: "material-symbols:tab-group-outline",
-            bgcolor: "bg-[#8d77ba] bg-opacity-25",
-            iconcolor: "text-[#8d77ba]",
-          },
+      });
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+
+      const transformedData = data.map((group) => ({
+        id: group.id,
+        name: group.name,
+        description: group.attributes?.Description?.[0] ||
+                    group.attributes?.description?.[0] ||
+                    "No description available",
+        status: group.attributes?.Status?.[0] === "Enabled" ? "Enabled" : "Disabled",
+        subGroup: group.subgroups?.join(", ") || "None",
+        createdDate: "",
+        updatedDate: "",
+      }));
+
+      setTableData(transformedData);
+      console.log("Fetched group list data:", transformedData);
+    } catch (error) {
+      console.error("Error fetching group list:", error);
+    }
+  };
+
+  const refreshAllData = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        FetchRoleDashboardData(),
+        fetchGroupList()
       ]);
-    const [formData, setFormData] = useState({
-          groupname: '',
-          description: ''
-        });
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
-          const [activeMenu, setActiveMenu] = useState(null);
-          const handleClickOutside = () => {
-            setActiveMenu(null);
-          };
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = tableData.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(tableData.length / rowsPerPage);
 
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
-          const toggleRole = (index) => {
-            const newGroup = [...group];
-            newGroup[index].enabled = !newGroup[index].enabled;
-            setGroups(newGroup);
-          };
-
-        const sampleData = [
-            {id:"1", name: 'Amit Tandon', description: 'this is a sample desctiption', status: 'Enabled', subGroup: 'Customer', createdDate: '22/01/2025', updatedDate: '22/01/2025' },
-            {id:"1", name: 'Amit Tandon', description: 'this is a sample desctiption', status: 'Enabled', subGroup: 'Customer', createdDate: '22/01/2025', updatedDate: '22/01/2025' },
-            {id:"1", name: 'Amit Tandon', description: 'this is a sample desctiption', status: 'Enabled', subGroup: 'Customer', createdDate: '22/01/2025', updatedDate: '22/01/2025' },
-            {id:"1", name: 'Amit Tandon', description: 'this is a sample desctiption', status: 'Enabled', subGroup: 'Customer', createdDate: '22/01/2025', updatedDate: '22/01/2025' },
-            {id:"1", name: 'Amit Tandon', description: 'this is a sample desctiption', status: 'Enabled', subGroup: 'Customer', createdDate: '22/01/2025', updatedDate: '22/01/2025' },
-            {id:"1", name: 'Amit Tandon', description: 'this is a sample desctiption', status: 'Enabled', subGroup: 'Customer', createdDate: '22/01/2025', updatedDate: '22/01/2025' },
-            {id:"1", name: 'Amit Tandon', description: 'this is a sample desctiption', status: 'Enabled', subGroup: 'Customer', createdDate: '22/01/2025', updatedDate: '22/01/2025' },
-            {id:"1", name: 'Amit Tandon', description: 'this is a sample desctiption', status: 'Enabled', subGroup: 'Customer', createdDate: '22/01/2025', updatedDate: '22/01/2025' },
-            {id:"1", name: 'Amit Tandon', description: 'this is a sample desctiption', status: 'Enabled', subGroup: 'Customer', createdDate: '22/01/2025', updatedDate: '22/01/2025' },
-          ];
-
-
-        const handleSave = () => {
-            console.log('Form Data:', formData);
-            setShowModal(false);
-          };
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   return (
     <div className="p-6">
-    <Breadcrumb title="Data Governance" link="/" />
-    <div className="flex items-center justify-between mb-6">
-      <h1 className="text-2xl font-semibold">Group</h1>
-      <div className="flex items-center gap-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <input
-            type="text"
-            className="pl-10 w-64 h-10 rounded-lg border border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="Search group"
-          />
-        </div>
+      <style>{rotateAnimation}</style>
 
-        <button className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50">
-          <Icon
-            icon="material-symbols-light:format-list-bulleted"
-            width="24"
-            height="24"
-            className="text-gray-600"
-          />
-        </button>
-
-        <button className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50">
-          <Icon
-            icon="material-symbols:autorenew-rounded"
-            width="24"
-            height="24"
-            className="text-gray-600"
-          />
-        </button>
-        <button
-          className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg"
-          onClick={() => setShowModal(true)}
-        >
-          <Plus className="h-5 w-5" />
-          Add Group
-        </button>
-      </div>
-    </div>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {group.map((group, index) => (
-        <div
-          key={index}
-          className="bg-white rounded-lg shadow-sm border border-gray-100"
-        >
-          <div className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${group.bgcolor} rounded-full ${group.iconcolor} mr-2`}
-                >
-                  <Icon icon={group.icon} />
-                </div>
-                <h3 className="text-lg font-semibold">{group.title}</h3>
-              </div>
-              <button className="p-1 rounded-lg hover:bg-gray-100">
-                <MoreVertical className="h-4 w-4" />
+      <Breadcrumb title="Data Governance" link="/" />
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Group</h1>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-64 h-10 rounded-lg border border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
+              placeholder="Search group"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <Icon icon="mdi:close" width="16" height="16" />
               </button>
-            </div>
-            <p className="text-gray-500 mt-4 text-sm">{group.description}</p>
-            <div className="flex items-center justify-between mt-6">
-              <div className="flex items-center gap-2">
-                <Icon
-                  icon="material-symbols:supervisor-account-outline"
-                  width="24"
-                  height="24"
-                />
-                <span className="text-sm">
-                  {group.users.toString().padStart(2, "0")}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Toggle
-                  enabled={group.enabled}
-                  onToggle={() => toggleRole(index)}
-                />
-                <span
-                  className={`text-sm ${
-                    group.enabled ? "text-[#1a9962]" : "text-gray-400"
-                  }`}
-                >
-                  {group.enabled ? "Enabled" : "Disabled"}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
+
+          <button
+            className={`p-1 px-1.5 rounded-lg border ${viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
+            onClick={() => setViewMode(viewMode === 'cards' ? 'list' : 'cards')}
+            title={viewMode === 'cards' ? "Switch to List View" : "Switch to Card View"}
+          >
+            <Icon
+              icon="material-symbols-light:format-list-bulleted"
+              width="24"
+              height="24"
+              className="text-gray-600"
+            />
+          </button>
+
+          <button
+            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
+            onClick={refreshAllData}
+            disabled={refreshing}
+            title="Refresh"
+          >
+            <Icon
+              icon="material-symbols:autorenew-rounded"
+              width="24"
+              height="24"
+              className={`text-gray-600 ${refreshing ? 'icon-rotate' : ''}`}
+            />
+          </button>
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg"
+            onClick={() => setShowModal(true)}
+          >
+            <Plus className="h-5 w-5" />
+            Add Group
+          </button>
         </div>
-      ))}
-    </div>
+      </div>
 
-
-    <div className="bg-white rounded-lg shadow overflow-hidden mt-5">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-[#29304a] text-white">
-              <th className="text-left p-4">ID</th>
-              <th className="text-left p-4">Name</th>
-              <th className="text-left p-4">Description</th>
-              <th className="text-left p-4">Status</th>
-              <th className="text-left p-4">Sub group</th>
-              <th className="text-left p-4">Created Date</th>
-              <th className="text-left p-4">Updated Date</th>
-              <th className="w-8 p-4 first:rounded-tl-lg">Select</th>
-              <th className="text-left p-4 last:rounded-tr-lg">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-
-            {sampleData.map((user, index) => (
-              <tr key={index} className="border-b">
-                <td className="p-4">{user.id}</td>
-                <td className="p-4 text-gray-500 ">{user.name}</td>
-                <td className="p-4 text-gray-500 ">{user.description}</td>
-                <td className="p-4 text-gray-500 ">{user.status}</td>
-                <td className="p-4 text-gray-500">{user.subGroup}</td>
-                <td className="p-4 text-gray-500">{user.createdDate}</td>
-                <td className="p-4 text-gray-500">{user.updatedDate}</td>
-                <td className="p-4 text-gray-500"><input type="checkbox" /></td>
-
-                <td className="p-4">
-                  <div className="relative">
-                    <button
-                      onClick={() => setActiveMenu(activeMenu === index ? null : index)}
-                      className="p-1.5 rounded-full hover:bg-gray-100"
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#8e78b7]"></div>
+        </div>
+      ) : (
+        <>
+          {viewMode === 'cards' && (
+            <>
+              {filteredGroups.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredGroups.map((group, index) => (
+                    <div
+                      key={index}
+                      className="bg-white rounded-lg shadow-sm border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1"
                     >
-                      <MoreHorizontal className="h-5 w-5" />
-                    </button>
-
-                    {activeMenu === index && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-10"
-                          onClick={handleClickOutside}
-                        />
-                        <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                          <div className="flex items-center p-1 gap-1">
-                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                              <RotateCw className="h-4 w-4" />
-                            </button>
+                      <div className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${group.bgcolor} rounded-full ${group.iconcolor} mr-2`}
+                            >
+                              <Icon icon={group.icon} />
+                            </div>
+                            <h3 className="text-lg font-semibold">{group.title}</h3>
+                          </div>
+                          <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <p className="text-gray-500 mt-4 text-sm">{group.description}</p>
+                        <div className="flex items-center justify-between mt-6">
+                          <div className="flex items-center gap-2">
+                            <Icon
+                              icon="material-symbols:supervisor-account-outline"
+                              width="24"
+                              height="24"
+                            />
+                            <span className="text-sm">
+                              {group.users.toString().padStart(2, "0")}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Toggle
+                              enabled={group.enabled}
+                              onToggle={() => toggleRole(index)}
+                            />
+                            <span
+                              className={`text-sm ${
+                                group.enabled ? "text-[#1a9962]" : "text-gray-400"
+                              }`}
+                            >
+                              {group.enabled ? "Enabled" : "Disabled"}
+                            </span>
                           </div>
                         </div>
-                      </>
-                    )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300">
+                  <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
+                  <p>No groups found matching "{searchTerm}"</p>
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="mt-2 text-[#8e78b7] hover:underline transition-all duration-200"
+                  >
+                    Clear search
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      <div className={`bg-white rounded-lg shadow overflow-hidden ${viewMode === 'cards' ? 'mt-5' : 'mt-0'}`}>
+        <table className="w-full">
+          <thead>
+            <tr className="bg-[#29304a] text-white text-sm">
+              <th className="text-left py-3 px-4">ID</th>
+              <th className="text-left py-3 px-4">Name</th>
+              <th className="text-left py-3 px-4">Description</th>
+              <th className="text-left py-3 px-4">Status</th>
+              <th className="text-left py-3 px-4">Sub group</th>
+              <th className="text-left py-3 px-4">Created Date</th>
+              <th className="text-left py-3 px-4">Updated Date</th>
+              <th className="w-8 py-3 px-4">Select</th>
+              <th className="text-left py-3 px-4">Action</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm">
+            {loading ? (
+              <tr>
+                <td colSpan="9" className="p-4 text-center">
+                  <div className="flex justify-center items-center h-20">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
                   </div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              currentRows.map((group, index) => (
+                <tr key={index} className="border-b hover:bg-gray-50">
+                  <td className="py-3 px-4" title={group.id}>{group.id.substring(0, 8)}...</td>
+                  <td className="py-3 px-4 text-gray-600">{group.name}</td>
+                  <td className="py-3 px-4 text-gray-600 max-w-xs truncate">{group.description}</td>
+                  <td className="py-3 px-4 text-gray-600">{group.status}</td>
+                  <td className="py-3 px-4 text-gray-600 max-w-xs truncate">{group.subGroup}</td>
+                  <td className="py-3 px-4 text-gray-600">{group.createdDate}</td>
+                  <td className="py-3 px-4 text-gray-600">{group.updatedDate}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex justify-center">
+                      <input type="checkbox" className="rounded text-[#8e78b7] focus:ring-[#8e78b7]" />
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="relative">
+                      <button
+                        onClick={() => setActiveMenu(activeMenu === index ? null : index)}
+                        className="p-1.5 rounded-full hover:bg-gray-100"
+                      >
+                        <MoreHorizontal className="h-5 w-5 text-gray-600" />
+                      </button>
+
+                      {activeMenu === index && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
+                          <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                            <div className="flex items-center p-1 gap-1">
+                              <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
+
+        {!loading && tableData.length > 0 && (
+          <div className="flex justify-end items-center p-4">
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100'}`}
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                const pageNum = i + 1;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                      currentPage === pageNum
+                        ? 'bg-[#8e78b7] text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className={`p-2 rounded-md ${
+                  currentPage === totalPages || totalPages === 0
+                    ? 'text-gray-300 cursor-not-allowed'
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-
-     {showModal && (
-     <div className="fixed inset-0 z-50 overflow-y-auto">
-     <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center">
-       <div
-         className="fixed inset-0 transition-opacity"
-         onClick={() => setShowModal(false)}
-       >
-         <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-       </div>
-
-       <div className="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-         <div className="flex items-center gap-2 mb-6">
-           <h3 className="text-lg font-bold text-[#8f79b8] mr-2">Add Group</h3>
-           <Info className="h-5 w-5 text-gray-400" />
-         </div>
-
-         <div className="space-y-6">
-
-           <div>
-             <label className="block text-sm text-gray-700 mb-1">Group Name</label>
-             <input
-               type="text"
-               value={formData.groupname}
-               onChange={(e) => setFormData({ ...formData, groupname: e.target.value })}
-               className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
-             />
-           </div>
-
-           <div>
-             <label className="block text-sm text-gray-700 mb-1">Description</label>
-             <textarea
-               value={formData.description}
-               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-               className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
-               rows="6"
-             ></textarea>
-           </div>
-
-           <div className="flex justify-between items-center mt-6">
-             <div className="flex gap-3">
-               <button
-                 className="px-4 py-2 text-[#8e78b7] border border-[#8e78b7] hover:bg-[#8e78b7] hover:text-white rounded-lg"
-                 onClick={() => setShowModal(false)}
-               >
-                 Cancel
-               </button>
-               <button
-                 onClick={handleSave}
-                 className="px-4 py-2 text-[#8e78b7] border border-[#8e78b7] hover:bg-[#8e78b7] hover:text-white rounded-lg"
-               >
-                 Save
-               </button>
-             </div>
-           </div>
-         </div>
-       </div>
-     </div>
-   </div>
-
-    )}
-
-
-
-  </div>  )
+      <AddGroup
+        showModal={showModal}
+        setShowModal={setShowModal}
+        onGroupAdded={refreshAllData}
+      />
+    </div>
+  );
 }
 
-export default Group
+export default Group;
