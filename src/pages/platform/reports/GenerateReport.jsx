@@ -289,7 +289,7 @@ const GenerateReport = () => {
           <button
             onClick={() => openModal("modal1")}
             type="button"
-            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 bg-[#8e78b7] hover:bg-[#8e78b7] focus:outline-none focus:ring-[#8e78b7]"
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 focus:outline-none"
           >
             Generate Report
           </button>
