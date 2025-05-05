@@ -48,9 +48,6 @@ function App() {
           <Toaster />
           <ModalProvider>
             <Routes>
-        {/* Redirect /datagovernance to root */}
-        <Route path="/datagovernance" element={<Navigate to="/" replace />} />
-
               <Route
                 path="/"
                 element={
@@ -59,6 +56,9 @@ function App() {
                   </PublicRoute>
                 }
               />
+
+<Route path="/datagovernance" element={<Navigate to="/" replace />} />
+
 
               <Route element={<ProtectedRoute />}>
                 <Route
@@ -75,7 +75,7 @@ function App() {
                         />
                         <main
                           className={`flex-1 p-4 transition-all duration-300 overflow-hidden ${
-                            isSidebarCollapsed ? "ml-16 w-[calc(100%-4rem)]" : "ml-64 w-[calc(100%-16rem)]"
+                            isSidebarCollapsed ? "ml-16" : "ml-64"
                           }`}
                         >
                           <Routes>
@@ -97,8 +97,8 @@ function App() {
                   }
                 />
 
-              {/* Standalone drag-and-drop routes */}
-              <Route
+                {/* Standalone drag-and-drop routes */}
+                <Route
                   path="/Metadatacanvas"
                   element={
                     <TableProvider>
@@ -123,35 +123,32 @@ function App() {
                   }
                 />
 
-        {/* Standalone drag-and-drop route outside main layout */}
-        <Route
-          path="/Migrationcanvas"
-          element={
-            <TableProvider>
-            <ThemeProvider>
-              <DrawerProvider>
+                <Route
+                  path="/Migrationcanvas"
+                  element={
+                    <TableProvider>
+                      <FlowDataProvider>
+                        <ThemeProvider>
+                          <DrawerProvider>
+                            <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
+                              <Header className="h-16 flex-shrink-0" />
+                              <div className="flex-1 flex">
+                                <div className="flex-1 relative">
+                                  <ReactFlowProvider>
+                                    <ArchivalCanvas />
+                                  </ReactFlowProvider>
+                                </div>
+                              </div>
+                              <WelcomeModal />
+                            </div>
+                          </DrawerProvider>
+                        </ThemeProvider>
+                      </FlowDataProvider>
+                    </TableProvider>
+                  }
+                />
 
-                  <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-                    <Header className="h-16 flex-shrink-0" />{" "}
-                    <div className="flex-1 flex">
-                      <MigrationSidebar className="w-64 flex-shrink-0" />{" "}
-                      <div className="flex-1 relative">
-                        {" "}
-                        <ReactFlowProvider>
-                          <MigrationCanvas />
-                        </ReactFlowProvider>
-                      </div>
-                    </div>
-                    <WelcomeModal />
-                  </div>
-
-              </DrawerProvider>
-            </ThemeProvider>
-            </TableProvider>
-          }
-        />
-
-<Route
+                <Route
                   path="/PurgeCanvas"
                   element={
                     <TableProvider>
