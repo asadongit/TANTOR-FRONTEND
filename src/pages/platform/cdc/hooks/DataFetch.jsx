@@ -17,7 +17,7 @@ const fetchConnections = async (token,decodedToken,project , poolType='both') =>
     return response.data.filter(
       (item) =>
         item.pool_type === "both" ||
-        (item.pool_type === poolType && item.created_by === decodedToken.preferred_username));
+        item.pool_type === poolType)
   } catch (error) {
     console.error("Error fetching connections:", error);
     return [];

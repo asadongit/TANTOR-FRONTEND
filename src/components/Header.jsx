@@ -103,7 +103,7 @@ const Header = () => {
         
         <div className="relative" ref={dropdownRef}>
           <button 
-            className="w-10 h-10 bg-gradient-to-br from-[#8e78b7] to-indigo-600 rounded-full flex items-center justify-center text-white hover:shadow-md transition-all duration-200 border-2 border-white"
+            className="w-10 h-10 bg-gradient-to-br from-[#8e78b7] to-purple-400 rounded-full flex items-center justify-center text-white hover:shadow-md transition-all duration-200 border-2 border-white"
             onClick={toggleProfile}
             aria-label="Open user menu"
           >
@@ -126,7 +126,7 @@ const Header = () => {
               ) : (
                 <div className="px-4 py-4 border-b border-gray-100 bg-gradient-to-r from-[purple-50] to-indigo-50">
                   <div className="flex items-center space-x-3">
-                    <div className="w-14 h-14 bg-gradient-to-br from-[#8e78b7] to-indigo-600 rounded-full flex items-center justify-center text-white text-lg font-semibold shadow-md">
+                    <div className="w-14 h-14 bg-gradient-to-br from-[#8e78b7] to-purple-400 rounded-full flex items-center justify-center text-white text-lg font-semibold shadow-md">
                       {getUserInitials()}
                     </div>
                     <div className="flex-1 min-w-0">
