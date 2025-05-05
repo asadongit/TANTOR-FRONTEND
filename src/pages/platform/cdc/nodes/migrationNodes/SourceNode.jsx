@@ -18,11 +18,17 @@ import {
 } from "lucide-react";
 import { Handle } from "../../components/CustomHandle";
 import { SkeletonLoader } from "../../components/skeltonLoader";
-import { useConnections, useDDL, useSchemaCount, useSchemas, useTables } from "../../hooks/DataFetch";
+import {
+  useConnections,
+  useDDL,
+  useSchemaCount,
+  useSchemas,
+  useTables,
+} from "../../hooks/DataFetch";
 import { useDrawerContext } from "../../context/DrawerContext";
 import { useWorkflow } from "../../context/WorkflowContext";
 import { useAuth } from "../../../../../context/AuthContext";
-
+import AutoComplete from "../../components/AutoComplete";
 export function SourceNode({ id, data, selected }) {
   // console.log("sourceData--------",data)
   const [loading, setLoading] = useState(false);
@@ -41,25 +47,36 @@ export function SourceNode({ id, data, selected }) {
     bulk_list: [],
     subset_list: [],
     op_types: {
-      datafederation: false
+      datafederation: false,
     },
-    name:"",
-    source_conn_id:"",
-    type:""
+    name: "",
+    source_conn_id: "",
+    type: "",
   }));
 
-  const { data: connections, isLoading: isLoadingConnections } = useConnections('source');
+  const { data: connections, isLoading: isLoadingConnections } =
+    useConnections("source");
   const { data: schemaCount } = useSchemaCount(selectedConnection);
-  const { data: schemas, isLoading: isLoadingSchemas } = useSchemas(selectedConnection);
-  const { data: tables } = useTables(selectedConnection, selectedSchema,selectedMode);
+  const { data: schemas, isLoading: isLoadingSchemas } =
+    useSchemas(selectedConnection);
+  const { data: tables } = useTables(
+    selectedConnection,
+    selectedSchema,
+    selectedMode
+  );
   const { data: ddl } = useDDL(selectedConnection, selectedSchema);
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id;
 
   const { openDrawer } = useDrawerContext();
-  const { selectSource, pipelineMappings, deleteMapping, updateData, pipelines } =
-    useWorkflow();
+  const {
+    selectSource,
+    pipelineMappings,
+    deleteMapping,
+    updateData,
+    pipelines,
+  } = useWorkflow();
 
   useEffect(() => {
     if (selectedConnection && selectedSchema && ID) {
@@ -71,14 +88,20 @@ export function SourceNode({ id, data, selected }) {
         subset_list: pipelineMappings?.[ID] ?? [],
         op_types: nodeData?.op_types ?? [],
         source_conn_id: nodeData?.source_conn_id ?? null,
-        type:nodeData?.type,
+        type: nodeData?.type,
         define: data?.define?.[0] ?? null,
       };
-      
+
       setNodeData(updatedNodeData);
       updateData(ID, isPipelineNode, "source", updatedNodeData);
     }
-  }, [selectedConnection, selectedSchema, selectedMode, selectedItems, pipelineMappings]);
+  }, [
+    selectedConnection,
+    selectedSchema,
+    selectedMode,
+    selectedItems,
+    pipelineMappings,
+  ]);
 
   const filteredTables = useMemo(() => {
     if (!tables || !tables.length) return [];
@@ -92,19 +115,24 @@ export function SourceNode({ id, data, selected }) {
       );
   }, [tables, searchTerm]);
   const handleSelectConnection = (selectedConnection) => {
+    const connName = selectedConnection?.connection_name || "";
+    const connId = selectedConnection?.connection_id || null;
+    const connType = selectedConnection?.connection_type || null;
+
     setSelectedConnectionObj(selectedConnection);
-    setSelectedConnection(selectedConnection.connection_name);
+    setSelectedConnection(connName);
     setSelectedSchema("");
     setSelectedItems([]);
     setSelectedMode("");
     setNodeData((prevData) => ({
       ...prevData,
-      "source_conn_id": selectedConnection.connection_id,
-      "type":selectedConnection.connection_type
+      source_conn_id: connId,
+      type: connType,
     }));
   };
+
   const handleSelectSchema = (schemaName) => {
-    setSelectedSchema(schemaName);
+    setSelectedSchema(schemaName || "");
     setSelectedItems([]);
     setSelectedMode("");
   };
@@ -114,14 +142,12 @@ export function SourceNode({ id, data, selected }) {
     setSelectedItems([]);
 
     if (!selectedConnection || !selectedSchema) return;
-
   };
   const handleSelectAll = (isChecked) => {
     if (isChecked) {
       const validTables = filteredTables.filter((table) => table !== null);
 
-      setSelectedItems(
-        validTables.map((item) =>item.source_table))
+      setSelectedItems(validTables.map((item) => item.source_table));
     } else {
       setSelectedItems([]);
     }
@@ -132,14 +158,12 @@ export function SourceNode({ id, data, selected }) {
       if (checked) {
         // return [...prev, { metadata_id: tableId, schedule: {} }];
         return [...prev, table];
-
       } else {
-        return prev.filter((item) => item!== table);
+        return prev.filter((item) => item !== table);
       }
     });
   };
 
-  
   const handleOkClick = () => {
     if (selectedConnection && selectedSchema && selectedMode) {
       const updatedNodeData = {
@@ -165,24 +189,32 @@ export function SourceNode({ id, data, selected }) {
     selectedConnection && selectedSchema && selectedMode
   );
 
-  const connectedTargets = (data?.target || []).filter(target => target && target.id !== undefined).map(target => target.id);
+  const connectedTargets = (data?.target || [])
+    .filter((target) => target && target.id !== undefined)
+    .map((target) => target.id);
 
-  const firstTargetID = connectedTargets.length > 0 ? connectedTargets[0] : null; 
-  
-  const constructedKey = firstTargetID ? `${data?.source?.id}-${firstTargetID}` : null;
+  const firstTargetID =
+    connectedTargets.length > 0 ? connectedTargets[0] : null;
+
+  const constructedKey = firstTargetID
+    ? `${data?.source?.id}-${firstTargetID}`
+    : null;
 
   const pipelineData = isPipelineNode
     ? pipelineMappings[pipelineId] || []
-    : constructedKey && pipelineMappings[constructedKey] ? pipelineMappings[constructedKey] : [];
-  
+    : constructedKey && pipelineMappings[constructedKey]
+    ? pipelineMappings[constructedKey]
+    : [];
+
   const sourceTables = pipelineData.map((mapping) => mapping.source_table);
   const showTablesList = Boolean(
     selectedMode === "bulk"
-      ? tables && tables.length > 0 || loading
+      ? (tables && tables.length > 0) || loading
       : (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
-        (constructedKey && (pipelineMappings[constructedKey]?.length ?? 0) > 0) 
+          (constructedKey &&
+            (pipelineMappings[constructedKey]?.length ?? 0) > 0)
   );
-  
+
   return (
     <div
       className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
@@ -228,7 +260,7 @@ export function SourceNode({ id, data, selected }) {
             Connection
           </label>
           <div className="w-full">
-            <select
+            {/* <select
               id="connection-select"
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
               value={selectedConnectionObj ? JSON.stringify(selectedConnectionObj) : ""}
@@ -248,7 +280,20 @@ export function SourceNode({ id, data, selected }) {
               ) : (
                 <option disabled>No connections available</option>
               )}
-            </select>
+            </select> */}
+
+            <AutoComplete
+              options={connections || []}
+              placeholder="Select Connection"
+              labelKey="connection_name"
+              valueKey="id"
+              className="w-full"
+              onSelect={(connection) => handleSelectConnection(connection)}
+              value={selectedConnectionObj}
+              returnFullObject={true}
+              isLoading={isLoadingConnections}
+              loadingText="Loading connections..."
+            />
           </div>
         </div>
 
@@ -261,7 +306,7 @@ export function SourceNode({ id, data, selected }) {
           </label>
           <div className="relative w-full flex items-center gap-2">
             <div className="w-full relative">
-              <select
+              {/* <select
                 id="schema-select"
                 className="w-full min-w-0 p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                 value={selectedSchema}
@@ -283,8 +328,18 @@ export function SourceNode({ id, data, selected }) {
                     ))}
                   </>
                 )}
-              </select>
-
+              </select> */}
+              <AutoComplete
+                options={schemas || []}
+                value={selectedSchema}
+                placeholder="Select Schema"
+                onChange={(e) => handleSelectSchema(e.target.value)}
+                disabled={!selectedConnection || isLoadingSchemas}
+                isLoading={isLoadingSchemas}
+                loadingText="Loading schemas..."
+                valueKey="table_schema"
+                labelKey="table_schema"
+              />
               {isLoadingSchemas && (
                 <div className="absolute right-2 top-1/2 -translate-y-1/2">
                   <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
@@ -303,7 +358,7 @@ export function SourceNode({ id, data, selected }) {
 
       <div className="space-y-4 mt-3">
         <label className="text-xs font-medium text-black mb-0.5 block">
-          {data.category || 'Source'} Scope
+          {data.category || "Source"} Scope
         </label>
         <div className="flex gap-4">
           <div className="flex items-center">
@@ -350,18 +405,44 @@ export function SourceNode({ id, data, selected }) {
         {filteredTables &&
           filteredTables.length > 0 &&
           selectedMode === "subset" && (
-            <select
-              id="table-select"
-              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              onChange={(e) => selectSource(ID, e.target.value, connectedTargets, isPipelineNode)}
-            >
-              <option value="">Select Table</option>
-              {filteredTables.map((table, idx) => (
-                <option key={idx} value={table.source_table}>
-                  {table.source_table}
-                </option>
-              ))}
-            </select>
+            // <select
+            //   id="table-select"
+            //   className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+            //   onChange={(e) =>
+            //     selectSource(
+            //       ID,
+            //       e.target.value,
+            //       connectedTargets,
+            //       isPipelineNode
+            //     )
+            //   }
+            // >
+            //   <option value="">Select Table</option>
+            //   {filteredTables.map((table, idx) => (
+            //     <option key={idx} value={table.source_table}>
+            //       {table.source_table}
+            //     </option>
+            //   ))}
+            // </select>
+            <AutoComplete
+              options={filteredTables}
+              placeholder="Select Table"
+              onChange={(e) => {
+                const selectedTable = e?.target?.value || "";
+
+                if (selectedTable) {
+                  selectSource(
+                    ID,
+                    selectedTable,
+                    connectedTargets,
+                    isPipelineNode
+                  );
+                }
+              }}
+              valueKey="source_table"
+              labelKey="source_table"
+              className="w-full"
+            />
           )}
       </div>
 
@@ -469,7 +550,6 @@ export function SourceNode({ id, data, selected }) {
                             checked={selectedItems.some(
                               // (item) => item.metadata_id === table.metadata_id
                               (item) => item === table.source_table
-                              
                             )}
                             onChange={(e) =>
                               handleItemSelection(
@@ -490,7 +570,7 @@ export function SourceNode({ id, data, selected }) {
                         <button
                           onClick={() =>
                             openDrawer(
-                              data?.category || 'migration',
+                              data?.category || "migration",
                               "AddFilter",
                               id,
                               data.pipelineId,
@@ -536,7 +616,7 @@ export function SourceNode({ id, data, selected }) {
                               <button
                                 onClick={() =>
                                   openDrawer(
-                                    data?.category || 'migration',
+                                    data?.category || "migration",
                                     "AddFilter",
                                     id,
                                     data.pipelineId,
