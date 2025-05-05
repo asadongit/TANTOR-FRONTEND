@@ -11,6 +11,9 @@ import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
 import { useArchivalData } from "../../../hooks/platform/archival";
 import DataTable from "../../../components/DataTable";
 import CardGrid from "../../../components/CardGrid";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { useAuth } from "../../../context/AuthContext";
 const ArchivalList = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError, refetchCardData } = useSourceTypeCounts('migration');
   const { data: archivalData=[], isLoading: isArchivalLoading, error: archivalError, refetch:refetchArchival } = useArchivalData();
@@ -20,7 +23,7 @@ const ArchivalList = () => {
   const [activeMenu, setActiveMenu] = useState(null);
 
  
-
+const {token, hostnameV1}= useAuth()
   
   const handleCreateMigration = () => {
     navigate('/Migrationcanvas'); 
@@ -96,7 +99,18 @@ const ArchivalList = () => {
       {
         label: "Run",
         icon: <Play size={16} fill="currentColor" />,
-        onClick: (row) => console.log("Run clicked for", row),
+        onClick: async (row) => {
+          try {
+            const response = await axios.get(`${hostnameV1}/migrations/manualtrigger/${row.workflow_name}`, {
+              headers: {Authorization: `Bearer ${token}`},
+            });
+            // console.log("Migration Run Response:", response.data);
+            toast.success("Migration triggered successfully!");
+          } catch (error) {
+            console.error("Failed to trigger Migration:", error);
+            toast.error("Failed to trigger Migration.");
+          }
+        },
       },
     ];
     
