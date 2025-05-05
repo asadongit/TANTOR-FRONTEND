@@ -70,6 +70,7 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       project: project,
       created_by: decodedToken.preferred_username,
       cdc_name: pipelineData.define?.name,
+      cdc_auto_name: pipelineData.define?.autoName,
       cdc_description: pipelineData.define?.description || "",
       source_conn_id: pipelineData.source?.source_conn_id,
       target_conn_id: pipelineData.target?.target_conn_id,
