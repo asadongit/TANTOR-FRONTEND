@@ -10,6 +10,7 @@ const { data: CDCData=[], isLoading: isCDCLoading, error: CDCError } = useCDCDat
   const [nodeData, setNodeData] = useState({
     name: data.define?.name || "",
     description: data.define?.description || "",
+    autoName:data.define?.autoName || "",
   });
 
   const pipelineId = data?.pipelineId;
@@ -48,7 +49,8 @@ useEffect(() => {
     if (sourceName && sourceName !== nodeData.name) {
       setNodeData((prevData) => ({
         ...prevData,
-        name: `${sourceName}${nameCount}`,
+        name: `${sourceName}${nameCount+1}`,
+        autoName:sourceName
       }));
     }
   } else {
@@ -57,6 +59,7 @@ useEffect(() => {
       setNodeData((prevData) => ({
         ...prevData,
         name: `${sourceName}${nameCount}`,
+        autoName:sourceName
       }));
     }
   }

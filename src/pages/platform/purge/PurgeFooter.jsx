@@ -36,20 +36,42 @@ const PurgeFooter = ({ onCancel }) => {
     );
 
     let whereConditionConcat = "";
-    if (sourceMatch?.whereCondition) {
+    if (typeof sourceMatch?.whereCondition === "string") {
+      whereConditionConcat = sourceMatch.whereCondition.trim();
+    } else if (
+      typeof sourceMatch?.whereCondition === "object" &&
+      sourceMatch.whereCondition !== null
+    ) {
       const { columnName, filter, value } = sourceMatch.whereCondition;
-      if (columnName && filter && value) {
-      whereConditionConcat = `WHERE ${columnName}${filter}${value}`;
+      if (columnName && filter && value !== undefined) {
+        whereConditionConcat = `WHERE ${columnName}${filter}${value}`;
       }
     }
-    return {
+
+    const entry = {
       source_table,
       target_table,
       schedule: {},
       whereCondition: whereConditionConcat || "",
-      source_partition: sourceMatch?.source_partition ? sourceMatch.source_partition : {},
-      target_partition: targetMatch?.target_partition ? targetMatch.target_partition : {}
-    };
+    }
+
+    if (targetMatch?.target_partition && Object.keys(targetMatch.target_partition).length > 0) {
+      entry.target_partition = targetMatch.target_partition;
+    } else {
+      entry.target_partition = {};
+    }
+
+    const isDropPartitionsSelected = sourceMatch?.source_partition;
+    const hasTargetPartition =
+      targetMatch?.target_partition &&
+      Object.keys(targetMatch.target_partition).length > 0;
+    
+    if (isDropPartitionsSelected && hasTargetPartition) {
+      entry.source_partition = sourceMatch?.source_partition || {};
+    } else {
+      entry.source_partition = {};
+    }
+    return entry;
   });
 
   function convertDateFormat(dateString) {
@@ -65,6 +87,15 @@ const PurgeFooter = ({ onCancel }) => {
   }
 
   const buildPurgeSubsetSavePayload = () => {
+    const isValidDropPartition = (partition) => {
+      return partition &&
+        partition.partitionName !== null &&
+        partition.columnName !== null &&
+        partition.highValue !== null &&
+        partition.partitionType !== null &&
+        partition.tableName !== null;
+    };
+
     return {
       created_by: decodedToken.preferred_username,
       description: defineNodeDesc,
@@ -86,7 +117,7 @@ const PurgeFooter = ({ onCancel }) => {
       source_conn_type: sourceData.connectionType,
       source_purge_info: {
         iscomplexwherecondition: filters.source.isComplex ? filters.source.details : "No",
-        partition_details: dropPartitions?.source || [],
+        partition_details: isValidDropPartition(dropPartitions?.target) ? dropPartitions?.source : {},
         sourceConnName: sourceData.connectionName,
         sourceObjectName: sourceData.tableName,
         sourcePath: "",
@@ -100,7 +131,7 @@ const PurgeFooter = ({ onCancel }) => {
           },
         ],
       },
-      source_table: sourceData.tableName,
+      source_table: sourceData?.tableName,
       status: "Pending",
       target_conn_id: targetData.connectionId,
       target_conn_name: targetData.connectionName,
@@ -114,7 +145,7 @@ const PurgeFooter = ({ onCancel }) => {
           surrogateKey: "",
           targetPk: "",
         },
-        partition_details: dropPartitions?.target || "",
+        partition_details:isValidDropPartition(dropPartitions?.target) ? dropPartitions?.target : {},
         sourceDF: "s_df_1",
         targetConnName: targetData.connectionName,
         targetObjectName: targetData.tableName,
@@ -183,7 +214,6 @@ const PurgeFooter = ({ onCancel }) => {
         },
         body: JSON.stringify(buildPurgeSubsetSavePayload()),
       });
-
       if (!res.ok) throw new Error('Failed to post data');
 
       const data = await res.json();
@@ -241,14 +271,7 @@ const PurgeFooter = ({ onCancel }) => {
           onClick={() => openModal("modal3")}
           className="text-black bg-white border-solid border-2 focus:outline-none hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1 mr-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] dark:focus:ring-[#8e78b7]"
         >
-          Create Purge
-        </button>
-        <button
-          type="button"
-          onClick={() => openModal("modal3")}
-          className="text-black bg-white border-solid border-2 hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1 mr-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
-        >
-          Save Purge
+          Save
         </button>
       </div>
 

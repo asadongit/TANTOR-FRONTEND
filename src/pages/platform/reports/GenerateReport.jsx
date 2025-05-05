@@ -40,6 +40,7 @@ const GenerateReport = () => {
 
   const handleGenerateReport = async () => {
     if (!reportType || !startDate || !endDate) {
+      toast.error("Please fill all required fields")
       setError("Please fill all required fields");
       return;
     }
@@ -288,7 +289,7 @@ const GenerateReport = () => {
           <button
             onClick={() => openModal("modal1")}
             type="button"
-            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 focus:outline-none"
           >
             Generate Report
           </button>
@@ -398,7 +399,7 @@ const GenerateReport = () => {
                   onClick={() => {
                     handleGenerateReport();
                   }}
-                  disabled={loading || !reportType || !startDate || !endDate}
+                  disabled={loading}
                   className={`px-6 py-2 rounded-lg transition-colors ${
                     loading
                       ? "bg-gray-300 cursor-not-allowed"
@@ -431,9 +432,9 @@ const GenerateReport = () => {
         {/* <div className="overflow-x-auto"> */}
         <div className="overflow-y-auto h-72">
         <table className="w-full text-sm text-left rtl:text-right text-black">
-          <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white sticky top-0 z-10">
+          <thead className="text-xs text-white-700 uppercase bg-black text-white sticky top-0 z-10">
             <tr>
-              <th scope="col" className="px-3 py-1">
+              <th scope="col" className=" px-3 py-1">
                 Workflow Name
               </th>
               <th scope="col" className="px-3 py-2">
@@ -477,10 +478,10 @@ const GenerateReport = () => {
           <tbody>
             {paginatedFilteredReports.map((user, index) => (
               // <tr key={index} className="border-b"></tr>
-              <tr key={index} className="border-b dark:border-white-700">
+              <tr key={index} className="border-b  bg-white border-white-700">
                 {/* <th
                   scope="row"
-                  className="px-3 py-2 font-medium text-black-900 whitespace-nowrap dark:text-black"
+                  className="px-3 py-2 font-medium text-black-900 whitespace-nowrap text-black"
                 >
                   {user.id}
                 </th> */}
@@ -579,7 +580,7 @@ const GenerateReport = () => {
       <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
       <div className="max-h-[calc(100vh-310px)] overflow-y-auto">
         <table className="w-auto text-sm text-left rtl:text-right text-black">
-          <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
+          <thead className="text-xs text-white-700 uppercase bg-black text-white sticky top-0 z-10">
             <tr>
               <th scope="col" className="px-6 py-3 w-48">
                 Workflow Name
@@ -625,10 +626,10 @@ const GenerateReport = () => {
           <tbody>
             {paginatedReports.map((user, index) => (
               // <tr key={index} className="border-b"></tr>
-              <tr key={index} className="border-b dark:border-white-700">
+              <tr key={index} className="border-b bg-white border-white-700">
                 {/* <th
                   scope="row"
-                  className="px-6 py-4 font-medium text-black-900 whitespace-nowrap dark:text-black"
+                  className="px-6 py-4 font-medium text-black-900 whitespace-nowrap text-black"
                 >
                   {user.workflow_name}
                 </th> */}
@@ -706,7 +707,7 @@ const GenerateReport = () => {
 
       {/* <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
         <table className="w-full text-sm text-left rtl:text-right text-black">
-          <thead className="text-xs text-white-700 uppercase dark:bg-[#282F49] dark:text-white">
+          <thead className="text-xs text-white-700 uppercase bg-[#282F49] text-white">
             <tr>
               <th scope="col" className="px-6 py-3">
                 ID
@@ -749,10 +750,10 @@ const GenerateReport = () => {
           <tbody>
             {sampleData.map((user, index) => (
               // <tr key={index} className="border-b"></tr>
-              <tr key={index} className="border-b dark:border-white-700">
+              <tr key={index} className="border-b border-white-700">
                 <th
                   scope="row"
-                  className="px-6 py-4 font-medium text-black-900 whitespace-nowrap dark:text-black"
+                  className="px-6 py-4 font-medium text-black-900 whitespace-nowrap text-black"
                 >
                   {user.id}
                 </th>
