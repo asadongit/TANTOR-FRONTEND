@@ -17,7 +17,7 @@ const columnConfigurations = {
       { key: "connection_name", label: "Name", sortable: true },
       { key: "project", label: "Project Name", sortable: true },
       { key: "created_by", label: "Created By", sortable: true },
-      { key: "connection_type", label: "Connection Type", sortable: true },
+      { key: "pool_type", label: "Connection Type", sortable: true },
       { key: "database_name", label: "Database Name", sortable: true },
       { key: "username", label: "Username", sortable: true },
       { key: "host_address", label: "Hostname", sortable: true },

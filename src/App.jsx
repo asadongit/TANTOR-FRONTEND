@@ -166,7 +166,7 @@ function App() {
                                       </ReactFlowProvider>
                                     </div>
                                   </div>
-                                  <WelcomeModal />
+                                  {/* <WelcomeModal /> */}
                                 </div>
                               </PurgeContextProvider>
                             </ContextProvider>
