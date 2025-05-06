@@ -12,7 +12,7 @@ import { useAuth } from "../../../../context/AuthContext";
 export function TargetNode({ id }) {
   const hostname = import.meta.env.VITE_FAST_API;
   const hostnameV2 = import.meta.env.VITE_FAST_API_V2;
-  const { token, decodedToken } = useAuth();
+  const { token, decodedToken, project } = useAuth();
 
   const {
     selectedTables,
@@ -64,6 +64,7 @@ export function TargetNode({ id }) {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          "x-project": project,
         },
       });
       connectionsData = await connectionResponse.json();
@@ -245,9 +246,6 @@ export function TargetNode({ id }) {
       const table = await fetchMetadataAccToConnectionAndBulkTable(targetConnection, targetTable);
       const partitions = table?.[0]?.partition_json;
 
-      //setBulkTargetPartitionData(partitions);
-  
-      //return Array.isArray(partitions) && partitions.length > 0;
       return partitions;
     };
   
@@ -745,10 +743,7 @@ export function TargetNode({ id }) {
           >
             <option value="">Select</option>
             {connections
-              .filter(
-                (connection) =>
-                  connection.created_by === decodedToken.preferred_username
-              )
+              .filter((connection) => connection?.pool_type === "target" || connection?.pool_type === "both")
               .map((connection, idx) => (
                 <option key={idx} value={connection.connection_name}>
                   {connection.connection_name}
