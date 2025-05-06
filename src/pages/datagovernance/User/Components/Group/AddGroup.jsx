@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Info } from "lucide-react";
+import { useAuth } from "../../../../../context/AuthContext";
 
 function AddGroup({ showModal, setShowModal, onGroupAdded }) {
   const [formData, setFormData] = useState({
@@ -8,6 +9,8 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { token } = useAuth();
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,7 +31,7 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/addgroup`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

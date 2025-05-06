@@ -3,6 +3,7 @@ import { PlusCircle, MoreVertical, Users, Search, Plus } from "lucide-react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
 import AddRole from "./Components/Role/AddRole";
+import { useAuth } from "../../../context/AuthContext";
 
 const Toggle = ({ enabled, onToggle }) => {
   return (
@@ -27,6 +28,8 @@ const Role = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const initialFetchDoneRef = useRef(false);
+  const { token } = useAuth();
+
 
   const filteredRoles = roles.filter(role =>
     role.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -53,7 +56,7 @@ const Role = () => {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/roleshomepage`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -81,8 +84,10 @@ const Role = () => {
     }
   };
 
-  const handleSave = (formData) => {
-    console.log('Form Data:', formData);
+  const handleSave = async (roleData) => {
+    console.log('Role created:', roleData);
+    // Refresh the roles list after creating a new role
+    await FetchRoleDashboardData();
     setShowModal(false);
   };
 

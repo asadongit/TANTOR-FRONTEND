@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
+import { useAuth } from '../../../../../context/AuthContext';
 
 const EditUser = ({ isOpen, onClose, onSave, userData }) => {
-  // Use optional chaining to safely access userData.id
-  console.log("EditUser:", userData?.id);
+
 
   const [formData, setFormData] = useState({
     username: '',
@@ -28,6 +28,8 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     subgroups: []
   });
   const [isFetchingOptions, setIsFetchingOptions] = useState(false);
+  const { token } = useAuth();
+
 
   useEffect(() => {
     if (isOpen && userData) {
@@ -52,7 +54,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/usermapper`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -139,7 +141,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/users/${userData.id}`, {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

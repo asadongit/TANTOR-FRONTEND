@@ -5,6 +5,7 @@ import Breadcrumb from '../../../components/Breadcrumb';
 import AddUser from './Components/User/AddUser';
 import EditUser from './Components/User/EditUser';
 import DeleteUser from './Components/User/DeleteUser';
+import { useAuth } from '../../../context/AuthContext';
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -39,13 +40,16 @@ const User = () => {
   const initialFetchDone = useRef(false);
   const rowsPerPage = 10;
 
+    const { token } = useAuth();
+
+
   const fetchUserData = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/users`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
