@@ -180,7 +180,6 @@ function Group() {
       }));
 
       setGroups(transformedData);
-      console.log("Fetched group data:", transformedData);
     } catch (error) {
       console.error("Error fetching group data:", error);
     }
@@ -363,9 +362,9 @@ function Group() {
                             </div>
                             <h3 className="text-lg font-semibold">{group.title}</h3>
                           </div>
-                          <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                          {/* <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
                             <MoreVertical className="h-4 w-4" />
-                          </button>
+                          </button> */}
                         </div>
                         <p className="text-gray-500 mt-4 text-sm">{group.description}</p>
                         <div className="flex items-center justify-between mt-6">

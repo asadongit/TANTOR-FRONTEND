@@ -173,14 +173,14 @@ const AddRole = ({ show, onClose, onSave }) => {
                   ) : "Save"}
                 </button>
               </div>
-              <button
+              {/* <button
                 className="flex items-center gap-2 px-4 py-2 text-[#8e78b7] border border-[#8e78b7] hover:bg-[#8e78b7] hover:text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleNewRole}
                 disabled={loading}
               >
                 <Plus className="h-5 w-5" />
                 New Role
-              </button>
+              </button> */}
             </div>
           </div>
         </div>

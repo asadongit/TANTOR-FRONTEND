@@ -5,6 +5,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAuth } from "../../../context/AuthContext";
 import AddSubgroup from "./Components/Subgroup/AddSubgroup";
 import DeleteSubgroup from "./Components/Subgroup/DeleteSubgroup";
+import EditSubgroup from "./Components/Subgroup/EditSubgroup";
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -41,7 +42,9 @@ const Toggle = ({ enabled, onToggle }) => {
 function Subgroup() {
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [subgroupToDelete, setSubgroupToDelete] = useState(null);
+  const [subgroupToEdit, setSubgroupToEdit] = useState(null);
   const [subgroups, setSubgroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -104,7 +107,6 @@ function Subgroup() {
       }));
 
       setSubgroups(transformedData);
-      console.log("Fetched subgroup data:", transformedData);
     } catch (error) {
       console.error("Error fetching subgroup data:", error);
     }
@@ -183,6 +185,12 @@ function Subgroup() {
     const newSubgroups = [...subgroups];
     newSubgroups[index].enabled = !newSubgroups[index].enabled;
     setSubgroups(newSubgroups);
+  };
+
+  const handleEditClick = (subgroup) => {
+    setSubgroupToEdit(subgroup);
+    setShowEditModal(true);
+    setActiveMenu(null);
   };
 
   const handleDeleteClick = (subgroup) => {
@@ -296,12 +304,11 @@ function Subgroup() {
                             </div>
                             <div>
                               <h3 className="text-lg font-semibold">{subgroup.title}</h3>
-                              <p className="text-xs text-gray-400">Parent: {subgroup.parentGroup}</p>
                             </div>
                           </div>
-                          <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                          {/* <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
                             <MoreVertical className="h-4 w-4" />
-                          </button>
+                          </button> */}
                         </div>
                         <p className="text-gray-500 mt-4 text-sm">{subgroup.description}</p>
                         <div className="flex items-center justify-between mt-6">
@@ -402,9 +409,7 @@ function Subgroup() {
                               <div className="flex items-center p-1 gap-1">
                                 <button
                                   className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                                  onClick={() => {
-                                    setActiveMenu(null);
-                                  }}
+                                  onClick={() => handleEditClick(subgroup)}
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </button>
@@ -488,6 +493,13 @@ function Subgroup() {
         setShowModal={setShowDeleteModal}
         subgroupName={subgroupToDelete?.name || ""}
         onConfirm={refreshAllData}
+      />
+
+      <EditSubgroup
+        showModal={showEditModal}
+        setShowModal={setShowEditModal}
+        subgroupData={subgroupToEdit}
+        onSubgroupUpdated={refreshAllData}
       />
     </div>
   );
