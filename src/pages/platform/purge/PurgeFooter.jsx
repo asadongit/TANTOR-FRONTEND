@@ -44,7 +44,7 @@ const PurgeFooter = ({ onCancel }) => {
     ) {
       const { columnName, filter, value } = sourceMatch.whereCondition;
       if (columnName && filter && value !== undefined) {
-        whereConditionConcat = `WHERE ${columnName}${filter}${value}`;
+        whereConditionConcat = `WHERE ${columnName} ${filter} ${value}`;
       }
     }
 
