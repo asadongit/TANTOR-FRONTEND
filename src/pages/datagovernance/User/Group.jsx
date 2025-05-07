@@ -3,6 +3,8 @@ import { MoreVertical, Search, Plus, Info, MoreHorizontal, Pencil, Trash2, Rotat
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
 import AddGroup from "./Components/Group/AddGroup";
+import DeleteGroup from "./Components/Group/DeleteGroup";
+import EditGroup from "./Components/Group/EditGroup";
 import { useAuth } from "../../../context/AuthContext";
 
 const rotateAnimation = `
@@ -39,6 +41,10 @@ const Toggle = ({ enabled, onToggle }) => {
 
 function Group() {
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState(null);
+  const [groupToEdit, setGroupToEdit] = useState(null);
   const [group, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,7 +55,6 @@ function Group() {
   const rowsPerPage = 10;
   const [togglingStatus, setTogglingStatus] = useState(null);
   const { token } = useAuth();
-
 
   const initialFetchDoneRef = useRef(false);
 
@@ -106,6 +111,32 @@ function Group() {
       console.error("Error updating group status:", error);
     } finally {
       setTogglingStatus(null);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupToDelete) return;
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/deletegroup/${groupToDelete.name}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
+      }
+
+      await refreshAllData();
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      throw error;
     }
   };
 
@@ -433,13 +464,26 @@ function Group() {
                           <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
                           <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                             <div className="flex items-center p-1 gap-1">
-                              <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                              <button
+                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                onClick={() => {
+                                  setGroupToEdit(group);
+                                  setShowEditModal(true);
+                                  setActiveMenu(null);
+                                }}
+                              >
                                 <Pencil className="h-4 w-4" />
                               </button>
-                              <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                              <button
+                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                onClick={() => {
+                                  setGroupToDelete(group);
+                                  setShowDeleteModal(true);
+                                  setActiveMenu(null);
+                                }}
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </button>
-
                             </div>
                           </div>
                         </>
@@ -500,6 +544,20 @@ function Group() {
         showModal={showModal}
         setShowModal={setShowModal}
         onGroupAdded={refreshAllData}
+      />
+
+      <DeleteGroup
+        showModal={showDeleteModal}
+        setShowModal={setShowDeleteModal}
+        groupName={groupToDelete?.name || ""}
+        onConfirm={handleDeleteGroup}
+      />
+
+      <EditGroup
+        showModal={showEditModal}
+        setShowModal={setShowEditModal}
+        groupData={groupToEdit}
+        onGroupEdited={refreshAllData}
       />
     </div>
   );
