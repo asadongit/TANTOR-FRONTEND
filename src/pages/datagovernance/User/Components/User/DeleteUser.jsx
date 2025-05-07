@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
+import { useAuth } from '../../../../../context/AuthContext';
 
 const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  const { token } = useAuth();
 
   useEffect(() => {
     if (isOpen) {
@@ -27,7 +29,7 @@ const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete }) => {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/users/${userData.id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
       });

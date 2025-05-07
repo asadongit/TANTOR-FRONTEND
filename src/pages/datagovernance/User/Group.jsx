@@ -3,6 +3,9 @@ import { MoreVertical, Search, Plus, Info, MoreHorizontal, Pencil, Trash2, Rotat
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
 import AddGroup from "./Components/Group/AddGroup";
+import DeleteGroup from "./Components/Group/DeleteGroup";
+import EditGroup from "./Components/Group/EditGroup";
+import { useAuth } from "../../../context/AuthContext";
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -38,14 +41,20 @@ const Toggle = ({ enabled, onToggle }) => {
 
 function Group() {
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState(null);
+  const [groupToEdit, setGroupToEdit] = useState(null);
   const [group, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [tableData, setTableData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'list'
+  const [viewMode, setViewMode] = useState('cards');
   const rowsPerPage = 10;
+  const [togglingStatus, setTogglingStatus] = useState(null);
+  const { token } = useAuth();
 
   const initialFetchDoneRef = useRef(false);
 
@@ -58,10 +67,77 @@ function Group() {
     setActiveMenu(null);
   };
 
-  const toggleRole = (index) => {
-    const newGroup = [...group];
-    newGroup[index].enabled = !newGroup[index].enabled;
-    setGroups(newGroup);
+  const toggleRole = async (index) => {
+    const groupToUpdate = group[index];
+    const newStatus = !groupToUpdate.enabled;
+
+    setTogglingStatus(index);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/groupstatus`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: groupToUpdate.title,
+          status: newStatus ? "Enabled" : "Disabled"
+
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
+      }
+
+      const newGroup = [...group];
+      newGroup[index].enabled = newStatus;
+      setGroups(newGroup);
+
+      const updatedTableData = tableData.map(item => {
+        if (item.name === groupToUpdate.title) {
+          return {
+            ...item,
+            status: newStatus ? "Enabled" : "Disabled"
+          };
+        }
+        return item;
+      });
+      setTableData(updatedTableData);
+
+    } catch (error) {
+      console.error("Error updating group status:", error);
+    } finally {
+      setTogglingStatus(null);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupToDelete) return;
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/deletegroup/${groupToDelete.name}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
+      }
+
+      await refreshAllData();
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      throw error;
+    }
   };
 
   useEffect(() => {
@@ -81,7 +157,7 @@ function Group() {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/groupshomepage`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
@@ -104,7 +180,6 @@ function Group() {
       }));
 
       setGroups(transformedData);
-      console.log("Fetched group data:", transformedData);
     } catch (error) {
       console.error("Error fetching group data:", error);
     }
@@ -115,7 +190,7 @@ function Group() {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/grouplist`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
@@ -124,17 +199,42 @@ function Group() {
       }
       const data = await response.json();
 
-      const transformedData = data.map((group) => ({
-        id: group.id,
-        name: group.name,
-        description: group.attributes?.Description?.[0] ||
-                    group.attributes?.description?.[0] ||
-                    "No description available",
-        status: group.attributes?.Status?.[0] === "Enabled" ? "Enabled" : "Disabled",
-        subGroup: group.subgroups?.join(", ") || "None",
-        createdDate: "",
-        updatedDate: "",
-      }));
+      const transformedData = data.map((group) => {
+        const createdOnValue =
+          group.attributes?.createdOn?.[0] ||
+          "";
+
+        let formattedDate = "";
+        if (createdOnValue) {
+          try {
+            const dateObj = new Date(createdOnValue);
+            if (!isNaN(dateObj.getTime())) {
+              formattedDate = dateObj.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              });
+            } else {
+              formattedDate = createdOnValue;
+            }
+          } catch (e) {
+            console.warn("Error formatting date:", e);
+            formattedDate = createdOnValue;
+          }
+        }
+
+        return {
+          id: group.id,
+          name: group.name,
+          description: group.attributes?.Description?.[0] ||
+                      group.attributes?.description?.[0] ||
+                      "No description available",
+          status: group.attributes?.Status?.[0] === "Enabled" ? "Enabled" : "Disabled",
+          subGroup: group.subgroups?.join(", ") || "None",
+          createdDate: formattedDate,
+          updatedDate: "",
+        };
+      });
 
       setTableData(transformedData);
       console.log("Fetched group list data:", transformedData);
@@ -262,9 +362,9 @@ function Group() {
                             </div>
                             <h3 className="text-lg font-semibold">{group.title}</h3>
                           </div>
-                          <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                          {/* <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
                             <MoreVertical className="h-4 w-4" />
-                          </button>
+                          </button> */}
                         </div>
                         <p className="text-gray-500 mt-4 text-sm">{group.description}</p>
                         <div className="flex items-center justify-between mt-6">
@@ -279,10 +379,14 @@ function Group() {
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Toggle
-                              enabled={group.enabled}
-                              onToggle={() => toggleRole(index)}
-                            />
+                            {togglingStatus === index ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
+                            ) : (
+                              <Toggle
+                                enabled={group.enabled}
+                                onToggle={() => toggleRole(index)}
+                              />
+                            )}
                             <span
                               className={`text-sm ${
                                 group.enabled ? "text-[#1a9962]" : "text-gray-400"
@@ -323,8 +427,6 @@ function Group() {
               <th className="text-left py-3 px-4">Status</th>
               <th className="text-left py-3 px-4">Sub group</th>
               <th className="text-left py-3 px-4">Created Date</th>
-              <th className="text-left py-3 px-4">Updated Date</th>
-              <th className="w-8 py-3 px-4">Select</th>
               <th className="text-left py-3 px-4">Action</th>
             </tr>
           </thead>
@@ -346,12 +448,7 @@ function Group() {
                   <td className="py-3 px-4 text-gray-600">{group.status}</td>
                   <td className="py-3 px-4 text-gray-600 max-w-xs truncate">{group.subGroup}</td>
                   <td className="py-3 px-4 text-gray-600">{group.createdDate}</td>
-                  <td className="py-3 px-4 text-gray-600">{group.updatedDate}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex justify-center">
-                      <input type="checkbox" className="rounded text-[#8e78b7] focus:ring-[#8e78b7]" />
-                    </div>
-                  </td>
+
                   <td className="py-3 px-4">
                     <div className="relative">
                       <button
@@ -366,13 +463,26 @@ function Group() {
                           <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
                           <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                             <div className="flex items-center p-1 gap-1">
-                              <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                              <button
+                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                onClick={() => {
+                                  setGroupToEdit(group);
+                                  setShowEditModal(true);
+                                  setActiveMenu(null);
+                                }}
+                              >
                                 <Pencil className="h-4 w-4" />
                               </button>
-                              <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                              <button
+                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                onClick={() => {
+                                  setGroupToDelete(group);
+                                  setShowDeleteModal(true);
+                                  setActiveMenu(null);
+                                }}
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </button>
-
                             </div>
                           </div>
                         </>
@@ -433,6 +543,20 @@ function Group() {
         showModal={showModal}
         setShowModal={setShowModal}
         onGroupAdded={refreshAllData}
+      />
+
+      <DeleteGroup
+        showModal={showDeleteModal}
+        setShowModal={setShowDeleteModal}
+        groupName={groupToDelete?.name || ""}
+        onConfirm={handleDeleteGroup}
+      />
+
+      <EditGroup
+        showModal={showEditModal}
+        setShowModal={setShowEditModal}
+        groupData={groupToEdit}
+        onGroupEdited={refreshAllData}
       />
     </div>
   );

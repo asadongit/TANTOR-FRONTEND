@@ -3,6 +3,7 @@ import Role from './Role';
 import User from './User';
 import Group from './Group';
 import Persona from './Persona';
+import Subgroup from './Subgroup';
 
 const PREFIX = '/datagovernance/user';
 
@@ -12,5 +13,7 @@ export const UserRoutes = (
     <Route path={`${PREFIX}/role`} element={<Role />} />
     <Route path={`${PREFIX}/group`} element={<Group />} />
     <Route path={`${PREFIX}/persona`} element={<Persona />} />
+    <Route path={`${PREFIX}/sub-group`} element={<Subgroup />} />
+
   </>
 );

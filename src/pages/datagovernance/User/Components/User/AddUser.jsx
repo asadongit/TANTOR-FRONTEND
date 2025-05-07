@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
+import { useAuth } from '../../../../../context/AuthContext';
 
 const AddUser = ({ isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -26,6 +27,8 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     subgroups: []
   });
   const [isFetchingOptions, setIsFetchingOptions] = useState(false);
+  const { token } = useAuth();
+
 
   useEffect(() => {
     if (isOpen) {
@@ -39,7 +42,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/usermapper`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -118,7 +121,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/signup`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_ACCESS_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
