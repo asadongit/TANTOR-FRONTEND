@@ -147,7 +147,6 @@ export function TargetNode({ id, data, selected }) {
         target_conn_id: data?.target?.target_conn_id,
         table_list: data?.target?.metadata_list,
       };
-      setPayload(payload);
       const validationResponse = await validateDdlMigration(payload);
       if (validationResponse.success === true) {
         openModal({
@@ -214,7 +213,7 @@ export function TargetNode({ id, data, selected }) {
         });
         setPipelines({});
         setNodes([]);
-        setPayload({});
+        ({});
       }, 800);
     } catch (error) {
       toast.error(`Error saving metadata: ${error.message}`);
