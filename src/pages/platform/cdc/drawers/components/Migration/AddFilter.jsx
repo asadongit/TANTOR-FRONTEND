@@ -262,11 +262,11 @@ const {closeDrawer}= useDrawerContext()
         const whereoperator = filters.map(f => f.filterOperator).join(", ");
         const wherevalues = filters.map(f => f.value).join(", ");
     
-        whereConditions[targetTable] = {
+        whereConditions[targetTable] =[{
           wherecolumn,
           whereoperator,
           wherevalues
-        };
+        }];
       }
     });
 console.log("whereConditions",whereConditions)
