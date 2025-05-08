@@ -22,6 +22,9 @@ import DataView from '../pages/platform/DataView';
 import PurgeCanvas from '../pages/platform/purge/PurgeCanvas';
 import Details from '../pages/platform/Details';
 import EditCDC from '../pages/platform/cdc/components/Edit';
+
+import LineItemsPage from '../pages/platform/reporting/LineItemsPage';
+
 export function PlatformRoutes() {
   return (
       <Routes>
@@ -43,6 +46,7 @@ export function PlatformRoutes() {
         <Route path="/createMigration" element={<ArchivalCanvas />} />
         <Route path="/PurgeCanvas" element={<PurgeCanvas />} />
         <Route path="/details" element={<Details />}/>
+        <Route path="/reporting/lineItems" element={<LineItemsPage />} />
       </Routes>
   );
 }
