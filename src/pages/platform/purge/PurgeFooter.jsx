@@ -170,6 +170,8 @@ const PurgeFooter = ({ onCancel }) => {
         target_conn_id: targetData.connectionId,
         //source_conn_type: sourceData.connectionType,
         //target_conn_type: targetData.connectionType,
+        source_schema:sourceData.schemaName,
+        target_schema:targetData.schemaName,
         purge_list: purgeList
     }
   }
