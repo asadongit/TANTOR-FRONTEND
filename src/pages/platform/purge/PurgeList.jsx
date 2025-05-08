@@ -19,7 +19,7 @@ import CardGrid from "../../../components/CardGrid";
 import DataTable from "../../../components/DataTable";
 import { useAuth } from "../../../context/AuthContext";
 import axios from "axios";
-
+import toast from "react-hot-toast";
 const PurgeList = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError,refetch : refetchCardData } = useSourceTypeCounts('purge');
   const { data: purgeData=[], isLoading: isPurgeLoading, error: purgeError, refetch : refetchPurges } = usePurgeData();
