@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import LineItemConfigModal from './components/LineItemConfigModal';
-
+// STATE 0
 function LineItemsPage() {
     const tempVars = {reportName: "remittance"}
 
@@ -26,22 +26,20 @@ function LineItemsPage() {
     },[tempVars.reportName])
 
     useEffect(() => {
-        if(!contentRef.current || !lineItemsHtml) return;
-
+        if (!contentRef.current || !lineItemsHtml) return;
+    
         const handleClick = (event) => {
             const lineItem = event.target.closest('.line-item');
-            if(lineItem){
+            if (lineItem) {
                 const elementName = lineItem.getAttribute('name');
                 setCurrentLineItemId(elementName);
                 setShowLineItemConfigModal(true);
-
-                console.log("set show to true")
             }
         }
-
+    
         contentRef.current.addEventListener('click', handleClick);
         return () => contentRef.current?.removeEventListener('click', handleClick);
-    }, [lineItemsHtml]);
+    }, [lineItemsHtml, showLineItemConfigModal]);
 
     // COMPONENTS
     const LineItemsHtmlComponent = () => {
