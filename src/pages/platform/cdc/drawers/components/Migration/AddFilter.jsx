@@ -259,7 +259,7 @@ const {closeDrawer}= useDrawerContext()
 console.log("whereConditions",whereConditions)
     Object.entries(targetComplexQueries).forEach(([targetTable, query]) => {
       if (query.trim() !== "") {
-        whereConditions[targetTable] = query;
+        whereConditions[targetTable] =  `Where ${query}`;
       }
     });
 
