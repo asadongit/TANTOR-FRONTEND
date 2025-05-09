@@ -1,0 +1,259 @@
+import React, { useState, useCallback, useEffect } from "react";
+import PropTypes from "prop-types";
+import { Handle, Position } from "reactflow";
+import { Upload, X } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { useAuth } from "../../../../context/AuthContext";
+export function FilterNode({ id, data }) {
+const {token, hostnameV1}= useAuth();
+
+  const [connections, setConnections] = useState([]);
+  const [settings, setSettings] = useState(
+    data?.settings?.type || "Prefix/Suffix"
+  );
+  const [settingsValue, setSettingsValue] = useState(
+    data?.settings?.value || ""
+  );
+  const [selectedConnection, setSelectedConnection] = useState({
+    name: "",
+    id: "",
+  });
+  const [selectedSchema, setSelectedSchema] = useState(data?.schema || "");
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemas, setSchema] = useState([]);
+
+  let connectionsData;
+  let schemadetails;
+
+  const updateNodeData = () => {
+    if (data?.onDataChange) {
+      data.onDataChange({
+        connection: selectedConnection,
+        schema: selectedSchema,
+        settings: {
+          type: settings,
+          value: settings !== "Prefix/Suffix" ? settingsValue : undefined,
+        },
+      });
+    }
+  };
+
+  const handleCancel = () => {
+    setSelectedConnection(data?.connection || "");
+    setSelectedSchema(data?.schema || "");
+    setSettings(data?.settings?.type || "Prefix/Suffix");
+    setSettingsValue(data?.settings?.value || "");
+  };
+
+  const handleOk = () => {
+    try {
+
+      updateNodeData();
+      const apiPromise = window.handleTargetSubmit?.(id);
+  
+      if (!apiPromise) {
+        throw new Error("Submission handler not found");
+      }
+
+      return apiPromise;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Update parent when connection/schema changes
+  useEffect(() => {
+    updateNodeData();
+  }, [selectedConnection, selectedSchema, settings, settingsValue]);
+
+  const fetchOptions = useCallback(async () => {
+    try {
+      const connectionResponse = await fetch(`${hostnameV1}/connection-saves`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+      });
+      connectionsData = await connectionResponse.json();
+
+      setConnections(connectionsData);
+    } catch (error) {
+      console.error("Error fetching options:", error);
+    }
+  }, []);
+
+  const fetchschema = useCallback(
+    async (connectionName) => {
+      if (!connectionName) {
+        setSchema([]); // Clear schemas when no connection selected
+        return;
+      }
+
+      setSchemaLoading(true);
+
+      try {
+        const response = await fetch(`${hostnameV1}/schema/${connectionName}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        schemadetails = await response.json();
+
+        setSchema(schemadetails);
+        setSchemaLoading(false);
+      } catch (error) {
+        console.error("Error fetching schemas:", error);
+        setSchema([]); // Clear schemas on error
+      }
+    },
+    [hostnameV1, token]
+  );
+
+  useEffect(() => {
+    fetchOptions();
+  }, [fetchOptions]);
+
+  const handleSettingsChange = (event) => {
+    setSettings(event.target.value);
+  };
+
+  return (
+    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
+      <button
+        onClick={() => window.deleteNode?.(id)}
+        className="absolute top-1.5 right-2 p-1"
+      >
+        <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+      </button>
+
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
+
+      <div className="flex items-center space-x-3 mb-3">
+        <Upload className="w-5 h-5 text-[#96CF7B]" />
+        <h3 className="text-black font-medium">Filter</h3>
+      </div>
+
+      <div className="space-y-1.5">
+        <div>
+          <label className="text-xs font-semibold text-black mb-0.5 block">
+            Connection
+          </label>
+          <select
+            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+            value={selectedConnection.name}
+            onChange={(e) => {
+              const connectionName = connections.find(
+                (c) => c.connection_name === e.target.value
+              );
+              setSelectedConnection({
+                name: connectionName.connection_name,
+                id: connectionName.connection_id,
+              });
+              data.onDataChange({
+                connectionId: connectionName.connection_id,
+              });
+              setSelectedConnection(connectionName);
+              setSelectedSchema("");
+              fetchschema(connectionName.connection_name);
+            }}
+          >
+            <option value="">Select</option>
+            {connections.map((connection, idx) => (
+              <option key={idx} value={connection.connection_name}>
+                {connection.connection_name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-black mb-0.5 block">
+            Schema
+          </label>
+          <select
+            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+            value={selectedSchema}
+            onChange={(e) => {
+              const schemaName = e.target.value;
+              setSelectedSchema(schemaName);
+            }}
+            disabled={!selectedConnection || schemaLoading}
+          >
+            {schemaLoading ? (
+              <option value="">Loading schemas...</option>
+            ) : (
+              <>
+                <option value="">Select Schema</option>
+                {schemas.map((schema, idx) => (
+                  <option key={idx} value={schema.table_schema}>
+                    {schema.table_schema}
+                  </option>
+                ))}
+              </>
+            )}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-black mb-0.5 block">
+            Settings
+          </label>
+          <select
+            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+            value={settings}
+            onChange={handleSettingsChange}
+          >
+            <option>Prefix/Suffix</option>
+            <option>Prefix</option>
+            <option>Suffix</option>
+          </select>
+        </div>
+        {settings !== "Prefix/Suffix" && (
+          <div>
+            <label className="text-xs font-semibold text-black mb-0.5 block">
+              Value
+            </label>
+            <input
+              type="text"
+              value={settingsValue}
+              onChange={(e) => {
+                setSettingsValue(e.target.value);
+                data.onDataChange({
+                  settings: {
+                    type: settings,
+                    value: e.target.value,
+                  },
+                });
+              }}
+              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+            />
+          </div>
+        )}
+      </div>
+      <div className="flex space-x-2 mt-4">
+        <button
+          onClick={handleCancel}
+          className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleOk}
+          className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  );
+}
+
+FilterNode.propTypes = {
+  id: PropTypes.string.isRequired,
+  data: PropTypes.object,
+};

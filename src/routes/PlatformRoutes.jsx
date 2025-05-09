@@ -7,6 +7,11 @@ import Pipeline from '../pages/platform/Pipeline';
 import Reports from '../pages/platform/reports/Reports';
 import GenerateReport from '../pages/platform/reports/GenerateReport';
 
+import RuleDashboard from '../pages/platform/rule-framework/RuleDashboard';
+import RuleCanvas from '../pages/platform/rule-framework/RuleCanvas';
+
+import ReportConfigDashboard from '../pages/platform/reports-config/ReportConfigDashboard';
+
 import Metadata from '../pages/platform/metadata/Metadata';
 import Archival from '../pages/platform/archival/Archival';
 import ArchivalCanvas from '../pages/platform/archival/ArchivalCanvas';
@@ -42,6 +47,9 @@ export function PlatformRoutes() {
         <Route path="/federation/view/source" element={<Source />} />
         <Route path="/createMigration" element={<ArchivalCanvas />} />
         <Route path="/PurgeCanvas" element={<PurgeCanvas />} />
+        <Route path="/config/rule" element={<RuleDashboard />} />
+        <Route path="/config/rule/create-rule" element={<RuleCanvas />} />
+        <Route path="/config/report" element={<ReportConfigDashboard />} />
         <Route path="/details" element={<Details />}/>
       </Routes>
   );
