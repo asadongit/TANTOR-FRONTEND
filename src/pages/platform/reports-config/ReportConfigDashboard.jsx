@@ -60,7 +60,7 @@ const ReportConfigDashboard = () => {
 
 
   const handleCreate = () => {
-    navigate("/config/rule/create-rule");
+    navigate("/config/report/ruleLinks");
   };
 
 

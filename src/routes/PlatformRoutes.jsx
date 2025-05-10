@@ -11,6 +11,8 @@ import RuleDashboard from '../pages/platform/rule-framework/RuleDashboard';
 import RuleCanvas from '../pages/platform/rule-framework/RuleCanvas';
 
 import ReportConfigDashboard from '../pages/platform/reports-config/ReportConfigDashboard';
+import RulesReportsLinks from '../pages/platform/reports-config/RulesReportsLinks';
+import LineItemsPage from '../pages/platform/reports-config/LineItemsPage';
 
 import Metadata from '../pages/platform/metadata/Metadata';
 import Archival from '../pages/platform/archival/Archival';
@@ -50,6 +52,8 @@ export function PlatformRoutes() {
         <Route path="/config/rule" element={<RuleDashboard />} />
         <Route path="/config/rule/create-rule" element={<RuleCanvas />} />
         <Route path="/config/report" element={<ReportConfigDashboard />} />
+        <Route path="/config/report/ruleLinks" element={<RulesReportsLinks />} />
+        <Route path="/config/report/lineItems" element={<LineItemsPage />} />
         <Route path="/details" element={<Details />}/>
       </Routes>
   );
