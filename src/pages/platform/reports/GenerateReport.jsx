@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 
 const GenerateReport = () => {
   const hostname = import.meta.env.VITE_FAST_API;
-  const { token, decodedToken,project } = useAuth();
+  const { token, decodedToken, project } = useAuth();
 
   const [reportType, setReportType] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -84,7 +84,7 @@ const GenerateReport = () => {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          "x-project": project
+          "x-project": project,
         },
       });
 
@@ -126,8 +126,8 @@ const GenerateReport = () => {
       return new Date(b.start_time) - new Date(a.start_time);
     });
 
-    const filterAccToWorkFlowType = sortedReports.filter((workflow) =>
-      workflow.workflow_type == reportType
+    const filterAccToWorkFlowType = sortedReports.filter(
+      (workflow) => workflow.workflow_type == reportType
     );
 
     return filterAccToWorkFlowType;
@@ -561,7 +561,19 @@ const GenerateReport = () => {
                           {user.status_choices}
                         </span>
                       </td>
-                      <td className="px-3 py-2">{user.remarks}</td>
+                      <td className="px-3 py-2">
+                        {user.remarks
+                          ? user.remarks
+                          : user.workflow_type === "Purge" &&
+                            user.status_choices === "Completed"
+                          ? "Purge successful"
+                          : user.workflow_type === "Migration" &&
+                            user.status_choices === "Completed"
+                          ? "Migration successful"
+                          : user.status_choices !== "Completed"
+                          ? `${user.workflow_type} running`
+                          : "-"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -715,7 +727,19 @@ const GenerateReport = () => {
                       {user.status_choices}
                     </span>
                   </td>
-                  <td className="px-6 py-4">{user.remarks}</td>
+                  <td className="px-3 py-2">
+                    {user.remarks
+                      ? user.remarks
+                      : user.workflow_type === "Purge" &&
+                        user.status_choices === "Completed"
+                      ? "Purge successful"
+                      : user.workflow_type === "Migration" &&
+                        user.status_choices === "Completed"
+                      ? "Migration successful"
+                      : user.status_choices !== "Completed"
+                      ? `${user.workflow_type} running`
+                      : "-"}
+                  </td>
                 </tr>
               ))}
             </tbody>
