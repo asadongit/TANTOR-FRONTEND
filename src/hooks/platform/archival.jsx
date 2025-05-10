@@ -2,31 +2,33 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 
-const hostname = import.meta.env.VITE_FAST_API;
 
-const fetchArchivalData = async (token) => {
+const fetchArchivalData = async (token,project,hostnameV1) => {
   if (!token) throw new Error("Token is missing");
 
   try {
-    const response = await axios.get(`${hostname}/migrations`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await axios.get(`${hostnameV1}/migrations`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-project": project,
+      },
     });
 
-    return response.data ?? []; 
+    return response.data ?? [];
   } catch (error) {
     console.error("Error fetching connection data:", error);
-    return []; 
+    return [];
   }
 };
 
 export const useArchivalData = () => {
-  const { token } = useAuth();
+  const { token,project,hostnameV1 } = useAuth();
 
   return useQuery({
     queryKey: ["ArchivalData"],
-    queryFn: () => fetchArchivalData(token), 
-    enabled: !!token, 
-    staleTime: 30 * 1000, 
-    retry: 2, 
+    queryFn: () => fetchArchivalData(token, project, hostnameV1),
+    enabled: !!token,
+    staleTime: 30 * 1000,
+    retry: 2,
   });
 };

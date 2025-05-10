@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 
 const GenerateReport = () => {
   const hostname = import.meta.env.VITE_FAST_API;
-  const { token, decodedToken } = useAuth();
+  const { token, decodedToken,project } = useAuth();
 
   const [reportType, setReportType] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -84,6 +84,7 @@ const GenerateReport = () => {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          "x-project": project
         },
       });
 
