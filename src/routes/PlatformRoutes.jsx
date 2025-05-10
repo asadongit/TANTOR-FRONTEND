@@ -30,7 +30,6 @@ import PurgeCanvas from '../pages/platform/purge/PurgeCanvas';
 import Details from '../pages/platform/Details';
 import EditCDC from '../pages/platform/cdc/components/Edit';
 
-import LineItemsPage from '../pages/platform/reporting/LineItemsPage';
 
 export function PlatformRoutes() {
   return (
