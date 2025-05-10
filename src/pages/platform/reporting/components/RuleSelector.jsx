@@ -1,6 +1,92 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Plus } from "lucide-react";
 import DimensionSelector from "./DimensionSelector";
+
+
+function MetricSelector({ index, rule, metricData = [], updateRule }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+  
+  const displayText = rule.metrics && rule.metrics.length > 0 
+    ? `${rule.metrics.length} metrics selected` 
+    : 'Select metrics';
+  
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <label
+        htmlFor={`metric-selector-${index}`}
+        className="block text-sm font-medium text-gray-700 mb-1"
+      >
+        Metric Selector
+      </label>
+      
+      {/* Button */}
+      <button
+        type="button"
+        id={`metric-selector-${index}`}
+        className="flex justify-between items-center w-full px-3 py-2 text-left border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span>{displayText}</span>
+        <span>{isOpen ? '▲' : '▼'}</span>
+      </button>
+      
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+          <div className="max-h-60 overflow-y-auto p-2">
+            {metricData.length > 0 ? (
+              metricData.map((metric) => {
+                const isChecked = rule.metrics && rule.metrics.includes(metric);
+                
+                return (
+                  <label
+                    key={metric}
+                    className="flex items-center space-x-2 p-2 hover:bg-gray-100 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      className="form-checkbox text-blue-600"
+                      value={metric}
+                      checked={isChecked}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        const newMetrics = isChecked 
+                          ? [...(rule.metrics || []), metric] 
+                          : (rule.metrics || []).filter((m) => m !== metric);
+                        
+                        updateRule(index, "metrics", newMetrics);
+                      }}
+                    />
+                    <span>{metric}</span>
+                  </label>
+                );
+              })
+            ) : (
+              <div className="p-2 text-gray-500">No metrics available</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 const RuleSelector = ({
   rule,
@@ -122,7 +208,7 @@ const RuleSelector = ({
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md mb-4">
+    <div className="p-6 bg-white rounded-lg shadow-md mb-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label
@@ -147,31 +233,7 @@ const RuleSelector = ({
           </select>
         </div>
 
-        <div>
-          <label
-            htmlFor={`metric-selector-${index}`}
-            className="block text-sm font-medium text-gray-700"
-          >
-            Metric Selector
-          </label>
-          <div className="space-y-2">
-            {metricData.map((metric) => (
-              <label key={metric} className="flex items-center space-x-2 border-2 border-solid border-black p-1">
-                <input
-                  type="checkbox"
-                  className="form-checkbox text-blue-600"
-                  value={metric}
-                  checked={rule.metrics.includes(metric)}
-                  onChange={(e) => {
-                    const isChecked = e.target.checked;
-                    const newMetrics = isChecked ? [...rule.metrics, metric] : rule.metrics.filter((m) => m != metric);
-                    updateRule(index, "metrics", newMetrics);
-                  }} />
-                <span>{metric}</span>
-              </label>
-            ))}
-          </div>
-        </div>
+        <MetricSelector index={index} rule={rule} metricData={metricData} updateRule={updateRule} />
       </div>
 
       <div className="mb-4">
