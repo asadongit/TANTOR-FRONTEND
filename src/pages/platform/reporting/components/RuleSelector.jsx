@@ -156,7 +156,7 @@ const RuleSelector = ({
           </label>
           <div className="space-y-2">
             {metricData.map((metric) => (
-              <label key={metric} className="flex items-center space-x-2 border-2 border-solid border-black p-2">
+              <label key={metric} className="flex items-center space-x-2 border-2 border-solid border-black p-1">
                 <input
                   type="checkbox"
                   className="form-checkbox text-blue-600"
@@ -195,6 +195,7 @@ const RuleSelector = ({
             updateDimension={updateDimension}
             removeDimension={removeDimension}
             dimensionNamesData={dimensionNamesData}
+            currentSelectedRuleId={currentSelectedRuleId}
           />
         ))}
       </div>

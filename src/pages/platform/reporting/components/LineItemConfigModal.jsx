@@ -8,7 +8,7 @@ const LineItemConfigModal = ({ lineItemId, setShowModal }) => {
       ruleId: "",
       ruleName: "",
       metrics: [],
-      dimensions: [{id: "", name: "", operator: "", value: "" }],
+      dimensions: [{id: "", name: "", operator: "", value: [] }],
     },
   ]);
 
@@ -33,7 +33,7 @@ const LineItemConfigModal = ({ lineItemId, setShowModal }) => {
         ruleId: "",
         ruleName: "",
         metrics: [],
-        dimensions: [{ id: "", name: "", operator: "", value: "" }],
+        dimensions: [{ id: "", name: "", operator: "", value: [] }],
       },
     ]);
   };
@@ -45,7 +45,7 @@ const LineItemConfigModal = ({ lineItemId, setShowModal }) => {
         id: "",
         name: "",
         operator: "",
-        value: "",
+        value: [],
       });
       return updatedRules;
     });
