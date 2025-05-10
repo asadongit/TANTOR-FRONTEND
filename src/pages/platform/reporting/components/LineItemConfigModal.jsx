@@ -2,61 +2,61 @@ import React, { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import RuleSelector from "./RuleSelector";
 
-const LineItemConfigModal = ({ lineItemId, setShowModal }) => {
-  const [rules, setRules] = useState([
-    {
-      ruleId: "",
-      ruleName: "",
-      metrics: [],
-      dimensions: [{id: "", name: "", operator: "", value: [] }],
-    },
-  ]);
-
-  useEffect(() => {
-    console.log("Rules ==> ", rules);
-  }, [rules])
-
+const LineItemConfigModal = ({
+  lineItemId,
+  setShowModal,
+  updateLineItemRules,
+  rules,
+}) => {
   const updateRule = (ruleIndex, field, value) => {
-    console.log(`Rule Index = ${ruleIndex} | field = ${field} | value = ${value}`);
-    
-    setRules((prevRules) => {
-      const updatedRules = [...prevRules];
-      updatedRules[ruleIndex][field] = value;
-      return updatedRules;
-    });
+    console.log(
+      `Rule Index = ${ruleIndex} | field = ${field} | value = ${value}`
+    );
+    const updatedRules = [...rules];
+    rules[ruleIndex][field] = value;
+
+    updateLineItemRules(lineItemId, updatedRules);
   };
 
   const addRule = () => {
-    setRules((prevRules) => [
-      ...prevRules,
+    const newRules = [
+      ...rules,
       {
         ruleId: "",
         ruleName: "",
         metrics: [],
         dimensions: [{ id: "", name: "", operator: "", value: [] }],
       },
-    ]);
+    ];
+
+    updateLineItemRules(lineItemId, newRules);
   };
 
   const addDimension = (ruleIndex) => {
-    setRules((prevRules) => {
-      const updatedRules = JSON.parse(JSON.stringify(prevRules));
-      updatedRules[ruleIndex].dimensions.push({
-        id: "",
-        name: "",
-        operator: "",
-        value: [],
-      });
-      return updatedRules;
+   
+    const newRules = [...rules];
+    console.log("Rule with index ==>> ", newRules[ruleIndex].dimensions);
+    newRules[ruleIndex].dimensions.push({
+      id: "",
+      name: "",
+      operator: "",
+      value: [],
     });
+
+    updateLineItemRules(lineItemId, newRules);
   };
 
   const updateDimension = (ruleIndex, dimIndex, field, value) => {
-    setRules((prevRules) => {
-      const updatedRules = JSON.parse(JSON.stringify(prevRules));
-      updatedRules[ruleIndex].dimensions[dimIndex][field] = value;
-      return updatedRules;
-    });
+    // setRules((prevRules) => {
+    //   const updatedRules = JSON.parse(JSON.stringify(prevRules));
+    //   updatedRules[ruleIndex].dimensions[dimIndex][field] = value;
+    //   return updatedRules;
+    // });
+
+    const newRules = [...rules];
+    newRules[ruleIndex].dimensions[dimIndex][field] = value;
+
+    updateLineItemRules(lineItemId, newRules);
   };
 
   const removeDimension = (ruleIndex, dimIndex) => {
