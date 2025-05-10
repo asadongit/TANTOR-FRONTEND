@@ -47,12 +47,6 @@ const LineItemConfigModal = ({
   };
 
   const updateDimension = (ruleIndex, dimIndex, field, value) => {
-    // setRules((prevRules) => {
-    //   const updatedRules = JSON.parse(JSON.stringify(prevRules));
-    //   updatedRules[ruleIndex].dimensions[dimIndex][field] = value;
-    //   return updatedRules;
-    // });
-
     const newRules = [...rules];
     newRules[ruleIndex].dimensions[dimIndex][field] = value;
 
@@ -60,13 +54,13 @@ const LineItemConfigModal = ({
   };
 
   const removeDimension = (ruleIndex, dimIndex) => {
-    setRules((prevRules) => {
-      const updatedRules = JSON.parse(JSON.stringify(prevRules));
-      if (updatedRules[ruleIndex].dimensions.length > 1) {
-        updatedRules[ruleIndex].dimensions.splice(dimIndex, 1);
-      }
-      return updatedRules;
-    });
+    
+    const newRules = [...rules];
+    if(newRules[ruleIndex].dimensions.length > 1)
+      newRules[ruleIndex].dimensions.splice(dimIndex, 1);
+
+    updateLineItemRules(lineItemId, newRules);
+
   };
 
   return (
