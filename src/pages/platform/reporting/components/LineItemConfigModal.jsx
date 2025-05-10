@@ -2,19 +2,23 @@ import React, { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import RuleSelector from "./RuleSelector";
 
-// Main LineItemConfigModal component
 const LineItemConfigModal = ({ lineItemId, setShowModal }) => {
   const [rules, setRules] = useState([
     {
       ruleId: "",
       ruleName: "",
-      metricId: "",
-      dimensions: [{ name: "", operator: "", value: "" }],
+      metrics: [],
+      dimensions: [{id: "", name: "", operator: "", value: "" }],
     },
   ]);
 
-  // Update a specific rule property
+  useEffect(() => {
+    console.log("Rules ==> ", rules);
+  }, [rules])
+
   const updateRule = (ruleIndex, field, value) => {
+    console.log(`Rule Index = ${ruleIndex} | field = ${field} | value = ${value}`);
+    
     setRules((prevRules) => {
       const updatedRules = [...prevRules];
       updatedRules[ruleIndex][field] = value;
@@ -22,25 +26,23 @@ const LineItemConfigModal = ({ lineItemId, setShowModal }) => {
     });
   };
 
-  // Add a new rule
   const addRule = () => {
     setRules((prevRules) => [
       ...prevRules,
       {
         ruleId: "",
         ruleName: "",
-        metricId: "",
-        dimensions: [{ name: "", operator: "", value: "" }],
+        metrics: [],
+        dimensions: [{ id: "", name: "", operator: "", value: "" }],
       },
     ]);
   };
 
-  // Add a new dimension to a specific rule
   const addDimension = (ruleIndex) => {
     setRules((prevRules) => {
-      // Create a deep copy to prevent potential state mutation issues
       const updatedRules = JSON.parse(JSON.stringify(prevRules));
       updatedRules[ruleIndex].dimensions.push({
+        id: "",
         name: "",
         operator: "",
         value: "",
@@ -49,22 +51,17 @@ const LineItemConfigModal = ({ lineItemId, setShowModal }) => {
     });
   };
 
-  // Update a specific dimension property
   const updateDimension = (ruleIndex, dimIndex, field, value) => {
     setRules((prevRules) => {
-      // Create a deep copy to prevent potential state mutation issues
       const updatedRules = JSON.parse(JSON.stringify(prevRules));
       updatedRules[ruleIndex].dimensions[dimIndex][field] = value;
       return updatedRules;
     });
   };
 
-  // Remove a dimension
   const removeDimension = (ruleIndex, dimIndex) => {
     setRules((prevRules) => {
-      // Create a deep copy to prevent potential state mutation issues
       const updatedRules = JSON.parse(JSON.stringify(prevRules));
-      // Only remove if there's more than one dimension
       if (updatedRules[ruleIndex].dimensions.length > 1) {
         updatedRules[ruleIndex].dimensions.splice(dimIndex, 1);
       }

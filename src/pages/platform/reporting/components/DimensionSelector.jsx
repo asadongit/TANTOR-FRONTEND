@@ -7,25 +7,38 @@ const DimensionSelector = ({
   ruleIndex,
   updateDimension,
   removeDimension,
+  dimensionNamesData
 }) => {
   return (
     <div className="flex gap-4 mb-2">
-      <input
-        placeholder="Name"
-        value={dimension.name || ""}
-        onChange={(e) =>
-          updateDimension(ruleIndex, index, "name", e.target.value)
+      <select
+        value={dimension.id || ""}
+        onChange={(e) =>{
+          const selectedOption = e.target.options[e.target.selectedIndex];
+          const selectedDimensionName = selectedOption.getAttribute("data-name");
+          const selectedDimensionId = e.target.value;
+
+          updateDimension(ruleIndex, index, "name", selectedDimensionName);
+          updateDimension(ruleIndex, index, "id", selectedDimensionId);
+        }
         }
         className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-      />
-      <input
-        placeholder="Operator"
+      >
+        <option value="">Select Dimension</option>
+        {dimensionNamesData && dimensionNamesData.map(item => (<option data-name={item.fct_column_name} value={item.fact_dimension_link_id}>{item.fct_column_name}</option>))}
+      </select>
+      
+      <select
         value={dimension.operator || ""}
         onChange={(e) =>
           updateDimension(ruleIndex, index, "operator", e.target.value)
         }
         className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-      />
+      >
+        <option value="">Select Operator</option>
+        <option value="in">IN</option>
+        <option value="in">NOT IN</option>
+    </select>
       <input
         placeholder="Value"
         value={dimension.value || ""}
