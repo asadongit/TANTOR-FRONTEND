@@ -1,82 +1,95 @@
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
+import RuleSelector from "./RuleSelector";
 
-const LineItemConfigModal = ({ lineItemId, setShowModal }) => {
-  const [name, setName] = useState('');
-  const [operator, setOperator] = useState('');
-  const [value, setValue] = useState('');
-  
+const LineItemConfigModal = ({
+  lineItemId,
+  setShowModal,
+  updateLineItemRules,
+  rules,
+}) => {
+  const updateRule = (ruleIndex, field, value) => {
+    console.log(
+      `Rule Index = ${ruleIndex} | field = ${field} | value = ${value}`
+    );
+    const updatedRules = [...rules];
+    rules[ruleIndex][field] = value;
+
+    updateLineItemRules(lineItemId, updatedRules);
+  };
+
+  const addRule = () => {
+    const newRules = [
+      ...rules,
+      {
+        ruleId: "",
+        ruleName: "",
+        metrics: [],
+        dimensions: [{ id: "", name: "", operator: "", value: [] }],
+      },
+    ];
+
+    updateLineItemRules(lineItemId, newRules);
+  };
+
+  const addDimension = (ruleIndex) => {
+   
+    const newRules = [...rules];
+    console.log("Rule with index ==>> ", newRules[ruleIndex].dimensions);
+    newRules[ruleIndex].dimensions.push({
+      id: "",
+      name: "",
+      operator: "",
+      value: [],
+    });
+
+    updateLineItemRules(lineItemId, newRules);
+  };
+
+  const updateDimension = (ruleIndex, dimIndex, field, value) => {
+    // setRules((prevRules) => {
+    //   const updatedRules = JSON.parse(JSON.stringify(prevRules));
+    //   updatedRules[ruleIndex].dimensions[dimIndex][field] = value;
+    //   return updatedRules;
+    // });
+
+    const newRules = [...rules];
+    newRules[ruleIndex].dimensions[dimIndex][field] = value;
+
+    updateLineItemRules(lineItemId, newRules);
+  };
+
+  const removeDimension = (ruleIndex, dimIndex) => {
+    setRules((prevRules) => {
+      const updatedRules = JSON.parse(JSON.stringify(prevRules));
+      if (updatedRules[ruleIndex].dimensions.length > 1) {
+        updatedRules[ruleIndex].dimensions.splice(dimIndex, 1);
+      }
+      return updatedRules;
+    });
+  };
+
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-xl font-semibold mb-4">{lineItemId}</h2>
+    <div>
+      <h2 className="text-xl font-semibold mb-4 p-4">{lineItemId}</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label htmlFor="rule-selector" className="block text-sm font-medium text-gray-700">
-            Rule Selector
-          </label>
-          <select
-            id="rule-selector"
-            className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          >
-            <option value="">Select a rule</option>
-            <option value="rule1">Rule 1</option>
-            <option value="rule2">Rule 2</option>
-            <option value="rule3">Rule 3</option>
-          </select>
-        </div>
+      {rules.map((rule, index) => (
+        <RuleSelector
+          key={`rule-${index}`}
+          rule={rule}
+          index={index}
+          updateRule={updateRule}
+          addDimension={addDimension}
+          updateDimension={updateDimension}
+          removeDimension={removeDimension}
+        />
+      ))}
 
-        <div>
-          <label htmlFor="metric-selector" className="block text-sm font-medium text-gray-700">
-            Metric Selector
-          </label>
-          <select
-            id="metric-selector"
-            className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          >
-            <option value="">Select a metric</option>
-            <option value="metric1">Metric 1</option>
-            <option value="metric2">Metric 2</option>
-            <option value="metric3">Metric 3</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-2">Dimension Selector</h3>
-        <div className="flex gap-4">
-          <input
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
-          <input
-            placeholder="Operator"
-            value={operator}
-            onChange={(e) => setOperator(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
-          <input
-            placeholder="Value"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
-          <button
-            type="button"
-            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-4">
+      <div className="flex justify-end gap-4 mt-56">
         <button
           type="button"
           className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          onClick={(e) => {e.preventDefault; setShowModal(false)}}
+          onClick={() => setShowModal(false)}
         >
           Back
         </button>
@@ -89,8 +102,9 @@ const LineItemConfigModal = ({ lineItemId, setShowModal }) => {
         <button
           type="button"
           className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          onClick={addRule}
         >
-          Add Rule
+          <Plus className="h-4 w-4 mr-1" /> Add Rule
         </button>
         <button
           type="button"
