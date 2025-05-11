@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import LineItemConfigModal from "./components/LineItemConfigModal";
+import RuleOperatorSelector from "./components/RuleOperatorSelector";
 // STATE 0
 function LineItemsPage() {
   const tempVars = { reportName: "remittance" };
@@ -7,6 +8,8 @@ function LineItemsPage() {
   const [lineItemsHtml, setLineItemsHtml] = useState("");
   const contentRef = useRef(null);
   const [showLineItemConfigModal, setShowLineItemConfigModal] = useState(false);
+  const [showRuleOperatorSelector, setShowRuleOperatorSelector] =
+    useState(false);
   const [currentLineItemId, setCurrentLineItemId] = useState("");
 
   const [lineItemConfig, setLineItemConfig] = useState([]);
@@ -14,23 +17,28 @@ function LineItemsPage() {
   useEffect(() => {
     console.log("config ==> ", lineItemConfig);
   }, [lineItemConfig]);
-  
-  const updateLineItemConfigRules = (lineItemId, newRules) => {
-    setLineItemConfig(prev => {
-        const existingIndex = prev.findIndex(item => item.line_item === lineItemId);
-        if(existingIndex != -1){
-            const updated = [...prev];
-            updated[existingIndex].rules = newRules;
-            return updated;
-        }
 
-        return [...prev, { line_item: lineItemId, rules: newRules }];
-    });  
+  const updateLineItemConfigRules = (lineItemId, newRules) => {
+    setLineItemConfig((prev) => {
+      const existingIndex = prev.findIndex(
+        (item) => item.line_item === lineItemId
+      );
+      if (existingIndex != -1) {
+        const updated = [...prev];
+        updated[existingIndex].rules = newRules;
+        return updated;
+      }
+
+      return [...prev, { line_item: lineItemId, rules: newRules }];
+    });
   };
 
   const getRulesForCurrentLineItem = () => {
-    return lineItemConfig.find(item => item.line_item ===currentLineItemId)?.rules || [];
-  }
+    return (
+      lineItemConfig.find((item) => item.line_item === currentLineItemId)
+        ?.rules || []
+    );
+  };
 
   useEffect(() => {
     const fetchLineItems = async () => {
@@ -63,7 +71,7 @@ function LineItemsPage() {
 
     contentRef.current.addEventListener("click", handleClick);
     return () => contentRef.current?.removeEventListener("click", handleClick);
-  }, [lineItemsHtml, showLineItemConfigModal]);
+  }, [lineItemsHtml, showLineItemConfigModal, showRuleOperatorSelector]);
 
   // COMPONENTS
   const LineItemsHtmlComponent = () => {
@@ -84,6 +92,17 @@ function LineItemsPage() {
           lineItemId={currentLineItemId}
           updateLineItemRules={updateLineItemConfigRules}
           rules={getRulesForCurrentLineItem()}
+          showRuleOperatorSelector={showRuleOperatorSelector}
+          setShowRuleOperatorSelector={setShowRuleOperatorSelector}
+        />
+      )}
+      {showRuleOperatorSelector && (
+        <RuleOperatorSelector
+          lineItemId={currentLineItemId}
+          rules={getRulesForCurrentLineItem()}
+          isOpen={showRuleOperatorSelector}
+          setIsOpen={setShowRuleOperatorSelector}
+          updateRules={updateLineItemConfigRules}
         />
       )}
     </>
