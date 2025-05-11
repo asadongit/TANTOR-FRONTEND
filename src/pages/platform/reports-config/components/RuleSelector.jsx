@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Plus } from "lucide-react";
 import DimensionSelector from "./DimensionSelector";
-
+import TimeTransformationComponent from "./TimeTransformationComponent";
 
 function MetricSelector({ index, rule, metricData = [], updateRule }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
-  
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     }
-    
+
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
@@ -21,11 +21,12 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
-  
-  const displayText = rule.metrics && rule.metrics.length > 0 
-    ? `${rule.metrics.length} metrics selected` 
-    : 'Select metrics';
-  
+
+  const displayText =
+    rule.metrics && rule.metrics.length > 0
+      ? `${rule.metrics.length} metrics selected`
+      : "Select metrics";
+
   return (
     <div className="relative" ref={dropdownRef}>
       <label
@@ -34,7 +35,7 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
       >
         Metric Selector
       </label>
-      
+
       {/* Button */}
       <button
         type="button"
@@ -43,9 +44,9 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
         onClick={() => setIsOpen(!isOpen)}
       >
         <span>{displayText}</span>
-        <span>{isOpen ? '▲' : '▼'}</span>
+        <span>{isOpen ? "▲" : "▼"}</span>
       </button>
-      
+
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
@@ -53,7 +54,7 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
             {metricData.length > 0 ? (
               metricData.map((metric) => {
                 const isChecked = rule.metrics && rule.metrics.includes(metric);
-                
+
                 return (
                   <label
                     key={metric}
@@ -66,10 +67,10 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
                       checked={isChecked}
                       onChange={(e) => {
                         const isChecked = e.target.checked;
-                        const newMetrics = isChecked 
-                          ? [...(rule.metrics || []), metric] 
+                        const newMetrics = isChecked
+                          ? [...(rule.metrics || []), metric]
                           : (rule.metrics || []).filter((m) => m !== metric);
-                        
+
                         updateRule(index, "metrics", newMetrics);
                       }}
                     />
@@ -87,7 +88,6 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
   );
 }
 
-
 const RuleSelector = ({
   rule,
   index,
@@ -101,6 +101,9 @@ const RuleSelector = ({
   const [currentSelectedRuleId, setCurrentSelectedRuleId] = useState("");
   const [metricData, setMetricData] = useState([]);
   const [dimensionNamesData, setDimensionNamesData] = useState([]);
+
+  const [isTimeTransformationOpen, setIsTimeTransformationOpen] =
+    useState(false);
 
   useEffect(() => {
     const fetchRules = async () => {
@@ -208,60 +211,85 @@ const RuleSelector = ({
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label
-            htmlFor={`rule-selector-${index}`}
-            className="block text-sm font-medium text-gray-700"
-          >
-            Rule Selector
-          </label>
-          <select
-            id={`rule-selector-${index}`}
-            className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            name="ruleId"
-            value={rule.ruleId}
-            onChange={handleRuleChange}
-          >
-            <option value="">Select a rule</option>
-            {ruleData.map((ruleItem) => (
-              <option key={ruleItem.rule_id} value={ruleItem.rule_id}>
-                {ruleItem.rule_name}
-              </option>
-            ))}
-          </select>
+    <>
+      <TimeTransformationComponent
+        isOpen={isTimeTransformationOpen}
+        setIsOpen={setIsTimeTransformationOpen}
+        ruleId={currentSelectedRuleId}
+        updateRule={updateRule}
+        ruleIndex={index}
+        rule={rule}
+      />
+      <div className="p-6 bg-white rounded-lg shadow-md mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label
+              htmlFor={`rule-selector-${index}`}
+              className="block text-sm font-medium text-gray-700"
+            >
+              Rule Selector
+            </label>
+            <select
+              id={`rule-selector-${index}`}
+              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              name="ruleId"
+              value={rule.ruleId}
+              onChange={handleRuleChange}
+            >
+              <option value="">Select a rule</option>
+              {ruleData.map((ruleItem) => (
+                <option key={ruleItem.rule_id} value={ruleItem.rule_id}>
+                  {ruleItem.rule_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <MetricSelector
+            index={index}
+            rule={rule}
+            metricData={metricData}
+            updateRule={updateRule}
+          />
         </div>
 
-        <MetricSelector index={index} rule={rule} metricData={metricData} updateRule={updateRule} />
-      </div>
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-lg font-semibold">Dimension Selector</h3>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              onClick={() => addDimension(index)}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Add Dimension
+            </button>
+          </div>
 
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-lg font-semibold">Dimension Selector</h3>
+          {rule.dimensions.map((dimension, dimIndex) => (
+            <DimensionSelector
+              key={`${index}-dim-${dimIndex}`}
+              dimension={dimension}
+              index={dimIndex}
+              ruleIndex={index}
+              updateDimension={updateDimension}
+              removeDimension={removeDimension}
+              dimensionNamesData={dimensionNamesData}
+              currentSelectedRuleId={currentSelectedRuleId}
+            />
+          ))}
+        </div>
+        <div className="text-right">
           <button
-            type="button"
-            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            onClick={() => addDimension(index)}
+            onClick={(e) => {
+              e.preventDefault();
+              setIsTimeTransformationOpen(true);
+            }}
           >
-            <Plus className="h-4 w-4 mr-1" /> Add Dimension
+            Time Transformation
           </button>
         </div>
-
-        {rule.dimensions.map((dimension, dimIndex) => (
-          <DimensionSelector
-            key={`${index}-dim-${dimIndex}`}
-            dimension={dimension}
-            index={dimIndex}
-            ruleIndex={index}
-            updateDimension={updateDimension}
-            removeDimension={removeDimension}
-            dimensionNamesData={dimensionNamesData}
-            currentSelectedRuleId={currentSelectedRuleId}
-          />
-        ))}
       </div>
-    </div>
+    </>
   );
 };
 

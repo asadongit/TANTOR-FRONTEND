@@ -26,6 +26,7 @@ const LineItemConfigModal = ({
         ruleName: "",
         metrics: [],
         dimensions: [{ id: "", name: "", operator: "", value: [] }],
+        filters: []
       },
     ];
 
