@@ -1,9 +1,17 @@
 import React, { useEffect, useState, useRef } from "react";
 import LineItemConfigModal from "./components/LineItemConfigModal";
 import RuleOperatorSelector from "./components/RuleOperatorSelector";
+import { useLocation } from "react-router-dom";
+
 // STATE 0
 function LineItemsPage() {
-  const tempVars = { reportName: "remittance" };
+  const reportId = useLocation().state?.reportId;
+  
+  const tempVars = {
+    "RO1": "Remittance",
+    "RO2": "Remittance",
+    "RO3": "Agilus"
+  };
 
   const [lineItemsHtml, setLineItemsHtml] = useState("");
   const contentRef = useRef(null);
@@ -15,7 +23,10 @@ function LineItemsPage() {
   const [lineItemConfig, setLineItemConfig] = useState([]);
 
   useEffect(() => {
-    console.log("config ==> ", lineItemConfig);
+    console.log("Final JSON ==> ", {
+      "regReportId": reportId,
+      "lineItemConfig": lineItemConfig
+    });
   }, [lineItemConfig]);
 
   const updateLineItemConfigRules = (lineItemId, newRules) => {
@@ -44,7 +55,7 @@ function LineItemsPage() {
     const fetchLineItems = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/templates/parse?report-name=${tempVars.reportName}`
+          `http://localhost:8080/templates/parse?report-name=${tempVars[reportId]}`
         );
         if (response.ok) {
           const data = await response.text();
@@ -103,6 +114,7 @@ function LineItemsPage() {
           isOpen={showRuleOperatorSelector}
           setIsOpen={setShowRuleOperatorSelector}
           updateRules={updateLineItemConfigRules}
+          setShowLineItemModal={setShowLineItemConfigModal}
         />
       )}
     </>

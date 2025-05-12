@@ -27,7 +27,9 @@ const actions = [
         {
             label: "link",
             icon: <Link size={16} />,
-            onClick: (row) => navigate("/config/report/lineItems"),
+            onClick: (row) => navigate("/config/report/lineItems", {state: {
+              reportId: row.id
+            }}),
         },
     ];
   

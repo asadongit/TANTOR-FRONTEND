@@ -13,6 +13,7 @@ export default function RuleSelector({
   rules,
   lineItemId,
   updateRules,
+  setShowLineItemModal
 }) {
   const [ruleOperators, setRuleOperators] = useState([
     {
@@ -34,6 +35,13 @@ export default function RuleSelector({
   };
 
   const removeSelectOperator = (index) => {
+    let removeRuleId = ruleOperators[index].ruleId;
+    const newRules = [...rules];
+    const ruleIndex = newRules.findIndex(rule => rule.ruleId == removeRuleId);
+    newRules[ruleIndex].operator = "";
+    newRules[ruleIndex].sequence = "";
+    updateRules(lineItemId, newRules);
+
     setRuleOperators((prev) => {
       if (prev.length === 1) {
         return [
@@ -65,9 +73,11 @@ export default function RuleSelector({
           break;
         }
       }
-    }
-  
-    return updateRules(lineItemId, newRules);
+    };
+    updateRules(lineItemId, newRules);
+    setShowLineItemModal(false);
+    setIsOpen(false);
+    
   };
   
   const closeModal = () => {
