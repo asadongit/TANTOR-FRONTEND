@@ -102,7 +102,7 @@ export default function RuleSelector({
 
         <div className="mb-6 border-b pb-3">
           <h2 className="text-xl font-semibold text-gray-800">
-            Line Item ID 1
+            {lineItemId}
           </h2>
         </div>
 

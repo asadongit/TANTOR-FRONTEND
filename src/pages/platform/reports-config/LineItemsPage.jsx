@@ -52,7 +52,9 @@ function LineItemsPage() {
   };
 
   useEffect(() => {
+    if(!reportId) return;
     const fetchLineItems = async () => {
+
       try {
         const response = await fetch(
           `http://localhost:8080/templates/parse?report-name=${tempVars[reportId]}`
@@ -66,7 +68,7 @@ function LineItemsPage() {
       }
     };
     fetchLineItems();
-  }, [tempVars.reportName]);
+  }, [reportId]);
 
   useEffect(() => {
     if (!contentRef.current || !lineItemsHtml) return;
