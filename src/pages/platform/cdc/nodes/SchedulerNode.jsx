@@ -126,7 +126,7 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
     <div className="flex justify-between items-center mb-2">
       <div className="flex items-center gap-1">
       <iconify-icon icon="material-symbols-light:alarm-outline" style={{ color: "#8e78b7" }}  width="24" height="24"></iconify-icon>
-        <h3 className="text-black font-medium">Schedular</h3>
+        <h3 className="text-black font-medium">Scheduler</h3>
       </div>
   
       <div className="flex space-x-2">

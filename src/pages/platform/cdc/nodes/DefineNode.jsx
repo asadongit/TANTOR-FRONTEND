@@ -92,7 +92,7 @@ useEffect(() => {
             height="24"
           ></iconify-icon>
 
-          <h3 className="text-black font-medium">Define {data.category}</h3>
+          <h3 className="text-black font-medium">Define CDC</h3>
         </div>
 
         {!isPipelineNode && (
