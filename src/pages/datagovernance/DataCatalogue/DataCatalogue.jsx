@@ -54,143 +54,32 @@ const DataCatalogue = () => {
       seeDetailsLink: "/tables-details",
     },
     {
-      title: "Views",
+      title: "Columns",
       enabled: true,
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       count: 0,
-      seeDetailsLink: "/views-details",
+      seeDetailsLink: "/columns-details",
     },
   ]);
 
   const navigate = useNavigate();
 
   const trendData = [
-    { day: "1 day", Database: 20, Schema: 9, Tables: 13, View: 11 },
-    { day: "2 day", Database: 25, Schema: 9, Tables: 17, View: 11 },
-    { day: "3 day", Database: 26, Schema: 17, Tables: 9, View: 8 },
-    { day: "4 day", Database: 27, Schema: 17, Tables: 15, View: 18 },
-    { day: "5 day", Database: 25, Schema: 14, Tables: 13, View: 23 },
-    { day: "6 day", Database: 23, Schema: 20, Tables: 15, View: 16 },
-    { day: "7 day", Database: 21, Schema: 27, Tables: 16, View: 15 },
-  ];
-
-  const sampleData = [
-    {
-      id: "1",
-      connectionName: "Oracle",
-      Database: "Oracle",
-      Schema: "08",
-      Tables: "16",
-      Views: "07",
-      Column: "47",
-      CreatedDate: "26/01/2025",
-      updatedDate: "27/01/2025",
-    },
-    {
-      id: "1",
-      connectionName: "Oracle",
-      Database: "Oracle",
-      Schema: "08",
-      Tables: "16",
-      Views: "07",
-      Column: "47",
-      CreatedDate: "26/01/2025",
-      updatedDate: "27/01/2025",
-    },
-    {
-      id: "1",
-      connectionName: "Oracle",
-      Database: "Oracle",
-      Schema: "08",
-      Tables: "16",
-      Views: "07",
-      Column: "47",
-      CreatedDate: "26/01/2025",
-      updatedDate: "27/01/2025",
-    },
-    {
-      id: "1",
-      connectionName: "Oracle",
-      Database: "Oracle",
-      Schema: "08",
-      Tables: "16",
-      Views: "07",
-      Column: "47",
-      CreatedDate: "26/01/2025",
-      updatedDate: "27/01/2025",
-    },
-    {
-      id: "1",
-      connectionName: "Oracle",
-      Database: "Oracle",
-      Schema: "08",
-      Tables: "16",
-      Views: "07",
-      Column: "47",
-      CreatedDate: "26/01/2025",
-      updatedDate: "27/01/2025",
-    },
-    {
-      id: "1",
-      connectionName: "Oracle",
-      Database: "Oracle",
-      Schema: "08",
-      Tables: "16",
-      Views: "07",
-      Column: "47",
-      CreatedDate: "26/01/2025",
-      updatedDate: "27/01/2025",
-    },
-    {
-      id: "1",
-      connectionName: "Oracle",
-      Database: "Oracle",
-      Schema: "08",
-      Tables: "16",
-      Views: "07",
-      Column: "47",
-      CreatedDate: "26/01/2025",
-      updatedDate: "27/01/2025",
-    },
-    {
-      id: "1",
-      connectionName: "Oracle",
-      Database: "Oracle",
-      Schema: "08",
-      Tables: "16",
-      Views: "07",
-      Column: "47",
-      CreatedDate: "26/01/2025",
-      updatedDate: "27/01/2025",
-    },
-    {
-      id: "1",
-      connectionName: "Oracle",
-      Database: "Oracle",
-      Schema: "08",
-      Tables: "16",
-      Views: "07",
-      Column: "47",
-      CreatedDate: "26/01/2025",
-      updatedDate: "27/01/2025",
-    },
-  ];
-
-  const recentAccess = [
-    "Oracle_2",
-    "DWS_customer",
-    "rw_acc_summary",
-    "Dim_cutomer",
-    "dim_account",
-    "DWS_customer",
-    "Oracle_2",
+    { day: "1 day", Database: 20, Schema: 9, Tables: 13, Columns: 11 },
+    { day: "2 day", Database: 25, Schema: 9, Tables: 17, Columns: 11 },
+    { day: "3 day", Database: 26, Schema: 17, Tables: 9, Columns: 8 },
+    { day: "4 day", Database: 27, Schema: 17, Tables: 15, Columns: 18 },
+    { day: "5 day", Database: 25, Schema: 14, Tables: 13, Columns: 23 },
+    { day: "6 day", Database: 23, Schema: 20, Tables: 15, Columns: 16 },
+    { day: "7 day", Database: 21, Schema: 27, Tables: 16, Columns: 15 },
   ];
 
   const { token } = useAuth();
   const [userPolicies, setUserPolicies] = useState([]);
   const [catalogData, setCatalogData] = useState([]);
+  const [tableData, setTableData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const fetchedPoliciesRef = useRef(new Set());
 
@@ -276,6 +165,7 @@ const DataCatalogue = () => {
         setCatalogData((prevCatalogs) => {
           const newCatalogs = [...prevCatalogs, ...validCatalogs];
           updateCatalogCounts(newCatalogs);
+          updateTableData(newCatalogs);
           return newCatalogs;
         });
       } catch (error) {
@@ -288,29 +178,56 @@ const DataCatalogue = () => {
     };
 
     const updateCatalogCounts = (catalogs) => {
-      const uniqueConnections = new Set();
-      const uniqueSchemas = new Set();
-      const uniqueTables = new Set();
-      const uniqueViews = new Set();
+      let totalDatabases = 0;
+      let totalSchemas = 0;
+      let totalTables = 0;
+      let totalColumns = 0;
 
       catalogs.forEach((catalog) => {
-        if (catalog && catalog.data_connection) {
-          const { connection, schema, table } = catalog.data_connection;
-
-          if (connection) uniqueConnections.add(connection);
-          if (schema) uniqueSchemas.add(`${connection}.${schema}`);
-          if (table) uniqueTables.add(`${connection}.${schema}.${table}`);
+        if (catalog && catalog.counts) {
+          totalDatabases += catalog.counts.databases || 0;
+          totalSchemas += catalog.counts.schemas || 0;
+          totalTables += catalog.counts.tables || 0;
+          totalColumns += catalog.counts.columns || 0;
         }
       });
 
       setCards((prevCards) => {
         const updatedCards = [...prevCards];
-        updatedCards[0].count = uniqueConnections.size;
-        updatedCards[1].count = uniqueSchemas.size;
-        updatedCards[2].count = uniqueTables.size;
-        updatedCards[3].count = uniqueViews.size;
+        updatedCards[0].count = totalDatabases;
+        updatedCards[1].count = totalSchemas;
+        updatedCards[2].count = totalTables;
+        updatedCards[3].count = totalColumns;
         return updatedCards;
       });
+    };
+
+    const updateTableData = (catalogs) => {
+      const newTableData = [];
+
+      catalogs.forEach((catalog, catalogIndex) => {
+        if (catalog && catalog.data_connection) {
+          catalog.data_connection.forEach((conn, index) => {
+            const connectionName = conn.connection;
+            const schema = conn.schema.split('.')[1];
+            const tableCount = conn.tables ? conn.tables.length : 0;
+            const columnCount = conn.columns ? conn.columns.length : 0;
+
+            newTableData.push({
+              id: `${catalogIndex + 1}.${index + 1}`,
+              connectionName: connectionName,
+              Database: connectionName,
+              Schema: schema,
+              Tables: tableCount.toString(),
+              Columns: columnCount.toString(),
+              CreatedDate: new Date().toLocaleDateString(),
+              updatedDate: new Date().toLocaleDateString(),
+            });
+          });
+        }
+      });
+
+      setTableData(newTableData);
     };
 
     fetchData();
@@ -386,13 +303,13 @@ const DataCatalogue = () => {
             </div>
           </div>
           <div className="space-y-4">
-            {recentAccess.map((item, index) => (
+            {catalogData.map((catalog, index) => (
               <div
                 key={index}
                 className="pb-4 border-b border-gray-100 last:border-0"
               >
                 <span className="text-gray-600">
-                  {index + 1}. {item}
+                  {index + 1}. {catalog.data_connection[0]?.connection || "N/A"}
                 </span>
               </div>
             ))}
@@ -409,26 +326,34 @@ const DataCatalogue = () => {
               <th className="text-left p-4">Database</th>
               <th className="text-left p-4">Schema</th>
               <th className="text-left p-4">Tables</th>
-              <th className="text-left p-4">Views</th>
               <th className="text-left p-4">Columns</th>
               <th className="text-left p-4">Created Date</th>
               <th className="text-left p-4">Updated Date</th>
             </tr>
           </thead>
           <tbody>
-            {sampleData.map((user, index) => (
-              <tr key={index} className="border-b">
-                <td className="p-4">{user.id}</td>
-                <td className="p-4 ">{user.connectionName}</td>
-                <td className="p-4">{user.Database}</td>
-                <td className="p-4 text-gray-500 underline">{user.Schema}</td>
-                <td className="p-4 text-gray-500 underline">{user.Tables}</td>
-                <td className="p-4 text-gray-500 underline">{user.Views}</td>
-                <td className="p-4 text-gray-500 underline">{user.Column}</td>
-                <td className="p-4">{user.CreatedDate}</td>
-                <td className="p-4">{user.updatedDate}</td>
+            {isLoading ? (
+              <tr>
+                <td colSpan="8" className="p-4 text-center">Loading data...</td>
               </tr>
-            ))}
+            ) : tableData.length > 0 ? (
+              tableData.map((item, index) => (
+                <tr key={index} className="border-b">
+                  <td className="p-4">{item.id}</td>
+                  <td className="p-4">{item.connectionName}</td>
+                  <td className="p-4">{item.Database}</td>
+                  <td className="p-4 text-gray-500 underline">{item.Schema}</td>
+                  <td className="p-4 text-gray-500 underline">{item.Tables}</td>
+                  <td className="p-4 text-gray-500 underline">{item.Columns}</td>
+                  <td className="p-4">{item.CreatedDate}</td>
+                  <td className="p-4">{item.updatedDate}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="8" className="p-4 text-center">No data available</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
