@@ -41,6 +41,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData }) =>
             console.log("")
             toast.error("Error Adding Policy")
             setIsOpen(false)
+            return;
             // const errorData = await response.json().catch(() => ({}));
             // throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
           }
