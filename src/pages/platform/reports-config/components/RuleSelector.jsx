@@ -221,7 +221,7 @@ const RuleSelector = ({
         ruleIndex={index}
         rule={rule}
       />
-      <div className="p-6 bg-white rounded-lg shadow-md mb-6">
+      <div className="p-6 bg-gray-100 rounded-lg shadow-md mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label
@@ -281,6 +281,7 @@ const RuleSelector = ({
         </div>
         <div className="text-right">
           <button
+           className="flex-1 px-4 py-2 bg-[#8E77BB] text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)]"
             onClick={(e) => {
               e.preventDefault();
               setIsTimeTransformationOpen(true);
