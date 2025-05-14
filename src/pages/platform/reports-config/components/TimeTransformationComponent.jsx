@@ -11,7 +11,7 @@ const TimeTransformationComponent = ({
 }) => {
   const [filterColId, setFilterColId] = useState("");
   const [filterColName, setFilterColName] = useState("");
-  const [dateType, setDateType] = useState("asOnDate");
+  const [dateType, setDateType] = useState("");
   const [lowerOffset, setLowerOffset] = useState("");
   const [upperOffset, setUpperOffset] = useState("");
   const [lowerUnit, setLowerUnit] = useState("");
@@ -67,7 +67,10 @@ const TimeTransformationComponent = ({
 
   const handleSave = () => {
     const newRule = JSON.parse(JSON.stringify(rule));
-    console.log("New Rule ==> ", newRule);
+    
+    if(!filterColId || !filterColName) return alert("Apply Time Transformation on atleast on column before saving.")
+    if(!dateType) return alert("Select Transformation Type Before Saving.");
+    
     let foundFilterIndex = newRule.filters?.findIndex(
       (filter) => filter.id == filterColId
     );
@@ -147,6 +150,17 @@ const TimeTransformationComponent = ({
                 onChange={(e) => {
                   e.preventDefault();
                   setFilterColId(e.target.value);
+                  
+                  if(!e.target.value){
+                    setFilterColName("");
+                    setDateType("");
+                    setLowerOffset("");
+                    setLowerUnit("");
+                    setUpperOffset("");
+                    setUpperUnit("");
+                    return;
+                  }
+                  
                   setFilterColName(
                     (prev) =>
                       dateColumnsData.find(
@@ -174,6 +188,7 @@ const TimeTransformationComponent = ({
                   value="asOnDate"
                   checked={dateType === "asOnDate"}
                   onChange={() => setDateType("asOnDate")}
+                  disabled={!filterColId}
                   className="mr-2"
                 />
                 <label
@@ -190,6 +205,7 @@ const TimeTransformationComponent = ({
                   value="historicDate"
                   checked={dateType === "historicDate"}
                   onChange={() => setDateType("historicDate")}
+                  disabled={!filterColId}
                   className="mr-2"
                 />
                 <label
@@ -206,6 +222,7 @@ const TimeTransformationComponent = ({
                   value="dateRange"
                   checked={dateType === "dateRange"}
                   onChange={() => setDateType("dateRange")}
+                  disabled={!filterColId}
                   className="mr-2"
                 />
                 <label

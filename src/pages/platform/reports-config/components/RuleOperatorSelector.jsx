@@ -61,23 +61,26 @@ export default function RuleSelector({
   const handleNext = () => {
     const newRules = [...rules];
     let ruleSequence = 1;
-  
-    for (let ruleIndex = 0; ruleIndex < rules.length; ruleIndex++) {
-      const rule = newRules[ruleIndex];
-  
-      for (let ruleOperatorIndex = 0; ruleOperatorIndex < ruleOperators.length; ruleOperatorIndex++) {
-        if (ruleOperators[ruleOperatorIndex].ruleId === rule.ruleId) {
-          newRules[ruleIndex]["operator"] = ruleOperators[ruleOperatorIndex].operator;
-          newRules[ruleIndex]["sequence"] = ruleSequence;
-          ruleSequence++;
-          break;
+
+    if(newRules.length !== 1){
+      for (let ruleIndex = 0; ruleIndex < rules.length; ruleIndex++) {
+        const rule = newRules[ruleIndex];
+    
+        for (let ruleOperatorIndex = 0; ruleOperatorIndex < ruleOperators.length; ruleOperatorIndex++) {
+          if (ruleOperators[ruleOperatorIndex].ruleId === rule.ruleId) {
+            newRules[ruleIndex]["operator"] = ruleOperators[ruleOperatorIndex].operator;
+            newRules[ruleIndex]["sequence"] = ruleSequence;
+            ruleSequence++;
+            break;
+          }
         }
-      }
-    };
+      };
+    }
+  
+
     updateRules(lineItemId, newRules);
     setShowLineItemModal(false);
     setIsOpen(false);
-    
   };
   
   const closeModal = () => {

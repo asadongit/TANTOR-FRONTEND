@@ -193,21 +193,22 @@ const RuleSelector = ({
     fetchDimensionNames();
   }, [currentSelectedRuleId]);
 
-  const handleRuleChange = (e) => {
+  const handleRuleChange = async (e) => {
     const selectedRuleId = e.target.value;
     const selectedRule = ruleData.find(
       (rule) => rule.rule_id.toString() === selectedRuleId
     );
 
     if (selectedRule) {
-      updateRule(index, "ruleId", selectedRuleId);
-      updateRule(index, "ruleName", selectedRule.rule_name);
-    } else {
-      updateRule(index, "ruleId", selectedRuleId);
-      updateRule(index, "ruleName", "");
+      updateRule(index, null, {
+        ruleId: selectedRuleId,
+        ruleName: selectedRule.rule_name,
+        metrics: [],
+        dimensions: [{ id: "", name: "", operator: "", value: [] }],
+        filters: [],
+      });
+      setCurrentSelectedRuleId(selectedRuleId);
     }
-
-    setCurrentSelectedRuleId(selectedRuleId);
   };
 
   return (

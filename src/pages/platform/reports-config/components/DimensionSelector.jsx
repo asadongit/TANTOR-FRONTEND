@@ -168,8 +168,9 @@ const DimensionSelector = ({
 
           updateDimension(ruleIndex, index, "name", newDimensionName);
           updateDimension(ruleIndex, index, "id", newDimensionId);
-          // Clear existing values when dimension changes
           updateDimension(ruleIndex, index, "value", []);
+          updateDimension(ruleIndex, index, "operator", "");
+
           setSelectedDimensionName(newDimensionName);
         }}
         className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"

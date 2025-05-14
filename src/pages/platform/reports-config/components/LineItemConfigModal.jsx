@@ -8,19 +8,22 @@ const LineItemConfigModal = ({
   setShowModal,
   updateLineItemRules,
   rules,
-  showRuleOperatorSelector, 
-  setShowRuleOperatorSelector
+  showRuleOperatorSelector,
+  setShowRuleOperatorSelector,
 }) => {
-  
-
   const updateRule = (ruleIndex, field, value) => {
-    console.log(
-      `Rule Index = ${ruleIndex} | field = ${field} | value = ${value}`
-    );
-    const updatedRules = [...rules];
-    rules[ruleIndex][field] = value;
+    const newRules = [...rules];
 
-    updateLineItemRules(lineItemId, updatedRules);
+    if (field === null && typeof value === "object") {
+      newRules[ruleIndex] = value;
+    } else {
+      newRules[ruleIndex] = {
+        ...newRules[ruleIndex],
+        [field]: value,
+      };
+    }
+
+    updateLineItemRules(lineItemId, newRules);
   };
 
   const addRule = () => {
@@ -31,7 +34,7 @@ const LineItemConfigModal = ({
         ruleName: "",
         metrics: [],
         dimensions: [{ id: "", name: "", operator: "", value: [] }],
-        filters: []
+        filters: [],
       },
     ];
 
@@ -39,7 +42,6 @@ const LineItemConfigModal = ({
   };
 
   const addDimension = (ruleIndex) => {
-   
     const newRules = [...rules];
     console.log("Rule with index ==>> ", newRules[ruleIndex].dimensions);
     newRules[ruleIndex].dimensions.push({
@@ -60,13 +62,27 @@ const LineItemConfigModal = ({
   };
 
   const removeDimension = (ruleIndex, dimIndex) => {
-    
     const newRules = [...rules];
-    if(newRules[ruleIndex].dimensions.length > 1)
+    if (newRules[ruleIndex].dimensions.length > 1)
       newRules[ruleIndex].dimensions.splice(dimIndex, 1);
+    
+    else if (newRules[ruleIndex].dimensions.length == 1) {
+      newRules[ruleIndex].dimensions[0] = {
+        id: "",
+        name: "",
+        operator: "",
+        value: [],
+      };
+    }
+    updateLineItemRules(lineItemId, newRules);
+  };
+
+  const removeLastRule = () => {
+    const newRules = [...rules];
+    if (newRules.length === 0) return;
+    newRules.splice(newRules.length - 1, 1);
 
     updateLineItemRules(lineItemId, newRules);
-
   };
 
   return (
@@ -89,13 +105,14 @@ const LineItemConfigModal = ({
         <button
           type="button"
           className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          onClick={() => setShowModal(false)}
+          onClick={removeLastRule}
         >
           Back
         </button>
         <button
           type="button"
           className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          onClick={() => setShowModal(false)}
         >
           Cancel
         </button>
@@ -109,7 +126,10 @@ const LineItemConfigModal = ({
         <button
           type="button"
           className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          onClick={(e) => {e.preventDefault(); setShowRuleOperatorSelector(true);}}
+          onClick={(e) => {
+            e.preventDefault();
+            setShowRuleOperatorSelector(true);
+          }}
         >
           Next
         </button>
