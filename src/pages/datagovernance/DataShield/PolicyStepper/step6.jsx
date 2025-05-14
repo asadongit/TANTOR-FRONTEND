@@ -54,7 +54,6 @@ const Step6 = ({ policyData, onDataChange }) => {
         <Box>
             <h3 className="text-lg font-medium text-gray-700 mb-2">Permissions</h3>
             <div className="grid grid-cols-2 gap-4 py-4">
-                {/* Select All checkbox */}
                 <div className="flex items-center space-x-2">
                     <input
                         type="checkbox"
@@ -71,7 +70,6 @@ const Step6 = ({ policyData, onDataChange }) => {
                     </label>
                 </div>
                 
-                {/* Individual permission checkboxes */}
                 {permissionOptions.map((permission, index) => (
                     <div key={index} className="flex items-center space-x-2">
                         <input

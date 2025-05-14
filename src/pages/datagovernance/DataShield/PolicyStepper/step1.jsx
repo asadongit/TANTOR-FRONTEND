@@ -18,13 +18,12 @@ const Step1 = ({ onDataChange, initialData }) => {
     }, []);
 
     useEffect(() => {
-        // Update parent component whenever local state changes
         const currentData = {
             selectedPolicy,
             description,
-            sub_policy_name: subPolicyName,  // Correct field name
+            sub_policy_name: subPolicyName,  
             sub_policy_description: subPolicyDescription,
-            policy_name: subPolicyName  // Optional if you need both
+            policy_name: subPolicyName  
         };
         onDataChange(currentData);
     }, [selectedPolicy, description, subPolicyName, subPolicyDescription]);
@@ -44,7 +43,6 @@ const Step1 = ({ onDataChange, initialData }) => {
             const data = await response.json();
             setPolicies(data.policy_types || []);
             
-            // Create a map of policy types to their descriptions
             const descriptionMap = {};
             data.policy_types.forEach(policy => {
                 descriptionMap[policy.policy_type.trim()] = policy.policy_description;
@@ -58,7 +56,7 @@ const Step1 = ({ onDataChange, initialData }) => {
     const handlePolicyChange = (e) => {
         const selected = e.target.value;
         setSelectedPolicy(selected);
-        // Auto-fill description when policy is selected
+
         if (selected && policyDescriptionMap[selected]) {
             setDescription(policyDescriptionMap[selected]);
         } else {

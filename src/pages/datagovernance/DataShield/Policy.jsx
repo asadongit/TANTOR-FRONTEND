@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import {
     Trash2,
@@ -16,7 +16,9 @@ import {
     User, Group, Users, Shield,
     UserPlus,
     UserRoundCog,
-    BadgeCheck
+    BadgeCheck,
+    ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -290,7 +292,6 @@ const Policy = () => {
             }
         });
 
-        // Add columns
         columns.forEach(column => {
             const parts = column.split('.');
             const conn = parts[0];
@@ -300,7 +301,7 @@ const Policy = () => {
             }
         });
 
-        // Convert to final structure
+
         Object.values(connectionGroups).forEach(connGroup => {
             Object.values(connGroup.schemas).forEach(schema => {
                 result.push({
@@ -372,12 +373,44 @@ const Policy = () => {
                         setIsOpen={setIsOpen}
                         policyData={policyData}
                         setActiveStep={setActiveStep}
+                        fetchPolicyListData={fetchPolicyListData}
                     />
                 )
             default:
                 return
         }
     };
+
+    const [page, setPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    // Pagination handlers
+    const handleItemsPerPageChange = (e) => {
+        setItemsPerPage(Number(e.target.value));
+        setPage(1);
+    };
+    
+    const handlePrevPage = () => {
+        if (page > 1) setPage(page - 1);
+    };
+    
+    const handleNextPage = () => {
+        const maxPage = Math.ceil(sampleData.length / itemsPerPage);
+        if (page < maxPage) setPage(page + 1);
+    };
+
+    // Paginated data calculation
+    const paginatedData = useMemo(() => {
+        const startIndex = (page - 1) * itemsPerPage;
+        return sampleData.slice(startIndex, startIndex + itemsPerPage);
+    }, [sampleData, page, itemsPerPage]);
+
+    // Pagination info
+    const totalItems = sampleData.length;
+    const startItem = totalItems === 0 ? 0 : (page - 1) * itemsPerPage + 1;
+    const endItem = Math.min(page * itemsPerPage, totalItems);
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
     return (
         <>
             <div>
@@ -491,14 +524,14 @@ const Policy = () => {
                         <tbody className="text-sm">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="8" className="p-4 text-center">
+                                    <td colSpan="10" className="p-4 text-center">
                                         <div className="flex justify-center items-center h-20">
                                             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
                                         </div>
                                     </td>
                                 </tr>
                             ) : (
-                                sampleData.map((policy, index) => (
+                                paginatedData.map((policy, index) => (
                                     <tr key={index} className="border-b">
                                         <td className="p-4 text-gray-500">{policy.id}</td>
                                         <td className="p-4 text-gray-500">{policy.Type}</td>
@@ -514,7 +547,7 @@ const Policy = () => {
                                                 {policy.Status || "Active"}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-gray-500 text-center">{policy.created_date || "-"}</td>
+                                        <td className="p-4 text-gray-500 text-center">{policy.expiryDate || "-"}</td>
                                         <td className="p-4 text-gray-500 text-center">{policy.expiryDate || "-"}</td>
                                         <td className="p-4 text-gray-500 text-center">{policy.UpdatedDate || "-"}</td>
                                         <td className="p-4 text-gray-500">{policy.Owner}</td>
@@ -551,20 +584,63 @@ const Policy = () => {
                                             </div>
                                         </td>
                                     </tr>
-
                                 ))
                             )}
 
                             {!loading && sampleData.length === 0 && (
                                 <tr>
-                                    <td colSpan="8" className="p-4 text-center text-gray-500">
+                                    <td colSpan="10" className="p-4 text-center text-gray-500">
                                         No Policies found
                                     </td>
                                 </tr>
                             )}
                         </tbody>
-
                     </table>
+
+                    {/* Pagination controls */}
+                    <div className="flex flex-col md:flex-row items-center justify-between p-4 border-t">
+                        <div className="text-sm text-gray-500 mb-2 md:mb-0">
+                            {loading ? (
+                                <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
+                            ) : totalItems > 0 ? (
+                                `Showing ${startItem} to ${endItem} of ${totalItems} results`
+                            ) : (
+                                "No results found"
+                            )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-500">Show per page</span>
+                            <select
+                                className="border rounded p-1 text-sm"
+                                value={itemsPerPage}
+                                onChange={handleItemsPerPageChange}
+                                aria-label="Show per page"
+                                disabled={loading}
+                            >
+                                {[10, 25, 50].map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                ))}
+                            </select>
+                            <div className="flex items-center">
+                                <button
+                                    onClick={handlePrevPage}
+                                    className="p-1 border rounded-l hover:bg-gray-100 disabled:opacity-50"
+                                    disabled={page === 1 || loading}
+                                    aria-label="Previous page"
+                                >
+                                    <ChevronLeft size={20} />
+                                </button>
+                                <button
+                                    onClick={handleNextPage}
+                                    className="p-1 border rounded-r border-l-0 hover:bg-gray-100 disabled:opacity-50"
+                                    disabled={page >= totalPages || loading}
+                                    aria-label="Next page"
+                                >
+                                    <ChevronRight size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

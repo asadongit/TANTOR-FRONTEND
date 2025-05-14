@@ -146,7 +146,13 @@ const Step5 = ({ policyData, onDataChange }) => {
                     color={selectedTable === table ? 'primary' : 'default'}
                     sx={{ 
                         borderRadius: 1,
-                        fontWeight: selectedTable === table ? 'bold' : 'normal'
+                        fontWeight: selectedTable === table ? 'bold' : 'normal',
+                        ...(selectedTable === table && {
+                            backgroundColor: '#8e78b7',
+                            '&:hover': {
+                                backgroundColor: '#7b689e'
+                            }
+                        })
                     }}
                 />
             ))}
@@ -180,6 +186,16 @@ const Step5 = ({ policyData, onDataChange }) => {
                         startIcon={<Plus size={16} />}
                         onClick={handleAddControl}
                         disabled={controls.length > 0 && !isControlComplete(controls[controls.length - 1])}
+                        sx={{
+                            '&:not(:disabled)': {
+                                borderColor: '#8e78b7',
+                                color: '#8e78b7',
+                                '&:hover': {
+                                    borderColor: '#7b689e',
+                                    backgroundColor: 'rgba(142, 120, 183, 0.04)'
+                                }
+                            }
+                        }}
                     >
                         Add Column Control
                     </Button>
@@ -190,10 +206,10 @@ const Step5 = ({ policyData, onDataChange }) => {
                         No column controls added yet
                     </Typography>
                 ) : (
-                    <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
+                    <Box sx={{ maxHeight: 400, overflowY: 'auto', marginTop: "5px"}}>
                         {controls.map((control, index) => (
                             <Box key={index} sx={{ mb: 2 }}>
-                                <Box display="flex" alignItems="center" gap={1.5} mb={1}>
+                                <Box display="flex" alignItems="center" gap={1.5} mb={1} mt={1}>
                                     <FormControl sx={{ minWidth: 180 }}>
                                         <InputLabel>Column</InputLabel>
                                         <Select
@@ -241,7 +257,7 @@ const Step5 = ({ policyData, onDataChange }) => {
 
     return (
         <Box>
-            <Typography variant="h6" sx={{ mb: 3 }}>Column Access Control</Typography>
+            <Typography variant="h6" sx={{ mb: 3, color: '#8e78b7' }}>Column Access Control</Typography>
             
             {renderTableSelect()}
             {Object.keys(tableControls).length > 0 && renderTableChips()}
