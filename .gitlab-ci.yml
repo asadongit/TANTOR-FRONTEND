@@ -2,7 +2,7 @@
 stages:
   - clone
 variables:
-  DEPLOYMENT_REPO: "git@gitlab.tantor.io:root/tantor2-0_frontend_deployment.git"
+  DEPLOYMENT_REPO: "https://$GITLAB_USERNAME:$GITLAB_TOKEN@gitlab.tantor.io/root/tantor2-0_frontend_deployment.git"
   DEPLOYMENT_DIR: "tantor-front-2-0"
   REGISTRY: "tantor.example.com:5000"
   IMAGE_NAME: "tantorfront2-0-int"
@@ -10,13 +10,10 @@ variables:
   GIT_EMAIL: "your-email@example.com"
  
 before_script:
-  - sudo yum update && sudo yum install -y git jq
-  - echo "Setting up SSH key for Git access"
-  - mkdir -p ~/.ssh
-  - echo "$DEPLOYMENT_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-  - echo "$DEPLOYMENT_SSH_PRIVATE_KEY"
-  - chmod 600 ~/.ssh/id_rsa
-  - ssh-keyscan -H gitlab.tantor.io >> ~/.ssh/known_hosts
+  - sudo yum update -y && sudo yum install -y git jq
+  - git config --global user.name "$GIT_USER"
+  - git config --global user.email "$GIT_EMAIL"
+  - git config --global http.sslVerify "false"
  
 clone-deployment:
   stage: clone
