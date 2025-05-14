@@ -29,7 +29,7 @@ export default function Editor() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
   const [columnDefs, setColumnDefs] = useState([]);
-  const [securedQuery, setSecuredQuery] = useState(""); // Add this line to track secured queries
+  const [securedQuery, setSecuredQuery] = useState("");
 
   const [displayedConnections, setDisplayedConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("");
@@ -128,7 +128,7 @@ export default function Editor() {
     setQuery("");
     setData([]);
     setColumnDefs([]);
-    setSecuredQuery(""); // Reset secured query when clearing
+    setSecuredQuery("");
   };
 
   function removeComments(sql) {
@@ -166,130 +166,81 @@ export default function Editor() {
 
     const newquery = removeComments(query);
     console.log("newquery is", newquery);
-    setLoading(true);
+
     if (newquery === "" || newquery.trim() === "") {
-      setLoading(false);
       toast.error("Enter query first");
       return;
-    } else {
-      // Check if the query is the same as the already secured query
-      if (newquery === securedQuery) {
-        console.log("Query already secured, skipping secure-query API call");
-        // Skip secure-query API call and directly run the query
-        const payload = {
-          page: page,
-          query: newquery,
-        };
-
-        fetch(`${hostnameV1}/runQuery`, {
-          method: "POST",
-          headers: {
-            accept: "application/json",
-            "Content-Type": "application/json",
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        })
-        .then((response) =>
-          response.text().then((data) => ({ status: response.status, data }))
-        )
-        .then(({ status, data }) => {
-          if (status === 200) {
-            const rows = data
-              .trim()
-              .split("\n")
-              .map((row) => JSON.parse(row));
-
-            const columns = Object.keys(rows[0]);
-            setColumnDefs(columns);
-            setData(rows);
-            setHasMore(rows.length === 100);
-          } else {
-            if (data) {
-              const res = JSON.parse(data);
-              toast.error(res.detail);
-            }
-          }
-        })
-        .catch((error) => {
-          console.error("Error in query execution:", error);
-          toast.error("An error occurred while processing your query");
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-      } else {
-        // First call the secure-query endpoint if query is new or changed
-        fetch(`${import.meta.env.VITE_FAST_API}/secure-query`, {
-          method: "POST",
-          headers: {
-            accept: "application/json",
-            "Content-Type": "application/json",
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            user_query: newquery,
-          }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            const secureQuery = data.secure_query;
-            console.log("Secure query:", secureQuery);
-            console.log("Matched policy IDs:", data.matched_policy_ids);
-
-            setQuery(secureQuery);
-            setSecuredQuery(secureQuery); // Store the secured query
-
-            const payload = {
-              page: page,
-              query: secureQuery,
-            };
-
-            return fetch(`${hostnameV1}/runQuery`, {
-              method: "POST",
-              headers: {
-                accept: "application/json",
-                "Content-Type": "application/json",
-                'Authorization': `Bearer ${token}`,
-              },
-              body: JSON.stringify(payload),
-            });
-          })
-          .then((response) =>
-            response.text().then((data) => ({ status: response.status, data }))
-          )
-          .then(({ status, data }) => {
-            if (status === 200) {
-              const rows = data
-                .trim()
-                .split("\n")
-                .map((row) => JSON.parse(row));
-
-              const columns = Object.keys(rows[0]);
-              setColumnDefs(columns);
-              setData(rows);
-              setHasMore(rows.length === 100);
-            } else {
-              if (data) {
-                const res = JSON.parse(data);
-                toast.error(res.detail);
-              }
-            }
-          })
-          .catch((error) => {
-            console.error("Error in query execution:", error);
-            toast.error("An error occurred while processing your query");
-          })
-          .finally(() => {
-            setLoading(false);
-          });
-      }
     }
+
+    setLoading(true);
+
+    fetch(`${import.meta.env.VITE_FAST_API}/secure-query`, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "Content-Type": "application/json",
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        user_query: newquery,
+      }),
+    })
+    .then((response) => response.json())
+    .then((data) => {
+      const secureQuery = data.secure_query;
+      console.log("Secure query:", secureQuery);
+      console.log("Matched policy IDs:", data.matched_policy_ids);
+
+      setSecuredQuery(secureQuery);
+
+      const payload = {
+        page: page,
+        query: secureQuery,
+      };
+
+      return fetch(`${hostnameV1}/runQuery`, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+    })
+    .then((response) =>
+      response.text().then((data) => ({ status: response.status, data }))
+    )
+    .then(({ status, data }) => {
+      if (status === 200) {
+        const rows = data
+          .trim()
+          .split("\n")
+          .map((row) => JSON.parse(row));
+
+        const columns = Object.keys(rows[0]);
+        setColumnDefs(columns);
+        setData(rows);
+        setHasMore(rows.length === 100);
+      } else {
+        if (data) {
+          const res = JSON.parse(data);
+          toast.error(res.detail);
+        }
+      }
+    })
+    .catch((error) => {
+      console.error("Error in query execution:", error);
+      toast.error("An error occurred while processing your query");
+    })
+    .finally(() => {
+      setLoading(false);
+    });
   };
 
   const handleHistoryClick = (history) => {
     setQuery(history);
-    setSecuredQuery(""); // Reset secured query when clicking history item
+    setSecuredQuery("");
     setPageNo(1);
     executeQuery(history, 1);
   };
@@ -602,9 +553,9 @@ export default function Editor() {
 
   const handleTableClick = (connection, schema, table) => {
     console.log("Inputs are ===>", connection, schema, table);
-    const query = `Select * from ${connection}.${schema}.${table}`
+    const query = `Select * from ${connection}.${schema}.${table}`;
     setQuery(query);
-    setSecuredQuery(""); // Reset secured query when clicking on a table
+    setSecuredQuery("");
     setPageNo(1);
     executeQuery(query, 1);
   }
@@ -937,11 +888,12 @@ export default function Editor() {
                   <button
                     type="button"
                     onClick={() => executeQuery(query)}
+                    disabled={loading}
                     className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-8 py-1.5 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                   >
                     <div className="flex justify-between items-center">
                       <Play size={16} className="mr-2" />
-                      Run
+                      {loading ? "Processing..." : "Run"}
                     </div>
                   </button>
                   <button
