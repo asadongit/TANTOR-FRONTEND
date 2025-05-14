@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { toast } from "react-hot-toast";
 
-const Step7 = ({ setIsOpen, policyData, setActiveStep }) => {
+const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { token, decodedToken} = useAuth();
      const [error, setError] = useState(null);
@@ -48,6 +48,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep }) => {
           const data = await response.json();
           console.log("add policy successfully", data);
           toast.success("Policy added successfully")
+          await fetchPolicyListData();
           setIsOpen(false)
     
         } catch (error) {

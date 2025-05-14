@@ -290,7 +290,6 @@ const Policy = () => {
             }
         });
 
-        // Add columns
         columns.forEach(column => {
             const parts = column.split('.');
             const conn = parts[0];
@@ -300,7 +299,7 @@ const Policy = () => {
             }
         });
 
-        // Convert to final structure
+
         Object.values(connectionGroups).forEach(connGroup => {
             Object.values(connGroup.schemas).forEach(schema => {
                 result.push({
@@ -372,6 +371,7 @@ const Policy = () => {
                         setIsOpen={setIsOpen}
                         policyData={policyData}
                         setActiveStep={setActiveStep}
+                        fetchPolicyListData={fetchPolicyListData}
                     />
                 )
             default:
@@ -514,7 +514,7 @@ const Policy = () => {
                                                 {policy.Status || "Active"}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-gray-500 text-center">{policy.created_date || "-"}</td>
+                                        <td className="p-4 text-gray-500 text-center">{policy.expiryDate || "-"}</td>
                                         <td className="p-4 text-gray-500 text-center">{policy.expiryDate || "-"}</td>
                                         <td className="p-4 text-gray-500 text-center">{policy.UpdatedDate || "-"}</td>
                                         <td className="p-4 text-gray-500">{policy.Owner}</td>
@@ -565,6 +565,7 @@ const Policy = () => {
                         </tbody>
 
                     </table>
+                    
                 </div>
             </div>
 

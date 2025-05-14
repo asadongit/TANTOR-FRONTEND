@@ -152,7 +152,13 @@ const Step4 = ({ policyData, onDataChange }) => {
                     color={selectedTable === table ? 'primary' : 'default'}
                     sx={{ 
                         borderRadius: 1,
-                        fontWeight: selectedTable === table ? 'bold' : 'normal'
+                        fontWeight: selectedTable === table ? 'bold' : 'normal',
+                        ...(selectedTable === table && {
+                            backgroundColor: '#8e78b7',
+                            '&:hover': {
+                                backgroundColor: '#7b689e'
+                            }
+                        })
                     }}
                 />
             ))}
@@ -175,7 +181,7 @@ const Step4 = ({ policyData, onDataChange }) => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    mb: 2
+                    mb: 2,
                 }}>
                     <Typography variant="subtitle1">
                         Filters for: {selectedTable.split('.').pop()}
@@ -186,6 +192,16 @@ const Step4 = ({ policyData, onDataChange }) => {
                         startIcon={<Plus size={16} />}
                         onClick={handleAddFilter}
                         disabled={filters.length > 0 && !isFilterComplete(filters[filters.length - 1])}
+                        sx={{
+                            '&:not(:disabled)': {
+                                borderColor: '#8e78b7',
+                                color: '#8e78b7',
+                                '&:hover': {
+                                    borderColor: '#7b689e',
+                                    backgroundColor: 'rgba(142, 120, 183, 0.04)'
+                                }
+                            }
+                        }}
                     >
                         Add Condition
                     </Button>
@@ -196,10 +212,10 @@ const Step4 = ({ policyData, onDataChange }) => {
                         No conditions added yet
                     </Typography>
                 ) : (
-                    <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
+                    <Box sx={{ maxHeight: 400, overflowY: 'auto', marginTop: "5px" }}>
                         {filters.map((filter, index) => (
                             <Box key={index}>
-                                <Box display="flex" alignItems="center" gap={1.5} mb={1}>
+                                <Box display="flex" alignItems="center" gap={1.5} mb={1} mt={1}>
                                     <FormControl sx={{ minWidth: 180 }}>
                                         <InputLabel>Column</InputLabel>
                                         <Select
@@ -275,7 +291,7 @@ const Step4 = ({ policyData, onDataChange }) => {
 
     return (
         <Box>
-            <Typography variant="h6" sx={{ mb: 3 }}>Access Control - Row</Typography>
+            <Typography variant="h6" sx={{ mb: 3, color: '#8e78b7' }}>Access Control - Row</Typography>
             
             {renderTableSelect()}
             {Object.keys(tableFilters).length > 0 && renderTableChips()}
