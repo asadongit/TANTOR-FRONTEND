@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ChevronLeft, XCircle, CheckCircle, SaveIcon } from "lucide-react";
+import DateExpressionCalculator from "./TimeTransformationValidate";
 
 const TimeTransformationComponent = ({
   isOpen,
@@ -16,6 +17,8 @@ const TimeTransformationComponent = ({
   const [upperOffset, setUpperOffset] = useState("");
   const [lowerUnit, setLowerUnit] = useState("");
   const [upperUnit, setUpperUnit] = useState("");
+
+  const [showValidationModal, setShowValidationModal] = useState(false);
 
   // API data.
   const [dateColumnsData, setDateColumnsData] = useState([]);
@@ -43,14 +46,12 @@ const TimeTransformationComponent = ({
   }, [ruleId, isOpen]);
 
   const handleValidate = () => {
-    console.log("Validating:", {
-      dateType,
-      lowerOffset,
-      lowerUnit,
-      upperOffset,
-      upperUnit,
-    });
-    alert("Validation logic not implemented. Check console for values.");
+    if (!filterColId || !filterColName)
+      return alert("Select atleast one column before validating.");
+    if (!dateType)
+      return alert("Select Transformation Type Before validating.");
+    setShowValidationModal(true);
+    setIsOpen(false);
   };
 
   // Modal close handler
@@ -67,10 +68,13 @@ const TimeTransformationComponent = ({
 
   const handleSave = () => {
     const newRule = JSON.parse(JSON.stringify(rule));
-    
-    if(!filterColId || !filterColName) return alert("Apply Time Transformation on atleast on column before saving.")
-    if(!dateType) return alert("Select Transformation Type Before Saving.");
-    
+
+    if (!filterColId || !filterColName)
+      return alert(
+        "Apply Time Transformation on atleast on column before saving."
+      );
+    if (!dateType) return alert("Select Transformation Type Before Saving.");
+
     let foundFilterIndex = newRule.filters?.findIndex(
       (filter) => filter.id == filterColId
     );
@@ -121,6 +125,20 @@ const TimeTransformationComponent = ({
 
   return (
     <>
+      {showValidationModal && (
+        <DateExpressionCalculator
+          onClose={() => {
+            setShowValidationModal(false);
+            setIsOpen(true);
+          }}
+          dateType={dateType}
+          lowerOffset={lowerOffset}
+          upperOffset={upperOffset}
+          lowerUnit={lowerUnit}
+          upperUnit={upperUnit}
+        />
+      )}
+
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white/90 backdrop-blur-md p-6 rounded-xl shadow-2xl border border-gray-200 w-full max-w-xl relative z-50">
@@ -150,8 +168,8 @@ const TimeTransformationComponent = ({
                 onChange={(e) => {
                   e.preventDefault();
                   setFilterColId(e.target.value);
-                  
-                  if(!e.target.value){
+
+                  if (!e.target.value) {
                     setFilterColName("");
                     setDateType("");
                     setLowerOffset("");
@@ -160,7 +178,7 @@ const TimeTransformationComponent = ({
                     setUpperUnit("");
                     return;
                   }
-                  
+
                   setFilterColName(
                     (prev) =>
                       dateColumnsData.find(
@@ -246,10 +264,19 @@ const TimeTransformationComponent = ({
                   <input
                     id="lowerOffset"
                     type="number"
+                    max="0"
                     value={lowerOffset}
-                    onChange={(e) => setLowerOffset(e.target.value)}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (value > 0) {
+                        setLowerOffset(-value);
+                      } else {
+                        setLowerOffset(e.target.value);
+                      }
+                    }}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
                     disabled={dateType === "asOnDate"}
+                    placeholder="Enter negative value"
                   />
                 </div>
                 <div>
@@ -267,7 +294,6 @@ const TimeTransformationComponent = ({
                   >
                     <option value="">Select unit</option>
                     <option value="days">Days</option>
-                    <option value="weeks">Weeks</option>
                     <option value="months">Months</option>
                     <option value="years">Years</option>
                   </select>
@@ -290,6 +316,7 @@ const TimeTransformationComponent = ({
                     value={upperOffset}
                     onChange={(e) => setUpperOffset(e.target.value)}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
+                    placeholder="Enter positive or negative value"
                   />
                 </div>
                 <div>
@@ -306,7 +333,6 @@ const TimeTransformationComponent = ({
                   >
                     <option value="">Select unit</option>
                     <option value="days">Days</option>
-                    <option value="weeks">Weeks</option>
                     <option value="months">Months</option>
                     <option value="years">Years</option>
                   </select>
