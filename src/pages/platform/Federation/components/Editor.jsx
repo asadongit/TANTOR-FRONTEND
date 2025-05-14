@@ -22,7 +22,6 @@ import Builder from "./Builder";
 import { useAuth } from "../../../../context/AuthContext";
 
 export default function Editor() {
-  // var encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
   const {token, project, decodedToken, setSelectedProject, hostnameV1 }= useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [query, setQuery] = useState("");
@@ -30,6 +29,7 @@ export default function Editor() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
   const [columnDefs, setColumnDefs] = useState([]);
+  const [securedQuery, setSecuredQuery] = useState(""); // Add this line to track secured queries
 
   const [displayedConnections, setDisplayedConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState("");
@@ -60,7 +60,7 @@ export default function Editor() {
           );
         } else {
           data = data.filter(
-            (item) => 
+            (item) =>
               item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
               !item.is_deleted
           );
@@ -128,6 +128,7 @@ export default function Editor() {
     setQuery("");
     setData([]);
     setColumnDefs([]);
+    setSecuredQuery(""); // Reset secured query when clearing
   };
 
   function removeComments(sql) {
@@ -171,20 +172,24 @@ export default function Editor() {
       toast.error("Enter query first");
       return;
     } else {
-      const payload = {
-        page: page,
-        query: newquery,
-      };
+      // Check if the query is the same as the already secured query
+      if (newquery === securedQuery) {
+        console.log("Query already secured, skipping secure-query API call");
+        // Skip secure-query API call and directly run the query
+        const payload = {
+          page: page,
+          query: newquery,
+        };
 
-      fetch(`${hostnameV1}/runQuery`, {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
+        fetch(`${hostnameV1}/runQuery`, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        })
         .then((response) =>
           response.text().then((data) => ({ status: response.status, data }))
         )
@@ -207,16 +212,84 @@ export default function Editor() {
           }
         })
         .catch((error) => {
-          console.error("Error fetching data:", error);
+          console.error("Error in query execution:", error);
+          toast.error("An error occurred while processing your query");
         })
         .finally(() => {
           setLoading(false);
         });
+      } else {
+        // First call the secure-query endpoint if query is new or changed
+        fetch(`${import.meta.env.VITE_FAST_API}/secure-query`, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            user_query: newquery,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            const secureQuery = data.secure_query;
+            console.log("Secure query:", secureQuery);
+            console.log("Matched policy IDs:", data.matched_policy_ids);
+
+            setQuery(secureQuery);
+            setSecuredQuery(secureQuery); // Store the secured query
+
+            const payload = {
+              page: page,
+              query: secureQuery,
+            };
+
+            return fetch(`${hostnameV1}/runQuery`, {
+              method: "POST",
+              headers: {
+                accept: "application/json",
+                "Content-Type": "application/json",
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify(payload),
+            });
+          })
+          .then((response) =>
+            response.text().then((data) => ({ status: response.status, data }))
+          )
+          .then(({ status, data }) => {
+            if (status === 200) {
+              const rows = data
+                .trim()
+                .split("\n")
+                .map((row) => JSON.parse(row));
+
+              const columns = Object.keys(rows[0]);
+              setColumnDefs(columns);
+              setData(rows);
+              setHasMore(rows.length === 100);
+            } else {
+              if (data) {
+                const res = JSON.parse(data);
+                toast.error(res.detail);
+              }
+            }
+          })
+          .catch((error) => {
+            console.error("Error in query execution:", error);
+            toast.error("An error occurred while processing your query");
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      }
     }
   };
 
   const handleHistoryClick = (history) => {
     setQuery(history);
+    setSecuredQuery(""); // Reset secured query when clicking history item
     setPageNo(1);
     executeQuery(history, 1);
   };
@@ -531,6 +604,7 @@ export default function Editor() {
     console.log("Inputs are ===>", connection, schema, table);
     const query = `Select * from ${connection}.${schema}.${table}`
     setQuery(query);
+    setSecuredQuery(""); // Reset secured query when clicking on a table
     setPageNo(1);
     executeQuery(query, 1);
   }
@@ -584,9 +658,9 @@ export default function Editor() {
 
   const convertToCSV = (jsonData) => {
     const headers = Object.keys(jsonData[0]).join(',');
-    
-    const csvRows = jsonData.map(obj => 
-      Object.values(obj).map(val => 
+
+    const csvRows = jsonData.map(obj =>
+      Object.values(obj).map(val =>
         `"${val}"`
       ).join(',')
     );
@@ -598,7 +672,7 @@ export default function Editor() {
     const csvContent = convertToCSV(data);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement('a');
     link.setAttribute('href', url);
     link.setAttribute('download', 'data.csv');
@@ -781,7 +855,7 @@ export default function Editor() {
                     .custom-scroll::-webkit-scrollbar-track {
                       background-color: #f1f1f1;
                     }
-                    
+
                     /* Horizontal Scrollbar */
                     .custom-scroll::-webkit-scrollbar:horizontal {
                       display: none
@@ -942,7 +1016,7 @@ export default function Editor() {
                           type="button"
                           onClick={handlePreviousPage}
                           disabled={pageNo === 1}
-                          className={`px-8 py-1.5 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm focus:outline-none mr-4 
+                          className={`px-8 py-1.5 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm focus:outline-none mr-4
                          ${pageNo === 1 ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white bg-[#8e78b7] hover:bg-[#7a63a8]"}`}
                         >
                           Previous

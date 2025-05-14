@@ -161,12 +161,12 @@ const Policy = () => {
         sub_policy_description: '',
         policy_name: '',
         user_selections: {
-            users: {
+
                 role: '',
                 group: [],
                 persona: '',
                 subGroup: []
-            }
+
         },
         data_connection: []
     });
@@ -203,7 +203,7 @@ const Policy = () => {
                 updateStep1Data(step1Data);
                 break;
             case 1:
-                // if (!step2Data.selectedGroup) { 
+                // if (!step2Data.selectedGroup) {
                 //     alert('Please select at least one group');
                 //     return;
                 // }
@@ -235,12 +235,13 @@ const Policy = () => {
         const newData = {
             ...policyData,
             user_selections: {
-                users: {
+
                     ...policyData.user_selections.users,
                     role: data.selectedRole,
                     group: data.selectedGroup,
+                    persona: '',
                     subGroup: data.selectedSubgroup
-                }
+
             }
         };
         setPolicyData(newData);
@@ -389,11 +390,11 @@ const Policy = () => {
         setItemsPerPage(Number(e.target.value));
         setPage(1);
     };
-    
+
     const handlePrevPage = () => {
         if (page > 1) setPage(page - 1);
     };
-    
+
     const handleNextPage = () => {
         const maxPage = Math.ceil(sampleData.length / itemsPerPage);
         if (page < maxPage) setPage(page + 1);

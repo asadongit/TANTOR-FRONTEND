@@ -70,7 +70,6 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       ]
     },
     { name: 'Data Catalogue', icon: BookOpenIcon, path: `${DATAGOVERNANCE_PREFIX}/data-catalogue`,
-      requiresGlobalAdmin: true,
       subItems: [
         { name: 'Database', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/database` },
         { name: 'Schema', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/schema` },
@@ -82,7 +81,6 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance` },
     { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: `${DATAGOVERNANCE_PREFIX}/business-catalogue` },
     { name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`,
-      requiresGlobalAdmin: true,
       subItems: [
         { name: 'Protection', path: `${DATAGOVERNANCE_PREFIX}/data-shield/protection` },
         { name: 'Policy', path: `${DATAGOVERNANCE_PREFIX}/data-shield/policy` },
