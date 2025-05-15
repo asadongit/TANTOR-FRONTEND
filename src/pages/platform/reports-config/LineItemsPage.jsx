@@ -36,7 +36,7 @@ function LineItemsPage() {
     regReportId: reportId,
     lineItemConfig: lineItemConfig,
   };
-
+  
   const uploadData = async () => {
     const headers = {
       "Content-Type": "application/json",
@@ -103,10 +103,14 @@ function LineItemsPage() {
         if (response.ok) {
           const data = await response.text();
           setLineItemsHtml(data);
+        }else{
+          toast.error(`Error fetching line items for report: ${reportName}`)
+          navigate("/config/report")
         }
       } catch (error) {
         console.log(error);
         toast.error("Error occured when trying to fetch Line Items.")
+        navigate("/config/report")
       }
     };
     fetchLineItems();

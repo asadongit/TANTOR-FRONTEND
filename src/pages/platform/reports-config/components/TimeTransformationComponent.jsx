@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { ChevronLeft, XCircle, CheckCircle, SaveIcon } from "lucide-react";
 import DateExpressionCalculator from "./TimeTransformationValidate";
 import { useAuth } from "../../../../context/AuthContext";
+import toast from "react-hot-toast";
+import { ToastContainer } from "react-toastify";
 
 const TimeTransformationComponent = ({
   isOpen,
@@ -23,34 +25,40 @@ const TimeTransformationComponent = ({
 
   // API data.
   const [dateColumnsData, setDateColumnsData] = useState([]);
-  const {token, hostnameV1} = useAuth();
+  const { token, hostnameV1 } = useAuth();
 
   useEffect(() => {
     if (!ruleId || !isOpen) return;
 
     const fetchFilterDateColumns = async () => {
       const headers = {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        };
+        "Content-Type": "application/json",
+        authorization: `Bearer ${token}`,
+      };
 
-      const response = await fetch(
-        `${hostnameV1}/lineItems/selectDimensionDateName?rule_id=${ruleId}`,
-        { headers }
-      );
-      if (!response.ok)
-        return alert("Error fetching Date Columns for time transformation.");
-      const data = await response.json();
-      setDateColumnsData(data);
+      try {
+        const response = await fetch(
+          `${hostnameV1}/lineItems/selectDimensionDateName?rule_id=${ruleId}`,
+          { headers }
+        );
+        if (!response.ok)
+          return toast.error(
+            "Error fetching Date Columns for time transformation."
+          );
+        const data = await response.json();
+        setDateColumnsData(data);
+      } catch (error) {
+        toast.error("Error fetching Date Columns for time transformation.");
+      }
     };
     fetchFilterDateColumns();
   }, [ruleId, isOpen]);
 
   const handleValidate = () => {
     if (!filterColId || !filterColName)
-      return alert("Select atleast one column before validating.");
+      return toast.error("Select atleast one column before validating.");
     if (!dateType)
-      return alert("Select Transformation Type Before validating.");
+      return toast.error("Select Time Transformation Type Before validating.");
     setShowValidationModal(true);
     setIsOpen(false);
   };
@@ -71,10 +79,10 @@ const TimeTransformationComponent = ({
     const newRule = JSON.parse(JSON.stringify(rule));
 
     if (!filterColId || !filterColName)
-      return alert(
+      return toast.error(
         "Apply Time Transformation on atleast on column before saving."
       );
-    if (!dateType) return alert("Select Transformation Type Before Saving.");
+    if (!dateType) return toast.error("Select Transformation Type Before Saving.");
 
     let foundFilterIndex = newRule.filters?.findIndex(
       (filter) => filter.id == filterColId
@@ -126,6 +134,7 @@ const TimeTransformationComponent = ({
 
   return (
     <>
+      <ToastContainer />
       {showValidationModal && (
         <DateExpressionCalculator
           onClose={() => {

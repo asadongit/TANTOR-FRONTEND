@@ -31,43 +31,54 @@ const RulesReportsLinks = () => {
           const reportId = row.id;
           const reportType = row.type;
           const reportName = row.name;
+
           const headers = {
             "Content-Type": "application/json",
             authorization: `Bearer ${token}`,
           };
 
-          const response = await fetch(
-            `${hostnameV1}/reports/${reportId}/exists`,
-            { headers }
-          );
-
-          if (!response.ok)
-            return toast.error(
-              "ERROR OCCURED TRYING TO CHECK IF REPORT EXISTS."
+          try {
+            const response = await fetch(
+              `${hostnameV1}/reports/${reportId}/exists`,
+              { headers }
             );
 
-          const data = await response.json();
+            if (!response.ok)
+              return toast.error(
+                "ERROR OCCURED TRYING TO CHECK IF REPORT EXISTS."
+              );
 
-          if (data.isExists === false)
-            return toast.error(`Report with id = ${reportId} doesn't exist.`);
+            const data = await response.json();
 
-          const redirectResponse = await fetch(
-            `${
-              import.meta.env.VITE_BIRT_BACKEND_API
-            }/templates/generate?report-id=${reportId}&report-name=${reportName}`
-          );
-          if (!redirectResponse.ok)
-            return toast.error("ERROR OCCURED TRYING TO GENERATE REPORT.");
+            if (data.isExists === false)
+              return toast.error(`Report with id = ${reportId} doesn't exist.`);
+          } catch (error) {
+            console.log(error);
+            toast.error("Error occured.");
+          }
 
-          const redirectPath = await redirectResponse.text();
-          window.open(
-            `${
-              import.meta.env.VITE_BIRT_API
-            }/frameset?__report=${redirectPath}&__format=${
-              import.meta.env.VITE_BIRT_EXPORT_FORMAT
-            }`,
-            "_blank"
-          );
+          try {
+            const redirectResponse = await fetch(
+              `${
+                import.meta.env.VITE_BIRT_BACKEND_API
+              }/templates/generate?report-id=${reportId}&report-name=${reportName}&report-type=${reportType}`
+            );
+            if (!redirectResponse.ok)
+              return toast.error("ERROR OCCURED TRYING TO GENERATE REPORT.");
+
+            const redirectPath = await redirectResponse.text();
+            window.open(
+              `${
+                import.meta.env.VITE_BIRT_API
+              }/frameset?__report=${redirectPath}&__format=${
+                import.meta.env.VITE_BIRT_EXPORT_FORMAT
+              }`,
+              "_blank"
+            );
+          } catch (error) {
+            console.log(error);
+            toast.error("Error occured trying to generate report.");
+          }
         };
         generateReport();
       },
@@ -82,7 +93,7 @@ const RulesReportsLinks = () => {
             reportName: row.name,
           },
         }),
-      show: false,
+      show: (row) => row.type.toLowerCase() !== "list",
     },
   ];
 

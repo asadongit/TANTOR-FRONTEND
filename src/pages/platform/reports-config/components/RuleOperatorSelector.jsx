@@ -6,8 +6,8 @@ import {
   MinusCircle,
   MinusCircleIcon,
 } from "lucide-react";
-import { rule } from "postcss";
-import { toast, Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { ToastContainer } from "react-toastify";
 
 export default function RuleSelector({
   isOpen,
@@ -23,6 +23,7 @@ export default function RuleSelector({
       operator: "",
     },
   ]);
+  const [disableSubmit, setDisableSubmit] = useState(true);
 
   const addSelectOperator = () => {
     setRuleOperators((prev) => {
@@ -38,22 +39,22 @@ export default function RuleSelector({
 
   const removeSelectOperator = (index) => {
     let removeRuleId = ruleOperators[index].ruleId;
-    
-    if(!removeRuleId){
-      return setRuleOperators((prev) => {
-      if (prev.length === 1) {
-        return [
-          {
-            ruleId: "",
-            operator: "",
-          },
-        ];
-      }
 
-      const newRuleOperators = [...prev];
-      newRuleOperators.splice(index, 1);
-      return newRuleOperators;
-    });
+    if (!removeRuleId) {
+      return setRuleOperators((prev) => {
+        if (prev.length === 1) {
+          return [
+            {
+              ruleId: "",
+              operator: "",
+            },
+          ];
+        }
+
+        const newRuleOperators = [...prev];
+        newRuleOperators.splice(index, 1);
+        return newRuleOperators;
+      });
     }
 
     const newRules = [...rules];
@@ -112,76 +113,86 @@ export default function RuleSelector({
   };
 
   const handleValidate = () => {
-  if (rules.length === 0) {
-    return toast.error("A Line_Item must be linked to at least one rule.");
-  }
+    if (rules.length === 0) {
+      return toast.error("A Line_Item must be linked to at least one rule.");
+    }
 
-  if (rules.length === 1 && ruleOperators.length === 1) {
-    removeSelectOperator(0);
-    return toast.success("No need to set operator for a single rule.");
-  }
+    if (rules.length === 1 && ruleOperators.length === 1) {
+      removeSelectOperator(0);
+      setDisableSubmit(false);
+      return toast.success("No need to set operator for a single rule.");
+    }
 
-  const ruleIds = rules.map(rule => rule.ruleId);
+    const ruleIds = rules.map((rule) => rule.ruleId);
 
-  //  duplicates check.
-  const seen = new Set();
-  const duplicates = new Set();
+    //  duplicates check.
+    const seen = new Set();
+    const duplicates = new Set();
 
-  for (const { ruleId } of ruleOperators) {
-    if (seen.has(ruleId)) duplicates.add(ruleId);
-    else seen.add(ruleId);
-  }
+    for (const { ruleId } of ruleOperators) {
+      if (seen.has(ruleId)) duplicates.add(ruleId);
+      else seen.add(ruleId);
+    }
 
-  if (duplicates.size > 0) {
-    const duplicateNames = [...duplicates]
-      .map(id => rules.find(rule => rule.ruleId === id))
+    if (duplicates.size > 0) {
+      const duplicateNames = [...duplicates]
+        .map((id) => rules.find((rule) => rule.ruleId === id))
+        .filter(Boolean)
+        .map((rule) => rule.ruleName);
+
+      return toast.error(
+        `Duplicate Selections found for Rule(s): ${duplicateNames.join(", ")}`
+      );
+    }
+
+    //  empty selections (neither rule nor operator selected)
+    const hasEmptySelection = ruleOperators.some(
+      (ro) => !ro.ruleId && !ro.operator
+    );
+
+    if (hasEmptySelection) {
+      return toast.error(
+        "One or more rules are incomplete — please select both a Rule and an Operator."
+      );
+    }
+
+    // rules are missing from ruleOperators
+    const unlinkedRuleNames = ruleIds
+      .filter((id) => !ruleOperators.some((ro) => ro.ruleId === id))
+      .map((id) => rules.find((rule) => rule.ruleId === id))
       .filter(Boolean)
-      .map(rule => rule.ruleName);
+      .map((rule) => rule.ruleName);
 
-    return toast.error(`Duplicate Selections found for Rule(s): ${duplicateNames.join(", ")}`);
-  }
+    if (unlinkedRuleNames.length > 0) {
+      return toast.error(
+        `Rule(s) "${unlinkedRuleNames.join(", ")}" not selected.`
+      );
+    }
 
-  //  empty selections (neither rule nor operator selected)
-  const hasEmptySelection = ruleOperators.some(
-    ro => !ro.ruleId && !ro.operator
-  );
+    //  missing operators
+    const operatorMissingNames = ruleOperators
+      .filter((ro) => !ro.operator)
+      .map((ro) => rules.find((rule) => rule.ruleId === ro.ruleId))
+      .filter(Boolean)
+      .map((rule) => rule.ruleName);
 
-  if (hasEmptySelection) {
-    return toast.error("One or more rules are incomplete — please select both a Rule and an Operator.");
-  }
+    if (operatorMissingNames.length > 0) {
+      return toast.error(
+        `Operators for Rule(s) "${operatorMissingNames.join(
+          ", "
+        )}" not selected.`
+      );
+    }
 
-  // rules are missing from ruleOperators
-  const unlinkedRuleNames = ruleIds
-    .filter(id => !ruleOperators.some(ro => ro.ruleId === id))
-    .map(id => rules.find(rule => rule.ruleId === id))
-    .filter(Boolean)
-    .map(rule => rule.ruleName);
-
-  if (unlinkedRuleNames.length > 0) {
-    return toast.error(`Rule(s) "${unlinkedRuleNames.join(", ")}" not selected.`);
-  }
-
-//  missing operators
-  const operatorMissingNames = ruleOperators
-    .filter(ro => !ro.operator)
-    .map(ro => rules.find(rule => rule.ruleId === ro.ruleId))
-    .filter(Boolean)
-    .map(rule => rule.ruleName);
-
-  if (operatorMissingNames.length > 0) {
-    return toast.error(`Operators for Rule(s) "${operatorMissingNames.join(", ")}" not selected.`);
-  }
-
-  toast.success("Validation Successful.");
-};
-
-
+    toast.success("Validation Successful.");
+    setDisableSubmit(false);
+  };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      <Toaster />
+      <ToastContainer />
       <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>
 
       <div className="relative w-full max-w-3xl mx-4 bg-white rounded-lg shadow-2xl p-6 z-10 animate-fadeIn">
@@ -276,8 +287,14 @@ export default function RuleSelector({
             Validate
           </button>
           <button
-            className="px-4 py-2 bg-[#8E77BB] hover:bg-[#7a63ac] text-white rounded-lg hover:bg-[rgb(142,119,187,0.8) font-medium"
+            className={`px-4 py-2 rounded-lg font-medium text-white transition-colors duration-200
+    ${
+      disableSubmit
+        ? "bg-gray-400 cursor-not-allowed"
+        : "bg-[#8E77BB] hover:bg-[#7a63ac]"
+    }`}
             onClick={handleNext}
+            disabled={disableSubmit}
           >
             Next
           </button>

@@ -1,6 +1,8 @@
 import { Plus } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
+import toast from "react-hot-toast";
+import { ToastContainer } from "react-toastify";
 
 function DimensionValueSelector({ 
   index, 
@@ -136,6 +138,7 @@ const DimensionSelector = ({
 
         if (!response.ok) {
           console.error("Failed to fetch dimension values:", response.statusText);
+          toast.error("Failed to fetch dimension values");
           return;
         }
 
@@ -143,6 +146,7 @@ const DimensionSelector = ({
         setDimensionValuesData(data || []);
       } catch (error) {
         console.error("Failed to fetch dimension values:", error);
+        toast.error("Failed to fetch dimension values")
       } finally {
         setIsLoading(false);
       }
@@ -153,6 +157,7 @@ const DimensionSelector = ({
   
   return (
     <div className="flex items-center gap-4 mb-2">
+      <ToastContainer />
       <select
         value={dimension?.id || ""}
         onChange={(e) => {

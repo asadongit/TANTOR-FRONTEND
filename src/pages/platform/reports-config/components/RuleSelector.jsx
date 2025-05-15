@@ -3,6 +3,8 @@ import { Plus } from "lucide-react";
 import DimensionSelector from "./DimensionSelector";
 import TimeTransformationComponent from "./TimeTransformationComponent";
 import { useAuth } from "../../../../context/AuthContext";
+import toast from "react-hot-toast";
+import { ToastContainer } from "react-toastify";
 
 function MetricSelector({ index, rule, metricData = [], updateRule }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -120,7 +122,7 @@ const RuleSelector = ({
           { headers: headers }
         );
         if (!response.ok) {
-          alert("ERROR WHILE FETCHING RULES");
+          toast.error("ERROR OCCURED WHILE FETCHING RULES");
           return;
         }
 
@@ -128,7 +130,7 @@ const RuleSelector = ({
         setRuleData(data);
       } catch (error) {
         console.error("Failed to fetch rules:", error);
-        alert("ERROR WHILE FETCHING RULES");
+        toast.error("ERROR OCCURED WHILE FETCHING RULES");
       }
     };
 
@@ -150,7 +152,7 @@ const RuleSelector = ({
         );
 
         if (!response.ok) {
-          alert("ERROR WHILE FETCHING METRICS");
+          toast.error("ERROR OCCURED WHILE FETCHING METRICS.");
           return;
         }
 
@@ -158,7 +160,7 @@ const RuleSelector = ({
         setMetricData(data.metric_config);
       } catch (error) {
         console.error("Failed to fetch metrics:", error);
-        alert("ERROR WHILE FETCHING METRICS");
+        toast.error("ERROR OCCURED WHILE FETCHING METRICS.");
       }
     };
 
@@ -181,7 +183,7 @@ const RuleSelector = ({
         );
 
         if (!response.ok) {
-          alert("ERROR WHILE FETCHING METRICS");
+          toast.error("ERROR OCCURED WHILE FETCHING DIMENSIONS.");
           return;
         }
 
@@ -190,7 +192,7 @@ const RuleSelector = ({
         setDimensionNamesData(data);
       } catch (error) {
         console.error("Failed to fetch metrics:", error);
-        alert("ERROR WHILE FETCHING METRICS");
+        toast.error("ERROR OCCURED WHILE FETCHING DIMENSIONS.");
       }
     };
 
@@ -217,6 +219,7 @@ const RuleSelector = ({
 
   return (
     <>
+      <ToastContainer />
       <TimeTransformationComponent
         isOpen={isTimeTransformationOpen}
         setIsOpen={setIsTimeTransformationOpen}
