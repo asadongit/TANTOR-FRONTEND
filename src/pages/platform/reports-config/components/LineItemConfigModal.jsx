@@ -123,14 +123,14 @@ const LineItemConfigModal = ({
             </button>
             <button
               type="button"
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium bg-[#8E77BB] text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)"
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium bg-[#8E77BB] hover:opacity-80 text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)"
               onClick={addRule}
             >
               <Plus className="h-4 w-4 mr-1" /> Add Rule
             </button>
             <button
               type="button"
-              className="inline-flex items-center px-3 py-2 border border-transparent rounded text-sm font-medium bg-[#8E77BB] text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)"
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium bg-[#8E77BB] hover:opacity-80 text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)"
               onClick={(e) => {
                 e.preventDefault();
                 setShowRuleOperatorSelector(true);
