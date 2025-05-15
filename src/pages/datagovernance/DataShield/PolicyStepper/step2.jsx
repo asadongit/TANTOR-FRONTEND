@@ -1,5 +1,5 @@
 import { Box, Typography } from '@mui/material';
-import { User, Users, UserPlus, UserRoundCog } from "lucide-react";
+import { User, Users, UserPlus, UserRoundCog, Loader } from "lucide-react";
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -24,6 +24,7 @@ const Step2 = ({ onDataChange, initialData }) => {
         personas: []
     });
     const [loading, setLoading] = useState(true);
+    const [loadingSubgroups, setLoadingSubgroups] = useState(false);
 
     useEffect(() => {
         onDataChange({
@@ -36,6 +37,14 @@ const Step2 = ({ onDataChange, initialData }) => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    useEffect(() => {
+        if (selectedGroup) {
+            fetchSubgroupsForGroup(selectedGroup);
+        } else {
+            setData(prev => ({ ...prev, subgroups: [] }));
+        }
+    }, [selectedGroup]);
 
     const fetchData = async () => {
         try {
@@ -53,7 +62,7 @@ const Step2 = ({ onDataChange, initialData }) => {
             setData({
                 roles: responseData.roles || [],
                 groups: responseData.groups || [],
-                subgroups: responseData.subgroups || [],
+                subgroups: [],
                 personas: []
             });
             setLoading(false);
@@ -63,13 +72,42 @@ const Step2 = ({ onDataChange, initialData }) => {
         }
     };
 
+    const fetchSubgroupsForGroup = async (group) => {
+        setLoadingSubgroups(true);
+        try {
+            const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/datapolicy/subgroup/${group}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch subgroups');
+            }
+            const responseData = await response.json();
+            setData(prev => ({
+                ...prev,
+                subgroups: responseData.subgroups || []
+            }));
+        } catch (error) {
+            console.error('Error fetching subgroups:', error);
+            toast.error('Failed to load subgroups');
+            setData(prev => ({
+                ...prev,
+                subgroups: []
+            }));
+        } finally {
+            setLoadingSubgroups(false);
+        }
+    };
+
     const handleItemSelect = (item) => {
         switch (selectedTab) {
             case 'Role':
                 setSelectedRole(item === selectedRole ? '' : item);
                 break;
             case 'Group':
-                // Clear subgroup when group changes
                 if (item !== selectedGroup) {
                     setSelectedSubgroup('');
                 }
@@ -97,13 +135,64 @@ const Step2 = ({ onDataChange, initialData }) => {
     };
 
     const toggleSelectAll = () => {
-        // Disable select all since we want single selection
         toast.info('Please select one item at a time');
     };
 
     const getCurrentTabData = () => {
         const currentTab = roleDetails.find(rd => rd.role === selectedTab);
         return currentTab ? data[currentTab.key] || [] : [];
+    };
+
+    const renderListContent = () => {
+        if (selectedTab === 'Sub-group') {
+            if (!selectedGroup) {
+                return (
+                    <div className="h-full flex items-center justify-center text-gray-500">
+                        Please select a Group first
+                    </div>
+                );
+            }
+
+            if (loadingSubgroups) {
+                return (
+                    <div className="h-full flex items-center justify-center text-gray-500">
+                        <Loader className="h-5 w-5 mr-2 animate-spin" />
+                        Loading subgroups...
+                    </div>
+                );
+            }
+
+            if (data.subgroups.length === 0) {
+                return (
+                    <div className="h-full flex items-center justify-center text-gray-500">
+                        No subgroups found for this group
+                    </div>
+                );
+            }
+        }
+
+        const currentData = getCurrentTabData();
+        if (currentData.length === 0) {
+            return (
+                <div className="h-full flex items-center justify-center text-gray-500">
+                    No {selectedTab.toLowerCase()} found
+                </div>
+            );
+        }
+
+        return currentData.map((item, index) => (
+            <div
+                key={index}
+                className="flex items-center justify-between px-4 py-2 border-t border-gray-200 hover:bg-gray-50"
+            >
+                <span className="truncate">{item}</span>
+                <input
+                    type="checkbox"
+                    checked={isItemSelected(item)}
+                    onChange={() => handleItemSelect(item)}
+                />
+            </div>
+        ));
     };
 
     if (loading) {
@@ -119,7 +208,6 @@ const Step2 = ({ onDataChange, initialData }) => {
             <div className="mb-6">
                 <h3 className="text-lg font-medium text-gray-700 mb-2">User</h3>
                 <div className="flex space-x-4 items-start h-[300px]">
-                    {/* Left sidebar - Tab selection */}
                     <div className="flex flex-col w-1/4 space-y-2 bg-white h-full">
                         {roleDetails.map(({ role, icon: IconComponent }) => {
                             return (
@@ -138,7 +226,6 @@ const Step2 = ({ onDataChange, initialData }) => {
                         })}
                     </div>
 
-                    {/* Right content area */}
                     <div className="w-3/4 h-full flex flex-col">
                         <div className="bg-gray-800 text-white rounded-t-md px-4 py-2 flex items-center justify-between">
                             <span className="font-medium">Name</span>
@@ -153,32 +240,14 @@ const Step2 = ({ onDataChange, initialData }) => {
                             </label>
                         </div>
 
-                        {/* Scrollable content container */}
                         <div className="border border-t-0 border-gray-300 rounded-b-md flex-1 overflow-y-auto">
-                            {getCurrentTabData().length > 0 ? (
-                                getCurrentTabData().map((item, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex items-center justify-between px-4 py-2 border-t border-gray-200 hover:bg-gray-50"
-                                    >
-                                        <span className="truncate">{item}</span>
-                                        <input
-                                            type="checkbox"
-                                            checked={isItemSelected(item)}
-                                            onChange={() => handleItemSelect(item)}
-                                        />
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-gray-500">
-                                    No {selectedTab.toLowerCase()} found
-                                </div>
-                            )}
+                            {renderListContent()}
                         </div>
                     </div>
                 </div>
             </div>
         </Box>
-    )
-}
+    );
+};
+
 export default Step2;

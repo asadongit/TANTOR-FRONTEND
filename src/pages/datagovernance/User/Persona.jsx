@@ -6,36 +6,34 @@ import { Icon } from "@iconify-icon/react";
 function Persona() {
   const [showModal, setShowModal] = useState(false);
   const [persona, setPersona] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Process API data to get personas and count users
+  // Updated process function to handle the new API response format
   const processPersonaData = (apiData) => {
-    const personaCounts = {};
+    // Check if we have the expected data structure
+    if (!apiData || !apiData.persona_counts) {
+      console.error("Invalid API response format:", apiData);
+      return [];
+    }
 
-    apiData.forEach((user) => {
-      // Skip empty personas
-      if (!user.persona) return;
+    // Convert persona_counts object to array of persona objects
+    return Object.entries(apiData.persona_counts)
+      .filter(([name]) => name.trim() !== "") // Filter out empty persona names
+      .map(([title, count]) => {
+        // Convert to title case for consistency
+        const normalizedTitle = title.trim().charAt(0).toUpperCase() + title.trim().slice(1).toLowerCase();
 
-      const persona = user.persona.trim();
-      // Convert to title case for consistency
-      const normalizedPersona = persona.charAt(0).toUpperCase() + persona.slice(1).toLowerCase();
-
-      if (personaCounts[normalizedPersona]) {
-        personaCounts[normalizedPersona]++;
-      } else {
-        personaCounts[normalizedPersona] = 1;
-      }
-    });
-
-    // Convert to array format needed for cards
-    return Object.keys(personaCounts).map((title) => ({
-      title,
-      description: "Users with this persona role have specific access and permissions",
-      users: personaCounts[title],
-      enabled: true,
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-    }));
+        return {
+          title: normalizedTitle,
+          description: "Users with this persona role have specific access and permissions",
+          users: count,
+          enabled: true, // Assuming all personas are enabled by default
+          icon: "material-symbols:tab-group-outline",
+          bgcolor: "bg-[#8d77ba] bg-opacity-25",
+          iconcolor: "text-[#8d77ba]",
+        };
+      });
   };
 
   const toggleRole = (index) => {
@@ -72,17 +70,50 @@ function Persona() {
   };
 
   useEffect(() => {
-    try {
-      fetch(`${import.meta.env.VITE_FAST_API}/auth/personahomepage`)
-        .then((response) => response.json())
-        .then((data) => {
-          console.log(data);
-          const processedData = processPersonaData(data);
-          setPersona(processedData);
-        });
-    } catch (error) {
-      console.error("Error fetching personas:", error);
-    }
+    setLoading(true);
+    setError(null);
+
+    fetch(`${import.meta.env.VITE_FAST_API}/auth/personahomepage`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("API Data:", data);
+        const processedData = processPersonaData(data);
+        console.log("Processed Data:", processedData);
+        setPersona(processedData);
+      })
+      .catch((error) => {
+        console.error("Error fetching personas:", error);
+        setError("Failed to load personas. Please try again later.");
+        // Set some default sample personas if the API fails
+        setPersona([
+          {
+            title: "Admin",
+            description: "Users with this persona role have specific access and permissions",
+            users: 8,
+            enabled: true,
+            icon: "material-symbols:tab-group-outline",
+            bgcolor: "bg-[#8d77ba] bg-opacity-25",
+            iconcolor: "text-[#8d77ba]",
+          },
+          {
+            title: "User",
+            description: "Users with this persona role have specific access and permissions",
+            users: 12,
+            enabled: true,
+            icon: "material-symbols:tab-group-outline",
+            bgcolor: "bg-[#8d77ba] bg-opacity-25",
+            iconcolor: "text-[#8d77ba]",
+          }
+        ]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   return (
@@ -109,39 +140,53 @@ function Persona() {
           </button>
           <button className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg" onClick={() => setShowModal(true)}>
             <Plus className="h-5 w-5" />
-            New Role
+            New Persona
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {persona.map((persona, index) => (
-          <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-100">
-            <div className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${persona.bgcolor} rounded-full ${persona.iconcolor} mr-2`}
-                  >
-                    <Icon icon={persona.icon} />
+      {loading ? (
+        <div className="flex items-center justify-center h-40">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#8d77ba]"></div>
+        </div>
+      ) : error ? (
+        <div className="text-center p-6 bg-red-50 text-red-600 rounded-lg">
+          {error}
+        </div>
+      ) : persona.length === 0 ? (
+        <div className="text-center p-6 bg-gray-50 text-gray-600 rounded-lg">
+          No personas found. Create your first persona by clicking "New Persona" button.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {persona.map((persona, index) => (
+            <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-100">
+              <div className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${persona.bgcolor} rounded-full ${persona.iconcolor} mr-2`}
+                    >
+                      <Icon icon={persona.icon} />
+                    </div>
+                    <h3 className="text-lg font-semibold">{persona.title}</h3>
                   </div>
-                  <h3 className="text-lg font-semibold">{persona.title}</h3>
+                  <button className="p-1 rounded-lg hover:bg-gray-100">
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
                 </div>
-                <button className="p-1 rounded-lg hover:bg-gray-100">
-                  <MoreVertical className="h-4 w-4" />
-                </button>
-              </div>
-              <p className="text-gray-500 mt-4 text-sm">{persona.description}</p>
-              <div className="flex items-center justify-between mt-6">
-                <div className="flex items-center gap-2">
-                  <Icon icon="material-symbols:supervisor-account-outline" width="24" height="24" />
-                  <span className="text-sm">{persona.users.toString().padStart(2, "0")}</span>
+                <p className="text-gray-500 mt-4 text-sm">{persona.description}</p>
+                <div className="flex items-center justify-between mt-6">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="material-symbols:supervisor-account-outline" width="24" height="24" />
+                    <span className="text-sm">{persona.users.toString().padStart(2, "0")}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden mt-5">
         <table className="w-full">
