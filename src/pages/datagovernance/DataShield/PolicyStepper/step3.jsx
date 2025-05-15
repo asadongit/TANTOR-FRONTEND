@@ -5,10 +5,10 @@ const Step3 = ({ name, onDataChange, initialData }) => {
   const { token } = useAuth();
 
   const [data, setData] = useState([]);
-  const [selectedConnections, setSelectedConnections] = useState([]);
-  const [selectedSchemas, setSelectedSchemas] = useState([]);
-  const [selectedTables, setSelectedTables] = useState([]);
-  const [selectedColumns, setSelectedColumns] = useState([]);
+  const [selectedConnections, setSelectedConnections] = useState(initialData.selectedConnections || []);
+  const [selectedSchemas, setSelectedSchemas] = useState(initialData.selectedSchemas || []);
+  const [selectedTables, setSelectedTables] = useState(initialData.selectedTables || []);
+  const [selectedColumns, setSelectedColumns] = useState(initialData.selectedColumns || []);
   const [connectionSearch, setConnectionSearch] = useState('');
   const [schemaSearch, setSchemaSearch] = useState('');
   const [tableSearch, setTableSearch] = useState('');
@@ -26,6 +26,7 @@ const Step3 = ({ name, onDataChange, initialData }) => {
   }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns]);
 
   useEffect(() => {
+    console.log("initial data for step 3 is ====>", initialData)
     fetchData();
   }, []);
 

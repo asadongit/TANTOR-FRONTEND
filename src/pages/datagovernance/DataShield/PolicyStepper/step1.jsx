@@ -8,12 +8,13 @@ const Step1 = ({ onDataChange, initialData }) => {
     const [policies, setPolicies] = useState([]);
     const [selectedPolicy, setSelectedPolicy] = useState(initialData.selectedPolicy || '');
     const [description, setDescription] = useState(initialData.description || '');
-    const [subPolicyName, setSubPolicyName] = useState(initialData.subPolicyName || '');
-    const [subPolicyDescription, setSubPolicyDescription] = useState(initialData.subPolicyDescription || '');
+    const [subPolicyName, setSubPolicyName] = useState(initialData.sub_policy_name || '');
+    const [subPolicyDescription, setSubPolicyDescription] = useState(initialData.sub_policy_description || '');
     const [policyDescriptionMap, setPolicyDescriptionMap] = useState({});
     const { token } = useAuth();
 
     useEffect(() => {
+        console.log("initial datat iss ====>",initialData)
         fetchPolicy();
     }, []);
 

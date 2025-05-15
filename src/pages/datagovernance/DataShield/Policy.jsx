@@ -18,7 +18,7 @@ import {
     UserRoundCog,
     BadgeCheck,
     ChevronLeft,
-  ChevronRight
+    ChevronRight
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -162,10 +162,10 @@ const Policy = () => {
         policy_name: '',
         user_selections: {
 
-                role: '',
-                group: [],
-                persona: '',
-                subGroup: []
+            role: '',
+            group: [],
+            persona: '',
+            subGroup: []
 
         },
         data_connection: []
@@ -236,11 +236,11 @@ const Policy = () => {
             ...policyData,
             user_selections: {
 
-                    ...policyData.user_selections.users,
-                    role: data.selectedRole,
-                    group: data.selectedGroup,
-                    persona: '',
-                    subGroup: data.selectedSubgroup
+                ...policyData.user_selections.users,
+                role: data.selectedRole,
+                group: data.selectedGroup,
+                persona: '',
+                subGroup: data.selectedSubgroup
 
             }
         };
@@ -412,6 +412,43 @@ const Policy = () => {
     const endItem = Math.min(page * itemsPerPage, totalItems);
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
+    const setData = () => {
+        setPolicyData({
+            policy_type: '',
+            policy_description: '',
+            sub_policy_name: '',
+            sub_policy_description: '',
+            policy_name: '',
+            user_selections: {
+                role: '',
+                group: [],
+                persona: '',
+                subGroup: []
+            },
+            data_connection: []
+        })
+
+        setStep1Data({
+        selectedPolicy: '',
+        description: '',
+        selectedSubPolicy: '',
+        subPolicyDescription: ''
+    });
+
+    setStep2Data({
+        selectedRole: '',
+        selectedGroup: '',
+        selectedSubgroup: ''
+    });
+
+    setStep3Data({
+        selectedConnections: [],
+        selectedSchemas: [],
+        selectedTables: [],
+        selectedColumns: []
+    });
+    }
+
     return (
         <>
             <div>
@@ -444,6 +481,7 @@ const Policy = () => {
                             onClick={() => {
                                 setIsOpen(true)
                                 setActiveStep(0)
+                                setData()
                             }}
                             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                         >
