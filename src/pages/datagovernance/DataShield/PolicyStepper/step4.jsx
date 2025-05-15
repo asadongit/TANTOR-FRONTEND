@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
 const Step4 = ({ policyData, onDataChange }) => {
@@ -8,6 +8,15 @@ const Step4 = ({ policyData, onDataChange }) => {
 
   const initialFilters = policyData.row_access_control || {};
   const [tableFilters, setTableFilters] = useState(initialFilters);
+
+  useEffect(() => {
+    if (Object.keys(policyData.row_access_control || {}).length === 0) {
+      setSelectedTable('');
+      setTableSearch('');
+      setTableFilters({});
+    }
+  }, [policyData.row_access_control]);
+
 
   const allTables = policyData.data_connection.flatMap((conn) =>
     conn.tables.map((table) => ({

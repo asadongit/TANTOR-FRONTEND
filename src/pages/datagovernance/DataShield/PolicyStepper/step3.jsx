@@ -26,6 +26,13 @@ const Step3 = ({ name, onDataChange, initialData }) => {
   }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns]);
 
   useEffect(() => {
+    setSelectedConnections(initialData.selectedConnections || []);
+    setSelectedSchemas(initialData.selectedSchemas || []);
+    setSelectedTables(initialData.selectedTables || []);
+    setSelectedColumns(initialData.selectedColumns || []);
+  }, [initialData]);
+
+  useEffect(() => {
     console.log("initial data for step 3 is ====>", initialData)
     fetchData();
   }, []);
@@ -103,61 +110,90 @@ const Step3 = ({ name, onDataChange, initialData }) => {
     resetList.forEach(reset => reset([]));
   };
 
+  const handleSelectAll = (options, setter, resetList = []) => {
+    setter(prev => {
+      // If all options are already selected, deselect all
+      if (options.every(option => prev.includes(option))) {
+        return [];
+      }
+      // Otherwise select all filtered options
+      return [...new Set([...prev, ...options])];
+    });
+    resetList.forEach(reset => reset([]));
+  };
+
   const toggleDropdown = (dropdown) => {
     setOpenDropdown(openDropdown === dropdown ? null : dropdown);
   };
 
-  const renderSearchableSelect = (label, options, selectedValues, setSelectedValues, searchValue, setSearchValue, resetList = []) => (
-    <div className="relative">
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <div
-        className="w-full p-2 border border-gray-300 rounded-md bg-white cursor-pointer h-10 flex items-center overflow-x-auto no-scrollbar"
-        onClick={() => toggleDropdown(label)}
-        title={selectedValues.length > 0 ? selectedValues.join(', ') : ''}
-      >
-        <span className="whitespace-nowrap">
-          {selectedValues.length > 0
-            ? selectedValues.slice(0, 3).join(', ') + (selectedValues.length > 3 ? ', ...' : '')
-            : `Select ${label}`}
-        </span>
-      </div>
-      <style jsx>{`
-        .no-scrollbar {
-          -ms-overflow-style: none; /* IE and Edge */
-          scrollbar-width: none; /* Firefox */
-        }
-        .no-scrollbar::-webkit-scrollbar {
-          display: none; /* Chrome, Safari, and Opera */
-        }
-      `}</style>
-      {openDropdown === label && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full p-2 border-b border-gray-200 outline-none"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-          />
-          {options.map((option) => (
-            <div
-              key={option}
-              className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
-              onClick={() => handleSelection(setSelectedValues, resetList)(option)}
-            >
-              <input
-                type="checkbox"
-                checked={selectedValues.includes(option)}
-                readOnly
-                className="mr-2"
-              />
-              <span>{option}</span>
-            </div>
-          ))}
+  const renderSearchableSelect = (label, options, selectedValues, setSelectedValues, searchValue, setSearchValue, resetList = []) => {
+    const allFilteredSelected = options.every(option => selectedValues.includes(option));
+    const someFilteredSelected = options.some(option => selectedValues.includes(option)) && !allFilteredSelected;
+
+    return (
+      <div className="relative">
+        <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+        <div
+          className="w-full p-2 border border-gray-300 rounded-md bg-white cursor-pointer h-10 flex items-center overflow-x-auto no-scrollbar"
+          onClick={() => toggleDropdown(label)}
+          title={selectedValues.length > 0 ? selectedValues.join(', ') : ''}
+        >
+          <span className="whitespace-nowrap">
+            {selectedValues.length > 0
+              ? selectedValues.slice(0, 3).join(', ') + (selectedValues.length > 3 ? ', ...' : '')
+              : `Select ${label}`}
+          </span>
         </div>
-      )}
-    </div>
-  );
+        <style jsx>{`
+          .no-scrollbar {
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+          }
+          .no-scrollbar::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, and Opera */
+          }
+        `}</style>
+        {openDropdown === label && (
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            <div className="sticky top-0 bg-white z-10">
+              <input
+                type="text"
+                placeholder="Search..."
+                className="w-full p-2 border-b border-gray-200 outline-none"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+              />
+              <div className="flex items-center p-2 border-b border-gray-200 hover:bg-gray-100 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  indeterminate={someFilteredSelected}
+                  onChange={() => handleSelectAll(options, setSelectedValues, resetList)}
+                  className="mr-2"
+                />
+                <span className="font-medium">Select All</span>
+              </div>
+            </div>
+            {options.map((option) => (
+              <div
+                key={option}
+                className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
+                onClick={() => handleSelection(setSelectedValues, resetList)(option)}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedValues.includes(option)}
+                  readOnly
+                  className="mr-2"
+                />
+                <span>{option}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   if (loading) {
     return (

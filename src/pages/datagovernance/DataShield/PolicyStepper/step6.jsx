@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
 
+
 const Step6 = ({ policyData, onDataChange }) => {
     const permissionOptions = [
         'read',
@@ -10,33 +11,22 @@ const Step6 = ({ policyData, onDataChange }) => {
         'execute'
     ];
 
-    // Initialize from existing permissions or default to all false
-    const [permissions, setPermissions] = useState(
-        policyData.permissions || {
-            read: false,
-            update: false,
-            write: false,
-            delete: false,
-            execute: false
-        }
-    );
+    const permissions = policyData.permissions || {
+        read: false,
+        update: false,
+        write: false,
+        delete: false,
+        execute: false
+    };
 
-    const [selectAll, setSelectAll] = useState(false);
-
-    // Update parent when permissions change
-    useEffect(() => {
-        onDataChange({ permissions });
-    }, [permissions]);
+    const selectAll = Object.values(permissions).every(val => val);
 
     const handlePermissionChange = (permission) => {
         const newPermissions = {
             ...permissions,
             [permission]: !permissions[permission]
         };
-        setPermissions(newPermissions);
-        
-        // Update select all status
-        setSelectAll(Object.values(newPermissions).every(val => val));
+        onDataChange({ permissions: newPermissions });
     };
 
     const handleSelectAll = () => {
@@ -46,8 +36,7 @@ const Step6 = ({ policyData, onDataChange }) => {
             return acc;
         }, {});
         
-        setPermissions(newPermissions);
-        setSelectAll(newSelectAll);
+        onDataChange({ permissions: newPermissions });
     };
 
     return (

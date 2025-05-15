@@ -429,25 +429,80 @@ const Policy = () => {
         })
 
         setStep1Data({
-        selectedPolicy: '',
-        description: '',
-        selectedSubPolicy: '',
-        subPolicyDescription: ''
-    });
+            selectedPolicy: '',
+            description: '',
+            selectedSubPolicy: '',
+            subPolicyDescription: ''
+        });
 
-    setStep2Data({
-        selectedRole: '',
-        selectedGroup: '',
-        selectedSubgroup: ''
-    });
+        setStep2Data({
+            selectedRole: '',
+            selectedGroup: '',
+            selectedSubgroup: ''
+        });
 
-    setStep3Data({
-        selectedConnections: [],
-        selectedSchemas: [],
-        selectedTables: [],
-        selectedColumns: []
-    });
+        setStep3Data({
+            selectedConnections: [],
+            selectedSchemas: [],
+            selectedTables: [],
+            selectedColumns: []
+        });
     }
+
+    const handleClear = () => {
+        switch (activeStep) {
+            case 0:
+                setStep1Data({
+                    selectedPolicy: '',
+                    description: '',
+                    sub_policy_name: '',
+                    sub_policy_description: ''
+                });
+                break;
+            case 1:
+                setStep2Data({
+                    selectedRole: '',
+                    selectedGroup: '',
+                    selectedSubgroup: ''
+                });
+                break;
+            case 2:
+                setStep3Data({
+                    selectedConnections: [],
+                    selectedSchemas: [],
+                    selectedTables: [],
+                    selectedColumns: []
+                });
+                break;
+            case 3:
+                setPolicyData(prev => ({
+                    ...prev,
+                    row_access_control: {}
+                }));
+                break;
+            case 4:
+                setPolicyData(prev => ({
+                    ...prev,
+                    column_access_control: {}
+                }));
+                break;
+                case 5:
+            // Clear permissions for Step 6
+            setPolicyData(prev => ({
+                ...prev,
+                permissions: {
+                    read: false,
+                    update: false,
+                    write: false,
+                    delete: false,
+                    execute: false
+                }
+            }));
+            break;
+            default:
+                break;
+        }
+    };
 
     return (
         <>
@@ -734,8 +789,10 @@ const Policy = () => {
                         {activeStep != 6 && (
                             <div className="flex justify-between mt-7">
                                 <div className="flex gap-3">
-                                    <button className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
-                                        Cancel
+                                    <button
+                                        onClick={handleClear}
+                                        className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
+                                        Clear
                                     </button>
                                     <button
                                         onClick={handleNext}
