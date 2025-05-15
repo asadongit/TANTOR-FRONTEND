@@ -9,7 +9,6 @@ import {
 const components = [
   { id: "define", name: "Define", icon: FileSpreadsheet },
   { id: "source", name: "Source", icon: FileSpreadsheet },
-  { id: "filter", name: "Filter", icon: FileSpreadsheet },
 ];
 
 export function RuleSidebar() {

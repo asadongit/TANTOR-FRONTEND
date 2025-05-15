@@ -753,9 +753,9 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-[90vw] max-w-[1000px] max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-lg w-[95vw] max-w-[1400px] h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="p-2 pl-4 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
+        <div className="p-3 pl-6 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
           <h2 className="text-xl font-semibold">Filter</h2>
           <button
             onClick={(e) => {
@@ -769,7 +769,7 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
         </div>
 
         {/* Content */}
-        <div className="p-4 flex-1 overflow-auto">
+        <div className="p-6 flex-1 overflow-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-black">Advanced SQL Mode</span>
