@@ -1,269 +1,266 @@
-import {
-    Box,
-    InputLabel,
-    MenuItem,
-    FormControl,
-    Select,
-    OutlinedInput,
-    ListItemText,
-    ListSubheader,
-    TextField,
-    Button,
-    IconButton,
-    Divider,
-    Chip,
-    Typography
-} from '@mui/material';
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
 const Step5 = ({ policyData, onDataChange }) => {
-    const [selectedTable, setSelectedTable] = useState('');
-    const [tableSearch, setTableSearch] = useState('');
+  const [selectedTable, setSelectedTable] = useState('');
+  const [tableSearch, setTableSearch] = useState('');
+  const [openTableDropdown, setOpenTableDropdown] = useState(false);
 
-    // Initialize from existing column_access_control
-    const initialControls = policyData.column_access_control || {};
-    const [tableControls, setTableControls] = useState(initialControls);
+  const initialControls = policyData.column_access_control || {};
+  const [tableControls, setTableControls] = useState(initialControls);
 
-    // Extract all tables from data_connection
-    const allTables = policyData.data_connection.flatMap(conn => 
-        conn.tables.map(table => ({
-            fullPath: table,
-            connection: conn.connection,
-            schema: conn.schema,
-            tableName: table.split('.').pop()
-        }))
+  const allTables = policyData.data_connection.flatMap((conn) =>
+    conn.tables.map((table) => ({
+      fullPath: table,
+      connection: conn.connection,
+      schema: conn.schema,
+      tableName: table.split('.').pop(),
+    }))
+  );
+
+  const filteredTables = allTables.filter((table) =>
+    table.fullPath.toLowerCase().includes(tableSearch.toLowerCase())
+  );
+
+  const getColumnsForSelectedTable = () => {
+    if (!selectedTable) return [];
+    const tableConn = policyData.data_connection.find((conn) =>
+      conn.tables.includes(selectedTable)
     );
+    return (
+      tableConn?.columns
+        .filter((col) => col.startsWith(selectedTable))
+        .map((col) => ({
+          fullPath: col,
+          columnName: col.split('.').pop(),
+        })) || []
+    );
+  };
 
-    // Get columns for selected table
-    const getColumnsForSelectedTable = () => {
-        if (!selectedTable) return [];
-        
-        const tableConn = policyData.data_connection.find(conn => 
-            conn.tables.includes(selectedTable)
-        );
-        
-        return tableConn?.columns
-            .filter(col => col.startsWith(selectedTable))
-            .map(col => ({
-                fullPath: col,
-                columnName: col.split('.').pop()
-            })) || [];
+  const handleTableChange = (value) => {
+    setSelectedTable(value);
+    setOpenTableDropdown(false);
+  };
+
+  const handleAddControl = () => {
+    if (!selectedTable) return;
+    const newControl = {
+      column: '',
+      type: 'masking',
     };
+    setTableControls((prev) => ({
+      ...prev,
+      [selectedTable]: [...(prev[selectedTable] || []), newControl],
+    }));
+  };
 
-    const handleTableChange = (event) => {
-        setSelectedTable(event.target.value);
+  const handleControlChange = (table, index, field, value) => {
+    const updatedControls = {
+      ...tableControls,
+      [table]: tableControls[table].map((control, i) =>
+        i === index ? { ...control, [field]: value } : control
+      ),
     };
+    setTableControls(updatedControls);
+    onDataChange({ column_access_control: updatedControls });
+  };
 
-    const handleAddControl = () => {
-        if (!selectedTable) return;
-        
-        const newControl = {
-            column: '',
-            type: 'masking' // Default to masking
-        };
-
-        setTableControls(prev => ({
-            ...prev,
-            [selectedTable]: [...(prev[selectedTable] || []), newControl]
-        }));
+  const handleRemoveControl = (table, index) => {
+    const updatedControls = {
+      ...tableControls,
+      [table]: tableControls[table].filter((_, i) => i !== index),
     };
+    if (updatedControls[table].length === 0) {
+      delete updatedControls[table];
+    }
+    setTableControls(updatedControls);
+    onDataChange({ column_access_control: updatedControls });
+  };
 
-    const handleControlChange = (table, index, field, value) => {
-        const updatedControls = {
-            ...tableControls,
-            [table]: tableControls[table].map((control, i) => 
-                i === index ? { ...control, [field]: value } : control
-            )
-        };
-        
-        setTableControls(updatedControls);
-        onDataChange({ column_access_control: updatedControls });
-    };
+  const isControlComplete = (control) => {
+    return control.column;
+  };
 
-    const handleRemoveControl = (table, index) => {
-        const updatedControls = {
-            ...tableControls,
-            [table]: tableControls[table].filter((_, i) => i !== index)
-        };
-        
-        // Remove table entry if no controls left
-        if (updatedControls[table].length === 0) {
-            delete updatedControls[table];
-        }
-        
-        setTableControls(updatedControls);
-        onDataChange({ column_access_control: updatedControls });
-    };
-
-    const isControlComplete = (control) => {
-        return control.column;
-    };
-
-    const renderTableSelect = () => (
-        <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel>Select Table</InputLabel>
-            <Select
-                value={selectedTable}
-                onChange={handleTableChange}
-                input={<OutlinedInput label="Select Table" />}
-                MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
+  const renderTableSelect = () => (
+    <div className="relative mb-6">
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Select Table
+      </label>
+      <div
+        className="w-full p-2 border border-gray-300 rounded-md bg-white cursor-pointer h-10 flex items-center"
+        onClick={() => setOpenTableDropdown((prev) => !prev)}
+      >
+        <span className="whitespace-nowrap">
+          {selectedTable
+            ? allTables.find((t) => t.fullPath === selectedTable)?.tableName ||
+              'Select Table'
+            : 'Select Table'}
+        </span>
+      </div>
+      {openTableDropdown && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+          <input
+            type="text"
+            placeholder="Search tables..."
+            className="w-full p-2 border-b border-gray-200 outline-none"
+            value={tableSearch}
+            onChange={(e) => setTableSearch(e.target.value)}
+          />
+          {filteredTables.map((table) => (
+            <div
+              key={table.fullPath}
+              className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
+              onClick={() => handleTableChange(table.fullPath)}
             >
-                <ListSubheader>
-                    <TextField
-                        size="small"
-                        placeholder="Search tables..."
-                        fullWidth
-                        value={tableSearch}
-                        onChange={(e) => setTableSearch(e.target.value)}
-                        autoFocus
-                    />
-                </ListSubheader>
-                {allTables
-                    .filter(table => 
-                        table.fullPath.toLowerCase().includes(tableSearch.toLowerCase())
-                    )
-                    .map((table) => (
-                        <MenuItem key={table.fullPath} value={table.fullPath}>
-                            <ListItemText 
-                                primary={table.tableName}
-                                secondary={`${table.connection} > ${table.schema}`}
-                            />
-                        </MenuItem>
-                    ))
-                }
-            </Select>
-        </FormControl>
-    );
+              <span className="font-medium">{table.tableName}</span>
+              <span className="text-sm text-gray-500 ml-2">
+                {table.connection} &gt; {table.schema}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
-    const renderTableChips = () => (
-        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-            {Object.keys(tableControls).map(table => (
-                <Chip
-                    key={table}
-                    label={table.split('.').pop()}
-                    onClick={() => setSelectedTable(table)}
-                    color={selectedTable === table ? 'primary' : 'default'}
-                    sx={{ 
-                        borderRadius: 1,
-                        fontWeight: selectedTable === table ? 'bold' : 'normal',
-                        ...(selectedTable === table && {
-                            backgroundColor: '#8e78b7',
-                            '&:hover': {
-                                backgroundColor: '#7b689e'
-                            }
-                        })
-                    }}
-                />
-            ))}
-        </Box>
-    );
+  const renderTableChips = () => (
+    <div className="flex flex-wrap gap-2 mb-4">
+      {Object.keys(tableControls).map((table) => (
+        <span
+          key={table}
+          className={`px-3 py-1 rounded-sm text-sm font-medium cursor-pointer ${
+            selectedTable === table
+              ? 'text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+          style={{
+            backgroundColor: selectedTable === table ? '#8e78b7' : undefined,
+            ...(selectedTable === table && {
+              ':hover': { backgroundColor: '#7b689e' },
+            }),
+          }}
+          onClick={() => setSelectedTable(table)}
+        >
+          {table.split('.').pop()}
+        </span>
+      ))}
+    </div>
+  );
 
-    const renderControlItems = () => {
-        if (!selectedTable) return null;
-        const controls = tableControls[selectedTable] || [];
-
-        return (
-            <Box sx={{ 
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 2,
-                p: 2,
-                mb: 3
-            }}>
-                <Box sx={{ 
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    mb: 2
-                }}>
-                    <Typography variant="subtitle1">
-                        Column Controls for: {selectedTable.split('.').pop()}
-                    </Typography>
-                    <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Plus size={16} />}
-                        onClick={handleAddControl}
-                        disabled={controls.length > 0 && !isControlComplete(controls[controls.length - 1])}
-                        sx={{
-                            '&:not(:disabled)': {
-                                borderColor: '#8e78b7',
-                                color: '#8e78b7',
-                                '&:hover': {
-                                    borderColor: '#7b689e',
-                                    backgroundColor: 'rgba(142, 120, 183, 0.04)'
-                                }
-                            }
-                        }}
-                    >
-                        Add Column Control
-                    </Button>
-                </Box>
-
-                {controls.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                        No column controls added yet
-                    </Typography>
-                ) : (
-                    <Box sx={{ maxHeight: 400, overflowY: 'auto', marginTop: "5px"}}>
-                        {controls.map((control, index) => (
-                            <Box key={index} sx={{ mb: 2 }}>
-                                <Box display="flex" alignItems="center" gap={1.5} mb={1} mt={1}>
-                                    <FormControl sx={{ minWidth: 180 }}>
-                                        <InputLabel>Column</InputLabel>
-                                        <Select
-                                            value={control.column}
-                                            onChange={(e) => handleControlChange(selectedTable, index, 'column', e.target.value)}
-                                            label="Column"
-                                            size="small"
-                                        >
-                                            {getColumnsForSelectedTable().map(col => (
-                                                <MenuItem key={col.fullPath} value={col.fullPath}>
-                                                    {col.columnName}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-
-                                    <FormControl sx={{ minWidth: 120 }}>
-                                        <InputLabel>Type</InputLabel>
-                                        <Select
-                                            value={control.type}
-                                            onChange={(e) => handleControlChange(selectedTable, index, 'type', e.target.value)}
-                                            label="Type"
-                                            size="small"
-                                        >
-                                            <MenuItem value="masking">Masking</MenuItem>
-                                            <MenuItem value="hashing">Hashing</MenuItem>
-                                        </Select>
-                                    </FormControl>
-
-                                    <IconButton 
-                                        onClick={() => handleRemoveControl(selectedTable, index)}
-                                        size="small"
-                                        sx={{ color: 'error.main' }}
-                                    >
-                                        <Trash2 size={18} />
-                                    </IconButton>
-                                </Box>
-                            </Box>
-                        ))}
-                    </Box>
-                )}
-            </Box>
-        );
-    };
+  const renderControlItems = () => {
+    if (!selectedTable) return null;
+    const controls = tableControls[selectedTable] || [];
 
     return (
-        <Box>
-            <Typography variant="h6" sx={{ mb: 3, color: '#8e78b7' }}>Column Access Control</Typography>
-            
-            {renderTableSelect()}
-            {Object.keys(tableControls).length > 0 && renderTableChips()}
-            {renderControlItems()}
-        </Box>
+      <div className="border border-gray-200 rounded-lg p-4 mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h4 className="text-base font-medium text-gray-700">
+            Column Controls for: {selectedTable.split('.').pop()}
+          </h4>
+          <button
+            className={`flex items-center px-3 py-1 border rounded-md text-sm font-medium ${
+              controls.length > 0 && !isControlComplete(controls[controls.length - 1])
+                ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+                : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
+            }`}
+            style={{
+              borderColor:
+                controls.length > 0 &&
+                !isControlComplete(controls[controls.length - 1])
+                  ? undefined
+                  : '#8e78b7',
+            }}
+            onClick={handleAddControl}
+            disabled={
+              controls.length > 0 &&
+              !isControlComplete(controls[controls.length - 1])
+            }
+          >
+            <Plus size={16} className="mr-1" />
+            Add Column Control
+          </button>
+        </div>
+
+        {controls.length === 0 ? (
+          <p className="text-center text-gray-500 text-sm py-4">
+            No column controls added yet
+          </p>
+        ) : (
+          <div className="max-h-96 overflow-y-auto">
+            {controls.map((control, index) => (
+              <div key={index} className="mb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="min-w-[180px]">
+                    <label className="block text-sm text-gray-700 mb-1">
+                      Column
+                    </label>
+                    <select
+                      className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                      value={control.column}
+                      onChange={(e) =>
+                        handleControlChange(
+                          selectedTable,
+                          index,
+                          'column',
+                          e.target.value
+                        )
+                      }
+                    >
+                      <option value="">Select Column</option>
+                      {getColumnsForSelectedTable().map((col) => (
+                        <option key={col.fullPath} value={col.fullPath}>
+                          {col.columnName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="min-w-[120px]">
+                    <label className="block text-sm text-gray-700 mb-1">
+                      Type
+                    </label>
+                    <select
+                      className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                      value={control.type}
+                      onChange={(e) =>
+                        handleControlChange(
+                          selectedTable,
+                          index,
+                          'type',
+                          e.target.value
+                        )
+                      }
+                    >
+                      <option value="masking">Masking</option>
+                      <option value="hashing">Hashing</option>
+                    </select>
+                  </div>
+
+                  <button
+                    className="p-2 text-red-600 hover:text-red-700"
+                    onClick={() => handleRemoveControl(selectedTable, index)}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     );
+  };
+
+  return (
+    <div>
+      <h3 className="text-lg font-medium mb-6" style={{ color: '#8e78b7' }}>
+        Column Access Control
+      </h3>
+      {renderTableSelect()}
+      {Object.keys(tableControls).length > 0 && renderTableChips()}
+      {renderControlItems()}
+    </div>
+  );
 };
 
 export default Step5;
