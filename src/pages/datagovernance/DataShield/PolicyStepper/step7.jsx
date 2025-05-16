@@ -101,7 +101,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData }) =>
                         className="px-7 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 w-fit"
                         disabled={isSubmitting}
                     >
-                        Edit Policy
+                        Back
                     </button>
                 </div>
             </div>
