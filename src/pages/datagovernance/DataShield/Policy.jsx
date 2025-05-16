@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import {
     Trash2,
@@ -16,7 +16,9 @@ import {
     User, Group, Users, Shield,
     UserPlus,
     UserRoundCog,
-    BadgeCheck
+    BadgeCheck,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -24,8 +26,11 @@ import { Stepper, Step, StepLabel, Button, Box, Typography } from '@mui/material
 import Step1 from "./PolicyStepper/step1";
 import Step2 from "./PolicyStepper/step2";
 import Step3 from "./PolicyStepper/step3";
+import Step4 from "./PolicyStepper/step4";
 import Step5 from "./PolicyStepper/step5";
 import Step6 from "./PolicyStepper/step6";
+import Step7 from "./PolicyStepper/step7";
+import { useAuth } from "../../../context/AuthContext";
 
 
 const Toggle = ({ enabled, onToggle }) => {
@@ -44,49 +49,90 @@ const Toggle = ({ enabled, onToggle }) => {
 };
 
 const Policy = () => {
-    const [cards, setCards] = useState
-        ([
-            {
-                title: "Data management",
-                count: 7,
-                enabled: true,
-                icon: "material-symbols:tab-group-outline",
-                bgcolor: "bg-[#8d77ba] bg-opacity-25",
-                iconcolor: "text-[#8d77ba]"
-            },
-            {
-                title: "Data Quality",
-                count: 5,
-                enabled: true,
-                icon: "material-symbols:tab-group-outline",
-                bgcolor: "bg-[#8d77ba] bg-opacity-25",
-                iconcolor: "text-[#8d77ba]"
-            },
-            {
-                title: "Data security",
-                count: 8,
-                enabled: false,
-                icon: "material-symbols:tab-group-outline",
-                bgcolor: "bg-[#8d77ba] bg-opacity-25",
-                iconcolor: "text-[#8d77ba]"
-            },
-            {
-                title: "Compliance",
-                count: 8,
-                enabled: true,
-                icon: "material-symbols:tab-group-outline",
-                bgcolor: "bg-[#8d77ba] bg-opacity-25",
-                iconcolor: "text-[#8d77ba]"
-            },
-            {
-                title: "Retention & Archival",
-                count: 8,
-                enabled: true,
-                icon: "material-symbols:tab-group-outline",
-                bgcolor: "bg-[#8d77ba] bg-opacity-25",
-                iconcolor: "text-[#8d77ba]"
+    const { token } = useAuth();
+
+    const [policy, setPolicy] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // if (!initialFetchDoneRef.current) {
+        //   initialFetchDoneRef.current = true;
+        //   Promise.all([
+        FetchPolicyDashboardData()
+        fetchPolicyListData()
+        //   ]).finally(() => {
+        // setLoading(false);
+        //   });
+        // }
+    }, []);
+
+    const FetchPolicyDashboardData = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policycards`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
             }
-        ]);
+            const data = await response.json();
+            console.log("data iss policy is ====>", data.policy_name_counts)
+
+            const transformedRoles = data?.policy_name_counts.map(policy => ({
+                title: policy.policy_type,
+                count: policy.count,
+                enabled: policy.policy_status || "Disabled",
+                icon: "material-symbols:tab-group-outline",
+                bgcolor: "bg-[#8d77ba] bg-opacity-25",
+                iconcolor: "text-[#8d77ba]",
+            }));
+
+            setPolicy(transformedRoles);
+        } catch (error) {
+            console.error('Error fetching role data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchPolicyListData = async () => {
+        try {
+            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policylist`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data = await response.json();
+            console.log("table datta isss =====>", data)
+
+            const transformedData = data?.policies.map(policy => {
+                return {
+                    id: policy.id,
+                    Type: policy.policy_type,
+                    Name: policy.policy_name,
+                    Description: policy.policy_description,
+                    Status: policy.policy_status,
+                    CompletedDate: policy.completed_date,
+                    expiryDate: policy.expiry_date,
+                    UpdatedDate: policy.updated_date,
+                    Owner: policy.owner
+                };
+            });
+
+            setSampleData(transformedData);
+        } catch (error) {
+            console.error('Error fetching role list data:', error);
+        }
+    };
 
     const togglePolicy = (index) => {
         const newCards = [...cards];
@@ -96,16 +142,7 @@ const Policy = () => {
 
     const navigate = useNavigate();
 
-    const [sampleData, setSampleData] = useState([
-        { id: '1', Type: "Data agent", Name: 'Data access', Description: 'Outline was access data', Status: 'Active', CompletedDate: '26/01/2025', expiryDate: '27/01/2025', UpdatedDate: '27/01/2025', Owner: 'John Doe' },
-        { id: '1', Type: "Data agent", Name: 'Data access', Description: 'Outline was access data', Status: 'Draft', CompletedDate: '26/01/2025', expiryDate: '27/01/2025', UpdatedDate: '27/01/2025', Owner: 'John Doe' },
-        { id: '1', Type: "Data agent", Name: 'Data access', Description: 'Outline was access data', Status: 'Draft', CompletedDate: '26/01/2025', expiryDate: '27/01/2025', UpdatedDate: '27/01/2025', Owner: 'John Doe' },
-        { id: '1', Type: "Data agent", Name: 'Data access', Description: 'Outline was access data', Status: 'Active', CompletedDate: '26/01/2025', expiryDate: '27/01/2025', UpdatedDate: '27/01/2025', Owner: 'John Doe' },
-        { id: '1', Type: "Data agent", Name: 'Data access', Description: 'Outline was access data', Status: 'Active', CompletedDate: '26/01/2025', expiryDate: '27/01/2025', UpdatedDate: '27/01/2025', Owner: 'John Doe' },
-        { id: '1', Type: "Data agent", Name: 'Data access', Description: 'Outline was access data', Status: 'Active', CompletedDate: '26/01/2025', expiryDate: '27/01/2025', UpdatedDate: '27/01/2025', Owner: 'John Doe' },
-        { id: '1', Type: "Data agent", Name: 'Data access', Description: 'Outline was access data', Status: 'Active', CompletedDate: '26/01/2025', expiryDate: '27/01/2025', UpdatedDate: '27/01/2025', Owner: 'John Doe' },
-        { id: '1', Type: "Data agent", Name: 'Data access', Description: 'Outline was access data', Status: 'Draft', CompletedDate: '26/01/2025', expiryDate: '27/01/2025', UpdatedDate: '27/01/2025', Owner: 'John Doe' },
-    ]);
+    const [sampleData, setSampleData] = useState([]);
     const [activeMenu, setActiveMenu] = useState(null);
 
     const handleClickOutside = () => {
@@ -117,54 +154,301 @@ const Policy = () => {
     const steps = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Confirmation'];
 
     const [activeStep, setActiveStep] = useState(0);
+    const [policyData, setPolicyData] = useState({
+        policy_type: '',
+        policy_description: '',
+        sub_policy_name: '',
+        sub_policy_description: '',
+        policy_name: '',
+        user_selections: {
+
+            role: '',
+            group: [],
+            persona: '',
+            subGroup: []
+
+        },
+        data_connection: []
+    });
+
+    // Track each step's data separately
+    const [step1Data, setStep1Data] = useState({
+        selectedPolicy: '',
+        description: '',
+        selectedSubPolicy: '',
+        subPolicyDescription: ''
+    });
+
+    const [step2Data, setStep2Data] = useState({
+        selectedRole: '',
+        selectedGroup: '',
+        selectedSubgroup: ''
+    });
+
+    const [step3Data, setStep3Data] = useState({
+        selectedConnections: [],
+        selectedSchemas: [],
+        selectedTables: [],
+        selectedColumns: []
+    });
 
     const handleNext = () => {
-        if (activeStep < 6) {
+        // Validate and save current step data before proceeding
+        switch (activeStep) {
+            case 0:
+                // if (!step1Data.selectedPolicy) {
+                //     alert('Please select a policy type');
+                //     return;
+                // }
+                updateStep1Data(step1Data);
+                break;
+            case 1:
+                // if (!step2Data.selectedGroup) {
+                //     alert('Please select at least one group');
+                //     return;
+                // }
+                updateStep2Data(step2Data);
+                break;
+            case 2:
+                updateStep3Data(step3Data);
+                break;
+            // Add cases for other steps
+        }
+
+        if (activeStep < steps.length - 1) {
             setActiveStep(prev => prev + 1);
         }
     };
 
+    const updateStep1Data = (data) => {
+        setPolicyData(prev => ({
+            ...prev,
+            policy_type: data.selectedPolicy,
+            policy_description: data.description,
+            sub_policy_name: data.sub_policy_name,  // Make sure this matches
+            sub_policy_description: data.sub_policy_description,
+            policy_name: data.policy_name  // If you want this too
+        }));
+    };
+
+    const updateStep2Data = (data) => {
+        const newData = {
+            ...policyData,
+            user_selections: {
+
+                ...policyData.user_selections.users,
+                role: data.selectedRole,
+                group: data.selectedGroup,
+                persona: '',
+                subGroup: data.selectedSubgroup
+
+            }
+        };
+        setPolicyData(newData);
+    };
+
+
+    const updateStep3Data = (data) => {
+        const connections = processConnectionData(
+            data.selectedConnections,
+            data.selectedSchemas,
+            data.selectedTables,
+            data.selectedColumns
+        );
+
+        setPolicyData(prev => ({
+            ...prev,
+            data_connection: connections
+        }));
+    };
+
+    // Helper functions
+    const processConnectionData = (connections, schemas, tables, columns) => {
+        const result = [];
+
+        // Group by connection
+        const connectionGroups = {};
+        schemas.forEach(schema => {
+            const [conn, schemaName] = schema.split('.');
+            if (!connectionGroups[conn]) {
+                connectionGroups[conn] = {
+                    connection: conn,
+                    schemas: {}
+                };
+            }
+            connectionGroups[conn].schemas[schema] = {
+                schema: schema,
+                tables: new Set(),
+                columns: new Set()
+            };
+        });
+
+        // Add tables
+        tables.forEach(table => {
+            const parts = table.split('.');
+            const conn = parts[0];
+            const schema = parts.slice(0, 2).join('.');
+            if (connectionGroups[conn]?.schemas[schema]) {
+                connectionGroups[conn].schemas[schema].tables.add(table);
+            }
+        });
+
+        columns.forEach(column => {
+            const parts = column.split('.');
+            const conn = parts[0];
+            const schema = parts.slice(0, 2).join('.');
+            if (connectionGroups[conn]?.schemas[schema]) {
+                connectionGroups[conn].schemas[schema].columns.add(column);
+            }
+        });
+
+
+        Object.values(connectionGroups).forEach(connGroup => {
+            Object.values(connGroup.schemas).forEach(schema => {
+                result.push({
+                    connection: connGroup.connection,
+                    schema: schema.schema,
+                    tables: Array.from(schema.tables),
+                    columns: Array.from(schema.columns)
+                });
+            });
+        });
+
+        return result;
+    };
+
+
+    // const handleNext = () => {
+    //     if (activeStep < 6) {
+    //         setActiveStep(prev => prev + 1);
+    //     }
+    // };
+
     const handleBack = () => {
         setActiveStep((prevActiveStep) => prevActiveStep - 1);
+    };
+
+    useEffect(() => {
+        console.log("Current Policy Data:", JSON.stringify(policyData, null, 2));
+    }, [policyData]);
+
+    const updatePolicyData = (newData) => {
+        setPolicyData(prev => ({ ...prev, ...newData }));
     };
 
     const renderStepContent = (step) => {
         switch (step) {
             case 0:
                 return (
-                    <Step1 />
+                    <Step1 onDataChange={setStep1Data} initialData={step1Data} />
                 );
 
             case 1:
                 return (
-                    <Step2 />
+                    <Step2 onDataChange={setStep2Data} initialData={step2Data} />
                 );
             case 2:
                 return (
-                    <Step3 name='Data' />
+                    <Step3 name='Data' onDataChange={setStep3Data} initialData={step3Data} />
                 );
 
             case 3:
                 return (
-                    <Step3 name='Access control - Raw' />
+                    <Step4
+                        policyData={policyData}
+                        onDataChange={(data) => setPolicyData(prev => ({ ...prev, ...data }))}
+                    />
                 );
 
             case 4:
                 return (
-                    <Step3 name='Access control - Column' />
+                    <Step5 policyData={policyData} onDataChange={updatePolicyData} />
                 );
             case 5:
                 return (
-                    <Step5 />
+                    <Step6 policyData={policyData} onDataChange={updatePolicyData} />
                 );
             case 6:
                 return (
-                    <Step6 setIsOpen={setIsOpen} />
+                    <Step7
+                        setIsOpen={setIsOpen}
+                        policyData={policyData}
+                        setActiveStep={setActiveStep}
+                        fetchPolicyListData={fetchPolicyListData}
+                    />
                 )
             default:
                 return
         }
     };
+
+    const [page, setPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    // Pagination handlers
+    const handleItemsPerPageChange = (e) => {
+        setItemsPerPage(Number(e.target.value));
+        setPage(1);
+    };
+
+    const handlePrevPage = () => {
+        if (page > 1) setPage(page - 1);
+    };
+
+    const handleNextPage = () => {
+        const maxPage = Math.ceil(sampleData.length / itemsPerPage);
+        if (page < maxPage) setPage(page + 1);
+    };
+
+    // Paginated data calculation
+    const paginatedData = useMemo(() => {
+        const startIndex = (page - 1) * itemsPerPage;
+        return sampleData.slice(startIndex, startIndex + itemsPerPage);
+    }, [sampleData, page, itemsPerPage]);
+
+    // Pagination info
+    const totalItems = sampleData.length;
+    const startItem = totalItems === 0 ? 0 : (page - 1) * itemsPerPage + 1;
+    const endItem = Math.min(page * itemsPerPage, totalItems);
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+    const setData = () => {
+        setPolicyData({
+            policy_type: '',
+            policy_description: '',
+            sub_policy_name: '',
+            sub_policy_description: '',
+            policy_name: '',
+            user_selections: {
+                role: '',
+                group: [],
+                persona: '',
+                subGroup: []
+            },
+            data_connection: []
+        })
+
+        setStep1Data({
+        selectedPolicy: '',
+        description: '',
+        selectedSubPolicy: '',
+        subPolicyDescription: ''
+    });
+
+    setStep2Data({
+        selectedRole: '',
+        selectedGroup: '',
+        selectedSubgroup: ''
+    });
+
+    setStep3Data({
+        selectedConnections: [],
+        selectedSchemas: [],
+        selectedTables: [],
+        selectedColumns: []
+    });
+    }
+
     return (
         <>
             <div>
@@ -197,6 +481,7 @@ const Policy = () => {
                             onClick={() => {
                                 setIsOpen(true)
                                 setActiveStep(0)
+                                setData()
                             }}
                             className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-4 py-2.5 me-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                         >
@@ -209,120 +494,192 @@ const Policy = () => {
                 </div>
 
                 <div className="mt-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                        {cards.map((card, index) => (
-                            <div
-                                key={index}
-                                className="bg-white rounded-lg shadow-sm border border-gray-100"
-                            >
-                                <div className="py-4 px-3 h-full flex flex-col justify-between ">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex gap-1">
-                                            <div
-                                                className={`flex items-center justify-center w-9 h-9 rounded-full ${card.bgcolor} ${card.iconcolor} mr-2 shrink-0`}
-                                            >
-                                                <Icon icon={card.icon} className="w-5 h-4" />
+                    {loading ? (
+                        <div className="flex justify-center items-center h-64">
+                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#8e78b7]"></div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                            {policy.map((card, index) => (
+                                <div
+                                    key={index}
+                                    className="bg-white rounded-lg shadow-sm border border-gray-100"
+                                >
+                                    <div className="py-4 px-3 h-full flex flex-col justify-between ">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex gap-1">
+                                                <div
+                                                    className={`flex items-center justify-center w-9 h-9 rounded-full ${card.bgcolor} ${card.iconcolor} mr-2 shrink-0`}
+                                                >
+                                                    <Icon icon={card.icon} className="w-5 h-4" />
+                                                </div>
+                                                <h3 className="text-lg font-semibold">{card.title}</h3>
                                             </div>
-                                            <h3 className="text-lg font-semibold">{card.title}</h3>
-                                        </div>
 
-                                        <button className="p-1 rounded-lg hover:bg-gray-100">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-col justify-between mt-1">
-                                        <div className="text-5xl font-semibold text-gray-800 ml-2">
-                                            {card.count.toString().padStart(2, "0")}
+                                            <button className="p-1 rounded-lg hover:bg-gray-100">
+                                                <MoreVertical className="h-4 w-4" />
+                                            </button>
                                         </div>
-                                        <div className="flex items-center gap-2 mt-6">
-                                            <Toggle
-                                                enabled={card.enabled}
-                                                onToggle={() => togglePolicy(index)}
-                                            />
-                                            <span
-                                                className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-red-500"
-                                                    }`}
-                                            >
-                                                {card.enabled ? "Enabled" : "Disabled"}
-                                            </span>
+                                        <div className="flex flex-col justify-between mt-1">
+                                            <div className="text-5xl font-semibold text-gray-800 ml-2">
+                                                {card.count.toString().padStart(2, "0")}
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-6">
+                                                <Toggle
+                                                    enabled={card.enabled}
+                                                    onToggle={() => togglePolicy(index)}
+                                                />
+                                                <span
+                                                    className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-red-500"
+                                                        }`}
+                                                >
+                                                    {card.enabled ? "Enabled" : "Disabled"}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div className="bg-white rounded-lg shadow mt-5 overflow-x-auto">
                     <table className="w-full table-auto">
                         <thead>
-                            <tr className="bg-[#29304a] text-white">
+                            <tr className="bg-[#29304a] text-white text-sm">
                                 <th className="text-left p-4">Id</th>
                                 <th className="text-left p-4">Type</th>
                                 <th className="text-left p-4">Name</th>
                                 <th className="text-left p-4">Description</th>
                                 <th className="text-center p-4">Status</th>
-                                <th className="text-left p-4">Completed Date</th>
+                                <th className="text-left p-4">Created Date</th>
                                 <th className="text-left p-4">Expiry Date</th>
                                 <th className="text-left p-4">Updated Date</th>
                                 <th className="text-left p-4">Owner</th>
                                 <th className="text-left p-4">Action</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {sampleData.map((user, index) => (
-                                <tr key={index} className="border-b">
-                                    <td className="p-4 text-gray-500">{user.id}</td>
-                                    <td className="p-4 text-gray-500">{user.Type}</td>
-                                    <td className="p-4 text-gray-500">{user.Name}</td>
-                                    <td className="p-4 text-gray-500">{user.Description}</td>
-                                    <td className="p-4 text-center">
-                                        <span
-                                            className={`px-5 py-1 rounded text-sm font-normal inline-block ${user.Status === "Active"
-                                                ? "text-green-600 bg-green-200"
-                                                : "text-gray-400 bg-gray-200"
-                                                }`}
-                                        >
-                                            {user.Status}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-gray-500 text-center">{user.CompletedDate}</td>
-                                    <td className="p-4 text-gray-500 text-center">{user.expiryDate}</td>
-                                    <td className="p-4 text-gray-500 text-center">{user.UpdatedDate}</td>
-                                    <td className="p-4 text-gray-500">{user.Owner}</td>
-                                    <td className="px-6 p-4 text-center">
-                                        <div className="relative">
-                                            <button
-                                                onClick={() => setActiveMenu(activeMenu === index ? null : index)}
-                                                className="p-1.5 rounded-full hover:bg-gray-100"
-                                            >
-                                                <MoreHorizontal className="h-5 w-5" />
-                                            </button>
-
-                                            {activeMenu === index && (
-                                                <>
-                                                    <div className="fixed inset-0 z-100" onClick={handleClickOutside} />
-                                                    <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                                                        <div className="flex items-center p-1 gap-1">
-                                                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                                                                <Pencil className="h-4 w-4" />
-                                                            </button>
-                                                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </button>
-                                                            <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                                                                <RotateCw className="h-4 w-4" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
+                        <tbody className="text-sm">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="10" className="p-4 text-center">
+                                        <div className="flex justify-center items-center h-20">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                paginatedData.map((policy, index) => (
+                                    <tr key={index} className="border-b">
+                                        <td className="p-4 text-gray-500">{policy.id}</td>
+                                        <td className="p-4 text-gray-500">{policy.Type}</td>
+                                        <td className="p-4 text-gray-500">{policy.Name}</td>
+                                        <td className="p-4 text-gray-500 max-w-xs truncate">{policy.Description}</td>
+                                        <td className="p-4 text-center">
+                                            <span
+                                                className={`px-5 py-1 rounded text-sm font-normal inline-block ${policy.Status?.toLowerCase() === "active" || "active"
+                                                    ? "text-green-600 bg-green-200"
+                                                    : "text-gray-400 bg-gray-200"
+                                                    }`}
+                                            >
+                                                {policy.Status || "Active"}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-gray-500 text-center">{policy.expiryDate || "-"}</td>
+                                        <td className="p-4 text-gray-500 text-center">{policy.expiryDate || "-"}</td>
+                                        <td className="p-4 text-gray-500 text-center">{policy.UpdatedDate || "-"}</td>
+                                        <td className="p-4 text-gray-500">{policy.Owner}</td>
+                                        <td className="px-6 p-4 text-center">
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setActiveMenu(activeMenu === index ? null : index)}
+                                                    className="p-1.5 rounded-full hover:bg-gray-100"
+                                                >
+                                                    <MoreHorizontal className="h-5 w-5" />
+                                                </button>
+
+                                                {activeMenu === index && (
+                                                    <>
+                                                        <div
+                                                            className="fixed inset-0 z-100"
+                                                            onClick={handleClickOutside}
+                                                        />
+                                                        <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                                            <div className="flex items-center p-1 gap-1">
+                                                                <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </button>
+                                                                <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+                                                                <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                                                    <RotateCw className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+
+                            {!loading && sampleData.length === 0 && (
+                                <tr>
+                                    <td colSpan="10" className="p-4 text-center text-gray-500">
+                                        No Policies found
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
+
+                    {/* Pagination controls */}
+                    <div className="flex flex-col md:flex-row items-center justify-between p-4 border-t">
+                        <div className="text-sm text-gray-500 mb-2 md:mb-0">
+                            {loading ? (
+                                <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
+                            ) : totalItems > 0 ? (
+                                `Showing ${startItem} to ${endItem} of ${totalItems} results`
+                            ) : (
+                                "No results found"
+                            )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-500">Show per page</span>
+                            <select
+                                className="border rounded p-1 text-sm"
+                                value={itemsPerPage}
+                                onChange={handleItemsPerPageChange}
+                                aria-label="Show per page"
+                                disabled={loading}
+                            >
+                                {[10, 25, 50].map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                ))}
+                            </select>
+                            <div className="flex items-center">
+                                <button
+                                    onClick={handlePrevPage}
+                                    className="p-1 border rounded-l hover:bg-gray-100 disabled:opacity-50"
+                                    disabled={page === 1 || loading}
+                                    aria-label="Previous page"
+                                >
+                                    <ChevronLeft size={20} />
+                                </button>
+                                <button
+                                    onClick={handleNextPage}
+                                    className="p-1 border rounded-r border-l-0 hover:bg-gray-100 disabled:opacity-50"
+                                    disabled={page >= totalPages || loading}
+                                    aria-label="Next page"
+                                >
+                                    <ChevronRight size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

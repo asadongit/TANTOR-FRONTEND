@@ -1,40 +1,169 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MoreVertical } from "lucide-react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
 import CatalogueChart from "./Components/CatalogueTrend";
-import Hive from './Components/Icons/Hive.png'
-import Oracle from './Components/Icons/Oracle.png'
-import Snowflake from './Components/Icons/Snowflake.png'
+import Hive from './Components/Icons/Hive.png';
+import Oracle from './Components/Icons/Oracle.png';
+import Snowflake from './Components/Icons/Snowflake.png';
+import { secureQuery } from './Components/function.js';
+import { useAuth } from "../../../context/AuthContext.jsx";
 
 const Database = () => {
   const [isTableView, setIsTableView] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [policyIds, setPolicyIds] = useState([]);
+  const [connectionData, setConnectionData] = useState([]);
+  const [connectionCounts, setConnectionCounts] = useState({
+    oracle: 0,
+    hive: 0,
+    snowflake: 0
+  });
+
   const [cards, setCards] = useState([
     {
       title: "Oracle",
       enabled: true,
       icon: Oracle,
-      count: 9,
+      count: 0,
       seeDetailsLink: "/database-details",
     },
     {
       title: "Hive",
       enabled: true,
       icon: Hive,
-      count: 7,
+      count: 0,
       seeDetailsLink: "/schema-details",
     },
     {
       title: "Snowflake",
       enabled: true,
       icon: Snowflake,
-      count: 12,
+      count: 0,
       seeDetailsLink: "/tables-details",
     }
   ]);
 
+  const { token } = useAuth();
+
   const navigate = useNavigate();
+
+  const fetchConnectionDetails = async (policyId) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection_details/${policyId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data || [];
+    } catch (error) {
+      console.error(`Error fetching connection details for policy ${policyId}:`, error);
+      return [];
+    }
+  };
+
+  const processConnectionData = (data) => {
+    const counts = {
+      oracle: 0,
+      hive: 0,
+      snowflake: 0
+    };
+
+    const uniqueConnections = new Set();
+
+    data.forEach(item => {
+      const connKey = `${item.connection_type}_${item.connection_id}`;
+      if (!uniqueConnections.has(connKey)) {
+        uniqueConnections.add(connKey);
+
+        const connType = item.connection_type.toLowerCase();
+        if (connType === 'oracle') counts.oracle++;
+        else if (connType === 'hive') counts.hive++;
+        else if (connType === 'snowflake') counts.snowflake++;
+      }
+    });
+
+    setConnectionCounts(counts);
+
+    setCards(prevCards => prevCards.map(card => {
+      const title = card.title.toLowerCase();
+      return {
+        ...card,
+        count: counts[title] || 0
+      };
+    }));
+
+    const processedTableData = processTableData(data);
+    return processedTableData;
+  };
+
+  const processTableData = (data) => {
+    const connectionMap = new Map();
+
+    data.forEach(item => {
+      const connId = item.connection_id;
+      if (!connectionMap.has(connId)) {
+        connectionMap.set(connId, {
+          id: item.connection_id.substring(0, 8),
+          connectionName: item.connection_name,
+          Database: item.connection_type,
+          Schema: 0,
+          Tables: 0,
+          Views: 0,
+          Column: 0,
+          CreatedDate: new Date(item.created_at).toLocaleDateString(),
+          updatedDate: new Date(item.updated_at).toLocaleDateString()
+        });
+      }
+
+      const entry = connectionMap.get(connId);
+
+      entry.Column++;
+
+      const schemaKey = item.table_schema;
+      if (!entry.schemas) entry.schemas = new Set();
+      entry.schemas.add(schemaKey);
+      entry.Schema = entry.schemas.size;
+
+      const tableKey = `${item.table_schema}_${item.table_name}`;
+      if (!entry.tableSet) entry.tableSet = new Set();
+      entry.tableSet.add(tableKey);
+      entry.Tables = entry.tableSet.size;
+    });
+
+    return Array.from(connectionMap.values());
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+
+        const secureQueryResponse = await secureQuery({
+          user_query: "",
+        },
+        token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+        setPolicyIds(policyIds);
+
+        const allConnectionsPromises = policyIds.map(id => fetchConnectionDetails(id));
+        const allConnectionsResults = await Promise.all(allConnectionsPromises);
+
+        const allConnectionsData = allConnectionsResults.flat();
+        setConnectionData(allConnectionsData);
+
+        const tableData = processConnectionData(allConnectionsData);
+        setSampleData(tableData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const trendData = [
     { day: '1 day', Database: 20, Schema: 9, Tables: 13, View: 11 },
@@ -46,17 +175,7 @@ const Database = () => {
     { day: '7 day', Database: 21, Schema: 27, Tables: 16, View: 15 },
   ];
 
-  const sampleData = [
-    {id: '1', connectionName: 'Oracle', Database: 'Oracle', Schema: '08', Tables: '16', Views: '07', Column: '47', CreatedDate: '26/01/2025', updatedDate:'27/01/2025' },
-    {id: '1', connectionName: 'Oracle', Database: 'Oracle', Schema: '08', Tables: '16', Views: '07', Column: '47', CreatedDate: '26/01/2025', updatedDate:'27/01/2025' },
-    {id: '1', connectionName: 'Oracle', Database: 'Oracle', Schema: '08', Tables: '16', Views: '07', Column: '47', CreatedDate: '26/01/2025', updatedDate:'27/01/2025' },
-    {id: '1', connectionName: 'Oracle', Database: 'Oracle', Schema: '08', Tables: '16', Views: '07', Column: '47', CreatedDate: '26/01/2025', updatedDate:'27/01/2025' },
-    {id: '1', connectionName: 'Oracle', Database: 'Oracle', Schema: '08', Tables: '16', Views: '07', Column: '47', CreatedDate: '26/01/2025', updatedDate:'27/01/2025' },
-    {id: '1', connectionName: 'Oracle', Database: 'Oracle', Schema: '08', Tables: '16', Views: '07', Column: '47', CreatedDate: '26/01/2025', updatedDate:'27/01/2025' },
-    {id: '1', connectionName: 'Oracle', Database: 'Oracle', Schema: '08', Tables: '16', Views: '07', Column: '47', CreatedDate: '26/01/2025', updatedDate:'27/01/2025' },
-    {id: '1', connectionName: 'Oracle', Database: 'Oracle', Schema: '08', Tables: '16', Views: '07', Column: '47', CreatedDate: '26/01/2025', updatedDate:'27/01/2025' },
-    {id: '1', connectionName: 'Oracle', Database: 'Oracle', Schema: '08', Tables: '16', Views: '07', Column: '47', CreatedDate: '26/01/2025', updatedDate:'27/01/2025' },
-  ];
+  const [sampleData, setSampleData] = useState([]);
 
   const recentAccess = [
     "Oracle_2",
@@ -86,7 +205,10 @@ const Database = () => {
             />
           </button>
 
-          <button className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50">
+          <button
+            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
+            onClick={() => window.location.reload()}
+          >
             <Icon
               icon="material-symbols:autorenew-rounded"
               width="24"
@@ -97,7 +219,11 @@ const Database = () => {
         </div>
       </div>
 
-      {!isTableView ? (
+      {loading ? (
+        <div className="flex justify-center items-center h-40">
+          <p>Loading data...</p>
+        </div>
+      ) : !isTableView ? (
         <>
           <div className="mt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -175,19 +301,23 @@ const Database = () => {
               </tr>
             </thead>
             <tbody>
-              {sampleData.map((user, index) => (
+              {sampleData.length > 0 ? sampleData.map((item, index) => (
                 <tr key={index} className="border-b">
-                  <td className="p-4">{user.id}</td>
-                  <td className="p-4">{user.connectionName}</td>
-                  <td className="p-4">{user.Database}</td>
-                  <td className="p-4 text-gray-500 underline">{user.Schema}</td>
-                  <td className="p-4 text-gray-500 underline">{user.Tables}</td>
-                  <td className="p-4 text-gray-500 underline">{user.Views}</td>
-                  <td className="p-4 text-gray-500 underline">{user.Column}</td>
-                  <td className="p-4">{user.CreatedDate}</td>
-                  <td className="p-4">{user.updatedDate}</td>
+                  <td className="p-4">{item.id}</td>
+                  <td className="p-4">{item.connectionName}</td>
+                  <td className="p-4">{item.Database}</td>
+                  <td className="p-4 text-gray-500 underline">{item.Schema}</td>
+                  <td className="p-4 text-gray-500 underline">{item.Tables}</td>
+                  <td className="p-4 text-gray-500 underline">{item.Views || 0}</td>
+                  <td className="p-4 text-gray-500 underline">{item.Column}</td>
+                  <td className="p-4">{item.CreatedDate}</td>
+                  <td className="p-4">{item.updatedDate}</td>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan="9" className="p-4 text-center">No data available</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

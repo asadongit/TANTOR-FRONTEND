@@ -23,15 +23,20 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [expandedItem, setExpandedItem] = useState(null);
+  const { decodedToken } = useAuth();
+
+  const isGlobalAdmin = decodedToken?.resource_access?.darch?.roles?.includes('global-admin');
+  console.log('Is Global Admin:', isGlobalAdmin);
 
   const toggleExpand = (e, routeName) => {
-  e.preventDefault();
-  e.stopPropagation();
-  setExpandedItem(prev => prev === routeName ? null : routeName);
-};
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedItem(prev => prev === routeName ? null : routeName);
+  };
 
   const platformRoutes = [
     { name: 'Dashboard', icon: ChartBarIcon, path: '/dashboard' },
@@ -50,10 +55,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
 
   const DATAGOVERNANCE_PREFIX = '/datagovernance';
 
-  const dataGovernanceRoutes = [
+  const allDataGovernanceRoutes = [
     { name: 'Dashboard', icon: ChartBarIcon, path: '/dashboard' },
     {
       name: 'User',
+      requiresGlobalAdmin: true,
       icon: UserIcon,
       path: `${DATAGOVERNANCE_PREFIX}/user`,
       subItems: [
@@ -63,26 +69,34 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Persona', path: `${DATAGOVERNANCE_PREFIX}/user/persona` },
       ]
     },
-    { name: 'Data Catalogue', icon: BookOpenIcon, path: `${DATAGOVERNANCE_PREFIX}/data-catalogue`, subItems: [
-      { name: 'Database', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/database` },
-      { name: 'Schema', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/schema` },
-      { name: 'Table', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/table` },
-      { name: 'Column', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/column` },
-      { name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
-    ] },
+    { name: 'Data Catalogue', icon: BookOpenIcon, path: `${DATAGOVERNANCE_PREFIX}/data-catalogue`,
+      subItems: [
+        { name: 'Database', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/database` },
+        { name: 'Schema', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/schema` },
+        { name: 'Table', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/table` },
+        { name: 'Column', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/column` },
+        { name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
+      ]
+    },
     { name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance` },
     { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: `${DATAGOVERNANCE_PREFIX}/business-catalogue` },
-    { name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`, subItems: [
-      { name: 'Protection', path: `${DATAGOVERNANCE_PREFIX}/data-shield/protection` },
-      { name: 'Policy', path: `${DATAGOVERNANCE_PREFIX}/data-shield/policy` },
-      { name: 'Collaboration', path: `${DATAGOVERNANCE_PREFIX}/data-shield/collaboration` }
-    ] },
+    { name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`,
+      subItems: [
+        { name: 'Protection', path: `${DATAGOVERNANCE_PREFIX}/data-shield/protection` },
+        { name: 'Policy', path: `${DATAGOVERNANCE_PREFIX}/data-shield/policy` },
+        { name: 'Collaboration', path: `${DATAGOVERNANCE_PREFIX}/data-shield/collaboration` }
+      ]
+    },
     { type: 'divider' },
     { name: 'Databot', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/databot` },
     { name: 'Reports', icon: DocumentTextIcon, path: `${DATAGOVERNANCE_PREFIX}/reports` },
     { name: 'Import', icon: ArrowsPointingInIcon, path: `${DATAGOVERNANCE_PREFIX}/import` },
     { name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
   ];
+
+  const dataGovernanceRoutes = allDataGovernanceRoutes.filter(
+    route => !route.requiresGlobalAdmin || isGlobalAdmin
+  );
 
   const currentRoutes = activeSection === 'platform' ? platformRoutes : dataGovernanceRoutes;
 
