@@ -35,6 +35,12 @@ const Step2 = ({ onDataChange, initialData }) => {
     }, [selectedRole, selectedGroup, selectedSubgroup]);
 
     useEffect(() => {
+        setSelectedRole(initialData.selectedRole || '');
+        setSelectedGroup(initialData.selectedGroup || '');
+        setSelectedSubgroup(initialData.selectedSubgroup || '');
+    }, [initialData]);
+
+    useEffect(() => {
         fetchData();
     }, []);
 

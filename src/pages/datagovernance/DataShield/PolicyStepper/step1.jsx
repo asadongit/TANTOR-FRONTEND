@@ -14,17 +14,25 @@ const Step1 = ({ onDataChange, initialData }) => {
     const { token } = useAuth();
 
     useEffect(() => {
-        console.log("initial datat iss ====>",initialData)
+        console.log("initial datat iss ====>", initialData)
         fetchPolicy();
     }, []);
+
+    // In Step1 component
+    useEffect(() => {
+        setSelectedPolicy(initialData.selectedPolicy || '');
+        setDescription(initialData.description || '');
+        setSubPolicyName(initialData.sub_policy_name || '');
+        setSubPolicyDescription(initialData.sub_policy_description || '');
+    }, [initialData]);
 
     useEffect(() => {
         const currentData = {
             selectedPolicy,
             description,
-            sub_policy_name: subPolicyName,  
+            sub_policy_name: subPolicyName,
             sub_policy_description: subPolicyDescription,
-            policy_name: subPolicyName  
+            policy_name: subPolicyName
         };
         onDataChange(currentData);
     }, [selectedPolicy, description, subPolicyName, subPolicyDescription]);
@@ -43,7 +51,7 @@ const Step1 = ({ onDataChange, initialData }) => {
             }
             const data = await response.json();
             setPolicies(data.policy_types || []);
-            
+
             const descriptionMap = {};
             data.policy_types.forEach(policy => {
                 descriptionMap[policy.policy_type.trim()] = policy.policy_description;
