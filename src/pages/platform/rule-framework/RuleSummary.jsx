@@ -5,7 +5,7 @@ import { Modal } from "@mui/material";
 
 const RuleSummary = ({ setIsOpen, selectedFact, tables, filterData, previewData }) => {
   const { finalPayload } = useStateContext();
-  console.log('[RuleSummary] finalPayload:', finalPayload);
+  console.log(`RuleSummary ==== FinalPayload => `, finalPayload);
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [editedColumn, setEditedColumn] = useState(null);

@@ -28,15 +28,15 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
       const columnList = Array.isArray(selectedTable) ? selectedTable : [selectedTable];
       const mappedColumns = columnList.map(table => {
         const existing = existingColumns.find(col => col.name === table.matric_name);
-        return existing || {
-          name: table.matric_name,
-          type: table.type || "varchar",
-          alias: "",
-          output: true,
-          order: "",
-          sort: "",
-          aggregate: "",
-          groupBy: false,
+        return {
+          name: existing?.name || table.matric_name,
+          type: existing?.type || table.type || "varchar",
+          alias: existing?.alias || "",
+          output: existing?.output ?? true,
+          order: existing?.order || "",
+          sort: existing?.sort || "",
+          aggregate: existing?.aggregate || "",
+          groupBy: existing?.groupBy ?? false,
         };
       });
       setColumn(mappedColumns);

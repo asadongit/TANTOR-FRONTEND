@@ -29,11 +29,6 @@ export function DefineNode({ id, data }) {
   // When local state changes, notify parent
   useEffect(() => {
     if (!isFirstRender.current && onDataChange) {
-      console.log('[DefineNode] onDataChange called with:', {
-        name: currentName,
-        description: currentDescription,
-        nodeType: 'define',
-      });
       onDataChange({
         name: currentName,
         description: currentDescription,

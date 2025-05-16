@@ -30,7 +30,7 @@ const RuleCanvas = () => {
   const [isRuleSummaryOpen, setIsRuleSummaryOpen] = useState(false);
   const [selectedFact, setSelectedFact] = useState(null);
   const [filterData, setFilterData] = useState(null);
-  const { handleFinalPayload } = useStateContext();
+  const { handleFinalPayload, finalPayload } = useStateContext();
 
   // Add effect to watch for showRuleSummary flag in nodes
   useEffect(() => {
@@ -48,16 +48,17 @@ const RuleCanvas = () => {
     }
   }, [nodes, setNodes]);
 
-  // Ensure all Define nodes always have the correct onDataChange handler
+  // Ensure all Define nodes always have the correct onDataChange handler (patch on mount and whenever handleFinalPayload changes)
   useEffect(() => {
     setNodes((nds) =>
       nds.map((node) => {
-        if (node.type === 'define' && typeof node.data.onDataChange !== 'function') {
+        if (node.type === 'define') {
           return {
             ...node,
             data: {
               ...node.data,
               onDataChange: (newData) => {
+                console.log('[RuleCanvas] onDataChange for DefineNode:', newData);
                 setNodes((nds2) =>
                   nds2.map((n) =>
                     n.id === node.id
@@ -66,11 +67,10 @@ const RuleCanvas = () => {
                   )
                 );
                 // Sync to finalPayload for summary
-                handleFinalPayload((prev) => ({
-                  ...prev,
+                handleFinalPayload({
                   name: newData.name,
                   description: newData.description,
-                }));
+                });
               },
             },
           };
@@ -78,7 +78,7 @@ const RuleCanvas = () => {
         return node;
       })
     );
-  }, [nodes, setNodes, handleFinalPayload]);
+  }, [setNodes, handleFinalPayload]);
 
   const onConnect = useCallback(
     (params) => {
@@ -107,12 +107,18 @@ const RuleCanvas = () => {
                 : node
             )
           );
+          // Also update finalPayload for summary
+          handleFinalPayload((prev) => ({
+            ...prev,
+            name: sourceNode.data.name,
+            description: sourceNode.data.description,
+          }));
         } else {
           toast.error('Invalid connection. Define node must connect to Source node.');
         }
       }
     },
-    [setEdges, nodes, setNodes]
+    [setEdges, nodes, setNodes, handleFinalPayload]
   );
 
   const onDragOver = useCallback((event) => {
@@ -235,7 +241,6 @@ const RuleCanvas = () => {
           );
         });
         // --- ADD: Clear from finalPayload when define node is deleted ---
-        console.log('[RuleCanvas] handleFinalPayload called to clear:', { name: '', description: '' });
         handleFinalPayload((prev) => ({
           ...prev,
           name: '',

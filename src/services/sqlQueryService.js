@@ -8,12 +8,6 @@ export const generateSQLQuery = ({
   ruleData
 }) => {
   try {
-    console.log('SQL Generation Input:', {
-      tableName,
-      selectedColumns,
-      filterConditions,
-      ruleData
-    });
 
     if (!tableName || !selectedColumns || selectedColumns.length === 0) {
       return '';
@@ -83,7 +77,6 @@ export const generateSQLQuery = ({
       query += '\nORDER BY\n  ' + sortColumns.join(',\n  ');
     }
 
-    console.log('Generated Query:', query);
     return query;
   } catch (error) {
     console.error('Error generating SQL query:', error);

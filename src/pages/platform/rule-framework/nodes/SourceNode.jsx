@@ -36,6 +36,7 @@ export function SourceNode({ id, data }) {
   const [generatedQuery, setGeneratedQuery] = useState('');
   const [ruleFilterSelections, setRuleFilterSelections] = useState([]);
 
+
   const updateNodeData = (partialData) => {
     if (data.onDataChange) {
       data.onDataChange({
@@ -215,13 +216,6 @@ export function SourceNode({ id, data }) {
 
     // Get filter conditions from node data
     const filterData = data.filterConditions || {};
-    
-    console.log('Generating SQL Query with:', {
-      tableName: selectedFact.fct_name,
-      columns: formattedColumns,
-      filterConditions: filterData,
-      ruleData: data.getNodes?.()?.find(node => node.type === 'define')?.data
-    });
 
     const query = generateSQLQuery({
       tableName: selectedFact.fct_name,
