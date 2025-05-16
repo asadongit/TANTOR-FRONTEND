@@ -43,7 +43,7 @@ function App() {
   };
 
   return (
-    <Router basename="/tantor2">
+    <Router>
       <AuthProvider>
           <Toaster />
           <ModalProvider>
