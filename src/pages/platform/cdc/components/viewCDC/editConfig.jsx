@@ -73,7 +73,7 @@ const updateConnectorConfig = async () => {
     const connector_name = configData?.name;  
     console.log("connector_name:", connector_name);
     console.log("configType:", configType);
-    const response = await axios.put(
+    const response = await axios.patch(
       `${hostnameV2}/cdc/${cdcId}/update-connector`,
       {
         type: configType,
