@@ -4,6 +4,11 @@ import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../../../context/AuthContext";
+import { useTableContext } from "../../react-flow/context/TableContext";
+import FilterComponent from "../../Federation/components/FilterComponent";
+import { ContextViewProvider } from "../../Federation/context/contextViewProvider";
+import { generateSQLQuery } from "../../../../services/sqlQueryService";
+import RuleSummary from "../../rule-framework/RuleSummary";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -14,150 +19,73 @@ const SkeletonLoader = () => (
 );
 
 export function SourceNode({ id, data }) {
-const {token, hostnameV1}= useAuth();
+  const { token, hostnameV1 } = useAuth();
   const [connections, setConnections] = useState([]);
-  const [schemaCount, setSchemacount] = useState([]);
-  const [selectedScope, setSelectedScope] = useState("bulk");
   const [selectedItems, setSelectedItems] = useState([]);
   const [tables, setTables] = useState([]);
-  const [schemas, setSchema] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [selectedSchema, setSelectedSchema] = useState("");
-  const [schemaLoading, setSchemaLoading] = useState(false);
-  const [selectedConnection, setSelectedConnection] = useState({
-    name: "",
-    id: "",
-    type: "",
+  const [loading, setLoading] = useState(false);
+  const [selectedFact, setSelectedFact] = useState({
+    fact_id: "",
+    fct_name: "",
   });
+  const { openDrawer } = useTableContext();
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isRuleSummaryOpen, setIsRuleSummaryOpen] = useState(false);
+  const [filterModalColumns, setFilterModalColumns] = useState([]);
+  const [generatedQuery, setGeneratedQuery] = useState('');
+  const [ruleFilterSelections, setRuleFilterSelections] = useState([]);
 
-  // Update handlers to persist data
+
   const updateNodeData = (partialData) => {
     if (data.onDataChange) {
       data.onDataChange({
-        connection: selectedConnection,
-        schema: selectedSchema,
+        fact_id: selectedFact.fact_id,
+        fct_name: selectedFact.fct_name,
         tables: selectedItems,
         ...partialData,
       });
     }
   };
 
-  let connectionsData;
-  let schemacount;
-  let schemadetails;
-
   const fetchOptions = useCallback(async () => {
     try {
-      const connectionResponse = await fetch(`${hostnameV1}/connection-saves`, {
+      const response = await fetch(`${hostnameV1}/selectSubject`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
-      connectionsData = await connectionResponse.json();
-
+      const connectionsData = await response.json();
       setConnections(connectionsData);
     } catch (error) {
       console.error("Error fetching options:", error);
     }
-  }, []);
-
-  const fetchschemacount = useCallback(
-    async (connectionName) => {
-      if (!connectionName) {
-        setSchemacount([]); // Clear schemas when no connection selected
-        return;
-      }
-
-      //   setSchemaLoading(true);
-
-      try {
-        const response = await fetch(
-          `${hostnameV1}/schema/${connectionName}/count`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        schemacount = await response.json();
-
-        setSchemacount(schemacount);
-        // setSchemaLoading(false);
-      } catch (error) {
-        console.error("Error fetching schemas:", error);
-        setSchemacount([]); // Clear schemas on error
-      }
-    },
-    [hostnameV1, token]
-  );
-
-  useEffect(() => {
-    fetchOptions();
-  }, [fetchOptions]);
-
-  const fetchschema = useCallback(
-    async (connectionName) => {
-      if (!connectionName) {
-        setSchema([]); // Clear schemas when no connection selected
-        return;
-      }
-
-      setSchemaLoading(true);
-
-      try {
-        const response = await fetch(`${hostnameV1}/schema/${connectionName}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        schemadetails = await response.json();
-        setSchema(schemadetails);
-        setSchemaLoading(false);
-      } catch (error) {
-        console.error("Error fetching schemas:", error);
-        setSchema([]); // Clear schemas on error
-      }
-    },
-    [hostnameV1, token]
-  );
+  }, [hostnameV1, token]);
 
   const fetchTables = useCallback(
-    async (connectionName, schemaName) => {
-      if (!connectionName || !schemaName) return;
-
+    async (fact_id) => {
+      if (!fact_id) return;
       setLoading(true);
       try {
-        const cacheKey = `tablelist-${connectionName}-${schemaName}`;
-        const cachedtablelist = sessionStorage.getItem(cacheKey);
+        const cacheKey = `tablelist-${fact_id}`;
+        const cachedTables = sessionStorage.getItem(cacheKey);
 
-        if (cachedtablelist) {
-          setTables(JSON.parse(cachedtablelist));
+        if (cachedTables) {
+          setTables(JSON.parse(cachedTables));
         } else {
           const response = await fetch(
-            `${hostnameV1}/connection-master-metadata/find-by-conn-name-type?conn_name=${connectionName}&schema_name=${schemaName}`,
+            `${hostnameV1}/selectMatric?fact_id=${fact_id}`,
             {
-              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+              headers: { Authorization: `Bearer ${token}` },
             }
           );
 
           if (!response.ok) throw new Error("Failed to fetch tables");
-          const tabledetails = await response.json();
-
-          sessionStorage.setItem(cacheKey, JSON.stringify(tabledetails));
-          setTables(tabledetails);
+          const tableDetails = await response.json();
+          sessionStorage.setItem(cacheKey, JSON.stringify(tableDetails));
+          setTables(tableDetails);
         }
       } catch (error) {
         console.error("Error fetching tables:", error);
@@ -169,79 +97,201 @@ const {token, hostnameV1}= useAuth();
     [hostnameV1, token]
   );
 
-  const filteredTables = tables.filter((table) =>
-    table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
-  );
+  useEffect(() => {
+    fetchOptions();
+  }, [fetchOptions]);
 
-  const handleScopeChange = (e) => {
-    setSelectedScope(e.target.value);
-    if (e.target.value === "subset") {
-      setSelectedItems([]);
+  useEffect(() => {
+    if (selectedFact.fact_id) {
+      fetchTables(selectedFact.fact_id);
     }
-  };
+  }, [selectedFact.fact_id, fetchTables]);
+
+  const filteredTables = tables.filter((table) =>
+    table.matric_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
+  );
 
   const handleSelectAll = (e) => {
     const isChecked = e.target.checked;
     if (isChecked) {
-      setSelectedItems(
-        filteredTables
-          .filter((table) => table !== null)
-          .map((table) => table.table_name)
-      );
+      setSelectedItems(filteredTables.map((table) => table.matric_name));
     } else {
       setSelectedItems([]);
     }
   };
 
-  const handleTableSelection = (tableName) => {
-    if (selectedScope === "subset") {
-      setSelectedItems([tableName]);
-    } else {
-      setSelectedItems((prev) =>
-        prev.includes(tableName)
-          ? prev.filter((item) => item !== tableName)
-          : [...prev, tableName]
-      );
-    }
+  const handleTableSelection = (matric_name) => {
+    setSelectedItems((prev) =>
+      prev.includes(matric_name)
+        ? prev.filter((item) => item !== matric_name)
+        : [...prev, matric_name]
+    );
   };
 
   const handleCancel = () => {
     setSelectedItems([]);
-    console.log("Selection reset.");
   };
 
   const handleOk = () => {
-    toast.promise(
-      new Promise((resolve, reject) => {
-        try {
-          updateNodeData({
-            tables: selectedItems,
-            connection: selectedConnection.name,
-            connectionId: selectedConnection.id,
-            connectionType: selectedConnection.type,
-            schema: selectedSchema,
-          });
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      }),
-      {
-        loading: "Updating flow...",
-        success: "Tables added successfully!",
-        error: (err) => `Update failed: ${err.message}`,
-      }
+    // Update the node's data with the selected items
+    updateNodeData({
+      tables: selectedItems,
+      fact_id: selectedFact.fact_id,
+      fct_name: selectedFact.fct_name,
+    });
+
+    // Get the selected tables from filteredTables
+    const selectedTablesData = filteredTables.filter(table => 
+      selectedItems.includes(table.matric_name)
     );
+
+    // Transform tables into columns format expected by FilterComponent
+    const initialColumns = selectedTablesData.map((table) => ({
+      name: table.matric_name,
+      type: table.type || "varchar",
+      alias: "",
+      output: true,
+      order: "",
+      sort: "",
+      aggregate: "",
+      groupBy: false,
+      isVisible: true
+    }));
+
+    // If we have existing column settings, merge them with the initial columns
+    const existingColumns = data.filterConditions?.columns || [];
+    const mergedColumns = initialColumns.map(col => {
+      const existing = existingColumns.find(e => e.name === col.name);
+      if (existing) {
+        return {
+          ...col,
+          alias: existing.alias || col.alias,
+          output: existing.output ?? col.output,
+          order: existing.order || col.order,
+          sort: existing.sort || col.sort,
+          aggregate: existing.aggregate || col.aggregate,
+          groupBy: existing.groupBy ?? col.groupBy,
+          isVisible: existing.isVisible ?? col.isVisible,
+          type: existing.type || col.type
+        };
+      }
+      return col;
+    });
+
+    console.log('Initial columns with merged properties:', mergedColumns);
+
+    // Update both filter modal columns and rule filter selections
+    setFilterModalColumns(mergedColumns);
+    setRuleFilterSelections(mergedColumns);
+
+    // Open the FilterComponent modal
+    setIsFilterModalOpen(true);
+  };
+
+  const updateSQLQuery = useCallback(() => {
+    // Format columns with their properties
+    const formattedColumns = ruleFilterSelections.map(col => {
+      let columnExpression = col.name;
+      
+      // Apply aggregate function if specified
+      if (col.aggregate && col.aggregate !== 'NONE') {
+        columnExpression = `${col.aggregate}(${columnExpression})`;
+      }
+      
+      // Apply alias if specified
+      if (col.alias && col.alias.trim()) {
+        columnExpression = `${columnExpression} AS "${col.alias.trim()}"`;
+      }
+      
+      return {
+        name: columnExpression,
+        type: col.type || 'varchar',
+        output: typeof col.output === 'boolean' ? col.output : true,
+        order: col.order || '',
+        sort: col.sort || '',
+        groupBy: typeof col.groupBy === 'boolean' ? col.groupBy : false,
+        isVisible: typeof col.isVisible === 'boolean' ? col.isVisible : true
+      };
+    });
+
+    // Get filter conditions from node data
+    const filterData = data.filterConditions || {};
+
+    const query = generateSQLQuery({
+      tableName: selectedFact.fct_name,
+      selectedColumns: formattedColumns.filter(col => col.output),
+      filterConditions: filterData,
+      ruleData: data.getNodes?.()?.find(node => node.type === 'define')?.data
+    });
+
+    setGeneratedQuery(query);
+  }, [selectedFact.fct_name, ruleFilterSelections, data.filterConditions, data.getNodes]);
+
+  useEffect(() => {
+    if (selectedFact.fct_name && ruleFilterSelections.length > 0) {
+      updateSQLQuery();
+    }
+  }, [updateSQLQuery, selectedFact.fct_name, ruleFilterSelections]);
+
+  const generateSQL = (filterData) => {
+    if (!filterData) return '';
+    
+    if (filterData.complex_query) {
+      return filterData.complex_query;
+    }
+
+    if (!filterData.conditions || !Array.isArray(filterData.conditions)) {
+      return '';
+    }
+
+    const buildGroupSQL = (group) => {
+      if (!group.conditions || !Array.isArray(group.conditions)) return '()';
+
+      const conditionsSQL = group.conditions
+        .map((condition, index) => {
+          const joinType = index === 0 ? '' : ` ${condition.joinType || 'AND'} `;
+
+          if (condition.type === 'condition') {
+            if (!condition.column || (!condition.value && condition.operator !== 'between') ||
+              (condition.operator === 'between' && (!condition.value || !condition.value2))) {
+              return null;
+            }
+
+            const columnType = condition.conditionType?.toLowerCase() || 'varchar';
+            const shouldQuote = !['decimal', 'double', 'integer'].includes(columnType);
+
+            if (condition.operator === 'between') {
+              return `${joinType}${condition.column} BETWEEN ${
+                shouldQuote ? `'${condition.value}'` : condition.value
+              } AND ${
+                shouldQuote ? `'${condition.value2}'` : condition.value2
+              }`;
+            }
+            return `${joinType}${condition.column} ${condition.operator} ${
+              shouldQuote ? `'${condition.value}'` : condition.value
+            }`;
+          } else {
+            const nestedSQL = buildGroupSQL(condition);
+            return nestedSQL ? `${joinType}${nestedSQL}` : null;
+          }
+        })
+        .filter(Boolean);
+
+      return conditionsSQL.length > 0 ? `(${conditionsSQL.join('')})` : null;
+    };
+
+    const groupsSQL = filterData.conditions
+      .map((group, index) => {
+        const groupSQL = buildGroupSQL(group);
+        return index === 0 ? groupSQL : groupSQL ? `${group.joinType} ${groupSQL}` : null;
+      })
+      .filter(Boolean);
+
+    return groupsSQL.join(' ') || '';
   };
 
   return (
-    <div
-      className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] 
-                             w-fit min-w-min max-w-[90vw] 
-                             relative group 
-                             grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))] 
-                             "
-    >
+    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] w-fit min-w-min max-w-[90vw] relative group grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))]">
       <button
         onClick={() => window.deleteNode?.(id)}
         className="absolute top-1.5 right-2 p-1"
@@ -257,162 +307,35 @@ const {token, hostnameV1}= useAuth();
       <div className="space-y-1.5">
         <div>
           <label className="text-xs font-semibold text-black mb-0.5 block">
-            Connection
+            Table
           </label>
           <select
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-            value={selectedConnection.name}
+            value={selectedFact.fct_name}
             onChange={(e) => {
               const connection = connections.find(
-                (c) => c.connection_name === e.target.value
+                (c) => c.fct_name === e.target.value
               );
               if (!connection) return;
-
-              setSelectedConnection({
-                name: connection.connection_name,
-                id: connection.connection_id,
-                type: connection.connection_type,
+              setSelectedFact({
+                fact_id: connection.fact_id,
+                fct_name: connection.fct_name,
               });
-
-              // Update node data
-              data.onDataChange({
-                connection: connection.connection_name,
-                connectionId: connection.connection_id,
-                connectionType: connection.connection_type,
-                schema: "",
-                tables: [],
-              });
-
-              setSelectedSchema("");
+              setSelectedItems([]);
               setTables([]);
-              fetchschema(connection.connection_name);
-              fetchschemacount(connection.connection_name);
             }}
           >
             <option value="">Select</option>
             {connections.map((connection, idx) => (
-              <option key={idx} value={connection.connection_name}>
-                {connection.connection_name}
+              <option key={idx} value={connection.fct_name}>
+                {connection.fct_name}
               </option>
             ))}
           </select>
         </div>
-        <div>
-          <label className="text-xs font-semibold text-black mb-0.5 block">
-            Schema
-          </label>
-          <div className="flex items-center">
-            <select
-              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              value={selectedSchema}
-              onChange={(e) => {
-                const schemaName = e.target.value;
-                setSelectedSchema(schemaName);
-                fetchTables(selectedConnection.name, schemaName);
-                updateNodeData({
-                  schema: schemaName,
-                  tables: [],
-                });
-              }}
-              disabled={!selectedConnection.name || schemaLoading}
-            >
-              {schemaLoading ? (
-                <option value="">Loading schemas...</option>
-              ) : (
-                <>
-                  <option value="">Select Schema</option>
-                  {schemas.map((schema, idx) => (
-                    <option key={idx} value={schema.table_schema}>
-                      {schema.table_schema}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-            {/* Loading Indicator */}
-            {schemaLoading && (
-              <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
-              </div>
-            )}
-            <span className="ml-5 text-black font-bold">
-              {schemaCount.schema_count}
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className="space-y-4 mt-3">
-        <label className="text-xs font-semibold text-black mb-0.5 block">
-          Migration Scope
-        </label>
-        <div className="flex gap-4 items-center">
-          <label className="text-xs text-black font-medium">Table</label>
-          <div className="flex items-center">
-            <input
-              type="radio"
-              id="table-bulk"
-              name="table"
-              value="bulk"
-              defaultChecked
-              onChange={handleScopeChange}
-              className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
-            />
-            <label htmlFor="table-bulk" className="ml-2 text-xs text-gray-700">
-              Bulk
-            </label>
-          </div>
-          <div className="flex items-center">
-            <input
-              type="radio"
-              id="table-subset"
-              name="table"
-              value="subset"
-              onChange={handleScopeChange}
-              className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <label
-              htmlFor="table-subset"
-              className="ml-2 text-xs text-gray-700"
-            >
-              Subset
-            </label>
-          </div>
-        </div>
       </div>
 
-      {/* <div className="flex gap-4 items-center mt-3">  
-        <label className="text-xs text-black font-medium">Column</label>
-        <div className="flex items-center">
-          <input
-            type="radio"
-            id="column-bulk"
-            name="column"
-            value="bulk"
-            defaultChecked
-            className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500 ml-10"
-          />
-          <label htmlFor="column-bulk" className="ml-2 text-xs text-gray-700">
-            Bulk
-          </label>
-        </div>
-        <div className="flex items-center">
-          <input
-            type="radio"
-            id="column-subset"
-            name="column"
-            value="subset"
-            className="h-3 w-3 border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <label htmlFor="column-subset" className="ml-2 text-xs text-gray-700">
-            Subset
-          </label>
-        </div>
-      </div> */}
-
-      {/* <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-24 border border-gray-700 hover:border-transparent rounded mt-4">
-        OK
-      </button> */}
-      {selectedConnection && selectedSchema && (
+      {selectedFact.fact_id && (
         <div>
           <div className="flex items-center gap-2 mb-0.5 mt-4">
             <Search size={14} className="text-gray-500" />
@@ -425,7 +348,6 @@ const {token, hostnameV1}= useAuth();
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {loading ? (
               <>
@@ -441,14 +363,8 @@ const {token, hostnameV1}= useAuth();
                       type="checkbox"
                       id="select-all"
                       className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                      checked={
-                        selectedScope === "bulk" &&
-                        selectedItems.length ===
-                          filteredTables.filter((table) => table !== null)
-                            .length
-                      } // Check if all items are selected
+                      checked={selectedItems.length === filteredTables.length}
                       onChange={handleSelectAll}
-                      disabled={selectedScope === "subset"} // Disable in "subset" mode
                     />
                     <label
                       htmlFor="select-all"
@@ -458,44 +374,36 @@ const {token, hostnameV1}= useAuth();
                     </label>
                   </div>
                 </div>
-
-                {filteredTables
-                  .filter((table) => table?.table_name)
-                  .map((table, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`table-${idx}`}
-                          checked={selectedItems.includes(table.table_name)}
-                          onChange={() =>
-                            handleTableSelection(table.table_name)
-                          }
-                          className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          disabled={
-                            selectedScope === "subset" &&
-                            selectedItems.length > 0 &&
-                            !selectedItems.includes(table.table_name)
-                          }
-                        />
-                        <label
-                          htmlFor={`table-${idx}`}
-                          className="text-xs font-semibold text-black"
-                        >
-                          {table.table_name}
-                        </label>
-                      </div>
-                      {/* <button
-                        onClick={() => openDrawer(id, table)}
-                        className="text-purple-600 hover:text-purple-700"
+                {filteredTables.map((table, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`table-${idx}`}
+                        checked={selectedItems.includes(table.matric_name)}
+                        onChange={() => handleTableSelection(table.matric_name)}
+                        className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      <label
+                        htmlFor={`table-${idx}`}
+                        className="text-xs font-semibold text-black"
                       >
-                        <Pencil className="w-4 h-4" />
-                      </button> */}
+                        {table.matric_name}
+                      </label>
                     </div>
-                  ))}
+                    <button
+                      onClick={() => {
+                        const selectedTables = filteredTables.filter((t) =>
+                          selectedItems.includes(t.matric_name)
+                        );
+                        openDrawer(id, selectedTables);
+                      }}
+                      className="text-purple-600 hover:text-purple-700"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
               </>
             )}
           </div>
@@ -515,11 +423,101 @@ const {token, hostnameV1}= useAuth();
           OK
         </button>
       </div>
+
+      {/* Render FilterComponent Modal */}
+      {isFilterModalOpen && (
+        <ContextViewProvider>
+          <FilterComponent
+            setIsOpen={setIsFilterModalOpen}
+            columns={filterModalColumns}
+            onApply={(error, filterData) => {
+              setIsFilterModalOpen(false);
+              if (!error && filterData) {
+                console.log('Filter data received:', filterData);
+                
+                // Handle filter conditions
+                let conditions;
+                if (Array.isArray(filterData)) {
+                  conditions = { conditions: filterData };
+                } else if (filterData.complex_query) {
+                  conditions = { complex_query: filterData.complex_query };
+                } else {
+                  conditions = { conditions: [] };
+                }
+
+                // Generate SQL preview
+                const sqlPreview = generateSQL(conditions);
+
+                // Update column properties from the filter component
+                const updatedColumns = filterModalColumns.map(column => {
+                  const filterColumn = filterData.columns?.find(fc => fc.name === column.name);
+                  
+                  return {
+                    ...column,
+                    alias: filterColumn?.alias || column.alias || '',
+                    output: filterColumn?.output ?? column.output ?? true,
+                    order: filterColumn?.order || column.order || '',
+                    sort: filterColumn?.sort || column.sort || '',
+                    aggregate: filterColumn?.aggregate || column.aggregate || '',
+                    groupBy: filterColumn?.groupBy ?? column.groupBy ?? false,
+                    isVisible: filterColumn?.isVisible ?? column.isVisible ?? true,
+                    type: filterColumn?.type || column.type || 'varchar'
+                  };
+                });
+
+                console.log('Updated columns with properties:', updatedColumns);
+                
+                setRuleFilterSelections(updatedColumns);
+                setFilterModalColumns(updatedColumns);
+
+                // Store filter conditions and column properties in node data
+                const updatedFilterData = {
+                  ...conditions,
+                  sqlPreview,
+                  columns: updatedColumns
+                };
+
+                // Update node data with filter conditions
+                updateNodeData({
+                  filterConditions: updatedFilterData,
+                  selectedColumns: updatedColumns
+                });
+
+                // Update the SQL query
+                updateSQLQuery();
+                
+                // Show rule summary after filters are applied
+                setIsRuleSummaryOpen(true);
+              }
+            }}
+          />
+        </ContextViewProvider>
+      )}
+
+      {/* Render Rule Summary Modal */}
+      {isRuleSummaryOpen && (
+        <ContextViewProvider>
+          <RuleSummary
+            setIsOpen={setIsRuleSummaryOpen}
+            selectedFact={selectedFact}
+            tables={filterModalColumns}
+            filterData={data.filterConditions}
+            previewData={generatedQuery}
+          />
+        </ContextViewProvider>
+      )}
     </div>
   );
 }
 
 SourceNode.propTypes = {
   id: PropTypes.string.isRequired,
-  data: PropTypes.object,
+  data: PropTypes.shape({
+    onDataChange: PropTypes.func,
+    tables: PropTypes.array,
+    getNodes: PropTypes.func,
+    filterConditions: PropTypes.object
+  })
 };
+
+export default SourceNode;

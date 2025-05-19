@@ -222,24 +222,26 @@ function App() {
               <Route
                 path="/config/rule/create-rule"
                 element={
-                  <TableProvider>
-                    <FlowDataProvider>
-                      <ThemeProvider>
-                        <DrawerProvider>
-                          <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-                            <Header className="h-16 flex-shrink-0" />
-                            <div className="flex-1 flex">
-                              <div className="flex-1 relative">
-                                <ReactFlowProvider>
-                                  <RuleCanvas />
-                                </ReactFlowProvider>
+                  <ContextViewProvider>
+                    <TableProvider>
+                      <FlowDataProvider>
+                        <ThemeProvider>
+                          <DrawerProvider>
+                            <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
+                              <Header className="h-16 flex-shrink-0" />
+                              <div className="flex-1 flex">
+                                <div className="flex-1 relative">
+                                  <ReactFlowProvider>
+                                    <RuleCanvas />
+                                  </ReactFlowProvider>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </DrawerProvider>
-                      </ThemeProvider>
-                    </FlowDataProvider>
-                  </TableProvider>
+                          </DrawerProvider>
+                        </ThemeProvider>
+                      </FlowDataProvider>
+                    </TableProvider>
+                  </ContextViewProvider>
                 }
               />
             </Route>
