@@ -45,7 +45,7 @@ import { useCDCConfigs } from "../../hooks/connectorConfigs";
 import axios from "axios";
 import { useAuth } from "../../../../../context/AuthContext";
 import toast from "react-hot-toast";
-import Logs from "./logs";
+import Logs from "./Logs";
 import ConfigEditorModal from "./editConfig";
 const StatusBadge = ({ state }) => {
   const statusMap = {

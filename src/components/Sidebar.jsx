@@ -23,17 +23,19 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
-  const [expandedItems, setExpandedItems] = useState({});
+  const [expandedItem, setExpandedItem] = useState(null);
+  const { decodedToken } = useAuth();
+
+  const isGlobalAdmin = decodedToken?.resource_access?.darch?.roles?.includes('global-admin');
+  console.log('Is Global Admin:', isGlobalAdmin);
 
   const toggleExpand = (e, routeName) => {
     e.preventDefault();
     e.stopPropagation();
-    setExpandedItems(prev => ({
-      ...prev,
-      [routeName]: !prev[routeName]
-    }));
+    setExpandedItem(prev => prev === routeName ? null : routeName);
   };
 
   const platformRoutes = [
@@ -51,36 +53,50 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Federation', icon: ShareIcon, path: '/federation' },
   ];
 
-  const dataGovernanceRoutes = [
+  const DATAGOVERNANCE_PREFIX = '/datagovernance';
+
+  const allDataGovernanceRoutes = [
     { name: 'Dashboard', icon: ChartBarIcon, path: '/dashboard' },
     {
       name: 'User',
+      requiresGlobalAdmin: true,
       icon: UserIcon,
-      path: '/user',
+      path: `${DATAGOVERNANCE_PREFIX}/user`,
       subItems: [
-        { name: 'Role', path: '/user/role' },
-        { name: 'Group', path: '/user/group' },
-        { name: 'Sub-group', path: '/user/sub-group' },
-        { name: 'Persona', path: '/user/persona' },
+        { name: 'Role', path: `${DATAGOVERNANCE_PREFIX}/user/role` },
+        { name: 'Group', path: `${DATAGOVERNANCE_PREFIX}/user/group` },
+        { name: 'Sub-group', path: `${DATAGOVERNANCE_PREFIX}/user/sub-group` },
+        { name: 'Persona', path: `${DATAGOVERNANCE_PREFIX}/user/persona` },
       ]
     },
-    { name: 'Data Catalogue', icon: BookOpenIcon, path: '/data-catalogue', subItems: [
-      { name: 'Database', path: '/data-catalogue/database' },
-      { name: 'Schema', path: '/data-catalogue/schema' },
-      { name: 'Table', path: '/data-catalogue/table' },
-      { name: 'Column', path: '/data-catalogue/column' },
-      { name: 'View', path: '/data-catalogue/view' },
-
-    ] },
-    { name: 'Data Assurance', icon: ShieldCheckIcon, path: '/data-assurance' },
-    { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: '/business-catalogue' },
-    { name: 'Data Shield', icon: ShieldCheckIcon, path: '/data-shield' },
+    { name: 'Data Catalogue', icon: BookOpenIcon, path: `${DATAGOVERNANCE_PREFIX}/data-catalogue`,
+      subItems: [
+        { name: 'Database', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/database` },
+        { name: 'Schema', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/schema` },
+        { name: 'Table', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/table` },
+        { name: 'Column', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/column` },
+        { name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
+      ]
+    },
+    { name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance` },
+    { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: `${DATAGOVERNANCE_PREFIX}/business-catalogue` },
+    { name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`,
+      subItems: [
+        { name: 'Protection', path: `${DATAGOVERNANCE_PREFIX}/data-shield/protection` },
+        { name: 'Policy', path: `${DATAGOVERNANCE_PREFIX}/data-shield/policy` },
+        { name: 'Collaboration', path: `${DATAGOVERNANCE_PREFIX}/data-shield/collaboration` }
+      ]
+    },
     { type: 'divider' },
-    { name: 'Databot', icon: ShieldCheckIcon, path: '/databot' },
-    { name: 'Reports', icon: DocumentTextIcon, path: '/reports' },
-    { name: 'Import', icon: ArrowsPointingInIcon, path: '/import' },
-    { name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: '/custom-addition' },
+    { name: 'Databot', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/databot` },
+    { name: 'Reports', icon: DocumentTextIcon, path: `${DATAGOVERNANCE_PREFIX}/reports` },
+    { name: 'Import', icon: ArrowsPointingInIcon, path: `${DATAGOVERNANCE_PREFIX}/import` },
+    { name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
   ];
+
+  const dataGovernanceRoutes = allDataGovernanceRoutes.filter(
+    route => !route.requiresGlobalAdmin || isGlobalAdmin
+  );
 
   const currentRoutes = activeSection === 'platform' ? platformRoutes : dataGovernanceRoutes;
 
@@ -90,7 +106,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     }
 
     const hasSubItems = route.subItems && route.subItems.length > 0;
-    const isExpanded = expandedItems[route.name];
+    const isExpanded = expandedItem === route.name;
 
     return (
       <div key={route.path}>
@@ -111,36 +127,42 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
               {hasSubItems && (
                 <button
                   onClick={(e) => toggleExpand(e, route.name)}
-                  className="p-1 hover:bg-gray-200 rounded-full"
+                  className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
                 >
-                  {isExpanded ? (
-                    <ChevronDownIcon className="h-4 w-4" />
-                  ) : (
-                    <ChevronRightIcon className="h-4 w-4" />
-                  )}
+                  <ChevronRightIcon
+                    className={`h-4 w-4 transition-transform duration-300 ${
+                      isExpanded ? 'rotate-90' : 'rotate-0'
+                    }`}
+                  />
                 </button>
               )}
             </>
           )}
         </NavLink>
 
-        {hasSubItems && isExpanded && !isCollapsed && (
-          <div className="ml-9 space-y-1">
-            {route.subItems.map((subItem) => (
-              <NavLink
-                key={subItem.path}
-                to={subItem.path}
-                className={({ isActive }) =>
-                  `block px-3 py-2 rounded-lg ${
-                    isActive
-                      ? 'bg-purple-100 text-purple-700'
-                      : 'text-gray-500 hover:bg-gray-100'
-                  }`
-                }
-              >
-                {subItem.name}
-              </NavLink>
-            ))}
+        {hasSubItems && !isCollapsed && (
+          <div
+            className={`ml-9 overflow-hidden transition-all duration-300 ease-in-out ${
+              isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="space-y-1 py-1">
+              {route.subItems.map((subItem) => (
+                <NavLink
+                  key={subItem.path}
+                  to={subItem.path}
+                  className={({ isActive }) =>
+                    `block px-3 py-2 rounded-lg transition-colors duration-200 ${
+                      isActive
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'text-gray-500 hover:bg-gray-100'
+                    }`
+                  }
+                >
+                  {subItem.name}
+                </NavLink>
+              ))}
+            </div>
           </div>
         )}
       </div>

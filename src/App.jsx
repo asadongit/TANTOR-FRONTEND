@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { ReactFlowProvider } from "reactflow";
 import Header from "./components/Header";
@@ -43,7 +43,7 @@ function App() {
   };
 
   return (
-    <Router basename="/tantor2">
+    <Router>
       <AuthProvider>
           <Toaster />
           <ModalProvider>
@@ -56,6 +56,9 @@ function App() {
                   </PublicRoute>
                 }
               />
+
+<Route path="/datagovernance" element={<Navigate to="/" replace />} />
+
 
               <Route element={<ProtectedRoute />}>
                 <Route

@@ -1,5 +1,5 @@
 /*eslint-disable*/
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Icon } from "@iconify-icon/react";
 import { Link } from 'react-router-dom';
 import { AgGridReact } from 'ag-grid-react';
@@ -15,7 +15,9 @@ import {
   RefreshCcw,
   Code,
   Plus,
-  LinkIcon
+  LinkIcon,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { Modal } from "@mui/material";
@@ -49,14 +51,14 @@ const FederationDashBoard = () => {
   const [schemaList, setSchemaList] = useState([])
   const [tableList, setTableList] = useState([])
   const [viewList, setViewList] = useState([])
-  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
+  const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const [count, setCount] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
-      console.log("token is ====>",token)
-      console.log("project is ====>",project)
-      console.log("username is =====>",decodedToken?.preferred_username)
+      console.log("token is ====>", token)
+      console.log("project is ====>", project)
+      console.log("username is =====>", decodedToken?.preferred_username)
       try {
         const response = await fetch(`${hostnameV1}/connection-saves`, {
           headers: {
@@ -66,7 +68,7 @@ const FederationDashBoard = () => {
         });
         let data = await response.json();
 
-        if (project !== "none") {
+        if (project !== "default") {
           data = data.filter(
             (item) =>
               item.project.toUpperCase() === project.toUpperCase() &&
@@ -95,22 +97,23 @@ const FederationDashBoard = () => {
     if (connectionData.length === 0) return;
     connectionData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     var extractedData;
-    if (project !== "none") {
-      data.map((item) => { });
+    console.log("my project is =====>",project)
+
+    if (project != "default" && project !== "none") {
       extractedData = connectionData.filter(
         (item) =>
-          item.project.toUpperCase() === project.toUpperCase() &&
-          item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+          item.project?.toUpperCase() === project.toUpperCase() &&
+          item.created_by?.toUpperCase() === decodedToken?.preferred_username?.toUpperCase() &&
           item.is_deleted === false
       );
     } else {
       extractedData = connectionData.filter(
         (item) =>
-          item.created_by.toUpperCase() ===
-        decodedToken?.preferred_username.toUpperCase() &&
+          item.created_by?.toUpperCase() === decodedToken?.preferred_username?.toUpperCase() &&
           item.is_deleted === false
       );
     }
+    
     console.log("connection data is ====>", extractedData)
     setData(extractedData);
     const connectionIds = extractedData.map((item) => item.connection_id);
@@ -167,7 +170,7 @@ const FederationDashBoard = () => {
     try {
       // const project = sessionStorage.getItem("project") || "default";
       // const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
-  
+
       const response = await fetch(`${hostnameV2}/connections/views`, {
         method: "POST",
         headers: {
@@ -177,10 +180,10 @@ const FederationDashBoard = () => {
         body: JSON.stringify({
           connection_names: connectionNames,
           created_by: decodedToken?.preferred_username || "",
-          project: project || ""
+          project: project || "default"
         })
       });
-  
+
       let data = await response.json();
       console.log("views are  ===>", data);
       setViewList(data);
@@ -188,7 +191,7 @@ const FederationDashBoard = () => {
       console.error("Error fetching views:", error);
     }
   };
-  
+
 
 
   const getTableCount = (tableList, connectionId) => {
@@ -366,6 +369,35 @@ const FederationDashBoard = () => {
     setSelectedView(e.target.value);
   };
 
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const handleItemsPerPageChange = (e) => {
+    setItemsPerPage(Number(e.target.value));
+    setPage(1);
+  };
+  
+  const handlePrevPage = () => {
+    if (page > 1) setPage(page - 1);
+  };
+  
+  const handleNextPage = () => {
+    const maxPage = Math.ceil(rowData.length / itemsPerPage);
+    if (page < maxPage) setPage(page + 1);
+  };
+
+  const paginatedData = useMemo(() => {
+    const startIndex = (page - 1) * itemsPerPage;
+    return rowData.slice(startIndex, startIndex + itemsPerPage);
+  }, [rowData, page, itemsPerPage]);
+
+  const totalItems = rowData.length;
+  const startItem = totalItems === 0 ? 0 : (page - 1) * itemsPerPage + 1;
+  const endItem = Math.min(page * itemsPerPage, totalItems);
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const [isLoading, setIsLoading] = useState(false)
+
   return (
     <>
       <div className="w-full h-full px-6 pt-3">
@@ -414,7 +446,7 @@ const FederationDashBoard = () => {
           {cards.map((card) => (
             <div
               key={card.title}
-              className={`bg-white p-6 rounded-lg shadow-sm border-gray-200`}
+              className={`bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md`}
             >
               <div className="flex items-center mb-2">
                 <div
@@ -463,7 +495,8 @@ const FederationDashBoard = () => {
           ))}
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-auto mt-10">
+        <div className="bg-white rounded-lg shadow overflow-auto mt-10 mb-4 "
+          style={{ maxHeight: "calc(100vh - 240px)" }}>
           <table className="w-full">
             <thead className="text-sm">
               <tr className="bg-[#29304a] text-white">
@@ -478,7 +511,7 @@ const FederationDashBoard = () => {
               </tr>
             </thead>
             <tbody className="text-sm">
-              {rowData.map((user, index) => (
+              {paginatedData.map((user, index) => (
                 <tr key={index} className="border-b">
                   <td className="p-4 text-center">{user.ID}</td>
                   <td className="p-4 text-center">{user.Connections}</td>
@@ -506,11 +539,6 @@ const FederationDashBoard = () => {
                           />
                           <div className="absolute top-0 right-14 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                             <div className="flex items-center p-1 gap-1">
-                              {/* <button
-                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </button> */}
                               <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                                 <RotateCw className="h-4 w-4" />
                               </button>
@@ -527,6 +555,49 @@ const FederationDashBoard = () => {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex flex-col md:flex-row items-center justify-between">
+          <div className="text-sm text-gray-500 mb-2 md:mb-0">
+            {isLoading ? (
+              <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
+            ) : totalItems > 0 ? (
+              `Showing ${startItem} to ${endItem} of ${totalItems} results`
+            ) : (
+              "No results found"
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-500">Show per page</span>
+            <select
+              className="border rounded p-1 text-sm"
+              value={itemsPerPage}
+              onChange={handleItemsPerPageChange}
+              aria-label="Show per page"
+              disabled={isLoading}
+            >
+              {[10, 25, 50].map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <div className="flex items-center">
+              <button
+                onClick={handlePrevPage}
+                className="p-1 border rounded-l hover:bg-gray-100 disabled:opacity-50"
+                disabled={page === 1 || isLoading}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                onClick={handleNextPage}
+                className="p-1 border rounded-r border-l-0 hover:bg-gray-100 disabled:opacity-50"
+                disabled={page >= totalPages || isLoading}
+                aria-label="Next page"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
         </div>
         {/* <AgGridReact className="ag-theme-alpine border rounded-lg mt-4"
     rowData={rowData}

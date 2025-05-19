@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useStateContext } from "../context/contextViewProvider";
-import { X } from "lucide-react";
+import { Trash, X } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 const getColumnGroupType = (columnType) => {
   if (!columnType) return null;
@@ -10,23 +11,22 @@ const getColumnGroupType = (columnType) => {
   result = ["date", "timestamp"].includes(formattedColumnType)
     ? "DATE"
     : result;
-  result = ["decimal","double"].includes(formattedColumnType) ? "NUMBER" : result;
+  result = ["decimal", "double", "integer"].includes(formattedColumnType) ? "NUMBER" : result;
   result = ["varchar"].includes(formattedColumnType) ? "STRING" : result;
 
-  console.log("result ==>> ", result);
   return result;
 };
 
-const DynamicSelectOptions = ({ condition, index, updateCondition }) => {
-  if (!condition.type) return null;
-  let columnGroupType = getColumnGroupType(condition.type);
-  console.log("columnGroupType ==>> ", columnGroupType);
+const DynamicSelectOptions = ({ condition, updateCondition }) => {
+  if (!condition.conditionType) return null;
+  let columnGroupType = getColumnGroupType(condition.conditionType);
+
   if (columnGroupType === "DATE" || columnGroupType === "NUMBER") {
     return (
       <select
         value={condition.operator}
-        onChange={(e) => updateCondition(index, "operator", e.target.value)}
-        className="border p-1.5 rounded w-20"
+        onChange={(e) => updateCondition("operator", e.target.value)}
+        className="border p-2 rounded-md text-sm w-24 bg-white text-black"
       >
         <option value="=">=</option>
         <option value="!=">!=</option>
@@ -34,27 +34,27 @@ const DynamicSelectOptions = ({ condition, index, updateCondition }) => {
         <option value="<">{"<"}</option>
         <option value=">=">{"≥"}</option>
         <option value="<=">{"≤"}</option>
-        <option value="between"> Between </option>
+        <option value="between">Between</option>
       </select>
     );
   } else if (columnGroupType === "STRING") {
     return (
       <select
         value={condition.operator}
-        onChange={(e) => updateCondition(index, "operator", e.target.value)}
-        className="border p-1.5 rounded w-20"
+        onChange={(e) => updateCondition("operator", e.target.value)}
+        className="border p-2 rounded-md text-sm w-24 bg-white text-black"
       >
         <option value="=">=</option>
         <option value="!=">!=</option>
-        <option value="like">LIKE</option>
+        <option value="LIKE">LIKE</option>
       </select>
     );
   } else {
     return (
       <select
         value={condition.operator}
-        onChange={(e) => updateCondition(index, "operator", e.target.value)}
-        className="border p-1.5 rounded w-20"
+        onChange={(e) => updateCondition("operator", e.target.value)}
+        className="border p-2 rounded-md text-sm w-24 bg-white text-black"
       >
         <option value="=">=</option>
         <option value="!=">!=</option>
@@ -67,216 +67,604 @@ const DynamicSelectOptions = ({ condition, index, updateCondition }) => {
   }
 };
 
-const DynamicOptionValues = ({ condition, index, updateCondition }) => {
+const DynamicOptionValues = ({ condition, updateCondition }) => {
   if (!condition.operator) return null;
 
-  let columnType = getColumnGroupType(condition.type);
-  console.log("columnType", columnType);
-  console.log("condition", condition);
+  let columnType = getColumnGroupType(condition.conditionType);
+
   if (condition.operator === "between" && columnType === "DATE") {
     return (
-      <>
+      <div className="flex gap-2">
         <input
           type="date"
           name="date"
-          value={condition["value"]}
-          onChange={(e) => updateCondition(index, "value", e.target.value)}
-          style={{
-            border: "1px solid grey",
-            width: "200px",
-            padding: "12px",
-            borderRadius: "5px",
-          }}
+          value={condition.value || ''}
+          onChange={(e) => updateCondition("value", e.target.value)}
+          className="border p-2 rounded-md text-sm w-40 bg-white text-black"
+          required
         />
+        <span className="flex items-center text-gray-500">and</span>
         <input
           type="date"
           name="date"
-          value={condition["value2"]}
-          onChange={(e) => updateCondition(index, "value2", e.target.value)}
-          style={{
-            border: "1px solid grey",
-            width: "200px",
-            padding: "12px",
-            borderRadius: "5px",
-          }}
+          value={condition.value2 || ''}
+          onChange={(e) => updateCondition("value2", e.target.value)}
+          className="border p-2 rounded-md text-sm w-40 bg-white text-black"
+          required
         />
-      </>
+      </div>
+    );
+  }
+  if (columnType === "DATE") {
+    return (
+      <div className="flex gap-2">
+        <input
+          type="date"
+          name="date"
+          value={condition.value || ''}
+          onChange={(e) => updateCondition("value", e.target.value)}
+          className="border p-2 rounded-md text-sm w-40 bg-white text-black"
+          required
+        />
+      </div>
     );
   }
   if (condition.operator === "between" && columnType === "NUMBER") {
     return (
-      <>
+      <div className="flex gap-2 items-center">
         <input
           type="text"
           placeholder="Value"
-          value={condition.value}
-          onChange={(e) => updateCondition(index, "value", e.target.value)}
-          className="border p-1.5 rounded w-[200px]"
+          value={condition.value || ''}
+          onChange={(e) => updateCondition("value", e.target.value)}
+          className="border p-2 rounded-md text-sm w-32 bg-white text-black"
+          required
         />
+        <span className="text-gray-500">and</span>
         <input
           type="text"
           placeholder="Value"
-          hidden={condition.operator !== "between"}
-          value={condition["value2"]}
-          onChange={(e) => updateCondition(index, "value2", e.target.value)}
-          className="border p-1.5 rounded w-[200px]"
+          value={condition.value2 || ''}
+          onChange={(e) => updateCondition("value2", e.target.value)}
+          className="border p-2 rounded-md text-sm w-32 bg-white text-black"
+          required
         />
-      </>
+      </div>
     );
   }
 
   return (
     <input
       type="text"
-      placeholder={condition.operator === "like" ? "Wildcard" : "Value"}
-      value={condition.value}
-      onChange={(e) => updateCondition(index, "value", e.target.value)}
-      className="border p-1.5 rounded w-[200px]"
+      placeholder={condition.operator === "like" ? "Wildcard (%value%)" : "Value"}
+      value={condition.value || ''}
+      onChange={(e) => updateCondition("value", e.target.value)}
+      className="border p-2 rounded-md text-sm w-40 bg-white text-black"
+      required
     />
   );
 };
-export default function FilterComponent({ setIsOpen, columns, onApply }) {
-  console.log("COLUMNS ++>> ", columns);
 
+const FilterComponent = ({ setIsOpen, columns, onApply }) => {
   const { userSelections, finalPayload } = useStateContext();
+  const [useComplexFilter, setUseComplexFilter] = useState(false);
+  const [complexFilterQuery, setComplexFilterQuery] = useState('');
 
-  const [conditions, setConditions] = useState([]);
+  const [filterGroups, setFilterGroups] = useState(() => {
+    // Default empty group structure
+    const defaultGroup = [{
+      id: Date.now(),
+      joinType: 'AND',
+      conditions: [{
+        id: Date.now() + 1,
+        type: 'condition',
+        column: '',
+        operator: '=',
+        value: '',
+        value2: null,
+        joinType: 'AND'
+      }],
+      depth: 0
+    }];
+
+    // Safely check if finalPayload exists and has view_type
+    if (finalPayload?.view_type === "Integrated View") {
+      return Array.isArray(finalPayload?.filter_data) ? finalPayload.filter_data : defaultGroup;
+    } else {
+      const filterData = userSelections?.get("apiPayload")?.filter_data;
+      return Array.isArray(filterData) ? filterData : defaultGroup;
+    }
+  });
+
+  const [newGroupType, setNewGroupType] = useState('OR');
 
   useEffect(() => {
-    if(finalPayload.view_type === "Integrated View"){
-      const filterData = finalPayload.filter_data;
-      console.log("integrated filter data is ===>",filterData)
-      if (filterData) setConditions(filterData);
-    }
-    else{
-    const filterData = userSelections?.get("apiPayload")?.filter_data;
-    console.log("USE CALLBACK ===>> ", userSelections);
-    if (filterData) setConditions(filterData);
+    if (finalPayload.view_type === "Integrated View") {
+      const filterData = finalPayload?.filter_data;
+      setFilterGroups(Array.isArray(filterData) ? filterData : [{
+        id: Date.now(),
+        joinType: 'AND',
+        conditions: [{
+          id: Date.now() + 1,
+          type: 'condition',
+          column: '',
+          operator: '=',
+          value: '',
+          value2: null,
+          joinType: 'AND'
+        }],
+        depth: 0
+      }]);
+    } else {
+      const filterData = userSelections?.get("apiPayload")?.filter_data;
+      setFilterGroups(Array.isArray(filterData) ? filterData : [{
+        id: Date.now(),
+        joinType: 'AND',
+        conditions: [{
+          id: Date.now() + 1,
+          type: 'condition',
+          column: '',
+          operator: '=',
+          value: '',
+          value2: null,
+          joinType: 'AND'
+        }],
+        depth: 0
+      }]);
     }
   }, [userSelections, finalPayload]);
 
-  useEffect(() => console.log("CONDITIONS ++>> ", conditions), [conditions]);
+  const validateFilters = () => {
+    const errors = [];
 
-  const addCondition = () => {
-    setConditions((prevConditions) => {
-      let condition = null;
-      if (prevConditions.length !== 0) {
-        prevConditions[prevConditions.length - 1].child = prevConditions.length;
-        condition = "and";
+    const validateGroup = (group, path = '') => {
+      if (!group.conditions || group.conditions.length === 0) {
+        errors.push(`Group ${path} has no conditions`);
+        return;
       }
 
-      return [
-        ...prevConditions,
-        {
-          column: "",
-          operator: "",
-          value: "",
-          value2: null,
-          condition: condition,
-          child: null,
-          type: null,
-        },
-      ];
-    });
-  };
+      group.conditions.forEach((condition, index) => {
+        const currentPath = path ? `${path}.${index + 1}` : `Group ${index + 1}`;
 
-  const updateCondition = (index, field, value) => {
-    let columnType = null;
-
-    if (field === "column") {
-      const columnIndex = columns.findIndex((column) => column.name === value);
-      columnType = columns[columnIndex].type;
-    }
-
-    setConditions((prevConditions) => {
-      return prevConditions.map((condition, i) => {
-        if (i === index) {
-          if (columnType)
-            return {
-              ...condition,
-              [field]: value,
-              type: columnType,
-              value: "",
-              value2: "",
-              operator: "=",
-            };
-          else if (field === "operator")
-            return { ...condition, [field]: value, value: "", value2: "" };
-          return { ...condition, [field]: value };
+        if (condition.type === 'condition') {
+          if (!condition.column) {
+            errors.push(`Column is required in ${currentPath}`);
+          }
+          if (!condition.value && condition.operator !== 'between') {
+            errors.push(`Value is required in ${currentPath}`);
+          }
+          if (condition.operator === 'between' && (!condition.value || !condition.value2)) {
+            errors.push(`Both values are required for BETWEEN in ${currentPath}`);
+          }
+        } else {
+          validateGroup(condition, currentPath);
         }
-        return condition;
       });
+    };
+
+    filterGroups.forEach((group, index) => {
+      validateGroup(group, `Group ${index + 1}`);
     });
+
+    if (errors.length > 0) {
+      errors.forEach(error => {
+        toast.error(error, {
+          position: "top-right",
+          duration: 5000,
+        });
+      });
+      return false;
+    }
+    return true;
   };
-  const removeCondition = (index) => {
-    setConditions((prevConditions) => {
-      if (prevConditions.length === 1) {
-        return [];
-      }
 
-      let newConditions = [...prevConditions];
-
-      if (index === newConditions.length - 1) {
-        if (index > 0) {
-          newConditions[index - 1].child = null;
+  const addNewGroup = (parentGroupId = null, joinType = newGroupType) => {
+    const newGroup = {
+      id: Date.now(),
+      joinType: 'AND',
+      conditions: [
+        {
+          id: Date.now() + 1,
+          type: 'condition',
+          column: '',
+          operator: '=',
+          value: '',
+          value2: null
         }
-        return newConditions.slice(0, -1);
-      }
+      ],
+      depth: parentGroupId ? 1 : 0
+    };
 
-      for (let i = index; i < newConditions.length - 1; i++) {
-        console.log(i);
-        newConditions[i] = { ...newConditions[i + 1], child: i + 1 };
-      }
+    if (parentGroupId) {
+      setFilterGroups(prevGroups => {
+        const updateGroups = (groups, currentDepth = 0) => {
+          return groups.map(group => {
+            if (group.id === parentGroupId) {
+              const newDepth = (group.depth || 0) + 1;
+              return {
+                ...group,
+                conditions: [
+                  ...(group.conditions || []),
+                  {
+                    id: Date.now() + 2,
+                    type: 'group',
+                    ...newGroup,
+                    depth: newDepth
+                  }
+                ]
+              };
+            }
 
-      newConditions = newConditions.slice(0, -1);
-      newConditions[newConditions.length - 1].child = null;
-      newConditions[0].condition = null;
-      return newConditions;
+            if (group.conditions && Array.isArray(group.conditions)) {
+              return {
+                ...group,
+                conditions: updateGroups(group.conditions, group.depth || 0)
+              };
+            }
+            return group;
+          });
+        };
+
+        return updateGroups(prevGroups);
+      });
+    } else {
+      setFilterGroups(prevGroups => [
+        ...prevGroups,
+        {
+          ...newGroup,
+          joinType: joinType,
+          depth: 0
+        }
+      ]);
+    }
+  };
+
+  const addNewCondition = (groupId) => {
+    setFilterGroups(prevGroups => {
+      const updateGroups = (groups) => {
+        return groups.map(group => {
+          if (group.id === groupId) {
+            return {
+              ...group,
+              conditions: [
+                ...(group.conditions || []),
+                {
+                  id: Date.now(),
+                  type: 'condition',
+                  column: '',
+                  operator: '=',
+                  value: '',
+                  value2: null,
+                  joinType: 'AND'
+                }
+              ]
+            };
+          }
+
+          if (group.conditions && Array.isArray(group.conditions)) {
+            return {
+              ...group,
+              conditions: updateGroups(group.conditions)
+            };
+          }
+          return group;
+        });
+      };
+
+      return updateGroups(prevGroups);
     });
   };
-  return (
-    <div className="text-black fixed inset-0 text-['Proxima Nova'] bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-[80vw] max-h-[80vh] flex flex-col">
-        {/* Header */}
-        <div className="p-2 pl-4 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
-          <h2 className="text-xl font-semibold">Filter</h2>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              setIsOpen(false);
-            }}
-            className="text-2xl"
-          >
-            <X />
-          </button>
-        </div>
 
-        {/* Content */}
-        <div className="p-4 flex-1 overflow-auto">
-          {conditions.map((condition, index) => (
-            <div key={index} className="mb-4">
-              {index > 0 && (
-                <div className="mb-1 mt-6">
-                  <select
-                    value={condition.condition}
-                    onChange={(e) =>
-                      updateCondition(index, "condition", e.target.value)
-                    }
-                    className="border p-1.5 rounded w-24 bg-gray-100 text-sm"
-                  >
-                    <option value="AND">AND</option>
-                    <option value="OR">OR</option>
-                  </select>
-                </div>
-              )}
+  const removeItem = (groupId, conditionId) => {
+    setFilterGroups(prevGroups => {
+      if (!groupId) {
+        return prevGroups.filter(group => group.id !== conditionId);
+      }
 
-              <div className="flex gap-3 items-start p-2 bg-gray-50 rounded">
+      const updateGroups = (groups) => {
+        return groups.map(group => {
+          if (group.id === groupId) {
+            const newConditions = (group.conditions || []).filter(
+              condition => condition.id !== conditionId
+            );
+
+            if (newConditions.length === 0 && group.conditions.length > 0) {
+              newConditions.push({
+                id: Date.now(),
+                type: 'condition',
+                column: '',
+                operator: '=',
+                value: '',
+                value2: null
+              });
+            }
+
+            return {
+              ...group,
+              conditions: newConditions
+            };
+          }
+
+          if (group.conditions && Array.isArray(group.conditions)) {
+            return {
+              ...group,
+              conditions: updateGroups(group.conditions)
+            };
+          }
+          return group;
+        });
+      };
+
+      return updateGroups(prevGroups);
+    });
+  };
+
+  const updateCondition = (groupId, conditionId, field, value) => {
+    setFilterGroups(prevGroups => {
+      const updateGroups = (groups) => {
+        return groups.map(group => {
+          if (group.id === groupId) {
+            return {
+              ...group,
+              conditions: (group.conditions || []).map(condition => {
+                if (condition.id === conditionId) {
+                  if (field === 'column') {
+                    const column = columns.find(col => col.name === value);
+                    return {
+                      ...condition,
+                      [field]: value,
+                      operator: '=',
+                      value: '',
+                      value2: null,
+                      conditionType: column ? column.type : null
+                    };
+                  }
+                  return { ...condition, [field]: value };
+                }
+                return condition;
+              })
+            };
+          }
+
+          if (group.conditions && Array.isArray(group.conditions)) {
+            return {
+              ...group,
+              conditions: updateGroups(group.conditions)
+            };
+          }
+          return group;
+        });
+      };
+
+      return updateGroups(prevGroups);
+    });
+  };
+
+  const updateConditionJoinType = (groupId, conditionId, joinType) => {
+    setFilterGroups(prevGroups => {
+      const updateGroups = (groups) => {
+        return groups.map(group => {
+          if (group.id === groupId) {
+            return {
+              ...group,
+              conditions: (group.conditions || []).map(condition => {
+                if (condition.id === conditionId) {
+                  return {
+                    ...condition,
+                    joinType: joinType || 'AND'
+                  };
+                }
+                return condition;
+              })
+            };
+          }
+
+          if (group.conditions && Array.isArray(group.conditions)) {
+            return {
+              ...group,
+              conditions: updateGroups(group.conditions)
+            };
+          }
+          return group;
+        });
+      };
+
+      return updateGroups(prevGroups);
+    });
+  };
+
+  const updateGroupJoinType = (groupId, joinType) => {
+    setFilterGroups(prevGroups => {
+      const updateGroups = (groups) => {
+        return groups.map(group => {
+          if (group.id === groupId) {
+            return { ...group, joinType };
+          }
+
+          if (group.conditions && Array.isArray(group.conditions)) {
+            return {
+              ...group,
+              conditions: updateGroups(group.conditions)
+            };
+          }
+          return group;
+        });
+      };
+
+      return updateGroups(prevGroups);
+    });
+  };
+
+  const updateBetweenGroupsJoinType = (index, joinType) => {
+    if (index > 0) {
+      setFilterGroups(prevGroups => {
+        const newGroups = [...prevGroups];
+        newGroups[index].joinType = joinType;
+        return newGroups;
+      });
+    }
+  };
+
+  const generateSQL = () => {
+    if (useComplexFilter) {
+      return complexFilterQuery || "Enter your custom WHERE condition above";
+    }
+  
+    const buildGroupSQL = (group) => {
+      if (!group.conditions || !Array.isArray(group.conditions)) return '()';
+  
+      const conditionsSQL = group.conditions
+        .map((condition, index) => {
+          const joinType = index === 0 ? '' : ` ${condition.joinType || 'AND'} `;
+  
+          if (condition.type === 'condition') {
+            if (!condition.column || (!condition.value && condition.operator !== 'between') ||
+              (condition.operator === 'between' && (!condition.value || !condition.value2))) {
+              return null;
+            }
+  
+            const columnType = getColumnGroupType(condition.conditionType);
+            const shouldQuote = columnType !== 'NUMBER';
+  
+            if (condition.operator === 'between') {
+              return `${joinType}${condition.column} BETWEEN ${
+                shouldQuote ? `'${condition.value}'` : condition.value
+              } AND ${
+                shouldQuote ? `'${condition.value2}'` : condition.value2
+              }`;
+            }
+            return `${joinType}${condition.column} ${condition.operator} ${
+              shouldQuote ? `'${condition.value}'` : condition.value
+            }`;
+          } else {
+            const nestedSQL = buildGroupSQL(condition);
+            return nestedSQL ? `${joinType}${nestedSQL}` : null;
+          }
+        })
+        .filter(Boolean);
+  
+      return conditionsSQL.length > 0 ? `(${conditionsSQL.join('')})` : null;
+    };
+  
+    const groupsSQL = filterGroups
+      .map((group, index) => {
+        const groupSQL = buildGroupSQL(group);
+        return index === 0 ? groupSQL : groupSQL ? `${group.joinType} ${groupSQL}` : null;
+      })
+      .filter(Boolean);
+  
+    return groupsSQL.join(' ') || 'No valid conditions to generate SQL';
+  };
+
+  const convertToFlatConditions = () => {
+    return Array.isArray(filterGroups) ? filterGroups : [];
+  };
+
+  const cloneGroup = (groupToClone) => {
+    const newId = Date.now();
+
+    const cloneConditions = (conditions) => {
+      return conditions.map(condition => {
+        if (condition.type === 'condition') {
+          return {
+            ...condition,
+            id: Date.now() + Math.floor(Math.random() * 1000),
+          };
+        } else {
+          return {
+            ...condition,
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            conditions: cloneConditions(condition.conditions || []),
+          };
+        }
+      });
+    };
+
+    return {
+      ...groupToClone,
+      id: newId,
+      conditions: cloneConditions(groupToClone.conditions || []),
+    };
+  };
+
+  const addClonedGroup = (parentGroupId, groupToClone) => {
+    const clonedGroup = cloneGroup(groupToClone);
+
+    setFilterGroups(prevGroups => {
+      const updateGroups = (groups) => {
+        return groups.map(group => {
+          if (group.id === parentGroupId) {
+            return {
+              ...group,
+              conditions: [
+                ...(group.conditions || []),
+                clonedGroup
+              ]
+            };
+          }
+
+          if (group.conditions && Array.isArray(group.conditions)) {
+            return {
+              ...group,
+              conditions: updateGroups(group.conditions)
+            };
+          }
+          return group;
+        });
+      };
+
+      if (!parentGroupId) {
+        return [...prevGroups, clonedGroup];
+      }
+
+      return updateGroups(prevGroups);
+    });
+  };
+
+  const handleApplyFilters = () => {
+    if (useComplexFilter) {
+      if (!complexFilterQuery.trim()) {
+        toast.error("Please enter a valid SQL WHERE condition", {
+          position: "top-right",
+          duration: 5000,
+        });
+        return;
+      }
+      onApply(null, { complex_query: complexFilterQuery });
+    } else {
+      if (validateFilters()) {
+        onApply(null, convertToFlatConditions());
+      }
+    }
+  };
+
+  const renderConditions = (conditions, parentGroupId, parentDepth = 0) => {
+    if (!conditions || !Array.isArray(conditions)) return null;
+
+    return (
+      <div className={`pl-4 ${parentDepth > 0 ? 'border-l-2 border-gray-200' : ''} space-y-3`}>
+        {conditions.map((condition, index) => (
+          <div key={condition.id} className="flex items-start gap-2">
+            {index !== 0 && (
+              <div className="flex items-center h-10">
+                <select
+                  value={condition.joinType || 'AND'}
+                  onChange={e => updateConditionJoinType(parentGroupId, condition.id, e.target.value)}
+                  className="border rounded px-2 py-1 text-xs bg-white text-black"
+                >
+                  <option value="AND">AND</option>
+                  <option value="OR">OR</option>
+                </select>
+              </div>
+            )}
+
+            {condition.type === 'condition' ? (
+              <div className="flex items-center gap-2 flex-1 bg-gray-50 p-2 rounded-lg">
                 <select
                   value={condition.column}
-                  onChange={(e) =>
-                    updateCondition(index, "column", e.target.value)
-                  }
-                  className="border p-1.5 rounded w-[200px]"
+                  onChange={e => updateCondition(parentGroupId, condition.id, 'column', e.target.value)}
+                  className="border rounded px-2 py-1 text-sm flex-1 max-w-[180px] bg-white text-black"
+                  required
                 >
                   <option value="">Select Column</option>
                   {columns.map((column, colIndex) => (
@@ -285,82 +673,255 @@ export default function FilterComponent({ setIsOpen, columns, onApply }) {
                     </option>
                   ))}
                 </select>
-                {/* <select
-                    value={condition.operator}
-                    onChange={(e) => updateCondition(index, 'operator', e.target.value)}
-                    className="border p-1.5 rounded w-20"
-                  >
-                    <option value="=">=</option>
-                    <option value="!=">!=</option>
-                    <option value=">">{">"}</option>
-                    <option value="<">{"<"}</option>
-                    <option value=">=">{"≥"}</option>
-                    <option value="<=">{"≤"}</option>
-                  </select> */}
+
                 <DynamicSelectOptions
                   condition={condition}
-                  index={index}
-                  updateCondition={updateCondition}
+                  updateCondition={(field, value) => updateCondition(parentGroupId, condition.id, field, value)}
                 />
+
                 <DynamicOptionValues
                   condition={condition}
-                  index={index}
-                  updateCondition={updateCondition}
+                  updateCondition={(field, value) => updateCondition(parentGroupId, condition.id, field, value)}
                 />
-                {/* <input
-                  type="text"
-                  placeholder="Value"
-                  value={condition.value}
-                  onChange={(e) =>
-                    updateCondition(index, "value", e.target.value)
-                  }
-                  className="border p-1.5 rounded w-[200px]"
-                />
-                <input
-                  type="text"
-                  placeholder="Value"
-                  hidden={condition.operator !== "between"}
-                  value={condition["value2"]}
-                  onChange={(e) =>
-                    updateCondition(index, "value2", e.target.value)
-                  }
-                  className="border p-1.5 rounded w-[200px]"
-                /> */}
+
                 <button
-                  onClick={() => removeCondition(index)}
-                  className="mt-1 p-1.5 text-red-500 hover:text-red-800 hover:bg-[#b6b3bb] rounded-lg"
+                  onClick={() => removeItem(parentGroupId, condition.id)}
+                  className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
                 >
-                  <X className="h-4" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
-            </div>
-          ))}
+            ) : (
+              <div className="flex-1 border rounded-lg p-3 space-y-3 bg-gray-50">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm text-gray-600">
+                      Group
+                    </span>
+                    {index > 0 && (
+                      <select
+                        value={condition.joinType || 'AND'}
+                        onChange={e => updateGroupJoinType(condition.id, e.target.value)}
+                        className="border rounded px-2 py-0.5 text-xs bg-white text-black"
+                      >
+                        <option value="AND">AND</option>
+                        <option value="OR">OR</option>
+                      </select>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => addNewCondition(condition.id)}
+                      className="text-xs px-2 py-1 bg-[#8E77BB] text-white rounded hover:bg-opacity-90"
+                    >
+                      + Condition
+                    </button>
+                    {(condition.depth || 0) < 3 && (
+                      <button
+                        onClick={() => addNewGroup(condition.id)}
+                        className="text-xs px-2 py-1 bg-[#8E77BB] text-white rounded hover:bg-opacity-90"
+                      >
+                        + Nested Group
+                      </button>
+                    )}
+                    <button
+                      onClick={() => addClonedGroup(parentGroupId, condition)}
+                      className="text-xs px-2 py-1 bg-[#8E77BB] text-white rounded hover:bg-opacity-90"
+                    >
+                      Clone Group
+                    </button>
+                    <button
+                      onClick={() => removeItem(parentGroupId, condition.id)}
+                      className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                {renderConditions(
+                  condition.conditions,
+                  condition.id,
+                  condition.depth || 0
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg w-[90vw] max-w-[1000px] max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="p-2 pl-4 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
+          <h2 className="text-xl font-semibold">Filter</h2>
           <button
-            onClick={addCondition}
-            className="mt-2 px-2 text-sm py-2 font-semibold bg-[#8E77BB] text-white rounded-lg hover:bg-opacity-80"
+            onClick={(e) => {
+              e.preventDefault();
+              setIsOpen(false);
+            }}
+            className="p-1"
           >
-            Add Condition
+            <X className="h-5 w-5" />
           </button>
         </div>
 
+        {/* Content */}
+        <div className="p-4 flex-1 overflow-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-black">Advanced SQL Mode</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={useComplexFilter}
+                  onChange={() => setUseComplexFilter(!useComplexFilter)}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8E77BB]"></div>
+              </label>
+            </div>
+          </div>
+
+          {useComplexFilter ? (
+            <div className="space-y-4">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Enter SQL WHERE Condition
+                </label>
+                <textarea
+                  value={complexFilterQuery}
+                  onChange={(e) => setComplexFilterQuery(e.target.value)}
+                  placeholder="e.g. status = 'active' AND (created_at > '2023-01-01' OR customer_type = 'premium')"
+                  className="w-full border rounded-md p-2 h-32 text-sm font-mono text-gray-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter a valid SQL WHERE condition (without the WHERE keyword)
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Array.isArray(filterGroups) && filterGroups.map((group, index) => (
+                <div key={group.id} className="space-y-4">
+                  {index > 0 && (
+                    <div className="flex items-center justify-center">
+                      <select
+                        value={group.joinType}
+                        onChange={(e) => updateBetweenGroupsJoinType(index, e.target.value)}
+                        className="border rounded px-2 py-1 text-sm text-black"
+                      >
+                        <option value="AND">AND</option>
+                        <option value="OR">OR</option>
+                      </select>
+                    </div>
+                  )}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium text-gray-700 text-sm">
+                        {index === 0 ? 'Main Group' : `Group ${index + 1}`}
+                      </span>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => addClonedGroup(null, group)}
+                          className="bg-[#8E77BB] text-white rounded hover:bg-opacity-9 text-sm px-2.5 py-1"
+                        >
+                          Clone Group
+                        </button>
+                        <button
+                          onClick={() => addNewCondition(group.id)}
+                          className="bg-[#8E77BB] text-white rounded hover:bg-opacity-9 text-sm px-2.5 py-1"
+                        >
+                          + Condition
+                        </button>
+                        {(group.depth || 0) < 3 && (
+                          <button
+                            onClick={() => addNewGroup(group.id)}
+                            className="bg-[#8E77BB] text-white rounded hover:bg-opacity-9 text-sm px-2.5 py-1"
+                          >
+                            + Nested
+                          </button>
+                        )}
+                        {filterGroups.length > 1 && (
+                          <button
+                            onClick={() => removeItem(null, group.id)}
+                            className="text-sm px-2 py-0.5 bg-red-50 text-red-600 rounded hover:bg-red-100"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {renderConditions(group.conditions, group.id, group.depth || 0)}
+                  </div>
+                </div>
+
+              ))}
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={newGroupType}
+                  onChange={(e) => setNewGroupType(e.target.value)}
+                  className="border rounded px-2 py-1 text-sm text-black"
+                >
+                  <option value="AND">AND</option>
+                  <option value="OR">OR</option>
+                </select>
+                <button
+                  onClick={() => addNewGroup()}
+                  className="bg-[#8E77BB] text-white rounded hover:bg-opacity-9
+                   text-sm flex items-center gap-1 px-2 py-1"
+                >
+                  <span>+</span>
+                  <span>Add New Group</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6">
+            <h3 className="font-medium text-gray-700 mb-2 text-sm">Generated SQL Preview:</h3>
+            <div className="bg-gray-100 p-3 rounded text-sm overflow-x-auto font-mono text-black">
+              {generateSQL() || <span className="text-gray-500">Your SQL query will appear here</span>}
+            </div>
+          </div>
+        </div>
+
         {/* Footer */}
-        <div className="p-4 border-t flex justify-end gap-4">
+        <div className="p-4 border-t flex justify-end gap-3">
           <button
             onClick={() => onApply(null, null)}
-            className="px-4 py-2 bg-[#8E77BB] text-white rounded hover:bg-opacity-80"
+            className="px-4 py-2 bg-[#8E77BB] text-white rounded hover:bg-opacity-90 text-sm"
           >
             Skip
           </button>
           <button
-            onClick={(e) => setConditions([])}
-            className="px-4 py-2 border rounded hover:bg-gray-50"
+            onClick={() => {
+              setFilterGroups([{
+                id: Date.now(),
+                joinType: 'AND',
+                conditions: [{
+                  id: Date.now() + 1,
+                  type: 'condition',
+                  column: '',
+                  operator: '=',
+                  value: '',
+                  value2: null
+                }],
+                depth: 0
+              }]);
+              setComplexFilterQuery('');
+            }}
+            className="px-4 py-2 border rounded hover:bg-gray-50 text-sm text-black"
           >
-            Clear
+            Clear All
           </button>
           <button
-            onClick={() => onApply(null, conditions)}
-            className="px-4 py-2 bg-[#8E77BB] text-white rounded hover:bg-opacity-80"
+            onClick={handleApplyFilters}
+            className="px-4 py-2 bg-[#8E77BB] text-white rounded hover:bg-opacity-90 text-sm"
           >
             Apply Filters
           </button>
@@ -368,4 +929,6 @@ export default function FilterComponent({ setIsOpen, columns, onApply }) {
       </div>
     </div>
   );
-}
+};
+
+export default FilterComponent;

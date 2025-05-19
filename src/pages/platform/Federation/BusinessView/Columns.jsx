@@ -1,10 +1,17 @@
 import { Settings, X, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStateContext } from "../context/contextViewProvider";
+import { useLocation } from "react-router-dom";
 
 export function Columns({ id, columnName, dataType, toggleModal }) {
 
   const { columnSettings, setColumnSettings, complexCheck } = useStateContext("")
+
+  const modalState = useLocation().state || {
+    queryType: "Regular",
+    viewType: "Business",
+  };
+
 
   useEffect(() => {
     console.log("id isss =======>", id)
@@ -145,7 +152,7 @@ export function Columns({ id, columnName, dataType, toggleModal }) {
                 </div>
               </div>
 
-              {!complexCheck && (
+              {modalState.queryType != "Complex" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-600 mb-1">Order</label>
@@ -191,7 +198,7 @@ export function Columns({ id, columnName, dataType, toggleModal }) {
                     <option value="Avg">Avg</option>
                   </select>
                 </div>
-                {!complexCheck && (
+                {modalState.queryType != "Complex" && (
                   <div>
                     <label className="block text-sm text-gray-600 mb-1">Group by</label>
                     <select

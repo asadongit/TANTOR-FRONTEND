@@ -350,7 +350,7 @@ export default function Source() {
       return null;
     }
 
-    apiPayload.view_name = newViewName;
+    apiPayload.view_name = newViewName.toLowerCase();
 
     if (apiPayload.skip_filter === true) {
       delete apiPayload.filter_data;
