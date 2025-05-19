@@ -49,6 +49,7 @@ export function SourceNode({ id, data, selected }) {
     name:"",
     source_conn_id:""
   }));
+  const [selectedSubsetTable, setSelectedSubsetTable] = useState("");    // NEW
 
   const { data: connections, isLoading: isLoadingConnections } = useConnections('source');
   const { data: schemaCount } = useSchemaCount(selectedConnection);
@@ -65,14 +66,20 @@ export function SourceNode({ id, data, selected }) {
 
   useEffect(() => {
     if (selectedConnection && selectedSchema && ID) {
+      // derive plain table-name list from pipelineMappings
+      const rawSubset = pipelineMappings?.[ID] ?? [];
+      const subsetNames = rawSubset.map(item =>
+        typeof item === "string" ? item : item.source_table
+      );
+
       const updatedNodeData = {
         connection: selectedConnection,
         schema: selectedSchema,
         mode: selectedMode,
         bulk_list: selectedItems,
-        subset_list: pipelineMappings?.[ID] ?? [],
-        op_types: nodeData?.op_types ?? [],
-        table_op_types: nodeData?.table_op_types ?? {}, // Preserve table_op_types
+        subset_list: subsetNames,                      // updated
+        op_types: nodeData?.op_types ?? {},
+        table_op_types: nodeData?.table_op_types ?? {},
         source_conn_id: nodeData?.source_conn_id ?? null,
         define: data?.define?.[0] ?? null,
       };
@@ -113,9 +120,10 @@ export function SourceNode({ id, data, selected }) {
   const handleModeChange = (mode) => {
     setSelectedMode(mode);
     setSelectedItems([]);
-
+    if (mode === "subset") {
+      setSelectedSubsetTable("");                                      // NEW: clear previous subset choice
+    }
     if (!selectedConnection || !selectedSchema) return;
-
   };
   const handleSelectAll = (isChecked) => {
     if (isChecked) {
@@ -348,13 +356,26 @@ export function SourceNode({ id, data, selected }) {
       </div>
 
       <div className="mt-2">
-        {filteredTables &&
-          filteredTables.length > 0 &&
-          selectedMode === "subset" && (
+        {filteredTables?.length > 0 && selectedMode === "subset" && (
+          <div className="flex items-center gap-2">
             <select
-              id="table-select"
+              value={selectedSubsetTable}
+              onChange={(e) => {
+                const tbl = e.target.value;
+                setSelectedSubsetTable(tbl);
+                selectSource(ID, tbl, connectedTargets, isPipelineNode);
+
+                // Ensure the selected table is added to subset_list if not already there
+                const updatedNodeData = {
+                  ...nodeData,
+                  subset_list: nodeData.subset_list.includes(tbl)
+                    ? nodeData.subset_list
+                    : [...nodeData.subset_list, tbl]
+                };
+                setNodeData(updatedNodeData);
+                updateData(ID, isPipelineNode, "source", updatedNodeData);
+              }}
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              onChange={(e) => selectSource(ID, e.target.value, connectedTargets, isPipelineNode)}
             >
               <option value="">Select Table</option>
               {filteredTables.map((table, idx) => (
@@ -363,7 +384,8 @@ export function SourceNode({ id, data, selected }) {
                 </option>
               ))}
             </select>
-          )}
+          </div>
+        )}
       </div>
 
       {showTablesList && (

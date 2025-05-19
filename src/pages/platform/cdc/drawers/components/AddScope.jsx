@@ -8,8 +8,31 @@ const AddScope = ({ drawerState, handleSave }) => {
   const { closeDrawer } = useDrawerContext();
   const activePipelineID = drawerState?.pipelineId;
 
+
+  // Try different ways to access the table name
+  const selectedTableFromDrawer =
+    typeof drawerState?.args?.[4] === 'string'
+      ? drawerState.args[4]
+      : (drawerState?.args?.[4]?.source_table || "");
+
+
   const sourceData = pipelines[activePipelineID]?.data?.source || {};
-  const selectedTables = sourceData?.bulk_list || [];
+
+  // Always ensure the selected table is in the list
+  let selectedTables =
+    (sourceData.bulk_list?.length > 0
+      ? sourceData.bulk_list
+      : sourceData.subset_list) || [];
+
+  console.log("Initial selected tables:", selectedTables);
+
+  if (
+    selectedTableFromDrawer &&
+    !selectedTables.includes(selectedTableFromDrawer)
+  ) {
+    selectedTables = [...selectedTables, selectedTableFromDrawer];
+    console.log("Updated tables list with drawer table:", selectedTables);
+  }
 
   const [selectedTable, setSelectedTable] = useState("");
   const [tableOpTypes, setTableOpTypes] = useState({});
@@ -31,24 +54,35 @@ const AddScope = ({ drawerState, handleSave }) => {
   };
 
   useEffect(() => {
+    console.log("useEffect running with table:", selectedTableFromDrawer);
+
+    // Select the table immediately
+    if (selectedTableFromDrawer) {
+      console.log("Setting selected table to:", selectedTableFromDrawer);
+      setSelectedTable(selectedTableFromDrawer);
+    } else if (selectedTables.length > 0) {
+      console.log("Setting selected table to first table:", selectedTables[0]);
+      setSelectedTable(selectedTables[0]);
+    }
+
     // Initialize table operations from source data if available
     const initialTableOpTypes = {};
 
-    if (selectedTables.length > 0) {
-      // Set the first table as default selected
-      setSelectedTable(selectedTables[0]);
+    selectedTables.forEach(tableName => {
+      initialTableOpTypes[tableName] =
+        (sourceData.table_op_types && sourceData.table_op_types[tableName])
+          ? sourceData.table_op_types[tableName]
+          : { ...defaultOpTypes };
+    });
 
-      // Initialize operation types for each table
-      selectedTables.forEach(tableName => {
-        initialTableOpTypes[tableName] =
-          (sourceData.table_op_types && sourceData.table_op_types[tableName])
-            ? sourceData.table_op_types[tableName]
-            : {...defaultOpTypes};
-      });
-
-      setTableOpTypes(initialTableOpTypes);
+    // Make sure we have op types for the selected table
+    if (selectedTableFromDrawer && !initialTableOpTypes[selectedTableFromDrawer]) {
+      initialTableOpTypes[selectedTableFromDrawer] = { ...defaultOpTypes };
     }
-  }, [sourceData, selectedTables]);
+
+    console.log("Setting table op types:", initialTableOpTypes);
+    setTableOpTypes(initialTableOpTypes);
+  }, [selectedTableFromDrawer, sourceData.table_op_types]);
 
   const handleTableChange = (e) => {
     setSelectedTable(e.target.value);
@@ -58,7 +92,7 @@ const AddScope = ({ drawerState, handleSave }) => {
     if (!selectedTable) return;
 
     const operationKey = optionMapping[option];
-    const currentTableOpTypes = tableOpTypes[selectedTable] || {...defaultOpTypes};
+    const currentTableOpTypes = tableOpTypes[selectedTable] || { ...defaultOpTypes };
     let updatedOpTypes = { ...currentTableOpTypes };
 
     updatedOpTypes[operationKey] = !updatedOpTypes[operationKey];
@@ -76,7 +110,6 @@ const AddScope = ({ drawerState, handleSave }) => {
       updatedOpTypes.create = false;
     }
 
-    // Update the state for the specific table
     setTableOpTypes({
       ...tableOpTypes,
       [selectedTable]: updatedOpTypes
@@ -86,7 +119,13 @@ const AddScope = ({ drawerState, handleSave }) => {
   const isDisabled = (option) => {
     if (!selectedTable) return true;
 
-    const currentTableOpTypes = tableOpTypes[selectedTable] || defaultOpTypes;
+    // Make sure we have op types for the current table
+    if (!tableOpTypes[selectedTable]) {
+      return false; // Don't disable any option if we don't have settings yet
+    }
+
+    // Get the current op types for the selected table
+    const currentTableOpTypes = tableOpTypes[selectedTable];
     const op = optionMapping[option];
 
     if (currentTableOpTypes.create) {
@@ -99,11 +138,18 @@ const AddScope = ({ drawerState, handleSave }) => {
   };
 
   const handleSaveClick = () => {
-    // Save per-table operation types
-    updatePipelineData(activePipelineID, "source", {
-      table_op_types: tableOpTypes,
-      op_types: tableOpTypes[selectedTable] || defaultOpTypes // Keep legacy op_types for backward compatibility
-    });
+    // Make sure we're saving the correct table op types
+    if (selectedTable) {
+      const updatedTableOpTypes = {
+        ...(sourceData.table_op_types || {}),
+        ...tableOpTypes,
+      };
+
+      updatePipelineData(activePipelineID, "source", {
+        table_op_types: updatedTableOpTypes,
+        op_types: tableOpTypes[selectedTable] || defaultOpTypes
+      });
+    }
 
     handleSave();
     closeDrawer("cdc");
@@ -111,6 +157,8 @@ const AddScope = ({ drawerState, handleSave }) => {
 
   return (
     <div className="space-y-4">
+
+
       {selectedTables.length > 0 && (
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -120,12 +168,15 @@ const AddScope = ({ drawerState, handleSave }) => {
             value={selectedTable}
             onChange={handleTableChange}
             className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8d77ba]"
+            disabled={!!selectedTableFromDrawer}
           >
-            {selectedTables.map((table, index) => (
-              <option key={index} value={table}>
-                {table}
-              </option>
-            ))}
+            {selectedTables
+              .filter(table => !selectedTableFromDrawer || table === selectedTableFromDrawer)
+              .map((table, index) => (
+                <option key={index} value={table}>
+                  {table}
+                </option>
+              ))}
           </select>
         </div>
       )}
