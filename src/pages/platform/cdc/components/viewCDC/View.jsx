@@ -120,225 +120,6 @@ const TaskActions = ({ task, onRestart }) => {
   );
 };
 
-const ConnectorPanel = ({
-  connectorData,
-  type,
-  onRestartTask,
-  onEditConfig,
-}) => {
-  const [expanded, setExpanded] = useState(true);
-  const [showError, setShowError] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
-
-  const typeColor = type === "source" ? "indigo" : "purple";
-  const iconColor = `text-${typeColor}-600`;
-  const bgColor = `bg-${typeColor}-50`;
-  const borderColor = `border-${typeColor}-200`;
-
-  const failedTask = connectorData.tasks.find(
-    (task) => task.state === "FAILED"
-  );
-
-  const handleTaskClick = (task) => {
-    if (task.state === "FAILED") {
-      setSelectedTask(selectedTask?.id === task.id ? null : task);
-    }
-  };
-
-  return (
-    <div
-      className={`mb-4 border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white`}
-    >
-      <div
-        className={`p-3 flex items-center justify-between cursor-pointer`}
-        onClick={() => setExpanded(!expanded)}
-        style={{ background: type === "source" ? "#EEF2FF" : "#F5F3FF" }}
-      >
-        <div className="flex items-center">
-          {expanded ? (
-            <ChevronDown className="w-5 h-5 mr-2 text-gray-500" />
-          ) : (
-            <ChevronRight className="w-5 h-5 mr-2 text-gray-500" />
-          )}
-          <Database
-            className={`w-5 h-5 mr-2 ${
-              type === "source" ? "text-indigo-600" : "text-purple-600"
-            }`}
-          />
-          <h3 className="font-medium text-gray-800">
-            {type === "source" ? "Source Connector" : "Sink Connector"}
-            <span className="ml-2 text-sm font-normal text-gray-500">
-              ({connectorData.name})
-            </span>
-          </h3>
-          {failedTask && (
-            <div className="ml-3 flex items-center">
-              <AlertCircle className="w-4 h-4 text-red-500 mr-1" />
-              <span className="text-xs text-red-600 font-medium">
-                Task failure detected
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEditConfig(type);
-            }}
-            className="text-gray-500 hover:text-indigo-600 p-1"
-            title="Edit Configuration"
-          >
-            <Edit size={18} />
-          </button>
-          <div className="flex items-center">
-            {/* <StatusBadge state={connectorData.connector.state} /> */}
-          </div>
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="p-4">
-          <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-12 md:col-span-5">
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                    <Settings className="w-4 h-4 mr-1.5 text-gray-500" />
-                    Connector Details
-                  </h4>
-                  <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                    <div className="flex justify-between mb-2">
-                      <span className="text-gray-600">Worker:</span>
-                      <span className="text-gray-800 font-medium">
-                        {connectorData.connector.worker_id}
-                      </span>
-                    </div>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-gray-600">Type:</span>
-                      <span className="text-gray-800 font-medium capitalize">
-                        {connectorData.type}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Tasks:</span>
-                      <span className="text-gray-800 font-medium">
-                        {connectorData.tasks.length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                    <Copy className="w-4 h-4 mr-1.5 text-gray-500" />
-                    Configuration
-                  </h4>
-                  <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                    <div className="space-y-2">
-                      {Object.entries(connectorData.config)
-                        .slice(0, 4)
-                        .map(([key, value]) => (
-                          <div
-                            key={key}
-                            className="grid grid-cols-3 gap-2 items-center text-sm"
-                          >
-                            <span className="text-gray-600 truncate col-span-1">
-                              {key}:
-                            </span>
-                            <span className="text-gray-800 font-medium truncate col-span-2">
-                              {key.includes("password") ? "********" : value}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-gray-200">
-                      <button className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center">
-                        <Eye size={14} className="mr-1" />
-                        View full configuration
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-span-12 md:col-span-7">
-              <h4 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                <Layers className="w-4 h-4 mr-1.5 text-gray-500" />
-                Tasks ({connectorData.tasks.length})
-              </h4>
-              <div className="bg-gray-50 rounded-md border border-gray-200 overflow-hidden">
-                <div className="divide-y divide-gray-200">
-                  {connectorData.tasks.map((task) => (
-                    <div key={task.id} className="">
-                      <div
-                        className={`flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 ${
-                          task.state === "FAILED"
-                            ? "cursor-pointer"
-                            : "cursor-default"
-                        }`}
-                        onClick={() => handleTaskClick(task)}
-                      >
-                        <div className="flex items-center">
-                          {task.state === "RUNNING" && (
-                            <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                          )}
-                          {task.state === "FAILED" && (
-                            <XCircle className="w-4 h-4 text-red-500 mr-2" />
-                          )}
-                          {task.state === "PAUSED" && (
-                            <PauseCircle className="w-4 h-4 text-yellow-500 mr-2" />
-                          )}
-                          <span className="text-gray-800">
-                            Task ID: {task.id}
-                          </span>
-                          {task.state === "FAILED" && (
-                            <span className="ml-2 text-xs text-red-600 flex items-center">
-                              <AlertCircle size={12} className="mr-1" />
-                              Failed
-                              <ChevronDown size={14} className="ml-1" />
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center">
-                          <span className="text-xs text-gray-500 mr-2">
-                            {task.worker_id}
-                          </span>
-                          <TaskActions task={task} onRestart={onRestartTask} />
-                        </div>
-                      </div>
-
-                      {selectedTask?.id === task.id && task.trace && (
-                        <div className="p-3 bg-red-50 border-t border-red-200 text-sm">
-                          <div className="font-medium text-red-800 mb-1">
-                            Error Details:
-                          </div>
-                          <div className="whitespace-pre-wrap text-red-700 bg-white p-2 rounded border border-red-200 font-mono text-xs">
-                            {task.trace}
-                          </div>
-                          <div className="mt-2 flex justify-end">
-                            <button
-                              onClick={() => onRestartTask(task.id)}
-                              className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 text-xs flex items-center"
-                            >
-                              <RotateCw size={14} className="mr-1" />
-                              Restart Task
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const MetricsCard = ({
   title,
@@ -389,6 +170,8 @@ export default function CDCJobView() {
   const [activeConfigType, setActiveConfigType] = useState(null);
   const [sourceConfigs, setSourceConfigs] = useState([]);
   const [targetConfigs, setTargetConfigs] = useState([]);
+  const [selectedErrorTask, setSelectedErrorTask] = useState(null);
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
 
   const openModal = (configType) => {
     setActiveConfigType(configType);
@@ -398,6 +181,11 @@ export default function CDCJobView() {
   const closeModal = () => {
     setIsModalOpen(false);
     setActiveConfigType(null);
+  };
+
+  const closeErrorModal = () => {
+    setIsErrorModalOpen(false);
+    setSelectedErrorTask(null);
   };
 
   useEffect(() => {
@@ -453,15 +241,6 @@ export default function CDCJobView() {
             throughput: "1.2k recs/min",
             syncSuccess: 98.7,
           },
-          // metrics: targetStatus?.metrics || {
-          //   recordsProcessed: 0,
-          //   bytesProcessed: "0 KB",
-          //   lagTime: "0s",
-          //   lastSyncTime: "",
-          //   errors: 0,
-          //   throughput: "0 recs/min",
-          //   syncSuccess: 0
-          // }
         };
 
         setJobData(jobData);
@@ -565,7 +344,7 @@ export default function CDCJobView() {
     }, 800);
   };
 
-  const handleRestartTask = (taskId) => {
+  const handleRestartTask = async (taskId) => {
     console.log(`Restarting task ${taskId}`);
 
     if (jobData) {
@@ -575,19 +354,49 @@ export default function CDCJobView() {
         (t) => t.id === taskId
       );
       if (sourceTaskIndex >= 0) {
-        updatedJobData.source.tasks[sourceTaskIndex].state = "RUNNING";
-        delete updatedJobData.source.tasks[sourceTaskIndex].trace;
+        toast.loading("Restarting source task...", { id: 'restart-task' });
+
+        try {
+          await axios.post(`${hostnameV2}/cdc/task-action`, null, {
+            params: {
+              connector_name: updatedJobData.source.name,
+              task_id: taskId,
+              action: "restart"
+            }
+          });
+
+          await fetchUpdatedConnectorStatus(updatedJobData.source.name);
+          toast.success("Task restarted successfully", { id: 'restart-task' });
+        } catch (error) {
+          console.error("Failed to restart task:", error);
+          toast.error(`Failed to restart task: ${error.response?.data?.detail || error.message}`,
+            { id: 'restart-task' });
+        }
       }
 
       const targetTaskIndex = updatedJobData.target.tasks.findIndex(
         (t) => t.id === taskId
       );
       if (targetTaskIndex >= 0) {
-        updatedJobData.target.tasks[targetTaskIndex].state = "RUNNING";
-        delete updatedJobData.target.tasks[targetTaskIndex].trace;
-      }
+        toast.loading("Restarting target task...", { id: 'restart-task' });
 
-      setJobData(updatedJobData);
+        try {
+          await axios.post(`${hostnameV2}/cdc/task-action`, null, {
+            params: {
+              connector_name: updatedJobData.target.name,
+              task_id: taskId,
+              action: "restart"
+            }
+          });
+
+          await fetchUpdatedConnectorStatus(updatedJobData.target.name);
+          toast.success("Task restarted successfully", { id: 'restart-task' });
+        } catch (error) {
+          console.error("Failed to restart task:", error);
+          toast.error(`Failed to restart task: ${error.response?.data?.detail || error.message}`,
+            { id: 'restart-task' });
+        }
+      }
     }
   };
 
@@ -613,6 +422,38 @@ export default function CDCJobView() {
     } catch (error) {
       console.error("Error activating config:", error);
       toast.error("Failed to activate configuration.");
+    }
+  };
+
+  const fetchUpdatedConnectorStatus = async (connectorName) => {
+    try {
+      const response = await axios.get(
+        `${hostnameV2}/cdc/connector-status/${connectorName}`
+      );
+
+      if (jobData) {
+        const updatedJobData = { ...jobData };
+
+        // If the connector name matches source connector, update source status
+        if (connectorName === updatedJobData.source.name) {
+          updatedJobData.source.connector = response.data.connector || { state: "UNKNOWN" };
+          updatedJobData.source.tasks = response.data.tasks || [];
+        }
+
+        // If the connector name matches target connector, update target status
+        if (connectorName === updatedJobData.target.name) {
+          updatedJobData.target.connector = response.data.connector || { state: "UNKNOWN" };
+          updatedJobData.target.tasks = response.data.tasks || [];
+        }
+
+        setJobData(updatedJobData);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch updated status for connector ${connectorName}:`, error);
+      toast.error(`Failed to update connector status: ${error.message}`);
+      return null;
     }
   };
 
@@ -675,12 +516,45 @@ export default function CDCJobView() {
     onEditConfig,
   }) => {
     const [expanded, setExpanded] = useState(true);
-    const [selectedTask, setSelectedTask] = useState(null);
+
     const handleTaskClick = (task) => {
       if (task.state === "FAILED") {
-        setSelectedTask(selectedTask?.id === task.id ? null : task);
+        setSelectedErrorTask(task);
+        setIsErrorModalOpen(true);
       }
     };
+
+    const handleConnectorAction = async (action) => {
+      try {
+        const connectorName = connectorData.name;
+
+        if (!connectorName) {
+          toast.error("Connector name not found");
+          return;
+        }
+
+        toast.loading(`${action}ing connector...`, { id: 'connector-action' });
+
+        const response = await axios.post(`${hostnameV2}/cdc/connector-action`, null, {
+          params: {
+            connector_name: connectorName,
+            action: action
+          }
+        });
+
+        toast.success(`Connector ${action}ed successfully`, { id: 'connector-action' });
+
+        await fetchUpdatedConnectorStatus(connectorName);
+
+        refetch();
+
+      } catch (error) {
+        console.error(`Failed to ${action} connector:`, error);
+        toast.error(`Failed to ${action} connector: ${error.response?.data?.detail || error.message}`,
+          { id: 'connector-action' });
+      }
+    };
+
 
     const statusColor =
       connectorData.connector.state === "RUNNING"
@@ -739,6 +613,11 @@ export default function CDCJobView() {
         </span>
       );
     };
+
+    // Determine which action button to show based on current state
+    const isPaused = connectorData.connector.state?.toUpperCase() === "PAUSED";
+    const isRunning = connectorData.connector.state?.toUpperCase() === "RUNNING";
+
     return (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6 overflow-hidden">
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
@@ -770,22 +649,28 @@ export default function CDCJobView() {
           </div>
           <div className="flex items-center space-x-2">
             <button
-              // onClick={() => toggleConnectorStatus(sourceConfig?.name, true)}
+              onClick={() => handleConnectorAction(isPaused || !isRunning ? "resume" : "pause")}
               className={`p-2 rounded-md text-sm flex items-center ${
-                connectorData.connector.state?.toUpperCase() === "RUNNING"
+                isRunning
                   ? "bg-red-50 text-red-700 hover:bg-red-100"
                   : "bg-green-50 text-green-700 hover:bg-green-100"
               }`}
             >
-              {connectorData.connector.state?.toUpperCase() === "RUNNING" ? (
+              {isRunning ? (
                 <>
-                  <Pause size={16} className="mr-1" /> Stop
+                  <Pause size={16} className="mr-1" /> Pause
                 </>
               ) : (
                 <>
-                  <Play size={16} className="mr-1" /> Start
+                  <Play size={16} className="mr-1" /> Resume
                 </>
               )}
+            </button>
+            <button
+              onClick={() => handleConnectorAction("restart")}
+              className="p-2 rounded-md text-sm flex items-center bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+            >
+              <RotateCw size={16} className="mr-1" /> Restart
             </button>
             <button
               onClick={() => onEditConfig(type)}
@@ -810,8 +695,8 @@ export default function CDCJobView() {
         {expanded && (
           <div className="p-4">
             <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-12 md:col-span-12 flex flex-col md:flex-row gap-6">
-                <div className="md:w-5/12 flex flex-col gap-4">
+              <div className="col-span-12 md:col-span-5">
+                <div className="space-y-4">
                   <div>
                     <h4 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
                       <Settings className="w-4 h-4 mr-1.5 text-gray-500" />
@@ -827,7 +712,7 @@ export default function CDCJobView() {
                       <div className="flex justify-between mb-2">
                         <span className="text-gray-600">Type:</span>
                         <span className="text-gray-800 font-medium capitalize">
-                          {type}
+                          {connectorData.type}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -839,113 +724,87 @@ export default function CDCJobView() {
                     </div>
                   </div>
 
-                  <div className="flex-1 flex flex-col">
+                  <div>
                     <h4 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                      <Layers className="w-4 h-4 mr-1.5 text-gray-500" />
-                      Tasks ({connectorData.tasks.length})
+                      <Copy className="w-4 h-4 mr-1.5 text-gray-500" />
+                      Configuration
                     </h4>
-                    <div className="bg-gray-50 rounded-md border border-gray-200 overflow-hidden flex-1">
-                      <div className="divide-y divide-gray-200">
-                        {connectorData.tasks.map((task) => (
-                          <div key={task.id}>
+                    <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                      <div className="space-y-2">
+                        {Object.entries(connectorData.config)
+                          .slice(0, 4)
+                          .map(([key, value]) => (
                             <div
-                              className={`flex items-center justify-between p-3 hover:bg-gray-100 ${
-                                task.state === "FAILED"
-                                  ? "cursor-pointer"
-                                  : "cursor-default"
-                              }`}
-                              onClick={() => handleTaskClick(task)}
+                              key={key}
+                              className="grid grid-cols-3 gap-2 items-center text-sm"
                             >
-                              <div className="flex items-center">
-                                {task.state === "RUNNING" && (
-                                  <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                                )}
-                                {task.state === "FAILED" && (
-                                  <XCircle className="w-4 h-4 text-red-500 mr-2" />
-                                )}
-                                {task.state === "PAUSED" && (
-                                  <PauseCircle className="w-4 h-4 text-yellow-500 mr-2" />
-                                )}
-                                <span className="text-gray-800">
-                                  Task ID: {task.id}
-                                </span>
-                                {task.state === "FAILED" && (
-                                  <span className="ml-2 text-xs text-red-600 flex items-center">
-                                    <AlertCircle size={12} className="mr-1" />
-                                    Failed
-                                    <ChevronDown size={14} className="ml-1" />
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center">
-                                <span className="text-xs text-gray-500 mr-2">
-                                  {task.worker_id}
-                                </span>
-                                <TaskActions
-                                  task={task}
-                                  onRestart={onRestartTask}
-                                />
-                              </div>
+                              <span className="text-gray-600 truncate col-span-1">
+                                {key}:
+                              </span>
+                              <span className="text-gray-800 font-medium truncate col-span-2">
+                                {key.includes("password") ? "********" : value}
+                              </span>
                             </div>
-
-                            {selectedTask?.id === task.id && task.trace && (
-                              <div className="p-3 bg-red-50 border-t border-red-200 text-sm">
-                                <div className="font-medium text-red-800 mb-1">
-                                  Error Details:
-                                </div>
-                                <div className="whitespace-pre-wrap text-red-700 bg-white p-2 rounded border border-red-200 font-mono text-xs">
-                                  {task.trace}
-                                </div>
-                                <div className="mt-2 flex justify-end">
-                                  <button
-                                    onClick={() => onRestartTask(task.id)}
-                                    className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 text-xs flex items-center"
-                                  >
-                                    <RotateCw size={14} className="mr-1" />
-                                    Restart Task
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          ))}
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <button className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center">
+                          <Eye size={14} className="mr-1" />
+                          View full configuration
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="md:w-7/12 flex flex-col">
-                  <h4 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                    <Copy className="w-4 h-4 mr-1.5 text-gray-500" />
-                    Configuration
-                  </h4>
-                  <div className="bg-gray-50 p-3 rounded-md border border-gray-200 h-full flex-1">
-                    <div className="space-y-2">
-                      {Object.entries(connectorData.config).map(
-                        ([key, value]) => (
-                          <div
-                            key={key}
-                            className="grid grid-cols-3 gap-2 items-center text-sm"
-                          >
-                            <span className="text-gray-600 truncate col-span-1">
-                              {key}:
+              <div className="col-span-12 md:col-span-7">
+                <h4 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
+                  <Layers className="w-4 h-4 mr-1.5 text-gray-500" />
+                  Tasks ({connectorData.tasks.length})
+                </h4>
+                <div className="bg-gray-50 rounded-md border border-gray-200 overflow-hidden">
+                  <div className="divide-y divide-gray-200">
+                    {connectorData.tasks.map((task) => (
+                      <div key={task.id} className="">
+                        <div
+                          className={`flex items-center justify-between p-3 ${
+                            task.state === "FAILED"
+                              ? "cursor-pointer hover:bg-gray-100"
+                              : "cursor-default"
+                          }`}
+                          onClick={() => handleTaskClick(task)}
+                        >
+                          <div className="flex items-center">
+                            {task.state === "RUNNING" && (
+                              <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                            )}
+                            {task.state === "FAILED" && (
+                              <XCircle className="w-4 h-4 text-red-500 mr-2" />
+                            )}
+                            {task.state === "PAUSED" && (
+                              <PauseCircle className="w-4 h-4 text-yellow-500 mr-2" />
+                            )}
+                            <span className="text-gray-800">
+                              Task ID: {task.id}
                             </span>
-                            <span className="text-gray-800 font-medium truncate col-span-2">
-                              {key.includes("database.password") ||
-                              key.includes("connection.password")
-                                ? "********"
-                                : value}
-                            </span>
+                            {task.state === "FAILED" && (
+                              <span className="ml-2 text-xs text-red-600 flex items-center">
+                                <AlertCircle size={12} className="mr-1" />
+                                Failed
+                                <ChevronRight size={14} className="ml-1" />
+                              </span>
+                            )}
                           </div>
-                        )
-                      )}
-                    </div>
-                    {/* <div className="mt-2 pt-2 border-t border-gray-200">
-              <button className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center">
-                <Eye size={14} className="mr-1" />
-                View full configuration
-              </button>
-            </div> */}
+                          <div className="flex items-center">
+                            <span className="text-xs text-gray-500 mr-2">
+                              {task.worker_id}
+                            </span>
+                            <TaskActions task={task} onRestart={onRestartTask} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -956,8 +815,79 @@ export default function CDCJobView() {
     );
   };
 
+  const TaskErrorModal = ({ isOpen, onClose, task }) => {
+    if (!isOpen || !task) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+          <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 className="text-lg font-medium text-gray-900 flex items-center">
+              <XCircle className="w-5 h-5 text-red-500 mr-2" />
+              Task Error Details - Task ID: {task.id}
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-500 focus:outline-none"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex-1 p-4 overflow-auto">
+            <div className="mb-4">
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-gray-500">Worker ID:</span>
+                <span className="text-sm text-gray-900">{task.worker_id}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-gray-500">State:</span>
+                <span className="text-sm text-red-600 font-medium">{task.state}</span>
+              </div>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <h4 className="text-sm font-medium text-red-700 mb-2">Error Trace:</h4>
+              <div className="whitespace-pre-wrap font-mono text-sm bg-red-50 text-red-800 p-3 rounded border border-red-200 max-h-96 overflow-auto">
+                {task.trace || "No detailed error trace available"}
+              </div>
+            </div>
+          </div>
+          <div className="p-4 border-t border-gray-200 flex justify-end space-x-3">
+
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Modify the TaskActions component to open the error modal
   const TaskActions = ({ task, onRestart }) => {
     const [menuOpen, setMenuOpen] = useState(false);
+    const { hostnameV2 } = useAuth();
+    const { cdcId } = useParams();
+    const { refetch } = useCDCConfigs(cdcId);
+
+    const handleTaskAction = async (action) => {
+      try {
+        if (action === "restart") {
+          onRestart(task.id);
+        } else if (action === "viewError" && task.state === "FAILED") {
+          setSelectedErrorTask(task);
+          setIsErrorModalOpen(true);
+        }
+        setMenuOpen(false);
+      } catch (error) {
+        console.error(`Failed to ${action} task:`, error);
+        toast.error(`Failed to ${action} task: ${error.message}`);
+      }
+    };
 
     return (
       <div className="relative">
@@ -975,26 +905,49 @@ export default function CDCJobView() {
           <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white z-10 border border-gray-200">
             <div className="py-1">
               {task.state === "FAILED" && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTaskAction("restart");
+                    }}
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                  >
+                    <RotateCw className="h-4 w-4 mr-2 text-green-600" />
+                    Restart Task
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTaskAction("viewError");
+                    }}
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2 text-red-600" />
+                    View Error Details
+                  </button>
+                </>
+              )}
+              {task.state === "RUNNING" && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onRestart(task.id);
-                    setMenuOpen(false);
+                    handleTaskAction("pause");
                   }}
                   className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                 >
-                  <RotateCw className="h-4 w-4 mr-2 text-green-600" />
-                  Restart Task
-                </button>
-              )}
-              {task.state === "RUNNING" && (
-                <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
                   <PauseCircle className="h-4 w-4 mr-2 text-yellow-600" />
                   Pause Task
                 </button>
               )}
               {task.state === "PAUSED" && (
-                <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTaskAction("resume");
+                  }}
+                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                >
                   <Play className="h-4 w-4 mr-2 text-green-600" />
                   Resume Task
                 </button>
@@ -1809,6 +1762,8 @@ Connectors              </button> */}
           </>
         )}
       </main>
+
+      {/* Config Editor Modal */}
       <ConfigEditorModal
         isOpen={isModalOpen}
         onClose={closeModal}
@@ -1820,8 +1775,14 @@ Connectors              </button> */}
           activeConfigType === "source" ? "sourceStatus" : "targetStatus"
         }
         topicName={data?.topic}
-        // onSave={saveChanges}
-        // onToggleStatus={toggleConnectorStatus}
+      />
+
+      {/* Add the Task Error Modal */}
+      <TaskErrorModal
+        isOpen={isErrorModalOpen}
+        onClose={closeErrorModal}
+        task={selectedErrorTask}
+        onRestartTask={handleRestartTask}
       />
     </div>
   );

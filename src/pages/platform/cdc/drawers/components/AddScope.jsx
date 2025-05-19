@@ -9,72 +9,134 @@ const AddScope = ({ drawerState, handleSave }) => {
   const activePipelineID = drawerState?.pipelineId;
 
   const sourceData = pipelines[activePipelineID]?.data?.source || {};
+  const selectedTables = sourceData?.bulk_list || [];
+
+  const [selectedTable, setSelectedTable] = useState("");
+  const [tableOpTypes, setTableOpTypes] = useState({});
 
   const optionMapping = {
     "Insert": "create",
-    "Update": "update",
+    "Upsert": "update",
     "Delete": "delete",
     "Schema changes": "schemaChanges",
     "Data federation view": "datafederation"
   };
 
-  const [localOpTypes, setLocalOpTypes] = useState({
+  const defaultOpTypes = {
     create: true,
     update: false,
     delete: false,
     schemaChanges: false,
     datafederation: false
-  });
+  };
 
   useEffect(() => {
-    if (sourceData?.op_types) {
-      setLocalOpTypes(sourceData.op_types);
+    // Initialize table operations from source data if available
+    const initialTableOpTypes = {};
+
+    if (selectedTables.length > 0) {
+      // Set the first table as default selected
+      setSelectedTable(selectedTables[0]);
+
+      // Initialize operation types for each table
+      selectedTables.forEach(tableName => {
+        initialTableOpTypes[tableName] =
+          (sourceData.table_op_types && sourceData.table_op_types[tableName])
+            ? sourceData.table_op_types[tableName]
+            : {...defaultOpTypes};
+      });
+
+      setTableOpTypes(initialTableOpTypes);
     }
-  }, [sourceData]);
+  }, [sourceData, selectedTables]);
+
+  const handleTableChange = (e) => {
+    setSelectedTable(e.target.value);
+  };
 
   const handleCheckboxChange = (option) => {
+    if (!selectedTable) return;
+
     const operationKey = optionMapping[option];
-    let updatedOpTypes = { ...localOpTypes };
+    const currentTableOpTypes = tableOpTypes[selectedTable] || {...defaultOpTypes};
+    let updatedOpTypes = { ...currentTableOpTypes };
 
     updatedOpTypes[operationKey] = !updatedOpTypes[operationKey];
 
     if (operationKey === "create" && updatedOpTypes.create) {
       updatedOpTypes.delete = false;
-      updatedOpTypes.update = false; 
+      updatedOpTypes.update = false;
     }
     if (operationKey === "update" && updatedOpTypes.update) {
       updatedOpTypes.delete = false;
       updatedOpTypes.create = false;
     }
     if (operationKey === "delete" && updatedOpTypes.delete) {
-      updatedOpTypes.update = true; 
+      updatedOpTypes.update = true;
       updatedOpTypes.create = false;
     }
 
-    setLocalOpTypes(updatedOpTypes);
-    updatePipelineData(activePipelineID, "source", { op_types: updatedOpTypes });
+    // Update the state for the specific table
+    setTableOpTypes({
+      ...tableOpTypes,
+      [selectedTable]: updatedOpTypes
+    });
   };
 
   const isDisabled = (option) => {
+    if (!selectedTable) return true;
+
+    const currentTableOpTypes = tableOpTypes[selectedTable] || defaultOpTypes;
     const op = optionMapping[option];
-    if (localOpTypes.create) {
+
+    if (currentTableOpTypes.create) {
       return op === "delete" || op === "update";
     }
-    if (localOpTypes.update) {
-    }
-    if (localOpTypes.delete) {
+    if (currentTableOpTypes.delete) {
       return op === "create";
     }
     return false;
   };
 
+  const handleSaveClick = () => {
+    // Save per-table operation types
+    updatePipelineData(activePipelineID, "source", {
+      table_op_types: tableOpTypes,
+      op_types: tableOpTypes[selectedTable] || defaultOpTypes // Keep legacy op_types for backward compatibility
+    });
+
+    handleSave();
+    closeDrawer("cdc");
+  };
+
   return (
     <div className="space-y-4">
+      {selectedTables.length > 0 && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Select Table
+          </label>
+          <select
+            value={selectedTable}
+            onChange={handleTableChange}
+            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8d77ba]"
+          >
+            {selectedTables.map((table, index) => (
+              <option key={index} value={table}>
+                {table}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="flex flex-col space-y-4">
         {Object.keys(optionMapping).map((option, index) => (
           <div key={index} className="flex items-center">
             <Checkbox
-              checked={localOpTypes[optionMapping[option]] || false}
+              checked={selectedTable && tableOpTypes[selectedTable]
+                ? tableOpTypes[selectedTable][optionMapping[option]] || false
+                : false}
               onChange={() => handleCheckboxChange(option)}
               color="primary"
               disabled={isDisabled(option)}
@@ -93,10 +155,8 @@ const AddScope = ({ drawerState, handleSave }) => {
       <div className="mt-6 flex justify-end">
         <button
           className="bg-[#8d77ba] text-white px-6 py-2 rounded-md hover:bg-gray-400 transition-colors"
-          onClick={() => {
-            handleSave();
-            closeDrawer("cdc");
-          }}
+          onClick={handleSaveClick}
+          disabled={!selectedTable}
         >
           Save
         </button>
