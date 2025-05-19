@@ -12,7 +12,7 @@ import { useAuth } from "../../../../context/AuthContext";
 export function TargetNode({ id }) {
   const hostname = import.meta.env.VITE_FAST_API;
   const hostnameV2 = import.meta.env.VITE_FAST_API_V2;
-  const { token, decodedToken } = useAuth();
+  const { token, decodedToken, project } = useAuth();
 
   const {
     selectedTables,
@@ -39,11 +39,19 @@ export function TargetNode({ id }) {
   const [checkedBulkTables, setCheckedBulkTables] = useState(false);
   const [selectedBulkTablesMap, setSelectedBulkTablesMap] = useState([]);
   const [selectedBulkTables, setSelectedBulkTables] = useState([]);
-  const [bulkTableMetadata, setBulkTableMetadata] = useState([]);  
+  const [bulkTableMetadata, setBulkTableMetadata] = useState([]);
 
   const { openDrawer } = useTableContext();
-  const { saveTargetData, filters, dropPartitions, bulkDropPartitions, sourceData, saveSelectedBulkTargetTablesPayload } =
-    usePurgeContext("");
+  const {
+    saveTargetData,
+    filters,
+    dropPartitions,
+    selectedBulkTargetTablesPayload,
+    bulkFiltersAndPartitions,
+    sourceData,
+    saveSelectedBulkTargetTablesPayload,
+    saveBulkFiltersAndPartitions,
+  } = usePurgeContext("");
 
   let connectionsData;
   let schemadetails;
@@ -56,6 +64,7 @@ export function TargetNode({ id }) {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          "x-project": project,
         },
       });
       connectionsData = await connectionResponse.json();
@@ -145,20 +154,26 @@ export function TargetNode({ id }) {
     }
   }, []);
 
-  const fetchMetadataAccToConnectionAndBulkTable = async (targetConnection, selectedBulkTables) => {
-    if(!targetConnection || !selectedBulkTables) return;
+  const fetchMetadataAccToConnectionAndBulkTable = async (
+    targetConnection,
+    selectedBulkTables
+  ) => {
+    if (!targetConnection || !selectedBulkTables) return;
     try {
-      const response = await fetch(`${hostname}/connection-master-metadata/${targetConnection}/${selectedBulkTables}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${hostname}/connection-master-metadata/${targetConnection}/${selectedBulkTables}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if(!response.ok) {
+      if (!response.ok) {
         throw new Error(`HTTP error! status: ${metaDataResponse.status}`);
-      };
+      }
 
       let json = await response.json();
       setBulkTableMetadata(json);
@@ -223,6 +238,48 @@ export function TargetNode({ id }) {
     token,
     hostnameV2,
   ]);
+
+  const [bulkTargetPartitionData, setBulkTargetPartitionData] = useState([])
+
+  const automaticallySavesBulkPartitionsData = async () => {
+    const checkTargetPartitionExists = async (targetTable) => {
+      const table = await fetchMetadataAccToConnectionAndBulkTable(targetConnection, targetTable);
+      const partitions = table?.[0]?.partition_json;
+
+      return partitions;
+    };
+  
+    for (const sourceItem of bulkFiltersAndPartitions?.source || []) {
+      const sourceTable = sourceItem.source_table;
+      const sourcePartition = sourceItem.source_partition;
+  
+      if (!sourcePartition) continue;
+  
+      const checkedItem = checkedBulkTables?.find(item => item[sourceTable] !== undefined);
+      if (!checkedItem) continue;
+  
+      const targetTables = checkedItem.target_tables;
+  
+      for (const [targetTable, isSelected] of Object.entries(targetTables)) {
+
+        if (!isSelected) continue;
+
+        const targetPartitionsData = await checkTargetPartitionExists(targetTable);
+        const targetPartitionExists = Array.isArray(targetPartitionsData) && targetPartitionsData.length > 0;
+  
+        if (targetPartitionExists) {
+          const matchedPartition = targetPartitionsData?.find(
+            part => part.partition_name === sourcePartition.partition_name
+          );
+  
+          if (matchedPartition) {
+            saveBulkFiltersAndPartitions("target", sourceTable, targetTable, matchedPartition, null);
+          }
+        }
+      }
+    }
+  };
+  
 
   const filterMetaData = metadata.filter((targetTable) =>
     targetTable.target_table
@@ -328,8 +385,8 @@ export function TargetNode({ id }) {
   ]);
 
   useEffect(() => {
-    handleTargetConnectionName(targetConnection)
-  }, [targetConnection])
+    handleTargetConnectionName(targetConnection);
+  }, [targetConnection]);
 
   const handleTableSelection = (tableName) => {
     if (selectedScope === "subset") {
@@ -430,21 +487,26 @@ export function TargetNode({ id }) {
     let selectedBulkTargetTables = [];
 
     for (const sourceObj of checkedBulkTables) {
-      let source_table_name = Object.keys(sourceObj).find(key => key !== 'target_tables')
-      let is_source_table_selected = sourceObj[source_table_name];
-      if (!is_source_table_selected) continue
-      let selected_target_tables = Object.keys(sourceObj.target_tables).filter(target_table_name => sourceObj.target_tables[target_table_name])
+      let source_table_name = Object.keys(sourceObj).find(
+        (key) => key !== "target_tables"
+      );
+
+      let selected_target_tables = Object.keys(sourceObj.target_tables).filter(
+        (target_table_name) => sourceObj.target_tables[target_table_name]
+      );
+
+      if (selected_target_tables.length === 0)  continue;
+
       selectedBulkTargetTables = [
         ...selectedBulkTargetTables,
-        ...selected_target_tables
-          .map(target_table_name => ({
-            target_table: target_table_name,
-            source_table: source_table_name
-          }))
-      ]
+        ...selected_target_tables.map((target_table_name) => ({
+          target_table: target_table_name,
+          source_table: source_table_name,
+        })),
+      ];
     }
 
-    saveSelectedBulkTargetTablesPayload(selectedBulkTargetTables)
+    saveSelectedBulkTargetTablesPayload(selectedBulkTargetTables);
 
     let selectedConnectionData = connections.find(
       (connection) => connection.connection_name === targetConnection
@@ -526,24 +588,23 @@ export function TargetNode({ id }) {
 
     //   savebulkTableSelection(checkedBulkTables);
     // }
-    
 
     try {
       const apiPromise = window.handleConnectNode?.(id);
 
-      if(!apiPromise) {
-      //throw new Error("Submission handler not found");
-      return apiPromise;
+      if (!apiPromise) {
+        //throw new Error("Submission handler not found");
+        return apiPromise;
       }
 
-      if(apiPromise instanceof Promise) {
+      if (apiPromise instanceof Promise) {
         await apiPromise;
       }
 
       if (selectedScope === "bulk") {
         saveBulkTableSelection();
-      }
-      else if(selectedScope === "subset") {
+        automaticallySavesBulkPartitionsData();
+      } else if (selectedScope === "subset") {
         saveSubsetTableSelection();
       }
 
@@ -607,7 +668,11 @@ export function TargetNode({ id }) {
     toggleSourceTableChecked(source_table_name);
   };
 
-  const handleTargetTableOnChange = (e, source_table_name, target_table_name) => {
+  const handleTargetTableOnChange = (
+    e,
+    source_table_name,
+    target_table_name
+  ) => {
     toggleTargetTableChecked(source_table_name, target_table_name);
 
     // Check/uncheck source based on target tables
@@ -678,10 +743,7 @@ export function TargetNode({ id }) {
           >
             <option value="">Select</option>
             {connections
-              .filter(
-                (connection) =>
-                  connection.created_by === decodedToken.preferred_username
-              )
+              .filter((connection) => connection?.pool_type === "target" || connection?.pool_type === "both")
               .map((connection, idx) => (
                 <option key={idx} value={connection.connection_name}>
                   {connection.connection_name}
@@ -986,7 +1048,11 @@ export function TargetNode({ id }) {
                                         onChange={(e) => {
                                           setSelectedBulkTables(targetTable);
                                           //fetchDropPartitions();
-                                          handleTargetTableOnChange(e, sourceGroup.source_table, targetTable)
+                                          handleTargetTableOnChange(
+                                            e,
+                                            sourceGroup.source_table,
+                                            targetTable
+                                          );
                                         }}
                                         className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                                       />
@@ -999,10 +1065,16 @@ export function TargetNode({ id }) {
                                     </div>
                                     <button
                                       onClick={async () => {
-                                        const table = await fetchMetadataAccToConnectionAndBulkTable(targetConnection, targetTable)
+                                        const table =
+                                          await fetchMetadataAccToConnectionAndBulkTable(
+                                            targetConnection,
+                                            targetTable
+                                          );
                                         handlePurgeNode("Target node");
-                                       // openDrawer(id, targetTable);
-                                        openDrawer(id, table[0]);
+                                        openDrawer(
+                                          id,
+                                          table[0] ? table[0] : targetTable
+                                        );
                                       }}
                                       className="text-purple-600 hover:text-purple-700 pl-2"
                                     >

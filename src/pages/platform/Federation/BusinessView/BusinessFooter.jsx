@@ -18,7 +18,7 @@ export function BusinessFooter() {
   // const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
+  const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
 
 
   const modalState = useLocation().state || {
@@ -241,27 +241,31 @@ export function BusinessFooter() {
     console.log("Sort Columns:", sortColumns);
 
 
-    const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
+    if (modalState.queryType === "Regular") {
+      console.log("modalstate querytype is ====>",modalState.queryType)
+      const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
 
-    if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
-      toast.error(`${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
-      return;
+      if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
+        toast.error(`${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+        return;
+      }
+
+      const nonAggregatedSelectColumns = selectColumns;
+
+      if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
+        toast.error(`${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+        return;
+      }
+
+
+      const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
+
+      if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
+        toast.error(`${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+        return;
+      }
     }
 
-    const nonAggregatedSelectColumns = selectColumns;
-
-    if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
-      toast.error(`${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
-      return;
-    }
-
-
-    const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
-
-    if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
-      toast.error(`${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
-      return;
-    }
 
     if (Object.keys(apiPayloadForApi).length > 0) {
       setPreview(true);
@@ -335,7 +339,7 @@ export function BusinessFooter() {
     if (finalPayload && Object.keys(finalPayload).length > 0) {
       if (modalState.queryType == "Regular") setIsFilterModalOpen(true);
       else {
-        
+
         const connections = connectionPayload.map(item => item.selectedConnection);
         const views = viewPayload.map(item => item.view);
         const metadata = { connections, views };
@@ -345,7 +349,7 @@ export function BusinessFooter() {
         let aggregateColumns = new Set();
         let sortColumns = new Set();
 
-        const hasOperation = apiPayloadForApi?.operation !== undefined;
+        const hasOperation = finalPayload?.operation !== undefined;
         const source = hasOperation
           ? Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key === "Union"))
           : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
@@ -385,28 +389,28 @@ export function BusinessFooter() {
         console.log("Aggregate Columns:", aggregateColumns);
         console.log("Sort Columns:", sortColumns);
 
+       
+        // const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
 
-        const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
+        // if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
+        //   toast.error(`${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+        //   return;
+        // }
 
-        if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
-          toast.error(`${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
-          return;
-        }
+        // const nonAggregatedSelectColumns = selectColumns;
 
-        const nonAggregatedSelectColumns = selectColumns;
-
-        if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
-          toast.error(`${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
-          return;
-        }
+        // if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
+        //   toast.error(`${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+        //   return;
+        // }
 
 
-        const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
+        // const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
 
-        if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
-          toast.error(`${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
-          return;
-        }
+        // if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
+        //   toast.error(`${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+        //   return;
+        // }
 
         if (Object.keys(finalPayload).length > 0) {
           setPreview(true);

@@ -109,13 +109,18 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
   const [isTestSuccessful, setIsTestSuccessful] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const regexValidName = /^(?!_)(?!.*_$)[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)*$/i;
+
   const validateField = (name, value) => {
     let newErrors = { ...errors };
     
     if (name === "connection_name") {
       if (!value) {
         newErrors[name] = "Connection name is required";
-      } else if (!isEditMode && connectionNames.includes(value.toLowerCase())) {
+      }else if (!regexValidName.test(value)) {
+        newErrors.connection_name = 'Connection names must start with a letter, end with a letter or digit, and contain only letters, numbers, and underscores. No leading or trailing underscores allowed.';
+      }
+       else if (!isEditMode && connectionNames.includes(value.toLowerCase())) {
         newErrors[name] = "Connection name already exists";
       } else if (isEditMode && 
                 value.toLowerCase() !== editConnectionData.connection_name.toLowerCase() && 

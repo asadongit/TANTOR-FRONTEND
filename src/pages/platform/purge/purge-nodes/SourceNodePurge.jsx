@@ -13,7 +13,7 @@ export function SourceNode({ id }) {
 
   const hostname = import.meta.env.VITE_FAST_API;
   const hostnameV2 = import.meta.env.VITE_FAST_API_V2;
-  const { token, decodedToken } = useAuth();
+  const { token, decodedToken, project } = useAuth();
 
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);
@@ -56,6 +56,7 @@ export function SourceNode({ id }) {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          "x-project": project,
         },
       });
       connectionsData = await connectionResponse.json();
@@ -354,7 +355,7 @@ export function SourceNode({ id }) {
           >
             <option value="">Select</option>
             {connections
-              .filter((connection) => connection.created_by === decodedToken.preferred_username)
+              .filter((connection) => connection?.pool_type === "source" || connection?.pool_type === "both")
               .map((connection, idx) => (
               <option key={idx} value={connection.connection_name}>
                 {connection.connection_name}

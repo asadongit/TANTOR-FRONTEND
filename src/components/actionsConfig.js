@@ -1,6 +1,6 @@
 import axios from "axios";
 import React from "react";
-import { Pencil, Trash2, Play, Pause } from "lucide-react";
+import { Pencil, Trash2, Play, Pause, Eye } from "lucide-react";
 import toast from "react-hot-toast";
 export const getActionConfigurations = ({ token, project, hostnameV2, navigate }) => ({
   cdc: [
@@ -8,6 +8,11 @@ export const getActionConfigurations = ({ token, project, hostnameV2, navigate }
       label: "Edit",
       icon: React.createElement(Pencil, { size: 16 }),
       onClick: (row) => navigate(`/cdc/editcdc/${row.cdc_id}`),
+    },
+    {
+      label: "View",
+      icon: React.createElement(Eye, { size: 16 }),
+      onClick: (row) => navigate(`/cdc/Viewcdc/${row.cdc_id}`),
     },
     {
       label: "Delete",

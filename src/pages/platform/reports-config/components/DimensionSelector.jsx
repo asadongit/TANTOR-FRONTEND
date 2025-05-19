@@ -1,5 +1,8 @@
 import { Plus } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
+import { useAuth } from "../../../../context/AuthContext";
+import toast from "react-hot-toast";
+import { ToastContainer } from "react-toastify";
 
 function DimensionValueSelector({ 
   index, 
@@ -33,23 +36,15 @@ function DimensionValueSelector({
     : 'Select values';
   
   return (
-    <div className="relative flex-1" ref={dropdownRef}>
-      <label
-        htmlFor={`dimension-value-selector-${index}`}
-        className="block text-sm font-medium text-gray-700 mb-1"
-      >
-        Value
-      </label>
-      
-      {/* Button */}
+    <div className="w-1/3 min-w-[200px] relative" ref={dropdownRef}>
       <button
         type="button"
         id={`dimension-value-selector-${index}`}
-        className="flex justify-between items-center w-full px-3 py-2 text-left border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+        className="h-[38px] flex justify-between items-center w-full px-3 text-left border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span>{displayText}</span>
-        <span>{isOpen ? '▲' : '▼'}</span>
+        <span className="truncate">{displayText}</span>
+        <span className="ml-2 flex-shrink-0">{isOpen ? '▲' : '▼'}</span>
       </button>
       
       {/* Dropdown */}
@@ -116,6 +111,8 @@ const DimensionSelector = ({
   const [dimensionValuesData, setDimensionValuesData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const {token, hostnameV1 } = useAuth();
+  
   // Initialize selectedDimensionName from props
   useEffect(() => {
     if (dimension?.name && !selectedDimensionName) {
@@ -129,19 +126,19 @@ const DimensionSelector = ({
     const fetchDimensionValues = async () => {
       setIsLoading(true);
       try {
-        const authToken = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJhUlJoQV8yeDJSc09ac1VFLVROdk1ucUJ4cEE0X0NLeW84bnVPcUdyTjdNIn0.eyJleHAiOjE3NDY1MjYxNDcsImlhdCI6MTc0NjUyNDUyNywianRpIjoiZjVhMjdjYjYtYmQ2Mi00YjU4LTliYTQtNDkzNWQ3ODM2YjRlIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay50YW50b3IuaW8vcmVhbG1zL0dhdGVrZWVwZXIiLCJhdWQiOlsiR2VuQUkiLCJyZWFsbS1tYW5hZ2VtZW50Iiwibm92aGkiLCJhY2NvdW50Il0sInN1YiI6IjE0YTZiODk3LTIzMzUtNGNiYS04ZTA5LWE0MjkxMTNkNjViOSIsInR5cCI6IkJlYXJlciIsImF6cCI6ImRhcmNoIiwic2Vzc2lvbl9zdGF0ZSI6IjQyZDhlYWE2LWVjN2UtNDg1ZS05NGMxLWVhOTg4MGVmMGVhOSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiKiJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiRGF0YSBBY2Nlc3MgVmlld2VyIiwiRGF0YV9RdWVyeV9FeGVjdXRvciIsIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iLCJkZWZhdWx0LXJvbGVzLWdhdGVrZWVwZXIiLCJCSV9SZXBvcnRfVmlld2VyIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiR2VuQUkiOnsicm9sZXMiOlsiR2xvYmFsIl19LCJyZWFsbS1tYW5hZ2VtZW50Ijp7InJvbGVzIjpbIm1hbmFnZS1yZWFsbSIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXVzZXJzIl19LCJub3ZoaSI6eyJyb2xlcyI6WyJkZWZhdWx0Il19LCJkYXJjaCI6eyJyb2xlcyI6WyJnbG9iYWwtYWRtaW4iXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJzaWQiOiI0MmQ4ZWFhNi1lYzdlLTQ4NWUtOTRjMS1lYTk4ODBlZjBlYTkiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJub3Zpam90aCBzaW5naCIsImdyb3VwcyI6WyIvVlZfR1JPVVAoUGVyc29uYSkvVlZfR1JPVVAiLCIvVlZfR1JPVVAoUGVyc29uYSkiXSwicHJlZmVycmVkX3VzZXJuYW1lIjoibm92aWpvdGgiLCJnaXZlbl9uYW1lIjoibm92aWpvdGgiLCJmYW1pbHlfbmFtZSI6InNpbmdoIiwiZW1haWwiOiJub3Zpam90aEB0cmFuc2xhYi5pbyJ9.KzYazqNm2r-_Q-V_ybqJNsQXA93wupZGl9FBMQjBmFWFYfgj0NC00pZkl6QcdM5RA8-Ybl-cFB6FOvMu3TfdVO5u5IaOk8PJv4PVtlAfi73_-8yqq0ZVPIj5RaKW2Diebx93F5AeNlVU6Nzce64QQA5mkwlx078XhrFX6OgRHa3YNWRHMPLOqHsnbEvKXRi7B1OSe_JQDfoIPYaNI_bO6f6TZzSY5MmVbpny7FlVRCRJ87Aex7Te5XrgcvGIl0Q4BSu-CoqiQQ6cQwKQNuetnmyorrFTzAJ079d4lNM4p2dOMkPe8eHZTJx0elNNzL-r595cQpnEiNMEpkUKN2PuRg";
-        
         const headers = {
-          authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+          authorization: `Bearer ${token}`,
         };
         
         const response = await fetch(
-          `http://localhost:8000/api/v1/lineItems/selectDimensionName?rule_id=${currentSelectedRuleId}&fct_column_name=${selectedDimensionName}`,
+          `${hostnameV1}/lineItems/selectDimensionName?rule_id=${currentSelectedRuleId}&fct_column_name=${selectedDimensionName}`,
           { headers }
         );
 
         if (!response.ok) {
           console.error("Failed to fetch dimension values:", response.statusText);
+          toast.error("Failed to fetch dimension values");
           return;
         }
 
@@ -149,6 +146,7 @@ const DimensionSelector = ({
         setDimensionValuesData(data || []);
       } catch (error) {
         console.error("Failed to fetch dimension values:", error);
+        toast.error("Failed to fetch dimension values")
       } finally {
         setIsLoading(false);
       }
@@ -158,7 +156,8 @@ const DimensionSelector = ({
   }, [selectedDimensionName, currentSelectedRuleId]);
   
   return (
-    <div className="flex gap-4 mb-2">
+    <div className="flex items-center gap-4 mb-2">
+      <ToastContainer />
       <select
         value={dimension?.id || ""}
         onChange={(e) => {
@@ -168,11 +167,12 @@ const DimensionSelector = ({
 
           updateDimension(ruleIndex, index, "name", newDimensionName);
           updateDimension(ruleIndex, index, "id", newDimensionId);
-          // Clear existing values when dimension changes
           updateDimension(ruleIndex, index, "value", []);
+          updateDimension(ruleIndex, index, "operator", "");
+
           setSelectedDimensionName(newDimensionName);
         }}
-        className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        className="w-1/3 h-[38px] border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
       >
         <option value="">Select Dimension</option>
         {dimensionNamesData && dimensionNamesData.map((item) => (
@@ -191,7 +191,7 @@ const DimensionSelector = ({
         onChange={(e) =>
           updateDimension(ruleIndex, index, "operator", e.target.value)
         }
-        className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        className="w-1/3 h-[38px] border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
       >
         <option value="">Select Operator</option>
         <option value="in">IN</option>
@@ -199,7 +199,7 @@ const DimensionSelector = ({
       </select>
       
       {isLoading ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="w-1/3 flex items-center">
           <span className="text-gray-500">Loading values...</span>
         </div>
       ) : (
@@ -214,7 +214,7 @@ const DimensionSelector = ({
       
       <button
         type="button"
-        className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        className="h-[38px] w-[38px] inline-flex items-center justify-center border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         onClick={() => removeDimension(ruleIndex, index)}
       >
         -

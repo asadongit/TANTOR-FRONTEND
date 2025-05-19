@@ -30,21 +30,24 @@ export const fetchRuleReportData = async (token) => {
     return [
       {
         sno: 1,
-        id: "RO1",
-        name: "TD",
-        desc: "Trem Deposits",
+        id: "1",
+        name: "Term Deposits",
+        type: "grid",
+        desc: "Term Deposits Grid Report",
       },
       {
         sno: 2,
-        id: "RO2",
-        name: "L&A",
-        desc: "Loans and Advances",
+        id: "2",
+        name: "Remittance",
+        type: "grid",
+        desc: "Remittance Grid Report",
       },
       {
         sno: 3,
-        id: "RO3",
-        name: "CL",
-        desc: "Credit Loans",
+        id: "3",
+        name: "StudentReport",
+        type: "list",
+        desc: "Student List Report",
       },
     ];
 }

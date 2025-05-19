@@ -54,16 +54,11 @@ export function TargetNode({ id, data, selected }) {
   );
 
   const [selectedSchema, setSelectedSchema] = useState(data?.schema || "");
-  const [schemaLoading, setSchemaLoading] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
+ 
 
-  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
-  const [errorTables, setErrorTables] = useState({});
-  const [validatedTables, setValidatedTables] = useState([]);
+
   const [validationInProgress, setValidationInProgress] = useState(false);
 
-  let connectionsData;
-  let schemadetails;
   const { data: connections, isLoading: isLoadingConnections } =
     useConnections('target');
   const { data: schemaCount } = useSchemaCount(selectedConnection);
@@ -113,32 +108,23 @@ export function TargetNode({ id, data, selected }) {
           },
         }
       );
-
-      if (response.data.success === false) {
-        return response.data;
-      }
-
-      return {
-        success: true,
-        validated_tables: response.data.validated_tables,
-        error_tables: {},
-      };
+      return response.data;
     } catch (error) {
       console.error("Error during DDL validation:", error);
-
+  
       if (error.response) {
-        throw new Error(
-          `API Error: ${error.response.data.detail || "Unknown error"}`
-        );
+        return error.response.data;
       } else if (error.request) {
-        throw new Error("Network Error: No response from server.");
+        return { success: false, detail: "Network Error: No response from server." };
       } else {
-        throw new Error(`Request Error: ${error.message}`);
+        return { success: false, detail: `Request Error: ${error.message}` };
       }
     }
   };
+  
 
-  const [payload, setPayload] = useState({});
+
+
 
   const handleDDLValidation = async () => {
     try {
@@ -161,9 +147,7 @@ export function TargetNode({ id, data, selected }) {
         target_conn_id: data?.target?.target_conn_id,
         table_list: data?.target?.metadata_list,
       };
-      setPayload(payload);
       const validationResponse = await validateDdlMigration(payload);
-
       if (validationResponse.success === true) {
         openModal({
           title: "Save Confirmation",
@@ -175,8 +159,7 @@ export function TargetNode({ id, data, selected }) {
           onClose: () => closeModal(),
         });
       } else {
-        setErrorTables(validationResponse.error_tables || {});
-        setValidatedTables(validationResponse.validated_tables || []);
+
         openModal({
           title: "Validation Errors",
           type: "question",
@@ -184,7 +167,8 @@ export function TargetNode({ id, data, selected }) {
           cancelText: "Back",
           onConfirm: () => handleSaveMetadata(payload),
           onClose: () => closeModal(),
-          customContent: ValidationModalContent,
+          customContent: <ValidationModalContent errorTables={validationResponse.error_tables} />,
+
         });
       }
     } catch (error) {
@@ -229,7 +213,7 @@ export function TargetNode({ id, data, selected }) {
         });
         setPipelines({});
         setNodes([]);
-        setPayload({});
+        ({});
       }, 800);
     } catch (error) {
       toast.error(`Error saving metadata: ${error.message}`);
@@ -349,157 +333,155 @@ export function TargetNode({ id, data, selected }) {
     URL.revokeObjectURL(url);
   };
 
-  const ValidationModalContent = (
-    <div className="w-full max-w-4xl mx-auto bg-white rounded-lg ">
-      <div className="px-3 py-2 border-b-2 border-gray-200">
-        <div className="flex items-center w-full">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-600 mr-4">
-            <iconify-icon
-              icon="material-symbols:warning-outline"
-              width="24"
-              height="24"
-              className="mr-2 text-amber-400"
-            />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Validation Issues Detected
-            </h3>
-          </div>
 
-          <button
-            className="ml-auto p-2 rounded-full bg-white hover:bg-gray-100 text-gray-500 hover:text-gray-700 shadow-sm hover:shadow-md transition-transform duration-150 ease-in-out active:scale-90"
-            title="Download Report"
-            onClick={exportToExcel}
-          >
-            <Download className="w-6 h-6" />
-          </button>
+  const ValidationModalContent = ({ errorTables }) => {
+    return (
+      <div className="w-full max-w-4xl mx-auto bg-white rounded-lg ">
+        <div className="px-3 py-2 border-b-2 border-gray-200">
+          <div className="flex items-center w-full">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-600 mr-4">
+              <iconify-icon
+                icon="material-symbols:warning-outline"
+                width="24"
+                height="24"
+                className="mr-2 text-amber-400"
+              />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Validation Issues Detected
+              </h3>
+            </div>
+
+            <button
+              className="ml-auto p-2 rounded-full bg-white hover:bg-gray-100 text-gray-500 hover:text-gray-700 shadow-sm hover:shadow-md transition-transform duration-150 ease-in-out active:scale-90"
+              title="Download Report"
+              onClick={() => exportToExcel(errorTables)}
+            >
+              <Download className="w-6 h-6" />
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="p-5">
-        {/* <div className="bg-gray-50 border-l-4 border-red-500 p-3 mb-4 rounded">
-          <p className="text-gray-700">The following tables have validation errors that need attention:</p>
-        </div> */}
-
-        <div className="border border-gray-200 rounded-lg shadow-sm mb-4">
-          <div className="max-h-[350px] overflow-auto">
-            <table className="w-full table-fixed">
-              <thead>
-                <tr className="bg-[#29304a] text-white sticky top-0 z-10">
-                  <th className="w-1/3 text-left p-3 font-semibold text-sm">
-                    <div className="flex items-center">
-                      <iconify-icon
-                        icon="material-symbols:table"
-                        width="18"
-                        height="18"
-                        className="mr-2"
-                      />
-                      Table Name
-                    </div>
-                  </th>
-                  <th className="w-2/3 text-left p-3 font-semibold text-sm">
-                    <div className="flex items-center">
-                      <iconify-icon
-                        icon="material-symbols:info-outline"
-                        width="18"
-                        height="18"
-                        className="mr-2"
-                      />
-                      Error Description
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {Object.keys(errorTables).length > 0 ? (
-                  Object.keys(errorTables).map((table, index) => (
-                    <tr
-                      key={index}
-                      className={`${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      } hover:bg-gray-100 transition-colors`}
-                    >
-                      <td className="p-3 text-gray-800">
-                        <div className="flex items-center">
-                          <iconify-icon
-                            icon="material-symbols:table-rows-narrow-outline"
-                            width="18"
-                            height="18"
-                            className="text-gray-500 mr-2 flex-shrink-0"
-                          />
-                          <span className="font-medium truncate" title={table}>
-                            {table}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="text-gray-700 text-sm">
-                          {Array.isArray(errorTables[table]) ? (
-                            <ul className="list-disc ml-4 space-y-1">
-                              {errorTables[table].map((error, errorIndex) => (
-                                <li key={errorIndex} className="text-red-600">
-                                  {error}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <span className="text-red-600">
-                              {errorTables[table]}
+        <div className="p-5">
+          <div className="border border-gray-200 rounded-lg shadow-sm mb-4">
+            <div className="max-h-[350px] overflow-auto">
+              <table className="w-full table-fixed">
+                <thead>
+                  <tr className="bg-[#29304a] text-white sticky top-0 z-10">
+                    <th className="w-1/3 text-left p-3 font-semibold text-sm">
+                      <div className="flex items-center">
+                        <iconify-icon
+                          icon="material-symbols:table"
+                          width="18"
+                          height="18"
+                          className="mr-2"
+                        />
+                        Table Name
+                      </div>
+                    </th>
+                    <th className="w-2/3 text-left p-3 font-semibold text-sm">
+                      <div className="flex items-center">
+                        <iconify-icon
+                          icon="material-symbols:info-outline"
+                          width="18"
+                          height="18"
+                          className="mr-2"
+                        />
+                        Error Description
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {Object.keys(errorTables).length > 0 ? (
+                    Object.keys(errorTables).map((table, index) => (
+                      <tr
+                        key={index}
+                        className={`${
+                          index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                        } hover:bg-gray-100 transition-colors`}
+                      >
+                        <td className="p-3 text-gray-800">
+                          <div className="flex items-center">
+                            <iconify-icon
+                              icon="material-symbols:table-rows-narrow-outline"
+                              width="18"
+                              height="18"
+                              className="text-gray-500 mr-2 flex-shrink-0"
+                            />
+                            <span className="font-medium truncate" title={table}>
+                              {table}
                             </span>
-                          )}
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="text-gray-700 text-sm">
+                            {Array.isArray(errorTables[table]) ? (
+                              <ul className="list-disc ml-4 space-y-1">
+                                {errorTables[table].map((error, errorIndex) => (
+                                  <li key={errorIndex} className="text-red-600">
+                                    {error}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <span className="text-red-600">
+                                {errorTables[table]}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={2} className="p-6 text-center text-gray-500">
+                        <div className="flex flex-col items-center justify-center">
+                          <iconify-icon
+                            icon="material-symbols:check-circle-outline"
+                            width="36"
+                            height="36"
+                            className="text-green-500 mb-2"
+                          />
+                          No validation errors found
                         </div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={2} className="p-6 text-center text-gray-500">
-                      <div className="flex flex-col items-center justify-center">
-                        <iconify-icon
-                          icon="material-symbols:check-circle-outline"
-                          width="36"
-                          height="36"
-                          className="text-green-500 mb-2"
-                        />
-                        No validation errors found
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="px-3 py-2 bg-gray-50 rounded-b-lg border-l-4 border-l-yellow-500 border-gray-200">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <iconify-icon
-              icon="material-symbols:warning-outline"
-              width="20"
-              height="20"
-              style={{ color: "#facc15" }}
-              className="mr-3 flex-shrink-0 mt-0.5"
-            />
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-yellow-800">
-              Important Warning
-            </h3>
-            <div className="mt-1 text-sm text-yellow-700">
-              <p>
-                Please resolve the validation errors to ensure all partitions
-                and constraints are applied correctly; otherwise, the table may
-                be created without partitions.
-              </p>
+        <div className="px-3 py-2 bg-gray-50 rounded-b-lg border-l-4 border-l-yellow-500 border-gray-200">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <iconify-icon
+                icon="material-symbols:warning-outline"
+                width="20"
+                height="20"
+                style={{ color: "#facc15" }}
+                className="mr-3 flex-shrink-0 mt-0.5"
+              />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800">
+                Important Warning
+              </h3>
+              <div className="mt-1 text-sm text-yellow-700">
+                <p>
+                  Please resolve the validation errors to ensure all partitions
+                  and constraints are applied correctly; otherwise, the table may
+                  be created without partitions.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-
+    );
+  };
   return (
     <div
       className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${

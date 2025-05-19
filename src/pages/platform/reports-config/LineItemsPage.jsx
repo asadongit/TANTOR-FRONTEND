@@ -1,53 +1,120 @@
 import React, { useEffect, useState, useRef } from "react";
 import LineItemConfigModal from "./components/LineItemConfigModal";
-// STATE 0
+import RuleOperatorSelector from "./components/RuleOperatorSelector";
+import { useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
+import { ToastContainer } from "react-toastify";
+import { useAuth } from "../../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+
 function LineItemsPage() {
-  const tempVars = { reportName: "remittance" };
+  const {token, hostnameV1} = useAuth();
+
+  const reportId = useLocation().state?.reportId;
+  const reportName = useLocation().state?.reportName;
 
   const [lineItemsHtml, setLineItemsHtml] = useState("");
   const contentRef = useRef(null);
   const [showLineItemConfigModal, setShowLineItemConfigModal] = useState(false);
+  const [showRuleOperatorSelector, setShowRuleOperatorSelector] =
+    useState(false);
   const [currentLineItemId, setCurrentLineItemId] = useState("");
 
   const [lineItemConfig, setLineItemConfig] = useState([]);
 
-  useEffect(() => {
-    console.log("config ==> ", lineItemConfig);
-  }, [lineItemConfig]);
-  
-  const updateLineItemConfigRules = (lineItemId, newRules) => {
-    setLineItemConfig(prev => {
-        const existingIndex = prev.findIndex(item => item.line_item === lineItemId);
-        if(existingIndex != -1){
-            const updated = [...prev];
-            updated[existingIndex].rules = newRules;
-            return updated;
-        }
+  const navigate = useNavigate();
 
-        return [...prev, { line_item: lineItemId, rules: newRules }];
-    });  
+  useEffect(() => {
+    console.log("Final JSON ==> ", {
+      regReportId: reportId,
+      lineItemConfig: lineItemConfig,
+    });
+  }, [lineItemConfig]);
+
+  const handleSaveLineItemMappings = () => {
+  const payload = {
+    regReportId: reportId,
+    lineItemConfig: lineItemConfig,
+  };
+  
+  const uploadData = async () => {
+    const headers = {
+      "Content-Type": "application/json",
+      authorization: `Bearer ${token}`,
+    };
+
+    try {
+      const response = await fetch(`${hostnameV1}/lineItems`, {
+        headers: headers,
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        toast.error("Error Saving Data into DB.");
+        return;
+      }
+
+      await response.json();
+      toast.success("Line Items Successfully Stored.");
+      navigate("/config/report");
+    } catch (error) {
+      console.error("Error during save:", error);
+      toast.error("Unexpected error during save.");
+    }
+  };
+
+  uploadData();
+};
+
+  const updateLineItemConfigRules = (lineItemId, newRules) => {
+    setLineItemConfig((prev) => {
+      const existingIndex = prev.findIndex(
+        (item) => item.line_item === lineItemId
+      );
+      if (existingIndex != -1) {
+        const updated = [...prev];
+        updated[existingIndex].rules = newRules;
+        return updated;
+      }
+
+      return [...prev, { line_item: lineItemId, rules: newRules }];
+    });
   };
 
   const getRulesForCurrentLineItem = () => {
-    return lineItemConfig.find(item => item.line_item ===currentLineItemId)?.rules || [];
-  }
+    return (
+      lineItemConfig.find((item) => item.line_item === currentLineItemId)
+        ?.rules || []
+    );
+  };
 
   useEffect(() => {
+    if (!reportId) return;
     const fetchLineItems = async () => {
+
+      console.log("reportName ==> ", reportName);
+      console.log("API ==> ", import.meta.VITE_BIRT_BACKEND_API);
       try {
         const response = await fetch(
-          `http://localhost:8080/templates/parse?report-name=${tempVars.reportName}`
+          `${import.meta.env.VITE_BIRT_BACKEND_API}/templates/parse?report-name=${reportName}`,
+          {headers: {'Content-Type': 'application/json'}}
         );
         if (response.ok) {
           const data = await response.text();
           setLineItemsHtml(data);
+        }else{
+          toast.error(`Error fetching line items for report: ${reportName}`)
+          navigate("/config/report")
         }
       } catch (error) {
-        alert("Error occured when trying to fetch line items html.");
+        console.log(error);
+        toast.error("Error occured when trying to fetch Line Items.")
+        navigate("/config/report")
       }
     };
     fetchLineItems();
-  }, [tempVars.reportName]);
+  }, [reportId]);
 
   useEffect(() => {
     if (!contentRef.current || !lineItemsHtml) return;
@@ -63,7 +130,7 @@ function LineItemsPage() {
 
     contentRef.current.addEventListener("click", handleClick);
     return () => contentRef.current?.removeEventListener("click", handleClick);
-  }, [lineItemsHtml, showLineItemConfigModal]);
+  }, [lineItemsHtml, showLineItemConfigModal, showRuleOperatorSelector]);
 
   // COMPONENTS
   const LineItemsHtmlComponent = () => {
@@ -77,6 +144,7 @@ function LineItemsPage() {
 
   return (
     <>
+      <ToastContainer />
       {!showLineItemConfigModal && <LineItemsHtmlComponent />}
       {showLineItemConfigModal && (
         <LineItemConfigModal
@@ -84,7 +152,30 @@ function LineItemsPage() {
           lineItemId={currentLineItemId}
           updateLineItemRules={updateLineItemConfigRules}
           rules={getRulesForCurrentLineItem()}
+          showRuleOperatorSelector={showRuleOperatorSelector}
+          setShowRuleOperatorSelector={setShowRuleOperatorSelector}
         />
+      )}
+      {showRuleOperatorSelector && (
+        <RuleOperatorSelector
+          lineItemId={currentLineItemId}
+          rules={getRulesForCurrentLineItem()}
+          isOpen={showRuleOperatorSelector}
+          setIsOpen={setShowRuleOperatorSelector}
+          updateRules={updateLineItemConfigRules}
+          setShowLineItemModal={setShowLineItemConfigModal}
+        />
+      )}
+
+      {!showLineItemConfigModal && (
+        <div className="text-center">
+          <button
+            className="bg-[#8E77BB] text-white hover:bg-[#7864a3] px-4 py-2 rounded-md font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
+            onClick={handleSaveLineItemMappings}
+          >
+            SAVE
+          </button>
+        </div>
       )}
     </>
   );

@@ -17,8 +17,8 @@ import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
 import { usePurgeData } from "../../../hooks/platform/purge";
 import CardGrid from "../../../components/CardGrid";
 import DataTable from "../../../components/DataTable";
-
-
+import { useAuth } from "../../../context/AuthContext";
+import axios from "axios";
 
 const PurgeList = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError,refetch : refetchCardData } = useSourceTypeCounts('purge');
@@ -26,6 +26,7 @@ const PurgeList = () => {
 
 
   const navigate = useNavigate();
+const {token, hostnameV1}= useAuth()
 
   const handleCreatePurge = () => {
     navigate("/PurgeCanvas");
@@ -68,7 +69,34 @@ const PurgeList = () => {
       count: cardData?.postgres || 0,
     },
   ];
-
+  const actions = [
+    {
+      label: "Edit",
+      icon: <Pencil size={16} />,
+      onClick: (row) => console.log("Edit clicked for", row),
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 size={16} />,
+      onClick: (row) => console.log("Delete clicked for", row),
+    },
+    {
+      label: "Run",
+      icon: <Play size={16} fill="currentColor" />,
+      onClick: async (row) => {
+        try {
+          const response = await axios.get(`${hostnameV1}/purges/manualtrigger/${row.purge_name}`, {
+            headers: {Authorization: `Bearer ${token}`},
+          });
+          // console.log("Purge Run Response:", response.data);
+          toast.success("Purge triggered successfully!");
+        } catch (error) {
+          console.error("Failed to trigger Purge:", error);
+          toast.error("Failed to trigger Purge.");
+        }
+      },
+    },
+  ];
   const handleCardClick = (card) => {
     const url = `/componentType=purge&dataScope=${card.title.replace(/\s+/g, '').toLowerCase()}&heading=${card.title}`;
     const encryptedUrl = encodeURIComponent(encrypt(url));
@@ -104,11 +132,12 @@ const PurgeList = () => {
       </div>
         <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
             <DataTable
+        actions={actions}
         columns={columns}
         data={purgeData}
         isLoading={isPurgeLoading}
         isError={purgeError}
-        refetch={refetchPurges}      />
+        refetch={refetchPurges}/>
     </div>
   );
 };

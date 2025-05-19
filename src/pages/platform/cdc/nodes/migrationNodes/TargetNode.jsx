@@ -23,7 +23,7 @@ import {
   useTables,
   useBulkTables,
 } from "../../hooks/DataFetch";
-
+import AutoComplete from "../../components/AutoComplete";
 export function TargetNode({ id, data, selected }) {
   // console.log("TARGET DATA",data)
   const [loading, setLoading] = useState(false);
@@ -48,10 +48,10 @@ export function TargetNode({ id, data, selected }) {
     bulk_list: [],
     subset_list: [],
     target_conn_id: "",
-    type:""
+    type: "",
   }));
   const { data: connections, isLoading: isLoadingConnections } =
-    useConnections('target');
+    useConnections("target");
   const { data: schemaCount } = useSchemaCount(selectedConnection);
   const { data: schemas, isLoading: isLoadingSchemas } =
     useSchemas(selectedConnection);
@@ -60,7 +60,7 @@ export function TargetNode({ id, data, selected }) {
     selectedSchema,
     selectedMode
   );
-  const { data: bulkTables=[] } = useBulkTables(
+  const { data: bulkTables = [] } = useBulkTables(
     sourceConnection,
     selectedConnection,
     sourceSchema
@@ -99,9 +99,6 @@ export function TargetNode({ id, data, selected }) {
     }
   }, [pipelines, pipelineId, data?.source, isPipelineNode]);
 
-  
-
-
   const filteredTables = useMemo(() => {
     if (selectedMode == "bulk")
       return bulkTables?.filter((item) =>
@@ -135,7 +132,6 @@ export function TargetNode({ id, data, selected }) {
     }
   }, [filteredTables]);
 
-
   const handleOkClick = () => {
     if (selectedConnection && selectedSchema && selectedMode) {
       const updatedNodeData = {
@@ -161,10 +157,9 @@ export function TargetNode({ id, data, selected }) {
     ? inProgressMappings[pipelineId]?.source_table
     : inProgressMappings[firstSource?.id]?.source_table;
 
-
   const showTablesList = Boolean(
     selectedMode === "bulk"
-      ? !loading || filteredTables?.length > 0 
+      ? !loading || filteredTables?.length > 0
       : (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
           (pipelineMappings[constructedKey]?.length ?? 0) > 0
   );
@@ -269,7 +264,7 @@ export function TargetNode({ id, data, selected }) {
             Connection
           </label>
           <div className="w-full">
-            <select
+            {/* <select
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
               value={
                 selectedConnectionObj
@@ -298,7 +293,35 @@ export function TargetNode({ id, data, selected }) {
               ) : (
                 <option disabled>No connections available</option>
               )}
-            </select>
+            </select> */}
+            <AutoComplete
+              options={connections || []}
+              value={selectedConnectionObj}
+              placeholder="Select Connection"
+              onChange={(e) => {
+                const selectedConnection = e?.target?.selectedOption || null;
+
+                const connName = selectedConnection?.connection_name || "";
+                const connId = selectedConnection?.connection_id || null;
+                const connType = selectedConnection?.connection_type || null;
+
+                setSelectedConnectionObj(selectedConnection);
+                setSelectedConnection(connName);
+                setSelectedSchema("");
+                setNodeData((prevData) => ({
+                  ...prevData,
+                  target_conn_id: connId,
+                  type: connType,
+                }));
+              }}
+              valueKey="connection_id"
+              labelKey="connection_name"
+              returnFullObject={true}
+              className="w-full"
+              disabled={!connections || connections.length === 0}
+              isLoading={!connections}
+              loadingText="Loading connections..."
+            />
           </div>
         </div>
 
@@ -308,7 +331,7 @@ export function TargetNode({ id, data, selected }) {
           </label>
           <div className="relative w-full flex items-center gap-2">
             <div className="w-full relative">
-              <select
+              {/* <select
                 className="w-full min-w-0 p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                 value={selectedSchema}
                 onChange={(e) => {
@@ -330,7 +353,25 @@ export function TargetNode({ id, data, selected }) {
                     ))}
                   </>
                 )}
-              </select>
+              </select> */}
+              <AutoComplete
+                options={schemas || []}
+                value={selectedSchema}
+                placeholder="Select Schema"
+                onChange={(e) => {
+                  const schemaName = e?.target?.value || "";
+                  setSelectedSchema(schemaName);
+                  setSelectedItems([]);
+                  setSelectedMode("");
+                  setLoading(true);
+                }}
+                disabled={!selectedConnection || schemaLoading}
+                isLoading={schemaLoading}
+                loadingText="Loading schemas..."
+                valueKey="table_schema"
+                labelKey="table_schema"
+                className="w-full min-w-0"
+              />
 
               {schemaLoading && (
                 <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -366,7 +407,7 @@ export function TargetNode({ id, data, selected }) {
                 {sourceTable || "No source selected"}
               </span>
             </div>
-            <select
+            {/* <select
               id="connection-select"
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
               // value={selectedConnection}
@@ -388,11 +429,32 @@ export function TargetNode({ id, data, selected }) {
                   {table.target_table}
                 </option>
               ))}
-            </select>
+            </select> */}
+            <AutoComplete
+              id="connection-select"
+              options={filteredTables || []}
+              placeholder="Select Table"
+              onChange={(e) => {
+                const selectedTable = e?.target?.value || "";
+
+                if (selectedTable) {
+                  completeMapping(
+                    ID,
+                    firstSource?.id,
+                    selectedTable,
+                    isPipelineNode
+                  );
+                }
+              }}
+              valueKey="target_table"
+              labelKey="target_table"
+              className="w-full"
+              disabled={!filteredTables || filteredTables.length === 0}
+            />
           </div>
         )}
 
-      {showTablesList &&selectedConnection &&selectedSchema && (
+      {showTablesList && selectedConnection && selectedSchema && (
         <div className="my-3">
           <div className="flex items-center justify-between mb-2">
             <div
@@ -408,7 +470,6 @@ export function TargetNode({ id, data, selected }) {
             className="space-y-2 max-h-60 overflow-y-auto mt-2"
             onWheelCapture={(e) => e.stopPropagation()}
           >
-
             {loading ? (
               <>
                 <SkeletonLoader />

@@ -1,23 +1,37 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { ArrowUpDown, MoreHorizontal, Pencil, Trash2, Play, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
+import {
+  ArrowUpDown,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Play,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-const DataTable = ({ 
-  columns, 
-  data=[], 
-  actions = [],  
+const DataTable = ({
+  columns,
+  data = [],
+  actions = [],
   title,
   isLoading = false,
   isError = false,
   refetch = () => {},
 }) => {
-
   const [sortConfig, setSortConfig] = useState({ key: "", direction: "asc" });
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeMenu, setActiveMenu] = useState(null);
   const menuRef = useRef(null);
-  const {project}= useAuth()
+  const { project } = useAuth();
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -44,7 +58,7 @@ const DataTable = ({
 
   const processedData = useMemo(() => {
     let result = [...data];
-// tbr
+    // tbr
     // if (project && !["none","default"].includes(project)) {
     //   result = result.filter(row => row.project === project);
     // }
@@ -52,8 +66,10 @@ const DataTable = ({
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
       result = result.filter((row) =>
-        Object.values(row).some((value) => 
-          String(value || "").toLowerCase().includes(lowerSearch)
+        Object.values(row).some((value) =>
+          String(value || "")
+            .toLowerCase()
+            .includes(lowerSearch)
         )
       );
     }
@@ -62,15 +78,15 @@ const DataTable = ({
       result.sort((a, b) => {
         const aVal = a[sortConfig.key];
         const bVal = b[sortConfig.key];
-        
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
+
+        if (typeof aVal === "number" && typeof bVal === "number") {
           return sortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
         }
-        
+
         const aStr = String(aVal || "").toLowerCase();
         const bStr = String(bVal || "").toLowerCase();
-        
-        return sortConfig.direction === "asc" 
+
+        return sortConfig.direction === "asc"
           ? aStr.localeCompare(bStr)
           : bStr.localeCompare(aStr);
       });
@@ -83,27 +99,30 @@ const DataTable = ({
     const startIndex = (page - 1) * itemsPerPage;
     return processedData.slice(startIndex, startIndex + itemsPerPage);
   }, [processedData, page, itemsPerPage]);
-  
+
   const toggleActionMenu = useCallback((index) => {
     setActiveMenu((prev) => (prev === index ? null : index));
   }, []);
 
-  const handleAction = useCallback((action, row) => {
-    if (action) {
-      action.onClick(row); 
-    }
-    setActiveMenu(null);
-  }, [actions]);
+  const handleAction = useCallback(
+    (action, row) => {
+      if (action) {
+        action.onClick(row);
+      }
+      setActiveMenu(null);
+    },
+    [actions]
+  );
 
   const handleItemsPerPageChange = (e) => {
     setItemsPerPage(Number(e.target.value));
     setPage(1);
   };
-  
+
   const handlePrevPage = () => {
     if (page > 1) setPage(page - 1);
   };
-  
+
   const handleNextPage = () => {
     const maxPage = Math.ceil(processedData.length / itemsPerPage);
     if (page < maxPage) setPage(page + 1);
@@ -118,7 +137,10 @@ const DataTable = ({
     return Array.from({ length: itemsPerPage }).map((_, rowIndex) => (
       <tr key={`skeleton-${rowIndex}`} className="border-b animate-pulse">
         {columns.map((column, colIndex) => (
-          <td key={`skeleton-cell-${rowIndex}-${colIndex}`} className="py-3 px-4">
+          <td
+            key={`skeleton-cell-${rowIndex}-${colIndex}`}
+            className="py-3 px-4"
+          >
             {column.label === "Action" ? (
               <div className="flex justify-center">
                 <div className="h-8 w-8 rounded-full bg-gray-200"></div>
@@ -157,7 +179,10 @@ const DataTable = ({
         className="overflow-auto border rounded-lg mb-4"
         style={{ maxHeight: "calc(100vh - 240px)" }}
       >
-        <table className="w-full bg-white table-fixed" aria-label={title || "Data table"}>
+        <table
+          className="w-full bg-white table-fixed"
+          aria-label={title || "Data table"}
+        >
           <thead>
             <tr className="bg-gray-800 text-white sticky top-0 z-10">
               {columns.map((column, index) => (
@@ -165,10 +190,16 @@ const DataTable = ({
                   key={column.key || column.label}
                   className="py-3 px-4 text-left sticky top-0 bg-gray-800 z-10"
                   style={{
-                    width: column.width || (column.label === "Action" ? "100px" : "auto"),
+                    width:
+                      column.width ||
+                      (column.label === "Action" ? "100px" : "auto"),
                     minWidth: column.minWidth || "120px",
                   }}
-                  onClick={() => column.key && column.sortable !== false && handleSort(column.key)}
+                  onClick={() =>
+                    column.key &&
+                    column.sortable !== false &&
+                    handleSort(column.key)
+                  }
                   aria-sort={
                     sortConfig.key === column.key
                       ? sortConfig.direction === "asc"
@@ -200,8 +231,8 @@ const DataTable = ({
               <tr>
                 <td colSpan={columns.length} className="py-6 px-4 text-center">
                   <div className="text-red-500 mb-2">Error loading data</div>
-                  <button 
-                    onClick={refetch} 
+                  <button
+                    onClick={refetch}
                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium"
                   >
                     Try Again
@@ -210,8 +241,11 @@ const DataTable = ({
               </tr>
             ) : paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="py-4 px-4 text-center text-gray-500">
-                No data found
+                <td
+                  colSpan={columns.length}
+                  className="py-4 px-4 text-center text-gray-500"
+                >
+                  No data found
                 </td>
               </tr>
             ) : (
@@ -220,7 +254,10 @@ const DataTable = ({
                   {columns.map((column, cellIndex) => {
                     if (column.label === "Action") {
                       return (
-                        <td key={cellIndex} className="py-3 px-4 text-center relative">
+                        <td
+                          key={cellIndex}
+                          className="py-3 px-4 text-center relative"
+                        >
                           <button
                             className="p-2 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
                             onClick={(e) => {
@@ -235,52 +272,69 @@ const DataTable = ({
                           </button>
 
                           {activeMenu === rowIndex && (
-                            <div 
+                            <div
                               ref={menuRef}
                               className="absolute right-4 mt-2 bg-white shadow-lg rounded-lg py-1 px-3 z-10 border"
                               role="menu"
                               aria-orientation="horizontal"
                             >
                               <div className="flex items-center space-x-3">
-                                {actions.map((action, actionIndex) => (
-                                  <button className="p-1 text-gray-500 hover:text-gray-800"
-                                    key={actionIndex}
-                                    onClick={() => handleAction(action, row)}
-                                    aria-label={action.label}
-                                    role="menuitem"
-                                  >
-                                    {action.icon && (
-                                      <span>
-                                        {action.icon}
-                                      </span>
-                                    )}
-                                  </button>
-                                ))}
+                                {actions
+                                  .filter(
+                                    (action) =>
+                                      action.show === undefined ||
+                                      (typeof action.show === "function"
+                                        ? action.show(row)
+                                        : action.show)
+                                  )
+                                  .map((action, actionIndex) => (
+                                    <button
+                                      className="p-1 text-gray-500 hover:text-gray-800"
+                                      key={actionIndex}
+                                      onClick={() => handleAction(action, row)}
+                                      aria-label={action.label}
+                                      role="menuitem"
+                                    >
+                                      {action.icon && (
+                                        <span>{action.icon}</span>
+                                      )}
+                                    </button>
+                                  ))}
                                 {actions.length === 0 && (
                                   <>
-                                    <button 
+                                    <button
                                       className="px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
-                                      onClick={() => handleAction({ type: 'edit' }, row)}
+                                      onClick={() =>
+                                        handleAction({ type: "edit" }, row)
+                                      }
                                       aria-label="Edit"
                                       role="menuitem"
                                     >
                                       <Pencil size={16} className="mr-2" />
                                     </button>
-                                    <button 
+                                    <button
                                       className="px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
-                                      onClick={() => handleAction({ type: 'delete' }, row)}
+                                      onClick={() =>
+                                        handleAction({ type: "delete" }, row)
+                                      }
                                       aria-label="Delete"
                                       role="menuitem"
                                     >
                                       <Trash2 size={16} className="mr-2" />
                                     </button>
-                                    <button 
+                                    <button
                                       className="px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center"
-                                      onClick={() => handleAction({ type: 'view' }, row)}
+                                      onClick={() =>
+                                        handleAction({ type: "view" }, row)
+                                      }
                                       aria-label="View"
                                       role="menuitem"
                                     >
-                                      <Play size={16} className="mr-2" fill="currentColor" />
+                                      <Play
+                                        size={16}
+                                        className="mr-2"
+                                        fill="currentColor"
+                                      />
                                     </button>
                                   </>
                                 )}
@@ -290,7 +344,7 @@ const DataTable = ({
                         </td>
                       );
                     }
-                    
+
                     if (column.render) {
                       return (
                         <td key={cellIndex} className="py-3 px-4">
@@ -298,17 +352,26 @@ const DataTable = ({
                         </td>
                       );
                     }
-                    
+
                     return (
                       <td key={cellIndex} className="py-3 px-4 text-gray-600">
                         {column.key ? (
                           column.key === "status" ? (
-                            <span className={`px-3 py-1 rounded-full text-sm ${getStatusStyles(row[column.key])}`}>
+                            <span
+                              className={`px-3 py-1 rounded-full text-sm ${getStatusStyles(
+                                row[column.key]
+                              )}`}
+                            >
                               {row[column.key]}
                             </span>
                           ) : (
-                            <div className="truncate max-w-[200px]" title={row[column.key]}>
-                            {row[column.key] === 0 ? 0 : row[column.key] || '-'}
+                            <div
+                              className="truncate max-w-[200px]"
+                              title={row[column.key]}
+                            >
+                              {row[column.key] === 0
+                                ? 0
+                                : row[column.key] || "-"}
                             </div>
                           )
                         ) : null}
@@ -341,8 +404,10 @@ const DataTable = ({
             aria-label="Show per page"
             disabled={isLoading}
           >
-            {[10, 25, 50].map(option => (
-              <option key={option} value={option}>{option}</option>
+            {[10, 25, 50].map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
             ))}
           </select>
           <div className="flex items-center">
@@ -374,12 +439,12 @@ const DataTable = ({
 
 const getStatusStyles = (status) => {
   status = String(status || "").toLowerCase();
-  
-  if (status === "active" || status === "completed" || status==="created") {
+
+  if (status === "active" || status === "completed" || status === "created") {
     return "bg-green-100 text-green-600";
-  } else if (status === "pending" || status === "in progress" ) {
+  } else if (status === "pending" || status === "in progress") {
     return "bg-yellow-100 text-yellow-600";
-  } else if (status === "inactive" || status === "failed" ) {
+  } else if (status === "inactive" || status === "failed") {
     return "bg-red-100 text-red-600";
   } else {
     return "bg-gray-100 text-gray-600";

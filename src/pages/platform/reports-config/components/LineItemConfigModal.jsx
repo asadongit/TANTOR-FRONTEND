@@ -1,21 +1,29 @@
 import React, { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import RuleSelector from "./RuleSelector";
+import RuleOperatorSelector from "./RuleOperatorSelector";
 
 const LineItemConfigModal = ({
   lineItemId,
   setShowModal,
   updateLineItemRules,
   rules,
+  showRuleOperatorSelector,
+  setShowRuleOperatorSelector,
 }) => {
   const updateRule = (ruleIndex, field, value) => {
-    console.log(
-      `Rule Index = ${ruleIndex} | field = ${field} | value = ${value}`
-    );
-    const updatedRules = [...rules];
-    rules[ruleIndex][field] = value;
+    const newRules = [...rules];
 
-    updateLineItemRules(lineItemId, updatedRules);
+    if (field === null && typeof value === "object") {
+      newRules[ruleIndex] = value;
+    } else {
+      newRules[ruleIndex] = {
+        ...newRules[ruleIndex],
+        [field]: value,
+      };
+    }
+
+    updateLineItemRules(lineItemId, newRules);
   };
 
   const addRule = () => {
@@ -26,6 +34,7 @@ const LineItemConfigModal = ({
         ruleName: "",
         metrics: [],
         dimensions: [{ id: "", name: "", operator: "", value: [] }],
+        filters: [],
       },
     ];
 
@@ -33,7 +42,6 @@ const LineItemConfigModal = ({
   };
 
   const addDimension = (ruleIndex) => {
-   
     const newRules = [...rules];
     console.log("Rule with index ==>> ", newRules[ruleIndex].dimensions);
     newRules[ruleIndex].dimensions.push({
@@ -47,12 +55,6 @@ const LineItemConfigModal = ({
   };
 
   const updateDimension = (ruleIndex, dimIndex, field, value) => {
-    // setRules((prevRules) => {
-    //   const updatedRules = JSON.parse(JSON.stringify(prevRules));
-    //   updatedRules[ruleIndex].dimensions[dimIndex][field] = value;
-    //   return updatedRules;
-    // });
-
     const newRules = [...rules];
     newRules[ruleIndex].dimensions[dimIndex][field] = value;
 
@@ -60,58 +62,84 @@ const LineItemConfigModal = ({
   };
 
   const removeDimension = (ruleIndex, dimIndex) => {
-    setRules((prevRules) => {
-      const updatedRules = JSON.parse(JSON.stringify(prevRules));
-      if (updatedRules[ruleIndex].dimensions.length > 1) {
-        updatedRules[ruleIndex].dimensions.splice(dimIndex, 1);
-      }
-      return updatedRules;
-    });
+    const newRules = [...rules];
+    if (newRules[ruleIndex].dimensions.length > 1)
+      newRules[ruleIndex].dimensions.splice(dimIndex, 1);
+    
+    else if (newRules[ruleIndex].dimensions.length == 1) {
+      newRules[ruleIndex].dimensions[0] = {
+        id: "",
+        name: "",
+        operator: "",
+        value: [],
+      };
+    }
+    updateLineItemRules(lineItemId, newRules);
+  };
+
+  const removeLastRule = () => {
+    const newRules = [...rules];
+    if (newRules.length === 0) return;
+    newRules.splice(newRules.length - 1, 1);
+
+    updateLineItemRules(lineItemId, newRules);
   };
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4 p-4">{lineItemId}</h2>
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm"></div>
+      <div className="relative min-h-screen flex items-center justify-center p-6">
+        <div className="relative bg-white rounded-lg w-full max-w-3xl p-6">
+          <h2 className="text-lg font-semibold mb-3">{lineItemId.toLocaleUpperCase()}</h2>
 
-      {rules.map((rule, index) => (
-        <RuleSelector
-          key={`rule-${index}`}
-          rule={rule}
-          index={index}
-          updateRule={updateRule}
-          addDimension={addDimension}
-          updateDimension={updateDimension}
-          removeDimension={removeDimension}
-        />
-      ))}
+          <div className="max-h-[70vh] overflow-y-auto">
+            {rules.map((rule, index) => (
+              <RuleSelector
+                key={`rule-${index}`}
+                rule={rule}
+                index={index}
+                updateRule={updateRule}
+                addDimension={addDimension}
+                updateDimension={updateDimension}
+                removeDimension={removeDimension}
+              />
+            ))}
+          </div>
 
-      <div className="flex justify-end gap-4 mt-56">
-        <button
-          type="button"
-          className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          onClick={() => setShowModal(false)}
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          onClick={addRule}
-        >
-          <Plus className="h-4 w-4 mr-1" /> Add Rule
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          Next
-        </button>
+          <div className="flex justify-end gap-3 mt-4">
+            <button
+              type="button"
+              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onClick={removeLastRule}
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onClick={() => setShowModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium bg-[#8E77BB] hover:opacity-80 text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)"
+              onClick={addRule}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Add Rule
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium bg-[#8E77BB] hover:opacity-80 text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowRuleOperatorSelector(true);
+              }}
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

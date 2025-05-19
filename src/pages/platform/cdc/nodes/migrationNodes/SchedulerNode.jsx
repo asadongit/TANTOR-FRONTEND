@@ -175,7 +175,7 @@ export function SchedulerNode({ id, data, selected}) {
     closeModal();
     deletePipeline(ID);
     setTimeout(() => {
-      navigate(`/details?${encodeURIComponent(encrypt("componentType=transformation&heading=migrations"))}`);
+      navigate(`/migration`);
     }, 800);
   };
 
