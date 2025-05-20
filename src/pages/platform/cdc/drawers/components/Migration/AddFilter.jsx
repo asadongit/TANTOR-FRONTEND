@@ -243,23 +243,36 @@ const {closeDrawer}= useDrawerContext()
 
     const whereConditions = {};
 
+    // Object.entries(targetFilters).forEach(([targetTable, filters]) => {
+    //   if (filters.length > 0) {
+    //     const conditionString = filters
+    //       .map((entry, index) => {
+    //         const logicPrefix =
+    //           index > 0 ? `${filters[index - 1].logic || "AND"} ` : "";
+    //         return `${logicPrefix}${entry.columnName} ${entry.filterOperator} ${entry.value}`;
+    //       })
+    //       .join(" ");
+
+    //     whereConditions[targetTable] = `Where ${conditionString}`;
+    //   }
+    // });
     Object.entries(targetFilters).forEach(([targetTable, filters]) => {
       if (filters.length > 0) {
-        const conditionString = filters
-          .map((entry, index) => {
-            const logicPrefix =
-              index > 0 ? `${filters[index - 1].logic || "AND"} ` : "";
-            return `${logicPrefix}${entry.columnName} ${entry.filterOperator} ${entry.value}`;
-          })
-          .join(" ");
-
-        whereConditions[targetTable] = `Where ${conditionString}`;
+        const wherecolumn = filters.map(f => f.columnName).join(", ");
+        const whereoperator = filters.map(f => f.filterOperator).join(", ");
+        const wherevalues = filters.map(f => f.value).join(", ");
+    
+        whereConditions[targetTable] =[{
+          wherecolumn,
+          whereoperator,
+          wherevalues
+        }];
       }
     });
 console.log("whereConditions",whereConditions)
     Object.entries(targetComplexQueries).forEach(([targetTable, query]) => {
       if (query.trim() !== "") {
-        whereConditions[targetTable] = query;
+        whereConditions[targetTable] =  `Where ${query}`;
       }
     });
 
@@ -497,7 +510,7 @@ console.log("whereConditions",whereConditions)
                     </div>
                   </div>
 
-                  <div className="flex items-center mb-4">
+                  {/* <div className="flex items-center mb-4">
                     <label className="text-xs font-medium text-gray-600 mr-3">
                       Logic for next condition:
                     </label>
@@ -535,7 +548,7 @@ console.log("whereConditions",whereConditions)
                         <span className="text-sm">OR</span>
                       </label>
                     </div>
-                  </div>
+                  </div> */}
 
                   <div>
                     <button

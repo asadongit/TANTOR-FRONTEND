@@ -106,6 +106,7 @@ const {token, hostnameV1}= useAuth()
             });
             // console.log("Migration Run Response:", response.data);
             toast.success("Migration triggered successfully!");
+            refetchArchival();
           } catch (error) {
             console.error("Failed to trigger Migration:", error);
             toast.error("Failed to trigger Migration.");

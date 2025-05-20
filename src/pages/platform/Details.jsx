@@ -111,7 +111,7 @@ const Details = () => {
   const actions = useMemo(() => {
     return getActionConfigurations({ token, project, hostnameV2,navigate  })[selectedType];;
   }, [selectedType]);
-  
+
   return (
     <div className="flex flex-col h-full p-4">
       <nav className="flex mb-4" aria-label="Breadcrumb">
@@ -177,7 +177,7 @@ const Details = () => {
           <button
             type="button"
             className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
-            onClick={()=>{refetch() 
+            onClick={()=>{refetch()
               toast.success('Refreshed sucessfully!')
             }}
           >

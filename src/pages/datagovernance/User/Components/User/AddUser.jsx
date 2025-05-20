@@ -27,14 +27,20 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     subgroups: []
   });
   const [isFetchingOptions, setIsFetchingOptions] = useState(false);
+  const [isLoadingSubgroups, setIsLoadingSubgroups] = useState(false);
   const { token } = useAuth();
-
 
   useEffect(() => {
     if (isOpen) {
       fetchDropdownOptions();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (formData.group) {
+      fetchSubgroups(formData.group);
+    }
+  }, [formData.group]);
 
   const fetchDropdownOptions = async () => {
     setIsFetchingOptions(true);
@@ -56,7 +62,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
       setDropdownOptions({
         roles: data.roles || [],
         groups: data.groups || [],
-        subgroups: data.subgroups || []
+        subgroups: []
       });
     } catch (error) {
       console.error("Error fetching dropdown options:", error);
@@ -69,14 +75,59 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     }
   };
 
+  const fetchSubgroups = async (group) => {
+    setIsLoadingSubgroups(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/datapolicy/subgroup/${group}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch subgroups');
+      }
+
+      setDropdownOptions(prev => ({
+        ...prev,
+        subgroups: data.subgroups || []
+      }));
+    } catch (error) {
+      console.error("Error fetching subgroups:", error);
+      setApiResponse({
+        status: 'error',
+        message: 'Failed to load subgroups'
+      });
+      setDropdownOptions(prev => ({
+        ...prev,
+        subgroups: []
+      }));
+    } finally {
+      setIsLoadingSubgroups(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+
+    if (name === 'group') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        subgroup: ''
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
 
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -96,7 +147,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.role) newErrors.role = 'Role is required';
 
-    // Email validation
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -148,10 +198,8 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
         message: 'User created successfully'
       });
 
-      // Wait a moment to show success message before closing
       setTimeout(() => {
         onSave();
-        // Reset form
         setFormData({
           username: '',
           password: '',
@@ -192,7 +240,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           </button>
         </div>
 
-        {/* Status message */}
         {apiResponse.status && (
           <div className={`mb-6 p-3 rounded-lg text-center ${
             apiResponse.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
@@ -354,11 +401,14 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   name="subgroup"
                   value={formData.subgroup}
                   onChange={handleChange}
+                  disabled={!formData.group || isLoadingSubgroups}
                   className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white"
                 >
                   <option value="">Select Sub-group</option>
-                  {isFetchingOptions ? (
+                  {isLoadingSubgroups ? (
                     <option value="" disabled>Loading subgroups...</option>
+                  ) : !formData.group ? (
+                    <option value="" disabled>Select a group first</option>
                   ) : (
                     dropdownOptions.subgroups.map(subgroup => (
                       <option key={subgroup} value={subgroup}>{subgroup}</option>

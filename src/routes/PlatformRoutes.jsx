@@ -29,6 +29,7 @@ import DataView from '../pages/platform/DataView';
 import PurgeCanvas from '../pages/platform/purge/PurgeCanvas';
 import Details from '../pages/platform/Details';
 import EditCDC from '../pages/platform/cdc/components/Edit';
+import ViewCDC from '../pages/platform/cdc/components/viewCDC/View'
 
 
 export function PlatformRoutes() {
@@ -46,6 +47,7 @@ export function PlatformRoutes() {
         <Route path="/purge" element={<Purge />} />
         <Route path="/cdc" element={<CDC />} />
         <Route path="/cdc/editcdc/:cdcId" element={<EditCDC />} />
+        <Route path="/cdc/Viewcdc/:cdcId" element={<ViewCDC />} />
         <Route path="/editor" element={<Editor />} />
         <Route path="/federation" element={<FederationDashBoard />} />
         <Route path="/federation/view/source" element={<Source />} />
