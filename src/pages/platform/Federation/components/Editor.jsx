@@ -94,6 +94,13 @@ export default function Editor() {
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
 
+        // If no policy IDs are returned, set empty connections and return
+        if (policyIds.length === 0) {
+          setOriginalConnections([]);
+          setDisplayedConnections([]);
+          return;
+        }
+
         // Then fetch connections based on policy IDs
         const response = await fetch(`${hostnameV1}/connections/list`, {
           method: "POST",
@@ -115,9 +122,6 @@ export default function Editor() {
           sourceConnectionId: conn.connection_id,
           connection_type: conn.connection_type,
           connection_name: conn.connection_name,
-          // Add these fields if they're essential for your application
-          // project: conn.project || 'default',
-          // created_by: conn.created_by || decodedToken?.preferred_username || 'unknown'
         }));
 
         setOriginalConnections(formattedConnections);
