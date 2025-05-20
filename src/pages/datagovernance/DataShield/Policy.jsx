@@ -115,7 +115,7 @@ const Policy = () => {
                 Name: policy.policy_name,
                 Description: policy.policy_description,
                 Status: policy.policy_status,
-                CompletedDate: policy.completed_date,
+                CreatedDate: policy.created_date,
                 expiryDate: policy.expiry_date,
                 UpdatedDate: policy.updated_date,
                 Owner: policy.owner
@@ -646,7 +646,7 @@ const Policy = () => {
                                                 {policy.Status || "Active"}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-gray-500 text-center">{policy.CompletedDate || "-"}</td>
+                                        <td className="p-4 text-gray-500 text-center">{policy.CreatedDate || "-"}</td>
                                         <td className="p-4 text-gray-500 text-center">{policy.expiryDate || "-"}</td>
                                         <td className="p-4 text-gray-500 text-center">{policy.UpdatedDate || "-"}</td>
                                         <td className="p-4 text-gray-500">{policy.Owner}</td>
