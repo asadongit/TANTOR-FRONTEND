@@ -22,7 +22,7 @@ import Builder from "./Builder";
 import { useAuth } from "../../../../context/AuthContext";
 
 export default function Editor() {
-  const {token, project, decodedToken, setSelectedProject, hostnameV1 }= useAuth();
+  const { token, project, decodedToken, setSelectedProject, hostnameV1 } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,61 +41,61 @@ export default function Editor() {
   const [originalConnections, setOriginalConnections] = useState([]);
 
   useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const response = await fetch(`${hostnameV1}/connection-saves`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      let data = await response.json();
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`${hostnameV1}/connection-saves`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        let data = await response.json();
 
-      if (project !== "default" && project !== "none") {
-        data = data.filter(
-          (item) =>
-            item.project.toUpperCase() === project.toUpperCase() &&
-            item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-            !item.is_deleted
-        );
-      } else {
-        data = data.filter(
-          (item) =>
-            item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-            !item.is_deleted
-        );
+        if (project !== "default" && project !== "none") {
+          data = data.filter(
+            (item) =>
+              item.project.toUpperCase() === project.toUpperCase() &&
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+              !item.is_deleted
+          );
+        } else {
+          data = data.filter(
+            (item) =>
+              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+              !item.is_deleted
+          );
+        }
+
+        const formattedData = data.map((item) => ({
+          sourceConnectionId: item.connection_id,
+          connection_type: item.connection_type,
+          connection_name: item.connection_name,
+          project: item.project,
+          created_by: item.created_by,
+        }));
+
+        setOriginalConnections(formattedData); // Store the original connections
+        setDisplayedConnections(formattedData); // Set initial displayed connections
+      } catch (error) {
+        console.log(error);
       }
+    };
 
-      const formattedData = data.map((item) => ({
-        sourceConnectionId: item.connection_id,
-        connection_type: item.connection_type,
-        connection_name: item.connection_name,
-        project: item.project,
-        created_by: item.created_by,
-      }));
-      
-      setOriginalConnections(formattedData); // Store the original connections
-      setDisplayedConnections(formattedData); // Set initial displayed connections
-    } catch (error) {
-      console.log(error);
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setDisplayedConnections([...originalConnections]);
+    } else {
+      const filteredConnections = originalConnections.filter((connection) =>
+        connection.connection_name
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())
+      );
+      setDisplayedConnections(filteredConnections);
     }
-  };
-
-  fetchData();
-}, []);
-
-useEffect(() => {
-  if (searchTerm.trim() === "") {
-    setDisplayedConnections([...originalConnections]); 
-  } else {
-    const filteredConnections = originalConnections.filter((connection) =>
-      connection.connection_name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-    );
-    setDisplayedConnections(filteredConnections);
-  }
-}, [searchTerm, originalConnections]);
+  }, [searchTerm, originalConnections]);
 
   const handleClearQuery = () => {
     setQuery("");
@@ -147,6 +147,7 @@ useEffect(() => {
 
     setLoading(true);
 
+    // First fetch to secure-query
     fetch(`${import.meta.env.VITE_FAST_API}/secure-query`, {
       method: "POST",
       headers: {
@@ -158,34 +159,56 @@ useEffect(() => {
         user_query: newquery,
       }),
     })
-    .then((response) => response.json())
-    .then((data) => {
-      const secureQuery = data.secure_query;
-      console.log("Secure query:", secureQuery);
-      console.log("Matched policy IDs:", data.matched_policy_ids);
+      .then((response) => {
+        if (!response.ok) {
+          return response.json().then(errData => {
+            toast.error(errData.detail || "Error in query validation");
+            throw new Error("secure-query failed");
+          });
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (!data || !data.secure_query) {
+          throw new Error("Invalid response from secure-query");
+        }
 
-      setSecuredQuery(secureQuery);
+        const secureQuery = data.secure_query;
+        console.log("Secure query:", secureQuery);
+        console.log("Matched policy IDs:", data.matched_policy_ids);
 
-      const payload = {
-        page: page,
-        query: secureQuery,
-      };
+        setSecuredQuery(secureQuery);
 
-      return fetch(`${hostnameV1}/runQuery`, {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-    })
-    .then((response) =>
-      response.text().then((data) => ({ status: response.status, data }))
-    )
-    .then(({ status, data }) => {
-      if (status === 200) {
+        const payload = {
+          page: page,
+          query: secureQuery,
+        };
+
+        return fetch(`${hostnameV1}/runQuery`, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      })
+      .then((response) => {
+        if (!response.ok) {
+          return response.text().then(text => {
+            try {
+              const errData = JSON.parse(text);
+              toast.error(errData.detail || "Error in query execution");
+            } catch {
+              toast.error(text || "Error in query execution");
+            }
+            throw new Error("runQuery failed");
+          });
+        }
+        return response.text();
+      })
+      .then((data) => {
         const rows = data
           .trim()
           .split("\n")
@@ -195,20 +218,17 @@ useEffect(() => {
         setColumnDefs(columns);
         setData(rows);
         setHasMore(rows.length === 100);
-      } else {
-        if (data) {
-          const res = JSON.parse(data);
-          toast.error(res.detail);
+      })
+      .catch((error) => {
+        if (error.message !== "secure-query failed" &&
+          error.message !== "runQuery failed" &&
+          error.message !== "Invalid response from secure-query") {
+          console.error("Unexpected error in query execution:", error);
         }
-      }
-    })
-    .catch((error) => {
-      console.error("Error in query execution:", error);
-      toast.error("An error occurred while processing your query");
-    })
-    .finally(() => {
-      setLoading(false);
-    });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   const [checked, setChecked] = useState(true);
@@ -426,11 +446,14 @@ useEffect(() => {
           <Database size={15} />
         </div>
 
-        <span style={{
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis"
-        }}>
+        <span
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }}
+          title={connection.connection_name}
+        >
           {connection.connection_name}
         </span>
       </div>
@@ -463,11 +486,14 @@ useEffect(() => {
           <Database size={15} />
         </div>
 
-        <span style={{
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis"
-        }}>
+        <span
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }}
+          title={schema}  // Add this
+        >
           {schema}
         </span>
       </div>
@@ -510,7 +536,9 @@ useEffect(() => {
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis"
-          }}>
+          }}
+          title={table}  // Add this
+        >
           {table}
         </span>
       </div>
@@ -544,12 +572,15 @@ useEffect(() => {
           {isNumber ? <Hash size={18} /> : <Type size={18} />}
         </div>
 
-        <span style={{
-          fontWeight: "normal",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis"
-        }}>
+        <span
+          style={{
+            fontWeight: "normal",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }}
+          title={column.column}  // Add this
+        >
           {column.column}
         </span>
       </div>
@@ -585,7 +616,7 @@ useEffect(() => {
     return [headers, ...csvRows].join('\n');
   };
 
-  const handleDownloadCSV = () =>{
+  const handleDownloadCSV = () => {
     const csvContent = convertToCSV(data);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
