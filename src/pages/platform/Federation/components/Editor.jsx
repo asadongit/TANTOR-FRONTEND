@@ -25,7 +25,6 @@ export default function Editor() {
   const {token, project, decodedToken, setSelectedProject, hostnameV1 }= useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [query, setQuery] = useState("");
-  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
   const [columnDefs, setColumnDefs] = useState([]);
@@ -39,90 +38,64 @@ export default function Editor() {
 
   const [expanded, setExpanded] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
+  const [originalConnections, setOriginalConnections] = useState([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`${hostnameV1}/connection-saves`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        let data = await response.json();
+  const fetchData = async () => {
+    try {
+      const response = await fetch(`${hostnameV1}/connection-saves`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      let data = await response.json();
 
-        if (project !== "default" && project !== "none") {
-          data = data.filter(
-            (item) =>
-              item.project.toUpperCase() === project.toUpperCase() &&
-              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-              !item.is_deleted
-          );
-        } else {
-          data = data.filter(
-            (item) =>
-              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-              !item.is_deleted
-          );
-        }
-        console.log("connection data is ===>", data);
-
-        const formattedData = data.map((item) => ({
-          sourceConnectionId: item.connection_id,
-          connection_type: item.connection_type,
-          connection_name: item.connection_name,
-          project: item.project,
-          created_by: item.created_by,
-        }));
-        setDisplayedConnections(formattedData);
-      } catch (error) {
-        console.log(error);
+      if (project !== "default" && project !== "none") {
+        data = data.filter(
+          (item) =>
+            item.project.toUpperCase() === project.toUpperCase() &&
+            item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+            !item.is_deleted
+        );
+      } else {
+        data = data.filter(
+          (item) =>
+            item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+            !item.is_deleted
+        );
       }
-    };
 
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      const originalConnections = displayedConnections.length ? displayedConnections : [];
-      setDisplayedConnections(originalConnections);
-    } else {
-      const filteredConnections = displayedConnections.filter((connection) =>
-        connection.connection_name
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())
-      );
-      setDisplayedConnections(filteredConnections);
+      const formattedData = data.map((item) => ({
+        sourceConnectionId: item.connection_id,
+        connection_type: item.connection_type,
+        connection_name: item.connection_name,
+        project: item.project,
+        created_by: item.created_by,
+      }));
+      
+      setOriginalConnections(formattedData); // Store the original connections
+      setDisplayedConnections(formattedData); // Set initial displayed connections
+    } catch (error) {
+      console.log(error);
     }
-  }, [searchTerm]);
+  };
 
-  useEffect(() => {
-    fetch(`${hostnameV1}/recent-queries`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    })
-      .then((response) => response.text())
-      .then((result) => {
-        const lines = result.trim().split("\n");
-        const queries = lines
-          .map((line) => {
-            try {
-              const json = JSON.parse(line);
-              return json.query;
-            } catch (error) {
-              console.error("Error parsing JSON:", error);
-              return null;
-            }
-          })
-          .filter((query) => query !== null);
-        console.log("queries are ====>", queries);
-        setHistory(queries);
-      })
-      .catch((error) => console.error("Error fetching data:", error));
-  }, []);
+  fetchData();
+}, []);
+
+useEffect(() => {
+  if (searchTerm.trim() === "") {
+    setDisplayedConnections([...originalConnections]); 
+  } else {
+    const filteredConnections = originalConnections.filter((connection) =>
+      connection.connection_name
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+    );
+    setDisplayedConnections(filteredConnections);
+  }
+}, [searchTerm, originalConnections]);
 
   const handleClearQuery = () => {
     setQuery("");
@@ -236,13 +209,6 @@ export default function Editor() {
     .finally(() => {
       setLoading(false);
     });
-  };
-
-  const handleHistoryClick = (history) => {
-    setQuery(history);
-    setSecuredQuery("");
-    setPageNo(1);
-    executeQuery(history, 1);
   };
 
   const [checked, setChecked] = useState(true);
@@ -634,14 +600,13 @@ export default function Editor() {
     URL.revokeObjectURL(url);
   }
 
-
   return (
     <div className="h-[calc(100vh-64px-32px)]">
       <div className="flex flex-row h-[100%] bg-gray-50">
         {checked ? (
           <>
             <aside className="w-1/4 pr-4 flex flex-col border-r border-gray-300">
-              <div className="h-[60%] flex flex-col pb-4">
+              <div className="h-[100%] flex flex-col pb-4">
                 <div className="flex justify-between items-center mb-2">
                   <h2 className="text-xl font-bold">Connection</h2>
                 </div>
@@ -766,32 +731,6 @@ export default function Editor() {
                       );
                     })}
                   </div>
-                </div>
-              </div>
-
-              <div className="h-[40%] flex flex-col border-t pt-1">
-                <h2 className="text-xl font-bold">History</h2>
-                <div className="mt-2 flex-1 overflow-x-auto overflow-y-auto custom-scroll pr-2">
-                  {history.length === 0 ? (
-                    <div className="text-gray-500">No recent queries</div>
-                  ) : (
-                    <ul className="list-decimal pl-5">
-                      {history.map((query, index) => (
-                        <li
-                          key={index}
-                          className={`text-xs text-gray-700 mb-2 cursor-pointer ${loading ? "cursor-not-allowed text-gray-400" : "hover:text-gray-900"}`}
-                          onClick={() => {
-                            if (!loading) {
-                              handleHistoryClick(query);
-                            }
-                          }}
-                        >
-                          {query}
-                        </li>
-
-                      ))}
-                    </ul>
-                  )}
                 </div>
                 <style>
                   {`
@@ -985,8 +924,6 @@ export default function Editor() {
                         </button>
                       </div>
                     </div>
-
-
                   )}
                 </div>
               )}
