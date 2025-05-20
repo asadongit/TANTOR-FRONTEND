@@ -6,6 +6,7 @@ import DataTable from "../../../components/DataTable";
 import { useRuleReportData } from "../../../hooks/platform/ruleLinkedReports";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
+// import BirtReportRenderer from "../../../components/BirtReportRenderer";
 
 const RulesReportsLinks = () => {
   const {
@@ -19,42 +20,61 @@ const RulesReportsLinks = () => {
 
   const navigate = useNavigate();
 
+  // Remove BirtReportRenderer state
+  // const [showReportRenderer, setShowReportRenderer] = useState(false);
+  // const [selectedReport, setSelectedReport] = useState(null);
+
   const actions = [
     {
       label: "View",
       icon: <MoveUpRight size={16} />,
-      // onClick: (row) => navigate("/config/report/ruleLinks"),
       onClick: (row) => {
         const generateReport = async () => {
-          // const reportId = row.id;
+          const reportId = row.report_id;
+          const reportType = row.report_type;
+          const reportFileName = row.report_name;
 
-          const reportId = row.id;
-          const reportType = row.type;
-          const reportName = row.name;
+          // If report type is LIST, open BIRT report directly
+          if ((reportType || "").toUpperCase() === "LIST") {
+            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER.replace(/\\\\/g, '\\'); // Double backslashes ko single mein convert
+  const reportName = `${reportFolder}\\${reportFileName}.rptdesign`; // Full path banaya
+  const resourceFolder = reportFolder;
+
+  window.open(
+    `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportName)}&__format=${
+      import.meta.env.VITE_BIRT_EXPORT_FORMAT
+    }&__svg=true&__locale=en_US&__timezone=PST&__masterpage=true&__rtl=false&__cubememsize=10&__resourceFolder=${encodeURIComponent(resourceFolder)}&__parameterpage=true`,
+    "_blank"
+  );
+            return;
+          }
 
           const headers = {
             "Content-Type": "application/json",
             authorization: `Bearer ${token}`,
           };
 
-          try {
-            const response = await fetch(
-              `${hostnameV1}/reports/${reportId}/exists`,
-              { headers }
-            );
-
-            if (!response.ok)
-              return toast.error(
-                "ERROR OCCURED TRYING TO CHECK IF REPORT EXISTS."
+          // Only check if report exists if reportType is not 'LIST'
+          if ((reportType || "").toUpperCase() !== "LIST") {
+            try {
+              const response = await fetch(
+                `${hostnameV1}/reports/${reportId}/exists`,
+                { headers }
               );
 
-            const data = await response.json();
+              if (!response.ok)
+                return toast.error(
+                  "ERROR OCCURED TRYING TO CHECK IF REPORT EXISTS."
+                );
 
-            if (data.isExists === false)
-              return toast.error(`Report with id = ${reportId} doesn't exist.`);
-          } catch (error) {
-            console.log(error);
-            toast.error("Error occured.");
+              const data = await response.json();
+
+              if (data.isExists === false)
+                return toast.error(`Report with id = ${reportId} doesn't exist.`);
+            } catch (error) {
+              console.log(error);
+              toast.error("Error occured.");
+            }
           }
 
           try {
@@ -66,6 +86,7 @@ const RulesReportsLinks = () => {
             if (!redirectResponse.ok)
               return toast.error("ERROR OCCURED TRYING TO GENERATE REPORT.");
 
+            console.log("Redirect Response: ", redirectResponse);
             const redirectPath = await redirectResponse.text();
             window.open(
               `${
@@ -93,16 +114,16 @@ const RulesReportsLinks = () => {
             reportName: row.name,
           },
         }),
-      show: (row) => row.type.toLowerCase() !== "list",
+      show: (row) => (row.type || "").toLowerCase() !== "list",
     },
   ];
 
   const columns = [
-    { key: "sno", label: "S No" },
-    { key: "id", label: "ID" },
-    { key: "name", label: "Name" },
-    { key: "type", label: "type" },
-    { key: "desc", label: "Description" },
+    { key: "report_id", label: "ID" },
+    { key: "report_name", label: "Name" },
+    { key: "report_type", label: "type" },
+    { key: "report_desc", label: "Description" },
+    { key: "is_active", label: "Is Active" },
     { label: "Action", sortable: false },
   ];
 
@@ -127,6 +148,7 @@ const RulesReportsLinks = () => {
         isError={!!ruleReportError}
         refetch={refetchRuleReport}
       />
+      {/* Remove BirtReportRenderer rendering */}
     </div>
   );
 };
