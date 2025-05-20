@@ -20,6 +20,7 @@ import { ToastContainer, toast } from "react-toastify";
 import Switch from "@mui/material/Switch";
 import Builder from "./Builder";
 import { useAuth } from "../../../../context/AuthContext";
+import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 
 export default function Editor() {
   const { token, project, decodedToken, setSelectedProject, hostnameV1 } = useAuth();
@@ -40,48 +41,96 @@ export default function Editor() {
   const [expandedItems, setExpandedItems] = useState({});
   const [originalConnections, setOriginalConnections] = useState([]);
 
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       const response = await fetch(`${hostnameV1}/connection-saves`, {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+  //       let data = await response.json();
+
+  //       if (project !== "default" && project !== "none") {
+  //         data = data.filter(
+  //           (item) =>
+  //             item.project.toUpperCase() === project.toUpperCase() &&
+  //             item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+  //             !item.is_deleted
+  //         );
+  //       } else {
+  //         data = data.filter(
+  //           (item) =>
+  //             item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+  //             !item.is_deleted
+  //         );
+  //       }
+
+  //       const formattedData = data.map((item) => ({
+  //         sourceConnectionId: item.connection_id,
+  //         connection_type: item.connection_type,
+  //         connection_name: item.connection_name,
+  //         project: item.project,
+  //         created_by: item.created_by,
+  //       }));
+
+  //       setOriginalConnections(formattedData); // Store the original connections
+  //       setDisplayedConnections(formattedData); // Set initial displayed connections
+  //     } catch (error) {
+  //       console.log(error);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, []);
+
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchConnections = async () => {
       try {
-        const response = await fetch(`${hostnameV1}/connection-saves`, {
+        setLoading(true);
+
+        // First get the policy IDs
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        // Then fetch connections based on policy IDs
+        const response = await fetch(`${hostnameV1}/connections/list`, {
+          method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ matched_policy_ids: policyIds })
         });
-        let data = await response.json();
 
-        if (project !== "default" && project !== "none") {
-          data = data.filter(
-            (item) =>
-              item.project.toUpperCase() === project.toUpperCase() &&
-              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-              !item.is_deleted
-          );
-        } else {
-          data = data.filter(
-            (item) =>
-              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-              !item.is_deleted
-          );
+        if (!response.ok) {
+          throw new Error('Failed to fetch connections');
         }
 
-        const formattedData = data.map((item) => ({
-          sourceConnectionId: item.connection_id,
-          connection_type: item.connection_type,
-          connection_name: item.connection_name,
-          project: item.project,
-          created_by: item.created_by,
+        const connectionsData = await response.json();
+
+        // Format the data according to the new API response
+        const formattedConnections = connectionsData.map(conn => ({
+          sourceConnectionId: conn.connection_id,
+          connection_type: conn.connection_type,
+          connection_name: conn.connection_name,
+          // Add these fields if they're essential for your application
+          // project: conn.project || 'default',
+          // created_by: conn.created_by || decodedToken?.preferred_username || 'unknown'
         }));
 
-        setOriginalConnections(formattedData); // Store the original connections
-        setDisplayedConnections(formattedData); // Set initial displayed connections
+        setOriginalConnections(formattedConnections);
+        setDisplayedConnections(formattedConnections);
       } catch (error) {
-        console.log(error);
+        console.error("Error fetching connections:", error);
+        toast.error("Failed to load connections");
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchData();
+    fetchConnections();
   }, []);
 
   useEffect(() => {
@@ -270,6 +319,54 @@ export default function Editor() {
     }));
   };
 
+  // const handleSchema = async (event, connection) => {
+  //   const connectionId = `conn-${connection}`;
+  //   toggleExpanded(connectionId);
+
+  //   if (!expandedItems[connectionId] && !schemas[connection]) {
+  //     try {
+  //       setSchemas((prevSchemas) => ({
+  //         ...prevSchemas,
+  //         [connection]: "loading",
+  //       }));
+  //       const response = await fetch(
+  //         `${hostnameV1}/${connection}/schemas`, {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`,
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+  //       if (!response.ok) {
+  //         setSchemas((prevSchemas) => ({
+  //           ...prevSchemas,
+  //           [connection]: [],
+  //         }));
+  //         throw new Error("Network response was not ok");
+  //       }
+  //       const data = await response.text();
+  //       const res = await JSON.parse(data);
+
+  //       if (res.length === 0) {
+  //         setSchemas((prevSchemas) => ({
+  //           ...prevSchemas,
+  //           [connection]: [],
+  //         }));
+  //       } else {
+  //         setSchemas((prevSchemas) => ({
+  //           ...prevSchemas,
+  //           [connection]: res,
+  //         }));
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching schema data:", error);
+  //       setSchemas((prevSchemas) => ({
+  //         ...prevSchemas,
+  //         [connection]: "error",
+  //       }));
+  //     }
+  //   }
+  // };
+
   const handleSchema = async (event, connection) => {
     const connectionId = `conn-${connection}`;
     toggleExpanded(connectionId);
@@ -280,43 +377,90 @@ export default function Editor() {
           ...prevSchemas,
           [connection]: "loading",
         }));
-        const response = await fetch(
-          `${hostnameV1}/${connection}/schemas`, {
+
+        // First get policy IDs
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        // Then fetch schemas
+        const response = await fetch(`${hostnameV1}/schemas/list`, {
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ matched_policy_ids: policyIds })
         });
-        if (!response.ok) {
-          setSchemas((prevSchemas) => ({
-            ...prevSchemas,
-            [connection]: [],
-          }));
-          throw new Error("Network response was not ok");
-        }
-        const data = await response.text();
-        const res = await JSON.parse(data);
 
-        if (res.length === 0) {
-          setSchemas((prevSchemas) => ({
-            ...prevSchemas,
-            [connection]: [],
-          }));
-        } else {
-          setSchemas((prevSchemas) => ({
-            ...prevSchemas,
-            [connection]: res,
-          }));
+        if (!response.ok) {
+          throw new Error("Failed to fetch schemas");
         }
+
+        const data = await response.json();
+        const schemaNames = data.map(item => item.table_schema);
+
+        setSchemas((prevSchemas) => ({
+          ...prevSchemas,
+          [connection]: schemaNames.length > 0 ? schemaNames : [],
+        }));
       } catch (error) {
         console.error("Error fetching schema data:", error);
         setSchemas((prevSchemas) => ({
           ...prevSchemas,
           [connection]: "error",
         }));
+        toast.error("Failed to load schemas");
       }
     }
   };
+  // const handleTables = async (event, connection, schema) => {
+  //   const schemaId = `schema-${connection}-${schema}`;
+  //   toggleExpanded(schemaId);
+
+  //   if (!expandedItems[schemaId] && !tables[`${connection}-${schema}`]) {
+  //     try {
+  //       setTables((prevTables) => ({
+  //         ...prevTables,
+  //         [`${connection}-${schema}`]: "loading",
+  //       }));
+
+  //       const response = await fetch(
+  //         `${hostnameV1}/${connection}/schemas/${schema}/tables`, {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`,
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+  //       if (!response.ok) {
+  //         setTables((prevTables) => ({
+  //           ...prevTables,
+  //           [`${connection}-${schema}`]: [],
+  //         }));
+  //         throw new Error("Network response was not ok");
+  //       }
+  //       const data = await response.text();
+  //       const res = await JSON.parse(data);
+
+  //       if (res.length === 0) {
+  //         setTables((prevTables) => ({
+  //           ...prevTables,
+  //           [`${connection}-${schema}`]: [],
+  //         }));
+  //       } else {
+  //         setTables((prevTables) => ({
+  //           ...prevTables,
+  //           [`${connection}-${schema}`]: res,
+  //         }));
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching table data:", error);
+  //       setTables((prevTables) => ({
+  //         ...prevTables,
+  //         [`${connection}-${schema}`]: "error",
+  //       }));
+  //     }
+  //   }
+  // };
 
   const handleTables = async (event, connection, schema) => {
     const schemaId = `schema-${connection}-${schema}`;
@@ -329,43 +473,89 @@ export default function Editor() {
           [`${connection}-${schema}`]: "loading",
         }));
 
-        const response = await fetch(
-          `${hostnameV1}/${connection}/schemas/${schema}/tables`, {
+        // First get policy IDs
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        // Then fetch tables
+        const response = await fetch(`${hostnameV1}/tables/list`, {
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ matched_policy_ids: policyIds })
         });
-        if (!response.ok) {
-          setTables((prevTables) => ({
-            ...prevTables,
-            [`${connection}-${schema}`]: [],
-          }));
-          throw new Error("Network response was not ok");
-        }
-        const data = await response.text();
-        const res = await JSON.parse(data);
 
-        if (res.length === 0) {
-          setTables((prevTables) => ({
-            ...prevTables,
-            [`${connection}-${schema}`]: [],
-          }));
-        } else {
-          setTables((prevTables) => ({
-            ...prevTables,
-            [`${connection}-${schema}`]: res,
-          }));
+        if (!response.ok) {
+          throw new Error("Failed to fetch tables");
         }
+
+        const data = await response.json();
+        const tableNames = data.map(item => item.table_name);
+
+        setTables((prevTables) => ({
+          ...prevTables,
+          [`${connection}-${schema}`]: tableNames.length > 0 ? tableNames : [],
+        }));
       } catch (error) {
         console.error("Error fetching table data:", error);
         setTables((prevTables) => ({
           ...prevTables,
           [`${connection}-${schema}`]: "error",
         }));
+        toast.error("Failed to load tables");
       }
     }
   };
+
+  // const handleColumns = async (event, connection, schema, table) => {
+  //   const tableId = `table-${connection}-${schema}-${table}`;
+  //   toggleExpanded(tableId);
+
+  //   if (!expandedItems[tableId] && !columns[`${connection}-${schema}-${table}`]) {
+  //     try {
+  //       setColumns((prevColumns) => ({
+  //         ...prevColumns,
+  //         [`${connection}-${schema}-${table}`]: "loading",
+  //       }));
+  //       const response = await fetch(
+  //         `${hostnameV1}/${connection}/schemas/${schema}/tables/${table}/columns`, {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`,
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+  //       if (!response.ok) {
+  //         setColumns((prevColumns) => ({
+  //           ...prevColumns,
+  //           [`${connection}-${schema}-${table}`]: [],
+  //         }));
+  //         throw new Error("Network response was not ok");
+  //       }
+  //       const data = await response.text();
+  //       const res = await JSON.parse(data);
+
+  //       if (res.length === 0) {
+  //         setColumns((prevColumns) => ({
+  //           ...prevColumns,
+  //           [`${connection}-${schema}-${table}`]: [],
+  //         }));
+  //       } else {
+  //         setColumns((prevColumns) => ({
+  //           ...prevColumns,
+  //           [`${connection}-${schema}-${table}`]: res,
+  //         }));
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching column data:", error);
+  //       setColumns((prevColumns) => ({
+  //         ...prevColumns,
+  //         [`${connection}-${schema}-${table}`]: "error",
+  //       }));
+  //     }
+  //   }
+  // };
 
   const handleColumns = async (event, connection, schema, table) => {
     const tableId = `table-${connection}-${schema}-${table}`;
@@ -377,40 +567,44 @@ export default function Editor() {
           ...prevColumns,
           [`${connection}-${schema}-${table}`]: "loading",
         }));
-        const response = await fetch(
-          `${hostnameV1}/${connection}/schemas/${schema}/tables/${table}/columns`, {
+
+        // First get policy IDs
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        // Then fetch columns
+        const response = await fetch(`${hostnameV1}/columns/list`, {
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ matched_policy_ids: policyIds })
         });
-        if (!response.ok) {
-          setColumns((prevColumns) => ({
-            ...prevColumns,
-            [`${connection}-${schema}-${table}`]: [],
-          }));
-          throw new Error("Network response was not ok");
-        }
-        const data = await response.text();
-        const res = await JSON.parse(data);
 
-        if (res.length === 0) {
-          setColumns((prevColumns) => ({
-            ...prevColumns,
-            [`${connection}-${schema}-${table}`]: [],
-          }));
-        } else {
-          setColumns((prevColumns) => ({
-            ...prevColumns,
-            [`${connection}-${schema}-${table}`]: res,
-          }));
+        if (!response.ok) {
+          throw new Error("Failed to fetch columns");
         }
+
+        const data = await response.json();
+        const formattedColumns = data.map(item => ({
+          column: item.column_name,
+          datatype: item.column_metadata?.DATA_TYPE || 'unknown',
+          // Include additional metadata if needed
+          metadata: item.column_metadata
+        }));
+
+        setColumns((prevColumns) => ({
+          ...prevColumns,
+          [`${connection}-${schema}-${table}`]: formattedColumns.length > 0 ? formattedColumns : [],
+        }));
       } catch (error) {
         console.error("Error fetching column data:", error);
         setColumns((prevColumns) => ({
           ...prevColumns,
           [`${connection}-${schema}-${table}`]: "error",
         }));
+        toast.error("Failed to load columns");
       }
     }
   };
