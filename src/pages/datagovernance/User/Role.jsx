@@ -34,7 +34,7 @@ const Role = () => {
   const { token } = useAuth();
   const [tableData, setTableData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState('cards');
+  const [viewMode, setViewMode] = useState('both');
   const [refreshing, setRefreshing] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const [togglingStatus, setTogglingStatus] = useState(null);
@@ -42,6 +42,12 @@ const Role = () => {
 
   const filteredRoles = roles.filter(role =>
     role.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Add filtering for table data
+  const filteredTableData = tableData.filter(role =>
+    role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    role.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const toggleRole = async (index) => {
@@ -191,8 +197,9 @@ const Role = () => {
 
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = tableData.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(tableData.length / rowsPerPage);
+  // Update to use filtered table data
+  const currentRows = filteredTableData.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredTableData.length / rowsPerPage);
 
   const goToNextPage = () => {
     if (currentPage < totalPages) {
@@ -259,12 +266,11 @@ const Role = () => {
 
           <button
             className={`p-1 px-1.5 rounded-lg border ${viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
-            onClick={() => setViewMode(viewMode === 'cards' ? 'list' : 'cards')}
-            title={viewMode === 'cards' ? "Switch to List View" : "Switch to Card View"}
+            onClick={() => setViewMode(viewMode === 'both' ? 'list' : 'both')}
+            title={viewMode === 'both' ? "Switch to List View Only" : "Show Both Views"}
           >
             <Icon
               icon="material-symbols-light:format-list-bulleted"
-              title="List view"
               width="24"
               height="24"
               className="text-gray-600"
@@ -300,10 +306,10 @@ const Role = () => {
         </div>
       ) : (
         <>
-          {viewMode === 'cards' && (
+          {(viewMode === 'cards' || viewMode === 'both') && (
             <>
               {filteredRoles.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   {filteredRoles.map((role, index) => (
                     <div
                       key={index}
@@ -358,7 +364,7 @@ const Role = () => {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300">
+                <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300 mb-6">
                   <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
                   <p>No roles found matching "{searchTerm}"</p>
                   <button
@@ -374,127 +380,144 @@ const Role = () => {
         </>
       )}
 
-      <div className={`bg-white rounded-lg shadow overflow-hidden ${viewMode === 'cards' ? 'mt-5' : 'mt-0'}`}>
-        <table className="w-full">
-          <thead>
-            <tr className="bg-[#29304a] text-white text-sm">
-              <th className="text-left py-3 px-4">ID</th>
-              <th className="text-left py-3 px-4">Name</th>
-              <th className="text-left py-3 px-4">Description</th>
-              <th className="text-left py-3 px-4">Status</th>
-              <th className="text-left py-3 px-4">Created On</th>
-              <th className="text-left py-3 px-4">Start Date</th>
-              <th className="text-left py-3 px-4">End Date</th>
-              <th className="text-left py-3 px-4">Action</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm">
-            {loading ? (
-              <tr>
-                <td colSpan="8" className="p-4 text-center">
-                  <div className="flex justify-center items-center h-20">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
-                  </div>
-                </td>
+      {(viewMode === 'list' || viewMode === 'both') && !loading && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-[#29304a] text-white text-sm">
+                <th className="text-left py-3 px-4">ID</th>
+                <th className="text-left py-3 px-4">Name</th>
+                <th className="text-left py-3 px-4">Description</th>
+                <th className="text-left py-3 px-4">Status</th>
+                <th className="text-left py-3 px-4">Created On</th>
+                <th className="text-left py-3 px-4">Start Date</th>
+                <th className="text-left py-3 px-4">End Date</th>
+                <th className="text-left py-3 px-4">Action</th>
               </tr>
-            ) : (
-              currentRows.map((role, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-4" title={role.id}>{role.id.substring(0, 8)}...</td>
-                  <td className="py-3 px-4 text-gray-600">{role.name}</td>
-                  <td className="py-3 px-4 text-gray-600 max-w-xs truncate">{role.description}</td>
-                  <td className="py-3 px-4 text-gray-600">{role.status}</td>
-                  <td className="py-3 px-4 text-gray-600">{role.createdOn || "-"}</td>
-                  <td className="py-3 px-4 text-gray-600">{role.startDate || "-"}</td>
-                  <td className="py-3 px-4 text-gray-600">{role.endDate || "-"}</td>
-                  <td className="py-3 px-4">
-                    <div className="relative">
-                      <button
-                        onClick={() => setActiveMenu(activeMenu === index ? null : index)}
-                        className="p-1.5 rounded-full hover:bg-gray-100"
-                      >
-                        <MoreHorizontal className="h-5 w-5 text-gray-600" />
-                      </button>
-
-                      {activeMenu === index && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
-                          <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                            <div className="flex items-center p-1 gap-1">
-                              <button
-                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                                onClick={() => handleEditClick(role)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </button>
-                              <button
-                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
+            </thead>
+            <tbody className="text-sm">
+              {loading ? (
+                <tr>
+                  <td colSpan="8" className="p-4 text-center">
+                    <div className="flex justify-center items-center h-20">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
+              ) : (
+                currentRows.map((role, index) => (
+                  <tr key={index} className="border-b hover:bg-gray-50">
+                    <td className="py-3 px-4" title={role.id}>{role.id.substring(0, 8)}...</td>
+                    <td className="py-3 px-4 text-gray-600">{role.name}</td>
+                    <td className="py-3 px-4 text-gray-600 max-w-xs truncate">{role.description}</td>
+                    <td className="py-3 px-4 text-gray-600">{role.status}</td>
+                    <td className="py-3 px-4 text-gray-600">{role.createdOn || "-"}</td>
+                    <td className="py-3 px-4 text-gray-600">{role.startDate || "-"}</td>
+                    <td className="py-3 px-4 text-gray-600">{role.endDate || "-"}</td>
+                    <td className="py-3 px-4">
+                      <div className="relative">
+                        <button
+                          onClick={() => setActiveMenu(activeMenu === index ? null : index)}
+                          className="p-1.5 rounded-full hover:bg-gray-100"
+                        >
+                          <MoreHorizontal className="h-5 w-5 text-gray-600" />
+                        </button>
 
-            {!loading && currentRows.length === 0 && (
-              <tr>
-                <td colSpan="8" className="p-4 text-center text-gray-500">
-                  No roles found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                        {activeMenu === index && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
+                            <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                              <div className="flex items-center p-1 gap-1">
+                                <button
+                                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                  onClick={() => handleEditClick(role)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
 
-        {!loading && tableData.length > 0 && (
-          <div className="flex justify-end items-center p-4">
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={goToPreviousPage}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                <ChevronLeft size={16} />
-              </button>
+              {!loading && currentRows.length === 0 && (
+                <tr>
+                  <td colSpan="8" className="p-4 text-center text-gray-500">
+                    {searchTerm ? (
+                      <>
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
+                          <p>No roles found matching "{searchTerm}"</p>
+                          <button
+                            onClick={() => setSearchTerm("")}
+                            className="mt-2 text-[#8e78b7] hover:underline transition-all duration-200"
+                          >
+                            Clear search
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      "No roles found"
+                    )}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
 
-              {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                const pageNum = i + 1;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-md ${
-                      currentPage === pageNum
-                        ? 'bg-[#8e78b7] text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+          {!loading && filteredTableData.length > 0 && (
+            <div className="flex justify-end items-center p-4">
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1}
+                  className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100'}`}
+                >
+                  <ChevronLeft size={16} />
+                </button>
 
-              <button
-                onClick={goToNextPage}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className={`p-2 rounded-md ${
-                  currentPage === totalPages || totalPages === 0
-                    ? 'text-gray-300 cursor-not-allowed'
-                    : 'text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                <ChevronRight size={16} />
-              </button>
+                {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                        currentPage === pageNum
+                          ? 'bg-[#8e78b7] text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className={`p-2 rounded-md ${
+                    currentPage === totalPages || totalPages === 0
+                      ? 'text-gray-300 cursor-not-allowed'
+                      : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       <AddRole
         show={showModal}

@@ -51,7 +51,7 @@ const RulesReportsLinks = () => {
             const reportPath = `${reportFolder}/${reportFileName}.rptdesign`; // Create relative path
           
             window.open(
-              `${import.meta.env.VITE_BIRT_API}/run?__report=${encodeURIComponent(reportPath)}&__format=${
+              `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
                 import.meta.env.VITE_BIRT_EXPORT_FORMAT
               }`,
               "_blank"
@@ -123,7 +123,7 @@ const RulesReportsLinks = () => {
             reportName: row.name,
           },
         }),
-      show: (row) => (row.type || "").toLowerCase() !== "list",
+      show: (row) => (row.report_type || "").toLowerCase() !== "list",
     },
   ];
 
