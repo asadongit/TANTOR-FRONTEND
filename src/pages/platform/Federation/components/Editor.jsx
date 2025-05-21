@@ -88,7 +88,6 @@ export default function Editor() {
   useEffect(() => {
     const fetchConnections = async () => {
       try {
-        setLoading(true);
 
         // First get the policy IDs
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
@@ -130,7 +129,6 @@ export default function Editor() {
         console.error("Error fetching connections:", error);
         toast.error("Failed to load connections");
       } finally {
-        setLoading(false);
       }
     };
 
