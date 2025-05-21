@@ -17,6 +17,10 @@ const Step4 = ({ policyData, onDataChange }) => {
     }
   }, [policyData.row_access_control]);
 
+  useEffect(() => {
+    console.log("policy data is %%%%% ====>", policyData)
+  }, [])
+
 
   const allTables = policyData.data_connection.flatMap((conn) =>
     conn.tables.map((table) => ({
@@ -31,14 +35,28 @@ const Step4 = ({ policyData, onDataChange }) => {
     table.fullPath.toLowerCase().includes(tableSearch.toLowerCase())
   );
 
+  // const getColumnsForSelectedTable = () => {
+  //   if (!selectedTable) return [];
+  //   const tableConn = policyData.data_connection.find((conn) =>
+  //     conn.tables.includes(selectedTable)
+  //   );
+  //   return (
+  //     tableConn?.columns
+  //       .filter((col) => col.startsWith(selectedTable))
+  //       .map((col) => col.split('.').pop()) || []
+  //   );
+  // };
+
   const getColumnsForSelectedTable = () => {
     if (!selectedTable) return [];
+
     const tableConn = policyData.data_connection.find((conn) =>
       conn.tables.includes(selectedTable)
     );
+
     return (
       tableConn?.columns
-        .filter((col) => col.startsWith(selectedTable))
+        .filter((col) => col.startsWith(`${selectedTable}.`)) // Ensure exact match
         .map((col) => col.split('.').pop()) || []
     );
   };
@@ -68,10 +86,10 @@ const Step4 = ({ policyData, onDataChange }) => {
       [table]: tableFilters[table].map((filter, i) =>
         i === index
           ? {
-              ...filter,
-              [field]: value,
-              ...(field === 'column' && { value: '' }),
-            }
+            ...filter,
+            [field]: value,
+            ...(field === 'column' && { value: '' }),
+          }
           : filter
       ),
     };
@@ -116,7 +134,7 @@ const Step4 = ({ policyData, onDataChange }) => {
         <span className="whitespace-nowrap">
           {selectedTable
             ? allTables.find((t) => t.fullPath === selectedTable)?.tableName ||
-              'Select Table'
+            'Select Table'
             : 'Select Table'}
         </span>
       </div>
@@ -151,11 +169,10 @@ const Step4 = ({ policyData, onDataChange }) => {
       {Object.keys(tableFilters).map((table) => (
         <span
           key={table}
-          className={`px-3 py-1 rounded-sm text-sm font-medium cursor-pointer ${
-            selectedTable === table
+          className={`px-3 py-1 rounded-sm text-sm font-medium cursor-pointer ${selectedTable === table
               ? 'text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
+            }`}
           style={{
             backgroundColor: selectedTable === table ? '#8e78b7' : undefined,
             ...(selectedTable === table && {
@@ -181,15 +198,14 @@ const Step4 = ({ policyData, onDataChange }) => {
             Filters for: {selectedTable.split('.').pop()}
           </h4>
           <button
-            className={`flex items-center px-3 py-1 border rounded-md text-sm font-medium ${
-              filters.length > 0 && !isFilterComplete(filters[filters.length - 1])
+            className={`flex items-center px-3 py-1 border rounded-md text-sm font-medium ${filters.length > 0 && !isFilterComplete(filters[filters.length - 1])
                 ? 'border-gray-300 text-gray-400 cursor-not-allowed'
                 : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
-            }`}
+              }`}
             style={{
               borderColor:
                 filters.length > 0 &&
-                !isFilterComplete(filters[filters.length - 1])
+                  !isFilterComplete(filters[filters.length - 1])
                   ? undefined
                   : '#8e78b7',
             }}
