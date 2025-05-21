@@ -4,7 +4,6 @@ import DimensionSelector from "./DimensionSelector";
 import TimeTransformationComponent from "./TimeTransformationComponent";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
-import { ToastContainer } from "react-toastify";
 
 function MetricSelector({ index, rule, metricData = [], updateRule }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -215,7 +214,6 @@ const RuleSelector = ({
 
   return (
     <>
-      <ToastContainer />
       <TimeTransformationComponent
         isOpen={isTimeTransformationOpen}
         setIsOpen={setIsTimeTransformationOpen}

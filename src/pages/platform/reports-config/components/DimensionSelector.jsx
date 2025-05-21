@@ -1,8 +1,6 @@
-import { Plus } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
-import { ToastContainer } from "react-toastify";
 
 function DimensionValueSelector({ 
   index, 
@@ -50,7 +48,7 @@ function DimensionValueSelector({
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-          <div className="max-h-60 overflow-y-auto p-2">
+          <div className="max-h-60 overflow-y-auto p-2 text-sm">
             {dimensionValuesData.length > 0 ? (
               dimensionValuesData.map((dimValue) => {
                 const isChecked = dimension.value && dimension.value.some(
@@ -157,7 +155,6 @@ const DimensionSelector = ({
   
   return (
     <div className="flex items-center gap-4 mb-2">
-      <ToastContainer />
       <select
         value={dimension?.id || ""}
         onChange={(e) => {

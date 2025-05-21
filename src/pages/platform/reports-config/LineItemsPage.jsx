@@ -3,12 +3,12 @@ import LineItemConfigModal from "./components/LineItemConfigModal";
 import RuleOperatorSelector from "./components/RuleOperatorSelector";
 import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
-import { ToastContainer } from "react-toastify";
 import { useAuth } from "../../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import LineItemSummary from "./components/LineItemSummaryComponent";
 
 function LineItemsPage() {
-  const {token, hostnameV1} = useAuth();
+  const { token, hostnameV1 } = useAuth();
 
   const reportId = useLocation().state?.reportId;
   const reportName = useLocation().state?.reportName;
@@ -18,6 +18,7 @@ function LineItemsPage() {
   const [showLineItemConfigModal, setShowLineItemConfigModal] = useState(false);
   const [showRuleOperatorSelector, setShowRuleOperatorSelector] =
     useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentLineItemId, setCurrentLineItemId] = useState("");
 
   const [lineItemConfig, setLineItemConfig] = useState([]);
@@ -32,40 +33,40 @@ function LineItemsPage() {
   }, [lineItemConfig]);
 
   const handleSaveLineItemMappings = () => {
-  const payload = {
-    regReportId: reportId,
-    lineItemConfig: lineItemConfig,
-  };
-  
-  const uploadData = async () => {
-    const headers = {
-      "Content-Type": "application/json",
-      authorization: `Bearer ${token}`,
+    const payload = {
+      regReportId: reportId,
+      lineItemConfig: lineItemConfig,
     };
 
-    try {
-      const response = await fetch(`${hostnameV1}/lineItems`, {
-        headers: headers,
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+    const uploadData = async () => {
+      const headers = {
+        "Content-Type": "application/json",
+        authorization: `Bearer ${token}`,
+      };
 
-      if (!response.ok) {
-        toast.error("Error Saving Data into DB.");
-        return;
+      try {
+        const response = await fetch(`${hostnameV1}/lineItems`, {
+          headers: headers,
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          toast.error("Error Saving Data into DB.");
+          return;
+        }
+
+        await response.json();
+        toast.success("Line Items Successfully Stored.");
+        navigate("/config/report");
+      } catch (error) {
+        console.error("Error during save:", error);
+        toast.error("Unexpected error during save.");
       }
+    };
 
-      await response.json();
-      toast.success("Line Items Successfully Stored.");
-      navigate("/config/report");
-    } catch (error) {
-      console.error("Error during save:", error);
-      toast.error("Unexpected error during save.");
-    }
+    uploadData();
   };
-
-  uploadData();
-};
 
   const updateLineItemConfigRules = (lineItemId, newRules) => {
     setLineItemConfig((prev) => {
@@ -92,25 +93,26 @@ function LineItemsPage() {
   useEffect(() => {
     if (!reportId) return;
     const fetchLineItems = async () => {
-
       console.log("reportName ==> ", reportName);
       console.log("API ==> ", import.meta.VITE_BIRT_BACKEND_API);
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_BIRT_BACKEND_API}/templates/parse?report-name=${reportName}`,
-          {headers: {'Content-Type': 'application/json'}}
+          `${
+            import.meta.env.VITE_BIRT_BACKEND_API
+          }/templates/parse?report-name=${reportName}`,
+          { headers: { "Content-Type": "application/json" } }
         );
         if (response.ok) {
           const data = await response.text();
           setLineItemsHtml(data);
-        }else{
-          toast.error(`Error fetching line items for report: ${reportName}`)
-          navigate("/config/report")
+        } else {
+          toast.error(`Error fetching line items for report: ${reportName}`);
+          navigate("/config/report");
         }
       } catch (error) {
         console.log(error);
-        toast.error("Error occured when trying to fetch Line Items.")
-        navigate("/config/report")
+        toast.error("Error occured when trying to fetch Line Items.");
+        navigate("/config/report");
       }
     };
     fetchLineItems();
@@ -130,8 +132,18 @@ function LineItemsPage() {
 
     contentRef.current.addEventListener("click", handleClick);
     return () => contentRef.current?.removeEventListener("click", handleClick);
-  }, [lineItemsHtml, showLineItemConfigModal, showRuleOperatorSelector]);
+  }, [
+    lineItemsHtml,
+    showLineItemConfigModal,
+    showRuleOperatorSelector,
+    showSummaryModal,
+  ]);
 
+  const closeAllModals = () => {
+    setShowLineItemConfigModal(false);
+    setShowRuleOperatorSelector(false);
+    setShowSummaryModal(false);
+  };
   // COMPONENTS
   const LineItemsHtmlComponent = () => {
     return (
@@ -144,7 +156,6 @@ function LineItemsPage() {
 
   return (
     <>
-      <ToastContainer />
       {!showLineItemConfigModal && <LineItemsHtmlComponent />}
       {showLineItemConfigModal && (
         <LineItemConfigModal
@@ -164,6 +175,17 @@ function LineItemsPage() {
           setIsOpen={setShowRuleOperatorSelector}
           updateRules={updateLineItemConfigRules}
           setShowLineItemModal={setShowLineItemConfigModal}
+          setShowSummaryModal={setShowSummaryModal}
+        />
+      )}
+      {showSummaryModal && (
+        <LineItemSummary
+          lineItemId={currentLineItemId}
+          rules={getRulesForCurrentLineItem()}
+          setShowSummaryModal={setShowSummaryModal}
+          closeAllModals={closeAllModals}
+          reportId={reportId}
+          reportName={reportName}
         />
       )}
 

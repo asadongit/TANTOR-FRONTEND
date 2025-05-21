@@ -7,7 +7,6 @@ import {
   MinusCircleIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { ToastContainer } from "react-toastify";
 
 export default function RuleSelector({
   isOpen,
@@ -16,6 +15,7 @@ export default function RuleSelector({
   lineItemId,
   updateRules,
   setShowLineItemModal,
+  setShowSummaryModal,
 }) {
   const [ruleOperators, setRuleOperators] = useState([
     {
@@ -24,7 +24,7 @@ export default function RuleSelector({
     },
   ]);
   const [disableSubmit, setDisableSubmit] = useState(true);
-  
+
   const addSelectOperator = () => {
     setRuleOperators((prev) => {
       const newRuleOperators = [...prev];
@@ -78,14 +78,16 @@ export default function RuleSelector({
       return newRuleOperators;
     });
   };
-  
+
   const handleNext = () => {
     const newRules = [...rules];
     let ruleSequence = 1;
 
     ruleOperators.forEach((ruleOp) => {
       if (ruleOp.ruleId) {
-        const ruleIndex = newRules.findIndex((rule) => rule.ruleId === ruleOp.ruleId);
+        const ruleIndex = newRules.findIndex(
+          (rule) => rule.ruleId === ruleOp.ruleId
+        );
         if (ruleIndex !== -1) {
           newRules[ruleIndex].operator = ruleOp.operator;
           newRules[ruleIndex].sequence = ruleSequence;
@@ -95,8 +97,9 @@ export default function RuleSelector({
     });
 
     updateRules(lineItemId, newRules);
-    setShowLineItemModal(false);
-    setIsOpen(false);
+    // setShowLineItemModal(false);
+    // setIsOpen(false);
+    setShowSummaryModal(true);
   };
 
   const closeModal = () => {
@@ -183,7 +186,6 @@ export default function RuleSelector({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      <ToastContainer />
       <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>
 
       <div className="relative w-full max-w-3xl mx-4 bg-white rounded-lg shadow-2xl p-6 z-10 animate-fadeIn">
@@ -272,7 +274,12 @@ export default function RuleSelector({
             Back
           </button>
           <button
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-md transition-colors duration-200"
+            className={`px-4 py-2 font-medium rounded-md transition-colors duration-200
+              ${
+                !disableSubmit
+                  ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  : "bg-[#8E77BB] hover:bg-[#7a63ac] text-white"
+              }`}
             onClick={handleValidate}
           >
             Validate

@@ -3,7 +3,6 @@ import { ChevronLeft, XCircle, CheckCircle, SaveIcon } from "lucide-react";
 import DateExpressionCalculator from "./TimeTransformationValidate";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
-import { ToastContainer } from "react-toastify";
 
 const TimeTransformationComponent = ({
   isOpen,
@@ -134,7 +133,6 @@ const TimeTransformationComponent = ({
 
   return (
     <>
-      <ToastContainer />
       {showValidationModal && (
         <DateExpressionCalculator
           onClose={() => {
@@ -151,7 +149,7 @@ const TimeTransformationComponent = ({
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white/90 backdrop-blur-md p-6 rounded-xl shadow-2xl border border-gray-200 w-full max-w-xl relative z-50">
+          <div className="bg-white backdrop-blur-md p-6 rounded-xl shadow-2xl border border-gray-200 w-full max-w-xl relative z-50">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-2xl font-bold text-gray-900">
                 Time Transformation
