@@ -142,7 +142,7 @@ const Policy = () => {
 
             const data = await response.json();
             console.log(data.message);
-            
+
             // Refresh the policy list after deletion
             fetchPolicyListData();
         } catch (error) {
@@ -461,9 +461,27 @@ const Policy = () => {
         }
     };
 
+        const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredPolicyCards = useMemo(() => {
+        if (!searchTerm) return policy;
+        return policy.filter(card =>
+            card.title.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [policy, searchTerm]);
+
+    const filteredTableData = useMemo(() => {
+        if (!searchTerm) return sampleData;
+        return sampleData.filter(item =>
+            item.Type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.Description.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [sampleData, searchTerm]);
+
     // Pagination logic
     const totalPages = Math.ceil(sampleData.length / rowsPerPage);
-    const paginatedData = sampleData.slice(
+    const paginatedData = filteredTableData.slice(
         (currentPage - 1) * rowsPerPage,
         currentPage * rowsPerPage
     );
@@ -512,6 +530,7 @@ const Policy = () => {
         }
     }
 
+
     return (
         <>
             <div>
@@ -525,6 +544,8 @@ const Policy = () => {
                                 type="text"
                                 placeholder="Search Policy"
                                 className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
                         <button
@@ -563,7 +584,7 @@ const Policy = () => {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 max-h-[calc(2*13rem)] overflow-y-auto">
-                            {policy.map((card, index) => (
+                            {filteredPolicyCards.map((card, index) => (
                                 <div
                                     key={index}
                                     className="bg-white rounded-lg shadow-sm border border-gray-100"
@@ -669,7 +690,7 @@ const Policy = () => {
                                                                 <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                                                                     <Pencil className="h-4 w-4" />
                                                                 </button>
-                                                                <button 
+                                                                <button
                                                                     onClick={() => handleDeleteClick(policy.id, policy.Name)}
                                                                     className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                                                                 >
@@ -698,7 +719,7 @@ const Policy = () => {
                     </table>
 
                     {/* Pagination Controls */}
-                    {!loading && sampleData.length > 0 && (
+                    {!loading && filteredTableData.length > 0 && (
                         <div className="flex justify-end items-center p-4">
                             <button
                                 onClick={() => handlePageChange(currentPage - 1)}
@@ -714,11 +735,10 @@ const Policy = () => {
                                     ) : (
                                         <button
                                             onClick={() => handlePageChange(page)}
-                                            className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium ${
-                                                currentPage === page
-                                                    ? "bg-[#8e78b7] text-white"
-                                                    : "text-gray-700 hover:bg-gray-100"
-                                            }`}
+                                            className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium ${currentPage === page
+                                                ? "bg-[#8e78b7] text-white"
+                                                : "text-gray-700 hover:bg-gray-100"
+                                                }`}
                                         >
                                             {page}
                                         </button>

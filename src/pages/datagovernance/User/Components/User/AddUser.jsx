@@ -32,9 +32,15 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
 
   useEffect(() => {
     if (isOpen) {
+      setApiResponse({ status: null, message: '' });
       fetchDropdownOptions();
     }
   }, [isOpen]);
+
+  const handleClose = () => {
+    setApiResponse({ status: null, message: '' });
+    onClose();
+  };
 
   useEffect(() => {
     if (formData.group) {
@@ -235,7 +241,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
             </div>
             <h2 className="text-xl font-bold text-[#8e78b7]">Add user</h2>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -422,7 +428,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
 
         <div className="flex justify-start gap-4 mt-8">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
             disabled={isLoading}
           >

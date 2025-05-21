@@ -88,7 +88,6 @@ export default function Editor() {
   useEffect(() => {
     const fetchConnections = async () => {
       try {
-        setLoading(true);
 
         // First get the policy IDs
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
@@ -130,7 +129,6 @@ export default function Editor() {
         console.error("Error fetching connections:", error);
         toast.error("Failed to load connections");
       } finally {
-        setLoading(false);
       }
     };
 
@@ -386,14 +384,25 @@ export default function Editor() {
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-        // Then fetch schemas
+        // If no policy IDs, set empty schemas and return
+        if (policyIds.length === 0) {
+          setSchemas((prevSchemas) => ({
+            ...prevSchemas,
+            [connection]: [],
+          }));
+          return;
+        }
+
         const response = await fetch(`${hostnameV1}/schemas/list`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ matched_policy_ids: policyIds })
+          body: JSON.stringify({
+            matched_policy_ids: policyIds,
+            connection_name: connection
+          })
         });
 
         if (!response.ok) {
@@ -401,7 +410,9 @@ export default function Editor() {
         }
 
         const data = await response.json();
-        const schemaNames = data.map(item => item.table_schema);
+
+        const connectionData = data.find(item => item[connection]);
+        const schemaNames = connectionData ? connectionData[connection] : [];
 
         setSchemas((prevSchemas) => ({
           ...prevSchemas,
@@ -417,6 +428,8 @@ export default function Editor() {
       }
     }
   };
+
+
   // const handleTables = async (event, connection, schema) => {
   //   const schemaId = `schema-${connection}-${schema}`;
   //   toggleExpanded(schemaId);
@@ -481,14 +494,27 @@ export default function Editor() {
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-        // Then fetch tables
+        // If no policy IDs, set empty tables and return
+        if (policyIds.length === 0) {
+          setTables((prevTables) => ({
+            ...prevTables,
+            [`${connection}-${schema}`]: [],
+          }));
+          return;
+        }
+
+        // Then fetch tables for this specific connection and schema
         const response = await fetch(`${hostnameV1}/tables/list`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ matched_policy_ids: policyIds })
+          body: JSON.stringify({
+            matched_policy_ids: policyIds,
+            connection_name: connection,
+            schema_name: schema
+          })
         });
 
         if (!response.ok) {
@@ -496,7 +522,7 @@ export default function Editor() {
         }
 
         const data = await response.json();
-        const tableNames = data.map(item => item.table_name);
+        const tableNames = data.tables || [];
 
         setTables((prevTables) => ({
           ...prevTables,
@@ -576,14 +602,28 @@ export default function Editor() {
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-        // Then fetch columns
+        // If no policy IDs, set empty columns and return
+        if (policyIds.length === 0) {
+          setColumns((prevColumns) => ({
+            ...prevColumns,
+            [`${connection}-${schema}-${table}`]: [],
+          }));
+          return;
+        }
+
+        // Then fetch columns for this specific connection, schema and table
         const response = await fetch(`${hostnameV1}/columns/list`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ matched_policy_ids: policyIds })
+          body: JSON.stringify({
+            matched_policy_ids: policyIds,
+            connection_name: connection,
+            schema_name: schema,
+            table_name: table
+          })
         });
 
         if (!response.ok) {
@@ -591,11 +631,13 @@ export default function Editor() {
         }
 
         const data = await response.json();
-        const formattedColumns = data.map(item => ({
+        const columnData = data.columns || [];
+
+        // Format the columns data to match the expected structure
+        const formattedColumns = columnData.map(item => ({
           column: item.column_name,
-          datatype: item.column_metadata?.DATA_TYPE || 'unknown',
-          // Include additional metadata if needed
-          metadata: item.column_metadata
+          datatype: item.metadata?.DATA_TYPE || 'unknown',
+          metadata: item.metadata
         }));
 
         setColumns((prevColumns) => ({
