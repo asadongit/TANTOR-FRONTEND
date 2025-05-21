@@ -119,8 +119,8 @@ const RulesReportsLinks = () => {
       onClick: (row) =>
         navigate("/config/report/lineItems", {
           state: {
-            reportId: row.id,
-            reportName: row.name,
+            reportId: row.report_id,
+            reportName: row.report_name,
           },
         }),
       show: (row) => (row.report_type || "").toLowerCase() !== "list",

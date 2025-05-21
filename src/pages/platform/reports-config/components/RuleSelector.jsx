@@ -27,8 +27,8 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
 
   const displayText =
     rule.metrics && rule.metrics.length > 0
-      ? `${rule.metrics.length} metrics selected`
-      : "Select metrics";
+      ? rule.metrics[0]
+      : "Select metric";
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -56,7 +56,7 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
           <div className="max-h-60 overflow-y-auto p-2">
             {metricData.length > 0 ? (
               metricData.map((metric) => {
-                const isChecked = rule.metrics && rule.metrics.includes(metric);
+                const isSelected = rule.metrics && rule.metrics[0] === metric;
 
                 return (
                   <label
@@ -64,17 +64,13 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
                     className="flex items-center space-x-2 p-2 hover:bg-gray-100 cursor-pointer"
                   >
                     <input
-                      type="checkbox"
-                      className="form-checkbox text-blue-600"
+                      type="radio"
+                      className="form-radio text-blue-600"
                       value={metric}
-                      checked={isChecked}
+                      checked={isSelected}
+                      name={`metric-radio-${index}`}
                       onChange={(e) => {
-                        const isChecked = e.target.checked;
-                        const newMetrics = isChecked
-                          ? [...(rule.metrics || []), metric]
-                          : (rule.metrics || []).filter((m) => m !== metric);
-
-                        updateRule(index, "metrics", newMetrics);
+                        updateRule(index, "metrics", [metric]);
                       }}
                     />
                     <span>{metric}</span>

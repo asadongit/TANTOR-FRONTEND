@@ -24,7 +24,7 @@ export default function RuleSelector({
     },
   ]);
   const [disableSubmit, setDisableSubmit] = useState(true);
-
+  
   const addSelectOperator = () => {
     setRuleOperators((prev) => {
       const newRuleOperators = [...prev];
@@ -78,30 +78,21 @@ export default function RuleSelector({
       return newRuleOperators;
     });
   };
-
+  
   const handleNext = () => {
     const newRules = [...rules];
     let ruleSequence = 1;
 
-    if (newRules.length !== 1) {
-      for (let ruleIndex = 0; ruleIndex < rules.length; ruleIndex++) {
-        const rule = newRules[ruleIndex];
-
-        for (
-          let ruleOperatorIndex = 0;
-          ruleOperatorIndex < ruleOperators.length;
-          ruleOperatorIndex++
-        ) {
-          if (ruleOperators[ruleOperatorIndex].ruleId === rule.ruleId) {
-            newRules[ruleIndex]["operator"] =
-              ruleOperators[ruleOperatorIndex].operator;
-            newRules[ruleIndex]["sequence"] = ruleSequence;
-            ruleSequence++;
-            break;
-          }
+    ruleOperators.forEach((ruleOp) => {
+      if (ruleOp.ruleId) {
+        const ruleIndex = newRules.findIndex((rule) => rule.ruleId === ruleOp.ruleId);
+        if (ruleIndex !== -1) {
+          newRules[ruleIndex].operator = ruleOp.operator;
+          newRules[ruleIndex].sequence = ruleSequence;
+          ruleSequence++;
         }
       }
-    }
+    });
 
     updateRules(lineItemId, newRules);
     setShowLineItemModal(false);

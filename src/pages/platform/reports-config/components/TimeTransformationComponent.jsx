@@ -92,20 +92,20 @@ const TimeTransformationComponent = ({
         id: filterColId,
         name: filterColName,
         type: dateType,
-        lowerOffsetUnit: lowerOffset,
-        lowerOffsetUnitValue: lowerUnit,
-        upperOffsetUnit: upperOffset,
-        upperOffsetUnitValue: upperUnit,
+        lowerOffsetUnit: lowerUnit,
+        lowerOffsetUnitValue: lowerOffset,
+        upperOffsetUnit: upperUnit,
+        upperOffsetUnitValue: upperOffset,
       };
     } else {
       newRule.filters.push({
         id: filterColId,
         name: filterColName,
         type: dateType,
-        lowerOffsetUnit: lowerOffset,
-        lowerOffsetUnitValue: lowerUnit,
-        upperOffsetUnit: upperOffset,
-        upperOffsetUnitValue: upperUnit,
+        lowerOffsetUnit: lowerUnit,
+        lowerOffsetUnitValue: lowerOffset,
+        upperOffsetUnit: upperUnit,
+        upperOffsetUnitValue: upperOffset,
       });
     }
     updateRule(ruleIndex, "filters", newRule.filters);
@@ -363,13 +363,15 @@ const TimeTransformationComponent = ({
               >
                 <XCircle className="w-4 h-4" /> Cancel
               </button> */}
-              <button
-                type="button"
-                className="bg-[#8E77BB] text-white hover:bg-[#7864a3] flex items-center gap-2 px-4 py-2 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
-                onClick={handleValidate}
-              >
-                <CheckCircle className="w-4 h-4" /> Validate
-              </button>
+              {(dateType === "historicDate" || dateType === "dateRange") && (
+                <button
+                  type="button"
+                  className="bg-[#8E77BB] text-white hover:bg-[#7864a3] flex items-center gap-2 px-4 py-2 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
+                  onClick={handleValidate}
+                >
+                  <CheckCircle className="w-4 h-4" /> Validate
+                </button>
+              )}
               <button
                 type="button"
                 className="bg-[#8E77BB] text-white hover:bg-[#7864a3] flex items-center gap-2 px-4 py-2 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
