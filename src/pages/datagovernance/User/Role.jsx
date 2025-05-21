@@ -34,7 +34,7 @@ const Role = () => {
   const { token } = useAuth();
   const [tableData, setTableData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState('cards');
+  const [viewMode, setViewMode] = useState('both');
   const [refreshing, setRefreshing] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const [togglingStatus, setTogglingStatus] = useState(null);
@@ -266,12 +266,11 @@ const Role = () => {
 
           <button
             className={`p-1 px-1.5 rounded-lg border ${viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
-            onClick={() => setViewMode(viewMode === 'cards' ? 'list' : 'cards')}
-            title={viewMode === 'cards' ? "Switch to List View" : "Switch to Card View"}
+            onClick={() => setViewMode(viewMode === 'both' ? 'list' : 'both')}
+            title={viewMode === 'both' ? "Switch to List View Only" : "Show Both Views"}
           >
             <Icon
-              icon={viewMode === 'cards' ? "material-symbols-light:format-list-bulleted" : "material-symbols:grid-view"}
-              title={viewMode === 'cards' ? "List view" : "Card view"}
+              icon="material-symbols-light:format-list-bulleted"
               width="24"
               height="24"
               className="text-gray-600"
@@ -307,10 +306,10 @@ const Role = () => {
         </div>
       ) : (
         <>
-          {viewMode === 'cards' && (
+          {(viewMode === 'cards' || viewMode === 'both') && (
             <>
               {filteredRoles.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   {filteredRoles.map((role, index) => (
                     <div
                       key={index}
@@ -365,7 +364,7 @@ const Role = () => {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300">
+                <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300 mb-6">
                   <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
                   <p>No roles found matching "{searchTerm}"</p>
                   <button
@@ -381,7 +380,7 @@ const Role = () => {
         </>
       )}
 
-      {viewMode === 'list' && (
+      {(viewMode === 'list' || viewMode === 'both') && !loading && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="w-full">
             <thead>

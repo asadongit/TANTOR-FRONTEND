@@ -62,6 +62,13 @@ function Subgroup() {
     item.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Add filtering for table data
+  const filteredTableData = tableData.filter(subgroup =>
+    subgroup.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    subgroup.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    subgroup.parentGroup.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const [activeMenu, setActiveMenu] = useState(null);
   const handleClickOutside = () => {
     setActiveMenu(null);
@@ -199,10 +206,11 @@ function Subgroup() {
     setActiveMenu(null);
   };
 
+  // Update pagination to use filteredTableData
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = tableData.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(tableData.length / rowsPerPage);
+  const currentRows = filteredTableData.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredTableData.length / rowsPerPage);
 
   const goToNextPage = () => {
     if (currentPage < totalPages) {
@@ -430,14 +438,27 @@ function Subgroup() {
               ) : (
                 <tr>
                   <td colSpan="7" className="p-4 text-center text-gray-500">
-                    No subgroups data available
+                    {searchTerm ? (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
+                        <p>No subgroups found matching "{searchTerm}"</p>
+                        <button
+                          onClick={() => setSearchTerm("")}
+                          className="mt-2 text-[#6a8caf] hover:underline transition-all duration-200"
+                        >
+                          Clear search
+                        </button>
+                      </div>
+                    ) : (
+                      "No subgroups data available"
+                    )}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
 
-          {!loading && tableData.length > 0 && (
+          {!loading && filteredTableData.length > 0 && (
             <div className="flex justify-end items-center p-4">
               <div className="flex items-center space-x-1">
                 <button

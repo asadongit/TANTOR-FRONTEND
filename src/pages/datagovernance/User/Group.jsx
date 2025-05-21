@@ -62,6 +62,12 @@ function Group() {
     item.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Add filtering for table data
+  const filteredTableData = tableData.filter(group =>
+    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    group.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const [activeMenu, setActiveMenu] = useState(null);
   const handleClickOutside = () => {
     setActiveMenu(null);
@@ -257,10 +263,11 @@ function Group() {
     }
   };
 
+  // Update these calculations to use filteredTableData instead of tableData
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = tableData.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(tableData.length / rowsPerPage);
+  const currentRows = filteredTableData.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredTableData.length / rowsPerPage);
 
   const goToNextPage = () => {
     if (currentPage < totalPages) {
@@ -492,10 +499,33 @@ function Group() {
                 </tr>
               ))
             )}
+
+            {!loading && currentRows.length === 0 && (
+              <tr>
+                <td colSpan="7" className="p-4 text-center text-gray-500">
+                  {searchTerm ? (
+                    <>
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
+                        <p>No groups found matching "{searchTerm}"</p>
+                        <button
+                          onClick={() => setSearchTerm("")}
+                          className="mt-2 text-[#8e78b7] hover:underline transition-all duration-200"
+                        >
+                          Clear search
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    "No groups found"
+                  )}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
 
-        {!loading && tableData.length > 0 && (
+        {!loading && filteredTableData.length > 0 && (
           <div className="flex justify-end items-center p-4">
             <div className="flex items-center space-x-1">
               <button
