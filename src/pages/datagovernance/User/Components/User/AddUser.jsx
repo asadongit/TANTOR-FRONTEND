@@ -144,6 +144,8 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     const newErrors = {};
 
     if (!formData.username.trim()) newErrors.username = 'Username is required';
+    else if (formData.username.length > 64) newErrors.username = 'Username must be 64 characters or less';
+
     if (!formData.password) newErrors.password = 'Password is required';
     if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
     if (formData.password !== formData.confirmPassword) {
