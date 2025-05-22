@@ -6,6 +6,8 @@ import { useAuth } from "../../../context/AuthContext";
 import AddSubgroup from "./Components/Subgroup/AddSubgroup";
 import DeleteSubgroup from "./Components/Subgroup/DeleteSubgroup";
 import EditSubgroup from "./Components/Subgroup/EditSubgroup";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -176,6 +178,7 @@ function Subgroup() {
 
   const refreshAllData = async () => {
     setRefreshing(true);
+    setSearchTerm("");
     try {
       await Promise.all([
         fetchSubgroupsData(),
@@ -227,6 +230,7 @@ function Subgroup() {
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
       <Breadcrumb title="Data Governance" link="/" />
       <div className="flex items-center justify-between mb-6">

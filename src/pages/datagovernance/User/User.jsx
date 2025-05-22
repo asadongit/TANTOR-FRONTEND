@@ -42,7 +42,6 @@ const User = () => {
 
     const { token } = useAuth();
 
-
   const fetchUserData = async () => {
     setIsLoading(true);
     try {
@@ -174,6 +173,12 @@ const User = () => {
     fetchUserData();
   };
 
+  // New handler to clear search and fetch users
+  const handleRefresh = () => {
+    setSearchTerm('');
+    fetchUserData();
+  };
+
   return (
     <div className="p-6">
 
@@ -197,7 +202,7 @@ const User = () => {
 
           <button
             className="p-2.5 rounded-lg bg-gray-100 disabled:opacity-50"
-            onClick={fetchUserData}
+            onClick={handleRefresh}
             disabled={isLoading}
           >
             <RefreshCcw className={`h-5 w-5 ${isLoading ? 'icon-rotate' : ''}`} />
