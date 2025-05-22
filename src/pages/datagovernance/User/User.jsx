@@ -445,17 +445,17 @@ const User = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Username</p>
-                  <p className="font-medium">{selectedUser.username}</p>
+                  <p className="font-medium truncate" title={selectedUser.username}>{selectedUser.username}</p>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">User ID</p>
-                  <p className="font-medium text-xs overflow-hidden text-ellipsis">{selectedUser.id}</p>
+                  <p className="font-medium text-xs truncate">{selectedUser.id}</p>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Email</p>
-                  <p className="font-medium">{selectedUser.email || "-"}</p>
+                  <p className="font-medium truncate">{selectedUser.email || "-"}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -470,12 +470,12 @@ const User = () => {
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">First Name</p>
-                  <p className="font-medium">{selectedUser.firstName || "-"}</p>
+                  <p className="font-medium truncate">{selectedUser.firstName || "-"}</p>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Last Name</p>
-                  <p className="font-medium">{selectedUser.lastName || "-"}</p>
+                  <p className="font-medium truncate">{selectedUser.lastName || "-"}</p>
                 </div>
               </div>
             </div>
