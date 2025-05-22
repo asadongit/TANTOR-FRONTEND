@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 import React from "react";
 import toast from "react-hot-toast";
+import { useAuth } from "../../../../context/AuthContext";
 
 const LineItemSummary = ({
   lineItemId,
@@ -8,8 +9,10 @@ const LineItemSummary = ({
   setShowSummaryModal,
   closeAllModals,
   reportName,
-  reportId
+  reportId,
 }) => {
+  const { token, hostnameV1 } = useAuth();
+
   const operatorStringToSymbol = (operatorValue) => {
     switch (operatorValue.toLowerCase()) {
       case "add":
@@ -50,34 +53,84 @@ const LineItemSummary = ({
     }
   };
 
+  const handleCreateLink = () => {
+    const payload = {
+      regReportId: reportId,
+      lineItemConfig: [
+        {
+          line_item: lineItemId,
+          rules: rules,
+        },
+      ],
+    };
+
+    const uploadData = async () => {
+      console.log("STATEMENT EXECUTED");
+      const headers = {
+        "Content-Type": "application/json",
+        authorization: `Bearer ${token}`,
+      };
+
+      try {
+        const response = await fetch(`${hostnameV1}/lineItems`, {
+          headers: headers,
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          toast.error("Error Saving Data into DB.");
+          return;
+        }
+
+        await response.json();
+        toast.success(`${lineItemId.toUpperCase()} Config Stored.`);
+        closeAllModals();
+      } catch (error) {
+        console.error("Error during save:", error);
+        toast.error("Unexpected error during save.");
+      }
+    };
+    uploadData();
+    console.log(payload);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center font-sans">
-  <div className="absolute inset-0 bg-black bg-opacity-5 backdrop-blur-sm"></div>
+      <div className="absolute inset-0 bg-black bg-opacity-5 backdrop-blur-sm"></div>
 
-  <div className="relative z-10 w-full max-w-4xl mx-4 bg-white rounded-2xl shadow-2xl p-8 animate-fadeIn border border-gray-200 
-                  max-h-[90vh] overflow-y-auto">
+      <div
+        className="relative z-10 w-full max-w-4xl mx-4 bg-white rounded-2xl shadow-2xl p-8 animate-fadeIn border border-gray-200 
+                  max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between mb-6 border-b pb-4">
           <h2 className="text-2xl font-bold text-gray-800">
             Line Item - {lineItemId.split("_").pop()}
           </h2>
-          <button
+          {/* <button
             onClick={() => console.log("DOWNLOAD CLICKED.")}
             className="text-gray-500 hover:text-gray-700 transition-colors"
             title="Download"
           >
             <Download className="w-6 h-6" />
-          </button>
+          </button> */}
         </div>
 
         {/* Metadata */}
         <div className="flex flex-wrap items-center gap-6 mb-6">
           <div>
             <div className="text-sm text-gray-500 font-medium">Report</div>
-            <div className="text-base text-gray-900">{reportName.toUpperCase()}</div>
+            <div className="text-base text-gray-900">
+              {reportName.toUpperCase()}
+            </div>
           </div>
           <div>
-            <div className="text-sm text-gray-500 font-medium">Line Item ID</div>
-            <div className="text-base text-gray-900">{lineItemId.split("_").pop()}</div>
+            <div className="text-sm text-gray-500 font-medium">
+              Line Item ID
+            </div>
+            <div className="text-base text-gray-900">
+              {lineItemId.split("_").pop()}
+            </div>
           </div>
         </div>
 
@@ -92,23 +145,35 @@ const LineItemSummary = ({
                 Rule &lt;{rule.sequence}&gt;: {rule.ruleName}
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">Metric:</span>
-                <span className="ml-2 text-gray-800 text-sm">{rule.metrics.join(", ")}</span>
+                <span className="text-sm font-medium text-gray-500">
+                  Metric:
+                </span>
+                <span className="ml-2 text-gray-800 text-sm">
+                  {rule.metrics.join(", ")}
+                </span>
               </div>
             </div>
 
             {/* Dimensions */}
             {rule.dimensions?.length > 0 && (
               <div className="mb-4">
-                <div className="text-sm font-medium text-gray-500 mb-1">Dimensions</div>
+                <div className="text-sm font-medium text-gray-500 mb-1">
+                  Dimensions
+                </div>
                 <div className="text-sm text-gray-800 space-y-1">
                   {rule.dimensions.map(
                     (dimension, dimIndex) =>
                       dimension.name && (
                         <div key={`dim-${dimIndex}`}>
-                          <span className="font-semibold">{dimension.name.toUpperCase()}</span>{" "}
-                          {dimension.operator.toUpperCase()}{" "}
-                          {dimension.value.map((val) => val.name).join(", ")}
+                          {dimension.name}{" "}
+                          <span className="font-semibold">
+                            {dimension.operator.toUpperCase()}
+                          </span>{" "}
+                          (
+                          <span>
+                            {dimension.value.map((val) => val.name).join(", ")}
+                          </span>
+                          )
                         </div>
                       )
                   )}
@@ -118,8 +183,12 @@ const LineItemSummary = ({
 
             {/* Time Transform */}
             <div className="mb-4">
-              <div className="text-sm font-medium text-gray-500">Time Transform</div>
-              <div className="text-sm text-gray-800">{getTimeTransformText(rule.filters)}</div>
+              <div className="text-sm font-medium text-gray-500">
+                Time Transform
+              </div>
+              <div className="text-sm text-gray-800">
+                {getTimeTransformText(rule.filters)}
+              </div>
             </div>
 
             {/* Rule Operator */}
@@ -146,10 +215,7 @@ const LineItemSummary = ({
           </button>
           <button
             className="px-4 py-2 rounded-md bg-[#8E77BB] hover:bg-[#7a63ac] text-white font-medium transition"
-            onClick={(e) => {
-              toast.success(`${lineItemId.replace(/_/g, " ").toUpperCase()} linked successfully.`);
-              closeAllModals();
-            }}
+            onClick={handleCreateLink}
           >
             Create Link
           </button>

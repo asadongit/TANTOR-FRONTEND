@@ -32,42 +32,6 @@ function LineItemsPage() {
     });
   }, [lineItemConfig]);
 
-  const handleSaveLineItemMappings = () => {
-    const payload = {
-      regReportId: reportId,
-      lineItemConfig: lineItemConfig,
-    };
-
-    const uploadData = async () => {
-      const headers = {
-        "Content-Type": "application/json",
-        authorization: `Bearer ${token}`,
-      };
-
-      try {
-        const response = await fetch(`${hostnameV1}/lineItems`, {
-          headers: headers,
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          toast.error("Error Saving Data into DB.");
-          return;
-        }
-
-        await response.json();
-        toast.success("Line Items Successfully Stored.");
-        navigate("/config/report");
-      } catch (error) {
-        console.error("Error during save:", error);
-        toast.error("Unexpected error during save.");
-      }
-    };
-
-    uploadData();
-  };
-
   const updateLineItemConfigRules = (lineItemId, newRules) => {
     setLineItemConfig((prev) => {
       const existingIndex = prev.findIndex(
@@ -119,8 +83,6 @@ function LineItemsPage() {
   }, [reportId]);
 
   useEffect(() => {
-    if (!contentRef.current || !lineItemsHtml) return;
-
     const handleClick = (event) => {
       const lineItem = event.target.closest(".line-item");
       if (lineItem) {
@@ -130,14 +92,10 @@ function LineItemsPage() {
       }
     };
 
-    contentRef.current.addEventListener("click", handleClick);
-    return () => contentRef.current?.removeEventListener("click", handleClick);
-  }, [
-    lineItemsHtml,
-    showLineItemConfigModal,
-    showRuleOperatorSelector,
-    showSummaryModal,
-  ]);
+    document.addEventListener("click", handleClick);
+
+    return () => document.removeEventListener("click", handleClick);
+  }, []);
 
   const closeAllModals = () => {
     setShowLineItemConfigModal(false);
@@ -156,7 +114,9 @@ function LineItemsPage() {
 
   return (
     <>
-      {!showLineItemConfigModal && <LineItemsHtmlComponent />}
+      <div className={showLineItemConfigModal ? "hidden" : "block"}>
+        <LineItemsHtmlComponent />
+      </div>
       {showLineItemConfigModal && (
         <LineItemConfigModal
           setShowModal={setShowLineItemConfigModal}
@@ -187,17 +147,6 @@ function LineItemsPage() {
           reportId={reportId}
           reportName={reportName}
         />
-      )}
-
-      {!showLineItemConfigModal && (
-        <div className="text-center">
-          <button
-            className="bg-[#8E77BB] text-white hover:bg-[#7864a3] px-4 py-2 rounded-md font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
-            onClick={handleSaveLineItemMappings}
-          >
-            SAVE
-          </button>
-        </div>
       )}
     </>
   );
