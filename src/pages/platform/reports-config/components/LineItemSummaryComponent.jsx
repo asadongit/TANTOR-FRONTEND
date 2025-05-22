@@ -10,6 +10,8 @@ const LineItemSummary = ({
   closeAllModals,
   reportName,
   reportId,
+  reportType,
+  reportDesc,
 }) => {
   const { token, hostnameV1 } = useAuth();
 
@@ -65,7 +67,6 @@ const LineItemSummary = ({
     };
 
     const uploadData = async () => {
-      console.log("STATEMENT EXECUTED");
       const headers = {
         "Content-Type": "application/json",
         authorization: `Bearer ${token}`,
@@ -79,20 +80,58 @@ const LineItemSummary = ({
         });
 
         if (!response.ok) {
-          toast.error("Error Saving Data into DB.");
+          toast.error("Error Saving Line Item.");
           return;
         }
 
-        await response.json();
-        toast.success(`${lineItemId.toUpperCase()} Config Stored.`);
+        const data = await response.json();
+        toast.success(data.message);
+
+        await addReportToDatabase();
+        
         closeAllModals();
       } catch (error) {
-        console.error("Error during save:", error);
-        toast.error("Unexpected error during save.");
+        console.error("Error Saving Line Item:", error);
+        toast.error("Error Saving Line Item");
       }
     };
     uploadData();
     console.log(payload);
+  };
+
+  const addReportToDatabase = async () => {
+    let payload = {
+      report: {
+        report_id: reportId,
+        report_name: reportName,
+        report_desc: reportDesc,
+        report_type: reportType,
+        report_status: "DRAFT",
+      },
+    };
+    const headers = {
+      "Content-Type": "application/json",
+      authorization: `Bearer ${token}`,
+    };
+
+    try {
+      const response = await fetch(`${hostnameV1}/lineItems/reports`, {
+        headers: headers,
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        toast.error("Error Saving Report Data.");
+        return;
+      }
+
+      const data = await response.json();
+      toast.success(data.message);
+    } catch (error) {
+      console.error("Error Saving Report Data:", error);
+      toast.error("Error Saving Report Data");
+    }
   };
 
   return (

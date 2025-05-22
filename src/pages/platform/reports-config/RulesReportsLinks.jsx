@@ -121,6 +121,8 @@ const RulesReportsLinks = () => {
           state: {
             reportId: row.report_id,
             reportName: row.report_name,
+            reportType: row.report_type,
+            reportDesc: row.reportDesc
           },
         }),
       show: (row) => (row.report_type || "").toLowerCase() !== "list",
