@@ -44,7 +44,11 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         group: userData.group || '',
         subgroup: userData.subgroup || '',
       });
+      setApiResponse({ status: null, message: '' });
       fetchDropdownOptions();
+    }
+    if (!isOpen) {
+      setApiResponse({ status: null, message: '' });
     }
   }, [isOpen, userData]);
 

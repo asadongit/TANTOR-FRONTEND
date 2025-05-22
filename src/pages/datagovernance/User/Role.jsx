@@ -4,7 +4,10 @@ import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
 import AddRole from "./Components/Role/AddRole";
 import EditRole from "./Components/Role/EditRole";
+import DeleteRole from "./Components/Role/DeleteRole";
 import { useAuth } from "../../../context/AuthContext";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Toggle = ({ enabled, onToggle }) => {
   return (
@@ -26,7 +29,9 @@ const Toggle = ({ enabled, onToggle }) => {
 const Role = () => {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [roleToEdit, setRoleToEdit] = useState(null);
+  const [roleToDelete, setRoleToDelete] = useState(null);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -183,6 +188,7 @@ const Role = () => {
 
   const refreshAllData = async () => {
     setRefreshing(true);
+    setSearchTerm("");
     try {
       await Promise.all([
         FetchRoleDashboardData(),
@@ -237,6 +243,13 @@ const Role = () => {
     } catch (error) {
       console.error('Error refreshing data after role update:', error);
     }
+  };
+
+  // Add handler for delete
+  const handleDeleteClick = (role) => {
+    setRoleToDelete(role);
+    setShowDeleteModal(true);
+    setActiveMenu(null);
   };
 
   return (
@@ -325,9 +338,9 @@ const Role = () => {
                             </div>
                             <h3 className="text-lg font-semibold">{role.title}</h3>
                           </div>
-                          <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                          {/* <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
                             <MoreVertical className="h-4 w-4" />
-                          </button>
+                          </button> */}
                         </div>
                         <p className="text-gray-500 mt-4 text-sm">{role.description}</p>
                         <div className="flex items-center justify-between mt-6">
@@ -436,6 +449,7 @@ const Role = () => {
                                 </button>
                                 <button
                                   className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                  onClick={() => handleDeleteClick(role)}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
@@ -531,6 +545,19 @@ const Role = () => {
         onSave={handleEditSave}
         roleData={roleToEdit}
       />
+
+      <DeleteRole
+        showModal={showDeleteModal}
+        setShowModal={setShowDeleteModal}
+        roleName={roleToDelete?.name}
+        onConfirm={async () => {
+          await refreshAllData();
+          setRoleToDelete(null);
+        }}
+      />
+
+      <ToastContainer />
+
     </div>
   );
 };

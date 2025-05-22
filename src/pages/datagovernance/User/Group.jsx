@@ -6,6 +6,8 @@ import AddGroup from "./Components/Group/AddGroup";
 import DeleteGroup from "./Components/Group/DeleteGroup";
 import EditGroup from "./Components/Group/EditGroup";
 import { useAuth } from "../../../context/AuthContext";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -251,6 +253,7 @@ function Group() {
 
   const refreshAllData = async () => {
     setRefreshing(true);
+    setSearchTerm("");
     try {
       await Promise.all([
         FetchRoleDashboardData(),
@@ -284,6 +287,7 @@ function Group() {
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
       <Breadcrumb title="Data Governance" link="/" />
       <div className="flex items-center justify-between mb-6">

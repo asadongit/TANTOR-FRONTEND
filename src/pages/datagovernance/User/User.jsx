@@ -37,11 +37,12 @@ const User = () => {
   const [userToEdit, setUserToEdit] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [checkedUsers, setCheckedUsers] = useState({});
+  const [allChecked, setAllChecked] = useState(false);
   const initialFetchDone = useRef(false);
   const rowsPerPage = 10;
 
-    const { token } = useAuth();
-
+  const { token } = useAuth();
 
   const fetchUserData = async () => {
     setIsLoading(true);
@@ -174,6 +175,37 @@ const User = () => {
     fetchUserData();
   };
 
+  // New handler to clear search and fetch users
+  const handleRefresh = () => {
+    setSearchTerm('');
+    setCheckedUsers({}); // Clear all checked users
+    setAllChecked(false); // Reset the "select all" checkbox
+    fetchUserData();
+  };
+
+  // New function to handle individual checkbox changes
+  const handleCheckUser = (userId) => {
+    setCheckedUsers(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
+  };
+
+  // New function to handle "select all" checkbox
+  const handleCheckAll = () => {
+    const newAllChecked = !allChecked;
+    setAllChecked(newAllChecked);
+
+    const newCheckedUsers = {};
+    if (newAllChecked) {
+      // Check all visible users
+      currentUsers.forEach(user => {
+        newCheckedUsers[user.id] = true;
+      });
+    }
+    setCheckedUsers(newCheckedUsers);
+  };
+
   return (
     <div className="p-6">
 
@@ -197,7 +229,7 @@ const User = () => {
 
           <button
             className="p-2.5 rounded-lg bg-gray-100 disabled:opacity-50"
-            onClick={fetchUserData}
+            onClick={handleRefresh}
             disabled={isLoading}
           >
             <RefreshCcw className={`h-5 w-5 ${isLoading ? 'icon-rotate' : ''}`} />
@@ -217,7 +249,13 @@ const User = () => {
         <table className="w-full">
           <thead>
             <tr className="bg-[#29304a] text-white">
-              <th className="w-8 p-4 first:rounded-tl-lg"><input type="checkbox" /></th>
+              <th className="w-8 p-4 first:rounded-tl-lg">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  onChange={handleCheckAll}
+                />
+              </th>
               <th className="text-left p-4">User</th>
               <th className="text-left p-4">Roles</th>
               <th className="text-left p-4">Persona</th>
@@ -230,7 +268,13 @@ const User = () => {
           <tbody>
             {currentUsers.map((user, index) => (
               <tr key={user.id} className="border-b hover:bg-gray-50">
-                <td className="p-4"><input type="checkbox" /></td>
+                <td className="p-4">
+                  <input
+                    type="checkbox"
+                    checked={!!checkedUsers[user.id]}
+                    onChange={() => handleCheckUser(user.id)}
+                  />
+                </td>
                 <td className="p-4">
                   <button
                     className="text-[#8e78b7] font-medium hover:underline"
