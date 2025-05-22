@@ -47,6 +47,32 @@ import { useAuth } from "../../../../../context/AuthContext";
 import toast from "react-hot-toast";
 import Logs from "./Logs";
 import ConfigEditorModal from "./editConfig";
+const extractHostnameFromJdbcUrl = (jdbcUrl) => {
+  if (!jdbcUrl) return "";
+
+  try {
+    if (jdbcUrl.includes("jdbc:postgresql://")) {
+      const match = jdbcUrl.match(/jdbc:postgresql:\/\/([^:]+):/);
+      return match && match[1] ? match[1] : "";
+    } else if (jdbcUrl.includes("jdbc:mysql://")) {
+      const match = jdbcUrl.match(/jdbc:mysql:\/\/([^:]+):/);
+      return match && match[1] ? match[1] : "";
+    } else if (jdbcUrl.includes("jdbc:sqlserver://")) {
+      const match = jdbcUrl.match(/jdbc:sqlserver:\/\/([^:]+):/);
+      return match && match[1] ? match[1] : "";
+    } else if (jdbcUrl.includes("jdbc:oracle:thin:@//")) {
+      const match = jdbcUrl.match(/jdbc:oracle:thin:@\/\/([^:]+):/);
+      return match && match[1] ? match[1] : "";
+    } else {
+      const urlMatch = jdbcUrl.match(/jdbc:[^:]+:\/\/([^:\/]+)/);
+      return urlMatch && urlMatch[1] ? urlMatch[1] : "";
+    }
+  } catch (error) {
+    console.error("Error extracting hostname from JDBC URL:", error);
+    return "";
+  }
+};
+
 const StatusBadge = ({ state }) => {
   const statusMap = {
     RUNNING: {
@@ -119,7 +145,6 @@ const TaskActions = ({ task, onRestart }) => {
     </div>
   );
 };
-
 
 const MetricsCard = ({
   title,
@@ -804,7 +829,7 @@ export default function CDCJobView() {
         {/* Full Configuration Modal */}
         {showConfigModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[85vh] flex flex-col">
               <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                 <h3 className="text-lg font-medium text-gray-900 flex items-center">
                   <Copy className="w-5 h-5 mr-2 text-indigo-600" />
@@ -819,12 +844,12 @@ export default function CDCJobView() {
                   </svg>
                 </button>
               </div>
-              <div className="flex-1 p-4 overflow-auto">
-                <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                  <div className="space-y-3">
+              <div className="flex-1 p-6 overflow-auto">
+                <div className="bg-gray-50 p-5 rounded-md border border-gray-200">
+                  <div className="space-y-4">
                     {Object.entries(connectorData.config).map(([key, value]) => (
-                      <div key={key} className="grid grid-cols-12 gap-2 items-start">
-                        <span className="col-span-4 text-sm font-medium text-gray-600">{key}:</span>
+                      <div key={key} className="grid grid-cols-12 gap-4 items-start">
+                        <span className="col-span-4 text-sm font-medium text-gray-600 break-words">{key}:</span>
                         <span className="col-span-8 text-sm text-gray-800 break-all">
                           {key.includes("password") || key.includes("secret") ?
                             "********" :
@@ -1202,6 +1227,7 @@ export default function CDCJobView() {
     );
   };
 
+
   return (
     <div className="p-6">
       <main className="">
@@ -1224,7 +1250,10 @@ export default function CDCJobView() {
                   </span>
                   <ArrowRight className="h-4 w-4 mx-1 text-gray-400" />
                   <Database className="h-4 w-4 mr-1 text-purple-500" />
-                  <span>{jobData.target.config["database.hostname"]}</span>
+                  <span>
+                    {jobData.target.config["database.hostname"] ||
+                     extractHostnameFromJdbcUrl(jobData.target.config["connection.url"])}
+                  </span>
                 </div>
               </div>
 
