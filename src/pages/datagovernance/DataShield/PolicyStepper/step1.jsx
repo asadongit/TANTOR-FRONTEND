@@ -14,7 +14,6 @@ const Step1 = ({ onDataChange, initialData }) => {
     const { token } = useAuth();
 
     useEffect(() => {
-        console.log("initial datat iss ====>", initialData)
         fetchPolicy();
     }, []);
 

@@ -203,9 +203,11 @@ const Policy = () => {
             role: '',
             group: [],
             persona: '',
-            subGroup: []
+            subGroup: [],
         },
-        data_connection: []
+        data_connection: [],
+        row_access_control: {},
+        column_access_control: {},
     });
 
     const [step1Data, setStep1Data] = useState({
@@ -277,10 +279,26 @@ const Policy = () => {
             data.selectedTables,
             data.selectedColumns
         );
+
+        // setPolicyData((prev) => ({
+        //     ...prev,
+        //     data_connection: connections,
+        //     row_access_control: isEditMode ? {} : prev.row_access_control,
+        //     column_access_control: isEditMode ? {} : prev.column_access_control,
+        // }));
+
+        const isDataChanged = JSON.stringify(step3Data) !== JSON.stringify(data);
+
         setPolicyData((prev) => ({
             ...prev,
             data_connection: connections,
+            row_access_control: isEditMode && isDataChanged ? {} : prev.row_access_control,
+            column_access_control: isEditMode && isDataChanged ? {} : prev.column_access_control,
         }));
+
+        if (isDataChanged) {
+            setIsStep3Modified(true);
+        }
     };
 
     const processConnectionData = (connections, schemas, tables, columns) => {
@@ -345,6 +363,9 @@ const Policy = () => {
     };
 
     const handleBack = () => {
+        if (activeStep === 4 ) {
+            setIsStep3Modified(false);
+        }
         setActiveStep((prevActiveStep) => prevActiveStep - 1);
     };
 
@@ -359,15 +380,36 @@ const Policy = () => {
             case 1:
                 return <Step2 onDataChange={setStep2Data} initialData={step2Data} />;
             case 2:
-                return <Step3 name='Data' onDataChange={setStep3Data} initialData={step3Data} />;
+                return <Step3
+                    name='Data'
+                    onDataChange={setStep3Data}
+                    initialData={step3Data}
+                    policyData={policyData}
+                    setIsStep3Modified={setIsStep3Modified}
+                />;
             case 3:
-                return <Step4 policyData={policyData} onDataChange={(data) => setPolicyData(prev => ({ ...prev, ...data }))} />;
+                return <Step4
+                    policyData={policyData}
+                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))}
+                    isStep3Modified={isStep3Modified}
+                />
             case 4:
-                return <Step5 policyData={policyData} onDataChange={updatePolicyData} />;
+                return <Step5
+                    policyData={policyData}
+                    onDataChange={updatePolicyData}
+                    isStep3Modified={isStep3Modified}
+                />
             case 5:
                 return <Step6 policyData={policyData} onDataChange={updatePolicyData} />;
             case 6:
-                return <Step7 setIsOpen={setIsOpen} policyData={policyData} setActiveStep={setActiveStep} fetchPolicyListData={fetchPolicyListData} />;
+                return <Step7
+                    setIsOpen={setIsOpen}
+                    policyData={policyData}
+                    setActiveStep={setActiveStep}
+                    fetchPolicyListData={fetchPolicyListData}
+                    isEditMode={isEditMode}
+                    editPolicyId={editPolicyId}
+                />
             default:
                 return null;
         }
@@ -387,6 +429,8 @@ const Policy = () => {
                 subGroup: [],
             },
             data_connection: [],
+            row_access_control: {},
+            column_access_control: {},
         });
         setStep1Data({
             selectedPolicy: '',
@@ -405,6 +449,9 @@ const Policy = () => {
             selectedTables: [],
             selectedColumns: [],
         });
+        setIsStep3Modified(false);
+        setIsEditMode(false);
+        setEditPolicyId(null);
     };
 
     const handleClear = () => {
@@ -431,6 +478,7 @@ const Policy = () => {
                     selectedTables: [],
                     selectedColumns: [],
                 });
+                setIsStep3Modified(true);
                 break;
             case 3:
                 setPolicyData((prev) => ({
@@ -461,7 +509,7 @@ const Policy = () => {
         }
     };
 
-        const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
 
     const filteredPolicyCards = useMemo(() => {
         if (!searchTerm) return policy;
@@ -529,6 +577,78 @@ const Policy = () => {
             pageNumbers.push(totalPages);
         }
     }
+
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editPolicyId, setEditPolicyId] = useState(null);
+    const [isStep3Modified, setIsStep3Modified] = useState(false);
+
+
+    const handlePolicyEdit = async (policyId) => {
+        const policy = sampleData.find(p => p.id === policyId);
+
+        try {
+            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policydetails`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id: policyId,
+                    policy_name: policy?.Name || "",
+                    policy_type: policy?.Type || ""
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch policy details: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // // Validate the response structure
+            // if (!data || !data.policy_details || !data.policy_details.user_selections) {
+            //     throw new Error("Invalid policy data: user_selections is missing");
+            // }
+
+            // Set all data in one go
+            const policyDetails = {
+                ...data.policy_details,
+                row_access_control: data.policy_details.row_access_control || {},
+                column_access_control: data.policy_details.column_access_control || {},
+            };
+
+            setPolicyData(policyDetails);
+            setStep1Data({
+                selectedPolicy: policyDetails.policy_type || "",
+                description: policyDetails.policy_description || "",
+                sub_policy_name: policyDetails.sub_policy_name || "",
+                sub_policy_description: policyDetails.sub_policy_description || "",
+                policy_name: policyDetails.policy_name || ""
+            });
+            setStep2Data({
+                selectedRole: policyDetails.user_selections.role || "",
+                selectedGroup: policyDetails.user_selections.group || "",
+                selectedSubgroup: policyDetails.user_selections.subGroup || ""
+            });
+            setStep3Data({
+                selectedConnections: policyDetails.data_connection?.map(dc => dc.connection) || [],
+                selectedSchemas: policyDetails.data_connection?.map(dc => dc.schema) || [],
+                selectedTables: policyDetails.data_connection?.flatMap(dc => dc.tables) || [],
+                selectedColumns: policyDetails.data_connection?.flatMap(dc => dc.columns) || []
+            });
+
+            setIsEditMode(true);
+            setEditPolicyId(policyId);
+            setIsStep3Modified(false);
+            setIsOpen(true);
+            setActiveStep(0);
+        } catch (error) {
+            console.error("Error loading policy data:", error.message);
+            alert("Failed to load policy data. Please try again.");
+        }
+    };
+
 
 
     return (
@@ -626,20 +746,20 @@ const Policy = () => {
                     )}
                 </div>
 
-                <div className="bg-white rounded-lg shadow mt-5 overflow-x-auto">
-                    <table className="w-full table-auto">
+                <div className="bg-white rounded-lg shadow mt-5 overflow-x-auto max-w-full">
+                    <table className="w-full table-auto min-w-[1000px]">
                         <thead>
                             <tr className="bg-[#29304a] text-white text-sm">
-                                <th className="text-left p-4">Id</th>
-                                <th className="text-left p-4">Type</th>
-                                <th className="text-left p-4">Name</th>
-                                <th className="text-left p-4">Description</th>
-                                <th className="text-center p-4">Status</th>
-                                <th className="text-left p-4">Created Date</th>
-                                <th className="text-left p-4">Expiry Date</th>
-                                <th className="text-left p-4">Updated Date</th>
-                                <th className="text-left p-4">Owner</th>
-                                <th className="text-left p-4">Action</th>
+                                <th className="text-left p-4 whitespace-nowrap">Id</th>
+                                <th className="text-left p-4 whitespace-nowrap">Type</th>
+                                <th className="text-left p-4 whitespace-nowrap">Name</th>
+                                <th className="text-left p-4 whitespace-nowrap">Description</th>
+                                <th className="text-center p-4 whitespace-nowrap">Status</th>
+                                <th className="text-left p-4 whitespace-nowrap">Created Date</th>
+                                <th className="text-left p-4 whitespace-nowrap">Expiry Date</th>
+                                <th className="text-left p-4 whitespace-nowrap">Updated Date</th>
+                                <th className="text-left p-4 whitespace-nowrap">Owner</th>
+                                <th className="text-left p-4 whitespace-nowrap">Action</th>
                             </tr>
                         </thead>
                         <tbody className="text-sm">
@@ -654,24 +774,31 @@ const Policy = () => {
                             ) : (
                                 paginatedData.map((policy, index) => (
                                     <tr key={index} className="border-b">
-                                        <td className="p-4 text-gray-500">{policy.id}</td>
-                                        <td className="p-4 text-gray-500">{policy.Type}</td>
-                                        <td className="p-4 text-gray-500">{policy.Name}</td>
+                                        <td className="p-4 text-gray-500 whitespace-nowrap">{policy.id}</td>
+                                        <td className="p-4 text-gray-500 whitespace-nowrap">{policy.Type}</td>
+                                        <td className="p-4 text-gray-500 whitespace-nowrap">{policy.Name}</td>
                                         <td className="p-4 text-gray-500 max-w-xs truncate">{policy.Description}</td>
-                                        <td className="p-4 text-center">
+                                        <td className="p-4 text-center whitespace-nowrap">
                                             <span
                                                 className={`px-5 py-1 rounded text-sm font-normal inline-block ${policy.Status?.toLowerCase() === "active"
                                                     ? "text-green-600 bg-green-200"
-                                                    : "text-gray-400 bg-gray-200"}`}
+                                                    : "text-gray-400 bg-gray-200"
+                                                    }`}
                                             >
                                                 {policy.Status || "Active"}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-gray-500 text-center">{policy.CreatedDate || "-"}</td>
-                                        <td className="p-4 text-gray-500 text-center">{policy.expiryDate || "-"}</td>
-                                        <td className="p-4 text-gray-500 text-center">{policy.UpdatedDate || "-"}</td>
-                                        <td className="p-4 text-gray-500">{policy.Owner}</td>
-                                        <td className="px-6 p-4 text-center">
+                                        <td className="p-4 text-gray-500 text-center whitespace-nowrap">
+                                            {policy.CreatedDate || "-"}
+                                        </td>
+                                        <td className="p-4 text-gray-500 text-center whitespace-nowrap">
+                                            {policy.expiryDate || "-"}
+                                        </td>
+                                        <td className="p-4 text-gray-500 text-center whitespace-nowrap">
+                                            {policy.UpdatedDate || "-"}
+                                        </td>
+                                        <td className="p-4 text-gray-500 whitespace-nowrap">{policy.Owner}</td>
+                                        <td className="px-6 p-4 text-center whitespace-nowrap">
                                             <div className="relative">
                                                 <button
                                                     onClick={() => setActiveMenu(activeMenu === index ? null : index)}
@@ -687,7 +814,10 @@ const Policy = () => {
                                                         />
                                                         <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                                                             <div className="flex items-center p-1 gap-1">
-                                                                <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                                                <button
+                                                                    onClick={() => handlePolicyEdit(policy.id)}
+                                                                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                                                >
                                                                     <Pencil className="h-4 w-4" />
                                                                 </button>
                                                                 <button
@@ -768,7 +898,7 @@ const Policy = () => {
                         </button>
                         {activeStep !== 6 && (
                             <h2 className="text-lg font-bold text-[#8e78b7] flex items-center mb-3">
-                                Add Policy
+                               {isEditMode ? "Edit Policy" : "Add Policy"}
                             </h2>
                         )}
                         {activeStep !== 6 && (
