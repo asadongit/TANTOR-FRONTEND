@@ -113,10 +113,9 @@ const DimensionSelector = ({
   
   // Initialize selectedDimensionName from props
   useEffect(() => {
-    if (dimension?.name && !selectedDimensionName) {
-      setSelectedDimensionName(dimension.name);
-    }
-  }, [dimension?.name, selectedDimensionName]);
+    setSelectedDimensionName(dimension?.name || "");
+    setDimensionValuesData([]);
+  }, [dimension?.name, currentSelectedRuleId]);
 
   useEffect(() => {
     if (!selectedDimensionName || !currentSelectedRuleId) return;
@@ -192,7 +191,7 @@ const DimensionSelector = ({
       >
         <option value="">Select Operator</option>
         <option value="in">IN</option>
-        <option value="not_in">NOT IN</option>
+        <option value="not in">NOT IN</option>
       </select>
       
       {isLoading ? (

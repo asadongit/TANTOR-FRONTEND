@@ -12,6 +12,8 @@ function LineItemsPage() {
 
   const reportId = useLocation().state?.reportId;
   const reportName = useLocation().state?.reportName;
+  const reportType = useLocation().state?.reportType;
+  const reportDesc = useLocation().state?.reportDesc;
 
   const [lineItemsHtml, setLineItemsHtml] = useState("");
   const contentRef = useRef(null);
@@ -146,6 +148,8 @@ function LineItemsPage() {
           closeAllModals={closeAllModals}
           reportId={reportId}
           reportName={reportName}
+          reportType={reportType}
+          reportDesc = {reportDesc}
         />
       )}
     </>

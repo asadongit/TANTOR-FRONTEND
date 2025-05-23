@@ -196,6 +196,19 @@ const RuleSelector = ({
 
   const handleRuleChange = async (e) => {
     const selectedRuleId = e.target.value;
+    if(!selectedRuleId){
+      updateRule(index, null, {
+        ruleId: "",
+        ruleName: "",
+        metrics: [],
+        dimensions: [{ id: "", name: "", operator: "", value: [] }],
+        filters: []
+      });
+      setCurrentSelectedRuleId("");
+      setMetricData([]);
+      setDimensionNamesData([]);
+      return;
+    }
     const selectedRule = ruleData.find(
       (rule) => rule.rule_id.toString() === selectedRuleId
     );
@@ -208,7 +221,9 @@ const RuleSelector = ({
         dimensions: [{ id: "", name: "", operator: "", value: [] }],
         filters: [],
       });
-      setCurrentSelectedRuleId(selectedRuleId);
+      setTimeout(() => {
+        setCurrentSelectedRuleId(selectedRuleId);
+      }, 0);
     }
   };
 
