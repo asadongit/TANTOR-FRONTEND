@@ -113,10 +113,9 @@ const DimensionSelector = ({
   
   // Initialize selectedDimensionName from props
   useEffect(() => {
-    if (dimension?.name && !selectedDimensionName) {
-      setSelectedDimensionName(dimension.name);
-    }
-  }, [dimension?.name, selectedDimensionName]);
+    setSelectedDimensionName(dimension?.name || "");
+    setDimensionValuesData([]);
+  }, [dimension?.name, currentSelectedRuleId]);
 
   useEffect(() => {
     if (!selectedDimensionName || !currentSelectedRuleId) return;
