@@ -192,7 +192,7 @@ const DimensionSelector = ({
       >
         <option value="">Select Operator</option>
         <option value="in">IN</option>
-        <option value="not_in">NOT IN</option>
+        <option value="not in">NOT IN</option>
       </select>
       
       {isLoading ? (
