@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
+import { X } from "lucide-react";
 
 function DimensionValueSelector({ 
   index, 
   dimension, 
-  dimensionValuesData = [], // Provide default empty array
+  dimensionValuesData = [],
   updateDimension, 
   ruleIndex 
 }) {
@@ -210,10 +211,10 @@ const DimensionSelector = ({
       
       <button
         type="button"
-        className="h-[38px] w-[38px] inline-flex items-center justify-center border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        className="h-7 w-7 p-0 inline-flex items-center justify-center border border-gray-300 rounded-md shadow-sm text-sm font-medium text-black bg-gray-50 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         onClick={() => removeDimension(ruleIndex, index)}
       >
-        -
+        <X className="h-6 w-6 m-2"/>
       </button>
     </div>
   );

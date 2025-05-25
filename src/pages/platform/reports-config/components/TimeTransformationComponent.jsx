@@ -92,9 +92,9 @@ const TimeTransformationComponent = ({
         name: filterColName,
         type: dateType,
         lowerOffsetUnit: lowerUnit,
-        lowerOffsetUnitValue: lowerOffset,
+        lowerOffsetUnitValue: lowerOffset.toString(),
         upperOffsetUnit: upperUnit,
-        upperOffsetUnitValue: upperOffset,
+        upperOffsetUnitValue: upperOffset ? upperOffset.toString() : "",
       };
     } else {
       newRule.filters.push({
@@ -102,9 +102,9 @@ const TimeTransformationComponent = ({
         name: filterColName,
         type: dateType,
         lowerOffsetUnit: lowerUnit,
-        lowerOffsetUnitValue: lowerOffset,
+        lowerOffsetUnitValue: lowerOffset.toString(),
         upperOffsetUnit: upperUnit,
-        upperOffsetUnitValue: upperOffset,
+        upperOffsetUnitValue: upperOffset ? upperOffset.toString() : "",
       });
     }
     updateRule(ruleIndex, "filters", newRule.filters);
@@ -267,16 +267,16 @@ const TimeTransformationComponent = ({
                     htmlFor="lowerOffset"
                     className="block text-sm font-medium text-[#6c757d]"
                   >
-                    Lower Offset
+                    {dateType === "historicDate"? "Offset" : "Lower Offset"}
                   </label>
                   <input
                     id="lowerOffset"
                     type="number"
-                    max="0"
+                    max={dateType === "historicDate" ? "0" : undefined}
                     value={lowerOffset}
                     onChange={(e) => {
                       const value = parseFloat(e.target.value);
-                      if (value > 0) {
+                      if (dateType === "historicDate" && value > 0) {
                         setLowerOffset(-value);
                       } else {
                         setLowerOffset(e.target.value);
@@ -284,7 +284,7 @@ const TimeTransformationComponent = ({
                     }}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
                     disabled={dateType === "asOnDate"}
-                    placeholder="Enter negative value"
+                    placeholder={dateType === "historicDate" ? "Enter negative value" : "Enter positive or negative value"}
                   />
                 </div>
                 <div>

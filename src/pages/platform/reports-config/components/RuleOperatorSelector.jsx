@@ -26,6 +26,7 @@ export default function RuleSelector({
   const [disableSubmit, setDisableSubmit] = useState(true);
 
   const addSelectOperator = () => {
+    setDisableSubmit(true);
     setRuleOperators((prev) => {
       const newRuleOperators = [...prev];
       newRuleOperators.push({
@@ -39,7 +40,7 @@ export default function RuleSelector({
 
   const removeSelectOperator = (index) => {
     let removeRuleId = ruleOperators[index].ruleId;
-
+    setDisableSubmit(true);
     if (!removeRuleId) {
       return setRuleOperators((prev) => {
         if (prev.length === 1) {
@@ -107,14 +108,46 @@ export default function RuleSelector({
   };
 
   const handleValidate = () => {
+    // Check if there are any rules
     if (rules.length === 0) {
       return toast.error("A Line_Item must be linked to at least one rule.");
     }
 
-    if (rules.length === 1 && ruleOperators.length === 1) {
-      removeSelectOperator(0);
-      setDisableSubmit(false);
-      return toast.success("No need to set operator for a single rule.");
+    // Clean up empty dimensions and update state
+    const newRules = rules.map(rule => ({
+      ...rule,
+      dimensions: rule.dimensions.filter(dim => 
+        dim.name || dim.operator || (dim.value && dim.value.length > 0)
+      )
+    }));
+    
+    // Update the rules state with cleaned dimensions
+    updateRules(lineItemId, newRules);
+
+    // Check if any rule has an empty ruleId
+    const emptyRules = newRules.some(rule => !rule.ruleId);
+    if (emptyRules) {
+      return toast.error("Remove Empty Rules.");
+    }
+
+    // Check if each rule has at least one metric
+    const rulesWithoutMetrics = rules.filter(rule => !rule.metrics || rule.metrics.length === 0);
+    if (rulesWithoutMetrics.length > 0) {
+      const ruleNames = rulesWithoutMetrics.map(rule => rule.ruleName).join(", ");
+      return toast.error(`Rule(s) "${ruleNames}" must have at least one metric selected.`);
+    }
+
+    // Check dimensions validation
+    const invalidDimensions = rules.flatMap(rule => 
+      rule.dimensions.filter(dim => 
+        (dim.name && (!dim.operator || !dim.value || dim.value.length === 0)) ||
+        (dim.operator && (!dim.name || !dim.value || dim.value.length === 0)) ||
+        (dim.value && dim.value.length > 0 && (!dim.name || !dim.operator))
+      )
+    );
+
+    if (invalidDimensions.length > 0) {
+      return toast.error("All dimensions must have name, operator and values selected.");
     }
 
     const ruleIds = rules.map((rule) => rule.ruleId);
@@ -199,17 +232,23 @@ export default function RuleSelector({
         </div> */}
 
         <div className="mb-6 border-b pb-3">
-          <h2 className="text-xl font-semibold text-gray-800">{lineItemId}</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-800">Configure Rule Sequence</h2>
+            <span className="text-sm text-gray-600">{lineItemId.toUpperCase()}</span>
+          </div>
         </div>
-
         <div className="space-y-4">
           {ruleOperators.map((rule, index) => (
             <div key={index} className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#8E77BB] text-white font-medium">
+                {index + 1}
+              </div>
               <div className="relative w-48 sm:w-1/3 lg:w-48">
                 <select
                   className="w-full appearance-none bg-gray-50 border border-gray-300 rounded-md px-4 py-2 pr-8 text-gray-70 focus:outline-none"
                   value={rule.ruleId}
                   onChange={(e) => {
+                    setDisableSubmit(true);
                     const newRuleOperators = [...ruleOperators];
                     newRuleOperators[index].ruleId = e.target.value;
                     setRuleOperators(newRuleOperators);
@@ -220,7 +259,7 @@ export default function RuleSelector({
                   </option>
                   {rules.map((rule, index) => (
                     <option value={rule?.ruleId}>
-                      {rule?.ruleName || "DEFAULT VALUE"}
+                      {rule?.ruleName}
                     </option>
                   ))}
                 </select>
@@ -232,6 +271,7 @@ export default function RuleSelector({
                   className="w-full appearance-none bg-gray-50 border border-gray-300 rounded-md px-4 py-2 pr-8 text-gray-700 focus:outline-none"
                   value={rule.operator}
                   onChange={(e) => {
+                    setDisableSubmit(true);
                     const newRuleOperators = [...ruleOperators];
                     newRuleOperators[index].operator = e.target.value;
                     setRuleOperators(newRuleOperators);
