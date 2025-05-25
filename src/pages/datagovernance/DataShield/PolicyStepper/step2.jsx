@@ -54,7 +54,6 @@ const Step2 = ({ onDataChange, initialData }) => {
     }, [selectedGroup]);
 
     useEffect(() => {
-        // Reset search term when tab changes
         setSearchTerm('');
     }, [selectedTab]);
 
@@ -100,7 +99,7 @@ const Step2 = ({ onDataChange, initialData }) => {
             const responseData = await response.json();
             setData(prev => ({
                 ...prev,
-                subgroups: responseData.subgroups || []
+                subgroups: responseData?.subgroups || []
             }));
         } catch (error) {
             console.error('Error fetching subgroups:', error);
@@ -154,7 +153,6 @@ const Step2 = ({ onDataChange, initialData }) => {
         const currentTab = roleDetails.find(rd => rd.role === selectedTab);
         const tabData = currentTab ? data[currentTab.key] || [] : [];
         
-        // Filter data based on search term
         if (searchTerm.trim() === '') {
             return tabData;
         }
