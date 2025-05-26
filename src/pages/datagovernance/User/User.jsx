@@ -39,6 +39,7 @@ const User = () => {
   const [userToDelete, setUserToDelete] = useState(null);
   const [checkedUsers, setCheckedUsers] = useState({});
   const [allChecked, setAllChecked] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const initialFetchDone = useRef(false);
   const rowsPerPage = 10;
 
@@ -60,8 +61,10 @@ const User = () => {
       const data = await response.json();
       setUsers(data);
       console.log(data);
+      return { success: true };
     } catch (error) {
       console.error('Error fetching user data:', error);
+      return { success: false, error };
     } finally {
       setIsLoading(false);
     }
@@ -175,12 +178,32 @@ const User = () => {
     fetchUserData();
   };
 
-  // New handler to clear search and fetch users
-  const handleRefresh = () => {
+  // New handler to clear search and fetch users with toast
+  const handleRefresh = async () => {
     setSearchTerm('');
     setCheckedUsers({}); // Clear all checked users
     setAllChecked(false); // Reset the "select all" checkbox
-    fetchUserData();
+
+    const result = await fetchUserData();
+
+    if (result.success) {
+      setToast({
+        show: true,
+        message: 'User data refreshed successfully',
+        type: 'success'
+      });
+    } else {
+      setToast({
+        show: true,
+        message: 'Failed to refresh user data',
+        type: 'error'
+      });
+    }
+
+    // Auto-hide toast after 3 seconds
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: '' });
+    }, 3000);
   };
 
   // New function to handle individual checkbox changes
@@ -210,6 +233,26 @@ const User = () => {
     <div className="p-6">
 
       <style>{rotateAnimation}</style>
+
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
+          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+          'bg-red-100 text-red-800 border-l-4 border-red-500'
+        }`}>
+          <Icon
+            icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
+            className="h-5 w-5"
+          />
+          <p>{toast.message}</p>
+          <button
+            onClick={() => setToast({ show: false, message: '', type: '' })}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <Breadcrumb />
       <div className="flex gap-4 mb-6 items-center justify-between">

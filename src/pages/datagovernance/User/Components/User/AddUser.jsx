@@ -9,7 +9,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     password: '',
     confirmPassword: '',
     firstName: '',
-    middleName: '',
     lastName: '',
     email: '',
     role: '',
@@ -213,7 +212,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           password: '',
           confirmPassword: '',
           firstName: '',
-          middleName: '',
           lastName: '',
           email: '',
           role: '',
@@ -313,17 +311,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   className={`w-full p-2.5 border ${errors.firstName ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>}
-              </div>
-              <div>
-                <label className="block text-sm text-black mb-1.5">Middle name</label>
-                <input
-                  type="text"
-                  name="middleName"
-                  value={formData.middleName}
-                  onChange={handleChange}
-                  placeholder="Middle name"
-                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
-                />
               </div>
               <div>
                 <label className="block text-sm text-black mb-1.5">Last name <span className="text-red-500">*</span></label>
