@@ -7,16 +7,20 @@ import {
   MinusCircleIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useLineItems } from "../context/LineItemsContext";
 
-export default function RuleSelector({
-  isOpen,
-  setIsOpen,
-  rules,
-  lineItemId,
-  updateRules,
-  setShowLineItemModal,
-  setShowSummaryModal,
-}) {
+export default function RuleSelector() {
+  const {
+    currentLineItemId: lineItemId,
+    getRulesForCurrentLineItem,
+    showRuleOperatorSelector: isOpen,
+    setShowRuleOperatorSelector: setIsOpen,
+    updateLineItemConfigRules: updateRules,
+    setShowLineItemConfigModal,
+    setShowSummaryModal
+  } = useLineItems();
+  const rules = getRulesForCurrentLineItem();
+  
   const [ruleOperators, setRuleOperators] = useState([
     {
       ruleId: "",

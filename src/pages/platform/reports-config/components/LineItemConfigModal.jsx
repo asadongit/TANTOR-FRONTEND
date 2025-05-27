@@ -1,16 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Plus } from "lucide-react";
 import RuleSelector from "./RuleSelector";
-import RuleOperatorSelector from "./RuleOperatorSelector";
+import { useLineItems } from "../context/LineItemsContext";
 
-const LineItemConfigModal = ({
-  lineItemId,
-  setShowModal,
-  updateLineItemRules,
-  rules,
-  showRuleOperatorSelector,
-  setShowRuleOperatorSelector,
-}) => {
+function LineItemConfigModal() {
+  const {
+    currentLineItemId: lineItemId,
+    setShowLineItemConfigModal: setShowModal,
+    updateLineItemConfigRules: updateLineItemRules,
+    getRulesForCurrentLineItem,
+    showRuleOperatorSelector,
+    setShowRuleOperatorSelector
+  } = useLineItems();
+
+  const rules = getRulesForCurrentLineItem();
+
   const updateRule = (ruleIndex, field, value) => {
     const newRules = [...rules];
 
@@ -143,6 +147,6 @@ const LineItemConfigModal = ({
       </div>
     </div>
   );
-};
+}
 
 export default LineItemConfigModal;

@@ -32,10 +32,15 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
     if (!date) return null;
     
     const today = new Date();
-    const diffMs = date - today;
+    // Set both dates to midnight to avoid time differences affecting day calculations
+    today.setHours(0, 0, 0, 0);
+    const compareDate = new Date(date);
+    compareDate.setHours(0, 0, 0, 0);
+    
+    const diffMs = compareDate - today;
     
     if (unit === "days") {
-      return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      return Math.round(diffMs / (1000 * 60 * 60 * 24));
     } else if (unit === "months") {
       return ((date.getFullYear() - today.getFullYear()) * 12 + 
               date.getMonth() - today.getMonth() + 
@@ -76,6 +81,7 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
     if (!startDate) return;
     
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     if (dateType === "historicDate") {
       const offset = calculateOffsetFromDate(startDate, timeUnit);
@@ -83,11 +89,13 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
     } else if (dateType === "dateRange" && endDate) {
       const lowerOffset = calculateOffsetFromDate(startDate, timeUnit);
       
-      const todayToUpperMs = endDate - today;
+      const compareEndDate = new Date(endDate);
+      compareEndDate.setHours(0, 0, 0, 0);
+      const todayToUpperMs = compareEndDate - today;
       let upperOffset;
       
       if (timeUnit === "days") {
-        upperOffset = Math.floor(todayToUpperMs / (1000 * 60 * 60 * 24));
+        upperOffset = Math.round(todayToUpperMs / (1000 * 60 * 60 * 24));
       } else if (timeUnit === "months") {
         upperOffset = ((endDate.getFullYear() - today.getFullYear()) * 12 + 
                        endDate.getMonth() - today.getMonth() + 
