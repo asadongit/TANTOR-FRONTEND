@@ -44,6 +44,7 @@ const Role = () => {
   const [activeMenu, setActiveMenu] = useState(null);
   const [togglingStatus, setTogglingStatus] = useState(null);
   const rowsPerPage = 10;
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
   const filteredRoles = roles.filter(role =>
     role.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -194,10 +195,28 @@ const Role = () => {
         FetchRoleDashboardData(),
         fetchRoleListData()
       ]);
+
+      setToast({
+        show: true,
+        message: 'Role data refreshed successfully',
+        type: 'success'
+      });
+
     } catch (error) {
       console.error("Error refreshing data:", error);
+
+      setToast({
+        show: true,
+        message: 'Failed to refresh role data',
+        type: 'error'
+      });
     } finally {
       setRefreshing(false);
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
     }
   };
 
@@ -254,6 +273,36 @@ const Role = () => {
 
   return (
     <div className="p-6">
+      <style>{`
+        @keyframes rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .icon-rotate { animation: rotate 1s linear infinite; }
+      `}</style>
+
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
+          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+          'bg-red-100 text-red-800 border-l-4 border-red-500'
+        }`}>
+          <Icon
+            icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
+            className="h-5 w-5"
+          />
+          <p>{toast.message}</p>
+          <button
+            onClick={() => setToast({ show: false, message: '', type: '' })}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            <Icon icon="mdi:close" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+
       <Breadcrumb title="Data Governance" link="/" />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Role</h1>
