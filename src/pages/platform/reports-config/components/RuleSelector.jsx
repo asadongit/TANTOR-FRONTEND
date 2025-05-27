@@ -25,9 +25,16 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
   }, [isOpen]);
 
   const displayText =
-    rule.metrics && rule.metrics.length > 0
-      ? rule.metrics[0]
-      : "Select metric";
+    rule.metrics && rule.metrics.length > 0 ? ` ${rule.metrics.length} Selected` : "Select metric";
+
+  const handleMetricChange = (metric) => {
+    const currentMetrics = rule.metrics || [];
+    const updatedMetrics = currentMetrics.includes(metric)
+      ? currentMetrics.filter((m) => m !== metric)
+      : [...currentMetrics, metric];
+
+    updateRule(index, "metrics", updatedMetrics);
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -45,7 +52,7 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
         className="flex justify-between items-center w-full px-3 py-2 text-left border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span>{displayText}</span>
+        <span className="truncate">{displayText}</span>
         <span>{isOpen ? "▲" : "▼"}</span>
       </button>
 
@@ -55,7 +62,8 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
           <div className="max-h-60 overflow-y-auto p-2">
             {metricData.length > 0 ? (
               metricData.map((metric) => {
-                const isSelected = rule.metrics && rule.metrics[0] === metric;
+                const isSelected =
+                  rule.metrics && rule.metrics.includes(metric);
 
                 return (
                   <label
@@ -63,14 +71,11 @@ function MetricSelector({ index, rule, metricData = [], updateRule }) {
                     className="flex items-center space-x-2 p-2 hover:bg-gray-100 cursor-pointer"
                   >
                     <input
-                      type="radio"
-                      className="form-radio text-blue-600"
+                      type="checkbox"
+                      className="form-checkbox text-blue-600"
                       value={metric}
                       checked={isSelected}
-                      name={`metric-radio-${index}`}
-                      onChange={(e) => {
-                        updateRule(index, "metrics", [metric]);
-                      }}
+                      onChange={() => handleMetricChange(metric)}
                     />
                     <span>{metric}</span>
                   </label>
@@ -112,10 +117,9 @@ const RuleSelector = ({
           authorization: `Bearer ${token}`,
         };
 
-        const response = await fetch(
-          `${hostnameV1}/lineItems/selectRule`,
-          { headers: headers }
-        );
+        const response = await fetch(`${hostnameV1}/lineItems/selectRule`, {
+          headers: headers,
+        });
         if (!response.ok) {
           toast.error("ERROR OCCURED WHILE FETCHING RULES");
           return;
@@ -196,6 +200,19 @@ const RuleSelector = ({
 
   const handleRuleChange = async (e) => {
     const selectedRuleId = e.target.value;
+    if (!selectedRuleId) {
+      updateRule(index, null, {
+        ruleId: "",
+        ruleName: "",
+        metrics: [],
+        dimensions: [{ id: "", name: "", operator: "", value: [] }],
+        filters: [],
+      });
+      setCurrentSelectedRuleId("");
+      setMetricData([]);
+      setDimensionNamesData([]);
+      return;
+    }
     const selectedRule = ruleData.find(
       (rule) => rule.rule_id.toString() === selectedRuleId
     );
@@ -208,7 +225,9 @@ const RuleSelector = ({
         dimensions: [{ id: "", name: "", operator: "", value: [] }],
         filters: [],
       });
-      setCurrentSelectedRuleId(selectedRuleId);
+      setTimeout(() => {
+        setCurrentSelectedRuleId(selectedRuleId);
+      }, 0);
     }
   };
 
@@ -256,11 +275,11 @@ const RuleSelector = ({
         </div>
 
         <div className="mb-4">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-semibold">Dimension Selector</h3>
+          <div className="flex justify-between items-center">
+            <h3 className="block text-sm font-medium text-gray-700">Dimension Filter</h3>
             <button
               type="button"
-              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="inline-flex items-center justify-center mb-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               onClick={() => addDimension(index)}
             >
               <Plus className="h-4 w-4 mr-1" /> Add Dimension

@@ -1,7 +1,7 @@
 import { useAuth } from '../../../../context/AuthContext';
 import { useEffect, useState } from 'react';
 
-const Step3 = ({ name, onDataChange, initialData }) => {
+const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified }) => {
   const { token } = useAuth();
 
   const [data, setData] = useState([]);
@@ -33,7 +33,6 @@ const Step3 = ({ name, onDataChange, initialData }) => {
   }, [initialData]);
 
   useEffect(() => {
-    console.log("initial data for step 3 is ====>", initialData)
     fetchData();
   }, []);
 
@@ -108,18 +107,18 @@ const Step3 = ({ name, onDataChange, initialData }) => {
       return [...prev, value];
     });
     resetList.forEach(reset => reset([]));
+    setIsStep3Modified(true); // Add this line
   };
 
   const handleSelectAll = (options, setter, resetList = []) => {
     setter(prev => {
-      // If all options are already selected, deselect all
       if (options.every(option => prev.includes(option))) {
         return [];
       }
-      // Otherwise select all filtered options
       return [...new Set([...prev, ...options])];
     });
     resetList.forEach(reset => reset([]));
+    setIsStep3Modified(true); // Add this line
   };
 
   const toggleDropdown = (dropdown) => {

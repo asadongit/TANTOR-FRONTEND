@@ -47,11 +47,19 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
 
   useEffect(() => {
     if (dateType === "historicDate" && lowerOffset && lowerUnit) {
-      const calculatedDate = calculateDateFromOffset(lowerOffset, lowerUnit);
-      setStartDate(calculatedDate);
+      // Ensuring lowerOffset is negative for historicDate
+      const offset = parseFloat(lowerOffset);
+      if (offset > 0) {
+        const calculatedDate = calculateDateFromOffset(-offset, lowerUnit);
+        setStartDate(calculatedDate);
+      } else {
+        const calculatedDate = calculateDateFromOffset(lowerOffset, lowerUnit);
+        setStartDate(calculatedDate);
+      }
       setTimeUnit(lowerUnit);
     } else if (dateType === "dateRange") {
       if (lowerOffset && lowerUnit) {
+        // For dateRange, lowerOffset can be positive or negative
         const lowerDate = calculateDateFromOffset(lowerOffset, lowerUnit);
         setStartDate(lowerDate);
         setTimeUnit(lowerUnit);

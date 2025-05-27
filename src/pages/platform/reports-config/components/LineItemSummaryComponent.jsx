@@ -57,13 +57,11 @@ const LineItemSummary = ({
 
   const handleCreateLink = () => {
     const payload = {
-      regReportId: reportId,
-      lineItemConfig: [
-        {
-          line_item: lineItemId,
-          rules: rules,
-        },
-      ],
+      report_config: {
+        regReportId: reportId,
+        line_item: parseInt(lineItemId.split("_").pop(), 10),
+        rules: rules,
+      },
     };
 
     const uploadData = async () => {
@@ -88,7 +86,7 @@ const LineItemSummary = ({
         toast.success(data.message);
 
         await addReportToDatabase();
-        
+
         closeAllModals();
       } catch (error) {
         console.error("Error Saving Line Item:", error);

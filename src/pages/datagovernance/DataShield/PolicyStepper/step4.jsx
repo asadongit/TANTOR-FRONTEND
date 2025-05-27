@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
-const Step4 = ({ policyData, onDataChange }) => {
+const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
   const [selectedTable, setSelectedTable] = useState('');
   const [tableSearch, setTableSearch] = useState('');
   const [openTableDropdown, setOpenTableDropdown] = useState(false);
@@ -9,17 +9,23 @@ const Step4 = ({ policyData, onDataChange }) => {
   const initialFilters = policyData.row_access_control || {};
   const [tableFilters, setTableFilters] = useState(initialFilters);
 
+
   useEffect(() => {
-    if (Object.keys(policyData.row_access_control || {}).length === 0) {
+    setTableFilters(policyData.row_access_control || {});
+  }, [policyData.row_access_control]);
+
+
+  useEffect(() => {
+    if (isStep3Modified && Object.keys(tableFilters).length > 0) {
       setSelectedTable('');
       setTableSearch('');
       setTableFilters({});
+      onDataChange({
+        row_access_control: {},
+        column_access_control: {}
+      });
     }
-  }, [policyData.row_access_control]);
-
-  useEffect(() => {
-    console.log("policy data is %%%%% ====>", policyData)
-  }, [])
+  }, [isStep3Modified]);
 
 
   const allTables = policyData.data_connection.flatMap((conn) =>
@@ -30,6 +36,7 @@ const Step4 = ({ policyData, onDataChange }) => {
       tableName: table.split('.').pop(),
     }))
   );
+
 
   const filteredTables = allTables.filter((table) =>
     table.fullPath.toLowerCase().includes(tableSearch.toLowerCase())
@@ -170,8 +177,8 @@ const Step4 = ({ policyData, onDataChange }) => {
         <span
           key={table}
           className={`px-3 py-1 rounded-sm text-sm font-medium cursor-pointer ${selectedTable === table
-              ? 'text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            ? 'text-white'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           style={{
             backgroundColor: selectedTable === table ? '#8e78b7' : undefined,
@@ -199,8 +206,8 @@ const Step4 = ({ policyData, onDataChange }) => {
           </h4>
           <button
             className={`flex items-center px-3 py-1 border rounded-md text-sm font-medium ${filters.length > 0 && !isFilterComplete(filters[filters.length - 1])
-                ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-                : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
+              ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+              : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
               }`}
             style={{
               borderColor:
