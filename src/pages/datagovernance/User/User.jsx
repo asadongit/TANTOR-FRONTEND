@@ -139,19 +139,38 @@ const User = () => {
     switch(type) {
       case 'role':
         modalTitle = `${user.username}'s Roles`;
-        modalData = data || [];
+        modalData = Array.isArray(data) ? data : (data ? [data] : []);
         break;
       case 'persona':
         modalTitle = `${user.username}'s Persona`;
-        modalData = data ? [data] : [];
+        modalData = Array.isArray(data) ? data : (data ? [data] : []);
         break;
       case 'group':
-        modalTitle = `${user.username}'s Group`;
-        modalData = data ? [data] : [];
+        modalTitle = `${user.username}'s Groups`;
+        if (user.group_subgroup) {
+          modalData = Object.keys(user.group_subgroup);
+        } else if (user.group) {
+          modalData = Array.isArray(user.group) ? user.group : [user.group];
+        } else {
+          modalData = [];
+        }
         break;
       case 'subgroup':
-        modalTitle = `${user.username}'s Subgroup`;
-        modalData = data ? [data] : [];
+        modalTitle = `${user.username}'s Subgroups`;
+        if (user.group_subgroup) {
+          modalData = [];
+          Object.entries(user.group_subgroup).forEach(([group, subgroups]) => {
+            if (subgroups && subgroups.length > 0) {
+              subgroups.forEach(subgroup => {
+                modalData.push(`${group} > ${subgroup}`);
+              });
+            }
+          });
+        } else if (user.subgroup) {
+          modalData = [user.subgroup];
+        } else {
+          modalData = [];
+        }
         break;
       default:
         modalTitle = 'Details';
@@ -162,7 +181,17 @@ const User = () => {
     setIsDetailModalOpen(true);
   };
 
-  const getCount = (item) => {
+  const getCount = (item, type, user) => {
+    if (type === 'group' && user.group_subgroup) {
+      return Object.keys(user.group_subgroup).length;
+    } else if (type === 'subgroup' && user.group_subgroup) {
+      let count = 0;
+      Object.values(user.group_subgroup).forEach(subgroups => {
+        count += subgroups.length;
+      });
+      return count;
+    }
+
     if (!item) return 0;
     if (Array.isArray(item)) return item.length;
     return 1;
@@ -344,18 +373,18 @@ const User = () => {
                 </td>
                 <td className="p-4">
                   <button
-                    onClick={() => showDetailModal('group', user.group, user)}
+                    onClick={() => showDetailModal('group', null, user)}
                     className="text-center font-medium underline decoration-1 underline-offset-4"
                   >
-                    {getCount(user.group)}
+                    {getCount(null, 'group', user)}
                   </button>
                 </td>
                 <td className="p-4">
                   <button
-                    onClick={() => showDetailModal('subgroup', user.subgroup, user)}
+                    onClick={() => showDetailModal('subgroup', null, user)}
                     className="text-center font-medium underline decoration-1 underline-offset-4"
                   >
-                    {getCount(user.subgroup)}
+                    {getCount(null, 'subgroup', user)}
                   </button>
                 </td>
                 <td className="p-4">
