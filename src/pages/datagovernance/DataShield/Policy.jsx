@@ -33,6 +33,9 @@ import Step7 from "./PolicyStepper/step7";
 import PolicyTypeSelector from "./PolicyStepper/PolicyTypeSelector";
 import ReportStep from "./PolicyStepper/ReportStep";
 import { useAuth } from "../../../context/AuthContext";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 
 const Toggle = ({ enabled, onToggle }) => {
     return (
@@ -63,6 +66,7 @@ const Policy = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const rowsPerPage = 10;
     const [togglingStatus, setTogglingStatus] = useState(null);
+    const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
     useEffect(() => {
         FetchPolicyDashboardData();
@@ -94,8 +98,10 @@ const Policy = () => {
                 Owner: policy.owner
             }));
             setSampleData(transformedData);
+            return { success: true };
         } catch (error) {
             console.error('Error fetching role list data:', error);
+            return { success: false, error: error.message };
         }
     };
 
@@ -671,8 +677,10 @@ const Policy = () => {
                 iconcolor: "text-[#8d77ba]",
             }));
             setPolicy(transformedData);
+            return { success: true };
         } catch (error) {
             console.error('Error fetching policy data:', error);
+            return { success: false, error: error.message };
         } finally {
             setLoading(false);
         }
@@ -751,9 +759,74 @@ const Policy = () => {
         setTogglingStatus(null);
     };
 
+    const [refreshing, setRefreshing] = useState(false);
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        setSearchTerm("");
+        setCurrentPage(1);
+        try {
+            const [dashboardResult, listResult] = await Promise.all([
+                FetchPolicyDashboardData(),
+                fetchPolicyListData()
+            ]);
+
+            if (dashboardResult.success && listResult.success) {
+                setToast({
+                    show: true,
+                    message: 'Policies refreshed successfully',
+                    type: 'success'
+                });
+            } else {
+                // Show error if any operation failed
+                const errorMessages = [];
+                if (!dashboardResult.success) errorMessages.push('dashboard data');
+                if (!listResult.success) errorMessages.push('list data');
+
+                setToast({
+                    show: true,
+                    message: `Failed to refresh role ${errorMessages.join(' and ')}`,
+                    type: 'error'
+                });
+            }
+        } catch (error) {
+            console.error("Error refreshing data:", error);
+            setToast({
+                show: true,
+                message: 'Failed to refresh role data',
+                type: 'error'
+            });
+        } finally {
+            setRefreshing(false);
+            setTimeout(() => {
+                setToast({ show: false, message: '', type: '' });
+            }, 3000);
+        }
+    };
+
     return (
         <>
             <div>
+                {toast.show && (
+                    <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+                            'bg-red-100 text-red-800 border-l-4 border-red-500'
+                        }`}>
+                        <Icon
+                            icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
+                            className="h-5 w-5"
+                        />
+                        <p>{toast.message}</p>
+                        <button
+                            onClick={() => setToast({ show: false, message: '', type: '' })}
+                            className="ml-2 text-gray-500 hover:text-gray-700"
+                        >
+                            <Icon icon="mdi:close" className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+
+                <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+
                 <Breadcrumb title="Data Governance" link="/" />
                 <div className="flex items-center justify-between mb-6">
                     <h1 className="text-2xl font-semibold">Policy</h1>
@@ -777,9 +850,11 @@ const Policy = () => {
                         </button>
                         <button
                             type="button"
+                            onClick={handleRefresh}
+                            disabled={refreshing}
                             className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                         >
-                            <RefreshCcw className="h-5 w-5" />
+                            <RefreshCcw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
                         </button>
                         <button
                             type="button"
