@@ -223,6 +223,15 @@ const Policy = () => {
             case 2:
                 updateStep3Data(step3Data);
                 break;
+            case 3:
+                // Step 4 data is already updated via onDataChange
+                break;
+            case 4:
+                // Step 5 data is already updated via onDataChange
+                break;
+            case 5:
+                // Step 6 data is already updated via onDataChange
+                break;
             default:
                 break;
         }
@@ -372,20 +381,25 @@ const Policy = () => {
             case 3:
                 return <Step4
                     policyData={policyData}
-                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))
-                    }
+                    onDataChange={(data) => {
+                        setPolicyData((prev) => ({ ...prev, ...data }));
+                    }}
                     isStep3Modified={isStep3Modified}
                 />;
             case 4:
                 return <Step5
                     policyData={policyData}
-                    onDataChange={updatePolicyData}
+                    onDataChange={(data) => {
+                        setPolicyData((prev) => ({ ...prev, ...data }));
+                    }}
                     isStep3Modified={isStep3Modified}
                 />;
             case 5:
                 return <Step6
                     policyData={policyData}
-                    onDataChange={updatePolicyData}
+                    onDataChange={(data) => {
+                        setPolicyData((prev) => ({ ...prev, ...data }));
+                    }}
                 />;
             case 6:
                 return <ReportStep
