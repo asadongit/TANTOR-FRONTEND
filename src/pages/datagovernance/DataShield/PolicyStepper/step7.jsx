@@ -1,6 +1,6 @@
 import { Stepper, Step, StepLabel, Button, Box, Typography } from '@mui/material';
 import successBackground from "../../../../assets/green.png";
-import { BadgeCheck } from 'lucide-react';
+import { BadgeCheck, Plus, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { toast } from "react-hot-toast";
@@ -56,7 +56,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
     };
 
     const handleEditPolicy = () => {
-        setActiveStep(5); // Go back to Step 6 (index 5)
+        setActiveStep(6); // Go back to Report Step
     };
 
     return (
@@ -71,7 +71,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
 
             <div>
                 <div className="flex items-center space-x-4 mb-4">
-                    <BadgeCheck className="w-8 h-8 text-green-500" />{" "}
+                    <BadgeCheck className="w-8 h-8 text-green-500" />
                     <h2 className="text-2xl font-bold">Confirmation submission</h2>
                 </div>
 
@@ -106,7 +106,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
                 </div>
             </div>
         </Box>
-    )
-}
+    );
+};
 
 export default Step7;

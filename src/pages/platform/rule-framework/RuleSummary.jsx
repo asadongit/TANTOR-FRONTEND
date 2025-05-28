@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { X, ArrowBigLeft, ArrowBigRight } from "lucide-react";
 import { useStateContext } from "../Federation/context/contextViewProvider";
 import { Modal } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 const RuleSummary = ({ setIsOpen, selectedFact, tables, filterData, previewData }) => {
   const { finalPayload } = useStateContext();
+  const navigate = useNavigate();
   console.log(`RuleSummary ==== FinalPayload => `, finalPayload);
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
@@ -179,7 +181,10 @@ const RuleSummary = ({ setIsOpen, selectedFact, tables, filterData, previewData 
                 <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
                   Save Draft
                 </button>
-                <button className="px-4 py-2 bg-[#8e78b7] text-white rounded-md hover:bg-[#7b65a3] transition-colors">
+                <button 
+                  onClick={() => navigate('/config/rule')}
+                  className="px-4 py-2 bg-[#8e78b7] text-white rounded-md hover:bg-[#7b65a3] transition-colors"
+                >
                   Create Rule
                 </button>
               </div>
@@ -190,9 +195,9 @@ const RuleSummary = ({ setIsOpen, selectedFact, tables, filterData, previewData 
           <div className="w-[400px] overflow-y-auto p-6 bg-gray-50">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Column Settings</h3>
-              <button className="text-gray-500 hover:text-gray-700">
+              {/* <button className="text-gray-500 hover:text-gray-700">
                 <X className="w-4 h-4" />
-              </button>
+              </button> */}
             </div>
 
             <div className="space-y-6">

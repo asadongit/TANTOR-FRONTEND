@@ -1,8 +1,9 @@
 import { useAuth } from '../../../../context/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified }) => {
   const { token } = useAuth();
+  const fetchedRef = useRef(false);
 
   const [data, setData] = useState([]);
   const [selectedConnections, setSelectedConnections] = useState(initialData.selectedConnections || []);
@@ -17,27 +18,50 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
   const [openDropdown, setOpenDropdown] = useState(null);
 
   useEffect(() => {
-    onDataChange({
+    const stepData = {
       selectedConnections,
       selectedSchemas,
       selectedTables,
       selectedColumns
-    });
-  }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns]);
+    };
+
+    onDataChange(stepData);
+
+    // Also update the parent policyData immediately
+    if (policyData && typeof setIsStep3Modified === 'function') {
+      const connections = processConnectionData(
+        selectedConnections,
+        selectedSchemas,
+        selectedTables,
+        selectedColumns
+      );
+
+      // Update parent component with processed connection data
+      if (policyData.onPolicyDataChange) {
+        policyData.onPolicyDataChange({
+          data_connection: connections
+        });
+      }
+    }
+  }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns, onDataChange]);
 
   useEffect(() => {
     setSelectedConnections(initialData.selectedConnections || []);
     setSelectedSchemas(initialData.selectedSchemas || []);
     setSelectedTables(initialData.selectedTables || []);
     setSelectedColumns(initialData.selectedColumns || []);
-  }, [initialData]);
+  }, [initialData.selectedConnections, initialData.selectedSchemas, initialData.selectedTables, initialData.selectedColumns]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (token && !fetchedRef.current) {
+      fetchData();
+      fetchedRef.current = true;
+    }
+  }, [token]);
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/connectionscreen`, {
         method: 'GET',
         headers: {
@@ -47,9 +71,9 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
       });
       const responseData = await response.json();
       setData(responseData);
-      setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
+    } finally {
       setLoading(false);
     }
   };
@@ -192,6 +216,67 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
         )}
       </div>
     );
+  };
+
+  const processConnectionData = (connections, schemas, tables, columns) => {
+    const result = [];
+    if (!Array.isArray(connections) || !Array.isArray(schemas) || !Array.isArray(tables) || !Array.isArray(columns)) {
+      console.warn('Invalid input arrays in processConnectionData');
+      return result;
+    }
+
+    const connectionGroups = {};
+    schemas.forEach((schema) => {
+      if (typeof schema !== 'string') return;
+      const [conn, schemaName] = schema.split('.');
+      if (!conn || !schemaName || !connections.includes(conn)) return;
+      if (!connectionGroups[conn]) {
+        connectionGroups[conn] = {
+          connection: conn,
+          schemas: {},
+        };
+      }
+      connectionGroups[conn].schemas[schema] = {
+        schema: schema,
+        tables: new Set(),
+        columns: new Set(),
+      };
+    });
+
+    tables.forEach((table) => {
+      if (typeof table !== 'string') return;
+      const parts = table.split('.');
+      if (parts.length < 3) return;
+      const conn = parts[0];
+      const schema = parts.slice(0, 2).join('.');
+      if (connectionGroups[conn]?.schemas[schema]) {
+        connectionGroups[conn].schemas[schema].tables.add(table);
+      }
+    });
+
+    columns.forEach((column) => {
+      if (typeof column !== 'string') return;
+      const parts = column.split('.');
+      if (parts.length < 4) return;
+      const conn = parts[0];
+      const schema = parts.slice(0, 2).join('.');
+      if (connectionGroups[conn]?.schemas[schema]) {
+        connectionGroups[conn].schemas[schema].columns.add(column);
+      }
+    });
+
+    Object.values(connectionGroups).forEach((connGroup) => {
+      Object.values(connGroup.schemas).forEach((schema) => {
+        result.push({
+          connection: connGroup.connection,
+          schema: schema.schema,
+          tables: Array.from(schema.tables),
+          columns: Array.from(schema.columns),
+        });
+      });
+    });
+
+    return result;
   };
 
   if (loading) {

@@ -29,7 +29,7 @@ const RulesReportsLinks = () => {
         const reportFileName = row.report_name;
 
         // If report type is LIST, navigate to report viewer page
-        /*
+        
         if ((reportType || "").toUpperCase() === "LIST") {
           const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
           const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
@@ -43,12 +43,12 @@ const RulesReportsLinks = () => {
           });
           return;
         }
-          */
+          
 
-
+/*
         if ((reportType || "").toUpperCase() === "LIST") {
-            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER; // Already in forward slashes from .env
-            const reportPath = `${reportFolder}/${reportFileName}.rptdesign`; // Create relative path
+            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER; 
+            const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
           
             window.open(
               `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
@@ -58,7 +58,7 @@ const RulesReportsLinks = () => {
             );
             return;
           }
-
+*/
 
         const headers = {
           "Content-Type": "application/json",
