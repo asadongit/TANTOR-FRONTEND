@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
-import { FileText, ChevronDown, Info, Loader } from 'lucide-react';
+import { FileText, ChevronDown, Info, Loader, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 
-const ReportStep = ({ policyData, onDataChange }) => {
+const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
     const { token } = useAuth();
 
     const [artefactTypes, setArtefactTypes] = useState([]);
@@ -61,8 +61,15 @@ const ReportStep = ({ policyData, onDataChange }) => {
 
     useEffect(() => {
         const fetchReportGroups = async () => {
+            if (!selectedArtefactType) {
+                setReportGroups([]);
+                setLoading(prev => ({ ...prev, reportGroups: false }));
+                return;
+            }
+
+            setLoading(prev => ({ ...prev, reportGroups: true }));
             try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-group`, {
+                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-group/${selectedArtefactType}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -75,7 +82,7 @@ const ReportStep = ({ policyData, onDataChange }) => {
                 }
 
                 const data = await response.json();
-                setReportGroups(data.groups?.filter(group => group !== null) || []);
+                setReportGroups(data.report_group?.filter(group => group !== null) || []);
                 setError(prev => ({ ...prev, reportGroups: null }));
             } catch (err) {
                 console.error('Error fetching report groups:', err);
@@ -85,13 +92,25 @@ const ReportStep = ({ policyData, onDataChange }) => {
             }
         };
 
+        // Reset dependent selections when artefact type changes
+        setSelectedReportGroup('');
+        setSelectedReportType('');
+        setSelectedReportName('');
+
         fetchReportGroups();
-    }, [token]);
+    }, [token, selectedArtefactType]);
 
     useEffect(() => {
         const fetchReportTypes = async () => {
+            if (!selectedReportGroup) {
+                setReportTypes([]);
+                setLoading(prev => ({ ...prev, reportTypes: false }));
+                return;
+            }
+
+            setLoading(prev => ({ ...prev, reportTypes: true }));
             try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-type`, {
+                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-type/${selectedReportGroup}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -114,18 +133,33 @@ const ReportStep = ({ policyData, onDataChange }) => {
             }
         };
 
+        // Reset dependent selections when report group changes
+        setSelectedReportType('');
+        setSelectedReportName('');
+
         fetchReportTypes();
-    }, [token]);
+    }, [token, selectedReportGroup]);
 
     useEffect(() => {
         const fetchReportNames = async () => {
+            if (!selectedReportGroup || !selectedReportType) {
+                setReportNames([]);
+                setLoading(prev => ({ ...prev, reportNames: false }));
+                return;
+            }
+
+            setLoading(prev => ({ ...prev, reportNames: true }));
             try {
                 const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-name`, {
-                    method: 'GET',
+                    method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({
+                        report_type: selectedReportType,
+                        report_group: selectedReportGroup
+                    })
                 });
 
                 if (!response.ok) {
@@ -133,7 +167,7 @@ const ReportStep = ({ policyData, onDataChange }) => {
                 }
 
                 const data = await response.json();
-                setReportNames(data.types || []);
+                setReportNames(data.report_names || []);
                 setError(prev => ({ ...prev, reportNames: null }));
             } catch (err) {
                 console.error('Error fetching report names:', err);
@@ -143,22 +177,45 @@ const ReportStep = ({ policyData, onDataChange }) => {
             }
         };
 
+        // Reset dependent selection when report type changes
+        setSelectedReportName('');
+
         fetchReportNames();
-    }, [token]);
+    }, [token, selectedReportGroup, selectedReportType]);
 
     useEffect(() => {
         onDataChange({
-            report_selections: {
-                artefact_type: selectedArtefactType,
-                report_group: selectedReportGroup,
-                report_type: selectedReportType,
-                report_name: selectedReportName
-            },
+            reports: selectedReportName ? [
+                {
+                    report_name: selectedReportName,
+                    report_type: selectedReportType,
+                    report_group: selectedReportGroup,
+                    artefact_type: selectedArtefactType
+                }
+            ] : [],
             data_connection: [],
             row_access_control: {},
             column_access_control: {}
         });
     }, [selectedArtefactType, selectedReportGroup, selectedReportType, selectedReportName, onDataChange]);
+
+    const handleNext = () => {
+        setActiveStep(7); // Go to final confirmation
+    };
+
+    const handleSkip = () => {
+        // Clear any report data and go to confirmation
+        onDataChange({
+            reports: []
+        });
+        setActiveStep(7);
+    };
+
+    const handleBack = () => {
+        setActiveStep(5); // Go back to step 6 (permissions)
+    };
+
+    const isFormValid = selectedArtefactType && selectedReportGroup && selectedReportType && selectedReportName;
 
     const renderDropdown = (label, options, value, onChange, loadingState, errorState) => {
         return (
@@ -198,9 +255,16 @@ const ReportStep = ({ policyData, onDataChange }) => {
 
     return (
         <Box>
-            <Typography variant="h6" className="text-lg font-medium mb-4">Report Policy Configuration</Typography>
+            <div className="flex items-center justify-between mb-4">
+                <Typography variant="h6" className="text-lg font-medium">Report Policy Configuration</Typography>
 
+            </div>
 
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <p className="text-yellow-800 text-sm">
+                    <strong>Optional Step:</strong> Configure report access policies if needed. You can skip this step and save your policy, or configure reports and then save.
+                </p>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-6 max-w-2xl mt-2">
                 {/* Dropdowns */}
@@ -241,6 +305,34 @@ const ReportStep = ({ policyData, onDataChange }) => {
                         error.reportNames
                     )}
                 </div>
+            </div>
+
+            {/* Navigation buttons */}
+            <div className="flex justify-between mt-8 pt-4 border-t border-gray-200">
+                <div className="flex gap-3">
+                    <button
+                        onClick={handleSkip}
+                        className="px-6 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center"
+                    >
+                        <X className="w-4 h-4 mr-2" />
+                        Skip Reports
+                    </button>
+                    {isFormValid && (
+                        <button
+                            onClick={handleNext}
+                            className="px-6 py-2 rounded-md bg-[#8e78b7] text-white hover:bg-[#7a66a3] flex items-center"
+                        >
+                            Continue with Reports
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </button>
+                    )}
+                </div>
+                <button
+                    onClick={handleBack}
+                    className="px-5 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+                >
+                    Back
+                </button>
             </div>
         </Box>
     );

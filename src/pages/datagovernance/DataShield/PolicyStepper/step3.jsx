@@ -1,8 +1,9 @@
 import { useAuth } from '../../../../context/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified }) => {
   const { token } = useAuth();
+  const fetchedRef = useRef(false);
 
   const [data, setData] = useState([]);
   const [selectedConnections, setSelectedConnections] = useState(initialData.selectedConnections || []);
@@ -23,21 +24,25 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
       selectedTables,
       selectedColumns
     });
-  }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns]);
+  }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns, onDataChange]);
 
   useEffect(() => {
     setSelectedConnections(initialData.selectedConnections || []);
     setSelectedSchemas(initialData.selectedSchemas || []);
     setSelectedTables(initialData.selectedTables || []);
     setSelectedColumns(initialData.selectedColumns || []);
-  }, [initialData]);
+  }, [initialData.selectedConnections, initialData.selectedSchemas, initialData.selectedTables, initialData.selectedColumns]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (token && !fetchedRef.current) {
+      fetchData();
+      fetchedRef.current = true;
+    }
+  }, [token]);
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/connectionscreen`, {
         method: 'GET',
         headers: {
@@ -47,9 +52,9 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
       });
       const responseData = await response.json();
       setData(responseData);
-      setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
+    } finally {
       setLoading(false);
     }
   };

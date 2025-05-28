@@ -1,6 +1,6 @@
 import { Stepper, Step, StepLabel, Button, Box, Typography } from '@mui/material';
 import successBackground from "../../../../assets/green.png";
-import { BadgeCheck } from 'lucide-react';
+import { BadgeCheck, Plus, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { toast } from "react-hot-toast";
@@ -56,12 +56,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
     };
 
     const handleEditPolicy = () => {
-        // Go back based on policy type
-        if (policyData.policy_for === 'reports') {
-            setActiveStep(3); // Go back to Report Configuration step
-        } else {
-            setActiveStep(6); // Go back to Step 6 (Permissions) for connection policies
-        }
+        setActiveStep(6); // Go back to Report Step
     };
 
     return (
@@ -76,12 +71,12 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
 
             <div>
                 <div className="flex items-center space-x-4 mb-4">
-                    <BadgeCheck className="w-8 h-8 text-green-500" />{" "}
+                    <BadgeCheck className="w-8 h-8 text-green-500" />
                     <h2 className="text-2xl font-bold">Confirmation submission</h2>
                 </div>
 
                 <p className="text-lg text-gray-800 mb-4">
-                    Are you sure you want to save this {policyData.policy_for === 'reports' ? 'report' : ''} policy?
+                    Are you sure you want to save this policy?
                 </p>
 
                 <div className="flex flex-row justify-between gap-4 mt-5">
@@ -111,7 +106,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
                 </div>
             </div>
         </Box>
-    )
-}
+    );
+};
 
 export default Step7;

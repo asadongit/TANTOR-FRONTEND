@@ -30,7 +30,6 @@ import Step4 from "./PolicyStepper/step4";
 import Step5 from "./PolicyStepper/step5";
 import Step6 from "./PolicyStepper/step6";
 import Step7 from "./PolicyStepper/step7";
-import PolicyTypeSelector from "./PolicyStepper/PolicyTypeSelector";
 import ReportStep from "./PolicyStepper/ReportStep";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -191,8 +190,7 @@ const Policy = () => {
     };
 
     const [isOpen, setIsOpen] = useState(false);
-    const connectionSteps = ['Step 1', 'Step 2', 'Policy Type', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Confirmation'];
-    const reportSteps = ['Step 1', 'Step 2', 'Policy Type', 'Report Configuration', 'Confirmation'];
+    const connectionSteps = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Reports (Optional)', 'Confirmation'];
     const [activeStep, setActiveStep] = useState(0);
     const [policyData, setPolicyData] = useState({
         policy_type: '',
@@ -233,7 +231,7 @@ const Policy = () => {
 
     const [policyType, setPolicyType] = useState('connection');
 
-    const steps = policyType === 'reports' ? reportSteps : connectionSteps;
+    const steps = connectionSteps;
 
     const handleNext = () => {
         switch (activeStep) {
@@ -252,14 +250,7 @@ const Policy = () => {
                 }
                 break;
             case 2:
-                if (!policyType) {
-                    return;
-                }
-                break;
-            case 3:
-                if (policyType === 'connection') {
-                    updateStep3Data(step3Data);
-                }
+                updateStep3Data(step3Data);
                 break;
             default:
                 break;
@@ -390,12 +381,6 @@ const Policy = () => {
     };
 
     const getNextStepIndex = (currentStep) => {
-        if (currentStep === 2 && policyType === 'reports') {
-            return 3;
-        }
-        if (currentStep === 3 && policyType === 'reports') {
-            return 4;
-        }
         return currentStep + 1;
     };
 
@@ -406,50 +391,37 @@ const Policy = () => {
             case 1:
                 return <Step2 onDataChange={setStep2Data} initialData={step2Data} />;
             case 2:
-                return <PolicyTypeSelector selectedType={policyType} onTypeChange={setPolicyType} />;
+                return <Step3
+                    name='Data'
+                    onDataChange={setStep3Data}
+                    initialData={step3Data}
+                    policyData={policyData}
+                    setIsStep3Modified={setIsStep3Modified}
+                />;
             case 3:
-                return policyType === 'reports' ? (
-                    <ReportStep
-                        policyData={policyData}
-                        onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))}
-                    />
-                ) : (
-                    <Step3
-                        name='Data'
-                        onDataChange={setStep3Data}
-                        initialData={step3Data}
-                        policyData={policyData}
-                        setIsStep3Modified={setIsStep3Modified}
-                    />);
-            case 4:
-                if (policyType === 'reports') {
-                    return <Step7
-                        setIsOpen={setIsOpen}
-                        policyData={{
-                            ...policyData,
-                            policy_for: 'reports'
-                        }}
-                        setActiveStep={setActiveStep}
-                        fetchPolicyListData={fetchPolicyListData}
-                        isEditMode={isEditMode}
-                        editPolicyId={editPolicyId}
-                    />;
-                }
                 return <Step4
                     policyData={policyData}
-                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))}
+                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))
+                    }
                     isStep3Modified={isStep3Modified}
                 />;
-            case 5:
+            case 4:
                 return <Step5
                     policyData={policyData}
                     onDataChange={updatePolicyData}
                     isStep3Modified={isStep3Modified}
                 />;
-            case 6:
+            case 5:
                 return <Step6
                     policyData={policyData}
                     onDataChange={updatePolicyData}
+                />;
+            case 6:
+                return <ReportStep
+                    policyData={policyData}
+                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))
+                    }
+                    setActiveStep={setActiveStep}
                 />;
             case 7:
                 return <Step7
@@ -462,6 +434,7 @@ const Policy = () => {
                     fetchPolicyListData={fetchPolicyListData}
                     isEditMode={isEditMode}
                     editPolicyId={editPolicyId}
+                    showReportOption={false}
                 />;
             default:
                 return null;
@@ -526,7 +499,12 @@ const Policy = () => {
                 });
                 break;
             case 2:
-                setPolicyType('');
+                setStep3Data({
+                    selectedConnections: [],
+                    selectedSchemas: [],
+                    selectedTables: [],
+                    selectedColumns: [],
+                });
                 break;
             case 3:
                 setPolicyData((prev) => ({
@@ -549,6 +527,17 @@ const Policy = () => {
                         write: false,
                         delete: false,
                         execute: false,
+                    },
+                }));
+                break;
+            case 6:
+                setPolicyData((prev) => ({
+                    ...prev,
+                    report_selections: {
+                        artefact_type: '',
+                        report_group: '',
+                        report_type: '',
+                        report_name: ''
                     },
                 }));
                 break;
@@ -930,14 +919,12 @@ const Policy = () => {
                         >
                             <X className="h-5 w-5" />
                         </button>
-                        {!(activeStep === 4 && policyType === 'reports') &&
-                         !(activeStep === 7 && policyType === 'connection') && (
+                        {!(activeStep === 7) && (
                             <h2 className="text-lg font-bold text-[#8e78b7] flex items-center mb-3">
                                 {isEditMode ? "Edit Policy" : "Add Policy"}
                             </h2>
                         )}
-                        {!(activeStep === 4 && policyType === 'reports') &&
-                         !(activeStep === 7 && policyType === 'connection') && (
+                        {!(activeStep === 7) && (
                             <Stepper activeStep={activeStep} alternativeLabel>
                                 {steps.map((_, index) => {
                                     const isCompleted = index < activeStep;
@@ -965,8 +952,8 @@ const Policy = () => {
                             {renderStepContent(activeStep)}
                         </div>
 
-                        {!(activeStep === 4 && policyType === 'reports') &&
-                         !(activeStep === 7 && policyType === 'connection') && (
+                        {!(activeStep === 6) &&
+                         !(activeStep === 7) && (
                             <div className="flex justify-between mt-7">
                                 <div className="flex gap-3">
                                     <button
@@ -979,13 +966,11 @@ const Policy = () => {
                                         onClick={handleNext}
                                         disabled={
                                             (activeStep === 0 && !step1Data.isFormValid) ||
-                                            (activeStep === 1 && !step2Data.isFormValid) ||
-                                            (activeStep === 2 && !policyType)
+                                            (activeStep === 1 && !step2Data.isFormValid)
                                         }
                                         className={`px-6 py-1.5 rounded-md ${
                                             (activeStep === 0 && !step1Data.isFormValid) ||
-                                            (activeStep === 1 && !step2Data.isFormValid) ||
-                                            (activeStep === 2 && !policyType)
+                                            (activeStep === 1 && !step2Data.isFormValid)
                                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                                 : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
                                         }`}
