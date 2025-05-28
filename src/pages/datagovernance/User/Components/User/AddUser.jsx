@@ -361,6 +361,12 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
+    } else {
+      const emailParts = formData.email.split('@');
+      const localPart = emailParts[0];
+      if (/^\d+$/.test(localPart)) {
+        newErrors.email = 'Email address cannot consist of numbers only before @';
+      }
     }
 
     return newErrors;
