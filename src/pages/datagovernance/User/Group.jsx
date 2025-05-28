@@ -171,7 +171,7 @@ function Group() {
         },
       });
       if (!response.ok) {
-        throw new Error("Network response was not ok");
+        throw new Error(`Failed to fetch group dashboard data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
@@ -189,8 +189,10 @@ function Group() {
       }));
 
       setGroups(transformedData);
+      return { success: true };
     } catch (error) {
       console.error("Error fetching group data:", error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -204,7 +206,7 @@ function Group() {
         },
       });
       if (!response.ok) {
-        throw new Error("Network response was not ok");
+        throw new Error(`Failed to fetch group list data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
@@ -247,8 +249,10 @@ function Group() {
 
       setTableData(transformedData);
       console.log("Fetched group list data:", transformedData);
+      return { success: true };
     } catch (error) {
       console.error("Error fetching group list:", error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -256,19 +260,32 @@ function Group() {
     setRefreshing(true);
     setSearchTerm("");
     try {
-      await Promise.all([
+      const [dashboardResult, listResult] = await Promise.all([
         FetchRoleDashboardData(),
         fetchGroupList()
       ]);
 
-      setToast({
-        show: true,
-        message: 'Group data refreshed successfully',
-        type: 'success'
-      });
+      // Check if both operations succeeded
+      if (dashboardResult.success && listResult.success) {
+        setToast({
+          show: true,
+          message: 'Group data refreshed successfully',
+          type: 'success'
+        });
+      } else {
+        // Show error if any operation failed
+        const errorMessages = [];
+        if (!dashboardResult.success) errorMessages.push('dashboard data');
+        if (!listResult.success) errorMessages.push('list data');
+
+        setToast({
+          show: true,
+          message: `Failed to refresh group ${errorMessages.join(' and ')}`,
+          type: 'error'
+        });
+      }
     } catch (error) {
       console.error("Error refreshing data:", error);
-
       setToast({
         show: true,
         message: 'Failed to refresh group data',
