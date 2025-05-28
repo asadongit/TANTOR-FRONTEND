@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Info } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
+import { toast } from "react-toastify";
 
 function AddGroup({ showModal, setShowModal, onGroupAdded }) {
   const [formData, setFormData] = useState({
@@ -48,6 +49,16 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
       const data = await response.json();
       console.log("Group created successfully:", data);
 
+      // Show success toast
+      toast.success("Group created successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
       // Reset form and close modal
       setFormData({ groupname: "", description: "" });
       setShowModal(false);
@@ -57,6 +68,8 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
 
     } catch (error) {
       console.error("Error creating group:", error);
+      // Show error toast
+      toast.error(error.message || "Failed to create group. Please try again.");
       setError(error.message || "Failed to create group. Please try again.");
     } finally {
       setLoading(false);

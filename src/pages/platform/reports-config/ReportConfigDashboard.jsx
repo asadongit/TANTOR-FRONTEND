@@ -15,6 +15,7 @@ import { encrypt } from "../../../utils/Crypto";
 import DataTable from "../../../components/DataTable";
 import { useProjectData } from "../../../hooks/platform/project";
 import { useProjectCardData } from "../../../hooks/platform/cardCounts";
+import { useRuleReportsData } from "../../../hooks/platform/ruleReports";
 
 
 
@@ -46,7 +47,7 @@ const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
 
 const ReportConfigDashboard = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
-  const { data: projectData = [], isLoading: isProjectLoading, error: projectError, refetch: refetchProjects } = useProjectData();
+  const { data: reportsData = [], isLoading: isReportsLoading, error: reportError, refetch: refetchReports } = useRuleReportsData();
   const [hoveredBar, setHoveredBar] = useState(null);
 
 
@@ -54,7 +55,7 @@ const ReportConfigDashboard = () => {
 
   
   const handleRefresh = () => {
-    refetchProjects();
+    refetchReports();
     refetchCardData();
   };
 
@@ -106,14 +107,13 @@ const ReportConfigDashboard = () => {
     ];
   
   const columns = [
-    { key: "project", label: "Project Name" },
-    { key: "created_by", label: "Created By" },
-    { key: "owner", label: "Owner" },
-    { key: "connections", label: "Connections" },
-    { key: "metadata", label: "Migrations" },
-    { key: "migration", label: "Transformations" },
-    { key: "purge", label: "Purges" },
-    { key: "cdc", label: "CDC" },
+    { key: "s_no", label: "#" },
+    { key: "id", label: "ID" },
+    { key: "name", label: "Name" },
+    { key: "description", label: "Desc" },
+    { key: "created", label: "Created" },
+    { key: "updated", label: "Updated" },
+    { key: "type", label: "Type" },
     { label: "Action", sortable: false },
   ];
 
@@ -211,14 +211,14 @@ const ReportConfigDashboard = () => {
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
             onClick={handleRefresh}
           >
-            <List className={`h-5 w-5 ${isProjectLoading ? 'animate-spin' : ''}`} />
+            <List className={`h-5 w-5 ${isReportsLoading ? 'animate-spin' : ''}`} />
           </button>
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
             onClick={handleCreate}
           >
-            <Plus className={`h-5 w-5 ${isProjectLoading ? 'animate-spin' : ''}`} />
+            <Plus className={`h-5 w-5 ${isReportsLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -256,11 +256,11 @@ const ReportConfigDashboard = () => {
      
         <DataTable
           columns={columns}
-          data={projectData}
+          data={reportsData}
           actions={actions}
-          isLoading={isProjectLoading}
-          isError={!!projectError}
-          refetch={refetchProjects}
+          isLoading={isReportsLoading}
+          isError={!!reportError}
+          refetch={refetchReports}
 />
     </div>
   );

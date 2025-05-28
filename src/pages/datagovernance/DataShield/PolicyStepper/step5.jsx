@@ -30,6 +30,21 @@ const Step5 = ({ policyData, onDataChange }) => {
         table.fullPath.toLowerCase().includes(tableSearch.toLowerCase())
     );
 
+    // const getColumnsForSelectedTable = () => {
+    //     if (!selectedTable) return [];
+    //     const tableConn = policyData.data_connection.find((conn) =>
+    //         conn.tables.includes(selectedTable)
+    //     );
+    //     return (
+    //         tableConn?.columns
+    //             .filter((col) => col.startsWith(selectedTable))
+    //             .map((col) => ({
+    //                 fullPath: col,
+    //                 columnName: col.split('.').pop(),
+    //             })) || []
+    //     );
+    // };
+
     const getColumnsForSelectedTable = () => {
         if (!selectedTable) return [];
         const tableConn = policyData.data_connection.find((conn) =>
@@ -37,7 +52,7 @@ const Step5 = ({ policyData, onDataChange }) => {
         );
         return (
             tableConn?.columns
-                .filter((col) => col.startsWith(selectedTable))
+                .filter((col) => col.startsWith(`${selectedTable}.`)) // Ensures exact match
                 .map((col) => ({
                     fullPath: col,
                     columnName: col.split('.').pop(),
@@ -137,8 +152,8 @@ const Step5 = ({ policyData, onDataChange }) => {
                 <span
                     key={table}
                     className={`px-3 py-1 rounded-sm text-sm font-medium cursor-pointer ${selectedTable === table
-                            ? 'text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                     style={{
                         backgroundColor: selectedTable === table ? '#8e78b7' : undefined,
@@ -166,8 +181,8 @@ const Step5 = ({ policyData, onDataChange }) => {
                     </h4>
                     <button
                         className={`flex items-center px-3 py-1 border rounded-md text-sm font-medium ${controls.length > 0 && !isControlComplete(controls[controls.length - 1])
-                                ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-                                : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
+                            ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+                            : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
                             }`}
                         style={{
                             borderColor:

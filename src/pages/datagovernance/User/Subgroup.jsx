@@ -6,6 +6,8 @@ import { useAuth } from "../../../context/AuthContext";
 import AddSubgroup from "./Components/Subgroup/AddSubgroup";
 import DeleteSubgroup from "./Components/Subgroup/DeleteSubgroup";
 import EditSubgroup from "./Components/Subgroup/EditSubgroup";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -54,12 +56,20 @@ function Subgroup() {
   const [viewMode, setViewMode] = useState('both');
   const rowsPerPage = 10;
   const [togglingStatus, setTogglingStatus] = useState(null);
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const { token } = useAuth();
 
   const initialFetchDoneRef = useRef(false);
 
   const filteredSubgroups = subgroups.filter(item =>
     item.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Add filtering for table data
+  const filteredTableData = tableData.filter(subgroup =>
+    subgroup.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    subgroup.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    subgroup.parentGroup.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const [activeMenu, setActiveMenu] = useState(null);
@@ -89,7 +99,7 @@ function Subgroup() {
         },
       });
       if (!response.ok) {
-        throw new Error("Network response was not ok");
+        throw new Error(`Failed to fetch subgroup dashboard data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
@@ -107,8 +117,10 @@ function Subgroup() {
       }));
 
       setSubgroups(transformedData);
+      return { success: true };
     } catch (error) {
       console.error("Error fetching subgroup data:", error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -122,7 +134,7 @@ function Subgroup() {
         },
       });
       if (!response.ok) {
-        throw new Error("Network response was not ok");
+        throw new Error(`Failed to fetch subgroup list data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
@@ -162,22 +174,55 @@ function Subgroup() {
 
       setTableData(transformedData);
       console.log("Fetched subgroup list data:", transformedData);
+      return { success: true };
     } catch (error) {
       console.error("Error fetching subgroup list data:", error);
+      return { success: false, error: error.message };
     }
   };
 
   const refreshAllData = async () => {
     setRefreshing(true);
+    setSearchTerm("");
     try {
-      await Promise.all([
+      const [subgroupsResult, listResult] = await Promise.all([
         fetchSubgroupsData(),
         fetchSubgroupListData()
       ]);
+
+      // Check if both operations succeeded
+      if (subgroupsResult.success && listResult.success) {
+        setToast({
+          show: true,
+          message: 'Subgroup data refreshed successfully',
+          type: 'success'
+        });
+      } else {
+        // Show error if any operation failed
+        const errorMessages = [];
+        if (!subgroupsResult.success) errorMessages.push('dashboard data');
+        if (!listResult.success) errorMessages.push('list data');
+
+        setToast({
+          show: true,
+          message: `Failed to refresh subgroup ${errorMessages.join(' and ')}`,
+          type: 'error'
+        });
+      }
     } catch (error) {
       console.error("Error refreshing data:", error);
+      setToast({
+        show: true,
+        message: 'Failed to refresh subgroup data',
+        type: 'error'
+      });
     } finally {
       setRefreshing(false);
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
     }
   };
 
@@ -199,10 +244,11 @@ function Subgroup() {
     setActiveMenu(null);
   };
 
+  // Update pagination to use filteredTableData
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = tableData.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(tableData.length / rowsPerPage);
+  const currentRows = filteredTableData.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredTableData.length / rowsPerPage);
 
   const goToNextPage = () => {
     if (currentPage < totalPages) {
@@ -219,6 +265,27 @@ function Subgroup() {
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
+          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+          'bg-red-100 text-red-800 border-l-4 border-red-500'
+        }`}>
+          <Icon
+            icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
+            className="h-5 w-5"
+          />
+          <p>{toast.message}</p>
+          <button
+            onClick={() => setToast({ show: false, message: '', type: '' })}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            <Icon icon="mdi:close" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <Breadcrumb title="Data Governance" link="/" />
       <div className="flex items-center justify-between mb-6">
@@ -430,14 +497,27 @@ function Subgroup() {
               ) : (
                 <tr>
                   <td colSpan="7" className="p-4 text-center text-gray-500">
-                    No subgroups data available
+                    {searchTerm ? (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
+                        <p>No subgroups found matching "{searchTerm}"</p>
+                        <button
+                          onClick={() => setSearchTerm("")}
+                          className="mt-2 text-[#6a8caf] hover:underline transition-all duration-200"
+                        >
+                          Clear search
+                        </button>
+                      </div>
+                    ) : (
+                      "No subgroups data available"
+                    )}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
 
-          {!loading && tableData.length > 0 && (
+          {!loading && filteredTableData.length > 0 && (
             <div className="flex justify-end items-center p-4">
               <div className="flex items-center space-x-1">
                 <button

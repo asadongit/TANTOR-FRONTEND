@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
+import { toast } from "react-toastify";
 
 function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
   const [formData, setFormData] = useState({
@@ -69,6 +70,16 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
         throw new Error(errorData.detail || "Failed to create subgroup");
       }
 
+      // Show success toast
+      toast.success("Subgroup created successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
       // Reset form
       setFormData({
         name: "",
@@ -83,6 +94,7 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
       }
     } catch (error) {
       console.error("Error creating subgroup:", error);
+      toast.error(error.message || "Failed to create subgroup. Please try again.");
       setError(error.message || "Failed to create subgroup");
     } finally {
       setLoading(false);

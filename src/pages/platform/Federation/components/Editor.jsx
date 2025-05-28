@@ -20,12 +20,12 @@ import { ToastContainer, toast } from "react-toastify";
 import Switch from "@mui/material/Switch";
 import Builder from "./Builder";
 import { useAuth } from "../../../../context/AuthContext";
+import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 
 export default function Editor() {
-  const {token, project, decodedToken, setSelectedProject, hostnameV1 }= useAuth();
+  const { token, project, decodedToken, setSelectedProject, hostnameV1 } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [query, setQuery] = useState("");
-  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
   const [columnDefs, setColumnDefs] = useState([]);
@@ -39,90 +39,114 @@ export default function Editor() {
 
   const [expanded, setExpanded] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
+  const [originalConnections, setOriginalConnections] = useState([]);
+
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       const response = await fetch(`${hostnameV1}/connection-saves`, {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+  //       let data = await response.json();
+
+  //       if (project !== "default" && project !== "none") {
+  //         data = data.filter(
+  //           (item) =>
+  //             item.project.toUpperCase() === project.toUpperCase() &&
+  //             item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+  //             !item.is_deleted
+  //         );
+  //       } else {
+  //         data = data.filter(
+  //           (item) =>
+  //             item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
+  //             !item.is_deleted
+  //         );
+  //       }
+
+  //       const formattedData = data.map((item) => ({
+  //         sourceConnectionId: item.connection_id,
+  //         connection_type: item.connection_type,
+  //         connection_name: item.connection_name,
+  //         project: item.project,
+  //         created_by: item.created_by,
+  //       }));
+
+  //       setOriginalConnections(formattedData); // Store the original connections
+  //       setDisplayedConnections(formattedData); // Set initial displayed connections
+  //     } catch (error) {
+  //       console.log(error);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchConnections = async () => {
       try {
-        const response = await fetch(`${hostnameV1}/connection-saves`, {
+
+        // First get the policy IDs
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        // If no policy IDs are returned, set empty connections and return
+        if (policyIds.length === 0) {
+          setOriginalConnections([]);
+          setDisplayedConnections([]);
+          return;
+        }
+
+        // Then fetch connections based on policy IDs
+        const response = await fetch(`${hostnameV1}/connections/list`, {
+          method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ matched_policy_ids: policyIds })
         });
-        let data = await response.json();
 
-        if (project !== "default" && project !== "none") {
-          data = data.filter(
-            (item) =>
-              item.project.toUpperCase() === project.toUpperCase() &&
-              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-              !item.is_deleted
-          );
-        } else {
-          data = data.filter(
-            (item) =>
-              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-              !item.is_deleted
-          );
+        if (!response.ok) {
+          throw new Error('Failed to fetch connections');
         }
-        console.log("connection data is ===>", data);
 
-        const formattedData = data.map((item) => ({
-          sourceConnectionId: item.connection_id,
-          connection_type: item.connection_type,
-          connection_name: item.connection_name,
-          project: item.project,
-          created_by: item.created_by,
+        const connectionsData = await response.json();
+
+        // Format the data according to the new API response
+        const formattedConnections = connectionsData.map(conn => ({
+          sourceConnectionId: conn.connection_id,
+          connection_type: conn.connection_type,
+          connection_name: conn.connection_name,
         }));
-        setDisplayedConnections(formattedData);
+
+        setOriginalConnections(formattedConnections);
+        setDisplayedConnections(formattedConnections);
       } catch (error) {
-        console.log(error);
+        console.error("Error fetching connections:", error);
+        toast.error("Failed to load connections");
+      } finally {
       }
     };
 
-    fetchData();
+    fetchConnections();
   }, []);
 
   useEffect(() => {
     if (searchTerm.trim() === "") {
-      const originalConnections = displayedConnections.length ? displayedConnections : [];
-      setDisplayedConnections(originalConnections);
+      setDisplayedConnections([...originalConnections]);
     } else {
-      const filteredConnections = displayedConnections.filter((connection) =>
+      const filteredConnections = originalConnections.filter((connection) =>
         connection.connection_name
           .toLowerCase()
           .includes(searchTerm.toLowerCase())
       );
       setDisplayedConnections(filteredConnections);
     }
-  }, [searchTerm]);
-
-  useEffect(() => {
-    fetch(`${hostnameV1}/recent-queries`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    })
-      .then((response) => response.text())
-      .then((result) => {
-        const lines = result.trim().split("\n");
-        const queries = lines
-          .map((line) => {
-            try {
-              const json = JSON.parse(line);
-              return json.query;
-            } catch (error) {
-              console.error("Error parsing JSON:", error);
-              return null;
-            }
-          })
-          .filter((query) => query !== null);
-        console.log("queries are ====>", queries);
-        setHistory(queries);
-      })
-      .catch((error) => console.error("Error fetching data:", error));
-  }, []);
+  }, [searchTerm, originalConnections]);
 
   const handleClearQuery = () => {
     setQuery("");
@@ -174,6 +198,7 @@ export default function Editor() {
 
     setLoading(true);
 
+    // First fetch to secure-query
     fetch(`${import.meta.env.VITE_FAST_API}/secure-query`, {
       method: "POST",
       headers: {
@@ -185,34 +210,56 @@ export default function Editor() {
         user_query: newquery,
       }),
     })
-    .then((response) => response.json())
-    .then((data) => {
-      const secureQuery = data.secure_query;
-      console.log("Secure query:", secureQuery);
-      console.log("Matched policy IDs:", data.matched_policy_ids);
+      .then((response) => {
+        if (!response.ok) {
+          return response.json().then(errData => {
+            toast.error(errData.detail || "Error in query validation");
+            throw new Error("secure-query failed");
+          });
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (!data || !data.secure_query) {
+          throw new Error("Invalid response from secure-query");
+        }
 
-      setSecuredQuery(secureQuery);
+        const secureQuery = data.secure_query;
+        console.log("Secure query:", secureQuery);
+        console.log("Matched policy IDs:", data.matched_policy_ids);
 
-      const payload = {
-        page: page,
-        query: secureQuery,
-      };
+        setSecuredQuery(secureQuery);
 
-      return fetch(`${hostnameV1}/runQuery`, {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-    })
-    .then((response) =>
-      response.text().then((data) => ({ status: response.status, data }))
-    )
-    .then(({ status, data }) => {
-      if (status === 200) {
+        const payload = {
+          page: page,
+          query: secureQuery,
+        };
+
+        return fetch(`${hostnameV1}/runQuery`, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      })
+      .then((response) => {
+        if (!response.ok) {
+          return response.text().then(text => {
+            try {
+              const errData = JSON.parse(text);
+              toast.error(errData.detail || "Error in query execution");
+            } catch {
+              toast.error(text || "Error in query execution");
+            }
+            throw new Error("runQuery failed");
+          });
+        }
+        return response.text();
+      })
+      .then((data) => {
         const rows = data
           .trim()
           .split("\n")
@@ -222,27 +269,17 @@ export default function Editor() {
         setColumnDefs(columns);
         setData(rows);
         setHasMore(rows.length === 100);
-      } else {
-        if (data) {
-          const res = JSON.parse(data);
-          toast.error(res.detail);
+      })
+      .catch((error) => {
+        if (error.message !== "secure-query failed" &&
+          error.message !== "runQuery failed" &&
+          error.message !== "Invalid response from secure-query") {
+          console.error("Unexpected error in query execution:", error);
         }
-      }
-    })
-    .catch((error) => {
-      console.error("Error in query execution:", error);
-      toast.error("An error occurred while processing your query");
-    })
-    .finally(() => {
-      setLoading(false);
-    });
-  };
-
-  const handleHistoryClick = (history) => {
-    setQuery(history);
-    setSecuredQuery("");
-    setPageNo(1);
-    executeQuery(history, 1);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   const [checked, setChecked] = useState(true);
@@ -284,6 +321,54 @@ export default function Editor() {
     }));
   };
 
+  // const handleSchema = async (event, connection) => {
+  //   const connectionId = `conn-${connection}`;
+  //   toggleExpanded(connectionId);
+
+  //   if (!expandedItems[connectionId] && !schemas[connection]) {
+  //     try {
+  //       setSchemas((prevSchemas) => ({
+  //         ...prevSchemas,
+  //         [connection]: "loading",
+  //       }));
+  //       const response = await fetch(
+  //         `${hostnameV1}/${connection}/schemas`, {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`,
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+  //       if (!response.ok) {
+  //         setSchemas((prevSchemas) => ({
+  //           ...prevSchemas,
+  //           [connection]: [],
+  //         }));
+  //         throw new Error("Network response was not ok");
+  //       }
+  //       const data = await response.text();
+  //       const res = await JSON.parse(data);
+
+  //       if (res.length === 0) {
+  //         setSchemas((prevSchemas) => ({
+  //           ...prevSchemas,
+  //           [connection]: [],
+  //         }));
+  //       } else {
+  //         setSchemas((prevSchemas) => ({
+  //           ...prevSchemas,
+  //           [connection]: res,
+  //         }));
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching schema data:", error);
+  //       setSchemas((prevSchemas) => ({
+  //         ...prevSchemas,
+  //         [connection]: "error",
+  //       }));
+  //     }
+  //   }
+  // };
+
   const handleSchema = async (event, connection) => {
     const connectionId = `conn-${connection}`;
     toggleExpanded(connectionId);
@@ -294,43 +379,105 @@ export default function Editor() {
           ...prevSchemas,
           [connection]: "loading",
         }));
-        const response = await fetch(
-          `${hostnameV1}/${connection}/schemas`, {
+
+        // First get policy IDs
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        // If no policy IDs, set empty schemas and return
+        if (policyIds.length === 0) {
+          setSchemas((prevSchemas) => ({
+            ...prevSchemas,
+            [connection]: [],
+          }));
+          return;
+        }
+
+        const response = await fetch(`${hostnameV1}/schemas/list`, {
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            matched_policy_ids: policyIds,
+            connection_name: connection
+          })
         });
-        if (!response.ok) {
-          setSchemas((prevSchemas) => ({
-            ...prevSchemas,
-            [connection]: [],
-          }));
-          throw new Error("Network response was not ok");
-        }
-        const data = await response.text();
-        const res = await JSON.parse(data);
 
-        if (res.length === 0) {
-          setSchemas((prevSchemas) => ({
-            ...prevSchemas,
-            [connection]: [],
-          }));
-        } else {
-          setSchemas((prevSchemas) => ({
-            ...prevSchemas,
-            [connection]: res,
-          }));
+        if (!response.ok) {
+          throw new Error("Failed to fetch schemas");
         }
+
+        const data = await response.json();
+
+        const connectionData = data.find(item => item[connection]);
+        const schemaNames = connectionData ? connectionData[connection] : [];
+
+        setSchemas((prevSchemas) => ({
+          ...prevSchemas,
+          [connection]: schemaNames.length > 0 ? schemaNames : [],
+        }));
       } catch (error) {
         console.error("Error fetching schema data:", error);
         setSchemas((prevSchemas) => ({
           ...prevSchemas,
           [connection]: "error",
         }));
+        toast.error("Failed to load schemas");
       }
     }
   };
+
+
+  // const handleTables = async (event, connection, schema) => {
+  //   const schemaId = `schema-${connection}-${schema}`;
+  //   toggleExpanded(schemaId);
+
+  //   if (!expandedItems[schemaId] && !tables[`${connection}-${schema}`]) {
+  //     try {
+  //       setTables((prevTables) => ({
+  //         ...prevTables,
+  //         [`${connection}-${schema}`]: "loading",
+  //       }));
+
+  //       const response = await fetch(
+  //         `${hostnameV1}/${connection}/schemas/${schema}/tables`, {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`,
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+  //       if (!response.ok) {
+  //         setTables((prevTables) => ({
+  //           ...prevTables,
+  //           [`${connection}-${schema}`]: [],
+  //         }));
+  //         throw new Error("Network response was not ok");
+  //       }
+  //       const data = await response.text();
+  //       const res = await JSON.parse(data);
+
+  //       if (res.length === 0) {
+  //         setTables((prevTables) => ({
+  //           ...prevTables,
+  //           [`${connection}-${schema}`]: [],
+  //         }));
+  //       } else {
+  //         setTables((prevTables) => ({
+  //           ...prevTables,
+  //           [`${connection}-${schema}`]: res,
+  //         }));
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching table data:", error);
+  //       setTables((prevTables) => ({
+  //         ...prevTables,
+  //         [`${connection}-${schema}`]: "error",
+  //       }));
+  //     }
+  //   }
+  // };
 
   const handleTables = async (event, connection, schema) => {
     const schemaId = `schema-${connection}-${schema}`;
@@ -343,43 +490,102 @@ export default function Editor() {
           [`${connection}-${schema}`]: "loading",
         }));
 
-        const response = await fetch(
-          `${hostnameV1}/${connection}/schemas/${schema}/tables`, {
+        // First get policy IDs
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        // If no policy IDs, set empty tables and return
+        if (policyIds.length === 0) {
+          setTables((prevTables) => ({
+            ...prevTables,
+            [`${connection}-${schema}`]: [],
+          }));
+          return;
+        }
+
+        // Then fetch tables for this specific connection and schema
+        const response = await fetch(`${hostnameV1}/tables/list`, {
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            matched_policy_ids: policyIds,
+            connection_name: connection,
+            schema_name: schema
+          })
         });
-        if (!response.ok) {
-          setTables((prevTables) => ({
-            ...prevTables,
-            [`${connection}-${schema}`]: [],
-          }));
-          throw new Error("Network response was not ok");
-        }
-        const data = await response.text();
-        const res = await JSON.parse(data);
 
-        if (res.length === 0) {
-          setTables((prevTables) => ({
-            ...prevTables,
-            [`${connection}-${schema}`]: [],
-          }));
-        } else {
-          setTables((prevTables) => ({
-            ...prevTables,
-            [`${connection}-${schema}`]: res,
-          }));
+        if (!response.ok) {
+          throw new Error("Failed to fetch tables");
         }
+
+        const data = await response.json();
+        const tableNames = data.tables || [];
+
+        setTables((prevTables) => ({
+          ...prevTables,
+          [`${connection}-${schema}`]: tableNames.length > 0 ? tableNames : [],
+        }));
       } catch (error) {
         console.error("Error fetching table data:", error);
         setTables((prevTables) => ({
           ...prevTables,
           [`${connection}-${schema}`]: "error",
         }));
+        toast.error("Failed to load tables");
       }
     }
   };
+
+  // const handleColumns = async (event, connection, schema, table) => {
+  //   const tableId = `table-${connection}-${schema}-${table}`;
+  //   toggleExpanded(tableId);
+
+  //   if (!expandedItems[tableId] && !columns[`${connection}-${schema}-${table}`]) {
+  //     try {
+  //       setColumns((prevColumns) => ({
+  //         ...prevColumns,
+  //         [`${connection}-${schema}-${table}`]: "loading",
+  //       }));
+  //       const response = await fetch(
+  //         `${hostnameV1}/${connection}/schemas/${schema}/tables/${table}/columns`, {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`,
+  //           'Content-Type': 'application/json',
+  //         },
+  //       });
+  //       if (!response.ok) {
+  //         setColumns((prevColumns) => ({
+  //           ...prevColumns,
+  //           [`${connection}-${schema}-${table}`]: [],
+  //         }));
+  //         throw new Error("Network response was not ok");
+  //       }
+  //       const data = await response.text();
+  //       const res = await JSON.parse(data);
+
+  //       if (res.length === 0) {
+  //         setColumns((prevColumns) => ({
+  //           ...prevColumns,
+  //           [`${connection}-${schema}-${table}`]: [],
+  //         }));
+  //       } else {
+  //         setColumns((prevColumns) => ({
+  //           ...prevColumns,
+  //           [`${connection}-${schema}-${table}`]: res,
+  //         }));
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching column data:", error);
+  //       setColumns((prevColumns) => ({
+  //         ...prevColumns,
+  //         [`${connection}-${schema}-${table}`]: "error",
+  //       }));
+  //     }
+  //   }
+  // };
 
   const handleColumns = async (event, connection, schema, table) => {
     const tableId = `table-${connection}-${schema}-${table}`;
@@ -391,40 +597,60 @@ export default function Editor() {
           ...prevColumns,
           [`${connection}-${schema}-${table}`]: "loading",
         }));
-        const response = await fetch(
-          `${hostnameV1}/${connection}/schemas/${schema}/tables/${table}/columns`, {
+
+        // First get policy IDs
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        // If no policy IDs, set empty columns and return
+        if (policyIds.length === 0) {
+          setColumns((prevColumns) => ({
+            ...prevColumns,
+            [`${connection}-${schema}-${table}`]: [],
+          }));
+          return;
+        }
+
+        // Then fetch columns for this specific connection, schema and table
+        const response = await fetch(`${hostnameV1}/columns/list`, {
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            matched_policy_ids: policyIds,
+            connection_name: connection,
+            schema_name: schema,
+            table_name: table
+          })
         });
-        if (!response.ok) {
-          setColumns((prevColumns) => ({
-            ...prevColumns,
-            [`${connection}-${schema}-${table}`]: [],
-          }));
-          throw new Error("Network response was not ok");
-        }
-        const data = await response.text();
-        const res = await JSON.parse(data);
 
-        if (res.length === 0) {
-          setColumns((prevColumns) => ({
-            ...prevColumns,
-            [`${connection}-${schema}-${table}`]: [],
-          }));
-        } else {
-          setColumns((prevColumns) => ({
-            ...prevColumns,
-            [`${connection}-${schema}-${table}`]: res,
-          }));
+        if (!response.ok) {
+          throw new Error("Failed to fetch columns");
         }
+
+        const data = await response.json();
+        const columnData = data.columns || [];
+
+        // Format the columns data to match the expected structure
+        const formattedColumns = columnData.map(item => ({
+          column: item.column_name,
+          datatype: item.metadata?.DATA_TYPE || 'unknown',
+          metadata: item.metadata
+        }));
+
+        setColumns((prevColumns) => ({
+          ...prevColumns,
+          [`${connection}-${schema}-${table}`]: formattedColumns.length > 0 ? formattedColumns : [],
+        }));
       } catch (error) {
         console.error("Error fetching column data:", error);
         setColumns((prevColumns) => ({
           ...prevColumns,
           [`${connection}-${schema}-${table}`]: "error",
         }));
+        toast.error("Failed to load columns");
       }
     }
   };
@@ -460,11 +686,14 @@ export default function Editor() {
           <Database size={15} />
         </div>
 
-        <span style={{
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis"
-        }}>
+        <span
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }}
+          title={connection.connection_name}
+        >
           {connection.connection_name}
         </span>
       </div>
@@ -497,11 +726,14 @@ export default function Editor() {
           <Database size={15} />
         </div>
 
-        <span style={{
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis"
-        }}>
+        <span
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }}
+          title={schema}  // Add this
+        >
           {schema}
         </span>
       </div>
@@ -544,7 +776,9 @@ export default function Editor() {
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis"
-          }}>
+          }}
+          title={table}  // Add this
+        >
           {table}
         </span>
       </div>
@@ -578,12 +812,15 @@ export default function Editor() {
           {isNumber ? <Hash size={18} /> : <Type size={18} />}
         </div>
 
-        <span style={{
-          fontWeight: "normal",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis"
-        }}>
+        <span
+          style={{
+            fontWeight: "normal",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis"
+          }}
+          title={column.column}  // Add this
+        >
           {column.column}
         </span>
       </div>
@@ -619,7 +856,7 @@ export default function Editor() {
     return [headers, ...csvRows].join('\n');
   };
 
-  const handleDownloadCSV = () =>{
+  const handleDownloadCSV = () => {
     const csvContent = convertToCSV(data);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -634,14 +871,13 @@ export default function Editor() {
     URL.revokeObjectURL(url);
   }
 
-
   return (
     <div className="h-[calc(100vh-64px-32px)]">
       <div className="flex flex-row h-[100%] bg-gray-50">
         {checked ? (
           <>
             <aside className="w-1/4 pr-4 flex flex-col border-r border-gray-300">
-              <div className="h-[60%] flex flex-col pb-4">
+              <div className="h-[100%] flex flex-col pb-4">
                 <div className="flex justify-between items-center mb-2">
                   <h2 className="text-xl font-bold">Connection</h2>
                 </div>
@@ -766,32 +1002,6 @@ export default function Editor() {
                       );
                     })}
                   </div>
-                </div>
-              </div>
-
-              <div className="h-[40%] flex flex-col border-t pt-1">
-                <h2 className="text-xl font-bold">History</h2>
-                <div className="mt-2 flex-1 overflow-x-auto overflow-y-auto custom-scroll pr-2">
-                  {history.length === 0 ? (
-                    <div className="text-gray-500">No recent queries</div>
-                  ) : (
-                    <ul className="list-decimal pl-5">
-                      {history.map((query, index) => (
-                        <li
-                          key={index}
-                          className={`text-xs text-gray-700 mb-2 cursor-pointer ${loading ? "cursor-not-allowed text-gray-400" : "hover:text-gray-900"}`}
-                          onClick={() => {
-                            if (!loading) {
-                              handleHistoryClick(query);
-                            }
-                          }}
-                        >
-                          {query}
-                        </li>
-
-                      ))}
-                    </ul>
-                  )}
                 </div>
                 <style>
                   {`
@@ -985,8 +1195,6 @@ export default function Editor() {
                         </button>
                       </div>
                     </div>
-
-
                   )}
                 </div>
               )}

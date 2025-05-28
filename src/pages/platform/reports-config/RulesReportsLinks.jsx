@@ -51,7 +51,7 @@ const RulesReportsLinks = () => {
             const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
           
             window.open(
-              `${import.meta.env.VITE_BIRT_API}/run?__report=${encodeURIComponent(reportPath)}&__format=${
+              `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
                 import.meta.env.VITE_BIRT_EXPORT_FORMAT
               }`,
               "_blank"
@@ -119,11 +119,13 @@ const RulesReportsLinks = () => {
       onClick: (row) =>
         navigate("/config/report/lineItems", {
           state: {
-            reportId: row.id,
-            reportName: row.name,
+            reportId: row.report_id,
+            reportName: row.report_name,
+            reportType: row.report_type,
+            reportDesc: row.reportDesc
           },
         }),
-      show: (row) => (row.type || "").toLowerCase() !== "list",
+      show: (row) => (row.report_type || "").toLowerCase() !== "list",
     },
   ];
 

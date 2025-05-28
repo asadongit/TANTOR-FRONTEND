@@ -1,13 +1,12 @@
-import { Plus } from "lucide-react";
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
-import { ToastContainer } from "react-toastify";
+import { X } from "lucide-react";
 
 function DimensionValueSelector({ 
   index, 
   dimension, 
-  dimensionValuesData = [], // Provide default empty array
+  dimensionValuesData = [],
   updateDimension, 
   ruleIndex 
 }) {
@@ -50,7 +49,7 @@ function DimensionValueSelector({
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-          <div className="max-h-60 overflow-y-auto p-2">
+          <div className="max-h-60 overflow-y-auto p-2 text-sm">
             {dimensionValuesData.length > 0 ? (
               dimensionValuesData.map((dimValue) => {
                 const isChecked = dimension.value && dimension.value.some(
@@ -115,10 +114,9 @@ const DimensionSelector = ({
   
   // Initialize selectedDimensionName from props
   useEffect(() => {
-    if (dimension?.name && !selectedDimensionName) {
-      setSelectedDimensionName(dimension.name);
-    }
-  }, [dimension?.name, selectedDimensionName]);
+    setSelectedDimensionName(dimension?.name || "");
+    setDimensionValuesData([]);
+  }, [dimension?.name, currentSelectedRuleId]);
 
   useEffect(() => {
     if (!selectedDimensionName || !currentSelectedRuleId) return;
@@ -157,7 +155,6 @@ const DimensionSelector = ({
   
   return (
     <div className="flex items-center gap-4 mb-2">
-      <ToastContainer />
       <select
         value={dimension?.id || ""}
         onChange={(e) => {
@@ -195,7 +192,7 @@ const DimensionSelector = ({
       >
         <option value="">Select Operator</option>
         <option value="in">IN</option>
-        <option value="not_in">NOT IN</option>
+        <option value="not in">NOT IN</option>
       </select>
       
       {isLoading ? (
@@ -214,10 +211,10 @@ const DimensionSelector = ({
       
       <button
         type="button"
-        className="h-[38px] w-[38px] inline-flex items-center justify-center border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        className="h-7 w-7 p-0 inline-flex items-center justify-center border border-gray-300 rounded-md shadow-sm text-sm font-medium text-black bg-gray-50 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         onClick={() => removeDimension(ruleIndex, index)}
       >
-        -
+        <X className="h-6 w-6 m-2"/>
       </button>
     </div>
   );

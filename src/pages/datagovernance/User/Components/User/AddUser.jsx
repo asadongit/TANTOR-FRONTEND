@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Loader } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Loader, Check, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import { useAuth } from '../../../../../context/AuthContext';
 
@@ -9,13 +9,12 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     password: '',
     confirmPassword: '',
     firstName: '',
-    middleName: '',
     lastName: '',
     email: '',
-    role: '',
-    persona: '',
-    group: '',
-    subgroup: '',
+    roles: [],
+    persona: [],
+    groups: [],
+    subgroups: [],
   });
 
   const [errors, setErrors] = useState({});
@@ -32,15 +31,26 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
 
   useEffect(() => {
     if (isOpen) {
+      setApiResponse({ status: null, message: '' });
       fetchDropdownOptions();
     }
   }, [isOpen]);
 
+  const handleClose = () => {
+    setApiResponse({ status: null, message: '' });
+    onClose();
+  };
+
   useEffect(() => {
-    if (formData.group) {
-      fetchSubgroups(formData.group);
+    if (formData.groups.length > 0) {
+      fetchSubgroups(formData.groups);
+    } else {
+      setDropdownOptions(prev => ({
+        ...prev,
+        subgroups: []
+      }));
     }
-  }, [formData.group]);
+  }, [formData.groups]);
 
   const fetchDropdownOptions = async () => {
     setIsFetchingOptions(true);
@@ -75,26 +85,28 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     }
   };
 
-  const fetchSubgroups = async (group) => {
+  const fetchSubgroups = async (groups) => {
     setIsLoadingSubgroups(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/datapolicy/subgroup/${group}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const subgroupPromises = groups.map(group =>
+        fetch(`${import.meta.env.VITE_FAST_API}/auth/datapolicy/subgroup/${group}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }).then(res => res.json())
+      );
 
-      const data = await response.json();
+      const results = await Promise.all(subgroupPromises);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch subgroups');
-      }
+      const allSubgroups = Array.from(new Set(
+        results.flatMap(data => data.subgroups || [])
+      ));
 
       setDropdownOptions(prev => ({
         ...prev,
-        subgroups: data.subgroups || []
+        subgroups: allSubgroups
       }));
     } catch (error) {
       console.error("Error fetching subgroups:", error);
@@ -116,21 +128,190 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === 'group') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        subgroup: ''
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
 
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const SearchableMultiSelect = ({
+    title,
+    options,
+    name,
+    selectedValues,
+    onSelectionChange,
+    disabled = false,
+    loading = false,
+    required = false
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [dropdownDirection, setDropdownDirection] = useState('down');
+    const dropdownRef = useRef(null);
+    const dropdownTriggerRef = useRef(null);
+
+    useEffect(() => {
+      if (isOpen && dropdownTriggerRef.current) {
+        const triggerRect = dropdownTriggerRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - triggerRect.bottom;
+        setDropdownDirection(spaceBelow < 200 ? 'up' : 'down');
+      }
+    }, [isOpen]);
+
+    const filteredOptions = options.filter(option =>
+      option.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setIsOpen(false);
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, []);
+
+    const handleToggle = (value) => {
+      if (selectedValues.includes(value)) {
+        onSelectionChange(name, selectedValues.filter(item => item !== value));
+      } else {
+        onSelectionChange(name, [...selectedValues, value]);
+      }
+    };
+
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <label className="block text-sm text-black mb-1.5">
+          {title} {required && <span className="text-red-500">*</span>}
+        </label>
+        <div
+          ref={dropdownTriggerRef}
+          onClick={() => !disabled && !loading && setIsOpen(!isOpen)}
+          className={`w-full p-2.5 border ${errors[name] ? 'border-red-500' : 'border-gray-400'} rounded-lg flex justify-between items-center cursor-pointer bg-white ${disabled || loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+        >
+          <div className="flex flex-wrap gap-1 flex-1 min-h-6">
+            {selectedValues.length === 0 ? (
+              <span className="text-gray-500">Select {title.toLowerCase()}</span>
+            ) : (
+              selectedValues.map((value, index) => (
+                <span
+                  key={value}
+                  className="bg-[#8e78b7] bg-opacity-20 text-[#8e78b7] px-2 py-0.5 rounded text-sm flex items-center"
+                >
+                  {value}
+                  {!disabled && (
+                    <X
+                      className="h-3 w-3 ml-1 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggle(value);
+                      }}
+                    />
+                  )}
+                </span>
+              ))
+            )}
+          </div>
+          {loading ? (
+            <Loader className="h-4 w-4 animate-spin" />
+          ) : (
+            isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+          )}
+        </div>
+
+        {isOpen && !disabled && !loading && (
+          <div className={`absolute z-10 w-full ${dropdownDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} bg-white border border-gray-300 rounded-lg shadow-lg`}>
+            <div className="p-2 border-b">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={`Search ${title.toLowerCase()}`}
+                  className="w-full p-2 pl-8 border border-gray-300 rounded-md focus:outline-none focus:border-[#8e78b7]"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto p-1">
+              {filteredOptions.length === 0 ? (
+                <div className="text-center py-2 text-gray-500">No {title.toLowerCase()} found</div>
+              ) : (
+                filteredOptions.map(option => (
+                  <div
+                    key={option}
+                    className="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggle(option);
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      id={`${name}-${option}`}
+                      checked={selectedValues.includes(option)}
+                      onChange={() => {}}
+                      className="cursor-pointer text-[#8e78b7] focus:ring-[#8e78b7] rounded"
+                    />
+                    <label
+                      htmlFor={`${name}-${option}`}
+                      className="ml-2 text-sm cursor-pointer select-none flex-1"
+                    >
+                      {option}
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
+            {selectedValues.length > 0 && (
+              <div className="p-2 border-t flex justify-between items-center">
+                <span className="text-xs text-gray-500">{selectedValues.length} selected</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectionChange(name, []);
+                  }}
+                  className="text-xs text-[#8e78b7] hover:underline"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {errors[name] && (
+          <p className="mt-1 text-sm text-red-500">{errors[name]}</p>
+        )}
+      </div>
+    );
+  };
+
+  const handleCheckboxChange = (name, selectedItems) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: selectedItems
+    }));
+
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+
+    if (name === 'groups') {
+      setFormData(prev => ({
+        ...prev,
+        subgroups: []
+      }));
     }
   };
 
@@ -138,19 +319,54 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     const newErrors = {};
 
     if (!formData.username.trim()) newErrors.username = 'Username is required';
-    if (!formData.password) newErrors.password = 'Password is required';
-    if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
+    else if (formData.username.length > 64) newErrors.username = 'Username must be 64 characters or less';
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else {
+      const passwordRegex = {
+        length: /.{8,}/,
+        uppercase: /[A-Z]/,
+        lowercase: /[a-z]/,
+        number: /[0-9]/,
+        special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/
+      };
+
+      const passwordErrors = [];
+
+      if (!passwordRegex.length.test(formData.password))
+        passwordErrors.push('at least 8 characters');
+      if (!passwordRegex.uppercase.test(formData.password))
+        passwordErrors.push('one uppercase letter');
+      if (!passwordRegex.lowercase.test(formData.password))
+        passwordErrors.push('one lowercase letter');
+      if (!passwordRegex.number.test(formData.password))
+        passwordErrors.push('one number');
+      if (!passwordRegex.special.test(formData.password))
+        passwordErrors.push('one special character');
+
+      if (passwordErrors.length > 0) {
+        newErrors.password = `Password must contain ${passwordErrors.join(', ')}`;
+      }
+    }
+
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!formData.role) newErrors.role = 'Role is required';
+    if (formData.roles.length === 0) newErrors.roles = 'At least one role is required';
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
+    } else {
+      const emailParts = formData.email.split('@');
+      const localPart = emailParts[0];
+      if (/^\d+$/.test(localPart)) {
+        newErrors.email = 'Email address cannot consist of numbers only before @';
+      }
     }
 
     return newErrors;
@@ -180,10 +396,10 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
-          roles_assigned: formData.role,
+          roles_assigned: formData.roles,
           persona: formData.persona,
-          group: formData.group,
-          subgroup: formData.subgroup
+          group: formData.groups,
+          subgroup: formData.subgroups
         })
       });
 
@@ -205,13 +421,12 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           password: '',
           confirmPassword: '',
           firstName: '',
-          middleName: '',
           lastName: '',
           email: '',
-          role: '',
-          persona: '',
-          group: '',
-          subgroup: '',
+          roles: [],
+          persona: [],
+          groups: [],
+          subgroups: [],
         });
       }, 1500);
 
@@ -225,6 +440,56 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     }
   };
 
+  const TagInput = ({ value, onChange, placeholder }) => {
+    const [input, setInput] = useState('');
+    const inputRef = useRef(null);
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && input.trim()) {
+        e.preventDefault();
+        if (!value.includes(input.trim())) {
+          onChange([...value, input.trim()]);
+        }
+        setInput('');
+      } else if (e.key === 'Backspace' && !input && value.length > 0) {
+        onChange(value.slice(0, value.length - 1));
+      }
+    };
+
+    const handleRemoveTag = (tagToRemove) => {
+      onChange(value.filter(tag => tag !== tagToRemove));
+    };
+
+    return (
+      <div
+        className={`flex flex-wrap items-center gap-2 p-2.5 border border-gray-400 rounded-lg focus-within:border-[#8e78b7] focus-within:ring-1 focus-within:ring-[#8e78b7] bg-white`}
+        onClick={() => inputRef.current.focus()}
+      >
+        {value.map((tag, index) => (
+          <span
+            key={index}
+            className="bg-[#8e78b7] bg-opacity-20 text-[#8e78b7] px-2 py-0.5 rounded text-sm flex items-center"
+          >
+            {tag}
+            <X
+              className="h-3 w-3 ml-1 cursor-pointer"
+              onClick={() => handleRemoveTag(tag)}
+            />
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={value.length === 0 ? placeholder : ''}
+          className="flex-grow outline-none text-sm min-w-[120px]"
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl w-[1000px] p-8">
@@ -235,7 +500,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
             </div>
             <h2 className="text-xl font-bold text-[#8e78b7]">Add user</h2>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -275,6 +540,10 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   className={`w-full p-2.5 border ${errors.password ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
+                <p className="mt-1 text-xs text-gray-500">
+                  Password must contain at least 8 characters, including uppercase, lowercase,
+                  numbers, and special characters.
+                </p>
               </div>
               <div>
                 <label className="block text-sm text-black mb-1.5">Confirm password <span className="text-red-500">*</span></label>
@@ -307,17 +576,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                 {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>}
               </div>
               <div>
-                <label className="block text-sm text-black mb-1.5">Middle name</label>
-                <input
-                  type="text"
-                  name="middleName"
-                  value={formData.middleName}
-                  onChange={handleChange}
-                  placeholder="Middle name"
-                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
-                />
-              </div>
-              <div>
                 <label className="block text-sm text-black mb-1.5">Last name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
@@ -347,82 +605,58 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           <div className="space-y-6">
             <h3 className="text-[#8e78b7] font-medium">Roles</h3>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-black mb-1.5">Roles <span className="text-red-500">*</span></label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className={`w-full p-2.5 border ${errors.role ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white`}
-                >
-                  <option value="">Select Role</option>
-                  {isFetchingOptions ? (
-                    <option value="" disabled>Loading roles...</option>
-                  ) : (
-                    dropdownOptions.roles.map(role => (
-                      <option key={role} value={role}>{role}</option>
-                    ))
-                  )}
-                </select>
-                {errors.role && <p className="mt-1 text-sm text-red-500">{errors.role}</p>}
-              </div>
+              <SearchableMultiSelect
+                title="Roles"
+                options={dropdownOptions.roles}
+                name="roles"
+                selectedValues={formData.roles}
+                onSelectionChange={handleCheckboxChange}
+                loading={isFetchingOptions}
+                required={true}
+              />
+
               <div>
                 <label className="block text-sm text-black mb-1.5">Persona</label>
-                <input
-                  type="text"
-                  name="persona"
+                <TagInput
                   value={formData.persona}
-                  onChange={handleChange}
-                  placeholder="Enter persona"
-                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
+                  onChange={(newPersonas) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      persona: newPersonas
+                    }));
+                  }}
+                  placeholder="Type and press Enter to add personas"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Press Enter after each persona to add multiple personas
+                </p>
               </div>
-              <div>
-                <label className="block text-sm text-black mb-1.5">Group</label>
-                <select
-                  name="group"
-                  value={formData.group}
-                  onChange={handleChange}
-                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white"
-                >
-                  <option value="">Select Group</option>
-                  {isFetchingOptions ? (
-                    <option value="" disabled>Loading groups...</option>
-                  ) : (
-                    dropdownOptions.groups.map(group => (
-                      <option key={group} value={group}>{group}</option>
-                    ))
-                  )}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-black mb-1.5">Sub-group</label>
-                <select
-                  name="subgroup"
-                  value={formData.subgroup}
-                  onChange={handleChange}
-                  disabled={!formData.group || isLoadingSubgroups}
-                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white"
-                >
-                  <option value="">Select Sub-group</option>
-                  {isLoadingSubgroups ? (
-                    <option value="" disabled>Loading subgroups...</option>
-                  ) : !formData.group ? (
-                    <option value="" disabled>Select a group first</option>
-                  ) : (
-                    dropdownOptions.subgroups.map(subgroup => (
-                      <option key={subgroup} value={subgroup}>{subgroup}</option>
-                    ))
-                  )}
-                </select>
-              </div>
+
+              <SearchableMultiSelect
+                title="Groups"
+                options={dropdownOptions.groups}
+                name="groups"
+                selectedValues={formData.groups}
+                onSelectionChange={handleCheckboxChange}
+                loading={isFetchingOptions}
+              />
+
+              <SearchableMultiSelect
+                title="Sub-groups"
+                options={dropdownOptions.subgroups}
+                name="subgroups"
+                selectedValues={formData.subgroups}
+                onSelectionChange={handleCheckboxChange}
+                disabled={formData.groups.length === 0}
+                loading={isLoadingSubgroups}
+              />
             </div>
           </div>
         </div>
 
         <div className="flex justify-start gap-4 mt-8">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
             disabled={isLoading}
           >

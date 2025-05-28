@@ -3,7 +3,6 @@ import { ChevronLeft, XCircle, CheckCircle, SaveIcon } from "lucide-react";
 import DateExpressionCalculator from "./TimeTransformationValidate";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
-import { ToastContainer } from "react-toastify";
 
 const TimeTransformationComponent = ({
   isOpen,
@@ -92,20 +91,20 @@ const TimeTransformationComponent = ({
         id: filterColId,
         name: filterColName,
         type: dateType,
-        lowerOffsetUnit: lowerOffset,
-        lowerOffsetUnitValue: lowerUnit,
-        upperOffsetUnit: upperOffset,
-        upperOffsetUnitValue: upperUnit,
+        lowerOffsetUnit: lowerUnit,
+        lowerOffsetUnitValue: lowerOffset.toString(),
+        upperOffsetUnit: upperUnit,
+        upperOffsetUnitValue: upperOffset ? upperOffset.toString() : "",
       };
     } else {
       newRule.filters.push({
         id: filterColId,
         name: filterColName,
         type: dateType,
-        lowerOffsetUnit: lowerOffset,
-        lowerOffsetUnitValue: lowerUnit,
-        upperOffsetUnit: upperOffset,
-        upperOffsetUnitValue: upperUnit,
+        lowerOffsetUnit: lowerUnit,
+        lowerOffsetUnitValue: lowerOffset.toString(),
+        upperOffsetUnit: upperUnit,
+        upperOffsetUnitValue: upperOffset ? upperOffset.toString() : "",
       });
     }
     updateRule(ruleIndex, "filters", newRule.filters);
@@ -134,7 +133,6 @@ const TimeTransformationComponent = ({
 
   return (
     <>
-      <ToastContainer />
       {showValidationModal && (
         <DateExpressionCalculator
           onClose={() => {
@@ -151,7 +149,7 @@ const TimeTransformationComponent = ({
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white/90 backdrop-blur-md p-6 rounded-xl shadow-2xl border border-gray-200 w-full max-w-xl relative z-50">
+          <div className="bg-white backdrop-blur-md p-6 rounded-xl shadow-2xl border border-gray-200 w-full max-w-xl relative z-50">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-2xl font-bold text-gray-900">
                 Time Transformation
@@ -269,16 +267,16 @@ const TimeTransformationComponent = ({
                     htmlFor="lowerOffset"
                     className="block text-sm font-medium text-[#6c757d]"
                   >
-                    Lower Offset
+                    {dateType === "historicDate"? "Offset" : "Lower Offset"}
                   </label>
                   <input
                     id="lowerOffset"
                     type="number"
-                    max="0"
+                    max={dateType === "historicDate" ? "0" : undefined}
                     value={lowerOffset}
                     onChange={(e) => {
                       const value = parseFloat(e.target.value);
-                      if (value > 0) {
+                      if (dateType === "historicDate" && value > 0) {
                         setLowerOffset(-value);
                       } else {
                         setLowerOffset(e.target.value);
@@ -286,7 +284,7 @@ const TimeTransformationComponent = ({
                     }}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
                     disabled={dateType === "asOnDate"}
-                    placeholder="Enter negative value"
+                    placeholder={dateType === "historicDate" ? "Enter negative value" : "Enter positive or negative value"}
                   />
                 </div>
                 <div>
@@ -363,13 +361,15 @@ const TimeTransformationComponent = ({
               >
                 <XCircle className="w-4 h-4" /> Cancel
               </button> */}
-              <button
-                type="button"
-                className="bg-[#8E77BB] text-white hover:bg-[#7864a3] flex items-center gap-2 px-4 py-2 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
-                onClick={handleValidate}
-              >
-                <CheckCircle className="w-4 h-4" /> Validate
-              </button>
+              {(dateType === "historicDate" || dateType === "dateRange") && (
+                <button
+                  type="button"
+                  className="bg-[#8E77BB] text-white hover:bg-[#7864a3] flex items-center gap-2 px-4 py-2 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
+                  onClick={handleValidate}
+                >
+                  <CheckCircle className="w-4 h-4" /> Validate
+                </button>
+              )}
               <button
                 type="button"
                 className="bg-[#8E77BB] text-white hover:bg-[#7864a3] flex items-center gap-2 px-4 py-2 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
