@@ -99,7 +99,7 @@ function Subgroup() {
         },
       });
       if (!response.ok) {
-        throw new Error("Network response was not ok");
+        throw new Error(`Failed to fetch subgroup dashboard data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
@@ -117,8 +117,10 @@ function Subgroup() {
       }));
 
       setSubgroups(transformedData);
+      return { success: true };
     } catch (error) {
       console.error("Error fetching subgroup data:", error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -132,7 +134,7 @@ function Subgroup() {
         },
       });
       if (!response.ok) {
-        throw new Error("Network response was not ok");
+        throw new Error(`Failed to fetch subgroup list data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
@@ -172,8 +174,10 @@ function Subgroup() {
 
       setTableData(transformedData);
       console.log("Fetched subgroup list data:", transformedData);
+      return { success: true };
     } catch (error) {
       console.error("Error fetching subgroup list data:", error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -181,19 +185,32 @@ function Subgroup() {
     setRefreshing(true);
     setSearchTerm("");
     try {
-      await Promise.all([
+      const [subgroupsResult, listResult] = await Promise.all([
         fetchSubgroupsData(),
         fetchSubgroupListData()
       ]);
 
-      setToast({
-        show: true,
-        message: 'Subgroup data refreshed successfully',
-        type: 'success'
-      });
+      // Check if both operations succeeded
+      if (subgroupsResult.success && listResult.success) {
+        setToast({
+          show: true,
+          message: 'Subgroup data refreshed successfully',
+          type: 'success'
+        });
+      } else {
+        // Show error if any operation failed
+        const errorMessages = [];
+        if (!subgroupsResult.success) errorMessages.push('dashboard data');
+        if (!listResult.success) errorMessages.push('list data');
+
+        setToast({
+          show: true,
+          message: `Failed to refresh subgroup ${errorMessages.join(' and ')}`,
+          type: 'error'
+        });
+      }
     } catch (error) {
       console.error("Error refreshing data:", error);
-
       setToast({
         show: true,
         message: 'Failed to refresh subgroup data',
