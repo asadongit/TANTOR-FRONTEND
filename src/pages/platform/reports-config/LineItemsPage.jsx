@@ -4,6 +4,8 @@ import RuleOperatorSelector from "./components/RuleOperatorSelector";
 import { useLocation } from "react-router-dom";
 import { LineItemsProvider, useLineItems } from "./context/LineItemsContext";
 import LineItemSummary from "./components/LineItemSummaryComponent";
+import { Save } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 function LineItemsContent() {
   const {
@@ -12,10 +14,13 @@ function LineItemsContent() {
     showRuleOperatorSelector,
     showSummaryModal,
     setCurrentLineItemId,
-    setShowLineItemConfigModal
+    setShowLineItemConfigModal,
+    validateLineItemsJson,
+    addReportToDatabase
   } = useLineItems();
-  
+
   const contentRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleClick = (event) => {
@@ -41,6 +46,13 @@ function LineItemsContent() {
       />
     );
   };
+  const handleSave = async () => {
+    const isValid = validateLineItemsJson();
+    if (isValid) {
+      await addReportToDatabase();
+      navigate("/config/report");
+    }
+  };
 
   return (
     <>
@@ -50,11 +62,21 @@ function LineItemsContent() {
       {showLineItemConfigModal && <LineItemConfigModal />}
       {showRuleOperatorSelector && <RuleOperatorSelector />}
       {showSummaryModal && <LineItemSummary />}
+      <div className={`text-center ${showLineItemConfigModal ? "hidden" : "block"}`}>
+        <button
+          className="bg-[#8e78b7] px-3 py-2 rounded-lg ring-1 ring-[#56486e] text-white font-semibold hover:bg-[#61527d]"
+          onClick={handleSave}
+        >
+          SAVE
+        </button>
+      </div>
     </>
   );
+  
 }
 
-function LineItemsPage() {
+
+  function LineItemsPage() {
   const location = useLocation();
   const reportData = {
     reportId: location.state?.reportId,

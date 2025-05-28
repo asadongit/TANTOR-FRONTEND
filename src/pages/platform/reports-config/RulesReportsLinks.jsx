@@ -69,7 +69,7 @@ const RulesReportsLinks = () => {
         if ((reportType || "").toUpperCase() !== "LIST") {
           try {
             const response = await fetch(
-              `${hostnameV1}/reports/${reportId}/exists`,
+              `${hostnameV1}/lineItems/reports/${reportId}/exists`,
               { headers }
             );
 
@@ -81,7 +81,7 @@ const RulesReportsLinks = () => {
             const data = await response.json();
 
             if (data.isExists === false)
-              return toast.error(`Report with id = ${reportId} doesn't exist.`);
+              return toast.error(`Report isn't generated yet.`);
           } catch (error) {
             console.log(error);
             toast.error("Error occured.");
