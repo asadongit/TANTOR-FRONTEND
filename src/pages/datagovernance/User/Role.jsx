@@ -123,7 +123,6 @@ const Role = () => {
 
   const FetchRoleDashboardData = async () => {
     try {
-      setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/roleshomepage`, {
         method: 'GET',
         headers: {
@@ -132,7 +131,7 @@ const Role = () => {
         }
       });
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error(`Failed to fetch role dashboard data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
@@ -148,10 +147,10 @@ const Role = () => {
       }));
 
       setRoles(transformedRoles);
+      return { success: true };
     } catch (error) {
       console.error('Error fetching role data:', error);
-    } finally {
-      setLoading(false);
+      return { success: false, error: error.message };
     }
   };
 
@@ -165,7 +164,7 @@ const Role = () => {
         }
       });
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error(`Failed to fetch role list data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
@@ -182,8 +181,10 @@ const Role = () => {
       });
 
       setTableData(transformedData);
+      return { success: true };
     } catch (error) {
       console.error('Error fetching role list data:', error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -191,20 +192,32 @@ const Role = () => {
     setRefreshing(true);
     setSearchTerm("");
     try {
-      await Promise.all([
+      const [dashboardResult, listResult] = await Promise.all([
         FetchRoleDashboardData(),
         fetchRoleListData()
       ]);
 
-      setToast({
-        show: true,
-        message: 'Role data refreshed successfully',
-        type: 'success'
-      });
+      // Check if both operations succeeded
+      if (dashboardResult.success && listResult.success) {
+        setToast({
+          show: true,
+          message: 'Role data refreshed successfully',
+          type: 'success'
+        });
+      } else {
+        // Show error if any operation failed
+        const errorMessages = [];
+        if (!dashboardResult.success) errorMessages.push('dashboard data');
+        if (!listResult.success) errorMessages.push('list data');
 
+        setToast({
+          show: true,
+          message: `Failed to refresh role ${errorMessages.join(' and ')}`,
+          type: 'error'
+        });
+      }
     } catch (error) {
       console.error("Error refreshing data:", error);
-
       setToast({
         show: true,
         message: 'Failed to refresh role data',

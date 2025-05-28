@@ -30,7 +30,11 @@ import Step4 from "./PolicyStepper/step4";
 import Step5 from "./PolicyStepper/step5";
 import Step6 from "./PolicyStepper/step6";
 import Step7 from "./PolicyStepper/step7";
+import ReportStep from "./PolicyStepper/ReportStep";
 import { useAuth } from "../../../context/AuthContext";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 
 const Toggle = ({ enabled, onToggle }) => {
     return (
@@ -56,46 +60,17 @@ const Policy = () => {
         policyId: null,
         policyName: ''
     });
-    const [showCards, setShowCards] = useState(true); // New state for toggling cards
+    const [showCards, setShowCards] = useState(true);
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const rowsPerPage = 10;
+    const [togglingStatus, setTogglingStatus] = useState(null);
+    const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
     useEffect(() => {
         FetchPolicyDashboardData();
         fetchPolicyListData();
     }, []);
-
-    const FetchPolicyDashboardData = async () => {
-        try {
-            setLoading(true);
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policycards`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            const data = await response.json();
-            const transformedRoles = data?.policy_name_counts.map(policy => ({
-                title: policy.policy_type,
-                count: policy.count,
-                enabled: policy.policy_status || "Disabled",
-                icon: "material-symbols:tab-group-outline",
-                bgcolor: "bg-[#8d77ba] bg-opacity-25",
-                iconcolor: "text-[#8d77ba]",
-            }));
-            setPolicy(transformedRoles);
-        } catch (error) {
-            console.error('Error fetching role data:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const fetchPolicyListData = async () => {
         try {
@@ -122,8 +97,10 @@ const Policy = () => {
                 Owner: policy.owner
             }));
             setSampleData(transformedData);
+            return { success: true };
         } catch (error) {
             console.error('Error fetching role list data:', error);
+            return { success: false, error: error.message };
         }
     };
 
@@ -177,12 +154,6 @@ const Policy = () => {
         });
     };
 
-    const togglePolicy = (index) => {
-        const newCards = [...policy];
-        newCards[index].enabled = !newCards[index].enabled;
-        setPolicy(newCards);
-    };
-
     const navigate = useNavigate();
 
     const handleClickOutside = () => {
@@ -190,7 +161,7 @@ const Policy = () => {
     };
 
     const [isOpen, setIsOpen] = useState(false);
-    const steps = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Confirmation'];
+    const connectionSteps = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Reports (Optional)', 'Confirmation'];
     const [activeStep, setActiveStep] = useState(0);
     const [policyData, setPolicyData] = useState({
         policy_type: '',
@@ -229,18 +200,33 @@ const Policy = () => {
         selectedColumns: []
     });
 
+    const [policyType, setPolicyType] = useState('connection');
+
+    const steps = connectionSteps;
+
     const handleNext = () => {
         switch (activeStep) {
             case 0:
-                updateStep1Data(step1Data);
+                if (step1Data.isFormValid) {
+                    updateStep1Data(step1Data);
+                } else {
+                    return;
+                }
                 break;
             case 1:
-                updateStep2Data(step2Data);
+                if (step2Data.isFormValid) {
+                    updateStep2Data(step2Data);
+                } else {
+                    return;
+                }
                 break;
             case 2:
                 updateStep3Data(step3Data);
                 break;
+            default:
+                break;
         }
+
         if (activeStep < steps.length - 1) {
             setActiveStep(prev => prev + 1);
         }
@@ -365,6 +351,10 @@ const Policy = () => {
         setPolicyData(prev => ({ ...prev, ...newData }));
     };
 
+    const getNextStepIndex = (currentStep) => {
+        return currentStep + 1;
+    };
+
     const renderStepContent = (step) => {
         switch (step) {
             case 0:
@@ -382,7 +372,8 @@ const Policy = () => {
             case 3:
                 return <Step4
                     policyData={policyData}
-                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))}
+                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))
+                    }
                     isStep3Modified={isStep3Modified}
                 />;
             case 4:
@@ -392,15 +383,29 @@ const Policy = () => {
                     isStep3Modified={isStep3Modified}
                 />;
             case 5:
-                return <Step6 policyData={policyData} onDataChange={updatePolicyData} />;
+                return <Step6
+                    policyData={policyData}
+                    onDataChange={updatePolicyData}
+                />;
             case 6:
+                return <ReportStep
+                    policyData={policyData}
+                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))
+                    }
+                    setActiveStep={setActiveStep}
+                />;
+            case 7:
                 return <Step7
                     setIsOpen={setIsOpen}
-                    policyData={policyData}
+                    policyData={{
+                        ...policyData,
+                        policy_for: 'connection'
+                    }}
                     setActiveStep={setActiveStep}
                     fetchPolicyListData={fetchPolicyListData}
                     isEditMode={isEditMode}
                     editPolicyId={editPolicyId}
+                    showReportOption={false}
                 />;
             default:
                 return null;
@@ -441,6 +446,7 @@ const Policy = () => {
             selectedTables: [],
             selectedColumns: [],
         });
+        setPolicyType('connection');
         setIsStep3Modified(false);
         setIsEditMode(false);
         setEditPolicyId(null);
@@ -470,7 +476,6 @@ const Policy = () => {
                     selectedTables: [],
                     selectedColumns: [],
                 });
-                setIsStep3Modified(true);
                 break;
             case 3:
                 setPolicyData((prev) => ({
@@ -496,6 +501,17 @@ const Policy = () => {
                     },
                 }));
                 break;
+            case 6:
+                setPolicyData((prev) => ({
+                    ...prev,
+                    report_selections: {
+                        artefact_type: '',
+                        report_group: '',
+                        report_type: '',
+                        report_name: ''
+                    },
+                }));
+                break;
             default:
                 break;
         }
@@ -505,21 +521,21 @@ const Policy = () => {
 
     const filteredPolicyCards = useMemo(() => {
         if (!searchTerm) return policy;
-        return policy.filter(card =>
+        return policy.filter((card) =>
             card.title.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [policy, searchTerm]);
 
     const filteredTableData = useMemo(() => {
         if (!searchTerm) return sampleData;
-        return sampleData.filter(item =>
-            item.Type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.Description.toLowerCase().includes(searchTerm.toLowerCase())
+        return sampleData.filter(
+            (item) =>
+                item.Type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.Description.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [sampleData, searchTerm]);
 
-    // Pagination logic
     const totalPages = Math.ceil(sampleData.length / rowsPerPage);
     const paginatedData = filteredTableData.slice(
         (currentPage - 1) * rowsPerPage,
@@ -530,7 +546,6 @@ const Policy = () => {
         setCurrentPage(page);
     };
 
-    // Generate pagination buttons with ellipsis
     const maxVisiblePages = 3;
     const pageNumbers = [];
     if (totalPages <= maxVisiblePages) {
@@ -623,12 +638,184 @@ const Policy = () => {
     };
 
     const handleToggleView = () => {
-        setShowCards(prev => !prev); // Toggle the showCards state
+        setShowCards(prev => !prev);
+    };
+
+
+    const FetchPolicyDashboardData = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policycards`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data = await response.json();
+            const transformedData = data?.policy_name_counts.map(policyGroup => ({
+                title: policyGroup.policy_type,
+                count: policyGroup.count,
+                enabled: policyGroup.policy_status.toLowerCase() === "active",
+                ids: policyGroup.ids,
+                icon: "material-symbols:tab-group-outline",
+                bgcolor: "bg-[#8d77ba] bg-opacity-25",
+                iconcolor: "text-[#8d77ba]",
+            }));
+            setPolicy(transformedData);
+            return { success: true };
+        } catch (error) {
+            console.error('Error fetching policy data:', error);
+            return { success: false, error: error.message };
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const updatePolicyStatus = async (policyIds, newStatus, index) => {
+        setTogglingStatus(index);
+        try {
+            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policystatus`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    policy_ids: policyIds,
+                    status: newStatus
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update policy status');
+            }
+
+            const data = await response.json();
+            console.log(data.message);
+            return true;
+        } catch (error) {
+            console.error('Error updating policy status:', error);
+            return false;
+        } finally {
+            setTogglingStatus(null);
+        }
+    };
+
+    const togglePolicy = async (index) => {
+        const filteredPolicy = filteredPolicyCards[index];
+        const policyIndex = policy.findIndex((p) => p.title === filteredPolicy.title);
+
+        if (policyIndex === -1) {
+            console.error("Policy not found in full policy array");
+            return;
+        }
+        const originalPolicy = [...policy];
+        const originalSampleData = [...sampleData];
+
+        const newPolicy = [...policy];
+        const policyGroup = newPolicy[policyIndex];
+        const currentStatus = policyGroup.enabled;
+        const newStatus = currentStatus ? "inactive" : "active";
+
+        newPolicy[policyIndex] = {
+            ...policyGroup,
+            enabled: !currentStatus,
+        };
+        setPolicy(newPolicy);
+
+        const updatedSampleData = sampleData.map((item) => {
+            if (policyGroup.ids.includes(item.id)) {
+                return {
+                    ...item,
+                    Status: newStatus.charAt(0).toUpperCase() + newStatus.slice(1),
+                };
+            }
+            return item;
+        });
+        setSampleData(updatedSampleData);
+
+        setTogglingStatus(index);
+        const success = await updatePolicyStatus(policyGroup.ids, newStatus, index);
+
+        if (!success) {
+            setPolicy(originalPolicy);
+            setSampleData(originalSampleData);
+        }
+        setTogglingStatus(null);
+    };
+
+    const [refreshing, setRefreshing] = useState(false);
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        setSearchTerm("");
+        setCurrentPage(1);
+        try {
+            const [dashboardResult, listResult] = await Promise.all([
+                FetchPolicyDashboardData(),
+                fetchPolicyListData()
+            ]);
+
+            if (dashboardResult.success && listResult.success) {
+                setToast({
+                    show: true,
+                    message: 'Policies refreshed successfully',
+                    type: 'success'
+                });
+            } else {
+                // Show error if any operation failed
+                const errorMessages = [];
+                if (!dashboardResult.success) errorMessages.push('dashboard data');
+                if (!listResult.success) errorMessages.push('list data');
+
+                setToast({
+                    show: true,
+                    message: `Failed to refresh role ${errorMessages.join(' and ')}`,
+                    type: 'error'
+                });
+            }
+        } catch (error) {
+            console.error("Error refreshing data:", error);
+            setToast({
+                show: true,
+                message: 'Failed to refresh role data',
+                type: 'error'
+            });
+        } finally {
+            setRefreshing(false);
+            setTimeout(() => {
+                setToast({ show: false, message: '', type: '' });
+            }, 3000);
+        }
     };
 
     return (
         <>
             <div>
+                {toast.show && (
+                    <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+                            'bg-red-100 text-red-800 border-l-4 border-red-500'
+                        }`}>
+                        <Icon
+                            icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
+                            className="h-5 w-5"
+                        />
+                        <p>{toast.message}</p>
+                        <button
+                            onClick={() => setToast({ show: false, message: '', type: '' })}
+                            className="ml-2 text-gray-500 hover:text-gray-700"
+                        >
+                            <Icon icon="mdi:close" className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+
+                <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+
                 <Breadcrumb title="Data Governance" link="/" />
                 <div className="flex items-center justify-between mb-6">
                     <h1 className="text-2xl font-semibold">Policy</h1>
@@ -645,16 +832,18 @@ const Policy = () => {
                         </div>
                         <button
                             type="button"
-                            onClick={handleToggleView} // Add click handler
+                            onClick={handleToggleView}
                             className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                         >
                             <List className="h-5 w-5" />
                         </button>
                         <button
                             type="button"
+                            onClick={handleRefresh}
+                            disabled={refreshing}
                             className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                         >
-                            <RefreshCcw className="h-5 w-5" />
+                            <RefreshCcw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
                         </button>
                         <button
                             type="button"
@@ -673,7 +862,7 @@ const Policy = () => {
                     </div>
                 </div>
 
-                {showCards && ( // Conditionally render cards
+                {showCards && (
                     <div className="mt-4">
                         {loading ? (
                             <div className="flex justify-center items-center h-64">
@@ -705,15 +894,20 @@ const Policy = () => {
                                                     {card.count.toString().padStart(2, "0")}
                                                 </div>
                                                 <div className="flex items-center gap-2 mt-6">
-                                                    <Toggle
-                                                        enabled={card.enabled}
-                                                        onToggle={() => togglePolicy(index)}
-                                                    />
-                                                    <span
-                                                        className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-red-500"}`}
-                                                    >
-                                                        {card.enabled ? "Enabled" : "Disabled"}
-                                                    </span>
+                                                    {togglingStatus === index ? (
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
+                                                    ) : (
+                                                        <>
+                                                            <Toggle
+                                                                enabled={card.enabled}
+                                                                onToggle={() => togglePolicy(index)}
+                                                            />
+
+                                                            <span className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-red-500"}`}>
+                                                                {card.enabled ? "Enabled" : "Disabled"}
+                                                            </span>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -876,12 +1070,12 @@ const Policy = () => {
                         >
                             <X className="h-5 w-5" />
                         </button>
-                        {activeStep !== 6 && (
+                        {!(activeStep === 7) && (
                             <h2 className="text-lg font-bold text-[#8e78b7] flex items-center mb-3">
                                 {isEditMode ? "Edit Policy" : "Add Policy"}
                             </h2>
                         )}
-                        {activeStep !== 6 && (
+                        {!(activeStep === 7) && (
                             <Stepper activeStep={activeStep} alternativeLabel>
                                 {steps.map((_, index) => {
                                     const isCompleted = index < activeStep;
@@ -909,7 +1103,8 @@ const Policy = () => {
                             {renderStepContent(activeStep)}
                         </div>
 
-                        {activeStep !== 6 && (
+                        {!(activeStep === 6) &&
+                         !(activeStep === 7) && (
                             <div className="flex justify-between mt-7">
                                 <div className="flex gap-3">
                                     <button
@@ -920,21 +1115,30 @@ const Policy = () => {
                                     </button>
                                     <button
                                         onClick={handleNext}
-                                        className="px-6 py-1.5 rounded-md bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
-                                    >
-                                        Next
-                                    </button>
+                                        disabled={
+                                            (activeStep === 0 && !step1Data.isFormValid) ||
+                                            (activeStep === 1 && !step2Data.isFormValid)
+                                        }
+                                        className={`px-6 py-1.5 rounded-md ${
+                                            (activeStep === 0 && !step1Data.isFormValid) ||
+                                            (activeStep === 1 && !step2Data.isFormValid)
+                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
+                                                }`}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                    {activeStep !== 0 && (
+                                        <button
+                                            onClick={handleBack}
+                                            className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                        >
+                                            Back
+                                        </button>
+                                    )}
                                 </div>
-                                {activeStep !== 0 && (
-                                    <button
-                                        onClick={handleBack}
-                                        className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
-                                    >
-                                        Back
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                            )}
                     </div>
                 </div>
             )}

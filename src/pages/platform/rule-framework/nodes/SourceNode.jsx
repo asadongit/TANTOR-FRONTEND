@@ -432,6 +432,20 @@ export function SourceNode({ id, data }) {
             columns={filterModalColumns}
             onApply={(error, filterData) => {
               setIsFilterModalOpen(false);
+              
+              // Handle skip case (when both error and filterData are null)
+              if (error === null && filterData === null) {
+                // Update node data with empty filter conditions
+                updateNodeData({
+                  filterConditions: { conditions: [] },
+                  selectedColumns: filterModalColumns
+                });
+                
+                // Show rule summary without filters
+                setIsRuleSummaryOpen(true);
+                return;
+              }
+
               if (!error && filterData) {
                 console.log('Filter data received:', filterData);
                 
