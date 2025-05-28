@@ -26,12 +26,18 @@ const Step2 = ({ onDataChange, initialData }) => {
     });
     const [loading, setLoading] = useState(true);
     const [loadingSubgroups, setLoadingSubgroups] = useState(false);
+    const [isFormValid, setIsFormValid] = useState(false);
 
     useEffect(() => {
+        // Check if at least one selection has been made
+        const hasSelection = selectedRole !== '' || selectedGroup !== '' || selectedSubgroup !== '';
+        setIsFormValid(hasSelection);
+
         onDataChange({
             selectedRole,
             selectedGroup,
-            selectedSubgroup
+            selectedSubgroup,
+            isFormValid: hasSelection
         });
     }, [selectedRole, selectedGroup, selectedSubgroup]);
 
@@ -152,12 +158,12 @@ const Step2 = ({ onDataChange, initialData }) => {
     const getCurrentTabData = () => {
         const currentTab = roleDetails.find(rd => rd.role === selectedTab);
         const tabData = currentTab ? data[currentTab.key] || [] : [];
-        
+
         if (searchTerm.trim() === '') {
             return tabData;
         }
-        
-        return tabData.filter(item => 
+
+        return tabData.filter(item =>
             item.toLowerCase().includes(searchTerm.toLowerCase())
         );
     };
@@ -194,8 +200,8 @@ const Step2 = ({ onDataChange, initialData }) => {
         if (currentData.length === 0) {
             return (
                 <div className="h-full flex items-center justify-center text-gray-500">
-                    {searchTerm.trim() ? 
-                        `No ${selectedTab.toLowerCase()} found matching "${searchTerm}"` : 
+                    {searchTerm.trim() ?
+                        `No ${selectedTab.toLowerCase()} found matching "${searchTerm}"` :
                         `No ${selectedTab.toLowerCase()} found`}
                 </div>
             );

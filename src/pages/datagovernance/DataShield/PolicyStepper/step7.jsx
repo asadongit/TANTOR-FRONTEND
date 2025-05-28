@@ -56,7 +56,12 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
     };
 
     const handleEditPolicy = () => {
-        setActiveStep(5); // Go back to Step 6 (index 5)
+        // Go back based on policy type
+        if (policyData.policy_for === 'reports') {
+            setActiveStep(3); // Go back to Report Configuration step
+        } else {
+            setActiveStep(6); // Go back to Step 6 (Permissions) for connection policies
+        }
     };
 
     return (
@@ -76,7 +81,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
                 </div>
 
                 <p className="text-lg text-gray-800 mb-4">
-                    Are you sure you want to save this policy?
+                    Are you sure you want to save this {policyData.policy_for === 'reports' ? 'report' : ''} policy?
                 </p>
 
                 <div className="flex flex-row justify-between gap-4 mt-5">

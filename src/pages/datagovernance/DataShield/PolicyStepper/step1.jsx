@@ -1,27 +1,36 @@
 import { useEffect, useState } from "react";
-import { Stepper, Step, StepLabel, Button, Box, Typography } from '@mui/material';
+import { Stepper, Step, StepLabel, Button, Box, Typography, Modal, TextField, CircularProgress, Snackbar, Alert } from '@mui/material';
 import { Plus } from 'lucide-react';
 import { useAuth } from "../../../../context/AuthContext";
 
-
-const Step1 = ({ onDataChange, initialData }) => {
+const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
     const [policies, setPolicies] = useState([]);
     const [selectedPolicy, setSelectedPolicy] = useState(initialData.selectedPolicy || '');
     const [description, setDescription] = useState(initialData.description || '');
-    const [subPolicyName, setSubPolicyName] = useState(initialData.sub_policy_name || '');
+    const [subPolicies, setSubPolicies] = useState([]);
+    const [selectedSubPolicy, setSelectedSubPolicy] = useState(initialData.sub_policy_name || '');
     const [subPolicyDescription, setSubPolicyDescription] = useState(initialData.sub_policy_description || '');
     const [policyDescriptionMap, setPolicyDescriptionMap] = useState({});
+    const [modalOpen, setModalOpen] = useState(false);
+    const [newSubPolicyName, setNewSubPolicyName] = useState('');
+    const [newSubPolicyDesc, setNewSubPolicyDesc] = useState('');
+    const [formValid, setFormValid] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState({
+        open: false,
+        message: '',
+        severity: 'success'
+    });
     const { token } = useAuth();
 
     useEffect(() => {
         fetchPolicy();
     }, []);
 
-    // In Step1 component
     useEffect(() => {
         setSelectedPolicy(initialData.selectedPolicy || '');
         setDescription(initialData.description || '');
-        setSubPolicyName(initialData.sub_policy_name || '');
+        setSelectedSubPolicy(initialData.sub_policy_name || '');
         setSubPolicyDescription(initialData.sub_policy_description || '');
     }, [initialData]);
 
@@ -29,12 +38,23 @@ const Step1 = ({ onDataChange, initialData }) => {
         const currentData = {
             selectedPolicy,
             description,
-            sub_policy_name: subPolicyName,
+            sub_policy_name: selectedSubPolicy,
             sub_policy_description: subPolicyDescription,
-            policy_name: subPolicyName
+            policy_name: selectedSubPolicy,
+            isFormValid: selectedPolicy !== '' && selectedSubPolicy !== ''
         };
         onDataChange(currentData);
-    }, [selectedPolicy, description, subPolicyName, subPolicyDescription]);
+
+        // Validate form - both policy and subpolicy must be selected
+        const isValid = selectedPolicy !== '' && selectedSubPolicy !== '';
+        setFormValid(isValid);
+    }, [selectedPolicy, description, selectedSubPolicy, subPolicyDescription]);
+
+    useEffect(() => {
+        if (selectedPolicy) {
+            fetchSubPolicies(selectedPolicy);
+        }
+    }, [selectedPolicy]);
 
     const fetchPolicy = async () => {
         try {
@@ -61,15 +81,110 @@ const Step1 = ({ onDataChange, initialData }) => {
         }
     };
 
+    const fetchSubPolicies = async (policyType) => {
+        try {
+            const encodedPolicyType = encodeURIComponent(policyType);
+            const response = await fetch(`${import.meta.env.VITE_FAST_API}/subpolicytypes/${encodedPolicyType}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data = await response.json();
+            setSubPolicies(data.sub_policy || []);
+        } catch (error) {
+            console.error('Error fetching sub policy types:', error);
+        }
+    };
+
     const handlePolicyChange = (e) => {
         const selected = e.target.value;
         setSelectedPolicy(selected);
+        setSelectedSubPolicy('');
+        setSubPolicyDescription('');
 
         if (selected && policyDescriptionMap[selected]) {
             setDescription(policyDescriptionMap[selected]);
         } else {
             setDescription('');
         }
+    };
+
+    const handleSubPolicyChange = (e) => {
+        const selected = e.target.value;
+        setSelectedSubPolicy(selected);
+
+        const subPolicy = subPolicies.find(sp => sp.sub_policy === selected);
+        if (subPolicy) {
+            setSubPolicyDescription(subPolicy.description);
+        } else {
+            setSubPolicyDescription('');
+        }
+    };
+
+    const handleAddSubPolicy = async () => {
+        if (!newSubPolicyName || !newSubPolicyDesc) {
+            return; // Both fields are required
+        }
+
+        setLoading(true);
+        try {
+            const payload = {
+                policy_type: selectedPolicy,
+                sub_policy: newSubPolicyName,
+                description: newSubPolicyDesc
+            };
+
+            const response = await fetch(`${import.meta.env.VITE_FAST_API}/addsubpolicy`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to add sub policy');
+            }
+
+            // Refresh sub-policies list
+            await fetchSubPolicies(selectedPolicy);
+
+            // Close modal and reset form
+            setModalOpen(false);
+            setNewSubPolicyName('');
+            setNewSubPolicyDesc('');
+
+            // Show success toast
+            setToast({
+                open: true,
+                message: 'Subpolicy created successfully!',
+                severity: 'success'
+            });
+
+        } catch (error) {
+            console.error('Error adding sub policy:', error);
+            // Show error toast
+            setToast({
+                open: true,
+                message: 'Failed to create subpolicy',
+                severity: 'error'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCloseToast = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setToast({...toast, open: false});
     };
 
     return (
@@ -81,10 +196,14 @@ const Step1 = ({ onDataChange, initialData }) => {
                     Policy
                 </h2>
                 <button
-                    className="flex items-center bg-[#8e78b7] text-white px-4 py-1.5 rounded-lg hover:bg-[#7b67a3] focus:outline-none"
+                    className={`flex items-center px-4 py-1.5 rounded-lg focus:outline-none ${
+                        selectedPolicy ? 'bg-[#8e78b7] text-white hover:bg-[#7b67a3]' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                    onClick={() => selectedPolicy && setModalOpen(true)}
+                    disabled={!selectedPolicy}
                 >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add policy
+                    Add Subpolicy
                 </button>
             </div>
 
@@ -122,13 +241,19 @@ const Step1 = ({ onDataChange, initialData }) => {
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                    <input
-                        type="text"
-                        placeholder="Name"
+                    <select
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
-                        value={subPolicyName}
-                        onChange={(e) => setSubPolicyName(e.target.value)}
-                    />
+                        value={selectedSubPolicy}
+                        onChange={handleSubPolicyChange}
+                        disabled={!selectedPolicy}
+                    >
+                        <option value="">Select Sub Policy</option>
+                        {subPolicies.map((subPolicy, index) => (
+                            <option key={index} value={subPolicy.sub_policy}>
+                                {subPolicy.sub_policy}
+                            </option>
+                        ))}
+                    </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -138,9 +263,78 @@ const Step1 = ({ onDataChange, initialData }) => {
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
                         value={subPolicyDescription}
                         onChange={(e) => setSubPolicyDescription(e.target.value)}
+                        readOnly
                     />
                 </div>
             </div>
+
+            {/* Modal for adding new sub policy */}
+            <Modal
+                open={modalOpen}
+                onClose={() => !loading && setModalOpen(false)}
+                aria-labelledby="add-subpolicy-modal"
+            >
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-lg shadow-lg w-96">
+                    <h2 className="text-xl font-bold mb-4">Add New Subpolicy</h2>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Subpolicy Name</label>
+                        <input
+                            type="text"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
+                            value={newSubPolicyName}
+                            onChange={(e) => setNewSubPolicyName(e.target.value)}
+                            placeholder="Enter subpolicy name"
+                            disabled={loading}
+                        />
+                    </div>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none"
+                            value={newSubPolicyDesc}
+                            onChange={(e) => setNewSubPolicyDesc(e.target.value)}
+                            placeholder="Enter description"
+                            rows={3}
+                            disabled={loading}
+                        />
+                    </div>
+
+                    <div className="flex justify-end space-x-2">
+                        <button
+                            onClick={() => setModalOpen(false)}
+                            className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+                            disabled={loading}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleAddSubPolicy}
+                            disabled={!newSubPolicyName || !newSubPolicyDesc || loading}
+                            className={`px-4 py-2 rounded-lg flex items-center justify-center min-w-[80px] ${
+                                newSubPolicyName && newSubPolicyDesc && !loading
+                                ? 'bg-[#8e78b7] text-white hover:bg-[#7b67a3]'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            }`}
+                        >
+                            {loading ? <CircularProgress size={20} color="inherit" /> : 'Add'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Toast notification */}
+            <Snackbar
+                open={toast.open}
+                autoHideDuration={6000}
+                onClose={handleCloseToast}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert onClose={handleCloseToast} severity={toast.severity} sx={{ width: '100%' }}>
+                    {toast.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };

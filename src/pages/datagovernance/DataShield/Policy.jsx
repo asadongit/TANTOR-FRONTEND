@@ -30,6 +30,8 @@ import Step4 from "./PolicyStepper/step4";
 import Step5 from "./PolicyStepper/step5";
 import Step6 from "./PolicyStepper/step6";
 import Step7 from "./PolicyStepper/step7";
+import PolicyTypeSelector from "./PolicyStepper/PolicyTypeSelector";
+import ReportStep from "./PolicyStepper/ReportStep";
 import { useAuth } from "../../../context/AuthContext";
 
 const Toggle = ({ enabled, onToggle }) => {
@@ -56,9 +58,8 @@ const Policy = () => {
         policyId: null,
         policyName: ''
     });
-    const [showCards, setShowCards] = useState(true); // New state for toggling cards
+    const [showCards, setShowCards] = useState(true);
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const rowsPerPage = 10;
 
@@ -190,7 +191,8 @@ const Policy = () => {
     };
 
     const [isOpen, setIsOpen] = useState(false);
-    const steps = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Confirmation'];
+    const connectionSteps = ['Step 1', 'Step 2', 'Policy Type', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Confirmation'];
+    const reportSteps = ['Step 1', 'Step 2', 'Policy Type', 'Report Configuration', 'Confirmation'];
     const [activeStep, setActiveStep] = useState(0);
     const [policyData, setPolicyData] = useState({
         policy_type: '',
@@ -229,18 +231,40 @@ const Policy = () => {
         selectedColumns: []
     });
 
+    const [policyType, setPolicyType] = useState('connection');
+
+    const steps = policyType === 'reports' ? reportSteps : connectionSteps;
+
     const handleNext = () => {
         switch (activeStep) {
             case 0:
-                updateStep1Data(step1Data);
+                if (step1Data.isFormValid) {
+                    updateStep1Data(step1Data);
+                } else {
+                    return;
+                }
                 break;
             case 1:
-                updateStep2Data(step2Data);
+                if (step2Data.isFormValid) {
+                    updateStep2Data(step2Data);
+                } else {
+                    return;
+                }
                 break;
             case 2:
-                updateStep3Data(step3Data);
+                if (!policyType) {
+                    return;
+                }
+                break;
+            case 3:
+                if (policyType === 'connection') {
+                    updateStep3Data(step3Data);
+                }
+                break;
+            default:
                 break;
         }
+
         if (activeStep < steps.length - 1) {
             setActiveStep(prev => prev + 1);
         }
@@ -365,6 +389,16 @@ const Policy = () => {
         setPolicyData(prev => ({ ...prev, ...newData }));
     };
 
+    const getNextStepIndex = (currentStep) => {
+        if (currentStep === 2 && policyType === 'reports') {
+            return 3;
+        }
+        if (currentStep === 3 && policyType === 'reports') {
+            return 4;
+        }
+        return currentStep + 1;
+    };
+
     const renderStepContent = (step) => {
         switch (step) {
             case 0:
@@ -372,31 +406,58 @@ const Policy = () => {
             case 1:
                 return <Step2 onDataChange={setStep2Data} initialData={step2Data} />;
             case 2:
-                return <Step3
-                    name='Data'
-                    onDataChange={setStep3Data}
-                    initialData={step3Data}
-                    policyData={policyData}
-                    setIsStep3Modified={setIsStep3Modified}
-                />;
+                return <PolicyTypeSelector selectedType={policyType} onTypeChange={setPolicyType} />;
             case 3:
+                return policyType === 'reports' ? (
+                    <ReportStep
+                        policyData={policyData}
+                        onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))}
+                    />
+                ) : (
+                    <Step3
+                        name='Data'
+                        onDataChange={setStep3Data}
+                        initialData={step3Data}
+                        policyData={policyData}
+                        setIsStep3Modified={setIsStep3Modified}
+                    />);
+            case 4:
+                if (policyType === 'reports') {
+                    return <Step7
+                        setIsOpen={setIsOpen}
+                        policyData={{
+                            ...policyData,
+                            policy_for: 'reports'
+                        }}
+                        setActiveStep={setActiveStep}
+                        fetchPolicyListData={fetchPolicyListData}
+                        isEditMode={isEditMode}
+                        editPolicyId={editPolicyId}
+                    />;
+                }
                 return <Step4
                     policyData={policyData}
                     onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))}
                     isStep3Modified={isStep3Modified}
                 />;
-            case 4:
+            case 5:
                 return <Step5
                     policyData={policyData}
                     onDataChange={updatePolicyData}
                     isStep3Modified={isStep3Modified}
                 />;
-            case 5:
-                return <Step6 policyData={policyData} onDataChange={updatePolicyData} />;
             case 6:
+                return <Step6
+                    policyData={policyData}
+                    onDataChange={updatePolicyData}
+                />;
+            case 7:
                 return <Step7
                     setIsOpen={setIsOpen}
-                    policyData={policyData}
+                    policyData={{
+                        ...policyData,
+                        policy_for: 'connection'
+                    }}
                     setActiveStep={setActiveStep}
                     fetchPolicyListData={fetchPolicyListData}
                     isEditMode={isEditMode}
@@ -441,6 +502,7 @@ const Policy = () => {
             selectedTables: [],
             selectedColumns: [],
         });
+        setPolicyType('connection');
         setIsStep3Modified(false);
         setIsEditMode(false);
         setEditPolicyId(null);
@@ -464,13 +526,7 @@ const Policy = () => {
                 });
                 break;
             case 2:
-                setStep3Data({
-                    selectedConnections: [],
-                    selectedSchemas: [],
-                    selectedTables: [],
-                    selectedColumns: [],
-                });
-                setIsStep3Modified(true);
+                setPolicyType('');
                 break;
             case 3:
                 setPolicyData((prev) => ({
@@ -519,7 +575,6 @@ const Policy = () => {
         );
     }, [sampleData, searchTerm]);
 
-    // Pagination logic
     const totalPages = Math.ceil(sampleData.length / rowsPerPage);
     const paginatedData = filteredTableData.slice(
         (currentPage - 1) * rowsPerPage,
@@ -530,7 +585,6 @@ const Policy = () => {
         setCurrentPage(page);
     };
 
-    // Generate pagination buttons with ellipsis
     const maxVisiblePages = 3;
     const pageNumbers = [];
     if (totalPages <= maxVisiblePages) {
@@ -623,7 +677,7 @@ const Policy = () => {
     };
 
     const handleToggleView = () => {
-        setShowCards(prev => !prev); // Toggle the showCards state
+        setShowCards(prev => !prev);
     };
 
     return (
@@ -645,7 +699,7 @@ const Policy = () => {
                         </div>
                         <button
                             type="button"
-                            onClick={handleToggleView} // Add click handler
+                            onClick={handleToggleView}
                             className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                         >
                             <List className="h-5 w-5" />
@@ -673,7 +727,7 @@ const Policy = () => {
                     </div>
                 </div>
 
-                {showCards && ( // Conditionally render cards
+                {showCards && (
                     <div className="mt-4">
                         {loading ? (
                             <div className="flex justify-center items-center h-64">
@@ -876,12 +930,14 @@ const Policy = () => {
                         >
                             <X className="h-5 w-5" />
                         </button>
-                        {activeStep !== 6 && (
+                        {!(activeStep === 4 && policyType === 'reports') &&
+                         !(activeStep === 7 && policyType === 'connection') && (
                             <h2 className="text-lg font-bold text-[#8e78b7] flex items-center mb-3">
                                 {isEditMode ? "Edit Policy" : "Add Policy"}
                             </h2>
                         )}
-                        {activeStep !== 6 && (
+                        {!(activeStep === 4 && policyType === 'reports') &&
+                         !(activeStep === 7 && policyType === 'connection') && (
                             <Stepper activeStep={activeStep} alternativeLabel>
                                 {steps.map((_, index) => {
                                     const isCompleted = index < activeStep;
@@ -909,7 +965,8 @@ const Policy = () => {
                             {renderStepContent(activeStep)}
                         </div>
 
-                        {activeStep !== 6 && (
+                        {!(activeStep === 4 && policyType === 'reports') &&
+                         !(activeStep === 7 && policyType === 'connection') && (
                             <div className="flex justify-between mt-7">
                                 <div className="flex gap-3">
                                     <button
@@ -920,7 +977,18 @@ const Policy = () => {
                                     </button>
                                     <button
                                         onClick={handleNext}
-                                        className="px-6 py-1.5 rounded-md bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
+                                        disabled={
+                                            (activeStep === 0 && !step1Data.isFormValid) ||
+                                            (activeStep === 1 && !step2Data.isFormValid) ||
+                                            (activeStep === 2 && !policyType)
+                                        }
+                                        className={`px-6 py-1.5 rounded-md ${
+                                            (activeStep === 0 && !step1Data.isFormValid) ||
+                                            (activeStep === 1 && !step2Data.isFormValid) ||
+                                            (activeStep === 2 && !policyType)
+                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
+                                        }`}
                                     >
                                         Next
                                     </button>
