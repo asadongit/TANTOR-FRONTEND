@@ -9,11 +9,9 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
   const initialFilters = policyData.row_access_control || {};
   const [tableFilters, setTableFilters] = useState(initialFilters);
 
-
   useEffect(() => {
     setTableFilters(policyData.row_access_control || {});
   }, [policyData.row_access_control]);
-
 
   useEffect(() => {
     if (isStep3Modified && Object.keys(tableFilters).length > 0) {
@@ -27,7 +25,6 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
     }
   }, [isStep3Modified]);
 
-
   const allTables = policyData.data_connection.flatMap((conn) =>
     conn.tables.map((table) => ({
       fullPath: table,
@@ -37,34 +34,26 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
     }))
   );
 
-
   const filteredTables = allTables.filter((table) =>
     table.fullPath.toLowerCase().includes(tableSearch.toLowerCase())
   );
 
-  // const getColumnsForSelectedTable = () => {
-  //   if (!selectedTable) return [];
-  //   const tableConn = policyData.data_connection.find((conn) =>
-  //     conn.tables.includes(selectedTable)
-  //   );
-  //   return (
-  //     tableConn?.columns
-  //       .filter((col) => col.startsWith(selectedTable))
-  //       .map((col) => col.split('.').pop()) || []
-  //   );
-  // };
-
-  const getColumnsForSelectedTable = () => {
+  const getColumnsForSelectedTable = (currentFilterIndex = -1) => {
     if (!selectedTable) return [];
 
     const tableConn = policyData.data_connection.find((conn) =>
       conn.tables.includes(selectedTable)
     );
 
+    const usedColumns = (tableFilters[selectedTable] || [])
+      .map((filter, index) => (index !== currentFilterIndex ? filter.column : null))
+      .filter((column) => column);
+
     return (
       tableConn?.columns
-        .filter((col) => col.startsWith(`${selectedTable}.`)) // Ensure exact match
-        .map((col) => col.split('.').pop()) || []
+        .filter((col) => col.startsWith(`${selectedTable}.`))
+        .map((col) => col.split('.').pop())
+        .filter((column) => !usedColumns.includes(column)) || []
     );
   };
 
@@ -93,10 +82,10 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
       [table]: tableFilters[table].map((filter, i) =>
         i === index
           ? {
-            ...filter,
-            [field]: value,
-            ...(field === 'column' && { value: '' }),
-          }
+              ...filter,
+              [field]: value,
+              ...(field === 'column' && { value: '' }),
+            }
           : filter
       ),
     };
@@ -141,7 +130,7 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
         <span className="whitespace-nowrap">
           {selectedTable
             ? allTables.find((t) => t.fullPath === selectedTable)?.tableName ||
-            'Select Table'
+              'Select Table'
             : 'Select Table'}
         </span>
       </div>
@@ -179,11 +168,11 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
           className={`px-3 py-1 rounded-sm text-sm font-medium cursor-pointer ${selectedTable === table
             ? 'text-white'
             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+          }`}
           style={{
             backgroundColor: selectedTable === table ? '#8e78b7' : undefined,
             ...(selectedTable === table && {
-              ':hover': { backgroundColor: '#7b689e' }, // Slightly darker for hover
+              ':hover': { backgroundColor: '#7b689e' },
             }),
           }}
           onClick={() => setSelectedTable(table)}
@@ -208,11 +197,11 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
             className={`flex items-center px-3 py-1 border rounded-md text-sm font-medium ${filters.length > 0 && !isFilterComplete(filters[filters.length - 1])
               ? 'border-gray-300 text-gray-400 cursor-not-allowed'
               : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
-              }`}
+            }`}
             style={{
               borderColor:
                 filters.length > 0 &&
-                  !isFilterComplete(filters[filters.length - 1])
+                !isFilterComplete(filters[filters.length - 1])
                   ? undefined
                   : '#8e78b7',
             }}
@@ -232,7 +221,7 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
             No conditions added yet
           </p>
         ) : (
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-60 overflow-y-auto">
             {filters.map((filter, index) => (
               <div key={index} className="mb-2">
                 <div className="flex items-center gap-3 mb-2">
@@ -242,7 +231,7 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
                     </label>
                     <select
                       className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                      value={filter.column}
+                      value={filter.column || ''}
                       onChange={(e) =>
                         handleFilterChange(
                           selectedTable,
@@ -253,7 +242,10 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
                       }
                     >
                       <option value="">Select Column</option>
-                      {getColumnsForSelectedTable().map((column) => (
+                      {(filter.column
+                        ? [filter.column, ...getColumnsForSelectedTable(index)]
+                        : getColumnsForSelectedTable(index)
+                      ).map((column) => (
                         <option key={column} value={column}>
                           {column}
                         </option>
@@ -292,7 +284,7 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
                     <input
                       type="text"
                       className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                      value={filter.value}
+                      value={filter.value || ''}
                       onChange={(e) =>
                         handleFilterChange(
                           selectedTable,
