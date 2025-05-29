@@ -3,27 +3,32 @@ import { X, ArrowBigLeft, ArrowBigRight } from "lucide-react";
 import { useStateContext } from "../Federation/context/contextViewProvider";
 import { Modal } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { generateSQLQuery } from "../../../services/sqlQueryService";
 
-const RuleSummary = ({ setIsOpen, selectedFact, tables, filterData, previewData }) => {
+const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData, nodes, setNodes, setFilterData, setPreviewData }) => {
   const { finalPayload } = useStateContext();
   const navigate = useNavigate();
-  console.log(`RuleSummary ==== FinalPayload => `, finalPayload);
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [editedColumn, setEditedColumn] = useState(null);
-
+  
+  // Get columns from filterData and ensure it's not using a fallback if columns exist
   const columns = filterData?.columns || [];
-  const currentColumn = columns[currentColumnIndex] || {
-    name: "total_outstanding_amt",
-    type: "varchar",
-    alias: "",
-    output: true,
-    order: "1",
-    sort: "ASC",
-    aggregate: "SUM",
-    groupBy: false,
-    isVisible: true
-  };
+  console.log("filterData ", filterData);
+  // Only use default column if no columns are available
+  const currentColumn = columns.length > 0 
+    ? columns[currentColumnIndex] 
+    : {
+        name: "total_outstanding_amt",
+        type: "varchar",
+        alias: "",
+        output: true,
+        order: "1",
+        sort: "ASC",
+        aggregate: "SUM",
+        groupBy: false,
+        isVisible: true
+      };
 
   const handleNextColumn = () => {
     if (currentColumnIndex < columns.length - 1) {
@@ -50,13 +55,57 @@ const RuleSummary = ({ setIsOpen, selectedFact, tables, filterData, previewData 
     if (editedColumn) {
       const updatedColumns = [...columns];
       updatedColumns[currentColumnIndex] = editedColumn;
-      filterData.columns = updatedColumns;
+      
+      // Update filterData state immediately
+      const updatedFilterData = {
+        ...filterData,
+        columns: updatedColumns
+      };
+      
+      // Update the parent component's filterData state
+      if (setFilterData) {
+        setFilterData(updatedFilterData);
+      }
+      
+      // Update node data
+      const updatedNodes = nodes.map(n => {
+        if (n.type === 'source') {
+          // Generate new SQL query with updated columns
+          const query = generateSQLQuery({
+            tableName: selectedFact.fct_name,
+            selectedColumns: updatedColumns.filter(col => col.output),
+            filterConditions: updatedFilterData,
+            ruleData: nodes.find(node => node.type === 'define')?.data
+          });
+          console.log(query)
+          
+          // Update preview data in parent component
+          if (setPreviewData) {
+            setPreviewData(query);
+          }
+          
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              filterConditions: updatedFilterData,
+              previewData: query
+            }
+          };
+        }
+        return n;
+      });
+      
+      // Update the nodes state
+      setNodes(updatedNodes);
+      
+      // Exit edit mode
       setEditMode(false);
       setEditedColumn(null);
     }
   };
 
-  const handleCancel = () => {
+  const handleCancelEdit = () => {
     setEditMode(false);
     setEditedColumn(null);
   };
@@ -135,7 +184,7 @@ const RuleSummary = ({ setIsOpen, selectedFact, tables, filterData, previewData 
                     <label className="block text-sm font-medium text-gray-700 mb-2">Column</label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
                       <span className="text-blue-600">
-                        {tables?.map((t) => t.name || t.matric_name).join(", ") || currentColumn.name}
+                        {columns.map(t => t.name).join(", ") || currentColumn.name}
                       </span>
                     </div>
                   </div>
@@ -156,7 +205,7 @@ const RuleSummary = ({ setIsOpen, selectedFact, tables, filterData, previewData 
                   <label className="block text-sm font-medium text-gray-700 mb-2">Query Preview</label>
                   <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
                     <pre className="text-sm font-mono text-blue-600 whitespace-pre-wrap">
-                      {previewData}
+                      {previewData || "No query generated"}
                     </pre>
                   </div>
                 </div>
@@ -195,9 +244,6 @@ const RuleSummary = ({ setIsOpen, selectedFact, tables, filterData, previewData 
           <div className="w-[400px] overflow-y-auto p-6 bg-gray-50">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Column Settings</h3>
-              {/* <button className="text-gray-500 hover:text-gray-700">
-                <X className="w-4 h-4" />
-              </button> */}
             </div>
 
             <div className="space-y-6">
@@ -344,7 +390,7 @@ const RuleSummary = ({ setIsOpen, selectedFact, tables, filterData, previewData 
                 {editMode && (
                   <div className="flex justify-end space-x-3 mt-6">
                     <button
-                      onClick={handleCancel}
+                      onClick={handleCancelEdit}  // Using the cancel edit handler
                       className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                     >
                       Cancel

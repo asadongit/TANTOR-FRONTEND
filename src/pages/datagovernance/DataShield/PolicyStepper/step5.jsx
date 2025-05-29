@@ -207,7 +207,7 @@ const Step5 = ({ policyData, onDataChange }) => {
                         No column controls added yet
                     </p>
                 ) : (
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-60 overflow-y-auto">
                         {controls.map((control, index) => (
                             <div key={index} className="mb-4">
                                 <div className="flex items-center gap-3 mb-2">
