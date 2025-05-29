@@ -385,18 +385,25 @@ export function SourceNode({ id, data }) {
             
             // Handle skip case (when both error and filterData are null)
             if (error === null && filterData === null) {
+              // Maintain existing columns data for skip case
+              const updatedFilterData = {
+                conditions: [],
+                columns: filterModalColumns, // Keep the columns data
+                sqlPreview: ''
+              };
+              
               // Generate SQL query for skip case
               const query = generateSQLQuery({
                 tableName: selectedFact.fct_name,
                 selectedColumns: filterModalColumns.filter(col => col.output),
-                filterConditions: { conditions: [] },
+                filterConditions: updatedFilterData,
                 ruleData: data.getNodes?.()?.find(node => node.type === 'define')?.data
               });
               
               updateNodeData({
-                filterConditions: { conditions: [] },
+                filterConditions: updatedFilterData, // Store the updated filter data
                 selectedColumns: filterModalColumns,
-                previewData: query, // Store query in node data
+                previewData: query,
                 showRuleSummary: true
               });
               return;
@@ -432,21 +439,6 @@ export function SourceNode({ id, data }) {
                   type: filterColumn?.type || column.type || 'varchar'
                 };
               });
-              
-              setRuleFilterSelections(updatedColumns);
-              setFilterModalColumns(updatedColumns);
-
-              // Generate SQL query
-              const query = generateSQLQuery({
-                tableName: selectedFact.fct_name,
-                selectedColumns: updatedColumns.filter(col => col.output),
-                filterConditions: {
-                  ...conditions,
-                  sqlPreview,
-                  columns: updatedColumns
-                },
-                ruleData: data.getNodes?.()?.find(node => node.type === 'define')?.data
-              });
 
               // Store filter conditions and column properties
               const updatedFilterData = {
@@ -455,11 +447,19 @@ export function SourceNode({ id, data }) {
                 columns: updatedColumns
               };
 
+              // Generate SQL query
+              const query = generateSQLQuery({
+                tableName: selectedFact.fct_name,
+                selectedColumns: updatedColumns.filter(col => col.output),
+                filterConditions: updatedFilterData,
+                ruleData: data.getNodes?.()?.find(node => node.type === 'define')?.data
+              });
+
               // Update node data with filter conditions
               updateNodeData({
                 filterConditions: updatedFilterData,
                 selectedColumns: updatedColumns,
-                previewData: query, // Store query in node data
+                previewData: query,
                 showRuleSummary: true
               });
             }
