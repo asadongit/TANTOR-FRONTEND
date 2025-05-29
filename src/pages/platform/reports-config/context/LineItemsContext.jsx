@@ -10,15 +10,18 @@ export const useLineItems = () => useContext(LineItemsContext);
 export const LineItemsProvider = ({ children, reportData }) => {
   const { token, hostnameV1 } = useAuth();
   const navigate = useNavigate();
-  
+
   const { reportId, reportName, reportType, reportDesc } = reportData || {};
 
   const [lineItemsHtml, setLineItemsHtml] = useState("");
   const [showLineItemConfigModal, setShowLineItemConfigModal] = useState(false);
-  const [showRuleOperatorSelector, setShowRuleOperatorSelector] = useState(false);
+  const [showRuleOperatorSelector, setShowRuleOperatorSelector] =
+    useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentLineItemId, setCurrentLineItemId] = useState("");
   const [lineItemConfig, setLineItemConfig] = useState([]);
+
+  const [linkedLineItemIds, setLinkedLineItemIds] = useState(new Set());
 
   useEffect(() => {
     console.log("Final JSON ==> ", {
@@ -77,6 +80,87 @@ export const LineItemsProvider = ({ children, reportData }) => {
     fetchLineItems();
   }, [reportId, reportName, navigate]);
 
+  const addReportToDatabase = async () => {
+    const payload = {
+      report: {
+        report_id: reportId,
+        report_name: reportName,
+        report_desc: reportDesc,
+        report_type: reportType,
+        report_status: "DRAFT",
+      },
+    };
+
+    const headers = {
+      "Content-Type": "application/json",
+      authorization: `Bearer ${token}`,
+    };
+
+    try {
+      const response = await fetch(`${hostnameV1}/lineItems/reports`, {
+        headers: headers,
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        toast.error("Error Saving Report Data.");
+        return;
+      }
+
+      const data = await response.json();
+      toast.success(data.message);
+    } catch (error) {
+      console.error("Error Saving Report Data:", error);
+      toast.error("Error Saving Report Data");
+    }
+  };
+
+  const validateLineItemsJson = () => {
+    // console.log(linkedLineItemIds);
+    // console.log(`${reportId} || ${reportName} || ${reportDesc} || ${reportType}`)
+    
+    // Basic validation
+    if (lineItemConfig.length === 0) {
+      toast.error("No Line Items have been configured.");
+      return false;
+    }
+
+    // Report info validation
+    if (!reportId || !reportName || !reportType) {
+      toast.error("Missing required report information. Please ensure all fields are filled.");
+      return false;
+    }
+
+    
+    for (const lineItem of lineItemConfig) {
+      if (!lineItem.line_item || lineItem.rules.length === 0) {
+        toast.error(`Invalid configuration for line item: ${lineItem.line_item}`);
+        return false;
+      }
+
+      // Validate rules
+      for (const rule of lineItem.rules) {
+        if (!rule.ruleId || !rule.ruleName) {
+          toast.error(`Remove empty rules.`);
+          return false;
+        }
+
+        // operator validation
+        if (!rule.operator) {
+          toast.error(`Rule Operator Not Configured for ${lineItem.line_item.toUpperCase()} - ${rule.ruleName}`);
+          return false;
+        }
+        if (!rule.sequence) {
+          toast.error(`Kindly Configure Rule Sequence for ${lineItem.line_item.toUpperCase()} - ${rule.ruleName}`);
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
   const closeAllModals = () => {
     setShowLineItemConfigModal(false);
     setShowRuleOperatorSelector(false);
@@ -102,7 +186,10 @@ export const LineItemsProvider = ({ children, reportData }) => {
         lineItemConfig,
         updateLineItemConfigRules,
         getRulesForCurrentLineItem,
-        closeAllModals
+        closeAllModals,
+        validateLineItemsJson,
+        addReportToDatabase,
+        setLinkedLineItemIds
       }}
     >
       {children}
