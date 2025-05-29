@@ -290,9 +290,9 @@ const ReportConfigDashboard = () => {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-      if(policyIds.length == 0)
+      if (policyIds.length == 0)
         return;
-      
+
       console.log("policy ids are =====>", policyIds)
 
       const response = await fetch(`${hostnameV1}/reportdetails`, {
@@ -337,32 +337,71 @@ const ReportConfigDashboard = () => {
     fetchReports();
   };
 
-  const data = [
-    {
-      name: 'Grid',
-      blue: 40,
-      teal: 25,
-      redStripes: 35,
-    },
-    {
-      name: 'Other',
-      blue: 30,
-      teal: 70,
-    },
-    {
-      name: 'Hybrid',
-      blue: 20,
-      teal: 60,
-      redStripes: 20,
-    },
-    {
-      name: 'List',
-      blue: 50,
-      teal: 20,
-      redStripes: 20,
-      gray: 10,
-    },
-  ];
+  // const data = [
+  //   {
+  //     name: 'Grid',
+  //     blue: 40,
+  //   },
+  //   {
+  //     name: 'Other',
+  //     teal: 70,
+  //   },
+  //   {
+  //     name: 'Hybrid',
+  //     redStripes: 20,
+  //   },
+  //   {
+  //     name: 'List',
+  //     gray: 10,
+  //   },
+  // ];
+
+  const [chartData, setChartData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+
+      try {
+
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        if (policyIds.length == 0)
+          return;
+
+        console.log("policy ids are =====>", policyIds)
+
+        const response = await fetch(`${hostnameV1}/reportsgraph`, {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ids: policyIds,
+          }),
+        });
+
+        const result = await response.json();
+        const { report_type } = result;
+
+        // Map API data to chart format
+        const data = [
+          { name: 'Grid', blue: report_type.GRID },
+           { name: 'List', teal: report_type.LIST },
+          { name: 'Other', redStripes: report_type.OTHERS },
+          { name: 'Hybrid', gray: report_type.HYBRID },
+        ];
+
+        setChartData(data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
 
   const handleCardClick = (card) => {
     const url = `/componentType=project&cardType=${card.title}&heading=${card.title}`;
@@ -451,7 +490,7 @@ const ReportConfigDashboard = () => {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             layout="vertical"
-            data={data}
+            data={chartData}
             margin={{
               top: 20,
               bottom: 5,
@@ -459,7 +498,10 @@ const ReportConfigDashboard = () => {
             barSize={40}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis type="number" />
+            <XAxis type="number"
+              allowDecimals={false}
+              tickFormatter={(value) => Math.round(value)}
+            />
             <YAxis dataKey="name" type="category" />
             <Tooltip content={<CustomTooltip />} />
             {/* <Legend /> */}
