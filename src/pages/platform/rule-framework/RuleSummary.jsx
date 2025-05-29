@@ -3,27 +3,32 @@ import { X, ArrowBigLeft, ArrowBigRight } from "lucide-react";
 import { useStateContext } from "../Federation/context/contextViewProvider";
 import { Modal } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { generateSQLQuery } from "../../../services/sqlQueryService";
 
-const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData, nodes }) => {
+const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData, nodes, setNodes, setFilterData, setPreviewData }) => {
   const { finalPayload } = useStateContext();
   const navigate = useNavigate();
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [editedColumn, setEditedColumn] = useState(null);
-
-  // Get columns from filterData
+  
+  // Get columns from filterData and ensure it's not using a fallback if columns exist
   const columns = filterData?.columns || [];
-  const currentColumn = columns[currentColumnIndex] || {
-    name: "total_outstanding_amt",
-    type: "varchar",
-    alias: "",
-    output: true,
-    order: "1",
-    sort: "ASC",
-    aggregate: "SUM",
-    groupBy: false,
-    isVisible: true
-  };
+  console.log("filterData ", filterData);
+  // Only use default column if no columns are available
+  const currentColumn = columns.length > 0 
+    ? columns[currentColumnIndex] 
+    : {
+        name: "total_outstanding_amt",
+        type: "varchar",
+        alias: "",
+        output: true,
+        order: "1",
+        sort: "ASC",
+        aggregate: "SUM",
+        groupBy: false,
+        isVisible: true
+      };
 
   const handleNextColumn = () => {
     if (currentColumnIndex < columns.length - 1) {
@@ -50,25 +55,51 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData, nodes }
     if (editedColumn) {
       const updatedColumns = [...columns];
       updatedColumns[currentColumnIndex] = editedColumn;
+      
+      // Update filterData state immediately
+      const updatedFilterData = {
+        ...filterData,
+        columns: updatedColumns
+      };
+      
+      // Update the parent component's filterData state
+      if (setFilterData) {
+        setFilterData(updatedFilterData);
+      }
+      
       // Update node data
       const updatedNodes = nodes.map(n => {
         if (n.type === 'source') {
-          const updatedFilterData = {
-            ...filterData,
-            columns: updatedColumns
-          };
+          // Generate new SQL query with updated columns
+          const query = generateSQLQuery({
+            tableName: selectedFact.fct_name,
+            selectedColumns: updatedColumns.filter(col => col.output),
+            filterConditions: updatedFilterData,
+            ruleData: nodes.find(node => node.type === 'define')?.data
+          });
+          console.log(query)
+          
+          // Update preview data in parent component
+          if (setPreviewData) {
+            setPreviewData(query);
+          }
+          
           return {
             ...n,
             data: {
               ...n.data,
-              filterConditions: updatedFilterData
+              filterConditions: updatedFilterData,
+              previewData: query
             }
           };
         }
         return n;
       });
       
-      console.log('Updated columns:', updatedColumns);
+      // Update the nodes state
+      setNodes(updatedNodes);
+      
+      // Exit edit mode
       setEditMode(false);
       setEditedColumn(null);
     }

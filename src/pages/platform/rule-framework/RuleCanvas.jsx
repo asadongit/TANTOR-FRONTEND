@@ -33,14 +33,19 @@ const RuleCanvas = () => {
   const [previewData, setPreviewData] = useState(''); // Added state for preview data
   const { handleFinalPayload, finalPayload } = useStateContext();
 
+  useEffect(() => {
+    console.log(filterData);
+  })
   // Add effect to watch for showRuleSummary flag in nodes
+  // Inside the useEffect that watches for showRuleSummary
   useEffect(() => {
     const sourceNode = nodes.find(node => node.type === 'source' && node.data.showRuleSummary);
     if (sourceNode) {
       setIsRuleSummaryOpen(true);
       setSelectedFact(sourceNode.data.selectedFact);
+      // Make sure filterData includes the columns
       setFilterData(sourceNode.data.filterConditions);
-      setPreviewData(sourceNode.data.previewData || ''); // Capture preview data
+      setPreviewData(sourceNode.data.previewData || '');
       
       // Reset the flag
       setNodes(nds => 
@@ -296,9 +301,11 @@ const RuleCanvas = () => {
           setIsOpen={setIsRuleSummaryOpen}
           selectedFact={selectedFact}
           filterData={filterData}
-          previewData={previewData} // Pass previewData to RuleSummary
+          previewData={previewData}
           nodes={nodes}
           setNodes={setNodes}
+          setFilterData={setFilterData}
+          setPreviewData={setPreviewData}
         />
       )}
     </>
