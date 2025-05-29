@@ -356,7 +356,20 @@ const ReportConfigDashboard = () => {
   //   },
   // ];
 
-  const [chartData, setChartData] = useState([]);
+  const [chartData, setChartData] = useState( [
+    {
+      name: 'Grid',
+    },
+    {
+      name: 'List',
+    },
+    {
+      name: 'Other',
+    },
+    {
+      name: 'Hybrid',
+    },
+  ]);
 
   useEffect(() => {
     const fetchData = async () => {
