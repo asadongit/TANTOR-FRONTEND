@@ -33,7 +33,7 @@ const DataCatalogue = () => {
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       count: 0,
-      seeDetailsLink: "/database-details",
+      seeDetailsLink: "/datagovernance/data-catalogue/database",
     },
     {
       title: "Schema",
@@ -42,7 +42,7 @@ const DataCatalogue = () => {
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       count: 0,
-      seeDetailsLink: "/schema-details",
+      seeDetailsLink: "/datagovernance/data-catalogue/schema",
     },
     {
       title: "Tables",
@@ -51,7 +51,7 @@ const DataCatalogue = () => {
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       count: 0,
-      seeDetailsLink: "/tables-details",
+      seeDetailsLink: "/datagovernance/data-catalogue/table",
     },
     {
       title: "Columns",
@@ -60,7 +60,7 @@ const DataCatalogue = () => {
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       count: 0,
-      seeDetailsLink: "/columns-details",
+      seeDetailsLink: "/datagovernance/data-catalogue/column",
     },
   ]);
 
