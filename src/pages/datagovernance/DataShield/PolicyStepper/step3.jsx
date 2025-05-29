@@ -18,12 +18,31 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
   const [openDropdown, setOpenDropdown] = useState(null);
 
   useEffect(() => {
-    onDataChange({
+    const stepData = {
       selectedConnections,
       selectedSchemas,
       selectedTables,
       selectedColumns
-    });
+    };
+
+    onDataChange(stepData);
+
+    // Also update the parent policyData immediately
+    if (policyData && typeof setIsStep3Modified === 'function') {
+      const connections = processConnectionData(
+        selectedConnections,
+        selectedSchemas,
+        selectedTables,
+        selectedColumns
+      );
+
+      // Update parent component with processed connection data
+      if (policyData.onPolicyDataChange) {
+        policyData.onPolicyDataChange({
+          data_connection: connections
+        });
+      }
+    }
   }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns, onDataChange]);
 
   useEffect(() => {
@@ -197,6 +216,67 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
         )}
       </div>
     );
+  };
+
+  const processConnectionData = (connections, schemas, tables, columns) => {
+    const result = [];
+    if (!Array.isArray(connections) || !Array.isArray(schemas) || !Array.isArray(tables) || !Array.isArray(columns)) {
+      console.warn('Invalid input arrays in processConnectionData');
+      return result;
+    }
+
+    const connectionGroups = {};
+    schemas.forEach((schema) => {
+      if (typeof schema !== 'string') return;
+      const [conn, schemaName] = schema.split('.');
+      if (!conn || !schemaName || !connections.includes(conn)) return;
+      if (!connectionGroups[conn]) {
+        connectionGroups[conn] = {
+          connection: conn,
+          schemas: {},
+        };
+      }
+      connectionGroups[conn].schemas[schema] = {
+        schema: schema,
+        tables: new Set(),
+        columns: new Set(),
+      };
+    });
+
+    tables.forEach((table) => {
+      if (typeof table !== 'string') return;
+      const parts = table.split('.');
+      if (parts.length < 3) return;
+      const conn = parts[0];
+      const schema = parts.slice(0, 2).join('.');
+      if (connectionGroups[conn]?.schemas[schema]) {
+        connectionGroups[conn].schemas[schema].tables.add(table);
+      }
+    });
+
+    columns.forEach((column) => {
+      if (typeof column !== 'string') return;
+      const parts = column.split('.');
+      if (parts.length < 4) return;
+      const conn = parts[0];
+      const schema = parts.slice(0, 2).join('.');
+      if (connectionGroups[conn]?.schemas[schema]) {
+        connectionGroups[conn].schemas[schema].columns.add(column);
+      }
+    });
+
+    Object.values(connectionGroups).forEach((connGroup) => {
+      Object.values(connGroup.schemas).forEach((schema) => {
+        result.push({
+          connection: connGroup.connection,
+          schema: schema.schema,
+          tables: Array.from(schema.tables),
+          columns: Array.from(schema.columns),
+        });
+      });
+    });
+
+    return result;
   };
 
   if (loading) {

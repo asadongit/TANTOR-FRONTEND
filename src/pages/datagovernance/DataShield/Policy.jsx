@@ -223,6 +223,15 @@ const Policy = () => {
             case 2:
                 updateStep3Data(step3Data);
                 break;
+            case 3:
+                // Step 4 data is already updated via onDataChange
+                break;
+            case 4:
+                // Step 5 data is already updated via onDataChange
+                break;
+            case 5:
+                // Step 6 data is already updated via onDataChange
+                break;
             default:
                 break;
         }
@@ -372,20 +381,25 @@ const Policy = () => {
             case 3:
                 return <Step4
                     policyData={policyData}
-                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))
-                    }
+                    onDataChange={(data) => {
+                        setPolicyData((prev) => ({ ...prev, ...data }));
+                    }}
                     isStep3Modified={isStep3Modified}
                 />;
             case 4:
                 return <Step5
                     policyData={policyData}
-                    onDataChange={updatePolicyData}
+                    onDataChange={(data) => {
+                        setPolicyData((prev) => ({ ...prev, ...data }));
+                    }}
                     isStep3Modified={isStep3Modified}
                 />;
             case 5:
                 return <Step6
                     policyData={policyData}
-                    onDataChange={updatePolicyData}
+                    onDataChange={(data) => {
+                        setPolicyData((prev) => ({ ...prev, ...data }));
+                    }}
                 />;
             case 6:
                 return <ReportStep
@@ -793,12 +807,74 @@ const Policy = () => {
         }
     };
 
+    const refreshPolicy = async (policyId) => {
+        setActiveMenu(null);
+        try {
+            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policylist`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            const data = await response.json();
+
+            const refreshedPolicy = data.policies.find(p => p.id === policyId);
+
+            if (!refreshedPolicy) {
+                throw new Error('Policy not found in response');
+            }
+
+            setSampleData(prevData =>
+                prevData.map(policy =>
+                    policy.id === policyId ? {
+                        id: refreshedPolicy.id,
+                        Type: refreshedPolicy.policy_type,
+                        Name: refreshedPolicy.policy_name,
+                        Description: refreshedPolicy.policy_description,
+                        Status: refreshedPolicy.policy_status,
+                        CreatedDate: refreshedPolicy.created_date,
+                        expiryDate: refreshedPolicy.expiry_date,
+                        UpdatedDate: refreshedPolicy.updated_date,
+                        Owner: refreshedPolicy.owner
+                    } : policy
+                )
+            );
+
+            showToast(`Policy ${policyId} refreshed successfully`, 'success');
+
+            return { success: true };
+        } catch (error) {
+            console.error('Error refreshing policy:', error);
+            showToast(`Failed to refresh policy: ${error.message}`, 'error');
+            return { success: false, error: error.message };
+        }
+    };
+
+    const showToast = (message, type) => {
+        setToast({
+            show: true,
+            message,
+            type
+        });
+
+        setTimeout(() => {
+            setToast(prev => ({ ...prev, show: false }));
+        }, 3000);
+    };
+
+
     return (
         <>
             <div>
                 {toast.show && (
                     <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
-                            'bg-red-100 text-red-800 border-l-4 border-red-500'
+                        'bg-red-100 text-red-800 border-l-4 border-red-500'
                         }`}>
                         <Icon
                             icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
@@ -885,19 +961,24 @@ const Policy = () => {
                                                     </div>
                                                     <h3 className="text-lg font-semibold">{card.title}</h3>
                                                 </div>
-                                                <button className="p-1 rounded-lg hover:bg-gray-100">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </button>
                                             </div>
                                             <div className="flex flex-col justify-between mt-1">
                                                 <div className="text-5xl font-semibold text-gray-800 ml-2">
                                                     {card.count.toString().padStart(2, "0")}
                                                 </div>
-                                                <div className="flex items-center gap-2 mt-6">
+                                                <div className="flex items-center justify-between mt-6">
+                                                    <button
+                                                        // onClick={handleSchemasOpen}
+                                                        className="text-purple-600 text-sm hover:text-purple-700"
+                                                    >
+                                                        See details
+                                                    </button>
                                                     {togglingStatus === index ? (
-                                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]">
+
+                                                        </div>
                                                     ) : (
-                                                        <>
+                                                        <div className="flex items-center gap-2">
                                                             <Toggle
                                                                 enabled={card.enabled}
                                                                 onToggle={() => togglePolicy(index)}
@@ -906,8 +987,9 @@ const Policy = () => {
                                                             <span className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-red-500"}`}>
                                                                 {card.enabled ? "Enabled" : "Disabled"}
                                                             </span>
-                                                        </>
+                                                        </div>
                                                     )}
+
                                                 </div>
                                             </div>
                                         </div>
@@ -1003,7 +1085,9 @@ const Policy = () => {
                                                                     >
                                                                         <Trash2 className="h-4 w-4" />
                                                                     </button>
-                                                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                                                    <button
+                                                                        onClick={() => refreshPolicy(policy.id)}
+                                                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                                                                         <RotateCw className="h-4 w-4" />
                                                                     </button>
                                                                 </div>
@@ -1104,24 +1188,23 @@ const Policy = () => {
                         </div>
 
                         {!(activeStep === 6) &&
-                         !(activeStep === 7) && (
-                            <div className="flex justify-between mt-7">
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={handleClear}
-                                        className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
-                                    >
-                                        Clear
-                                    </button>
-                                    <button
-                                        onClick={handleNext}
-                                        disabled={
-                                            (activeStep === 0 && !step1Data.isFormValid) ||
-                                            (activeStep === 1 && !step2Data.isFormValid)
-                                        }
-                                        className={`px-6 py-1.5 rounded-md ${
-                                            (activeStep === 0 && !step1Data.isFormValid) ||
-                                            (activeStep === 1 && !step2Data.isFormValid)
+                            !(activeStep === 7) && (
+                                <div className="flex justify-between mt-7">
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleClear}
+                                            className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                        >
+                                            Clear
+                                        </button>
+                                        <button
+                                            onClick={handleNext}
+                                            disabled={
+                                                (activeStep === 0 && !step1Data.isFormValid) ||
+                                                (activeStep === 1 && !step2Data.isFormValid)
+                                            }
+                                            className={`px-6 py-1.5 rounded-md ${(activeStep === 0 && !step1Data.isFormValid) ||
+                                                (activeStep === 1 && !step2Data.isFormValid)
                                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                                 : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
                                                 }`}

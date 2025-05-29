@@ -13,8 +13,7 @@ const LineItemSummary = () => {
     closeAllModals,
     reportId,
     reportName,
-    reportType,
-    reportDesc
+    setLinkedLineItemIds
   } = useLineItems();
 
   const rules = getRulesForCurrentLineItem();
@@ -93,8 +92,15 @@ const LineItemSummary = () => {
 
         const data = await response.json();
         toast.success(data.message);
-
-        await addReportToDatabase();
+        
+        setLinkedLineItemIds(prev => {
+          if(prev.has(currentLineItemId)){
+            return prev;
+          }else{
+            return new Set(prev).add(currentLineItemId);
+          }
+        })
+        // await addReportToDatabase();
         closeAllModals();
       } catch (error) {
         console.error("Error Saving Line Item:", error);
@@ -104,42 +110,6 @@ const LineItemSummary = () => {
 
     uploadData();
     console.log(payload);
-  };
-
-  const addReportToDatabase = async () => {
-    const payload = {
-      report: {
-        report_id: reportId,
-        report_name: reportName,
-        report_desc: reportDesc,
-        report_type: reportType,
-        report_status: "DRAFT",
-      },
-    };
-
-    const headers = {
-      "Content-Type": "application/json",
-      authorization: `Bearer ${token}`,
-    };
-
-    try {
-      const response = await fetch(`${hostnameV1}/lineItems/reports`, {
-        headers: headers,
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        toast.error("Error Saving Report Data.");
-        return;
-      }
-
-      const data = await response.json();
-      toast.success(data.message);
-    } catch (error) {
-      console.error("Error Saving Report Data:", error);
-      toast.error("Error Saving Report Data");
-    }
   };
 
   return (

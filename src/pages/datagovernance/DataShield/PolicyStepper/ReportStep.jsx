@@ -192,10 +192,8 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
                     report_group: selectedReportGroup,
                     artefact_type: selectedArtefactType
                 }
-            ] : [],
-            data_connection: [],
-            row_access_control: {},
-            column_access_control: {}
+            ] : []
+
         });
     }, [selectedArtefactType, selectedReportGroup, selectedReportType, selectedReportName, onDataChange]);
 
