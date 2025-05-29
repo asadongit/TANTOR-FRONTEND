@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import { Icon } from "@iconify-icon/react";
 import { Plus, Loader2 } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
-import { toast } from "react-toastify";
-// import "react-toastify/dist/ReactToastify.css";
 
 const AddRole = ({ show, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -18,13 +16,13 @@ const AddRole = ({ show, onClose, onSave }) => {
   const [error, setError] = useState(null);
   const { token } = useAuth();
 
+  const today = new Date().toISOString().split("T")[0];
 
   const handleSave = async () => {
     setError(null);
 
     if (!formData.name.trim()) {
       setError("Role name is required");
-      toast.error("Role name is required");
       return;
     }
 
@@ -47,19 +45,17 @@ const AddRole = ({ show, onClose, onSave }) => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        toast.error(errorData?.detail || 'Failed to create role');
         throw new Error(errorData?.detail || 'Failed to create role');
       }
 
       const data = await response.json();
-      onSave(data);
+      onSave({ success: true, data, message: 'Role created successfully' });
       resetForm();
-      toast.success("Role created successfully");
       onClose();
     } catch (err) {
       console.error('Error creating role:', err);
       setError(err.message || 'Failed to create role');
-      toast.error(err.message || 'Failed to create role');
+      onSave({ success: false, error: err.message || 'Failed to create role' });
     } finally {
       setLoading(false);
     }
@@ -100,7 +96,15 @@ const AddRole = ({ show, onClose, onSave }) => {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg">
+            <div
+              className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg"
+              style={{
+                maxHeight: "120px",
+                overflowY: "auto",
+                wordBreak: "break-all",
+                whiteSpace: "pre-wrap"
+              }}
+            >
               {error}
             </div>
           )}
@@ -136,6 +140,7 @@ const AddRole = ({ show, onClose, onSave }) => {
                   type="date"
                   placeholder="From"
                   value={formData.duration.from}
+                  min={today}
                   onChange={(e) => setFormData({
                     ...formData,
                     duration: { ...formData.duration, from: e.target.value },
@@ -148,6 +153,7 @@ const AddRole = ({ show, onClose, onSave }) => {
                   type="date"
                   placeholder="To"
                   value={formData.duration.to}
+                  min={today}
                   onChange={(e) => setFormData({
                     ...formData,
                     duration: { ...formData.duration, to: e.target.value },
