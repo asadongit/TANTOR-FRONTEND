@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Filter, Plus, Trash2 } from 'lucide-react';
 
 const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
   const [selectedTable, setSelectedTable] = useState('');
@@ -38,22 +38,23 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
     table.fullPath.toLowerCase().includes(tableSearch.toLowerCase())
   );
 
-  const getColumnsForSelectedTable = (currentFilterIndex = -1) => {
+  const getColumnsForSelectedTable = () => {
     if (!selectedTable) return [];
+
+    const usedColumns = (tableFilters[selectedTable] || []).map(filter => filter.column);
 
     const tableConn = policyData.data_connection.find((conn) =>
       conn.tables.includes(selectedTable)
     );
 
-    const usedColumns = (tableFilters[selectedTable] || [])
-      .map((filter, index) => (index !== currentFilterIndex ? filter.column : null))
-      .filter((column) => column);
-
     return (
       tableConn?.columns
         .filter((col) => col.startsWith(`${selectedTable}.`))
-        .map((col) => col.split('.').pop())
-        .filter((column) => !usedColumns.includes(column)) || []
+        .filter((col) => !usedColumns.includes(col.split('.').pop()))
+        .map((col) => ({
+          fullPath: col,
+          columnName: col.split('.').pop(),
+        })) || []
     );
   };
 
@@ -223,7 +224,7 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
         ) : (
           <div className="max-h-60 overflow-y-auto">
             {filters.map((filter, index) => (
-              <div key={index} className="mb-2">
+              <div key={`${selectedTable}-${filter.column || index}`} className="mb-2">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="min-w-[180px]">
                     <label className="block text-sm text-gray-700 mb-1">
@@ -242,14 +243,16 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
                       }
                     >
                       <option value="">Select Column</option>
-                      {(filter.column
-                        ? [filter.column, ...getColumnsForSelectedTable(index)]
-                        : getColumnsForSelectedTable(index)
-                      ).map((column) => (
-                        <option key={column} value={column}>
-                          {column}
+                      {getColumnsForSelectedTable().map((col) => (
+                        <option key={col.fullPath} value={col.columnName}>
+                          {col.columnName}
                         </option>
                       ))}
+                      {filter.column && !getColumnsForSelectedTable().some(c => c.columnName === filter.column) && (
+                        <option value={filter.column}>
+                          {filter.column}
+                        </option>
+                      )}
                     </select>
                   </div>
 
