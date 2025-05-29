@@ -30,25 +30,30 @@ const RuleCanvas = () => {
   const [isRuleSummaryOpen, setIsRuleSummaryOpen] = useState(false);
   const [selectedFact, setSelectedFact] = useState(null);
   const [filterData, setFilterData] = useState(null);
+  const [previewData, setPreviewData] = useState(''); // Added state for preview data
   const { handleFinalPayload, finalPayload } = useStateContext();
 
   // Add effect to watch for showRuleSummary flag in nodes
   useEffect(() => {
-    const sourceNode = nodes.find(node => node.type === 'source');
-    if (sourceNode?.data?.showRuleSummary) {
+    const sourceNode = nodes.find(node => node.type === 'source' && node.data.showRuleSummary);
+    if (sourceNode) {
       setIsRuleSummaryOpen(true);
+      setSelectedFact(sourceNode.data.selectedFact);
+      setFilterData(sourceNode.data.filterConditions);
+      setPreviewData(sourceNode.data.previewData || ''); // Capture preview data
+      
       // Reset the flag
       setNodes(nds => 
         nds.map(node => 
           node.id === sourceNode.id 
-            ? { ...node, data: { ...node.data, showRuleSummary: false } }
+            ? { ...node, data: { ...node.data, showRuleSummary: false } } 
             : node
         )
       );
     }
   }, [nodes, setNodes]);
 
-  // Ensure all Define nodes always have the correct onDataChange handler (patch on mount and whenever handleFinalPayload changes)
+  // Ensure all Define nodes always have the correct onDataChange handler
   useEffect(() => {
     setNodes((nds) =>
       nds.map((node) => {
@@ -58,7 +63,6 @@ const RuleCanvas = () => {
             data: {
               ...node.data,
               onDataChange: (newData) => {
-                console.log('[RuleCanvas] onDataChange for DefineNode:', newData);
                 setNodes((nds2) =>
                   nds2.map((n) =>
                     n.id === node.id
@@ -178,11 +182,7 @@ const RuleCanvas = () => {
                 );
               }
             });
-            // --- ADD: Sync to finalPayload for summary ---
-            console.log(' ', {
-              name: newData.name,
-              description: newData.description
-            });
+            // Sync to finalPayload for summary
             handleFinalPayload((prev) => ({
               ...prev,
               name: newData.name,
@@ -240,7 +240,7 @@ const RuleCanvas = () => {
             )
           );
         });
-        // --- ADD: Clear from finalPayload when define node is deleted ---
+        // Clear from finalPayload when define node is deleted
         handleFinalPayload((prev) => ({
           ...prev,
           name: '',
@@ -296,6 +296,7 @@ const RuleCanvas = () => {
           setIsOpen={setIsRuleSummaryOpen}
           selectedFact={selectedFact}
           filterData={filterData}
+          previewData={previewData} // Pass previewData to RuleSummary
           nodes={nodes}
           setNodes={setNodes}
         />
