@@ -30,29 +30,19 @@ const Step5 = ({ policyData, onDataChange }) => {
         table.fullPath.toLowerCase().includes(tableSearch.toLowerCase())
     );
 
-    // const getColumnsForSelectedTable = () => {
-    //     if (!selectedTable) return [];
-    //     const tableConn = policyData.data_connection.find((conn) =>
-    //         conn.tables.includes(selectedTable)
-    //     );
-    //     return (
-    //         tableConn?.columns
-    //             .filter((col) => col.startsWith(selectedTable))
-    //             .map((col) => ({
-    //                 fullPath: col,
-    //                 columnName: col.split('.').pop(),
-    //             })) || []
-    //     );
-    // };
-
     const getColumnsForSelectedTable = () => {
         if (!selectedTable) return [];
+
+        const usedColumns = (tableControls[selectedTable] || []).map(control => control.column);
+
         const tableConn = policyData.data_connection.find((conn) =>
             conn.tables.includes(selectedTable)
         );
+
         return (
             tableConn?.columns
-                .filter((col) => col.startsWith(`${selectedTable}.`)) // Ensures exact match
+                .filter((col) => col.startsWith(`${selectedTable}.`))
+                .filter((col) => !usedColumns.includes(col))
                 .map((col) => ({
                     fullPath: col,
                     columnName: col.split('.').pop(),
@@ -209,7 +199,7 @@ const Step5 = ({ policyData, onDataChange }) => {
                 ) : (
                     <div className="max-h-60 overflow-y-auto">
                         {controls.map((control, index) => (
-                            <div key={index} className="mb-4">
+                            <div key={`${selectedTable}-${control.column || index}`} className="mb-4">
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className="min-w-[180px]">
                                         <label className="block text-sm text-gray-700 mb-1">
@@ -233,6 +223,12 @@ const Step5 = ({ policyData, onDataChange }) => {
                                                     {col.columnName}
                                                 </option>
                                             ))}
+                                            {/* Show currently selected column even if it's already used */}
+                                            {control.column && !getColumnsForSelectedTable().some(c => c.fullPath === control.column) && (
+                                                <option value={control.column}>
+                                                    {control.column.split('.').pop()}
+                                                </option>
+                                            )}
                                         </select>
                                     </div>
 

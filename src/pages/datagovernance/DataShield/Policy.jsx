@@ -967,12 +967,11 @@ const Policy = () => {
                                                     {card.count.toString().padStart(2, "0")}
                                                 </div>
                                                 <div className="flex items-center justify-between mt-6">
-                                                    <button
-                                                        // onClick={handleSchemasOpen}
+                                                    {/* <button
                                                         className="text-purple-600 text-sm hover:text-purple-700"
                                                     >
                                                         See details
-                                                    </button>
+                                                    </button> */}
                                                     {togglingStatus === index ? (
                                                         <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]">
 

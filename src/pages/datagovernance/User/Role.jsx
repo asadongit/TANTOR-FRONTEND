@@ -188,7 +188,7 @@ const Role = () => {
     }
   };
 
-  const refreshAllData = async () => {
+  const refreshAllData = async (showToast = false) => {
     setRefreshing(true);
     setSearchTerm("");
     try {
@@ -197,39 +197,55 @@ const Role = () => {
         fetchRoleListData()
       ]);
 
-      // Check if both operations succeeded
       if (dashboardResult.success && listResult.success) {
-        setToast({
-          show: true,
-          message: 'Role data refreshed successfully',
-          type: 'success'
-        });
+        if (showToast) {
+          setToast({
+            show: true,
+            message: 'Role data refreshed successfully',
+            type: 'success'
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: '', type: '' });
+          }, 3000);
+        }
+        return { success: true };
       } else {
-        // Show error if any operation failed
         const errorMessages = [];
         if (!dashboardResult.success) errorMessages.push('dashboard data');
         if (!listResult.success) errorMessages.push('list data');
-
-        setToast({
-          show: true,
-          message: `Failed to refresh role ${errorMessages.join(' and ')}`,
-          type: 'error'
-        });
+        if (showToast) {
+          setToast({
+            show: true,
+            message: `Failed to refresh role ${errorMessages.join(' and ')}`,
+            type: 'error'
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: '', type: '' });
+          }, 3000);
+        }
+        return {
+          success: false,
+          error: `Failed to refresh role ${errorMessages.join(' and ')}`
+        };
       }
     } catch (error) {
       console.error("Error refreshing data:", error);
-      setToast({
-        show: true,
-        message: 'Failed to refresh role data',
-        type: 'error'
-      });
+      if (showToast) {
+        setToast({
+          show: true,
+          message: 'Failed to refresh role data',
+          type: 'error'
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      }
+      return {
+        success: false,
+        error: 'Failed to refresh role data'
+      };
     } finally {
       setRefreshing(false);
-
-      // Auto-hide toast after 3 seconds
-      setTimeout(() => {
-        setToast({ show: false, message: '', type: '' });
-      }, 3000);
     }
   };
 
@@ -251,14 +267,38 @@ const Role = () => {
     }
   };
 
-  const handleSave = async (roleData) => {
-    console.log('Role created:', roleData);
-    try {
-      await refreshAllData();
-      setShowModal(false);
-    } catch (error) {
-      console.error('Error refreshing data after role creation:', error);
+  const handleSave = async (result) => {
+    console.log('Role creation result:', result);
+
+    if (result.success) {
+      try {
+        await refreshAllData();
+        setToast({
+          show: true,
+          message: result.message || 'Role created successfully',
+          type: 'success'
+        });
+        setShowModal(false);
+      } catch (error) {
+        console.error('Error refreshing data after role creation:', error);
+        setToast({
+          show: true,
+          message: 'Role created but failed to refresh data',
+          type: 'error'
+        });
+      }
+    } else {
+      setToast({
+        show: true,
+        message: result.error || 'Failed to create role',
+        type: 'error'
+      });
     }
+
+    // Auto-hide toast after 3 seconds
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: '' });
+    }, 3000);
   };
 
   const handleEditClick = (role) => {
@@ -354,7 +394,7 @@ const Role = () => {
 
           <button
             className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
-            onClick={refreshAllData}
+            onClick={() => refreshAllData(true)}
             disabled={refreshing}
           >
             <Icon
