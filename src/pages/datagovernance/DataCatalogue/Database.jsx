@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, X } from "lucide-react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +9,21 @@ import Oracle from './Components/Icons/Oracle.png';
 import Snowflake from './Components/Icons/Snowflake.png';
 import { secureQuery } from './Components/function.js';
 import { useAuth } from "../../../context/AuthContext.jsx";
+
+const rotateAnimation = `
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .icon-rotate {
+    animation: rotate 1s linear infinite;
+  }
+`;
 
 const Database = () => {
   const [isTableView, setIsTableView] = useState(false);
@@ -20,6 +35,7 @@ const Database = () => {
     hive: 0,
     snowflake: 0
   });
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
   const [cards, setCards] = useState([
     {
@@ -135,35 +151,60 @@ const Database = () => {
     return Array.from(connectionMap.values());
   };
 
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const secureQueryResponse = await secureQuery({
+        user_query: "",
+      },
+      token);
+      const policyIds = secureQueryResponse.matched_policy_ids || [];
+      setPolicyIds(policyIds);
+
+      const allConnectionsPromises = policyIds.map(id => fetchConnectionDetails(id));
+      const allConnectionsResults = await Promise.all(allConnectionsPromises);
+
+      const allConnectionsData = allConnectionsResults.flat();
+      setConnectionData(allConnectionsData);
+
+      const tableData = processConnectionData(allConnectionsData);
+      setSampleData(tableData);
+      return { success: true };
+    } catch (error) {
+      console.error('Error loading data:', error);
+      return { success: false, error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-
-        const secureQueryResponse = await secureQuery({
-          user_query: "",
-        },
-        token);
-        const policyIds = secureQueryResponse.matched_policy_ids || [];
-        setPolicyIds(policyIds);
-
-        const allConnectionsPromises = policyIds.map(id => fetchConnectionDetails(id));
-        const allConnectionsResults = await Promise.all(allConnectionsPromises);
-
-        const allConnectionsData = allConnectionsResults.flat();
-        setConnectionData(allConnectionsData);
-
-        const tableData = processConnectionData(allConnectionsData);
-        setSampleData(tableData);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadData();
   }, []);
+
+  // New handler to refresh data with toast
+  const handleRefresh = async () => {
+    const result = await loadData();
+
+    if (result.success) {
+      setToast({
+        show: true,
+        message: 'Database data refreshed successfully',
+        type: 'success'
+      });
+    } else {
+      setToast({
+        show: true,
+        message: 'Failed to refresh database data',
+        type: 'error'
+      });
+    }
+
+    // Auto-hide toast after 3 seconds
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: '' });
+    }, 3000);
+  };
 
   const trendData = [
     { day: '1 day', Database: 20, Schema: 9, Tables: 13, View: 11 },
@@ -189,6 +230,28 @@ const Database = () => {
 
   return (
     <div>
+      <style>{rotateAnimation}</style>
+
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
+          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+          'bg-red-100 text-red-800 border-l-4 border-red-500'
+        }`}>
+          <Icon
+            icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
+            className="h-5 w-5"
+          />
+          <p>{toast.message}</p>
+          <button
+            onClick={() => setToast({ show: false, message: '', type: '' })}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <Breadcrumb title="Data Governance" link="/" />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Database</h1>
@@ -206,14 +269,15 @@ const Database = () => {
           </button>
 
           <button
-            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
-            onClick={() => window.location.reload()}
+            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50 disabled:opacity-50"
+            onClick={handleRefresh}
+            disabled={loading}
           >
             <Icon
               icon="material-symbols:autorenew-rounded"
               width="24"
               height="24"
-              className="text-gray-600"
+              className={`text-gray-600 ${loading ? 'icon-rotate' : ''}`}
             />
           </button>
         </div>
