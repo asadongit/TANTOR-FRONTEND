@@ -70,7 +70,6 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
         throw new Error(errorData.detail || "Failed to create subgroup");
       }
 
-      // Show success toast
       toast.success("Subgroup created successfully!", {
         position: "top-right",
         autoClose: 3000,
@@ -80,21 +79,18 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
         draggable: true,
       });
 
-      // Reset form
       setFormData({
         name: "",
         group: "",
         description: "",
       });
 
-      // Close modal and refresh data
       setShowModal(false);
       if (onSubgroupAdded) {
         onSubgroupAdded();
       }
     } catch (error) {
       console.error("Error creating subgroup:", error);
-      toast.error(error.message || "Failed to create subgroup. Please try again.");
       setError(error.message || "Failed to create subgroup");
     } finally {
       setLoading(false);
@@ -118,7 +114,15 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
 
         <form onSubmit={handleSubmit} className="p-6">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
+            <div
+              className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm"
+              style={{
+                maxHeight: "120px",
+                overflowY: "auto",
+                wordBreak: "break-all",
+                whiteSpace: "pre-wrap"
+              }}
+            >
               {error}
             </div>
           )}

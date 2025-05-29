@@ -8,6 +8,7 @@ function Tables() {
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
   const { token } = useAuth();
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
   const fetchTableDetails = async (policyId) => {
     try {
@@ -68,32 +69,56 @@ function Tables() {
     return tags[index];
   };
 
+  // Refactored loadData to return result for toast
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const secureQueryResponse = await secureQuery({
+        user_query: "",
+      }, token);
+
+      const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+      const allTablesPromises = policyIds.map(id => fetchTableDetails(id));
+      const allTablesResults = await Promise.all(allTablesPromises);
+
+      const allTablesData = allTablesResults.flat();
+
+      const processedData = processTableData(allTablesData);
+      setTableData(processedData);
+      return { success: true };
+    } catch (error) {
+      console.error('Error loading table data:', error);
+      return { success: false, error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const secureQueryResponse = await secureQuery({
-          user_query: "",
-        }, token);
-
-        const policyIds = secureQueryResponse.matched_policy_ids || [];
-
-        const allTablesPromises = policyIds.map(id => fetchTableDetails(id));
-        const allTablesResults = await Promise.all(allTablesPromises);
-
-        const allTablesData = allTablesResults.flat();
-
-        const processedData = processTableData(allTablesData);
-        setTableData(processedData);
-      } catch (error) {
-        console.error('Error loading table data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadData();
   }, [token]);
+
+  // Refresh handler with toast
+  const handleRefresh = async () => {
+    const result = await loadData();
+    if (result.success) {
+      setToast({
+        show: true,
+        message: 'Table data refreshed successfully',
+        type: 'success'
+      });
+    } else {
+      setToast({
+        show: true,
+        message: 'Failed to refresh table data',
+        type: 'error'
+      });
+    }
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: '' });
+    }, 3000);
+  };
 
   // Handle checkbox selection
   const handleSelectAll = (e) => {
@@ -109,19 +134,39 @@ function Tables() {
 
   return (
     <div>
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
+          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+          'bg-red-100 text-red-800 border-l-4 border-red-500'
+        }`}>
+          <Icon
+            icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
+            className="h-5 w-5"
+          />
+          <p>{toast.message}</p>
+          <button
+            onClick={() => setToast({ show: false, message: '', type: '' })}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      )}
       <Breadcrumb title="Data Governance" link="/" />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Table</h1>
         <div className="flex items-center gap-2">
           <button
-            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
-            onClick={() => window.location.reload()}
+            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50 disabled:opacity-50"
+            onClick={handleRefresh}
+            disabled={loading}
           >
             <Icon
               icon="material-symbols:autorenew-rounded"
               width="24"
               height="24"
-              className="text-gray-600"
+              className={`text-gray-600 ${loading ? 'animate-spin' : ''}`}
             />
           </button>
         </div>
