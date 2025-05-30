@@ -319,6 +319,40 @@ function Group() {
     }
   };
 
+  const handleSave = async (result) => {
+    console.log('Group creation result:', result);
+
+    if (result.success) {
+      try {
+        await refreshAllData();
+        setToast({
+          show: true,
+          message: result.message || 'Group created successfully',
+          type: 'success'
+        });
+        setShowModal(false);
+
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      } catch (error) {
+        console.error('Error refreshing data after group creation:', error);
+        setToast({
+          show: true,
+          message: 'Group created but failed to refresh data',
+          type: 'error'
+        });
+
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      }
+    }
+    // Remove the else block that shows error toast since errors are handled in the modal
+  };
+
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
@@ -631,7 +665,7 @@ function Group() {
       <AddGroup
         showModal={showModal}
         setShowModal={setShowModal}
-        onGroupAdded={refreshAllData}
+        onGroupAdded={handleSave}
       />
 
       <DeleteGroup
