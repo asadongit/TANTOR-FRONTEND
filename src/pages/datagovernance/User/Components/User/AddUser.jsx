@@ -397,7 +397,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           lastName: formData.lastName,
           email: formData.email,
           roles_assigned: formData.roles,
-          persona: formData.persona,
+          persona: formData.persona.length === 0 ? [""] : formData.persona,
           group: formData.groups,
           subgroup: formData.subgroups
         })

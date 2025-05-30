@@ -9,6 +9,9 @@ function Tables() {
   const [tableData, setTableData] = useState([]);
   const { token } = useAuth();
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const [showModal, setShowModal] = useState(false);
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [allTablesRawData, setAllTablesRawData] = useState([]);
 
   const fetchTableDetails = async (policyId) => {
     try {
@@ -25,24 +28,26 @@ function Tables() {
   };
 
   const processTableData = (data) => {
-    // Group by table
     const tableMap = new Map();
 
     data.forEach(item => {
-      // Unique key for table
       const tableKey = `${item.connection_id}_${item.table_schema}_${item.table_name}`;
 
       if (!tableMap.has(tableKey)) {
         tableMap.set(tableKey, {
-          id: `#${item.conn_metadata_id.substring(0, 4)}`,
+          id: `#${item.conn_metadata_id.substring(0, 8)}`,
           name: item.table_name,
-          alias: item.table_name.substring(0, 2).toUpperCase(),
           description: `Table in ${item.connection_type} database`,
           schema: item.table_schema,
           database: item.connection_type,
+          connection_name: item.connection_name,
           owner: item.created_by || 'System',
+          project: item.project || 'default',
+          is_migrated: item.is_migrated,
+          is_purged: item.is_purged,
+          is_virtualization: item.is_virtualization,
+          cdc_enabled: item.cdc_enabled,
           column: 0,
-          tags: getTags(item.connection_type),
           CreatedDate: new Date(item.created_at).toLocaleDateString(),
           lastUpdated: new Date(item.updated_at).toLocaleDateString(),
           selected: false
@@ -50,26 +55,31 @@ function Tables() {
       }
 
       const entry = tableMap.get(tableKey);
-
-      // Count columns
       entry.column++;
     });
 
-    // Convert map to array and format the counts
     return Array.from(tableMap.values()).map(item => ({
       ...item,
       column: item.column.toString().padStart(2, '0')
     }));
   };
 
-  // Helper function to assign random tags
   const getTags = (connectionType) => {
     const tags = ['Sensitive', 'Critical', 'Internal', 'Public', 'Confidential'];
     const index = Math.floor(Math.random() * tags.length);
     return tags[index];
   };
 
-  // Refactored loadData to return result for toast
+  const getTableColumns = (table) => {
+    if (!table) return [];
+    return allTablesRawData.filter(
+      item =>
+        item.table_name === table.name &&
+        item.table_schema === table.schema &&
+        item.connection_type === table.database
+    );
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -83,6 +93,7 @@ function Tables() {
       const allTablesResults = await Promise.all(allTablesPromises);
 
       const allTablesData = allTablesResults.flat();
+      setAllTablesRawData(allTablesData);
 
       const processedData = processTableData(allTablesData);
       setTableData(processedData);
@@ -99,7 +110,6 @@ function Tables() {
     loadData();
   }, [token]);
 
-  // Refresh handler with toast
   const handleRefresh = async () => {
     const result = await loadData();
     if (result.success) {
@@ -120,7 +130,6 @@ function Tables() {
     }, 3000);
   };
 
-  // Handle checkbox selection
   const handleSelectAll = (e) => {
     const isChecked = e.target.checked;
     setTableData(tableData.map(item => ({ ...item, selected: isChecked })));
@@ -134,7 +143,6 @@ function Tables() {
 
   return (
     <div>
-      {/* Toast notification */}
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
           toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
@@ -149,10 +157,141 @@ function Tables() {
             onClick={() => setToast({ show: false, message: '', type: '' })}
             className="ml-2 text-gray-500 hover:text-gray-700"
           >
-            <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M18 6L6 18M6 6l12 12"/></svg>
+            <Icon icon="mdi:close" className="h-4 w-4" />
           </button>
         </div>
       )}
+
+      {showModal && selectedTable && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] relative flex flex-col">
+            <button
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 z-10"
+              onClick={() => setShowModal(false)}
+            >
+              <Icon icon="mdi:close" className="h-6 w-6" />
+            </button>
+            <div className="p-6 flex-shrink-0">
+              <h2 className="text-xl font-semibold mb-2">Table Details</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
+              <div className="mb-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="font-medium">Name:</div>
+                    <div>{selectedTable.name}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Schema:</div>
+                    <div>{selectedTable.schema}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Database:</div>
+                    <div>{selectedTable.database}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Connection Name:</div>
+                    <div>{selectedTable.connection_name}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Owner:</div>
+                    <div>{selectedTable.owner}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Project:</div>
+                    <div>{selectedTable.project}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Description:</div>
+                    <div>{selectedTable.description}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Migrated:</div>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      selectedTable.is_migrated ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedTable.is_migrated ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-medium">Purged:</div>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      selectedTable.is_purged ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedTable.is_purged ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-medium">Virtualization:</div>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      selectedTable.is_virtualization ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedTable.is_virtualization ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-medium">CDC Enabled:</div>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      selectedTable.cdc_enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedTable.cdc_enabled ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-medium">Created Date:</div>
+                    <div>{selectedTable.CreatedDate}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Last Updated:</div>
+                    <div>{selectedTable.lastUpdated}</div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="font-semibold mb-2">Columns</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="text-left p-2 border">Column Name</th>
+                        <th className="text-left p-2 border">Data Type</th>
+                        <th className="text-left p-2 border">Nullable</th>
+                        <th className="text-left p-2 border">Default</th>
+                        <th className="text-left p-2 border">Length</th>
+                        <th className="text-left p-2 border">Precision</th>
+                        <th className="text-left p-2 border">Scale</th>
+                        <th className="text-left p-2 border">Column Key</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getTableColumns(selectedTable).length > 0 ? getTableColumns(selectedTable).map((col, idx) => {
+                        const meta = col.column_metadata || {};
+                        return (
+                          <tr key={idx}>
+                            <td className="p-2 border">{col.column_name || '-'}</td>
+                            <td className="p-2 border">{meta.DATA_TYPE || '-'}</td>
+                            <td className="p-2 border">{meta.is_nullable || '-'}</td>
+                            <td className="p-2 border">{meta.COLUMN_DEFAULT !== undefined && meta.COLUMN_DEFAULT !== null && meta.COLUMN_DEFAULT !== "null" ? meta.COLUMN_DEFAULT : '-'}</td>
+                            <td className="p-2 border">{meta.DATA_LENGTH !== undefined && meta.DATA_LENGTH !== null && meta.DATA_LENGTH !== "null" ? meta.DATA_LENGTH : '-'}</td>
+                            <td className="p-2 border">{meta.DATA_PRECISION !== undefined && meta.DATA_PRECISION !== null && meta.DATA_PRECISION !== "null" ? meta.DATA_PRECISION : '-'}</td>
+                            <td className="p-2 border">{meta.DATA_SCALE !== undefined && meta.DATA_SCALE !== null && meta.DATA_SCALE !== "null" ? meta.DATA_SCALE : '-'}</td>
+                            <td className="p-2 border">{meta.COLUMN_KEY !== undefined && meta.COLUMN_KEY !== null && meta.COLUMN_KEY !== "null" ? meta.COLUMN_KEY : '-'}</td>
+                          </tr>
+                        );
+                      }) : (
+                        <tr>
+                          <td colSpan="8" className="p-2 text-center">No column details available</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Breadcrumb title="Data Governance" link="/" />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Table</h1>
@@ -184,13 +323,13 @@ function Tables() {
                 <tr className="bg-[#29304a] text-white">
                   <th className="text-left p-4">ID</th>
                   <th className="text-left p-4">Name</th>
-                  <th className="text-left p-4">Alias</th>
                   <th className="text-left p-4">Description</th>
                   <th className="text-left p-4">Schema</th>
                   <th className="text-left p-4">Database</th>
+                  {/* <th className="text-left p-4">Connection Name</th> */}
                   <th className="text-left p-4">Owner</th>
+                  <th className="text-left p-4">Project</th>
                   <th className="text-left p-4">Columns</th>
-                  <th className="text-left p-4">Tags</th>
                   <th className="text-left p-4">Created Date</th>
                   <th className="text-left p-4">Last Updated</th>
                   <th className="text-left p-4">Action</th>
@@ -208,27 +347,25 @@ function Tables() {
                   <tr key={index} className="border-b">
                     <td className="p-4">{table.id}</td>
                     <td className="p-4">{table.name}</td>
-                    <td className="p-4">{table.alias}</td>
                     <td className="p-4">{table.description}</td>
                     <td className="p-4">{table.schema}</td>
                     <td className="p-4">{table.database}</td>
+                    {/* <td className="p-4">{table.connection_name}</td> */}
                     <td className="p-4">{table.owner}</td>
-                    <td className="p-4 text-gray-500 underline">{table.column}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        table.tags === 'Sensitive' ? 'bg-red-100 text-red-800' :
-                        table.tags === 'Critical' ? 'bg-orange-100 text-orange-800' :
-                        table.tags === 'Internal' ? 'bg-blue-100 text-blue-800' :
-                        table.tags === 'Public' ? 'bg-green-100 text-green-800' :
-                        'bg-purple-100 text-purple-800'
-                      }`}>
-                        {table.tags}
-                      </span>
-                    </td>
+                    <td className="p-4">{table.project}</td>
+                    <td className="p-4 text-blue-600 underline cursor-pointer">{table.column}</td>
                     <td className="p-4">{table.CreatedDate}</td>
                     <td className="p-4">{table.lastUpdated}</td>
                     <td className="p-4">
-                      <button className="text-blue-600 hover:underline">View</button>
+                      <button
+                        className="text-blue-600 hover:underline"
+                        onClick={() => {
+                          setSelectedTable(table);
+                          setShowModal(true);
+                        }}
+                      >
+                        View
+                      </button>
                     </td>
                     <td className="p-4">
                       <input
