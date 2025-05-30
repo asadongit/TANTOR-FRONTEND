@@ -15,7 +15,11 @@ const ReportViewer = () => {
 
     const url = `${import.meta.env.VITE_BIRT_API}/frameset?__report=${
       location.state.reportPath
-    }`;
+    }&__format=html`;
+
+    // TESTING AGILUS REPORT
+    // const url = `${import.meta.env.VITE_BIRT_API}/run?__report=reports/Agilus/AgilusReport.rptdesign&__format=html`
+
     setReportUrl(url);
   }, [location.state, navigate]);
 
