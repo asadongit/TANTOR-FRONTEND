@@ -3,19 +3,16 @@ import { X, ArrowBigLeft, ArrowBigRight } from "lucide-react";
 import { useStateContext } from "../Federation/context/contextViewProvider";
 import { Modal } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { generateSQLQuery } from "../../../services/sqlQueryService";
 
-const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData, nodes, setNodes, setFilterData, setPreviewData }) => {
+const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
   const { finalPayload } = useStateContext();
   const navigate = useNavigate();
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
-  const [editMode, setEditMode] = useState(false);
-  const [editedColumn, setEditedColumn] = useState(null);
   
-  // Get columns from filterData and ensure it's not using a fallback if columns exist
+  // Get columns from filterData
   const columns = filterData?.columns || [];
-  console.log("filterData ", filterData);
-  // Only use default column if no columns are available
+  
+  // Get current column or a default if no columns
   const currentColumn = columns.length > 0 
     ? columns[currentColumnIndex] 
     : {
@@ -33,89 +30,12 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData, nodes, 
   const handleNextColumn = () => {
     if (currentColumnIndex < columns.length - 1) {
       setCurrentColumnIndex(currentColumnIndex + 1);
-      setEditMode(false);
-      setEditedColumn(null);
     }
   };
   
   const handlePrevColumn = () => {
     if (currentColumnIndex > 0) {
       setCurrentColumnIndex(currentColumnIndex - 1);
-      setEditMode(false);
-      setEditedColumn(null);
-    }
-  };
-
-  const handleEdit = () => {
-    setEditMode(true);
-    setEditedColumn({ ...currentColumn });
-  };
-
-  const handleSave = () => {
-    if (editedColumn) {
-      const updatedColumns = [...columns];
-      updatedColumns[currentColumnIndex] = editedColumn;
-      
-      // Update filterData state immediately
-      const updatedFilterData = {
-        ...filterData,
-        columns: updatedColumns
-      };
-      
-      // Update the parent component's filterData state
-      if (setFilterData) {
-        setFilterData(updatedFilterData);
-      }
-      
-      // Update node data
-      const updatedNodes = nodes.map(n => {
-        if (n.type === 'source') {
-          // Generate new SQL query with updated columns
-          const query = generateSQLQuery({
-            tableName: selectedFact.fct_name,
-            selectedColumns: updatedColumns.filter(col => col.output),
-            filterConditions: updatedFilterData,
-            ruleData: nodes.find(node => node.type === 'define')?.data
-          });
-          console.log(query)
-          
-          // Update preview data in parent component
-          if (setPreviewData) {
-            setPreviewData(query);
-          }
-          
-          return {
-            ...n,
-            data: {
-              ...n.data,
-              filterConditions: updatedFilterData,
-              previewData: query
-            }
-          };
-        }
-        return n;
-      });
-      
-      // Update the nodes state
-      setNodes(updatedNodes);
-      
-      // Exit edit mode
-      setEditMode(false);
-      setEditedColumn(null);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditMode(false);
-    setEditedColumn(null);
-  };
-
-  const handleColumnChange = (field, value) => {
-    if (editedColumn) {
-      setEditedColumn({
-        ...editedColumn,
-        [field]: value
-      });
     }
   };
 
@@ -221,12 +141,6 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData, nodes, 
                 >
                   Cancel
                 </button>
-                <button 
-                  onClick={handleEdit}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  Edit
-                </button>
                 <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
                   Save Draft
                 </button>
@@ -240,7 +154,7 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData, nodes, 
             </div>
           </div>
 
-          {/* Right Section - Column Settings */}
+          {/* Right Section - Column Settings (Read-only) */}
           <div className="w-[400px] overflow-y-auto p-6 bg-gray-50">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Column Settings</h3>
@@ -257,7 +171,7 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData, nodes, 
                   <ArrowBigLeft />
                 </button>
                 <span className="text-sm font-medium">
-                  Column {currentColumnIndex + 1} of {columns.length}: {editMode ? editedColumn.name : currentColumn.name}
+                  Column {currentColumnIndex + 1} of {columns.length}: {currentColumn.name}
                 </span>
                 <button
                   onClick={handleNextColumn}
@@ -268,141 +182,56 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData, nodes, 
                 </button>
               </div>
 
-              {/* Column Properties */}
+              {/* Column Properties (Read-only) */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
                   <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">{editMode ? editedColumn.name : currentColumn.name}</span>
+                    <span className="text-gray-900">{currentColumn.name}</span>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
                   <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">{editMode ? editedColumn.type : currentColumn.type}</span>
+                    <span className="text-gray-900">{currentColumn.type}</span>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Alias</label>
-                  {editMode ? (
-                    <input
-                      type="text"
-                      value={editedColumn.alias || ""}
-                      onChange={(e) => handleColumnChange('alias', e.target.value)}
-                      className="w-full p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
-                    />
-                  ) : (
-                    <div className="border border-gray-200 rounded-md p-3 bg-white">
-                      <span className="text-gray-900">{currentColumn.alias || "-"}</span>
-                    </div>
-                  )}
+                  <div className="border border-gray-200 rounded-md p-3 bg-white">
+                    <span className="text-gray-900">{currentColumn.alias || "-"}</span>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Output</label>
-                  {editMode ? (
-                    <select
-                      value={editedColumn.output ? "Yes" : "No"}
-                      onChange={(e) => handleColumnChange('output', e.target.value === "Yes")}
-                      className="w-full p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
-                    >
-                      <option value="Yes">Yes</option>
-                      <option value="No">No</option>
-                    </select>
-                  ) : (
-                    <div className="border border-gray-200 rounded-md p-3 bg-white">
-                      <span className="text-gray-900">{currentColumn.output ? "Yes" : "No"}</span>
-                    </div>
-                  )}
+                  <div className="border border-gray-200 rounded-md p-3 bg-white">
+                    <span className="text-gray-900">{currentColumn.output ? "Yes" : "No"}</span>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Order</label>
-                  {editMode ? (
-                    <input
-                      type="text"
-                      value={editedColumn.order || ""}
-                      onChange={(e) => handleColumnChange('order', e.target.value)}
-                      className="w-full p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
-                    />
-                  ) : (
-                    <div className="border border-gray-200 rounded-md p-3 bg-white">
-                      <span className="text-gray-900">{currentColumn.order || "-"}</span>
-                    </div>
-                  )}
+                  <div className="border border-gray-200 rounded-md p-3 bg-white">
+                    <span className="text-gray-900">{currentColumn.order || "-"}</span>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Sort</label>
-                  {editMode ? (
-                    <select
-                      value={editedColumn.sort || ""}
-                      onChange={(e) => handleColumnChange('sort', e.target.value)}
-                      className="w-full p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
-                    >
-                      <option value="">None</option>
-                      <option value="ASC">Ascending</option>
-                      <option value="DESC">Descending</option>
-                    </select>
-                  ) : (
-                    <div className="border border-gray-200 rounded-md p-3 bg-white">
-                      <span className="text-gray-900">{currentColumn.sort || "-"}</span>
-                    </div>
-                  )}
+                  <div className="border border-gray-200 rounded-md p-3 bg-white">
+                    <span className="text-gray-900">{currentColumn.sort || "-"}</span>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Aggregate</label>
-                  {editMode ? (
-                    <select
-                      value={editedColumn.aggregate || ""}
-                      onChange={(e) => handleColumnChange('aggregate', e.target.value)}
-                      className="w-full p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
-                    >
-                      <option value="">None</option>
-                      <option value="SUM">SUM</option>
-                      <option value="AVG">AVG</option>
-                      <option value="COUNT">COUNT</option>
-                      <option value="MIN">MIN</option>
-                      <option value="MAX">MAX</option>
-                    </select>
-                  ) : (
-                    <div className="border border-gray-200 rounded-md p-3 bg-white">
-                      <span className="text-gray-900">{currentColumn.aggregate || "-"}</span>
-                    </div>
-                  )}
+                  <div className="border border-gray-200 rounded-md p-3 bg-white">
+                    <span className="text-gray-900">{currentColumn.aggregate || "-"}</span>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Group By</label>
-                  {editMode ? (
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={editedColumn.groupBy}
-                        onChange={(e) => handleColumnChange('groupBy', e.target.checked)}
-                        className="h-4 w-4 text-[#8e78b7] border-gray-300 rounded focus:ring-[#8e78b7]"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">Enable group by for this column</span>
-                    </div>
-                  ) : (
-                    <div className="border border-gray-200 rounded-md p-3 bg-white">
-                      <span className="text-gray-900">{currentColumn.groupBy ? "Yes" : "No"}</span>
-                    </div>
-                  )}
-                </div>
-
-                {editMode && (
-                  <div className="flex justify-end space-x-3 mt-6">
-                    <button
-                      onClick={handleCancelEdit}  // Using the cancel edit handler
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      className="px-4 py-2 bg-[#8e78b7] text-white rounded-md hover:bg-[#7b65a3] transition-colors"
-                    >
-                      Save Changes
-                    </button>
+                  <div className="border border-gray-200 rounded-md p-3 bg-white">
+                    <span className="text-gray-900">{currentColumn.groupBy ? "Yes" : "No"}</span>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
