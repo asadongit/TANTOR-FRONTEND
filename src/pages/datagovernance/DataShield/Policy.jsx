@@ -200,6 +200,17 @@ const Policy = () => {
         selectedColumns: []
     });
 
+    const [step6Data, setStep6Data] = useState({
+        permissions: {
+            read: false,
+            update: false,
+            write: false,
+            delete: false,
+            execute: false
+        },
+        isFormValid: false
+    });
+
     const [policyType, setPolicyType] = useState('connection');
 
     const steps = connectionSteps;
@@ -398,7 +409,8 @@ const Policy = () => {
                 return <Step6
                     policyData={policyData}
                     onDataChange={(data) => {
-                        setPolicyData((prev) => ({ ...prev, ...data }));
+                        setStep6Data(prev => ({ ...prev, ...data }));
+                        setPolicyData(prev => ({ ...prev, ...data }));
                     }}
                 />;
             case 6:
@@ -1200,12 +1212,14 @@ const Policy = () => {
                                             onClick={handleNext}
                                             disabled={
                                                 (activeStep === 0 && !step1Data.isFormValid) ||
-                                                (activeStep === 1 && !step2Data.isFormValid)
+                                                (activeStep === 1 && !step2Data.isFormValid) ||
+                                                (activeStep === 5 && !step6Data.isFormValid)
                                             }
                                             className={`px-6 py-1.5 rounded-md ${(activeStep === 0 && !step1Data.isFormValid) ||
-                                                (activeStep === 1 && !step2Data.isFormValid)
-                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
+                                                    (activeStep === 1 && !step2Data.isFormValid) ||
+                                                    (activeStep === 5 && !step6Data.isFormValid)
+                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                    : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
                                                 }`}
                                         >
                                             Next

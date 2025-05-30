@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
 
-
 const Step6 = ({ policyData, onDataChange }) => {
     const permissionOptions = [
         'read',
@@ -20,13 +19,24 @@ const Step6 = ({ policyData, onDataChange }) => {
     };
 
     const selectAll = Object.values(permissions).every(val => val);
+    const hasAtLeastOnePermission = Object.values(permissions).some(val => val);
+
+    useEffect(() => {
+        onDataChange({ 
+            permissions,
+            isFormValid: hasAtLeastOnePermission 
+        });
+    }, [permissions, hasAtLeastOnePermission]);
 
     const handlePermissionChange = (permission) => {
         const newPermissions = {
             ...permissions,
             [permission]: !permissions[permission]
         };
-        onDataChange({ permissions: newPermissions });
+        onDataChange({ 
+            permissions: newPermissions,
+            isFormValid: Object.values(newPermissions).some(val => val)
+        });
     };
 
     const handleSelectAll = () => {
@@ -36,7 +46,10 @@ const Step6 = ({ policyData, onDataChange }) => {
             return acc;
         }, {});
         
-        onDataChange({ permissions: newPermissions });
+        onDataChange({ 
+            permissions: newPermissions,
+            isFormValid: newSelectAll
+        });
     };
 
     return (
