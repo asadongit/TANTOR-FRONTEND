@@ -77,6 +77,7 @@ function App() {
                         }`}
                       >
                         <Routes>
+                          <Route path="/datagovernance" element={<Navigate to="/" replace />} />
                           <Route
                             path="/dashboard"
                             element={
