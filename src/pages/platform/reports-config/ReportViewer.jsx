@@ -23,6 +23,10 @@ const ReportViewer = () => {
     setReportUrl(url);
   }, [location.state, navigate]);
 
+  useEffect(() => {
+    if(reportUrl)
+      window.open(reportUrl, '_blank');
+  }, [reportUrl]);
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
@@ -39,7 +43,7 @@ const ReportViewer = () => {
         </h1>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      {/* <div className="flex-1 overflow-hidden">
         {reportUrl && (
           <iframe
             src={reportUrl}
@@ -47,7 +51,7 @@ const ReportViewer = () => {
             title="BIRT Report"
           />
         )}
-      </div>
+      </div> */}
     </div>
   );
 };
