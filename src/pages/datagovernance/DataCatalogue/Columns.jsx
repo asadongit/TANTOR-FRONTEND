@@ -166,7 +166,7 @@ function Columns() {
                 <th className="text-left p-4">Database</th>
                 <th className="text-left p-4">Diagram</th>
                 <th className="text-left p-4">Joins</th>
-                <th className="text-left p-4">Action</th>
+                {/* <th className="text-left p-4">Action</th> */}
                 <th className="text-left p-4">
                   <input
                     type="checkbox"
@@ -188,9 +188,9 @@ function Columns() {
                   <td className="p-4">{column.database}</td>
                   <td className="p-4 text-gray-500 underline">{column.diagram}</td>
                   <td className="p-4">{column.joins}</td>
-                  <td className="p-4">
+                  {/* <td className="p-4">
                     <button className="text-blue-600 hover:underline">View</button>
-                  </td>
+                  </td> */}
                   <td className="p-4">
                     <input
                       type="checkbox"
