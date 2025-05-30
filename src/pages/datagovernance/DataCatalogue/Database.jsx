@@ -38,6 +38,7 @@ const Database = () => {
     postgres: 0
   });
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const [recentAccess, setRecentAccess] = useState([]);
 
   const [cards, setCards] = useState([
     {
@@ -155,6 +156,32 @@ const Database = () => {
     return Array.from(connectionMap.values());
   };
 
+  const fetchRecentAccess = async (policyIds) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/recentaccess`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: policyIds
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setRecentAccess(data.connections || []);
+      return data;
+    } catch (error) {
+      console.error('Error fetching recent access:', error);
+      setRecentAccess([]);
+      return [];
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -173,6 +200,10 @@ const Database = () => {
 
       const tableData = processConnectionData(allConnectionsData);
       setSampleData(tableData);
+
+      // Fetch recent access data
+      await fetchRecentAccess(policyIds);
+
       return { success: true };
     } catch (error) {
       console.error('Error loading data:', error);
@@ -224,16 +255,6 @@ const Database = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [selectedDbType, setSelectedDbType] = useState(null);
-
-  const recentAccess = [
-    "Oracle_2",
-    "DWS_customer",
-    "rw_acc_summary",
-    "Dim_cutomer",
-    "dim_account",
-    "DWS_customer",
-    "Oracle_2"
-  ];
 
   // Filtered data for modal
   const getDbDetails = (dbType) => {
@@ -406,11 +427,15 @@ const Database = () => {
                 </div>
               </div>
               <div className="space-y-4">
-                {recentAccess.map((item, index) => (
+                {recentAccess.length > 0 ? recentAccess.map((item, index) => (
                   <div key={index} className="pb-4 border-b border-gray-100 last:border-0">
                     <span className="text-gray-600">{index + 1}. {item}</span>
                   </div>
-                ))}
+                )) : (
+                  <div className="pb-4 border-b border-gray-100">
+                    <span className="text-gray-500">No recent access data available</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
