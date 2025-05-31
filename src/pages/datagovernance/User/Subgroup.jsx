@@ -244,6 +244,40 @@ function Subgroup() {
     setActiveMenu(null);
   };
 
+  const handleSave = async (result) => {
+    console.log('Subgroup creation result:', result);
+
+    if (result.success) {
+      try {
+        await refreshAllData();
+        setToast({
+          show: true,
+          message: result.message || 'Subgroup created successfully',
+          type: 'success'
+        });
+        setShowModal(false);
+
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      } catch (error) {
+        console.error('Error refreshing data after subgroup creation:', error);
+        setToast({
+          show: true,
+          message: 'Subgroup created but failed to refresh data',
+          type: 'error'
+        });
+
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      }
+    }
+    // Remove the else block that shows error toast since errors are handled in the modal
+  };
+
   // Update pagination to use filteredTableData
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
@@ -565,7 +599,7 @@ function Subgroup() {
       <AddSubgroup
         showModal={showModal}
         setShowModal={setShowModal}
-        onSubgroupAdded={refreshAllData}
+        onSubgroupAdded={handleSave}
       />
 
       <DeleteSubgroup
