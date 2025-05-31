@@ -1,78 +1,53 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Grid } from '@mui/material';
 import { FileText, ChevronDown, Info, Loader, ArrowRight, X, Search, Check } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 
 const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
     const { token } = useAuth();
 
-    const [artefactTypes, setArtefactTypes] = useState([]);
     const [reportGroups, setReportGroups] = useState([]);
     const [reportTypes, setReportTypes] = useState([]);
     const [reportNames, setReportNames] = useState([]);
 
-    const [selectedArtefactType, setSelectedArtefactType] = useState('');
-    const [selectedReportGroup, setSelectedReportGroup] = useState('');
-    const [selectedReportType, setSelectedReportType] = useState('');
+    const [selectedArtefactType, setSelectedArtefactType] = useState('Reports');
+    const [selectedReportGroups, setSelectedReportGroups] = useState([]);
+    const [selectedReportTypes, setSelectedReportTypes] = useState([]);
     const [selectedReportNames, setSelectedReportNames] = useState([]);
 
     const [loading, setLoading] = useState({
-        artefactTypes: true,
         reportGroups: true,
         reportTypes: true,
         reportNames: true
     });
 
     const [error, setError] = useState({
-        artefactTypes: null,
         reportGroups: null,
         reportTypes: null,
         reportNames: null
     });
 
-    const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-
-    useEffect(() => {
-        const fetchArtefactTypes = async () => {
-            try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/artefact-type`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch artefact types');
-                }
-
-                const data = await response.json();
-                setArtefactTypes(data.types || []);
-                setError(prev => ({ ...prev, artefactTypes: null }));
-            } catch (err) {
-                console.error('Error fetching artefact types:', err);
-                setError(prev => ({ ...prev, artefactTypes: err.message }));
-            } finally {
-                setLoading(prev => ({ ...prev, artefactTypes: false }));
-            }
-        };
-
-        fetchArtefactTypes();
-    }, [token]);
+    const [dropdownOpen, setDropdownOpen] = useState({
+        reportGroups: false,
+        reportTypes: false,
+        reportNames: false
+    });
+    const [searchTerm, setSearchTerm] = useState({
+        reportGroups: '',
+        reportTypes: '',
+        reportNames: ''
+    });
 
     useEffect(() => {
         const fetchReportGroups = async () => {
-            if (!selectedArtefactType) {
-                setReportGroups([]);
+            if (!token) {
                 setLoading(prev => ({ ...prev, reportGroups: false }));
+                setError(prev => ({ ...prev, reportGroups: 'Authorization token not available.' }));
                 return;
             }
-
             setLoading(prev => ({ ...prev, reportGroups: true }));
             try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-group/${selectedArtefactType}`, {
+                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-group`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -85,7 +60,7 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
                 }
 
                 const data = await response.json();
-                setReportGroups(data.report_group?.filter(group => group !== null) || []);
+                setReportGroups(data.report_group || []);
                 setError(prev => ({ ...prev, reportGroups: null }));
             } catch (err) {
                 console.error('Error fetching report groups:', err);
@@ -95,24 +70,19 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
             }
         };
 
-        setSelectedReportGroup('');
-        setSelectedReportType('');
-        setSelectedReportNames([]);
-
         fetchReportGroups();
-    }, [token, selectedArtefactType]);
+    }, [token]);
 
     useEffect(() => {
         const fetchReportTypes = async () => {
-            if (!selectedReportGroup) {
-                setReportTypes([]);
+            if (!token) {
                 setLoading(prev => ({ ...prev, reportTypes: false }));
+                setError(prev => ({ ...prev, reportTypes: 'Authorization token not available.' }));
                 return;
             }
-
             setLoading(prev => ({ ...prev, reportTypes: true }));
             try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-type/${selectedReportGroup}`, {
+                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-type`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -125,7 +95,7 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
                 }
 
                 const data = await response.json();
-                setReportTypes(data.types || []);
+                setReportTypes(data.report_type || []);
                 setError(prev => ({ ...prev, reportTypes: null }));
             } catch (err) {
                 console.error('Error fetching report types:', err);
@@ -135,64 +105,76 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
             }
         };
 
-        setSelectedReportType('');
-        setSelectedReportNames([]);
-
         fetchReportTypes();
-    }, [token, selectedReportGroup]);
+    }, [token]);
 
     useEffect(() => {
         const fetchReportNames = async () => {
-            if (!selectedReportGroup || !selectedReportType) {
+            if (!token) {
                 setReportNames([]);
+                setSelectedReportNames([]);
                 setLoading(prev => ({ ...prev, reportNames: false }));
+                setError(prev => ({ ...prev, reportNames: 'Authorization token not available.' }));
                 return;
             }
 
             setLoading(prev => ({ ...prev, reportNames: true }));
+            setError(prev => ({ ...prev, reportNames: null })); 
+
+            const requestBody = {
+                artefact_type: ["REPORT"] 
+            };
+
+            if (selectedReportGroups.length > 0) {
+                requestBody.report_group = selectedReportGroups;
+            }
+
+            if (selectedReportTypes.length > 0) {
+                requestBody.report_type = selectedReportTypes;
+            }
+
             try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-name`, {
+                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-names`, { 
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'accept': 'application/json' 
                     },
-                    body: JSON.stringify({
-                        report_type: selectedReportType,
-                        report_group: selectedReportGroup
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to fetch report names');
+                    const errorData = await response.json().catch(() => ({ detail: 'Failed to fetch report names and parse error response' }));
+                    console.error('API Error Response for report names:', errorData);
+                    throw new Error(errorData.detail || `Failed to fetch report names (status: ${response.status})`);
                 }
 
                 const data = await response.json();
                 setReportNames(data.report_names || []);
-                setError(prev => ({ ...prev, reportNames: null }));
             } catch (err) {
                 console.error('Error fetching report names:', err);
                 setError(prev => ({ ...prev, reportNames: err.message }));
+                setReportNames([]); 
             } finally {
                 setLoading(prev => ({ ...prev, reportNames: false }));
             }
         };
 
         setSelectedReportNames([]);
-
         fetchReportNames();
-    }, [token, selectedReportGroup, selectedReportType]);
+    }, [selectedReportGroups, selectedReportTypes, token]); 
 
     useEffect(() => {
         onDataChange({
             reports: selectedReportNames.length > 0 ? selectedReportNames.map(name => ({
                 report_name: name,
-                report_type: selectedReportType,
-                report_group: selectedReportGroup,
-                artefact_type: selectedArtefactType
+                report_type: selectedReportTypes, 
+                report_group: selectedReportGroups, 
+                artefact_type: selectedArtefactType 
             })) : []
         });
-    }, [selectedArtefactType, selectedReportGroup, selectedReportType, selectedReportNames, onDataChange]);
+    }, [selectedArtefactType, selectedReportGroups, selectedReportTypes, selectedReportNames]);
 
     const handleNext = () => {
         setActiveStep(7);
@@ -209,8 +191,27 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
         setActiveStep(5);
     };
 
-    const toggleDropdown = () => {
-        setDropdownOpen(!dropdownOpen);
+    const toggleDropdown = (dropdown) => {
+        setDropdownOpen(prev => ({
+            ...Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: false }), {}), 
+            [dropdown]: !prev[dropdown]
+        }));
+    };
+
+    const handleReportGroupToggle = (group) => {
+        setSelectedReportGroups(prev =>
+            prev.includes(group)
+                ? prev.filter(item => item !== group)
+                : [...prev, group]
+        );
+    };
+
+    const handleReportTypeToggle = (type) => {
+        setSelectedReportTypes(prev =>
+            prev.includes(type)
+                ? prev.filter(item => item !== type)
+                : [...prev, type]
+        );
     };
 
     const handleReportNameToggle = (name) => {
@@ -221,25 +222,29 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
         );
     };
 
-    const handleSelectAll = () => {
-        if (selectedReportNames.length === filteredReportNames.length) {
-            setSelectedReportNames([]);
+    const handleSelectAll = (items, selectedItems, setSelectedItems) => {
+        const relevantItemValues = items.map(item => typeof item === 'object' ? item.id : item); 
+        if (selectedItems.length === relevantItemValues.length && relevantItemValues.length > 0) {
+            setSelectedItems([]);
         } else {
-            setSelectedReportNames([...filteredReportNames]);
+            setSelectedItems([...relevantItemValues]);
         }
     };
 
-    const isFormValid = selectedArtefactType && selectedReportGroup && selectedReportType && selectedReportNames.length > 0;
+    const isFormValid = selectedArtefactType && selectedReportNames.length > 0;
 
-    const filteredReportNames = reportNames.filter(name =>
-        name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const renderMultiSelectDropdown = (label, allItems, selectedItems, onToggleIndividual, loadingState, errorState, dropdownKey, setSelectedItemsCallback) => {
+        const currentSearchTerm = searchTerm[dropdownKey];
+        const filteredItems = allItems.filter(item =>
+            item.toLowerCase().includes(currentSearchTerm.toLowerCase())
+        );
 
-    const renderDropdown = (label, options, value, onChange, loadingState, errorState) => {
         return (
             <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                     {label}
+                    {dropdownKey === "reportGroups" && " (Optional)"}
+                    {dropdownKey === "reportTypes" && " (Optional)"}
                 </label>
                 {loadingState ? (
                     <div className="flex items-center text-gray-500">
@@ -249,22 +254,68 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
                 ) : errorState ? (
                     <div className="text-red-500 text-sm">{errorState}</div>
                 ) : (
-                    <div className="relative max-w-md">
-                        <select
-                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-[#8e78b7] focus:border-[#8e78b7] rounded-md appearance-none"
-                            value={value}
-                            onChange={(e) => onChange(e.target.value)}
+                    <div className="relative">
+                        <div
+                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-[#8e78b7] focus:border-[#8e78b7] rounded-md cursor-pointer"
+                            onClick={() => toggleDropdown(dropdownKey)}
                         >
-                            <option value="">Select {label}</option>
-                            {options.map((option, index) => (
-                                <option key={index} value={option}>
-                                    {option}
-                                </option>
-                            ))}
-                        </select>
+                            {selectedItems.length > 0
+                                ? `${selectedItems.length} selected`
+                                : `Select`}
+                        </div>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                             <ChevronDown className="h-4 w-4" />
                         </div>
+
+                        {dropdownOpen[dropdownKey] && (
+                            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-300 max-h-60">
+                                <div className="p-2 border-b border-gray-200 sticky top-0 bg-white z-20">
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Search className="h-4 w-4 text-gray-400" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[#8e78b7] focus:border-[#8e78b7] sm:text-sm"
+                                            placeholder={`Search...`}
+                                            value={currentSearchTerm}
+                                            onChange={(e) => setSearchTerm(prev => ({
+                                                ...prev,
+                                                [dropdownKey]: e.target.value
+                                            }))}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="overflow-auto max-h-[calc(15rem-4rem)]">
+                                    <div
+                                        className="flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 sticky top-0 bg-white z-10"
+                                        onClick={() => handleSelectAll(filteredItems, selectedItems, setSelectedItemsCallback)}
+                                    >
+                                        <Check
+                                            className={`h-4 w-4 mr-2 ${selectedItems.length === filteredItems.length && filteredItems.length > 0 ? 'text-[#8e78b7]' : 'text-transparent border border-gray-300 rounded'}`}
+                                        />
+                                        Select All ({filteredItems.length})
+                                    </div>
+                                    {filteredItems.length > 0 ? (
+                                        filteredItems.map((item, index) => (
+                                            <div
+                                                key={index}
+                                                className="flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-100"
+                                                onClick={() => onToggleIndividual(item)}
+                                            >
+                                                <Check
+                                                    className={`h-4 w-4 mr-2 ${selectedItems.includes(item) ? 'text-[#8e78b7]' : 'text-transparent border border-gray-300 rounded'}`}
+                                                />
+                                                {item}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="px-3 py-2 text-sm text-gray-500">No Search found for {currentSearchTerm}</div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -274,124 +325,63 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
     return (
         <Box>
             <div className="flex items-center justify-between mb-4">
-                <Typography variant="h6" className="text-lg font-medium">Report Policy Configuration</Typography>
+                <Typography variant="h6" className="text-lg font-medium">Artefact Configuration</Typography>
             </div>
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                 <p className="text-yellow-800 text-sm">
-                    <strong>Optional Step:</strong> Configure report access policies if needed. You can skip this step and save your policy, or configure reports and then save.
+                    <strong>Optional Step:</strong> Configure artefact access policies if needed, else skip.
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mt-2">
-                {/* Left Column: Artefact Type, Report Group, Report Type */}
-                <div className="space-y-1">
-                    {renderDropdown(
-                        "Artefact Type",
-                        artefactTypes,
-                        selectedArtefactType,
-                        setSelectedArtefactType,
-                        loading.artefactTypes,
-                        error.artefactTypes
-                    )}
-
-                    {renderDropdown(
-                        "Report Group",
-                        reportGroups,
-                        selectedReportGroup,
-                        setSelectedReportGroup,
-                        loading.reportGroups,
-                        error.reportGroups
-                    )}
-
-                    {renderDropdown(
-                        "Report Type",
-                        reportTypes,
-                        selectedReportType,
-                        setSelectedReportType,
-                        loading.reportTypes,
-                        error.reportTypes
-                    )}
-                </div>
-
-                <div className="space-y-1">
+            <Grid container spacing={4}>
+                <Grid item xs={12} md={6}>
                     <div className="mb-6">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Report Names
+                            1. Artefact Type
                         </label>
-                        {loading.reportNames ? (
-                            <div className="flex items-center text-gray-500">
-                                <Loader className="animate-spin h-4 w-4 mr-2" />
-                                Loading...
-                            </div>
-                        ) : error.reportNames ? (
-                            <div className="text-red-500 text-sm">{error.reportNames}</div>
-                        ) : (
-                            <div className="relative max-w-md">
-                                <div 
-                                    className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-[#8e78b7] focus:border-[#8e78b7] rounded-md cursor-pointer"
-                                    onClick={toggleDropdown}
-                                >
-                                    {selectedReportNames.length > 0 
-                                        ? `${selectedReportNames.length} selected` 
-                                        : "Select report names"}
-                                </div>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                                    <ChevronDown className="h-4 w-4" />
-                                </div>
-
-                                {dropdownOpen && (
-                                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-300 max-h-60 overflow-auto">
-                                        <div className="p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
-                                            <div className="relative">
-                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <Search className="h-4 w-4 text-gray-400" />
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[#8e78b7] focus:border-[#8e78b7] sm:text-sm"
-                                                    placeholder="Search reports..."
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="p-1">
-                                            <div 
-                                                className="flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-100"
-                                                onClick={handleSelectAll}
-                                            >
-                                                <Check 
-                                                    className={`h-4 w-4 mr-2 ${selectedReportNames.length === filteredReportNames.length ? 'text-[#8e78b7]' : 'text-transparent border border-gray-300 rounded'}`} 
-                                                />
-                                                Select All
-                                            </div>
-                                            {filteredReportNames.length > 0 ? (
-                                                filteredReportNames.map((name, index) => (
-                                                    <div 
-                                                        key={index}
-                                                        className="flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-100"
-                                                        onClick={() => handleReportNameToggle(name)}
-                                                    >
-                                                        <Check 
-                                                            className={`h-4 w-4 mr-2 ${selectedReportNames.includes(name) ? 'text-[#8e78b7]' : 'text-transparent border border-gray-300 rounded'}`} 
-                                                        />
-                                                        {name}
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="px-3 py-2 text-sm text-gray-500">No reports found</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        <div className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 bg-gray-50 rounded-md">
+                            {selectedArtefactType}
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Navigation buttons */}
+                    {renderMultiSelectDropdown(
+                        "3. Report Types",
+                        reportTypes,
+                        selectedReportTypes,
+                        handleReportTypeToggle,
+                        loading.reportTypes,
+                        error.reportTypes,
+                        "reportTypes",
+                        setSelectedReportTypes
+                    )}
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                    {renderMultiSelectDropdown(
+                        "2. Report Groups",
+                        reportGroups,
+                        selectedReportGroups,
+                        handleReportGroupToggle,
+                        loading.reportGroups,
+                        error.reportGroups,
+                        "reportGroups",
+                        setSelectedReportGroups
+                    )}
+
+                    {renderMultiSelectDropdown(
+                        "4. Report Names",
+                        reportNames,
+                        selectedReportNames,
+                        handleReportNameToggle,
+                        loading.reportNames,
+                        error.reportNames,
+                        "reportNames",
+                        setSelectedReportNames
+                    )}
+                </Grid>
+            </Grid>
+
             <div className="flex justify-between mt-8 pt-4 border-t border-gray-200">
                 <div className="flex gap-3">
                     <button
