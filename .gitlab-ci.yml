@@ -1,11 +1,11 @@
-#test
+#testnew
 stages:
   - clone
 variables:
   DEPLOYMENT_REPO: "https://$GITLAB_USERNAME:$GITLAB_TOKEN@gitlab.tantor.io/root/tantor2-0_frontend_deployment.git"
   DEPLOYMENT_DIR: "tantor-front-2-0"
   REGISTRY: "tantor.example.com:5000"
-  IMAGE_NAME: "tantorfront2-0-test"
+  IMAGE_NAME: "tantorfront2-0-int"
   GIT_USER: "root"
   GIT_EMAIL: "your-email@example.com"
  
