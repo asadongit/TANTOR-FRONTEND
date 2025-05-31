@@ -165,27 +165,34 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
         fetchReportNames();
     }, [selectedReportGroups, selectedReportTypes, token]); 
 
-    useEffect(() => {
-        onDataChange({
-            reports: selectedReportNames.length > 0 ? selectedReportNames.map(name => ({
-                report_name: name,
-                report_type: selectedReportTypes, 
-                report_group: selectedReportGroups, 
-                artefact_type: selectedArtefactType 
-            })) : []
-        });
-    }, [selectedArtefactType, selectedReportGroups, selectedReportTypes, selectedReportNames]);
+useEffect(() => {
+    const reportsData = {
+        artefact_type: selectedArtefactType,
+        ...(selectedReportGroups.length > 0 && { report_group: selectedReportGroups }),
+        ...(selectedReportTypes.length > 0 && { report_type: selectedReportTypes }),
+        report_name: selectedReportNames
+    };
+    
+    onDataChange({
+        reports: reportsData
+    });
+}, [selectedArtefactType, selectedReportGroups, selectedReportTypes, selectedReportNames]);
 
     const handleNext = () => {
         setActiveStep(7);
     };
 
     const handleSkip = () => {
-        onDataChange({
-            reports: []
-        });
-        setActiveStep(7);
-    };
+    onDataChange({
+        reports: {
+            artefact_type: "",
+            report_group: [],
+            report_type: [],
+            report_name: []
+        }
+    });
+    setActiveStep(7);
+};
 
     const handleBack = () => {
         setActiveStep(5);
