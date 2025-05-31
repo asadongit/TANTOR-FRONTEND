@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ChartBarIcon,
   CubeIcon,
@@ -27,7 +27,17 @@ import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [expandedItem, setExpandedItem] = useState(null);
+  const [currentActiveSection, setCurrentActiveSection] = useState(activeSection);
   const { decodedToken } = useAuth();
+
+  useEffect(() => {
+    const savedSection = localStorage.getItem('activeSection');
+    if (savedSection && ['platform', 'datagovernance', 'ai'].includes(savedSection)) {
+      setCurrentActiveSection(savedSection);
+    } else {
+      setCurrentActiveSection(activeSection);
+    }
+  }, [activeSection]);
 
   const isGlobalAdmin = decodedToken?.resource_access?.darch?.roles?.includes('global-admin');
   console.log('Is Global Admin:', isGlobalAdmin);
@@ -45,6 +55,15 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Jobs', icon: BriefcaseIcon, path: '/jobs' },
     { name: 'Pipeline', icon: ArrowPathIcon, path: '/pipeline' },
     { name: 'Reports', icon: DocumentTextIcon, path: '/report' },
+    {
+      name: 'Configuration',
+      icon: ArrowPathIcon,
+      path: '/config/rule',
+      subItems: [
+        { name: 'Rules Configuration', path: '/config/rule' },
+        { name: 'Reports Configuration', path: '/config/report' },
+      ]
+    },
     { type: 'divider' },
     { name: 'Migration', icon: ArrowsUpDownIcon, path: '/migration' },
     { name: 'Transformation', icon: ArrowsRightLeftIcon, path: '/transformation' },
@@ -98,7 +117,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     route => !route.requiresGlobalAdmin || isGlobalAdmin
   );
 
-  const currentRoutes = activeSection === 'platform' ? platformRoutes : dataGovernanceRoutes;
+  const currentRoutes = currentActiveSection === 'platform' ? platformRoutes : dataGovernanceRoutes;
 
   const renderNavItem = (route) => {
     if (route.type === 'divider') {

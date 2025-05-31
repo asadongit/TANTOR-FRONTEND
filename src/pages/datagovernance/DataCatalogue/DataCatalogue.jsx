@@ -33,7 +33,7 @@ const DataCatalogue = () => {
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       count: 0,
-      seeDetailsLink: "/database-details",
+      seeDetailsLink: "/datagovernance/data-catalogue/database",
     },
     {
       title: "Schema",
@@ -42,7 +42,7 @@ const DataCatalogue = () => {
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       count: 0,
-      seeDetailsLink: "/schema-details",
+      seeDetailsLink: "/datagovernance/data-catalogue/schema",
     },
     {
       title: "Tables",
@@ -51,7 +51,7 @@ const DataCatalogue = () => {
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       count: 0,
-      seeDetailsLink: "/tables-details",
+      seeDetailsLink: "/datagovernance/data-catalogue/table",
     },
     {
       title: "Columns",
@@ -60,7 +60,7 @@ const DataCatalogue = () => {
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       count: 0,
-      seeDetailsLink: "/columns-details",
+      seeDetailsLink: "/datagovernance/data-catalogue/column",
     },
   ]);
 
@@ -81,6 +81,7 @@ const DataCatalogue = () => {
   const [catalogData, setCatalogData] = useState([]);
   const [tableData, setTableData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [recentAccess, setRecentAccess] = useState([]);
   const fetchedPoliciesRef = useRef(new Set());
 
   const toggleRole = (index) => {
@@ -120,6 +121,32 @@ const DataCatalogue = () => {
     },
     [token]
   );
+
+  const fetchRecentAccess = async (policyIds) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/recentaccess`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: policyIds
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setRecentAccess(data.connections || []);
+      return data;
+    } catch (error) {
+      console.error('Error fetching recent access:', error);
+      setRecentAccess([]);
+      return [];
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -168,6 +195,9 @@ const DataCatalogue = () => {
           updateTableData(newCatalogs);
           return newCatalogs;
         });
+
+        // Fetch recent access data
+        await fetchRecentAccess(policyIds);
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -303,16 +333,20 @@ const DataCatalogue = () => {
             </div>
           </div>
           <div className="space-y-4">
-            {catalogData.map((catalog, index) => (
+            {recentAccess.length > 0 ? recentAccess.map((item, index) => (
               <div
                 key={index}
                 className="pb-4 border-b border-gray-100 last:border-0"
               >
                 <span className="text-gray-600">
-                  {index + 1}. {catalog.data_connection[0]?.connection || "N/A"}
+                  {index + 1}. {item}
                 </span>
               </div>
-            ))}
+            )) : (
+              <div className="pb-4 border-b border-gray-100">
+                <span className="text-gray-500">No recent access data available</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

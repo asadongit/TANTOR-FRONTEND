@@ -10,33 +10,33 @@ const Step6 = ({ policyData, onDataChange }) => {
         'execute'
     ];
 
-    // Initialize from existing permissions or default to all false
-    const [permissions, setPermissions] = useState(
-        policyData.permissions || {
-            read: false,
-            update: false,
-            write: false,
-            delete: false,
-            execute: false
-        }
-    );
+    const permissions = policyData.permissions || {
+        read: false,
+        update: false,
+        write: false,
+        delete: false,
+        execute: false
+    };
 
-    const [selectAll, setSelectAll] = useState(false);
+    const selectAll = Object.values(permissions).every(val => val);
+    const hasAtLeastOnePermission = Object.values(permissions).some(val => val);
 
-    // Update parent when permissions change
     useEffect(() => {
-        onDataChange({ permissions });
-    }, [permissions]);
+        onDataChange({ 
+            permissions,
+            isFormValid: hasAtLeastOnePermission 
+        });
+    }, [permissions, hasAtLeastOnePermission]);
 
     const handlePermissionChange = (permission) => {
         const newPermissions = {
             ...permissions,
             [permission]: !permissions[permission]
         };
-        setPermissions(newPermissions);
-        
-        // Update select all status
-        setSelectAll(Object.values(newPermissions).every(val => val));
+        onDataChange({ 
+            permissions: newPermissions,
+            isFormValid: Object.values(newPermissions).some(val => val)
+        });
     };
 
     const handleSelectAll = () => {
@@ -46,8 +46,10 @@ const Step6 = ({ policyData, onDataChange }) => {
             return acc;
         }, {});
         
-        setPermissions(newPermissions);
-        setSelectAll(newSelectAll);
+        onDataChange({ 
+            permissions: newPermissions,
+            isFormValid: newSelectAll
+        });
     };
 
     return (

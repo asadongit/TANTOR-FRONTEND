@@ -66,6 +66,20 @@ export const WorkflowProvider = ({ children }) => {
       if (!prevPipelines[pipelineId]) {
         return prevPipelines;
       }
+
+      // Handle table_op_types if present
+      if (nodeData.table_op_types) {
+        // Make sure we're preserving existing table operation types that aren't being updated
+        const existingTableOpTypes = prevPipelines[pipelineId]?.data?.[nodeType]?.table_op_types || {};
+        nodeData = {
+          ...nodeData,
+          table_op_types: {
+            ...existingTableOpTypes,
+            ...nodeData.table_op_types
+          }
+        };
+      }
+
       return {
         ...prevPipelines,
         [pipelineId]: {
@@ -315,20 +329,20 @@ export const WorkflowProvider = ({ children }) => {
     isPipelineMode = true
   ) => {
     const key = isPipelineMode ? ID : `${sourceId}-${ID}`;
-  
+
     const validUpdateKeys = ["schedule", "whereCondition"];
     const keysToUpdate = Object.keys(updatedData);
-  
+
     if (!keysToUpdate.every((key) => validUpdateKeys.includes(key))) {
       console.log(
         "Invalid keys in update. Only 'schedule' and 'whereCondition' can be updated."
       );
       return;
     }
-  
+
     setBulkMappings((prevMappings) => {
       const updatedMappings = { ...prevMappings };
-  
+
       if (updatedMappings[key]) {
         updatedMappings[key] = updatedMappings[key].map((mapping) => {
           if (
@@ -342,11 +356,11 @@ export const WorkflowProvider = ({ children }) => {
       } else {
         console.log("Mapping key", key, "not found.");
       }
-  
+
       return updatedMappings;
     });
   };
-  
+
   const removeBulkMapping = (nodeid, target_table, source_table = null) => {
     setBulkMappings((prevMappings) => {
       const updatedMappings = { ...prevMappings };

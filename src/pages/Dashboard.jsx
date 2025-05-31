@@ -1,10 +1,23 @@
 import PlatformDashboard from './platform/Dashboard';
 import DataGovernanceDashboard from './datagovernance/Dashboard';
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 
 const Dashboard = ({ activeSection, setActiveSection }) => {
   const tabs = ['Platform', 'Data Governance', 'AI'];
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const savedSection = localStorage.getItem('activeSection');
+    if (savedSection && ['platform', 'datagovernance', 'ai'].includes(savedSection)) {
+      setActiveSection(savedSection);
+    }
+  }, [setActiveSection]);
+
+  const handleSectionChange = (section) => {
+    setActiveSection(section);
+    localStorage.setItem('activeSection', section);
+  };
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -22,7 +35,7 @@ const Dashboard = ({ activeSection, setActiveSection }) => {
             return (
               <button
                 key={tab}
-                onClick={() => setActiveSection(normalizedTab)}
+                onClick={() => handleSectionChange(normalizedTab)}
                 className={`px-4 py-2 rounded-full text-sm transition-colors duration-200
                   ${isActive
                     ? 'bg-white text-[#8e78b7] ring-1 ring-[#8e78b7]'

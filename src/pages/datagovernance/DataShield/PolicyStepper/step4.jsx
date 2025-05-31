@@ -1,13 +1,29 @@
-import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Filter, Plus, Trash2 } from 'lucide-react';
 
-const Step4 = ({ policyData, onDataChange }) => {
+const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
   const [selectedTable, setSelectedTable] = useState('');
   const [tableSearch, setTableSearch] = useState('');
   const [openTableDropdown, setOpenTableDropdown] = useState(false);
 
   const initialFilters = policyData.row_access_control || {};
   const [tableFilters, setTableFilters] = useState(initialFilters);
+
+  useEffect(() => {
+    setTableFilters(policyData.row_access_control || {});
+  }, [policyData.row_access_control]);
+
+  useEffect(() => {
+    if (isStep3Modified && Object.keys(tableFilters).length > 0) {
+      setSelectedTable('');
+      setTableSearch('');
+      setTableFilters({});
+      onDataChange({
+        row_access_control: {},
+        column_access_control: {}
+      });
+    }
+  }, [isStep3Modified]);
 
   const allTables = policyData.data_connection.flatMap((conn) =>
     conn.tables.map((table) => ({
@@ -24,13 +40,21 @@ const Step4 = ({ policyData, onDataChange }) => {
 
   const getColumnsForSelectedTable = () => {
     if (!selectedTable) return [];
+
+    const usedColumns = (tableFilters[selectedTable] || []).map(filter => filter.column);
+
     const tableConn = policyData.data_connection.find((conn) =>
       conn.tables.includes(selectedTable)
     );
+
     return (
       tableConn?.columns
-        .filter((col) => col.startsWith(selectedTable))
-        .map((col) => col.split('.').pop()) || []
+        .filter((col) => col.startsWith(`${selectedTable}.`))
+        .filter((col) => !usedColumns.includes(col.split('.').pop()))
+        .map((col) => ({
+          fullPath: col,
+          columnName: col.split('.').pop(),
+        })) || []
     );
   };
 
@@ -142,15 +166,14 @@ const Step4 = ({ policyData, onDataChange }) => {
       {Object.keys(tableFilters).map((table) => (
         <span
           key={table}
-          className={`px-3 py-1 rounded-sm text-sm font-medium cursor-pointer ${
-            selectedTable === table
-              ? 'text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          className={`px-3 py-1 rounded-sm text-sm font-medium cursor-pointer ${selectedTable === table
+            ? 'text-white'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
           style={{
             backgroundColor: selectedTable === table ? '#8e78b7' : undefined,
             ...(selectedTable === table && {
-              ':hover': { backgroundColor: '#7b689e' }, // Slightly darker for hover
+              ':hover': { backgroundColor: '#7b689e' },
             }),
           }}
           onClick={() => setSelectedTable(table)}
@@ -172,10 +195,9 @@ const Step4 = ({ policyData, onDataChange }) => {
             Filters for: {selectedTable.split('.').pop()}
           </h4>
           <button
-            className={`flex items-center px-3 py-1 border rounded-md text-sm font-medium ${
-              filters.length > 0 && !isFilterComplete(filters[filters.length - 1])
-                ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-                : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
+            className={`flex items-center px-3 py-1 border rounded-md text-sm font-medium ${filters.length > 0 && !isFilterComplete(filters[filters.length - 1])
+              ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+              : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
             }`}
             style={{
               borderColor:
@@ -200,9 +222,9 @@ const Step4 = ({ policyData, onDataChange }) => {
             No conditions added yet
           </p>
         ) : (
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-60 overflow-y-auto">
             {filters.map((filter, index) => (
-              <div key={index} className="mb-2">
+              <div key={`${selectedTable}-${filter.column || index}`} className="mb-2">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="min-w-[180px]">
                     <label className="block text-sm text-gray-700 mb-1">
@@ -210,7 +232,7 @@ const Step4 = ({ policyData, onDataChange }) => {
                     </label>
                     <select
                       className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                      value={filter.column}
+                      value={filter.column || ''}
                       onChange={(e) =>
                         handleFilterChange(
                           selectedTable,
@@ -221,11 +243,16 @@ const Step4 = ({ policyData, onDataChange }) => {
                       }
                     >
                       <option value="">Select Column</option>
-                      {getColumnsForSelectedTable().map((column) => (
-                        <option key={column} value={column}>
-                          {column}
+                      {getColumnsForSelectedTable().map((col) => (
+                        <option key={col.fullPath} value={col.columnName}>
+                          {col.columnName}
                         </option>
                       ))}
+                      {filter.column && !getColumnsForSelectedTable().some(c => c.columnName === filter.column) && (
+                        <option value={filter.column}>
+                          {filter.column}
+                        </option>
+                      )}
                     </select>
                   </div>
 
@@ -260,7 +287,7 @@ const Step4 = ({ policyData, onDataChange }) => {
                     <input
                       type="text"
                       className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                      value={filter.value}
+                      value={filter.value || ''}
                       onChange={(e) =>
                         handleFilterChange(
                           selectedTable,

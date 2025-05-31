@@ -1,23 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { X, Loader } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Loader, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import { useAuth } from '../../../../../context/AuthContext';
 
 const EditUser = ({ isOpen, onClose, onSave, userData }) => {
-
-
   const [formData, setFormData] = useState({
     username: '',
     firstName: '',
-    middleName: '',
     lastName: '',
     email: '',
-    role: '',
-    persona: '',
-    group: '',
-    subgroup: '',
+    roles: [],
+    persona: [],
+    groups: [],
+    subgroups: []
   });
-
 
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -28,25 +24,56 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     subgroups: []
   });
   const [isFetchingOptions, setIsFetchingOptions] = useState(false);
+  const [isLoadingSubgroups, setIsLoadingSubgroups] = useState(false);
   const { token } = useAuth();
-
 
   useEffect(() => {
     if (isOpen && userData) {
       setFormData({
         username: userData.username || '',
         firstName: userData.firstName || '',
-        middleName: userData.middleName || '',
         lastName: userData.lastName || '',
         email: userData.email || '',
-        role: userData.roles?.[0] || '',
-        persona: userData.persona || '',
-        group: userData.group || '',
-        subgroup: userData.subgroup || '',
+        roles: userData.roles ? (Array.isArray(userData.roles) ? userData.roles : [userData.roles]) : [],
+        persona: userData.persona ? (Array.isArray(userData.persona) ? userData.persona : [userData.persona]) : [],
+        groups: userData.group_subgroup ? Object.keys(userData.group_subgroup) :
+               (userData.group ? [userData.group] : []),
+        subgroups: getSubgroupsFromData(userData)
       });
+
+      setApiResponse({ status: null, message: '' });
       fetchDropdownOptions();
     }
+    if (!isOpen) {
+      setApiResponse({ status: null, message: '' });
+    }
   }, [isOpen, userData]);
+
+  const getSubgroupsFromData = (user) => {
+    if (user.group_subgroup) {
+      const subgroups = [];
+      Object.entries(user.group_subgroup).forEach(([group, groupSubgroups]) => {
+        if (Array.isArray(groupSubgroups) && groupSubgroups.length > 0) {
+          subgroups.push(...groupSubgroups);
+        }
+      });
+      return subgroups;
+    } else if (user.subgroup) {
+      return Array.isArray(user.subgroup) ? user.subgroup : [user.subgroup];
+    }
+    return [];
+  };
+
+  useEffect(() => {
+    if (formData.groups.length > 0) {
+      fetchSubgroups(formData.groups);
+    } else {
+      setDropdownOptions(prev => ({
+        ...prev,
+        subgroups: []
+      }));
+    }
+  }, [formData.groups]);
 
   const fetchDropdownOptions = async () => {
     setIsFetchingOptions(true);
@@ -68,7 +95,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
       setDropdownOptions({
         roles: data.roles || [],
         groups: data.groups || [],
-        subgroups: data.subgroups || []
+        subgroups: []
       });
     } catch (error) {
       console.error("Error fetching dropdown options:", error);
@@ -78,6 +105,40 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
       });
     } finally {
       setIsFetchingOptions(false);
+    }
+  };
+
+  const fetchSubgroups = async (groups) => {
+    setIsLoadingSubgroups(true);
+    try {
+      const subgroupPromises = groups.map(group =>
+        fetch(`${import.meta.env.VITE_FAST_API}/auth/datapolicy/subgroup/${group}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }).then(res => res.json())
+      );
+
+      const results = await Promise.all(subgroupPromises);
+
+      const allSubgroups = Array.from(new Set(
+        results.flatMap(data => data.subgroups || [])
+      ));
+
+      setDropdownOptions(prev => ({
+        ...prev,
+        subgroups: allSubgroups
+      }));
+    } catch (error) {
+      console.error("Error fetching subgroups:", error);
+      setDropdownOptions(prev => ({
+        ...prev,
+        subgroups: []
+      }));
+    } finally {
+      setIsLoadingSubgroups(false);
     }
   };
 
@@ -93,14 +154,240 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     }
   };
 
+  const SearchableMultiSelect = ({
+    title,
+    options,
+    name,
+    selectedValues,
+    onSelectionChange,
+    disabled = false,
+    loading = false,
+    required = false
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [dropdownDirection, setDropdownDirection] = useState('down');
+    const dropdownRef = useRef(null);
+    const dropdownTriggerRef = useRef(null);
+
+    useEffect(() => {
+      if (isOpen && dropdownTriggerRef.current) {
+        const triggerRect = dropdownTriggerRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - triggerRect.bottom;
+        setDropdownDirection(spaceBelow < 200 ? 'up' : 'down');
+      }
+    }, [isOpen]);
+
+    const filteredOptions = options.filter(option =>
+      option.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setIsOpen(false);
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, []);
+
+    const handleToggle = (value) => {
+      if (selectedValues.includes(value)) {
+        onSelectionChange(name, selectedValues.filter(item => item !== value));
+      } else {
+        onSelectionChange(name, [...selectedValues, value]);
+      }
+    };
+
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <label className="block text-sm text-black mb-1.5">
+          {title} {required && <span className="text-red-500">*</span>}
+        </label>
+        <div
+          ref={dropdownTriggerRef}
+          onClick={() => !disabled && !loading && setIsOpen(!isOpen)}
+          className={`w-full p-2.5 border ${errors[name] ? 'border-red-500' : 'border-gray-400'} rounded-lg flex justify-between items-center cursor-pointer bg-white ${disabled || loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+        >
+          <div className="flex flex-wrap gap-1 flex-1 min-h-6">
+            {selectedValues.length === 0 ? (
+              <span className="text-gray-500">Select {title.toLowerCase()}</span>
+            ) : (
+              selectedValues.map((value) => (
+                <span
+                  key={value}
+                  className="bg-[#8e78b7] bg-opacity-20 text-[#8e78b7] px-2 py-0.5 rounded text-sm flex items-center"
+                >
+                  {value}
+                  {!disabled && (
+                    <X
+                      className="h-3 w-3 ml-1 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggle(value);
+                      }}
+                    />
+                  )}
+                </span>
+              ))
+            )}
+          </div>
+          {loading ? (
+            <Loader className="h-4 w-4 animate-spin" />
+          ) : (
+            isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+          )}
+        </div>
+
+        {isOpen && !disabled && !loading && (
+          <div className={`absolute z-10 w-full ${dropdownDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} bg-white border border-gray-300 rounded-lg shadow-lg`}>
+            <div className="p-2 border-b">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={`Search ${title.toLowerCase()}`}
+                  className="w-full p-2 pl-8 border border-gray-300 rounded-md focus:outline-none focus:border-[#8e78b7]"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto p-1">
+              {filteredOptions.length === 0 ? (
+                <div className="text-center py-2 text-gray-500">No {title.toLowerCase()} found</div>
+              ) : (
+                filteredOptions.map(option => (
+                  <div
+                    key={option}
+                    className="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggle(option);
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      id={`${name}-${option}`}
+                      checked={selectedValues.includes(option)}
+                      onChange={() => {}}
+                      className="cursor-pointer text-[#8e78b7] focus:ring-[#8e78b7] rounded"
+                    />
+                    <label
+                      htmlFor={`${name}-${option}`}
+                      className="ml-2 text-sm cursor-pointer select-none flex-1"
+                    >
+                      {option}
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
+            {selectedValues.length > 0 && (
+              <div className="p-2 border-t flex justify-between items-center">
+                <span className="text-xs text-gray-500">{selectedValues.length} selected</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectionChange(name, []);
+                  }}
+                  className="text-xs text-[#8e78b7] hover:underline"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {errors[name] && (
+          <p className="mt-1 text-sm text-red-500">{errors[name]}</p>
+        )}
+      </div>
+    );
+  };
+
+  const handleCheckboxChange = (name, selectedItems) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: selectedItems
+    }));
+
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+
+    if (name === 'groups') {
+      setFormData(prev => ({
+        ...prev,
+        subgroups: []
+      }));
+    }
+  };
+
+  const TagInput = ({ value, onChange, placeholder }) => {
+    const [input, setInput] = useState('');
+    const inputRef = useRef(null);
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && input.trim()) {
+        e.preventDefault();
+        if (!value.includes(input.trim())) {
+          onChange([...value, input.trim()]);
+        }
+        setInput('');
+      } else if (e.key === 'Backspace' && !input && value.length > 0) {
+        onChange(value.slice(0, value.length - 1));
+      }
+    };
+
+    const handleRemoveTag = (tagToRemove) => {
+      onChange(value.filter(tag => tag !== tagToRemove));
+    };
+
+    return (
+      <div
+        className={`flex flex-wrap items-center gap-2 p-2.5 border border-gray-400 rounded-lg focus-within:border-[#8e78b7] focus-within:ring-1 focus-within:ring-[#8e78b7] bg-white`}
+        onClick={() => inputRef.current.focus()}
+      >
+        {value.map((tag, index) => (
+          <span
+            key={index}
+            className="bg-[#8e78b7] bg-opacity-20 text-[#8e78b7] px-2 py-0.5 rounded text-sm flex items-center"
+          >
+            {tag}
+            <X
+              className="h-3 w-3 ml-1 cursor-pointer"
+              onClick={() => handleRemoveTag(tag)}
+            />
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={value.length === 0 ? placeholder : ''}
+          className="flex-grow outline-none text-sm min-w-[120px]"
+        />
+      </div>
+    );
+  };
+
   const validate = () => {
     const newErrors = {};
 
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!formData.role) newErrors.role = 'Role is required';
+    if (formData.roles.length === 0) newErrors.roles = 'At least one role is required';
 
-    // Email validation
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -111,17 +398,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   };
 
   const handleSubmit = async () => {
-
-    // console.log({
-    //     firstName: formData.firstName,
-    //     lastName: formData.lastName,
-    //     email: formData.email,
-    //     roles_assigned: formData.role,
-    //     persona: formData.persona,
-    //     group: formData.group,
-    //     subgroup: formData.subgroup
-    //   })
-
     setApiResponse({ status: null, message: '' });
 
     const validationErrors = validate();
@@ -133,7 +409,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     setIsLoading(true);
 
     try {
-      // Only proceed if userData exists
       if (!userData) {
         throw new Error('User data not available');
       }
@@ -145,13 +420,14 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          username: formData.username,
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
-          roles_assigned: formData.role,
+          roles_assigned: formData.roles,
           persona: formData.persona,
-          group: formData.group,
-          subgroup: formData.subgroup
+          group: formData.groups,
+          subgroup: formData.subgroups
         })
       });
 
@@ -166,7 +442,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         message: 'User updated successfully'
       });
 
-      // Wait a moment to show success message before closing
       setTimeout(() => {
         onSave();
       }, 1500);
@@ -181,7 +456,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     }
   };
 
-  // If not open or userData is null, don't render the component
   if (!isOpen || !userData) return null;
 
   return (
@@ -199,7 +473,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
           </button>
         </div>
 
-        {/* Status message */}
         {apiResponse.status && (
           <div className={`mb-6 p-3 rounded-lg text-center ${
             apiResponse.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
@@ -242,17 +515,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
                 {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>}
               </div>
               <div>
-                <label className="block text-sm text-black mb-1.5">Middle name</label>
-                <input
-                  type="text"
-                  name="middleName"
-                  value={formData.middleName}
-                  onChange={handleChange}
-                  placeholder="Middle name"
-                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
-                />
-              </div>
-              <div>
                 <label className="block text-sm text-black mb-1.5">Last name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
@@ -282,72 +544,51 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
           <div className="space-y-6">
             <h3 className="text-[#8e78b7] font-medium">Roles</h3>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-black mb-1.5">Roles <span className="text-red-500">*</span></label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className={`w-full p-2.5 border ${errors.role ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white`}
-                >
-                  <option value="">Select Role</option>
-                  {isFetchingOptions ? (
-                    <option value="" disabled>Loading roles...</option>
-                  ) : (
-                    dropdownOptions.roles.map(role => (
-                      <option key={role} value={role}>{role}</option>
-                    ))
-                  )}
-                </select>
-                {errors.role && <p className="mt-1 text-sm text-red-500">{errors.role}</p>}
-              </div>
+              <SearchableMultiSelect
+                title="Roles"
+                options={dropdownOptions.roles}
+                name="roles"
+                selectedValues={formData.roles}
+                onSelectionChange={handleCheckboxChange}
+                loading={isFetchingOptions}
+                required={true}
+              />
+
               <div>
                 <label className="block text-sm text-black mb-1.5">Persona</label>
-                <input
-                  type="text"
-                  name="persona"
+                <TagInput
                   value={formData.persona}
-                  onChange={handleChange}
-                  placeholder="Enter persona"
-                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]"
+                  onChange={(newPersonas) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      persona: newPersonas
+                    }));
+                  }}
+                  placeholder="Type and press Enter to add personas"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Press Enter after each persona to add multiple personas
+                </p>
               </div>
-              <div>
-                <label className="block text-sm text-black mb-1.5">Group</label>
-                <select
-                  name="group"
-                  value={formData.group}
-                  onChange={handleChange}
-                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white"
-                >
-                  <option value="">Select Group</option>
-                  {isFetchingOptions ? (
-                    <option value="" disabled>Loading groups...</option>
-                  ) : (
-                    dropdownOptions.groups.map(group => (
-                      <option key={group} value={group}>{group}</option>
-                    ))
-                  )}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-black mb-1.5">Sub-group</label>
-                <select
-                  name="subgroup"
-                  value={formData.subgroup}
-                  onChange={handleChange}
-                  className="w-full p-2.5 border border-gray-400 rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white"
-                >
-                  <option value="">Select Sub-group</option>
-                  {isFetchingOptions ? (
-                    <option value="" disabled>Loading subgroups...</option>
-                  ) : (
-                    dropdownOptions.subgroups.map(subgroup => (
-                      <option key={subgroup} value={subgroup}>{subgroup}</option>
-                    ))
-                  )}
-                </select>
-              </div>
+
+              <SearchableMultiSelect
+                title="Groups"
+                options={dropdownOptions.groups}
+                name="groups"
+                selectedValues={formData.groups}
+                onSelectionChange={handleCheckboxChange}
+                loading={isFetchingOptions}
+              />
+
+              <SearchableMultiSelect
+                title="Sub-groups"
+                options={dropdownOptions.subgroups}
+                name="subgroups"
+                selectedValues={formData.subgroups}
+                onSelectionChange={handleCheckboxChange}
+                disabled={formData.groups.length === 0}
+                loading={isLoadingSubgroups}
+              />
             </div>
           </div>
         </div>

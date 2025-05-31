@@ -18,7 +18,6 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
   };
 
   const handleSave = async () => {
-    // Validate form data
     if (!formData.groupname.trim()) {
       setError("Group name is required");
       return;
@@ -48,15 +47,18 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
       const data = await response.json();
       console.log("Group created successfully:", data);
 
-      // Reset form and close modal
       setFormData({ groupname: "", description: "" });
       setShowModal(false);
 
-      // Notify parent component to refresh data
-      if (onGroupAdded) onGroupAdded();
+      if (onGroupAdded) {
+        onGroupAdded({ success: true, message: 'Group created successfully' });
+      }
 
     } catch (error) {
       console.error("Error creating group:", error);
+      if (onGroupAdded) {
+        onGroupAdded({ success: false, error: error.message || "Failed to create group. Please try again." });
+      }
       setError(error.message || "Failed to create group. Please try again.");
     } finally {
       setLoading(false);
@@ -84,7 +86,15 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+            <div
+              className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg"
+              style={{
+                maxHeight: "120px",
+                overflowY: "auto",
+                wordBreak: "break-all",
+                whiteSpace: "pre-wrap"
+              }}
+            >
               {error}
             </div>
           )}

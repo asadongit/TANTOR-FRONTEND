@@ -14,26 +14,26 @@ export function SchedulerNode({ id, data, selected}) {
   // console.log("SCHEDULAR DATA---------",data)
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
-  const ID = isPipelineNode ? pipelineId : id; 
+  const ID = isPipelineNode ? pipelineId : id;
 const {token,decodedToken ,project, hostnameV2}= useAuth()
   const navigate = useNavigate();
   const {openModal, closeModal}= useModal()
 
   const { updatePipelineData,deletePipeline, pipelines,setNodes,setEdge,deleteMappings} = useWorkflow();
-  
+
   const [selectedOption, setSelectedOption] = useState("manual");
   // const { minimizePipeline, deletePipeline } = useWorkflow();
   // const pipelineId = id.split("_").pop();
   const handleOptionChange = useCallback((event) => {
     setSelectedOption(event.target.value);
   }, []);
-  
+
 
 
 
   const handleSave = async () => {
     let pipelineData = {};
-    
+
     if (isPipelineNode) {
       pipelineData = pipelines[ID]?.data || {};
     } else {
@@ -50,22 +50,45 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       toast.error("Please provide a name for the CDC!", { duration: 4000 });
       return;
     }
-    
+
     if (!pipelineData?.source?.source_conn_id) {
       toast.error("Source connection is required!", { duration: 4000 });
       return;
     }
-    
+
     if (!pipelineData?.target?.target_conn_id) {
       toast.error("Target connection is required!", { duration: 4000 });
       return;
     }
-    
+
     if (!pipelineData?.target?.bulk_list || pipelineData.target.bulk_list.length === 0) {
       toast.error("Please select at least one table mapping!", { duration: 4000 });
       return;
     }
-  
+
+    const tableOperations = {};
+
+    const tableOpTypes = pipelineData.source?.table_op_types || {};
+
+    const targetTables = pipelineData.target?.bulk_list || [];
+
+    targetTables.forEach(mapping => {
+      const sourceTable = mapping.source_table;
+      const targetTable = mapping.target_table;
+
+      if (sourceTable && tableOpTypes[sourceTable]) {
+        tableOperations[sourceTable] = tableOpTypes[sourceTable];
+      } else {
+        tableOperations[sourceTable] = pipelineData.source?.op_types || {
+          create: true,
+          update: false,
+          delete: false,
+          schemaChanges: false,
+          datafederation: false
+        };
+      }
+    });
+
     const finalPayload = {
       project: project,
       created_by: decodedToken.preferred_username,
@@ -77,9 +100,9 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       source_schema: pipelineData.source?.schema,
       target_schema: pipelineData.target?.schema,
       cdc_list: pipelineData.target?.bulk_list || [],
-      op_types: pipelineData.source?.op_types || {},
+      op_types: tableOperations,
     };
-  
+
     // console.log("Final Payload:", finalPayload);
     try {
       const response = await fetch(`${hostnameV2}/create-cdc`, {
@@ -90,13 +113,13 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
         },
         body: JSON.stringify(finalPayload),
       });
-  
+
       const data = await response.json();
       console.log("Response:", data);
     } catch (error) {
       console.error("Error:", error);
     }
-  
+
     setTimeout(() => {
       setNodes([]);
       openModal({
@@ -107,9 +130,9 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       });
     }, 800);
   };
-  
+
   const handleClose =()=>{
-    closeModal()   
+    closeModal()
     deletePipeline(ID);
      setTimeout(() => {
           navigate(`/details?${encodeURIComponent(encrypt("componentType=cdc&heading=cdc"))}`);
@@ -122,13 +145,13 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
     selected ? "border-[#8E77BB]" : "border-gray-300"
   } w-fit min-w-[18vw] max-w-[90vw] relative group grid grid-cols-[repeat(auto-fit,minmax(min-content,1fr))]`}
 >
-  
+
     <div className="flex justify-between items-center mb-2">
       <div className="flex items-center gap-1">
       <iconify-icon icon="material-symbols-light:alarm-outline" style={{ color: "#8e78b7" }}  width="24" height="24"></iconify-icon>
         <h3 className="text-black font-medium">Scheduler</h3>
       </div>
-  
+
       <div className="flex space-x-2">
         <button className="p-1">
           <Minus className="w-4 h-4 text-gray-400 hover:text-gray-600" />
@@ -138,7 +161,7 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
         </button>
       </div>
     </div>
-  
+
     <Handle type="target" position={Position.Left} />
 
 
@@ -211,14 +234,14 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
         <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           Cancel
         </button>
-        <button 
+        <button
   className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
   onClick={() => openModal({
     title: "Save Confirmation",
     message: "Are you sure you want to save this CDC?",
     type: "question",
     confirmText: "Yes",
-    onConfirm: () => handleSave(), 
+    onConfirm: () => handleSave(),
   })}
 >
   SAVE

@@ -23,7 +23,6 @@ import { SkeletonLoader } from "../components/skeltonLoader";
 import { useConnections, useDDL, useSchemaCount, useSchemas, useTables } from "../hooks/DataFetch";
 
 export function SourceNode({ id, data, selected }) {
-  // console.log("sourceData--------",data)
   const [loading, setLoading] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
@@ -46,9 +45,11 @@ export function SourceNode({ id, data, selected }) {
       schemaChanges: false,
       datafederation: false,
     },
+    table_op_types: {}, // Initialize empty table_op_types object
     name:"",
     source_conn_id:""
   }));
+  const [selectedSubsetTable, setSelectedSubsetTable] = useState("");    // NEW
 
   const { data: connections, isLoading: isLoadingConnections } = useConnections('source');
   const { data: schemaCount } = useSchemaCount(selectedConnection);
@@ -65,17 +66,24 @@ export function SourceNode({ id, data, selected }) {
 
   useEffect(() => {
     if (selectedConnection && selectedSchema && ID) {
+      // derive plain table-name list from pipelineMappings
+      const rawSubset = pipelineMappings?.[ID] ?? [];
+      const subsetNames = rawSubset.map(item =>
+        typeof item === "string" ? item : item.source_table
+      );
+
       const updatedNodeData = {
         connection: selectedConnection,
         schema: selectedSchema,
         mode: selectedMode,
         bulk_list: selectedItems,
-        subset_list: pipelineMappings?.[ID] ?? [],
-        op_types: nodeData?.op_types ?? [],
+        subset_list: subsetNames,                      // updated
+        op_types: nodeData?.op_types ?? {},
+        table_op_types: nodeData?.table_op_types ?? {},
         source_conn_id: nodeData?.source_conn_id ?? null,
         define: data?.define?.[0] ?? null,
       };
-      
+
       setNodeData(updatedNodeData);
       updateData(ID, isPipelineNode, "source", updatedNodeData);
     }
@@ -112,9 +120,10 @@ export function SourceNode({ id, data, selected }) {
   const handleModeChange = (mode) => {
     setSelectedMode(mode);
     setSelectedItems([]);
-
+    if (mode === "subset") {
+      setSelectedSubsetTable("");                                      // NEW: clear previous subset choice
+    }
     if (!selectedConnection || !selectedSchema) return;
-
   };
   const handleSelectAll = (isChecked) => {
     if (isChecked) {
@@ -139,7 +148,7 @@ export function SourceNode({ id, data, selected }) {
     });
   };
 
-  
+
   const handleOkClick = () => {
     if (selectedConnection && selectedSchema && selectedMode) {
       const updatedNodeData = {
@@ -167,22 +176,22 @@ export function SourceNode({ id, data, selected }) {
 
   const connectedTargets = (data?.target || []).filter(target => target && target.id !== undefined).map(target => target.id);
 
-  const firstTargetID = connectedTargets.length > 0 ? connectedTargets[0] : null; 
-  
+  const firstTargetID = connectedTargets.length > 0 ? connectedTargets[0] : null;
+
   const constructedKey = firstTargetID ? `${data?.source?.id}-${firstTargetID}` : null;
 
   const pipelineData = isPipelineNode
     ? pipelineMappings[pipelineId] || []
     : constructedKey && pipelineMappings[constructedKey] ? pipelineMappings[constructedKey] : [];
-  
+
   const sourceTables = pipelineData.map((mapping) => mapping.source_table);
   const showTablesList = Boolean(
     selectedMode === "bulk"
       ? tables && tables.length > 0 || loading
       : (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
-        (constructedKey && (pipelineMappings[constructedKey]?.length ?? 0) > 0) 
+        (constructedKey && (pipelineMappings[constructedKey]?.length ?? 0) > 0)
   );
-  
+
   return (
     <div
       className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
@@ -233,11 +242,11 @@ export function SourceNode({ id, data, selected }) {
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
               value={selectedConnectionObj ? JSON.stringify(selectedConnectionObj) : ""}
                 onChange={(e) => {
-                const selectedConnection = JSON.parse(e.target.value); 
+                const selectedConnection = JSON.parse(e.target.value);
                 handleSelectConnection(selectedConnection)
               }}
             >
-              
+
               <option value="">Select Connection</option>
               {connections?.length > 0 ? (
                 connections.map((connection, idx) => (
@@ -347,13 +356,26 @@ export function SourceNode({ id, data, selected }) {
       </div>
 
       <div className="mt-2">
-        {filteredTables &&
-          filteredTables.length > 0 &&
-          selectedMode === "subset" && (
+        {filteredTables?.length > 0 && selectedMode === "subset" && (
+          <div className="flex items-center gap-2">
             <select
-              id="table-select"
+              value={selectedSubsetTable}
+              onChange={(e) => {
+                const tbl = e.target.value;
+                setSelectedSubsetTable(tbl);
+                selectSource(ID, tbl, connectedTargets, isPipelineNode);
+
+                // Ensure the selected table is added to subset_list if not already there
+                const updatedNodeData = {
+                  ...nodeData,
+                  subset_list: nodeData.subset_list.includes(tbl)
+                    ? nodeData.subset_list
+                    : [...nodeData.subset_list, tbl]
+                };
+                setNodeData(updatedNodeData);
+                updateData(ID, isPipelineNode, "source", updatedNodeData);
+              }}
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              onChange={(e) => selectSource(ID, e.target.value, connectedTargets, isPipelineNode)}
             >
               <option value="">Select Table</option>
               {filteredTables.map((table, idx) => (
@@ -362,7 +384,8 @@ export function SourceNode({ id, data, selected }) {
                 </option>
               ))}
             </select>
-          )}
+          </div>
+        )}
       </div>
 
       {showTablesList && (
@@ -469,7 +492,7 @@ export function SourceNode({ id, data, selected }) {
                             checked={selectedItems.some(
                               // (item) => item.metadata_id === table.metadata_id
                               (item) => item === table.source_table
-                              
+
                             )}
                             onChange={(e) =>
                               handleItemSelection(
