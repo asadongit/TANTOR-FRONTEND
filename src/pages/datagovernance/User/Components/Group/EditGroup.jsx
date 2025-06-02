@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Info } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
-import { toast } from "react-toastify";
 
 function EditGroup({ showModal, setShowModal, groupData, onGroupEdited }) {
   const [formData, setFormData] = useState({
@@ -59,16 +58,6 @@ function EditGroup({ showModal, setShowModal, groupData, onGroupEdited }) {
       const data = await response.json();
       console.log("Group updated successfully:", data);
 
-      // Show success toast with more specific options
-      toast.success("Group updated successfully!", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-
       // Close modal
       setShowModal(false);
 
@@ -77,8 +66,6 @@ function EditGroup({ showModal, setShowModal, groupData, onGroupEdited }) {
 
     } catch (error) {
       console.error("Error updating group:", error);
-      // Show error toast
-      toast.error(error.message || "Failed to update group. Please try again.");
       setError(error.message || "Failed to update group. Please try again.");
     } finally {
       setLoading(false);
