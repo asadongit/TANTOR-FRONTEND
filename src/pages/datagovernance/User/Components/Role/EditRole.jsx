@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify-icon/react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
-import { toast } from "react-toastify";
 
 const EditRole = ({ show, onClose, onSave, roleData }) => {
   const [formData, setFormData] = useState({
@@ -38,7 +37,6 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
 
     if (!formData.name.trim()) {
       setError("Role name is required");
-      toast.error("Role name is required");
       return;
     }
 
@@ -62,18 +60,15 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        toast.error(errorData?.detail || 'Failed to update role');
         throw new Error(errorData?.detail || 'Failed to update role');
       }
 
       const data = await response.json();
       onSave(data);
-      toast.success("Role updated successfully");
       onClose();
     } catch (err) {
       console.error('Error updating role:', err);
       setError(err.message || 'Failed to update role');
-      toast.error(err.message || 'Failed to update role');
     } finally {
       setLoading(false);
     }
