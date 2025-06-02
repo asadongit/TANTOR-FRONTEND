@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify-icon/react";
 import { Plus, Loader2 } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
@@ -17,6 +17,13 @@ const AddRole = ({ show, onClose, onSave }) => {
   const { token } = useAuth();
 
   const today = new Date().toISOString().split("T")[0];
+
+  // Add useEffect to reset form when modal is closed
+  useEffect(() => {
+    if (!show) {
+      resetForm();
+    }
+  }, [show]);
 
   const handleSave = async () => {
     setError(null);
@@ -50,7 +57,6 @@ const AddRole = ({ show, onClose, onSave }) => {
 
       const data = await response.json();
       onSave({ success: true, data, message: 'Role created successfully' });
-      resetForm();
       onClose();
     } catch (err) {
       console.error('Error creating role:', err);
