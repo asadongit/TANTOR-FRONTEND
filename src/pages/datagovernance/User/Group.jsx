@@ -353,6 +353,36 @@ function Group() {
     // Remove the else block that shows error toast since errors are handled in the modal
   };
 
+  // Add handler for edit save to show toast notifications
+  const handleEditSave = async () => {
+    try {
+      await refreshAllData();
+      setToast({
+        show: true,
+        message: 'Group updated successfully',
+        type: 'success'
+      });
+      setShowEditModal(false);
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+    } catch (error) {
+      console.error('Error refreshing data after group update:', error);
+      setToast({
+        show: true,
+        message: 'Group updated but failed to refresh data',
+        type: 'error'
+      });
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+    }
+  };
+
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
@@ -679,7 +709,7 @@ function Group() {
         showModal={showEditModal}
         setShowModal={setShowEditModal}
         groupData={groupToEdit}
-        onGroupEdited={refreshAllData}
+        onGroupEdited={handleEditSave}
       />
     </div>
   );
