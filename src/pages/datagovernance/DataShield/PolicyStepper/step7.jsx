@@ -12,6 +12,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
 
     const handleSavePolicy = async () => {
         setIsSubmitting(true);
+        setError(null);
 
         const finalPolicyData = {
             ...policyData,
@@ -37,26 +38,37 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
             });
 
             if (!response.ok) {
-                toast.error(isEditMode ? "Error editing policy" : "Error adding policy");
-                setIsOpen(false);
-                return;
+                const errorData = await response.json();
+                // Extract the message after "400: " if it exists
+                const errorMessage = errorData.detail.includes("400: ")
+                    ? errorData.detail.split("400: ")[1]
+                    : errorData.detail;
+
+                if (errorMessage.includes("already exists")) {
+                    toast.error(errorMessage);
+                    return;
+                }
+                throw new Error((isEditMode ? "Error editing policy" : "Error adding policy"));
             }
 
             const data = await response.json();
             toast.success(isEditMode ? "Policy edited successfully" : "Policy added successfully");
             await fetchPolicyListData();
             setIsOpen(false);
+            setActiveStep(0);
 
         } catch (error) {
             console.error("Error saving policy:", error);
-            setError(error.message || "Failed to save policy");
+            if (!error.message.includes("already exists")) {
+                toast.error("Failed to save policy");
+            }
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleEditPolicy = () => {
-        setActiveStep(6); // Go back to Report Step
+        setActiveStep(6);
     };
 
     return (
