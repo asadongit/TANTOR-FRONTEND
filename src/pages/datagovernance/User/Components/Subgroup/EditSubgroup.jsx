@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
-import { toast } from "react-toastify";
 
 function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated }) {
   const [formData, setFormData] = useState({
@@ -52,16 +51,6 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
         throw new Error(errorData.detail || "Failed to update subgroup");
       }
 
-      // Show success toast
-      toast.success("Subgroup updated successfully!", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-
       // Close modal and refresh data
       setShowModal(false);
       if (onSubgroupUpdated) {
@@ -69,7 +58,6 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
       }
     } catch (error) {
       console.error("Error updating subgroup:", error);
-      toast.error(error.message || "Failed to update subgroup. Please try again.");
       setError(error.message || "Failed to update subgroup");
     } finally {
       setLoading(false);

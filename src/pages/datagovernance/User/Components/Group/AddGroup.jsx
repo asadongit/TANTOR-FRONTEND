@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Info } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
-import { toast } from "react-toastify";
 
 function AddGroup({ showModal, setShowModal, onGroupAdded }) {
   const [formData, setFormData] = useState({
@@ -12,6 +11,12 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
   const [error, setError] = useState(null);
   const { token } = useAuth();
 
+  // Add useEffect to reset form when modal is closed
+  useEffect(() => {
+    if (!showModal) {
+      resetForm();
+    }
+  }, [showModal]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -48,26 +53,25 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
       const data = await response.json();
       console.log("Group created successfully:", data);
 
-      toast.success("Group created successfully!", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      if (onGroupAdded) {
+        onGroupAdded({ success: true, message: 'Group created successfully' });
+      }
 
-      setFormData({ groupname: "", description: "" });
       setShowModal(false);
-
-      if (onGroupAdded) onGroupAdded();
-
     } catch (error) {
       console.error("Error creating group:", error);
+      if (onGroupAdded) {
+        onGroupAdded({ success: false, error: error.message || "Failed to create group. Please try again." });
+      }
       setError(error.message || "Failed to create group. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({ groupname: "", description: "" });
+    setError(null);
   };
 
   if (!showModal) return null;

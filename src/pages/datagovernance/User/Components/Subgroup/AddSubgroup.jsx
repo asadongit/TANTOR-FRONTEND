@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
-import { toast } from "react-toastify";
 
 function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
   const [formData, setFormData] = useState({
@@ -13,6 +12,13 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
   const [groups, setGroups] = useState([]);
   const [error, setError] = useState("");
   const { token } = useAuth();
+
+  // Add useEffect to reset form when modal is closed
+  useEffect(() => {
+    if (!showModal) {
+      resetForm();
+    }
+  }, [showModal]);
 
   useEffect(() => {
     if (showModal) {
@@ -70,15 +76,6 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
         throw new Error(errorData.detail || "Failed to create subgroup");
       }
 
-      toast.success("Subgroup created successfully!", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-
       setFormData({
         name: "",
         group: "",
@@ -87,14 +84,26 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
 
       setShowModal(false);
       if (onSubgroupAdded) {
-        onSubgroupAdded();
+        onSubgroupAdded({ success: true, message: 'Subgroup created successfully' });
       }
     } catch (error) {
       console.error("Error creating subgroup:", error);
+      if (onSubgroupAdded) {
+        onSubgroupAdded({ success: false, error: error.message || "Failed to create subgroup" });
+      }
       setError(error.message || "Failed to create subgroup");
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      group: "",
+      description: "",
+    });
+    setError("");
   };
 
   if (!showModal) return null;

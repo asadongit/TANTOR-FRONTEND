@@ -244,6 +244,70 @@ function Subgroup() {
     setActiveMenu(null);
   };
 
+  const handleSave = async (result) => {
+    console.log('Subgroup creation result:', result);
+
+    if (result.success) {
+      try {
+        await refreshAllData();
+        setToast({
+          show: true,
+          message: result.message || 'Subgroup created successfully',
+          type: 'success'
+        });
+        setShowModal(false);
+
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      } catch (error) {
+        console.error('Error refreshing data after subgroup creation:', error);
+        setToast({
+          show: true,
+          message: 'Subgroup created but failed to refresh data',
+          type: 'error'
+        });
+
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      }
+    }
+    // Remove the else block that shows error toast since errors are handled in the modal
+  };
+
+  // Add handler for edit save to show toast notifications
+  const handleEditSave = async () => {
+    try {
+      await refreshAllData();
+      setToast({
+        show: true,
+        message: 'Subgroup updated successfully',
+        type: 'success'
+      });
+      setShowEditModal(false);
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+    } catch (error) {
+      console.error('Error refreshing data after subgroup update:', error);
+      setToast({
+        show: true,
+        message: 'Subgroup updated but failed to refresh data',
+        type: 'error'
+      });
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+    }
+  };
+
   // Update pagination to use filteredTableData
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
@@ -565,7 +629,7 @@ function Subgroup() {
       <AddSubgroup
         showModal={showModal}
         setShowModal={setShowModal}
-        onSubgroupAdded={refreshAllData}
+        onSubgroupAdded={handleSave}
       />
 
       <DeleteSubgroup
@@ -579,7 +643,7 @@ function Subgroup() {
         showModal={showEditModal}
         setShowModal={setShowEditModal}
         subgroupData={subgroupToEdit}
-        onSubgroupUpdated={refreshAllData}
+        onSubgroupUpdated={handleEditSave}
       />
     </div>
   );

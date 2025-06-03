@@ -279,6 +279,11 @@ const Role = () => {
           type: 'success'
         });
         setShowModal(false);
+
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
       } catch (error) {
         console.error('Error refreshing data after role creation:', error);
         setToast({
@@ -286,19 +291,14 @@ const Role = () => {
           message: 'Role created but failed to refresh data',
           type: 'error'
         });
-      }
-    } else {
-      setToast({
-        show: true,
-        message: result.error || 'Failed to create role',
-        type: 'error'
-      });
-    }
 
-    // Auto-hide toast after 3 seconds
-    setTimeout(() => {
-      setToast({ show: false, message: '', type: '' });
-    }, 3000);
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      }
+    }
+    // Remove the else block that shows error toast since errors are handled in the modal
   };
 
   const handleEditClick = (role) => {
@@ -311,9 +311,29 @@ const Role = () => {
     console.log('Role updated:', data);
     try {
       await refreshAllData();
+      setToast({
+        show: true,
+        message: 'Role updated successfully',
+        type: 'success'
+      });
       setShowEditModal(false);
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
     } catch (error) {
       console.error('Error refreshing data after role update:', error);
+      setToast({
+        show: true,
+        message: 'Role updated but failed to refresh data',
+        type: 'error'
+      });
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
     }
   };
 
