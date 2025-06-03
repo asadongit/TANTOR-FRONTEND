@@ -47,6 +47,32 @@ import { useAuth } from "../../../../../context/AuthContext";
 import toast from "react-hot-toast";
 import Logs from "./Logs";
 import ConfigEditorModal from "./editConfig";
+const extractHostnameFromJdbcUrl = (jdbcUrl) => {
+  if (!jdbcUrl) return "";
+
+  try {
+    if (jdbcUrl.includes("jdbc:postgresql://")) {
+      const match = jdbcUrl.match(/jdbc:postgresql:\/\/([^:]+):/);
+      return match && match[1] ? match[1] : "";
+    } else if (jdbcUrl.includes("jdbc:mysql://")) {
+      const match = jdbcUrl.match(/jdbc:mysql:\/\/([^:]+):/);
+      return match && match[1] ? match[1] : "";
+    } else if (jdbcUrl.includes("jdbc:sqlserver://")) {
+      const match = jdbcUrl.match(/jdbc:sqlserver:\/\/([^:]+):/);
+      return match && match[1] ? match[1] : "";
+    } else if (jdbcUrl.includes("jdbc:oracle:thin:@//")) {
+      const match = jdbcUrl.match(/jdbc:oracle:thin:@\/\/([^:]+):/);
+      return match && match[1] ? match[1] : "";
+    } else {
+      const urlMatch = jdbcUrl.match(/jdbc:[^:]+:\/\/([^:\/]+)/);
+      return urlMatch && urlMatch[1] ? urlMatch[1] : "";
+    }
+  } catch (error) {
+    console.error("Error extracting hostname from JDBC URL:", error);
+    return "";
+  }
+};
+
 const StatusBadge = ({ state }) => {
   const statusMap = {
     RUNNING: {
@@ -119,7 +145,6 @@ const TaskActions = ({ task, onRestart }) => {
     </div>
   );
 };
-
 
 const MetricsCard = ({
   title,
@@ -348,54 +373,45 @@ export default function CDCJobView() {
     console.log(`Restarting task ${taskId}`);
 
     if (jobData) {
-      const updatedJobData = { ...jobData };
+      let connectorName = '';
 
-      const sourceTaskIndex = updatedJobData.source.tasks.findIndex(
-        (t) => t.id === taskId
-      );
-      if (sourceTaskIndex >= 0) {
-        toast.loading("Restarting source task...", { id: 'restart-task' });
+      // Determine if it's a source or target task
+      const sourceTask = jobData.source.tasks.find(t => t.id === taskId);
+      const targetTask = jobData.target.tasks.find(t => t.id === taskId);
 
-        try {
-          await axios.post(`${hostnameV2}/cdc/task-action`, null, {
-            params: {
-              connector_name: updatedJobData.source.name,
-              task_id: taskId,
-              action: "restart"
-            }
-          });
-
-          await fetchUpdatedConnectorStatus(updatedJobData.source.name);
-          toast.success("Task restarted successfully", { id: 'restart-task' });
-        } catch (error) {
-          console.error("Failed to restart task:", error);
-          toast.error(`Failed to restart task: ${error.response?.data?.detail || error.message}`,
-            { id: 'restart-task' });
-        }
+      if (sourceTask) {
+        connectorName = jobData.source.name;
+      } else if (targetTask) {
+        connectorName = jobData.target.name;
+      } else {
+        toast.error("Task not found");
+        return;
       }
 
-      const targetTaskIndex = updatedJobData.target.tasks.findIndex(
-        (t) => t.id === taskId
-      );
-      if (targetTaskIndex >= 0) {
-        toast.loading("Restarting target task...", { id: 'restart-task' });
+      toast.loading(`Restarting task ${taskId}...`, { id: 'restart-task' });
 
-        try {
-          await axios.post(`${hostnameV2}/cdc/task-action`, null, {
-            params: {
-              connector_name: updatedJobData.target.name,
-              task_id: taskId,
-              action: "restart"
-            }
-          });
+      try {
+        // Call the new API endpoint
+        await axios.post(`${hostnameV2}/cdc/restart-task`, null, {
+          params: {
+            connector_name: connectorName,
+            task_id: taskId
+          }
+        });
 
-          await fetchUpdatedConnectorStatus(updatedJobData.target.name);
-          toast.success("Task restarted successfully", { id: 'restart-task' });
-        } catch (error) {
-          console.error("Failed to restart task:", error);
-          toast.error(`Failed to restart task: ${error.response?.data?.detail || error.message}`,
-            { id: 'restart-task' });
-        }
+        toast.success("Task restarted successfully", { id: 'restart-task' });
+
+        // Refresh connector status data
+        await fetchUpdatedConnectorStatus(connectorName);
+
+        // Refresh the entire page data
+        refetch();
+      } catch (error) {
+        console.error("Failed to restart task:", error);
+        toast.error(
+          `Failed to restart task: ${error.response?.data?.detail || error.message}`,
+          { id: 'restart-task' }
+        );
       }
     }
   };
@@ -516,6 +532,7 @@ export default function CDCJobView() {
     onEditConfig,
   }) => {
     const [expanded, setExpanded] = useState(true);
+    const [showConfigModal, setShowConfigModal] = useState(false);
 
     const handleTaskClick = (task) => {
       if (task.state === "FAILED") {
@@ -703,55 +720,68 @@ export default function CDCJobView() {
                       Connector Details
                     </h4>
                     <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-gray-600">Worker:</span>
-                        <span className="text-gray-800 font-medium">
-                          {connectorData.connector.worker_id}
-                        </span>
-                      </div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-gray-600">Type:</span>
-                        <span className="text-gray-800 font-medium capitalize">
-                          {connectorData.type}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Tasks:</span>
-                        <span className="text-gray-800 font-medium">
-                          {connectorData.tasks.length}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                      <Copy className="w-4 h-4 mr-1.5 text-gray-500" />
-                      Configuration
-                    </h4>
-                    <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
                       <div className="space-y-2">
-                        {Object.entries(connectorData.config)
-                          .slice(0, 4)
-                          .map(([key, value]) => (
-                            <div
-                              key={key}
-                              className="grid grid-cols-3 gap-2 items-center text-sm"
-                            >
-                              <span className="text-gray-600 truncate col-span-1">
-                                {key}:
-                              </span>
-                              <span className="text-gray-800 font-medium truncate col-span-2">
-                                {key.includes("password") ? "********" : value}
-                              </span>
-                            </div>
-                          ))}
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                          <span className="text-gray-600 col-span-1">Worker:</span>
+                          <span className="text-gray-800 font-medium col-span-2">
+                            {connectorData.connector.worker_id}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                          <span className="text-gray-600 col-span-1">Type:</span>
+                          <span className="text-gray-800 font-medium col-span-2 capitalize">
+                            {connectorData.type}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                          <span className="text-gray-600 col-span-1">Tasks:</span>
+                          <span className="text-gray-800 font-medium col-span-2">
+                            {connectorData.tasks.length}
+                          </span>
+                        </div>
                       </div>
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <button className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center">
-                          <Eye size={14} className="mr-1" />
-                          View full configuration
-                        </button>
+
+                      {/* Tasks section under Connector Details */}
+                      <div className="mt-4 pt-3 border-t border-gray-200">
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Tasks ({connectorData.tasks.length})</h5>
+                        {connectorData.tasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="mb-2 rounded overflow-hidden"
+                            onClick={() => task.state === "FAILED" && handleTaskClick(task)}
+                          >
+                            <div className="flex items-center justify-between px-3 py-2 bg-white border border-gray-200 hover:bg-gray-50">
+                              <div className="flex items-center">
+                                <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full mr-2 ${
+                                  task.state === "RUNNING"
+                                    ? "bg-green-100 text-green-600"
+                                    : task.state === "FAILED"
+                                      ? "bg-red-100 text-red-600"
+                                      : "bg-yellow-100 text-yellow-600"
+                                }`}>
+                                  {task.state === "RUNNING" && <CheckCircle className="w-3 h-3" />}
+                                  {task.state === "FAILED" && <XCircle className="w-3 h-3" />}
+                                  {task.state === "PAUSED" && <PauseCircle className="w-3 h-3" />}
+                                </span>
+                                <span className="text-sm text-gray-700">Task ID: {task.id}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <span className="text-xs text-gray-500 mr-2">{task.worker_id}</span>
+                                {task.state === "FAILED" && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onRestartTask(task.id);
+                                    }}
+                                    className="p-1 text-xs bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100"
+                                  >
+                                    <RotateCw className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -760,53 +790,84 @@ export default function CDCJobView() {
 
               <div className="col-span-12 md:col-span-7">
                 <h4 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                  <Layers className="w-4 h-4 mr-1.5 text-gray-500" />
-                  Tasks ({connectorData.tasks.length})
+                  <Copy className="w-4 h-4 mr-1.5 text-gray-500" />
+                  Configuration
                 </h4>
-                <div className="bg-gray-50 rounded-md border border-gray-200 overflow-hidden">
-                  <div className="divide-y divide-gray-200">
-                    {connectorData.tasks.map((task) => (
-                      <div key={task.id} className="">
+                <div className="bg-gray-50 p-3 rounded-md border border-gray-200 h-full">
+                  <div className="space-y-2">
+                    {Object.entries(connectorData.config)
+                      .slice(0, 4)
+                      .map(([key, value]) => (
                         <div
-                          className={`flex items-center justify-between p-3 ${
-                            task.state === "FAILED"
-                              ? "cursor-pointer hover:bg-gray-100"
-                              : "cursor-default"
-                          }`}
-                          onClick={() => handleTaskClick(task)}
+                          key={key}
+                          className="grid grid-cols-3 gap-2 items-center text-sm"
                         >
-                          <div className="flex items-center">
-                            {task.state === "RUNNING" && (
-                              <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                            )}
-                            {task.state === "FAILED" && (
-                              <XCircle className="w-4 h-4 text-red-500 mr-2" />
-                            )}
-                            {task.state === "PAUSED" && (
-                              <PauseCircle className="w-4 h-4 text-yellow-500 mr-2" />
-                            )}
-                            <span className="text-gray-800">
-                              Task ID: {task.id}
-                            </span>
-                            {task.state === "FAILED" && (
-                              <span className="ml-2 text-xs text-red-600 flex items-center">
-                                <AlertCircle size={12} className="mr-1" />
-                                Failed
-                                <ChevronRight size={14} className="ml-1" />
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center">
-                            <span className="text-xs text-gray-500 mr-2">
-                              {task.worker_id}
-                            </span>
-                            <TaskActions task={task} onRestart={onRestartTask} />
-                          </div>
+                          <span className="text-gray-600 truncate col-span-1">
+                            {key}:
+                          </span>
+                          <span className="text-gray-800 font-medium truncate col-span-2">
+                            {key.includes("password") ? "********" : value}
+                          </span>
                         </div>
+                      ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <button
+                      onClick={() => setShowConfigModal(true)}
+                      className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center"
+                    >
+                      <Eye size={14} className="mr-1" />
+                      View full configuration
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full Configuration Modal */}
+        {showConfigModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[85vh] flex flex-col">
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                  <Copy className="w-5 h-5 mr-2 text-indigo-600" />
+                  Full Configuration - {type.charAt(0).toUpperCase() + type.slice(1)} Connector
+                </h3>
+                <button
+                  onClick={() => setShowConfigModal(false)}
+                  className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 p-6 overflow-auto">
+                <div className="bg-gray-50 p-5 rounded-md border border-gray-200">
+                  <div className="space-y-4">
+                    {Object.entries(connectorData.config).map(([key, value]) => (
+                      <div key={key} className="grid grid-cols-12 gap-4 items-start">
+                        <span className="col-span-4 text-sm font-medium text-gray-600 break-words">{key}:</span>
+                        <span className="col-span-8 text-sm text-gray-800 break-all">
+                          {key.includes("password") || key.includes("secret") ?
+                            "********" :
+                            (typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value))
+                          }
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
+              </div>
+              <div className="p-4 border-t border-gray-200 flex justify-end">
+                <button
+                  onClick={() => setShowConfigModal(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
@@ -853,8 +914,7 @@ export default function CDCJobView() {
               </div>
             </div>
           </div>
-          <div className="p-4 border-t border-gray-200 flex justify-end space-x-3">
-
+          <div className="p-4 border-t border-gray-200 flex justify-end">
             <button
               onClick={onClose}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
@@ -1167,6 +1227,7 @@ export default function CDCJobView() {
     );
   };
 
+
   return (
     <div className="p-6">
       <main className="">
@@ -1189,7 +1250,10 @@ export default function CDCJobView() {
                   </span>
                   <ArrowRight className="h-4 w-4 mx-1 text-gray-400" />
                   <Database className="h-4 w-4 mr-1 text-purple-500" />
-                  <span>{jobData.target.config["database.hostname"]}</span>
+                  <span>
+                    {jobData.target.config["database.hostname"] ||
+                     extractHostnameFromJdbcUrl(jobData.target.config["connection.url"])}
+                  </span>
                 </div>
               </div>
 

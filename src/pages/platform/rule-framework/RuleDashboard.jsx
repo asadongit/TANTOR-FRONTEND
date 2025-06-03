@@ -105,14 +105,13 @@ const RuleDashboard = () => {
     ];
   
   const columns = [
-    { key: "project", label: "Project Name" },
-    { key: "created_by", label: "Created By" },
-    { key: "owner", label: "Owner" },
-    { key: "connections", label: "Connections" },
-    { key: "metadata", label: "Migrations" },
-    { key: "migration", label: "Transformations" },
-    { key: "purge", label: "Purges" },
-    { key: "cdc", label: "CDC" },
+    { key: "s_no", label: "#" },
+    { key: "id", label: "ID" },
+    { key: "name", label: "Name" },
+    { key: "description", label: "Desc" },
+    { key: "created", label: "Created" },
+    { key: "updated", label: "Updated" },
+    { key: "type", label: "Type" },
     { label: "Action", sortable: false },
   ];
   

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, X } from "lucide-react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -7,8 +7,24 @@ import CatalogueChart from "./Components/CatalogueTrend";
 import Hive from './Components/Icons/Hive.png';
 import Oracle from './Components/Icons/Oracle.png';
 import Snowflake from './Components/Icons/Snowflake.png';
+import Postgres from './Components/Icons/Postgres.png';
 import { secureQuery } from './Components/function.js';
 import { useAuth } from "../../../context/AuthContext.jsx";
+
+const rotateAnimation = `
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .icon-rotate {
+    animation: rotate 1s linear infinite;
+  }
+`;
 
 const Database = () => {
   const [isTableView, setIsTableView] = useState(false);
@@ -18,8 +34,11 @@ const Database = () => {
   const [connectionCounts, setConnectionCounts] = useState({
     oracle: 0,
     hive: 0,
-    snowflake: 0
+    snowflake: 0,
+    postgres: 0
   });
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const [recentAccess, setRecentAccess] = useState([]);
 
   const [cards, setCards] = useState([
     {
@@ -30,18 +49,18 @@ const Database = () => {
       seeDetailsLink: "/database-details",
     },
     {
+      title: "Postgres",
+      enabled: true,
+      icon: Postgres,
+      count: 0,
+      seeDetailsLink: "/tables-details",
+    },
+    {
       title: "Hive",
       enabled: true,
       icon: Hive,
       count: 0,
       seeDetailsLink: "/schema-details",
-    },
-    {
-      title: "Snowflake",
-      enabled: true,
-      icon: Snowflake,
-      count: 0,
-      seeDetailsLink: "/tables-details",
     }
   ]);
 
@@ -67,7 +86,8 @@ const Database = () => {
     const counts = {
       oracle: 0,
       hive: 0,
-      snowflake: 0
+      snowflake: 0,
+      postgres: 0 // Added postgres
     };
 
     const uniqueConnections = new Set();
@@ -81,6 +101,7 @@ const Database = () => {
         if (connType === 'oracle') counts.oracle++;
         else if (connType === 'hive') counts.hive++;
         else if (connType === 'snowflake') counts.snowflake++;
+        else if (connType === 'postgres') counts.postgres++; // Count Postgres
       }
     });
 
@@ -135,35 +156,90 @@ const Database = () => {
     return Array.from(connectionMap.values());
   };
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-
-        const secureQueryResponse = await secureQuery({
-          user_query: "",
+  const fetchRecentAccess = async (policyIds) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/recentaccess`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        token);
-        const policyIds = secureQueryResponse.matched_policy_ids || [];
-        setPolicyIds(policyIds);
+        body: JSON.stringify({
+          id: policyIds
+        })
+      });
 
-        const allConnectionsPromises = policyIds.map(id => fetchConnectionDetails(id));
-        const allConnectionsResults = await Promise.all(allConnectionsPromises);
-
-        const allConnectionsData = allConnectionsResults.flat();
-        setConnectionData(allConnectionsData);
-
-        const tableData = processConnectionData(allConnectionsData);
-        setSampleData(tableData);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
       }
-    };
 
+      const data = await response.json();
+      setRecentAccess(data.connections || []);
+      return data;
+    } catch (error) {
+      console.error('Error fetching recent access:', error);
+      setRecentAccess([]);
+      return [];
+    }
+  };
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const secureQueryResponse = await secureQuery({
+        user_query: "",
+      },
+      token);
+      const policyIds = secureQueryResponse.matched_policy_ids || [];
+      setPolicyIds(policyIds);
+
+      const allConnectionsPromises = policyIds.map(id => fetchConnectionDetails(id));
+      const allConnectionsResults = await Promise.all(allConnectionsPromises);
+
+      const allConnectionsData = allConnectionsResults.flat();
+      setConnectionData(allConnectionsData);
+
+      const tableData = processConnectionData(allConnectionsData);
+      setSampleData(tableData);
+
+      // Fetch recent access data
+      await fetchRecentAccess(policyIds);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error loading data:', error);
+      return { success: false, error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
+
+  // New handler to refresh data with toast
+  const handleRefresh = async () => {
+    const result = await loadData();
+
+    if (result.success) {
+      setToast({
+        show: true,
+        message: 'Database data refreshed successfully',
+        type: 'success'
+      });
+    } else {
+      setToast({
+        show: true,
+        message: 'Failed to refresh database data',
+        type: 'error'
+      });
+    }
+
+    // Auto-hide toast after 3 seconds
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: '' });
+    }, 3000);
+  };
 
   const trendData = [
     { day: '1 day', Database: 20, Schema: 9, Tables: 13, View: 11 },
@@ -177,18 +253,90 @@ const Database = () => {
 
   const [sampleData, setSampleData] = useState([]);
 
-  const recentAccess = [
-    "Oracle_2",
-    "DWS_customer",
-    "rw_acc_summary",
-    "Dim_cutomer",
-    "dim_account",
-    "DWS_customer",
-    "Oracle_2"
-  ];
+  const [showModal, setShowModal] = useState(false);
+  const [selectedDbType, setSelectedDbType] = useState(null);
+
+  // Filtered data for modal
+  const getDbDetails = (dbType) => {
+    return sampleData.filter(item => item.Database && item.Database.toLowerCase() === dbType.toLowerCase());
+  };
 
   return (
     <div>
+      <style>{rotateAnimation}</style>
+
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
+          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+          'bg-red-100 text-red-800 border-l-4 border-red-500'
+        }`}>
+          <Icon
+            icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
+            className="h-5 w-5"
+          />
+          <p>{toast.message}</p>
+          <button
+            onClick={() => setToast({ show: false, message: '', type: '' })}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-6xl relative">
+            <button
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+              onClick={() => setShowModal(false)}
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <div className="p-6">
+              <h2 className="text-xl font-semibold mb-4 capitalize">{selectedDbType} Database Details</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-[#29304a] text-white">
+                      <th className="text-left p-4">Id</th>
+                      <th className="text-left p-4">Connection Name</th>
+                      <th className="text-left p-4">Database</th>
+                      <th className="text-left p-4">Schema</th>
+                      <th className="text-left p-4">Tables</th>
+                      <th className="text-left p-4">Views</th>
+                      <th className="text-left p-4">Columns</th>
+                      <th className="text-left p-4">Created Date</th>
+                      <th className="text-left p-4">Updated Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getDbDetails(selectedDbType).length > 0 ? getDbDetails(selectedDbType).map((item, index) => (
+                      <tr key={index} className="border-b">
+                        <td className="p-4">{item.id}</td>
+                        <td className="p-4">{item.connectionName}</td>
+                        <td className="p-4">{item.Database}</td>
+                        <td className="p-4 text-gray-500 underline">{item.Schema}</td>
+                        <td className="p-4 text-gray-500 underline">{item.Tables}</td>
+                        <td className="p-4 text-gray-500 underline">{item.Views || 0}</td>
+                        <td className="p-4 text-gray-500 underline">{item.Column}</td>
+                        <td className="p-4">{item.CreatedDate}</td>
+                        <td className="p-4">{item.updatedDate}</td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan="9" className="p-4 text-center">No database available</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Breadcrumb title="Data Governance" link="/" />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Database</h1>
@@ -206,14 +354,15 @@ const Database = () => {
           </button>
 
           <button
-            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
-            onClick={() => window.location.reload()}
+            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50 disabled:opacity-50"
+            onClick={handleRefresh}
+            disabled={loading}
           >
             <Icon
               icon="material-symbols:autorenew-rounded"
               width="24"
               height="24"
-              className="text-gray-600"
+              className={`text-gray-600 ${loading ? 'icon-rotate' : ''}`}
             />
           </button>
         </div>
@@ -252,12 +401,15 @@ const Database = () => {
                       {card.count.toString().padStart(2, "0")}
                     </div>
                     <div className="flex items-center justify-between mt-6">
-                      <a
+                      <button
                         className="text-sm text-[#8d77ba] font-medium underline cursor-pointer opacity-90"
-                        onClick={() => navigate(`${card.seeDetailsLink}`)}
+                        onClick={() => {
+                          setSelectedDbType(card.title);
+                          setShowModal(true);
+                        }}
                       >
                         See details
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -275,11 +427,15 @@ const Database = () => {
                 </div>
               </div>
               <div className="space-y-4">
-                {recentAccess.map((item, index) => (
+                {recentAccess.length > 0 ? recentAccess.map((item, index) => (
                   <div key={index} className="pb-4 border-b border-gray-100 last:border-0">
                     <span className="text-gray-600">{index + 1}. {item}</span>
                   </div>
-                ))}
+                )) : (
+                  <div className="pb-4 border-b border-gray-100">
+                    <span className="text-gray-500">No recent access data available</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

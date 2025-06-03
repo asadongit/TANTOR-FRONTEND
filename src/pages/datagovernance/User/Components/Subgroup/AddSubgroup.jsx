@@ -13,6 +13,13 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
   const [error, setError] = useState("");
   const { token } = useAuth();
 
+  // Add useEffect to reset form when modal is closed
+  useEffect(() => {
+    if (!showModal) {
+      resetForm();
+    }
+  }, [showModal]);
+
   useEffect(() => {
     if (showModal) {
       fetchGroups();
@@ -69,24 +76,34 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
         throw new Error(errorData.detail || "Failed to create subgroup");
       }
 
-      // Reset form
       setFormData({
         name: "",
         group: "",
         description: "",
       });
 
-      // Close modal and refresh data
       setShowModal(false);
       if (onSubgroupAdded) {
-        onSubgroupAdded();
+        onSubgroupAdded({ success: true, message: 'Subgroup created successfully' });
       }
     } catch (error) {
       console.error("Error creating subgroup:", error);
+      if (onSubgroupAdded) {
+        onSubgroupAdded({ success: false, error: error.message || "Failed to create subgroup" });
+      }
       setError(error.message || "Failed to create subgroup");
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      group: "",
+      description: "",
+    });
+    setError("");
   };
 
   if (!showModal) return null;
@@ -106,7 +123,15 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
 
         <form onSubmit={handleSubmit} className="p-6">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
+            <div
+              className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm"
+              style={{
+                maxHeight: "120px",
+                overflowY: "auto",
+                wordBreak: "break-all",
+                whiteSpace: "pre-wrap"
+              }}
+            >
               {error}
             </div>
           )}

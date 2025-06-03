@@ -65,6 +65,7 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
 
       const data = await response.json();
       onSave(data);
+      onClose();
     } catch (err) {
       console.error('Error updating role:', err);
       setError(err.message || 'Failed to update role');

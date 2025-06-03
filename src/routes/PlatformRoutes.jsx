@@ -13,6 +13,7 @@ import RuleCanvas from '../pages/platform/rule-framework/RuleCanvas';
 import ReportConfigDashboard from '../pages/platform/reports-config/ReportConfigDashboard';
 import RulesReportsLinks from '../pages/platform/reports-config/RulesReportsLinks';
 import LineItemsPage from '../pages/platform/reports-config/LineItemsPage';
+import ReportViewer from '../pages/platform/reports-config/ReportViewer';
 
 import Metadata from '../pages/platform/metadata/Metadata';
 import Archival from '../pages/platform/archival/Archival';
@@ -41,6 +42,7 @@ export function PlatformRoutes() {
         <Route path="/pipeline" element={<Pipeline />} />
         <Route path="/report" element={<Reports />} />
         <Route path="/generateReport" element={<GenerateReport />} />
+        <Route path="/reports/viewer" element={<ReportViewer />} />
         <Route path="/migration" element={<Archival />} />
         <Route path="/dataview" element={<DataView />} />
         <Route path="/metadata" element={<Metadata />} />

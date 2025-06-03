@@ -6,9 +6,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../../../../context/AuthContext";
 import { useTableContext } from "../../react-flow/context/TableContext";
 import FilterComponent from "../../Federation/components/FilterComponent";
-import { ContextViewProvider } from "../../Federation/context/contextViewProvider";
 import { generateSQLQuery } from "../../../../services/sqlQueryService";
-import RuleSummary from "../../rule-framework/RuleSummary";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -31,19 +29,16 @@ export function SourceNode({ id, data }) {
   });
   const { openDrawer } = useTableContext();
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [isRuleSummaryOpen, setIsRuleSummaryOpen] = useState(false);
   const [filterModalColumns, setFilterModalColumns] = useState([]);
   const [generatedQuery, setGeneratedQuery] = useState('');
   const [ruleFilterSelections, setRuleFilterSelections] = useState([]);
 
-
   const updateNodeData = (partialData) => {
     if (data.onDataChange) {
       data.onDataChange({
-        fact_id: selectedFact.fact_id,
-        fct_name: selectedFact.fct_name,
-        tables: selectedItems,
         ...partialData,
+        nodeType: 'source',
+        selectedFact, // Include selectedFact in node data
       });
     }
   };
@@ -138,6 +133,7 @@ export function SourceNode({ id, data }) {
       tables: selectedItems,
       fact_id: selectedFact.fact_id,
       fct_name: selectedFact.fct_name,
+      selectedFact, // Store selected fact
     });
 
     // Get the selected tables from filteredTables
@@ -145,7 +141,7 @@ export function SourceNode({ id, data }) {
       selectedItems.includes(table.matric_name)
     );
 
-    // Transform tables into columns format expected by FilterComponent
+    // Transform tables into columns format
     const initialColumns = selectedTablesData.map((table) => ({
       name: table.matric_name,
       type: table.type || "varchar",
@@ -158,7 +154,7 @@ export function SourceNode({ id, data }) {
       isVisible: true
     }));
 
-    // If we have existing column settings, merge them with the initial columns
+    // Merge with existing columns if available
     const existingColumns = data.filterConditions?.columns || [];
     const mergedColumns = initialColumns.map(col => {
       const existing = existingColumns.find(e => e.name === col.name);
@@ -178,60 +174,12 @@ export function SourceNode({ id, data }) {
       return col;
     });
 
-    console.log('Initial columns with merged properties:', mergedColumns);
-
-    // Update both filter modal columns and rule filter selections
     setFilterModalColumns(mergedColumns);
     setRuleFilterSelections(mergedColumns);
 
     // Open the FilterComponent modal
     setIsFilterModalOpen(true);
   };
-
-  const updateSQLQuery = useCallback(() => {
-    // Format columns with their properties
-    const formattedColumns = ruleFilterSelections.map(col => {
-      let columnExpression = col.name;
-      
-      // Apply aggregate function if specified
-      if (col.aggregate && col.aggregate !== 'NONE') {
-        columnExpression = `${col.aggregate}(${columnExpression})`;
-      }
-      
-      // Apply alias if specified
-      if (col.alias && col.alias.trim()) {
-        columnExpression = `${columnExpression} AS "${col.alias.trim()}"`;
-      }
-      
-      return {
-        name: columnExpression,
-        type: col.type || 'varchar',
-        output: typeof col.output === 'boolean' ? col.output : true,
-        order: col.order || '',
-        sort: col.sort || '',
-        groupBy: typeof col.groupBy === 'boolean' ? col.groupBy : false,
-        isVisible: typeof col.isVisible === 'boolean' ? col.isVisible : true
-      };
-    });
-
-    // Get filter conditions from node data
-    const filterData = data.filterConditions || {};
-
-    const query = generateSQLQuery({
-      tableName: selectedFact.fct_name,
-      selectedColumns: formattedColumns.filter(col => col.output),
-      filterConditions: filterData,
-      ruleData: data.getNodes?.()?.find(node => node.type === 'define')?.data
-    });
-
-    setGeneratedQuery(query);
-  }, [selectedFact.fct_name, ruleFilterSelections, data.filterConditions, data.getNodes]);
-
-  useEffect(() => {
-    if (selectedFact.fct_name && ruleFilterSelections.length > 0) {
-      updateSQLQuery();
-    }
-  }, [updateSQLQuery, selectedFact.fct_name, ruleFilterSelections]);
 
   const generateSQL = (filterData) => {
     if (!filterData) return '';
@@ -317,10 +265,13 @@ export function SourceNode({ id, data }) {
                 (c) => c.fct_name === e.target.value
               );
               if (!connection) return;
-              setSelectedFact({
+              const newFact = {
                 fact_id: connection.fact_id,
                 fct_name: connection.fct_name,
-              });
+              };
+              setSelectedFact(newFact);
+              // Persist in node data immediately
+              updateNodeData({ selectedFact: newFact });
               setSelectedItems([]);
               setTables([]);
             }}
@@ -426,85 +377,94 @@ export function SourceNode({ id, data }) {
 
       {/* Render FilterComponent Modal */}
       {isFilterModalOpen && (
-        <ContextViewProvider>
-          <FilterComponent
-            setIsOpen={setIsFilterModalOpen}
-            columns={filterModalColumns}
-            onApply={(error, filterData) => {
-              setIsFilterModalOpen(false);
-              if (!error && filterData) {
-                console.log('Filter data received:', filterData);
-                
-                // Handle filter conditions
-                let conditions;
-                if (Array.isArray(filterData)) {
-                  conditions = { conditions: filterData };
-                } else if (filterData.complex_query) {
-                  conditions = { complex_query: filterData.complex_query };
-                } else {
-                  conditions = { conditions: [] };
-                }
+        <FilterComponent
+          setIsOpen={setIsFilterModalOpen}
+          columns={filterModalColumns}
+          onApply={(error, filterData) => {
+            setIsFilterModalOpen(false);
+            
+            // Handle skip case (when both error and filterData are null)
+            if (error === null && filterData === null) {
+              // Maintain existing columns data for skip case
+              const updatedFilterData = {
+                conditions: [],
+                columns: filterModalColumns, // Keep the columns data
+                sqlPreview: ''
+              };
+              
+              // Generate SQL query for skip case
+              const query = generateSQLQuery({
+                tableName: selectedFact.fct_name,
+                selectedColumns: filterModalColumns.filter(col => col.output),
+                filterConditions: updatedFilterData,
+                ruleData: data.getNodes?.()?.find(node => node.type === 'define')?.data
+              });
+              
+              updateNodeData({
+                filterConditions: updatedFilterData, // Store the updated filter data
+                selectedColumns: filterModalColumns,
+                previewData: query,
+                showRuleSummary: true
+              });
+              return;
+            }
 
-                // Generate SQL preview
-                const sqlPreview = generateSQL(conditions);
-
-                // Update column properties from the filter component
-                const updatedColumns = filterModalColumns.map(column => {
-                  const filterColumn = filterData.columns?.find(fc => fc.name === column.name);
-                  
-                  return {
-                    ...column,
-                    alias: filterColumn?.alias || column.alias || '',
-                    output: filterColumn?.output ?? column.output ?? true,
-                    order: filterColumn?.order || column.order || '',
-                    sort: filterColumn?.sort || column.sort || '',
-                    aggregate: filterColumn?.aggregate || column.aggregate || '',
-                    groupBy: filterColumn?.groupBy ?? column.groupBy ?? false,
-                    isVisible: filterColumn?.isVisible ?? column.isVisible ?? true,
-                    type: filterColumn?.type || column.type || 'varchar'
-                  };
-                });
-
-                console.log('Updated columns with properties:', updatedColumns);
-                
-                setRuleFilterSelections(updatedColumns);
-                setFilterModalColumns(updatedColumns);
-
-                // Store filter conditions and column properties in node data
-                const updatedFilterData = {
-                  ...conditions,
-                  sqlPreview,
-                  columns: updatedColumns
-                };
-
-                // Update node data with filter conditions
-                updateNodeData({
-                  filterConditions: updatedFilterData,
-                  selectedColumns: updatedColumns
-                });
-
-                // Update the SQL query
-                updateSQLQuery();
-                
-                // Show rule summary after filters are applied
-                setIsRuleSummaryOpen(true);
+            if (!error && filterData) {
+              // Handle filter conditions
+              let conditions;
+              if (Array.isArray(filterData)) {
+                conditions = { conditions: filterData };
+              } else if (filterData.complex_query) {
+                conditions = { complex_query: filterData.complex_query };
+              } else {
+                conditions = { conditions: [] };
               }
-            }}
-          />
-        </ContextViewProvider>
-      )}
 
-      {/* Render Rule Summary Modal */}
-      {isRuleSummaryOpen && (
-        <ContextViewProvider>
-          <RuleSummary
-            setIsOpen={setIsRuleSummaryOpen}
-            selectedFact={selectedFact}
-            tables={filterModalColumns}
-            filterData={data.filterConditions}
-            previewData={generatedQuery}
-          />
-        </ContextViewProvider>
+              // Generate SQL preview
+              const sqlPreview = generateSQL(conditions);
+
+              // Update column properties from the filter component
+              const updatedColumns = filterModalColumns.map(column => {
+                const filterColumn = filterData.columns?.find(fc => fc.name === column.name);
+                
+                return {
+                  ...column,
+                  alias: filterColumn?.alias || column.alias || '',
+                  output: filterColumn?.output ?? column.output ?? true,
+                  order: filterColumn?.order || column.order || '',
+                  sort: filterColumn?.sort || column.sort || '',
+                  aggregate: filterColumn?.aggregate || column.aggregate || '',
+                  groupBy: filterColumn?.groupBy ?? column.groupBy ?? false,
+                  isVisible: filterColumn?.isVisible ?? column.isVisible ?? true,
+                  type: filterColumn?.type || column.type || 'varchar'
+                };
+              });
+
+              // Store filter conditions and column properties
+              const updatedFilterData = {
+                ...conditions,
+                sqlPreview,
+                columns: updatedColumns
+              };
+
+              // Generate SQL query
+              const query = generateSQLQuery({
+                tableName: selectedFact.fct_name,
+                selectedColumns: updatedColumns.filter(col => col.output),
+                filterConditions: updatedFilterData,
+                ruleData: data.getNodes?.()?.find(node => node.type === 'define')?.data
+              });
+
+              // Update node data with filter conditions
+              updateNodeData({
+                filterConditions: updatedFilterData,
+                selectedColumns: updatedColumns,
+                previewData: query,
+                showRuleSummary: true
+              });
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -4,7 +4,10 @@ import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
 import AddRole from "./Components/Role/AddRole";
 import EditRole from "./Components/Role/EditRole";
+import DeleteRole from "./Components/Role/DeleteRole";
 import { useAuth } from "../../../context/AuthContext";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Toggle = ({ enabled, onToggle }) => {
   return (
@@ -26,7 +29,9 @@ const Toggle = ({ enabled, onToggle }) => {
 const Role = () => {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [roleToEdit, setRoleToEdit] = useState(null);
+  const [roleToDelete, setRoleToDelete] = useState(null);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,14 +39,21 @@ const Role = () => {
   const { token } = useAuth();
   const [tableData, setTableData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState('cards');
+  const [viewMode, setViewMode] = useState('both');
   const [refreshing, setRefreshing] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const [togglingStatus, setTogglingStatus] = useState(null);
   const rowsPerPage = 10;
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
   const filteredRoles = roles.filter(role =>
     role.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Add filtering for table data
+  const filteredTableData = tableData.filter(role =>
+    role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    role.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const toggleRole = async (index) => {
@@ -111,7 +123,6 @@ const Role = () => {
 
   const FetchRoleDashboardData = async () => {
     try {
-      setLoading(true);
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/roleshomepage`, {
         method: 'GET',
         headers: {
@@ -120,7 +131,7 @@ const Role = () => {
         }
       });
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error(`Failed to fetch role dashboard data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
@@ -136,10 +147,10 @@ const Role = () => {
       }));
 
       setRoles(transformedRoles);
+      return { success: true };
     } catch (error) {
       console.error('Error fetching role data:', error);
-    } finally {
-      setLoading(false);
+      return { success: false, error: error.message };
     }
   };
 
@@ -153,7 +164,7 @@ const Role = () => {
         }
       });
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error(`Failed to fetch role list data: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
@@ -170,20 +181,69 @@ const Role = () => {
       });
 
       setTableData(transformedData);
+      return { success: true };
     } catch (error) {
       console.error('Error fetching role list data:', error);
+      return { success: false, error: error.message };
     }
   };
 
-  const refreshAllData = async () => {
+  const refreshAllData = async (showToast = false) => {
     setRefreshing(true);
+    setSearchTerm("");
     try {
-      await Promise.all([
+      const [dashboardResult, listResult] = await Promise.all([
         FetchRoleDashboardData(),
         fetchRoleListData()
       ]);
+
+      if (dashboardResult.success && listResult.success) {
+        if (showToast) {
+          setToast({
+            show: true,
+            message: 'Role data refreshed successfully',
+            type: 'success'
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: '', type: '' });
+          }, 3000);
+        }
+        return { success: true };
+      } else {
+        const errorMessages = [];
+        if (!dashboardResult.success) errorMessages.push('dashboard data');
+        if (!listResult.success) errorMessages.push('list data');
+        if (showToast) {
+          setToast({
+            show: true,
+            message: `Failed to refresh role ${errorMessages.join(' and ')}`,
+            type: 'error'
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: '', type: '' });
+          }, 3000);
+        }
+        return {
+          success: false,
+          error: `Failed to refresh role ${errorMessages.join(' and ')}`
+        };
+      }
     } catch (error) {
       console.error("Error refreshing data:", error);
+      if (showToast) {
+        setToast({
+          show: true,
+          message: 'Failed to refresh role data',
+          type: 'error'
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      }
+      return {
+        success: false,
+        error: 'Failed to refresh role data'
+      };
     } finally {
       setRefreshing(false);
     }
@@ -191,8 +251,9 @@ const Role = () => {
 
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = tableData.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(tableData.length / rowsPerPage);
+  // Update to use filtered table data
+  const currentRows = filteredTableData.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredTableData.length / rowsPerPage);
 
   const goToNextPage = () => {
     if (currentPage < totalPages) {
@@ -206,14 +267,38 @@ const Role = () => {
     }
   };
 
-  const handleSave = async (roleData) => {
-    console.log('Role created:', roleData);
-    try {
-      await refreshAllData();
-      setShowModal(false);
-    } catch (error) {
-      console.error('Error refreshing data after role creation:', error);
+  const handleSave = async (result) => {
+    console.log('Role creation result:', result);
+
+    if (result.success) {
+      try {
+        await refreshAllData();
+        setToast({
+          show: true,
+          message: result.message || 'Role created successfully',
+          type: 'success'
+        });
+        setShowModal(false);
+
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      } catch (error) {
+        console.error('Error refreshing data after role creation:', error);
+        setToast({
+          show: true,
+          message: 'Role created but failed to refresh data',
+          type: 'error'
+        });
+
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast({ show: false, message: '', type: '' });
+        }, 3000);
+      }
     }
+    // Remove the else block that shows error toast since errors are handled in the modal
   };
 
   const handleEditClick = (role) => {
@@ -226,14 +311,71 @@ const Role = () => {
     console.log('Role updated:', data);
     try {
       await refreshAllData();
+      setToast({
+        show: true,
+        message: 'Role updated successfully',
+        type: 'success'
+      });
       setShowEditModal(false);
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
     } catch (error) {
       console.error('Error refreshing data after role update:', error);
+      setToast({
+        show: true,
+        message: 'Role updated but failed to refresh data',
+        type: 'error'
+      });
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
     }
+  };
+
+  // Add handler for delete
+  const handleDeleteClick = (role) => {
+    setRoleToDelete(role);
+    setShowDeleteModal(true);
+    setActiveMenu(null);
   };
 
   return (
     <div className="p-6">
+      <style>{`
+        @keyframes rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .icon-rotate { animation: rotate 1s linear infinite; }
+      `}</style>
+
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
+          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+          'bg-red-100 text-red-800 border-l-4 border-red-500'
+        }`}>
+          <Icon
+            icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
+            className="h-5 w-5"
+          />
+          <p>{toast.message}</p>
+          <button
+            onClick={() => setToast({ show: false, message: '', type: '' })}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            <Icon icon="mdi:close" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+
       <Breadcrumb title="Data Governance" link="/" />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Role</h1>
@@ -259,12 +401,11 @@ const Role = () => {
 
           <button
             className={`p-1 px-1.5 rounded-lg border ${viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
-            onClick={() => setViewMode(viewMode === 'cards' ? 'list' : 'cards')}
-            title={viewMode === 'cards' ? "Switch to List View" : "Switch to Card View"}
+            onClick={() => setViewMode(viewMode === 'both' ? 'list' : 'both')}
+            title={viewMode === 'both' ? "Switch to List View Only" : "Show Both Views"}
           >
             <Icon
               icon="material-symbols-light:format-list-bulleted"
-              title="List view"
               width="24"
               height="24"
               className="text-gray-600"
@@ -273,7 +414,7 @@ const Role = () => {
 
           <button
             className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
-            onClick={refreshAllData}
+            onClick={() => refreshAllData(true)}
             disabled={refreshing}
           >
             <Icon
@@ -300,10 +441,10 @@ const Role = () => {
         </div>
       ) : (
         <>
-          {viewMode === 'cards' && (
+          {(viewMode === 'cards' || viewMode === 'both') && (
             <>
               {filteredRoles.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   {filteredRoles.map((role, index) => (
                     <div
                       key={index}
@@ -319,9 +460,9 @@ const Role = () => {
                             </div>
                             <h3 className="text-lg font-semibold">{role.title}</h3>
                           </div>
-                          <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                          {/* <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
                             <MoreVertical className="h-4 w-4" />
-                          </button>
+                          </button> */}
                         </div>
                         <p className="text-gray-500 mt-4 text-sm">{role.description}</p>
                         <div className="flex items-center justify-between mt-6">
@@ -358,7 +499,7 @@ const Role = () => {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300">
+                <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300 mb-6">
                   <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
                   <p>No roles found matching "{searchTerm}"</p>
                   <button
@@ -374,127 +515,145 @@ const Role = () => {
         </>
       )}
 
-      <div className={`bg-white rounded-lg shadow overflow-hidden ${viewMode === 'cards' ? 'mt-5' : 'mt-0'}`}>
-        <table className="w-full">
-          <thead>
-            <tr className="bg-[#29304a] text-white text-sm">
-              <th className="text-left py-3 px-4">ID</th>
-              <th className="text-left py-3 px-4">Name</th>
-              <th className="text-left py-3 px-4">Description</th>
-              <th className="text-left py-3 px-4">Status</th>
-              <th className="text-left py-3 px-4">Created On</th>
-              <th className="text-left py-3 px-4">Start Date</th>
-              <th className="text-left py-3 px-4">End Date</th>
-              <th className="text-left py-3 px-4">Action</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm">
-            {loading ? (
-              <tr>
-                <td colSpan="8" className="p-4 text-center">
-                  <div className="flex justify-center items-center h-20">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
-                  </div>
-                </td>
+      {(viewMode === 'list' || viewMode === 'both') && !loading && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-[#29304a] text-white text-sm">
+                <th className="text-left py-3 px-4">ID</th>
+                <th className="text-left py-3 px-4">Name</th>
+                <th className="text-left py-3 px-4">Description</th>
+                <th className="text-left py-3 px-4">Status</th>
+                <th className="text-left py-3 px-4">Created On</th>
+                <th className="text-left py-3 px-4">Start Date</th>
+                <th className="text-left py-3 px-4">End Date</th>
+                <th className="text-left py-3 px-4">Action</th>
               </tr>
-            ) : (
-              currentRows.map((role, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-4" title={role.id}>{role.id.substring(0, 8)}...</td>
-                  <td className="py-3 px-4 text-gray-600">{role.name}</td>
-                  <td className="py-3 px-4 text-gray-600 max-w-xs truncate">{role.description}</td>
-                  <td className="py-3 px-4 text-gray-600">{role.status}</td>
-                  <td className="py-3 px-4 text-gray-600">{role.createdOn || "-"}</td>
-                  <td className="py-3 px-4 text-gray-600">{role.startDate || "-"}</td>
-                  <td className="py-3 px-4 text-gray-600">{role.endDate || "-"}</td>
-                  <td className="py-3 px-4">
-                    <div className="relative">
-                      <button
-                        onClick={() => setActiveMenu(activeMenu === index ? null : index)}
-                        className="p-1.5 rounded-full hover:bg-gray-100"
-                      >
-                        <MoreHorizontal className="h-5 w-5 text-gray-600" />
-                      </button>
-
-                      {activeMenu === index && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
-                          <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                            <div className="flex items-center p-1 gap-1">
-                              <button
-                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                                onClick={() => handleEditClick(role)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </button>
-                              <button
-                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
+            </thead>
+            <tbody className="text-sm">
+              {loading ? (
+                <tr>
+                  <td colSpan="8" className="p-4 text-center">
+                    <div className="flex justify-center items-center h-20">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
+              ) : (
+                currentRows.map((role, index) => (
+                  <tr key={index} className="border-b hover:bg-gray-50">
+                    <td className="py-3 px-4" title={role.id}>{role.id.substring(0, 8)}...</td>
+                    <td className="py-3 px-4 text-gray-600">{role.name}</td>
+                    <td className="py-3 px-4 text-gray-600 max-w-xs truncate">{role.description}</td>
+                    <td className="py-3 px-4 text-gray-600">{role.status}</td>
+                    <td className="py-3 px-4 text-gray-600">{role.createdOn || "-"}</td>
+                    <td className="py-3 px-4 text-gray-600">{role.startDate || "-"}</td>
+                    <td className="py-3 px-4 text-gray-600">{role.endDate || "-"}</td>
+                    <td className="py-3 px-4">
+                      <div className="relative">
+                        <button
+                          onClick={() => setActiveMenu(activeMenu === index ? null : index)}
+                          className="p-1.5 rounded-full hover:bg-gray-100"
+                        >
+                          <MoreHorizontal className="h-5 w-5 text-gray-600" />
+                        </button>
 
-            {!loading && currentRows.length === 0 && (
-              <tr>
-                <td colSpan="8" className="p-4 text-center text-gray-500">
-                  No roles found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                        {activeMenu === index && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
+                            <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                              <div className="flex items-center p-1 gap-1">
+                                <button
+                                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                  onClick={() => handleEditClick(role)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                  onClick={() => handleDeleteClick(role)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
 
-        {!loading && tableData.length > 0 && (
-          <div className="flex justify-end items-center p-4">
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={goToPreviousPage}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                <ChevronLeft size={16} />
-              </button>
+              {!loading && currentRows.length === 0 && (
+                <tr>
+                  <td colSpan="8" className="p-4 text-center text-gray-500">
+                    {searchTerm ? (
+                      <>
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
+                          <p>No roles found matching "{searchTerm}"</p>
+                          <button
+                            onClick={() => setSearchTerm("")}
+                            className="mt-2 text-[#8e78b7] hover:underline transition-all duration-200"
+                          >
+                            Clear search
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      "No roles found"
+                    )}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
 
-              {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                const pageNum = i + 1;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-md ${
-                      currentPage === pageNum
-                        ? 'bg-[#8e78b7] text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+          {!loading && filteredTableData.length > 0 && (
+            <div className="flex justify-end items-center p-4">
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1}
+                  className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100'}`}
+                >
+                  <ChevronLeft size={16} />
+                </button>
 
-              <button
-                onClick={goToNextPage}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className={`p-2 rounded-md ${
-                  currentPage === totalPages || totalPages === 0
-                    ? 'text-gray-300 cursor-not-allowed'
-                    : 'text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                <ChevronRight size={16} />
-              </button>
+                {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                        currentPage === pageNum
+                          ? 'bg-[#8e78b7] text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className={`p-2 rounded-md ${
+                    currentPage === totalPages || totalPages === 0
+                      ? 'text-gray-300 cursor-not-allowed'
+                      : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       <AddRole
         show={showModal}
@@ -508,6 +667,19 @@ const Role = () => {
         onSave={handleEditSave}
         roleData={roleToEdit}
       />
+
+      <DeleteRole
+        showModal={showDeleteModal}
+        setShowModal={setShowDeleteModal}
+        roleName={roleToDelete?.name}
+        onConfirm={async () => {
+          await refreshAllData();
+          setRoleToDelete(null);
+        }}
+      />
+
+      <ToastContainer />
+
     </div>
   );
 };

@@ -1,5 +1,5 @@
-import { Box, Typography } from '@mui/material';
-import { User, Users, UserPlus, UserRoundCog, Loader } from "lucide-react";
+import { Box, Typography, TextField, InputAdornment } from '@mui/material';
+import { User, Users, UserPlus, UserRoundCog, Loader, Search } from "lucide-react";
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -17,6 +17,7 @@ const Step2 = ({ onDataChange, initialData }) => {
     const [selectedRole, setSelectedRole] = useState(initialData.selectedRole || '');
     const [selectedGroup, setSelectedGroup] = useState(initialData.selectedGroup || '');
     const [selectedSubgroup, setSelectedSubgroup] = useState(initialData.selectedSubgroup || '');
+    const [searchTerm, setSearchTerm] = useState('');
     const [data, setData] = useState({
         roles: [],
         groups: [],
@@ -25,12 +26,18 @@ const Step2 = ({ onDataChange, initialData }) => {
     });
     const [loading, setLoading] = useState(true);
     const [loadingSubgroups, setLoadingSubgroups] = useState(false);
+    const [isFormValid, setIsFormValid] = useState(false);
 
     useEffect(() => {
+        // Check if at least one selection has been made
+        const hasSelection = selectedRole !== '' || selectedGroup !== '' || selectedSubgroup !== '';
+        setIsFormValid(hasSelection);
+
         onDataChange({
             selectedRole,
             selectedGroup,
-            selectedSubgroup
+            selectedSubgroup,
+            isFormValid: hasSelection
         });
     }, [selectedRole, selectedGroup, selectedSubgroup]);
 
@@ -51,6 +58,10 @@ const Step2 = ({ onDataChange, initialData }) => {
             setData(prev => ({ ...prev, subgroups: [] }));
         }
     }, [selectedGroup]);
+
+    useEffect(() => {
+        setSearchTerm('');
+    }, [selectedTab]);
 
     const fetchData = async () => {
         try {
@@ -94,7 +105,7 @@ const Step2 = ({ onDataChange, initialData }) => {
             const responseData = await response.json();
             setData(prev => ({
                 ...prev,
-                subgroups: responseData.subgroups || []
+                subgroups: responseData?.subgroups || []
             }));
         } catch (error) {
             console.error('Error fetching subgroups:', error);
@@ -146,7 +157,15 @@ const Step2 = ({ onDataChange, initialData }) => {
 
     const getCurrentTabData = () => {
         const currentTab = roleDetails.find(rd => rd.role === selectedTab);
-        return currentTab ? data[currentTab.key] || [] : [];
+        const tabData = currentTab ? data[currentTab.key] || [] : [];
+
+        if (searchTerm.trim() === '') {
+            return tabData;
+        }
+
+        return tabData.filter(item =>
+            item.toLowerCase().includes(searchTerm.toLowerCase())
+        );
     };
 
     const renderListContent = () => {
@@ -181,7 +200,9 @@ const Step2 = ({ onDataChange, initialData }) => {
         if (currentData.length === 0) {
             return (
                 <div className="h-full flex items-center justify-center text-gray-500">
-                    No {selectedTab.toLowerCase()} found
+                    {searchTerm.trim() ?
+                        `No ${selectedTab.toLowerCase()} found matching "${searchTerm}"` :
+                        `No ${selectedTab.toLowerCase()} found`}
                 </div>
             );
         }
@@ -244,6 +265,25 @@ const Step2 = ({ onDataChange, initialData }) => {
                                     disabled
                                 />
                             </label>
+                        </div>
+
+                        {/* Search input */}
+                        <div className="border border-t-0 border-gray-300 px-4 py-2">
+                            <TextField
+                                fullWidth
+                                variant="outlined"
+                                size="small"
+                                placeholder={`Search ${selectedTab.toLowerCase()}...`}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <Search className="h-5 w-5 text-gray-400" />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
                         </div>
 
                         <div className="border border-t-0 border-gray-300 rounded-b-md flex-1 overflow-y-auto">

@@ -37,11 +37,13 @@ const User = () => {
   const [userToEdit, setUserToEdit] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [checkedUsers, setCheckedUsers] = useState({});
+  const [allChecked, setAllChecked] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const initialFetchDone = useRef(false);
   const rowsPerPage = 10;
 
-    const { token } = useAuth();
-
+  const { token } = useAuth();
 
   const fetchUserData = async () => {
     setIsLoading(true);
@@ -59,8 +61,10 @@ const User = () => {
       const data = await response.json();
       setUsers(data);
       console.log(data);
+      return { success: true };
     } catch (error) {
       console.error('Error fetching user data:', error);
+      return { success: false, error };
     } finally {
       setIsLoading(false);
     }
@@ -135,19 +139,38 @@ const User = () => {
     switch(type) {
       case 'role':
         modalTitle = `${user.username}'s Roles`;
-        modalData = data || [];
+        modalData = Array.isArray(data) ? data : (data ? [data] : []);
         break;
       case 'persona':
         modalTitle = `${user.username}'s Persona`;
-        modalData = data ? [data] : [];
+        modalData = Array.isArray(data) ? data : (data ? [data] : []);
         break;
       case 'group':
-        modalTitle = `${user.username}'s Group`;
-        modalData = data ? [data] : [];
+        modalTitle = `${user.username}'s Groups`;
+        if (user.group_subgroup) {
+          modalData = Object.keys(user.group_subgroup);
+        } else if (user.group) {
+          modalData = Array.isArray(user.group) ? user.group : [user.group];
+        } else {
+          modalData = [];
+        }
         break;
       case 'subgroup':
-        modalTitle = `${user.username}'s Subgroup`;
-        modalData = data ? [data] : [];
+        modalTitle = `${user.username}'s Subgroups`;
+        if (user.group_subgroup) {
+          modalData = [];
+          Object.entries(user.group_subgroup).forEach(([group, subgroups]) => {
+            if (subgroups && subgroups.length > 0) {
+              subgroups.forEach(subgroup => {
+                modalData.push(`${group} > ${subgroup}`);
+              });
+            }
+          });
+        } else if (user.subgroup) {
+          modalData = [user.subgroup];
+        } else {
+          modalData = [];
+        }
         break;
       default:
         modalTitle = 'Details';
@@ -158,7 +181,17 @@ const User = () => {
     setIsDetailModalOpen(true);
   };
 
-  const getCount = (item) => {
+  const getCount = (item, type, user) => {
+    if (type === 'group' && user.group_subgroup) {
+      return Object.keys(user.group_subgroup).length;
+    } else if (type === 'subgroup' && user.group_subgroup) {
+      let count = 0;
+      Object.values(user.group_subgroup).forEach(subgroups => {
+        count += subgroups.length;
+      });
+      return count;
+    }
+
     if (!item) return 0;
     if (Array.isArray(item)) return item.length;
     return 1;
@@ -174,10 +207,81 @@ const User = () => {
     fetchUserData();
   };
 
+  // New handler to clear search and fetch users with toast
+  const handleRefresh = async () => {
+    setSearchTerm('');
+    setCheckedUsers({}); // Clear all checked users
+    setAllChecked(false); // Reset the "select all" checkbox
+
+    const result = await fetchUserData();
+
+    if (result.success) {
+      setToast({
+        show: true,
+        message: 'User data refreshed successfully',
+        type: 'success'
+      });
+    } else {
+      setToast({
+        show: true,
+        message: 'Failed to refresh user data',
+        type: 'error'
+      });
+    }
+
+    // Auto-hide toast after 3 seconds
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: '' });
+    }, 3000);
+  };
+
+  // New function to handle individual checkbox changes
+  const handleCheckUser = (userId) => {
+    setCheckedUsers(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
+  };
+
+  // New function to handle "select all" checkbox
+  const handleCheckAll = () => {
+    const newAllChecked = !allChecked;
+    setAllChecked(newAllChecked);
+
+    const newCheckedUsers = {};
+    if (newAllChecked) {
+      // Check all visible users
+      currentUsers.forEach(user => {
+        newCheckedUsers[user.id] = true;
+      });
+    }
+    setCheckedUsers(newCheckedUsers);
+  };
+
   return (
     <div className="p-6">
 
       <style>{rotateAnimation}</style>
+
+      {/* Toast notification */}
+      {toast.show && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
+          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+          'bg-red-100 text-red-800 border-l-4 border-red-500'
+        }`}>
+          <Icon
+            icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
+            className="h-5 w-5"
+          />
+          <p>{toast.message}</p>
+          <button
+            onClick={() => setToast({ show: false, message: '', type: '' })}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <Breadcrumb />
       <div className="flex gap-4 mb-6 items-center justify-between">
@@ -197,7 +301,7 @@ const User = () => {
 
           <button
             className="p-2.5 rounded-lg bg-gray-100 disabled:opacity-50"
-            onClick={fetchUserData}
+            onClick={handleRefresh}
             disabled={isLoading}
           >
             <RefreshCcw className={`h-5 w-5 ${isLoading ? 'icon-rotate' : ''}`} />
@@ -217,7 +321,13 @@ const User = () => {
         <table className="w-full">
           <thead>
             <tr className="bg-[#29304a] text-white">
-              <th className="w-8 p-4 first:rounded-tl-lg"><input type="checkbox" /></th>
+              <th className="w-8 p-4 first:rounded-tl-lg">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  onChange={handleCheckAll}
+                />
+              </th>
               <th className="text-left p-4">User</th>
               <th className="text-left p-4">Roles</th>
               <th className="text-left p-4">Persona</th>
@@ -230,7 +340,13 @@ const User = () => {
           <tbody>
             {currentUsers.map((user, index) => (
               <tr key={user.id} className="border-b hover:bg-gray-50">
-                <td className="p-4"><input type="checkbox" /></td>
+                <td className="p-4">
+                  <input
+                    type="checkbox"
+                    checked={!!checkedUsers[user.id]}
+                    onChange={() => handleCheckUser(user.id)}
+                  />
+                </td>
                 <td className="p-4">
                   <button
                     className="text-[#8e78b7] font-medium hover:underline"
@@ -257,18 +373,18 @@ const User = () => {
                 </td>
                 <td className="p-4">
                   <button
-                    onClick={() => showDetailModal('group', user.group, user)}
+                    onClick={() => showDetailModal('group', null, user)}
                     className="text-center font-medium underline decoration-1 underline-offset-4"
                   >
-                    {getCount(user.group)}
+                    {getCount(null, 'group', user)}
                   </button>
                 </td>
                 <td className="p-4">
                   <button
-                    onClick={() => showDetailModal('subgroup', user.subgroup, user)}
+                    onClick={() => showDetailModal('subgroup', null, user)}
                     className="text-center font-medium underline decoration-1 underline-offset-4"
                   >
-                    {getCount(user.subgroup)}
+                    {getCount(null, 'subgroup', user)}
                   </button>
                 </td>
                 <td className="p-4">
@@ -401,17 +517,17 @@ const User = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Username</p>
-                  <p className="font-medium">{selectedUser.username}</p>
+                  <p className="font-medium truncate" title={selectedUser.username}>{selectedUser.username}</p>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">User ID</p>
-                  <p className="font-medium text-xs overflow-hidden text-ellipsis">{selectedUser.id}</p>
+                  <p className="font-medium text-xs truncate">{selectedUser.id}</p>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Email</p>
-                  <p className="font-medium">{selectedUser.email || "-"}</p>
+                  <p className="font-medium truncate">{selectedUser.email || "-"}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -426,12 +542,12 @@ const User = () => {
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">First Name</p>
-                  <p className="font-medium">{selectedUser.firstName || "-"}</p>
+                  <p className="font-medium truncate">{selectedUser.firstName || "-"}</p>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Last Name</p>
-                  <p className="font-medium">{selectedUser.lastName || "-"}</p>
+                  <p className="font-medium truncate">{selectedUser.lastName || "-"}</p>
                 </div>
               </div>
             </div>
