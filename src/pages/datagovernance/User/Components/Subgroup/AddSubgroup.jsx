@@ -13,6 +13,13 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
   const [error, setError] = useState("");
   const { token } = useAuth();
 
+  // Add useEffect to reset form when modal is closed
+  useEffect(() => {
+    if (!showModal) {
+      resetForm();
+    }
+  }, [showModal]);
+
   useEffect(() => {
     if (showModal) {
       fetchGroups();
@@ -88,6 +95,15 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      group: "",
+      description: "",
+    });
+    setError("");
   };
 
   if (!showModal) return null;

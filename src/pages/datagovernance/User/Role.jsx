@@ -311,9 +311,29 @@ const Role = () => {
     console.log('Role updated:', data);
     try {
       await refreshAllData();
+      setToast({
+        show: true,
+        message: 'Role updated successfully',
+        type: 'success'
+      });
       setShowEditModal(false);
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
     } catch (error) {
       console.error('Error refreshing data after role update:', error);
+      setToast({
+        show: true,
+        message: 'Role updated but failed to refresh data',
+        type: 'error'
+      });
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
     }
   };
 
