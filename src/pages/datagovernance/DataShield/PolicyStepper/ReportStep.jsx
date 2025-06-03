@@ -1,19 +1,39 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Grid } from '@mui/material';
 import { FileText, ChevronDown, Info, Loader, ArrowRight, X, Search, Check } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 
-const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
+const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActiveStep, setStepReportData }) => {
     const { token } = useAuth();
 
     const [reportGroups, setReportGroups] = useState([]);
     const [reportTypes, setReportTypes] = useState([]);
     const [reportNames, setReportNames] = useState([]);
 
+
     const [selectedArtefactType, setSelectedArtefactType] = useState('Reports');
     const [selectedReportGroups, setSelectedReportGroups] = useState([]);
     const [selectedReportTypes, setSelectedReportTypes] = useState([]);
     const [selectedReportNames, setSelectedReportNames] = useState([]);
+    const [reportEdit, setReportEdit] = useState(false);
+
+    const isInitialRender = useRef(true);
+    const initialGroupsRef = useRef([]);
+    const initialTypesRef = useRef([]);
+
+
+    useEffect(() => {
+        if (initialData) {
+            console.log("setting the values ##################")
+            setSelectedArtefactType(initialData.artefact_type || 'Reports');
+            setSelectedReportGroups(initialData.report_group || []);
+            setSelectedReportTypes(initialData.report_type || []);
+            setSelectedReportNames(initialData.report_name || []);
+            initialGroupsRef.current = initialData.report_group || [];
+            initialTypesRef.current = initialData.report_type || [];
+            isInitialRender.current = true;
+        }
+    }, [initialData]);
 
     const [loading, setLoading] = useState({
         reportGroups: true,
@@ -108,6 +128,7 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
         fetchReportTypes();
     }, [token]);
 
+
     useEffect(() => {
         const fetchReportNames = async () => {
             if (!token) {
@@ -119,10 +140,10 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
             }
 
             setLoading(prev => ({ ...prev, reportNames: true }));
-            setError(prev => ({ ...prev, reportNames: null })); 
+            setError(prev => ({ ...prev, reportNames: null }));
 
             const requestBody = {
-                artefact_type: ["REPORT"] 
+                artefact_type: ["REPORT"]
             };
 
             if (selectedReportGroups.length > 0) {
@@ -134,12 +155,12 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
             }
 
             try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-names`, { 
+                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-names`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
-                        'accept': 'application/json' 
+                        'accept': 'application/json'
                     },
                     body: JSON.stringify(requestBody)
                 });
@@ -155,44 +176,69 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
             } catch (err) {
                 console.error('Error fetching report names:', err);
                 setError(prev => ({ ...prev, reportNames: err.message }));
-                setReportNames([]); 
+                setReportNames([]);
             } finally {
                 setLoading(prev => ({ ...prev, reportNames: false }));
             }
         };
 
-        setSelectedReportNames([]);
-        fetchReportNames();
-    }, [selectedReportGroups, selectedReportTypes, token]); 
+        // setSelectedReportNames([]);
+        console.log("initial render is =====>", isInitialRender.current);
+        const groupsChanged = JSON.stringify(selectedReportGroups) !== JSON.stringify(initialGroupsRef.current);
+        const typesChanged = JSON.stringify(selectedReportTypes) !== JSON.stringify(initialTypesRef.current);
 
-useEffect(() => {
-    const reportsData = {
-        artefact_type: selectedArtefactType,
-        ...(selectedReportGroups.length > 0 && { report_group: selectedReportGroups }),
-        ...(selectedReportTypes.length > 0 && { report_type: selectedReportTypes }),
-        report_name: selectedReportNames
-    };
-    
-    onDataChange({
-        reports: reportsData
-    });
-}, [selectedArtefactType, selectedReportGroups, selectedReportTypes, selectedReportNames]);
+        if (!isInitialRender.current && (groupsChanged || typesChanged)) {
+            console.log("selected groups are =====>", selectedReportGroups);
+            console.log("initial groups are =====>", initialGroupsRef.current);
+            console.log("selected types are =======>", selectedReportTypes);
+            console.log("initial types are =======>", initialTypesRef.current);
+            setSelectedReportNames([]);
+        }
+
+        fetchReportNames();
+        isInitialRender.current = false;
+    }, [selectedReportGroups, selectedReportTypes, token]);
+
+    useEffect(() => {
+        const reportsData = {
+            artefact_type: selectedArtefactType,
+            ...(selectedReportGroups.length > 0 && { report_group: selectedReportGroups }),
+            ...(selectedReportTypes.length > 0 && { report_type: selectedReportTypes }),
+            report_name: selectedReportNames
+        };
+
+        onDataChange({
+            reports: reportsData
+        });
+    }, [selectedArtefactType, selectedReportGroups, selectedReportTypes, selectedReportNames]);
 
     const handleNext = () => {
+
+        const reportsData = {
+            artefact_type: selectedArtefactType,
+            report_group: selectedReportGroups,
+            report_type: selectedReportTypes,
+            report_name: selectedReportNames,
+        };
+
+        onDataChange({ reports: reportsData });
+        setStepReportData(reportsData);
         setActiveStep(7);
     };
 
     const handleSkip = () => {
-    onDataChange({
-        reports: {
-            artefact_type: "",
+        const emptyReportsData = {
+            artefact_type: '',
             report_group: [],
             report_type: [],
-            report_name: []
-        }
-    });
-    setActiveStep(7);
-};
+            report_name: [],
+        };
+        onDataChange({ reports: emptyReportsData });
+        setStepReportData(emptyReportsData);
+        setActiveStep(7);
+    };
+
+
 
     const handleBack = () => {
         setActiveStep(5);
@@ -200,7 +246,7 @@ useEffect(() => {
 
     const toggleDropdown = (dropdown) => {
         setDropdownOpen(prev => ({
-            ...Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: false }), {}), 
+            ...Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: false }), {}),
             [dropdown]: !prev[dropdown]
         }));
     };
@@ -230,7 +276,7 @@ useEffect(() => {
     };
 
     const handleSelectAll = (items, selectedItems, setSelectedItems) => {
-        const relevantItemValues = items.map(item => typeof item === 'object' ? item.id : item); 
+        const relevantItemValues = items.map(item => typeof item === 'object' ? item.id : item);
         if (selectedItems.length === relevantItemValues.length && relevantItemValues.length > 0) {
             setSelectedItems([]);
         } else {
@@ -294,7 +340,7 @@ useEffect(() => {
                                         />
                                     </div>
                                 </div>
-                                <div className="overflow-auto max-h-[calc(15rem-4rem)]">
+                                <div className="overflow-auto max-h-[calc(15rem-5rem)]">
                                     <div
                                         className="flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 sticky top-0 bg-white z-10"
                                         onClick={() => handleSelectAll(filteredItems, selectedItems, setSelectedItemsCallback)}
@@ -328,6 +374,7 @@ useEffect(() => {
             </div>
         );
     };
+
 
     return (
         <Box>

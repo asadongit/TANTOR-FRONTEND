@@ -211,6 +211,14 @@ const Policy = () => {
         isFormValid: false
     });
 
+    const [stepReportData, setStepReportData] = useState({
+        report_name: [],
+        report_type: [],
+        report_group: [],
+        artefact_type: ''
+
+    })
+
     const [policyType, setPolicyType] = useState('connection');
 
     const steps = connectionSteps;
@@ -241,7 +249,6 @@ const Policy = () => {
                 // Step 5 data is already updated via onDataChange
                 break;
             case 5:
-                // Step 6 data is already updated via onDataChange
                 break;
             default:
                 break;
@@ -276,6 +283,19 @@ const Policy = () => {
         };
         setPolicyData(newData);
     };
+
+    const updateReportData = (data) => {
+        const newData = {
+            ...policyData,
+            reports: {
+                artefact_type: data.artefact_type,
+                report_group: data.report_group,
+                report_type: data.report_type,
+                report_name:  data.report_name
+            }
+        };
+        setPolicyData(newData);
+    }
 
     const updateStep3Data = (data) => {
         const connections = processConnectionData(
@@ -416,9 +436,12 @@ const Policy = () => {
             case 6:
                 return <ReportStep
                     policyData={policyData}
+                    isEditMode={isEditMode}
+                    initialData={stepReportData}
                     onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))
                     }
                     setActiveStep={setActiveStep}
+                    setStepReportData={setStepReportData}
                 />;
             case 7:
                 return <Step7
@@ -472,6 +495,14 @@ const Policy = () => {
             selectedTables: [],
             selectedColumns: [],
         });
+
+        setStepReportData({
+            report_name: [],
+            report_type: [],
+            report_group: [],
+            artefact_type: ''
+        });
+
         setPolicyType('connection');
         setIsStep3Modified(false);
         setIsEditMode(false);
@@ -650,6 +681,13 @@ const Policy = () => {
                 selectedSchemas: policyDetails.data_connection?.map(dc => dc.schema) || [],
                 selectedTables: policyDetails.data_connection?.flatMap(dc => dc.tables) || [],
                 selectedColumns: policyDetails.data_connection?.flatMap(dc => dc.columns) || []
+            });
+
+            setStepReportData({
+                report_name: policyDetails.reports?.report_name || [],
+                report_type: policyDetails.reports?.report_type || [],
+                report_group: policyDetails.reports?.report_group || [],
+                artefact_type: policyDetails.reports?.artefact_type || "Reports"
             });
 
             setIsEditMode(true);
@@ -1216,10 +1254,10 @@ const Policy = () => {
                                                 (activeStep === 5 && !step6Data.isFormValid)
                                             }
                                             className={`px-6 py-1.5 rounded-md ${(activeStep === 0 && !step1Data.isFormValid) ||
-                                                    (activeStep === 1 && !step2Data.isFormValid) ||
-                                                    (activeStep === 5 && !step6Data.isFormValid)
-                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                    : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
+                                                (activeStep === 1 && !step2Data.isFormValid) ||
+                                                (activeStep === 5 && !step6Data.isFormValid)
+                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
                                                 }`}
                                         >
                                             Next
