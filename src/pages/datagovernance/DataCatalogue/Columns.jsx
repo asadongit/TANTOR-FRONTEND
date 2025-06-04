@@ -38,8 +38,8 @@ function Columns() {
         dataType,
         nullable: isNullable ? 'Yes' : 'No',
         database: item.connection_type,
-        diagram: Math.floor(Math.random() * 10) + 1, // Random number for demonstration
-        joins: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toLocaleDateString(), // Random date within last 30 days
+        // diagram: Math.floor(Math.random() * 10) + 1,
+        joins: new Date(item.created_at).toLocaleDateString(),
         selected: false
       };
     });
@@ -106,6 +106,7 @@ function Columns() {
     const updatedData = [...columnData];
     updatedData[index].selected = !updatedData[index].selected;
     setColumnData(updatedData);
+
   };
 
   return (
@@ -164,7 +165,7 @@ function Columns() {
                 <th className="text-left p-4">Data Type</th>
                 <th className="text-left p-4">Nullable</th>
                 <th className="text-left p-4">Database</th>
-                <th className="text-left p-4">Diagram</th>
+                {/* <th className="text-left p-4">Diagram</th> */}
                 <th className="text-left p-4">Joins</th>
                 {/* <th className="text-left p-4">Action</th> */}
                 <th className="text-left p-4">
@@ -186,7 +187,7 @@ function Columns() {
                   <td className="p-4">{column.dataType}</td>
                   <td className="p-4">{column.nullable}</td>
                   <td className="p-4">{column.database}</td>
-                  <td className="p-4 text-gray-500 underline">{column.diagram}</td>
+                  {/* <td className="p-4 text-gray-500 underline">{column.diagram}</td> */}
                   <td className="p-4">{column.joins}</td>
                   {/* <td className="p-4">
                     <button className="text-blue-600 hover:underline">View</button>
