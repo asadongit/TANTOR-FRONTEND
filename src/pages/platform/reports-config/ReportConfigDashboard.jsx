@@ -160,35 +160,32 @@ const ReportConfigDashboard = () => {
 
         // If report type is LIST, navigate to report viewer page
 
+        // if ((reportType || "").toUpperCase() === "LIST") {
+        //   const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+        //   const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
+
+        //   navigate("/reports/viewer", {
+        //     state: {
+        //       reportPath,
+        //       reportName: reportFileName,
+        //       reportId
+        //     }
+        //   });
+        //   return;
+        // }
+
         if ((reportType || "").toUpperCase() === "LIST") {
-          const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
-          const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-
-          navigate("/reports/viewer", {
-            state: {
-              reportPath,
-              reportName: reportFileName,
-              reportId
-            }
-          });
-          return;
-        }
-
-
-        /*
-                if ((reportType || "").toUpperCase() === "LIST") {
-                    const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER; 
-                    const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-                  
-                    window.open(
-                      `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-                        import.meta.env.VITE_BIRT_EXPORT_FORMAT
-                      }`,
-                      "_blank"
-                    );
-                    return;
-                  }
-        */
+            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER; 
+            const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
+          
+            window.open(
+              `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+                import.meta.env.VITE_BIRT_EXPORT_FORMAT
+              }`,
+              "_blank"
+            );
+            return;
+          }
 
         const headers = {
           "Content-Type": "application/json",
