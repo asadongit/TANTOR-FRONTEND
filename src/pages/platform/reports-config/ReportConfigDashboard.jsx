@@ -55,7 +55,7 @@ const ReportConfigDashboard = () => {
   const [hoveredBar, setHoveredBar] = useState(null);
   const { token, hostnameV1 } = useAuth();
   const [showModal, setShowModal] = useState(false);
-  const [currentReportName, setCurrentReportName] = useState('');
+  const [currentEmbedId, setCurrentEmbedId] = useState('');
 
   const navigate = useNavigate();
 
@@ -158,10 +158,11 @@ const ReportConfigDashboard = () => {
         const reportId = row.report_id;
         const reportType = row.report_type;
         const reportFileName = row.report_name;
+        const embedID = row.embed_id
 
         if ((reportType || "").toUpperCase() === "LIST") {
-          console.log("Report name:", reportFileName);
-          setCurrentReportName(reportFileName);
+          console.log("Embed id:", embedID);
+          setCurrentEmbedId(embedID);
           setShowModal(true);
           return;
         }
@@ -320,7 +321,8 @@ const ReportConfigDashboard = () => {
         const { is_published, ...rest } = report;
         return {
           ...rest,
-          s_no: index + 1
+          s_no: index + 1,
+          embed_id: '894f1850-f0bf-4ddf-aa06-a688475ea740'
         };
       });
 
@@ -544,7 +546,7 @@ const ReportConfigDashboard = () => {
       <SupersetReport
         showModal={showModal}
         setShowModal={setShowModal}
-        currentReportName={currentReportName}
+        currentReportName={currentEmbedId}
       />
     </div>
   );
