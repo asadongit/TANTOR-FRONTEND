@@ -40,7 +40,6 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
             description,
             sub_policy_name: selectedSubPolicy,
             sub_policy_description: subPolicyDescription,
-            policy_name: selectedSubPolicy,
             isFormValid: selectedPolicy !== '' && selectedSubPolicy !== ''
         };
         onDataChange(currentData);
