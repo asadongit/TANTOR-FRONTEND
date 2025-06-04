@@ -19,7 +19,7 @@ import { useProjectCardData } from "../../../hooks/platform/cardCounts";
 import { useRuleReportsData } from "../../../hooks/platform/ruleReports";
 import { secureQuery } from '../../datagovernance/DataCatalogue/Components/function';
 import { useAuth } from '../../../context/AuthContext';
-
+import SupersetReport from './components/SupersetReport';
 
 
 
@@ -54,7 +54,8 @@ const ReportConfigDashboard = () => {
   // const { data: reportsData = [], isLoading: isReportsLoading, error: reportError, refetch: refetchReports } = useRuleReportsData();
   const [hoveredBar, setHoveredBar] = useState(null);
   const { token, hostnameV1 } = useAuth();
-
+  const [showModal, setShowModal] = useState(false);
+  const [currentReportName, setCurrentReportName] = useState('');
 
   const navigate = useNavigate();
 
@@ -158,6 +159,13 @@ const ReportConfigDashboard = () => {
         const reportType = row.report_type;
         const reportFileName = row.report_name;
 
+        if ((reportType || "").toUpperCase() === "LIST") {
+          console.log("Report name:", reportFileName);
+          setCurrentReportName(reportFileName);
+          setShowModal(true);
+          return;
+        }
+
         // If report type is LIST, navigate to report viewer page
 
         // if ((reportType || "").toUpperCase() === "LIST") {
@@ -175,9 +183,9 @@ const ReportConfigDashboard = () => {
         // }
 
         if ((reportType || "").toUpperCase() === "LIST") {
-            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER; 
+            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
             const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-          
+
             window.open(
               `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
                 import.meta.env.VITE_BIRT_EXPORT_FORMAT
@@ -192,7 +200,6 @@ const ReportConfigDashboard = () => {
           authorization: `Bearer ${token}`,
         };
 
-        // Only check if report exists if reportType is not 'LIST'
         if ((reportType || "").toUpperCase() !== "LIST") {
           try {
             const response = await fetch(
@@ -532,6 +539,12 @@ const ReportConfigDashboard = () => {
         isLoading={isReportsLoading}
         isError={!!reportError}
         refetch={refetchReports}
+      />
+
+      <SupersetReport
+        showModal={showModal}
+        setShowModal={setShowModal}
+        currentReportName={currentReportName}
       />
     </div>
   );
