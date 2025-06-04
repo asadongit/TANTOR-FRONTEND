@@ -20,6 +20,7 @@ import { useRuleReportsData } from "../../../hooks/platform/ruleReports";
 import { secureQuery } from '../../datagovernance/DataCatalogue/Components/function';
 import { useAuth } from '../../../context/AuthContext';
 import SupersetReport from './components/SupersetReport';
+import toast from "react-hot-toast";
 
 
 
@@ -162,6 +163,12 @@ const ReportConfigDashboard = () => {
 
         if ((reportType || "").toUpperCase() === "LIST") {
           console.log("Embed id:", embedID);
+          
+          if(!embedID){
+            toast.error("Embed ID not found!");
+            return;
+          }
+
           setCurrentEmbedId(embedID);
           setShowModal(true);
           return;
@@ -183,18 +190,18 @@ const ReportConfigDashboard = () => {
         //   return;
         // }
 
-        if ((reportType || "").toUpperCase() === "LIST") {
-            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
-            const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
+        // if ((reportType || "").toUpperCase() === "LIST") {
+        //     const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+        //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
-            window.open(
-              `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-                import.meta.env.VITE_BIRT_EXPORT_FORMAT
-              }`,
-              "_blank"
-            );
-            return;
-          }
+        //     window.open(
+        //       `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+        //         import.meta.env.VITE_BIRT_EXPORT_FORMAT
+        //       }`,
+        //       "_blank"
+        //     );
+        //     return;
+        //   }
 
         const headers = {
           "Content-Type": "application/json",
@@ -322,10 +329,10 @@ const ReportConfigDashboard = () => {
         return {
           ...rest,
           s_no: index + 1,
-          embed_id: '894f1850-f0bf-4ddf-aa06-a688475ea740'
         };
       });
 
+      console.log("Reports with serial ", reportsWithSerial);
       setReportsData(reportsWithSerial);
     } catch (error) {
       setReportError(error.message);

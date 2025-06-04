@@ -6,17 +6,18 @@ import { X } from "lucide-react";
 const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  const SUPERSET_URL = "https://visualization.app.translab.io";
-  const GUEST_TOKEN_API = "/api/v1/security/guest_token/";
-  const USERNAME = "admin";
-  const ROLE_NAME = "Gamma";
+  const SUPERSET_URL = import.meta.env.VITE_SUPERSET_URL;
+  
+  const USERNAME = import.meta.env.VITE_SUPERSET_USERNAME;
+  const PASSWORD = import.meta.env.VITE_SUPERSET_PASSWORD;
+  const ROLE_NAME = import.meta.env.VITE_SUPERSET_ROLE_NAME;
 
   async function loginToSuperset() {
     const loginResponse = await axios.post(
       `${SUPERSET_URL}/api/v1/security/login`,
       {
         username: USERNAME,
-        password: "admin",
+        password: PASSWORD,
         provider: "db",
         refresh: true,
       },
@@ -46,7 +47,7 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
       const csrfToken = sessionResponse.data.result;
 
       const response = await axios.post(
-        `${SUPERSET_URL}${GUEST_TOKEN_API}`,
+        `${SUPERSET_URL}/api/v1/security/guest_token/`,
         {
           user: {
             username: USERNAME,
