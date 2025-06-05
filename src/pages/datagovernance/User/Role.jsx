@@ -45,6 +45,8 @@ const Role = () => {
   const [togglingStatus, setTogglingStatus] = useState(null);
   const rowsPerPage = 10;
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const [visibleCards, setVisibleCards] = useState(9);
+  const cardsPerPage = 9;
 
   const filteredRoles = roles.filter(role =>
     role.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -191,6 +193,7 @@ const Role = () => {
   const refreshAllData = async (showToast = false) => {
     setRefreshing(true);
     setSearchTerm("");
+    setVisibleCards(cardsPerPage); // Reset visible cards on refresh
     try {
       const [dashboardResult, listResult] = await Promise.all([
         FetchRoleDashboardData(),
@@ -344,6 +347,18 @@ const Role = () => {
     setActiveMenu(null);
   };
 
+  // Reset visible cards when search term changes
+  useEffect(() => {
+    setVisibleCards(cardsPerPage);
+  }, [searchTerm]);
+
+  const handleViewMore = () => {
+    setVisibleCards(prev => prev + cardsPerPage);
+  };
+
+  const displayedRoles = filteredRoles.slice(0, visibleCards);
+  const hasMoreCards = visibleCards < filteredRoles.length;
+
   return (
     <div className="p-6">
       <style>{`
@@ -444,60 +459,109 @@ const Role = () => {
           {(viewMode === 'cards' || viewMode === 'both') && (
             <>
               {filteredRoles.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  {filteredRoles.map((role, index) => (
-                    <div
-                      key={index}
-                      className="bg-white rounded-lg shadow-sm border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1"
-                    >
-                      <div className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${role.bgcolor} rounded-full ${role.iconcolor} mr-2`}
-                            >
-                              <Icon icon={role.icon} />
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    {displayedRoles.map((role, index) => (
+                      <div
+                        key={index}
+                        className="bg-white rounded-lg shadow-sm border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1"
+                      >
+                        <div className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${role.bgcolor} rounded-full ${role.iconcolor} mr-2`}
+                              >
+                                <Icon icon={role.icon} />
+                              </div>
+                              <h3 className="text-lg font-semibold">{role.title}</h3>
                             </div>
-                            <h3 className="text-lg font-semibold">{role.title}</h3>
+                            <div className="relative">
+                              <button
+                                onClick={() => setActiveMenu(activeMenu === `card-${index}` ? null : `card-${index}`)}
+                                className="p-1.5 rounded-full hover:bg-gray-100"
+                              >
+                                <MoreVertical className="h-5 w-5 text-gray-600" />
+                              </button>
+
+                              {activeMenu === `card-${index}` && (
+                                <>
+                                  <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
+                                  <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                    <div className="flex items-center p-1 gap-1">
+                                      <button
+                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                        onClick={() => handleEditClick({
+                                          name: role.title,
+                                          description: role.description,
+                                          status: role.attributes?.Status?.[0] || "Disabled",
+                                          startDate: "",
+                                          endDate: ""
+                                        })}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                        onClick={() => handleDeleteClick({
+                                          name: role.title
+                                        })}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
-                          {/* <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                            <MoreVertical className="h-4 w-4" />
-                          </button> */}
-                        </div>
-                        <p className="text-gray-500 mt-4 text-sm">{role.description}</p>
-                        <div className="flex items-center justify-between mt-6">
-                          <div className="flex items-center gap-2">
-                            <Icon
-                              icon="material-symbols:supervisor-account-outline"
-                              width="24"
-                              height="24"
-                            />
-                            <span className="text-sm">
-                              {role.users.toString().padStart(2, "0")}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {togglingStatus === index ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
-                            ) : (
-                              <Toggle
-                                enabled={role.enabled}
-                                onToggle={() => toggleRole(index)}
+                          <p className="text-gray-500 mt-4 text-sm">{role.description}</p>
+                          <div className="flex items-center justify-between mt-6">
+                            <div className="flex items-center gap-2">
+                              <Icon
+                                icon="material-symbols:supervisor-account-outline"
+                                width="24"
+                                height="24"
                               />
-                            )}
-                            <span
-                              className={`text-sm ${
-                                role.enabled ? "text-[#1a9962]" : "text-gray-400"
-                              }`}
-                            >
-                              {role.enabled ? "Enabled" : "Disabled"}
-                            </span>
+                              <span className="text-sm">
+                                {role.users.toString().padStart(2, "0")}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {togglingStatus === index ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
+                              ) : (
+                                <Toggle
+                                  enabled={role.enabled}
+                                  onToggle={() => toggleRole(index)}
+                                />
+                              )}
+                              <span
+                                className={`text-sm ${
+                                  role.enabled ? "text-[#1a9962]" : "text-gray-400"
+                                }`}
+                              >
+                                {role.enabled ? "Enabled" : "Disabled"}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+
+                  {hasMoreCards && (
+                    <div className="flex justify-center mt-4 mb-6">
+                      <button
+                        onClick={handleViewMore}
+                        className="flex items-center gap-2 px-6 py-2 bg-white border border-[#8e78b7] text-[#8e78b7] rounded-lg hover:bg-[#8e78b7] hover:text-white transition-all duration-200"
+                      >
+                        View More
+                        <Icon icon="material-symbols:keyboard-arrow-down" width="20" height="20" />
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300 mb-6">
                   <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
