@@ -19,7 +19,8 @@ import { useProjectCardData } from "../../../hooks/platform/cardCounts";
 import { useRuleReportsData } from "../../../hooks/platform/ruleReports";
 import { secureQuery } from '../../datagovernance/DataCatalogue/Components/function';
 import { useAuth } from '../../../context/AuthContext';
-
+import SupersetReport from './components/SupersetReport';
+import toast from "react-hot-toast";
 
 
 
@@ -54,7 +55,8 @@ const ReportConfigDashboard = () => {
   // const { data: reportsData = [], isLoading: isReportsLoading, error: reportError, refetch: refetchReports } = useRuleReportsData();
   const [hoveredBar, setHoveredBar] = useState(null);
   const { token, hostnameV1 } = useAuth();
-
+  const [showModal, setShowModal] = useState(false);
+  const [currentEmbedId, setCurrentEmbedId] = useState('');
 
   const navigate = useNavigate();
 
@@ -157,45 +159,55 @@ const ReportConfigDashboard = () => {
         const reportId = row.report_id;
         const reportType = row.report_type;
         const reportFileName = row.report_name;
-
-        // If report type is LIST, navigate to report viewer page
+        const embedID = row.embed_id
 
         if ((reportType || "").toUpperCase() === "LIST") {
-          const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
-          const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
+          console.log("Embed id:", embedID);
+          
+          if(!embedID){
+            toast.error("Embed ID not found!");
+            return;
+          }
 
-          navigate("/reports/viewer", {
-            state: {
-              reportPath,
-              reportName: reportFileName,
-              reportId
-            }
-          });
+          setCurrentEmbedId(embedID);
+          setShowModal(true);
           return;
         }
 
+        // If report type is LIST, navigate to report viewer page
 
-        /*
-                if ((reportType || "").toUpperCase() === "LIST") {
-                    const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER; 
-                    const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-                  
-                    window.open(
-                      `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-                        import.meta.env.VITE_BIRT_EXPORT_FORMAT
-                      }`,
-                      "_blank"
-                    );
-                    return;
-                  }
-        */
+        // if ((reportType || "").toUpperCase() === "LIST") {
+        //   const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+        //   const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
+
+        //   navigate("/reports/viewer", {
+        //     state: {
+        //       reportPath,
+        //       reportName: reportFileName,
+        //       reportId
+        //     }
+        //   });
+        //   return;
+        // }
+
+        // if ((reportType || "").toUpperCase() === "LIST") {
+        //     const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+        //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
+
+        //     window.open(
+        //       `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+        //         import.meta.env.VITE_BIRT_EXPORT_FORMAT
+        //       }`,
+        //       "_blank"
+        //     );
+        //     return;
+        //   }
 
         const headers = {
           "Content-Type": "application/json",
           authorization: `Bearer ${token}`,
         };
 
-        // Only check if report exists if reportType is not 'LIST'
         if ((reportType || "").toUpperCase() !== "LIST") {
           try {
             const response = await fetch(
@@ -316,10 +328,11 @@ const ReportConfigDashboard = () => {
         const { is_published, ...rest } = report;
         return {
           ...rest,
-          s_no: index + 1
+          s_no: index + 1,
         };
       });
 
+      console.log("Reports with serial ", reportsWithSerial);
       setReportsData(reportsWithSerial);
     } catch (error) {
       setReportError(error.message);
@@ -535,6 +548,12 @@ const ReportConfigDashboard = () => {
         isLoading={isReportsLoading}
         isError={!!reportError}
         refetch={refetchReports}
+      />
+
+      <SupersetReport
+        showModal={showModal}
+        setShowModal={setShowModal}
+        currentReportName={currentEmbedId}
       />
     </div>
   );
