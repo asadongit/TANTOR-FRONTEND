@@ -88,8 +88,8 @@ const Policy = () => {
             const transformedData = data?.policies.map(policy => ({
                 id: policy.id,
                 Type: policy.policy_type,
-                Name: policy.policy_name,
-                Description: policy.policy_description,
+                Name: policy.sub_policy_name,
+                Description: policy.sub_policy_description,
                 Status: policy.policy_status,
                 CreatedDate: policy.created_date,
                 expiryDate: policy.expiry_date,
@@ -168,7 +168,6 @@ const Policy = () => {
         policy_description: '',
         sub_policy_name: '',
         sub_policy_description: '',
-        policy_name: '',
         user_selections: {
             role: '',
             group: [],
@@ -266,7 +265,6 @@ const Policy = () => {
             policy_description: data.description,
             sub_policy_name: data.sub_policy_name,
             sub_policy_description: data.sub_policy_description,
-            policy_name: data.policy_name
         }));
     };
 
@@ -467,7 +465,6 @@ const Policy = () => {
             policy_description: '',
             sub_policy_name: '',
             sub_policy_description: '',
-            policy_name: '',
             user_selections: {
                 role: '',
                 group: [],
@@ -587,9 +584,7 @@ const Policy = () => {
         if (!searchTerm) return sampleData;
         return sampleData.filter(
             (item) =>
-                item.Type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.Description.toLowerCase().includes(searchTerm.toLowerCase())
+                item.Type.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [sampleData, searchTerm]);
 
@@ -647,7 +642,6 @@ const Policy = () => {
                 },
                 body: JSON.stringify({
                     id: policyId,
-                    policy_name: policy?.Name || "",
                     policy_type: policy?.Type || ""
                 })
             });
@@ -669,7 +663,6 @@ const Policy = () => {
                 description: policyDetails.policy_description || "",
                 sub_policy_name: policyDetails.sub_policy_name || "",
                 sub_policy_description: policyDetails.sub_policy_description || "",
-                policy_name: policyDetails.policy_name || ""
             });
             setStep2Data({
                 selectedRole: policyDetails.user_selections.role || "",
@@ -885,8 +878,8 @@ const Policy = () => {
                     policy.id === policyId ? {
                         id: refreshedPolicy.id,
                         Type: refreshedPolicy.policy_type,
-                        Name: refreshedPolicy.policy_name,
-                        Description: refreshedPolicy.policy_description,
+                        Name: refreshedPolicy.sub_policy_name,
+                        Description: refreshedPolicy.sub_policy_description,
                         Status: refreshedPolicy.policy_status,
                         CreatedDate: refreshedPolicy.created_date,
                         expiryDate: refreshedPolicy.expiry_date,
