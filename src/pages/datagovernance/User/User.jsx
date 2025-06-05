@@ -193,7 +193,10 @@ const User = () => {
     }
 
     if (!item) return 0;
-    if (Array.isArray(item)) return item.length;
+    if (Array.isArray(item)) {
+      const filteredItems = item.filter(i => i && i.toString().trim() !== '');
+      return filteredItems.length;
+    }
     return 1;
   };
 
