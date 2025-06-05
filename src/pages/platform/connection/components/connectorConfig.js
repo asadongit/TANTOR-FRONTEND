@@ -31,6 +31,7 @@ export const connectorConfig = {
           required: true,
         },
         { name: "database_name", label: "Database Name", required: true },
+        { name: "source_schema", label: "Schema", required: false },
       ],
       icon: oracle
     },
@@ -57,6 +58,7 @@ export const connectorConfig = {
           required: true,
         },
         { name: "database_name", label: "Database Name", required: true },
+        { name: "source_schema", label: "Schema", required: false },
       ],
       icon: postgres
     },
@@ -83,6 +85,7 @@ export const connectorConfig = {
           required: true,
         },
         { name: "database_name", label: "Database Name", required: true },
+        { name: "source_schema", label: "Schema", required: false },
       ],
       icon: mysql
     },
@@ -109,6 +112,7 @@ export const connectorConfig = {
           required: true,
         },
         { name: "database_name", label: "Database Name", required: true },
+        { name: "source_schema", label: "Schema", required: false },
       ],
       icon: mssql
     },
@@ -124,6 +128,7 @@ export const connectorConfig = {
         },
         { name: "username", label: "Username" },
         { name: "password", label: "Password", type: "password" },
+        { name: "source_schema", label: "Schema", required: false },
       ],
       icon: hive
     },
@@ -165,6 +170,7 @@ export const connectorConfig = {
         { name: "database_name", label: "Database", required: true },
         { name: "username", label: "Username", required: true },
         { name: "password", label: "Password", type: "password", required: true },
+        { name: "source_schema", label: "Schema", required: false },
       ],
       icon: db2
     },
