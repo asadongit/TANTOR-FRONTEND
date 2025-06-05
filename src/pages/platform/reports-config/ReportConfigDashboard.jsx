@@ -165,7 +165,7 @@ const ReportConfigDashboard = () => {
           console.log("Embed id:", embedID);
           
           if(!embedID){
-            toast.error("Embed ID not found!");
+            toast.error("REPORT NOT PROCESSED!");
             return;
           }
 
