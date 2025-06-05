@@ -27,6 +27,7 @@ import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const [expandedItem, setExpandedItem] = useState(null);
+  const [expandedSubItem, setExpandedSubItem] = useState(null);
   const [currentActiveSection, setCurrentActiveSection] = useState(activeSection);
   const { decodedToken } = useAuth();
 
@@ -40,12 +41,18 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   }, [activeSection]);
 
   const isGlobalAdmin = decodedToken?.resource_access?.darch?.roles?.includes('global-admin');
-  console.log('Is Global Admin:', isGlobalAdmin);
+  // console.log('Is Global Admin:', isGlobalAdmin);
 
   const toggleExpand = (e, routeName) => {
     e.preventDefault();
     e.stopPropagation();
     setExpandedItem(prev => prev === routeName ? null : routeName);
+  };
+
+  const toggleSubExpand = (e, subRouteName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedSubItem(prev => prev === subRouteName ? null : subRouteName);
   };
 
   const platformRoutes = [
@@ -97,7 +104,19 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'View', path: `${DATAGOVERNANCE_PREFIX}/data-catalogue/view` },
       ]
     },
-    { name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance` },
+    { name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance`,
+      subItems: [
+        {
+          name: 'Quality',
+          subItems: [
+            { name: 'Data', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/quality/data` },
+            { name: 'Metadata', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/quality/metadata` },
+            { name: 'Rules', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/quality/rules` },
+          ]
+        },
+        { name: 'Lineage', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/lineage` },
+      ]
+    },
     { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: `${DATAGOVERNANCE_PREFIX}/business-catalogue` },
     { name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`,
       subItems: [
@@ -166,21 +185,83 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
             }`}
           >
             <div className="space-y-1 py-1">
-              {route.subItems.map((subItem) => (
-                <NavLink
-                  key={subItem.path}
-                  to={subItem.path}
-                  className={({ isActive }) =>
-                    `block px-3 py-2 rounded-lg transition-colors duration-200 ${
-                      isActive
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'text-gray-500 hover:bg-gray-100'
-                    }`
-                  }
-                >
-                  {subItem.name}
-                </NavLink>
-              ))}
+              {route.subItems.map((subItem) => {
+                const hasNestedSubItems = subItem.subItems && subItem.subItems.length > 0;
+                const isSubExpanded = expandedSubItem === subItem.name;
+
+                return (
+                  <div key={subItem.path || subItem.name}>
+                    {subItem.path ? (
+                      <NavLink
+                        to={subItem.path}
+                        className={({ isActive }) =>
+                          `flex items-center justify-between px-3 py-2 rounded-lg transition-colors duration-200 ${
+                            isActive
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'text-gray-500 hover:bg-gray-100'
+                          }`
+                        }
+                      >
+                        <span>{subItem.name}</span>
+                        {hasNestedSubItems && (
+                          <button
+                            onClick={(e) => toggleSubExpand(e, subItem.name)}
+                            className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
+                          >
+                            <ChevronRightIcon
+                              className={`h-3 w-3 transition-transform duration-300 ${
+                                isSubExpanded ? 'rotate-90' : 'rotate-0'
+                              }`}
+                            />
+                          </button>
+                        )}
+                      </NavLink>
+                    ) : (
+                      <div className="flex items-center justify-between px-3 py-2 text-gray-500 font-medium">
+                        <span>{subItem.name}</span>
+                        {hasNestedSubItems && (
+                          <button
+                            onClick={(e) => toggleSubExpand(e, subItem.name)}
+                            className="p-1 hover:bg-gray-200 rounded-full transition-transform duration-300"
+                          >
+                            <ChevronRightIcon
+                              className={`h-3 w-3 transition-transform duration-300 ${
+                                isSubExpanded ? 'rotate-90' : 'rotate-0'
+                              }`}
+                            />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {hasNestedSubItems && (
+                      <div
+                        className={`ml-4 overflow-hidden transition-all duration-300 ease-in-out ${
+                          isSubExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
+                        }`}
+                      >
+                        <div className="space-y-1 py-1">
+                          {subItem.subItems.map((nestedItem) => (
+                            <NavLink
+                              key={nestedItem.path}
+                              to={nestedItem.path}
+                              className={({ isActive }) =>
+                                `block px-6 py-2 rounded-lg transition-colors duration-200 ${
+                                  isActive
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                                }`
+                              }
+                            >
+                              {nestedItem.name}
+                            </NavLink>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
