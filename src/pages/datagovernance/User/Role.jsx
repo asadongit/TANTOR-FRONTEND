@@ -52,7 +52,6 @@ const Role = () => {
     role.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Add filtering for table data
   const filteredTableData = tableData.filter(role =>
     role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     role.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -82,13 +81,11 @@ const Role = () => {
         throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
       }
 
-      // Update card view
       const newRoles = [...roles];
       newRoles[index].enabled = newStatus;
       newRoles[index].attributes.Status = [newStatus ? "Enabled" : "Disabled"];
       setRoles(newRoles);
 
-      // Update list view
       const updatedTableData = tableData.map(item => {
         if (item.name === roleToUpdate.title) {
           return {
@@ -193,7 +190,7 @@ const Role = () => {
   const refreshAllData = async (showToast = false) => {
     setRefreshing(true);
     setSearchTerm("");
-    setVisibleCards(cardsPerPage); // Reset visible cards on refresh
+    setVisibleCards(cardsPerPage);
     try {
       const [dashboardResult, listResult] = await Promise.all([
         FetchRoleDashboardData(),
@@ -254,7 +251,7 @@ const Role = () => {
 
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  // Update to use filtered table data
+
   const currentRows = filteredTableData.slice(indexOfFirstRow, indexOfLastRow);
   const totalPages = Math.ceil(filteredTableData.length / rowsPerPage);
 
@@ -283,7 +280,6 @@ const Role = () => {
         });
         setShowModal(false);
 
-        // Auto-hide toast after 3 seconds
         setTimeout(() => {
           setToast({ show: false, message: '', type: '' });
         }, 3000);
@@ -295,13 +291,11 @@ const Role = () => {
           type: 'error'
         });
 
-        // Auto-hide toast after 3 seconds
         setTimeout(() => {
           setToast({ show: false, message: '', type: '' });
         }, 3000);
       }
     }
-    // Remove the else block that shows error toast since errors are handled in the modal
   };
 
   const handleEditClick = (role) => {
@@ -321,7 +315,6 @@ const Role = () => {
       });
       setShowEditModal(false);
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
@@ -333,21 +326,18 @@ const Role = () => {
         type: 'error'
       });
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
     }
   };
 
-  // Add handler for delete
   const handleDeleteClick = (role) => {
     setRoleToDelete(role);
     setShowDeleteModal(true);
     setActiveMenu(null);
   };
 
-  // Reset visible cards when search term changes
   useEffect(() => {
     setVisibleCards(cardsPerPage);
   }, [searchTerm]);
@@ -369,7 +359,6 @@ const Role = () => {
         .icon-rotate { animation: rotate 1s linear infinite; }
       `}</style>
 
-      {/* Toast notification */}
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
           toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :

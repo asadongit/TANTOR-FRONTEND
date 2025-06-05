@@ -271,14 +271,13 @@ function Group() {
   const refreshAllData = async () => {
     setRefreshing(true);
     setSearchTerm("");
-    setVisibleCards(cardsPerPage); // Reset visible cards on refresh
+    setVisibleCards(cardsPerPage);
     try {
       const [dashboardResult, listResult] = await Promise.all([
         FetchRoleDashboardData(),
         fetchGroupList()
       ]);
 
-      // Check if both operations succeeded
       if (dashboardResult.success && listResult.success) {
         setToast({
           show: true,
@@ -286,7 +285,6 @@ function Group() {
           type: 'success'
         });
       } else {
-        // Show error if any operation failed
         const errorMessages = [];
         if (!dashboardResult.success) errorMessages.push('dashboard data');
         if (!listResult.success) errorMessages.push('list data');
@@ -307,14 +305,12 @@ function Group() {
     } finally {
       setRefreshing(false);
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
     }
   };
 
-  // Update these calculations to use filteredTableData instead of tableData
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentRows = filteredTableData.slice(indexOfFirstRow, indexOfLastRow);
@@ -345,7 +341,6 @@ function Group() {
         });
         setShowModal(false);
 
-        // Auto-hide toast after 3 seconds
         setTimeout(() => {
           setToast({ show: false, message: '', type: '' });
         }, 3000);
@@ -357,16 +352,13 @@ function Group() {
           type: 'error'
         });
 
-        // Auto-hide toast after 3 seconds
         setTimeout(() => {
           setToast({ show: false, message: '', type: '' });
         }, 3000);
       }
     }
-    // Remove the else block that shows error toast since errors are handled in the modal
   };
 
-  // Add handler for edit save to show toast notifications
   const handleEditSave = async () => {
     try {
       await refreshAllData();
@@ -377,7 +369,6 @@ function Group() {
       });
       setShowEditModal(false);
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
@@ -389,7 +380,6 @@ function Group() {
         type: 'error'
       });
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
@@ -401,7 +391,6 @@ function Group() {
       <style>{rotateAnimation}</style>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
-      {/* Toast notification */}
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
           toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
