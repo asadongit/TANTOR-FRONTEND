@@ -58,6 +58,8 @@ function Subgroup() {
   const [togglingStatus, setTogglingStatus] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const { token } = useAuth();
+  const [visibleCards, setVisibleCards] = useState(9);
+  const cardsPerPage = 9;
 
   const initialFetchDoneRef = useRef(false);
 
@@ -65,12 +67,22 @@ function Subgroup() {
     item.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Add filtering for table data
   const filteredTableData = tableData.filter(subgroup =>
     subgroup.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     subgroup.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
     subgroup.parentGroup.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  useEffect(() => {
+    setVisibleCards(cardsPerPage);
+  }, [searchTerm]);
+
+  const handleViewMore = () => {
+    setVisibleCards(prev => prev + cardsPerPage);
+  };
+
+  const displayedSubgroups = filteredSubgroups.slice(0, visibleCards);
+  const hasMoreCards = visibleCards < filteredSubgroups.length;
 
   const [activeMenu, setActiveMenu] = useState(null);
   const handleClickOutside = () => {
@@ -112,8 +124,8 @@ function Subgroup() {
         users: subgroup.user_count,
         enabled: subgroup.attributes?.Status?.[0] === "Enabled",
         icon: "material-symbols:subtitles-outline",
-        bgcolor: "bg-[#6a8caf] bg-opacity-25",
-        iconcolor: "text-[#6a8caf]",
+        bgcolor: "bg-[#8d77ba] bg-opacity-25",
+        iconcolor: "text-[#8d77ba]",
       }));
 
       setSubgroups(transformedData);
@@ -184,13 +196,13 @@ function Subgroup() {
   const refreshAllData = async () => {
     setRefreshing(true);
     setSearchTerm("");
+    setVisibleCards(cardsPerPage);
     try {
       const [subgroupsResult, listResult] = await Promise.all([
         fetchSubgroupsData(),
         fetchSubgroupListData()
       ]);
 
-      // Check if both operations succeeded
       if (subgroupsResult.success && listResult.success) {
         setToast({
           show: true,
@@ -198,7 +210,6 @@ function Subgroup() {
           type: 'success'
         });
       } else {
-        // Show error if any operation failed
         const errorMessages = [];
         if (!subgroupsResult.success) errorMessages.push('dashboard data');
         if (!listResult.success) errorMessages.push('list data');
@@ -219,7 +230,6 @@ function Subgroup() {
     } finally {
       setRefreshing(false);
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
@@ -257,7 +267,6 @@ function Subgroup() {
         });
         setShowModal(false);
 
-        // Auto-hide toast after 3 seconds
         setTimeout(() => {
           setToast({ show: false, message: '', type: '' });
         }, 3000);
@@ -269,16 +278,13 @@ function Subgroup() {
           type: 'error'
         });
 
-        // Auto-hide toast after 3 seconds
         setTimeout(() => {
           setToast({ show: false, message: '', type: '' });
         }, 3000);
       }
     }
-    // Remove the else block that shows error toast since errors are handled in the modal
   };
 
-  // Add handler for edit save to show toast notifications
   const handleEditSave = async () => {
     try {
       await refreshAllData();
@@ -289,7 +295,6 @@ function Subgroup() {
       });
       setShowEditModal(false);
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
@@ -301,14 +306,12 @@ function Subgroup() {
         type: 'error'
       });
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
     }
   };
 
-  // Update pagination to use filteredTableData
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentRows = filteredTableData.slice(indexOfFirstRow, indexOfLastRow);
@@ -331,7 +334,6 @@ function Subgroup() {
       <style>{rotateAnimation}</style>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
-      {/* Toast notification */}
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
           toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
@@ -419,69 +421,80 @@ function Subgroup() {
           {(viewMode === 'cards' || viewMode === 'both') && (
             <>
               {filteredSubgroups.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredSubgroups.map((subgroup, index) => (
-                    <div
-                      key={index}
-                      className="bg-white rounded-lg shadow-sm border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1"
-                    >
-                      <div className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${subgroup.bgcolor} rounded-full ${subgroup.iconcolor} mr-2`}
-                            >
-                              <Icon icon={subgroup.icon} />
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-semibold">{subgroup.title}</h3>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {displayedSubgroups.map((subgroup, index) => (
+                      <div
+                        key={index}
+                        className="bg-white rounded-lg shadow-sm border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1"
+                      >
+                        <div className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${subgroup.bgcolor} rounded-full ${subgroup.iconcolor} mr-2`}
+                              >
+                                <Icon icon={subgroup.icon} />
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-semibold">{subgroup.title}</h3>
+                              </div>
                             </div>
                           </div>
-                          {/* <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                            <MoreVertical className="h-4 w-4" />
-                          </button> */}
-                        </div>
-                        <p className="text-gray-500 mt-4 text-sm">{subgroup.description}</p>
-                        <div className="flex items-center justify-between mt-6">
-                          <div className="flex items-center gap-2">
-                            <Icon
-                              icon="material-symbols:supervisor-account-outline"
-                              width="24"
-                              height="24"
-                            />
-                            <span className="text-sm">
-                              {subgroup.users.toString().padStart(2, "0")}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {togglingStatus === index ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#6a8caf]"></div>
-                            ) : (
-                              <Toggle
-                                enabled={subgroup.enabled}
-                                onToggle={() => toggleRole(index)}
+                          <p className="text-gray-500 mt-4 text-sm">{subgroup.description}</p>
+                          <div className="flex items-center justify-between mt-6">
+                            <div className="flex items-center gap-2">
+                              <Icon
+                                icon="material-symbols:supervisor-account-outline"
+                                width="24"
+                                height="24"
                               />
-                            )}
-                            <span
-                              className={`text-sm ${
-                                subgroup.enabled ? "text-[#1a9962]" : "text-gray-400"
-                              }`}
-                            >
-                              {subgroup.enabled ? "Enabled" : "Disabled"}
-                            </span>
+                              <span className="text-sm">
+                                {subgroup.users.toString().padStart(2, "0")}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {togglingStatus === index ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#6a8caf]"></div>
+                              ) : (
+                                <Toggle
+                                  enabled={subgroup.enabled}
+                                  onToggle={() => toggleRole(index)}
+                                />
+                              )}
+                              <span
+                                className={`text-sm ${
+                                  subgroup.enabled ? "text-[#1a9962]" : "text-gray-400"
+                                }`}
+                              >
+                                {subgroup.enabled ? "Enabled" : "Disabled"}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+
+                  {hasMoreCards && (
+                    <div className="flex justify-center mt-4 mb-6">
+                      <button
+                        onClick={handleViewMore}
+                        className="flex items-center gap-2 px-6 py-2 bg-white border border-[#8e78b7] text-[#8e78b7] rounded-lg hover:bg-[#8e78b7] hover:text-white transition-all duration-200"
+                      >
+                        View More
+                        <Icon icon="material-symbols:keyboard-arrow-down" width="20" height="20" />
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300">
                   <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
                   <p>No subgroups found matching "{searchTerm}"</p>
                   <button
                     onClick={() => setSearchTerm("")}
-                    className="mt-2 text-[#6a8caf] hover:underline transition-all duration-200"
+                    className="mt-2 text-[#8e78b7] hover:underline transition-all duration-200"
                   >
                     Clear search
                   </button>
@@ -567,7 +580,7 @@ function Subgroup() {
                         <p>No subgroups found matching "{searchTerm}"</p>
                         <button
                           onClick={() => setSearchTerm("")}
-                          className="mt-2 text-[#6a8caf] hover:underline transition-all duration-200"
+                          className="mt-2 text-[#8e78b7] hover:underline transition-all duration-200"
                         >
                           Clear search
                         </button>
