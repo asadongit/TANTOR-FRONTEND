@@ -109,9 +109,9 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         {
           name: 'Quality',
           subItems: [
-            { name: 'Data', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/quality/data` },
-            { name: 'Metadata', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/quality/metadata` },
-            { name: 'Rules', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/quality/rules` },
+            { name: 'Data', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/data` },
+            { name: 'Metadata', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/metadata` },
+            { name: 'Rules', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/rules` },
           ]
         },
         { name: 'Lineage', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/lineage` },
