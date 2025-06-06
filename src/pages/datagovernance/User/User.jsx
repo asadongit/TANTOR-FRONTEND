@@ -193,7 +193,10 @@ const User = () => {
     }
 
     if (!item) return 0;
-    if (Array.isArray(item)) return item.length;
+    if (Array.isArray(item)) {
+      const filteredItems = item.filter(i => i && i.toString().trim() !== '');
+      return filteredItems.length;
+    }
     return 1;
   };
 
@@ -207,11 +210,10 @@ const User = () => {
     fetchUserData();
   };
 
-  // New handler to clear search and fetch users with toast
   const handleRefresh = async () => {
     setSearchTerm('');
-    setCheckedUsers({}); // Clear all checked users
-    setAllChecked(false); // Reset the "select all" checkbox
+    setCheckedUsers({});
+    setAllChecked(false);
 
     const result = await fetchUserData();
 
@@ -229,13 +231,11 @@ const User = () => {
       });
     }
 
-    // Auto-hide toast after 3 seconds
     setTimeout(() => {
       setToast({ show: false, message: '', type: '' });
     }, 3000);
   };
 
-  // New function to handle individual checkbox changes
   const handleCheckUser = (userId) => {
     setCheckedUsers(prev => ({
       ...prev,
@@ -243,14 +243,12 @@ const User = () => {
     }));
   };
 
-  // New function to handle "select all" checkbox
   const handleCheckAll = () => {
     const newAllChecked = !allChecked;
     setAllChecked(newAllChecked);
 
     const newCheckedUsers = {};
     if (newAllChecked) {
-      // Check all visible users
       currentUsers.forEach(user => {
         newCheckedUsers[user.id] = true;
       });
@@ -263,7 +261,6 @@ const User = () => {
 
       <style>{rotateAnimation}</style>
 
-      {/* Toast notification */}
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
           toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
@@ -491,7 +488,6 @@ const User = () => {
         userData={userToDelete}
       />
 
-      {/* User Details Modal */}
       {isDetailsModalOpen && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-[600px] p-8">
@@ -564,7 +560,6 @@ const User = () => {
         </div>
       )}
 
-      {/* Detail Items Modal (Roles/Persona/Group/Subgroup) */}
       {isDetailModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-[500px] p-6 max-h-[80vh] overflow-y-auto">
