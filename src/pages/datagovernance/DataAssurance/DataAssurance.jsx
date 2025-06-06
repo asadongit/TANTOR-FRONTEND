@@ -211,7 +211,7 @@ const DataAssurance = () => {
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-center gap-2 mb-4">
-          <Icon icon="material-symbols:trending-up" className="w-5 h-5 text-gray-600" />
+          <Icon icon="material-symbols:trending-up" className="w-5 h-5 text-[#8d77ba]" />
           <h3 className="text-lg font-semibold text-gray-800">Score movement</h3>
         </div>
 
@@ -299,7 +299,7 @@ const DataAssurance = () => {
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-center gap-2 mb-4">
-          <Icon icon="material-symbols:bar-chart" className="w-5 h-5 text-gray-600" />
+          <Icon icon="material-symbols:bar-chart" className="w-5 h-5 text-[#8d77ba]" />
           <h3 className="text-lg font-semibold text-gray-800">Schema overall score</h3>
         </div>
 

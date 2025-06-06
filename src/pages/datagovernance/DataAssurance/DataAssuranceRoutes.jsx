@@ -14,9 +14,9 @@ const PREFIX = '/datagovernance/data-assurance';
 export const DataAssuranceRoutes = (
   <>
     <Route path={`${PREFIX}`} element={<DataAssurance />} />
-    <Route path={`${PREFIX}/quality/rules`} element={<Rules />} />
-    <Route path={`${PREFIX}/quality/data`} element={<Data />} />
-    <Route path={`${PREFIX}/quality/metadata`} element={<Metadata />} />
+    <Route path={`${PREFIX}/rules`} element={<Rules />} />
+    <Route path={`${PREFIX}/data`} element={<Data />} />
+    <Route path={`${PREFIX}/metadata`} element={<Metadata />} />
 
     <Route path={`${PREFIX}/lineage`} element={<Lineage />} />
   </>
