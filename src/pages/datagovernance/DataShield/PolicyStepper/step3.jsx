@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified }) => {
   const { token } = useAuth();
   const fetchedRef = useRef(false);
+  const dropdownRef = useRef(null); // Create a ref for the dropdown container
 
   const [data, setData] = useState([]);
   const [selectedConnections, setSelectedConnections] = useState(initialData.selectedConnections || []);
@@ -27,7 +28,6 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
 
     onDataChange(stepData);
 
-    // Also update the parent policyData immediately
     if (policyData && typeof setIsStep3Modified === 'function') {
       const connections = processConnectionData(
         selectedConnections,
@@ -36,7 +36,6 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
         selectedColumns
       );
 
-      // Update parent component with processed connection data
       if (policyData.onPolicyDataChange) {
         policyData.onPolicyDataChange({
           data_connection: connections
@@ -58,6 +57,25 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
       fetchedRef.current = true;
     }
   }, [token]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null);
+      }
+    };
+
+    if (openDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
+
 
   const fetchData = async () => {
     try {
@@ -131,7 +149,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
       return [...prev, value];
     });
     resetList.forEach(reset => reset([]));
-    setIsStep3Modified(true); // Add this line
+    setIsStep3Modified(true);
   };
 
   const handleSelectAll = (options, setter, resetList = []) => {
@@ -142,7 +160,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
       return [...new Set([...prev, ...options])];
     });
     resetList.forEach(reset => reset([]));
-    setIsStep3Modified(true); // Add this line
+    setIsStep3Modified(true);
   };
 
   const toggleDropdown = (dropdown) => {
@@ -154,7 +172,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
     const someFilteredSelected = options.some(option => selectedValues.includes(option)) && !allFilteredSelected;
 
     return (
-      <div className="relative">
+      <div className="relative" ref={openDropdown === label ? dropdownRef : null}>
         <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
         <div
           className="w-full p-2 border border-gray-300 rounded-md bg-white cursor-pointer h-10 flex items-center overflow-x-auto no-scrollbar"
@@ -190,7 +208,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
                 <input
                   type="checkbox"
                   checked={allFilteredSelected}
-                  indeterminate={someFilteredSelected}
+                  ref={el => el && (el.indeterminate = someFilteredSelected)}
                   onChange={() => handleSelectAll(options, setSelectedValues, resetList)}
                   className="mr-2"
                 />
