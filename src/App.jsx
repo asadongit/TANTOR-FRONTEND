@@ -34,6 +34,7 @@ import {
 } from "./context/AuthContext";
 import TantorLogin from "./pages/login";
 import { BusinessHeader } from "./pages/platform/Federation/BusinessView/BusinessHeader";
+import TransformationCanvas from "./pages/platform/transformation/components/TransformationCanvas";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -96,7 +97,30 @@ function App() {
                 }
               />
 
-              {/* Standalone drag-and-drop routes */}
+              <Route
+                path="/transformation/studio"
+                element={
+                  <TableProvider>
+                    <FlowDataProvider>
+                      <ThemeProvider>
+                        <DrawerProvider>
+                          <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
+                            <Header className="h-16 flex-shrink-0" />
+                            <div className="flex-1 flex">
+                              <div className="flex-1 relative">
+                                <ReactFlowProvider>
+                                  <TransformationCanvas />
+                                </ReactFlowProvider>
+                              </div>
+                            </div>
+                          </div>
+                        </DrawerProvider>
+                      </ThemeProvider>
+                    </FlowDataProvider>
+                  </TableProvider>
+                }
+              />
+
               <Route
                 path="/Metadatacanvas"
                 element={

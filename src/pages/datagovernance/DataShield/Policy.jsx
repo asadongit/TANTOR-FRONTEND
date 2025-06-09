@@ -935,7 +935,7 @@ const Policy = () => {
 
                 <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
-                <Breadcrumb title="Data Governance" link="/" />
+      <Breadcrumb/>
                 <div className="flex items-center justify-between mb-6">
                     <h1 className="text-2xl font-semibold">Policy</h1>
                     <div className="flex items-center gap-2">
