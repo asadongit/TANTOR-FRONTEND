@@ -462,7 +462,10 @@ export default function CDCJobView() {
           updatedJobData.target.tasks = response.data.tasks || [];
         }
 
-        setJobData(updatedJobData);
+        // Only update if the modal is not open or not in editing mode
+        if (!isModalOpen) {
+          setJobData(updatedJobData);
+        }
       }
 
       return response.data;

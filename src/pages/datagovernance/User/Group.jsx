@@ -58,6 +58,9 @@ function Group() {
   const [togglingStatus, setTogglingStatus] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const { token } = useAuth();
+  const [visibleCards, setVisibleCards] = useState(9);
+  const cardsPerPage = 9;
+  const [activeMenu, setActiveMenu] = useState(null);
 
   const initialFetchDoneRef = useRef(false);
 
@@ -65,13 +68,22 @@ function Group() {
     item.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Add filtering for table data
   const filteredTableData = tableData.filter(group =>
     group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     group.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const [activeMenu, setActiveMenu] = useState(null);
+  useEffect(() => {
+    setVisibleCards(cardsPerPage);
+  }, [searchTerm]);
+
+  const handleViewMore = () => {
+    setVisibleCards(prev => prev + cardsPerPage);
+  };
+
+  const displayedGroups = filteredGroups.slice(0, visibleCards);
+  const hasMoreCards = visibleCards < filteredGroups.length;
+
   const handleClickOutside = () => {
     setActiveMenu(null);
   };
@@ -259,13 +271,13 @@ function Group() {
   const refreshAllData = async () => {
     setRefreshing(true);
     setSearchTerm("");
+    setVisibleCards(cardsPerPage);
     try {
       const [dashboardResult, listResult] = await Promise.all([
         FetchRoleDashboardData(),
         fetchGroupList()
       ]);
 
-      // Check if both operations succeeded
       if (dashboardResult.success && listResult.success) {
         setToast({
           show: true,
@@ -273,7 +285,6 @@ function Group() {
           type: 'success'
         });
       } else {
-        // Show error if any operation failed
         const errorMessages = [];
         if (!dashboardResult.success) errorMessages.push('dashboard data');
         if (!listResult.success) errorMessages.push('list data');
@@ -294,14 +305,12 @@ function Group() {
     } finally {
       setRefreshing(false);
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
     }
   };
 
-  // Update these calculations to use filteredTableData instead of tableData
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentRows = filteredTableData.slice(indexOfFirstRow, indexOfLastRow);
@@ -332,7 +341,6 @@ function Group() {
         });
         setShowModal(false);
 
-        // Auto-hide toast after 3 seconds
         setTimeout(() => {
           setToast({ show: false, message: '', type: '' });
         }, 3000);
@@ -344,16 +352,13 @@ function Group() {
           type: 'error'
         });
 
-        // Auto-hide toast after 3 seconds
         setTimeout(() => {
           setToast({ show: false, message: '', type: '' });
         }, 3000);
       }
     }
-    // Remove the else block that shows error toast since errors are handled in the modal
   };
 
-  // Add handler for edit save to show toast notifications
   const handleEditSave = async () => {
     try {
       await refreshAllData();
@@ -364,7 +369,6 @@ function Group() {
       });
       setShowEditModal(false);
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
@@ -376,7 +380,6 @@ function Group() {
         type: 'error'
       });
 
-      // Auto-hide toast after 3 seconds
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
@@ -388,7 +391,6 @@ function Group() {
       <style>{rotateAnimation}</style>
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
-      {/* Toast notification */}
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
           toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
@@ -476,60 +478,71 @@ function Group() {
           {viewMode === 'cards' && (
             <>
               {filteredGroups.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredGroups.map((group, index) => (
-                    <div
-                      key={index}
-                      className="bg-white rounded-lg shadow-sm border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1"
-                    >
-                      <div className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${group.bgcolor} rounded-full ${group.iconcolor} mr-2`}
-                            >
-                              <Icon icon={group.icon} />
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {displayedGroups.map((group, index) => (
+                      <div
+                        key={index}
+                        className="bg-white rounded-lg shadow-sm border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1"
+                      >
+                        <div className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${group.bgcolor} rounded-full ${group.iconcolor} mr-2`}
+                              >
+                                <Icon icon={group.icon} />
+                              </div>
+                              <h3 className="text-lg font-semibold">{group.title}</h3>
                             </div>
-                            <h3 className="text-lg font-semibold">{group.title}</h3>
                           </div>
-                          {/* <button className="p-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                            <MoreVertical className="h-4 w-4" />
-                          </button> */}
-                        </div>
-                        <p className="text-gray-500 mt-4 text-sm">{group.description}</p>
-                        <div className="flex items-center justify-between mt-6">
-                          <div className="flex items-center gap-2">
-                            <Icon
-                              icon="material-symbols:supervisor-account-outline"
-                              width="24"
-                              height="24"
-                            />
-                            <span className="text-sm">
-                              {group.users.toString().padStart(2, "0")}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {togglingStatus === index ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
-                            ) : (
-                              <Toggle
-                                enabled={group.enabled}
-                                onToggle={() => toggleRole(index)}
+                          <p className="text-gray-500 mt-4 text-sm">{group.description}</p>
+                          <div className="flex items-center justify-between mt-6">
+                            <div className="flex items-center gap-2">
+                              <Icon
+                                icon="material-symbols:supervisor-account-outline"
+                                width="24"
+                                height="24"
                               />
-                            )}
-                            <span
-                              className={`text-sm ${
-                                group.enabled ? "text-[#1a9962]" : "text-gray-400"
-                              }`}
-                            >
-                              {group.enabled ? "Enabled" : "Disabled"}
-                            </span>
+                              <span className="text-sm">
+                                {group.users.toString().padStart(2, "0")}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {togglingStatus === index ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
+                              ) : (
+                                <Toggle
+                                  enabled={group.enabled}
+                                  onToggle={() => toggleRole(index)}
+                                />
+                              )}
+                              <span
+                                className={`text-sm ${
+                                  group.enabled ? "text-[#1a9962]" : "text-gray-400"
+                                }`}
+                              >
+                                {group.enabled ? "Enabled" : "Disabled"}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+
+                  {hasMoreCards && (
+                    <div className="flex justify-center mt-4 mb-6">
+                      <button
+                        onClick={handleViewMore}
+                        className="flex items-center gap-2 px-6 py-2 bg-white border border-[#8e78b7] text-[#8e78b7] rounded-lg hover:bg-[#8e78b7] hover:text-white transition-all duration-200"
+                      >
+                        View More
+                        <Icon icon="material-symbols:keyboard-arrow-down" width="20" height="20" />
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300">
                   <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />

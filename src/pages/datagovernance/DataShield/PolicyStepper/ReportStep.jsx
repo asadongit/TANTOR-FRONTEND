@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Grid } from '@mui/material';
 import { FileText, ChevronDown, Info, Loader, ArrowRight, X, Search, Check } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 
-const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
+const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActiveStep, setStepReportData }) => {
     const { token } = useAuth();
+
+    // Refs for each dropdown to detect outside clicks
+    const reportGroupsRef = useRef(null);
+    const reportTypesRef = useRef(null);
+    const reportNamesRef = useRef(null);
 
     const [reportGroups, setReportGroups] = useState([]);
     const [reportTypes, setReportTypes] = useState([]);
@@ -14,6 +19,23 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
     const [selectedReportGroups, setSelectedReportGroups] = useState([]);
     const [selectedReportTypes, setSelectedReportTypes] = useState([]);
     const [selectedReportNames, setSelectedReportNames] = useState([]);
+    const [reportEdit, setReportEdit] = useState(false);
+
+    const isInitialRender = useRef(true);
+    const initialGroupsRef = useRef([]);
+    const initialTypesRef = useRef([]);
+
+    useEffect(() => {
+        if (initialData) {
+            setSelectedArtefactType(initialData.artefact_type || 'Reports');
+            setSelectedReportGroups(initialData.report_group || []);
+            setSelectedReportTypes(initialData.report_type || []);
+            setSelectedReportNames(initialData.report_name || []);
+            initialGroupsRef.current = initialData.report_group || [];
+            initialTypesRef.current = initialData.report_type || [];
+            isInitialRender.current = true;
+        }
+    }, [initialData]);
 
     const [loading, setLoading] = useState({
         reportGroups: true,
@@ -37,6 +59,29 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
         reportTypes: '',
         reportNames: ''
     });
+
+    // Effect to handle clicks outside of the dropdowns
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                reportGroupsRef.current && !reportGroupsRef.current.contains(event.target) &&
+                reportTypesRef.current && !reportTypesRef.current.contains(event.target) &&
+                reportNamesRef.current && !reportNamesRef.current.contains(event.target)
+            ) {
+                setDropdownOpen({
+                    reportGroups: false,
+                    reportTypes: false,
+                    reportNames: false
+                });
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
 
     useEffect(() => {
         const fetchReportGroups = async () => {
@@ -108,6 +153,7 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
         fetchReportTypes();
     }, [token]);
 
+
     useEffect(() => {
         const fetchReportNames = async () => {
             if (!token) {
@@ -119,10 +165,10 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
             }
 
             setLoading(prev => ({ ...prev, reportNames: true }));
-            setError(prev => ({ ...prev, reportNames: null })); 
+            setError(prev => ({ ...prev, reportNames: null }));
 
             const requestBody = {
-                artefact_type: ["REPORT"] 
+                artefact_type: ["REPORT"]
             };
 
             if (selectedReportGroups.length > 0) {
@@ -134,12 +180,12 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
             }
 
             try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-names`, { 
+                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-names`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
-                        'accept': 'application/json' 
+                        'accept': 'application/json'
                     },
                     body: JSON.stringify(requestBody)
                 });
@@ -155,44 +201,61 @@ const ReportStep = ({ policyData, onDataChange, setActiveStep }) => {
             } catch (err) {
                 console.error('Error fetching report names:', err);
                 setError(prev => ({ ...prev, reportNames: err.message }));
-                setReportNames([]); 
+                setReportNames([]);
             } finally {
                 setLoading(prev => ({ ...prev, reportNames: false }));
             }
         };
 
-        setSelectedReportNames([]);
-        fetchReportNames();
-    }, [selectedReportGroups, selectedReportTypes, token]); 
+        const groupsChanged = JSON.stringify(selectedReportGroups) !== JSON.stringify(initialGroupsRef.current);
+        const typesChanged = JSON.stringify(selectedReportTypes) !== JSON.stringify(initialTypesRef.current);
 
-useEffect(() => {
-    const reportsData = {
-        artefact_type: selectedArtefactType,
-        ...(selectedReportGroups.length > 0 && { report_group: selectedReportGroups }),
-        ...(selectedReportTypes.length > 0 && { report_type: selectedReportTypes }),
-        report_name: selectedReportNames
-    };
-    
-    onDataChange({
-        reports: reportsData
-    });
-}, [selectedArtefactType, selectedReportGroups, selectedReportTypes, selectedReportNames]);
+        if (!isInitialRender.current && (groupsChanged || typesChanged)) {
+            setSelectedReportNames([]);
+        }
+
+        fetchReportNames();
+        isInitialRender.current = false;
+    }, [selectedReportGroups, selectedReportTypes, token]);
+
+    useEffect(() => {
+        const reportsData = {
+            artefact_type: selectedArtefactType,
+            ...(selectedReportGroups.length > 0 && { report_group: selectedReportGroups }),
+            ...(selectedReportTypes.length > 0 && { report_type: selectedReportTypes }),
+            report_name: selectedReportNames
+        };
+
+        onDataChange({
+            reports: reportsData
+        });
+    }, [selectedArtefactType, selectedReportGroups, selectedReportTypes, selectedReportNames]);
 
     const handleNext = () => {
+
+        const reportsData = {
+            artefact_type: selectedArtefactType,
+            report_group: selectedReportGroups,
+            report_type: selectedReportTypes,
+            report_name: selectedReportNames,
+        };
+
+        onDataChange({ reports: reportsData });
+        setStepReportData(reportsData);
         setActiveStep(7);
     };
 
     const handleSkip = () => {
-    onDataChange({
-        reports: {
-            artefact_type: "",
+        const emptyReportsData = {
+            artefact_type: '',
             report_group: [],
             report_type: [],
-            report_name: []
-        }
-    });
-    setActiveStep(7);
-};
+            report_name: [],
+        };
+        onDataChange({ reports: emptyReportsData });
+        setStepReportData(emptyReportsData);
+        setActiveStep(7);
+    };
 
     const handleBack = () => {
         setActiveStep(5);
@@ -200,7 +263,7 @@ useEffect(() => {
 
     const toggleDropdown = (dropdown) => {
         setDropdownOpen(prev => ({
-            ...Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: false }), {}), 
+            ...Object.keys(prev).reduce((acc, key) => ({ ...acc, [key]: false }), {}),
             [dropdown]: !prev[dropdown]
         }));
     };
@@ -230,7 +293,7 @@ useEffect(() => {
     };
 
     const handleSelectAll = (items, selectedItems, setSelectedItems) => {
-        const relevantItemValues = items.map(item => typeof item === 'object' ? item.id : item); 
+        const relevantItemValues = items.map(item => typeof item === 'object' ? item.id : item);
         if (selectedItems.length === relevantItemValues.length && relevantItemValues.length > 0) {
             setSelectedItems([]);
         } else {
@@ -240,14 +303,16 @@ useEffect(() => {
 
     const isFormValid = selectedArtefactType && selectedReportNames.length > 0;
 
-    const renderMultiSelectDropdown = (label, allItems, selectedItems, onToggleIndividual, loadingState, errorState, dropdownKey, setSelectedItemsCallback) => {
+    // Modified to accept a ref
+    const renderMultiSelectDropdown = (label, allItems, selectedItems, onToggleIndividual, loadingState, errorState, dropdownKey, setSelectedItemsCallback, ref) => {
         const currentSearchTerm = searchTerm[dropdownKey];
         const filteredItems = allItems.filter(item =>
             item.toLowerCase().includes(currentSearchTerm.toLowerCase())
         );
 
         return (
-            <div className="mb-6">
+            // Attach the ref here
+            <div className="mb-6" ref={ref}>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                     {label}
                     {dropdownKey === "reportGroups" && " (Optional)"}
@@ -294,7 +359,7 @@ useEffect(() => {
                                         />
                                     </div>
                                 </div>
-                                <div className="overflow-auto max-h-[calc(15rem-4rem)]">
+                                <div className="overflow-auto max-h-[calc(15rem-5rem)]">
                                     <div
                                         className="flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 sticky top-0 bg-white z-10"
                                         onClick={() => handleSelectAll(filteredItems, selectedItems, setSelectedItemsCallback)}
@@ -329,6 +394,7 @@ useEffect(() => {
         );
     };
 
+
     return (
         <Box>
             <div className="flex items-center justify-between mb-4">
@@ -360,7 +426,8 @@ useEffect(() => {
                         loading.reportTypes,
                         error.reportTypes,
                         "reportTypes",
-                        setSelectedReportTypes
+                        setSelectedReportTypes,
+                        reportTypesRef // Pass the ref
                     )}
                 </Grid>
 
@@ -373,7 +440,8 @@ useEffect(() => {
                         loading.reportGroups,
                         error.reportGroups,
                         "reportGroups",
-                        setSelectedReportGroups
+                        setSelectedReportGroups,
+                        reportGroupsRef // Pass the ref
                     )}
 
                     {renderMultiSelectDropdown(
@@ -384,7 +452,8 @@ useEffect(() => {
                         loading.reportNames,
                         error.reportNames,
                         "reportNames",
-                        setSelectedReportNames
+                        setSelectedReportNames,
+                        reportNamesRef // Pass the ref
                     )}
                 </Grid>
             </Grid>
