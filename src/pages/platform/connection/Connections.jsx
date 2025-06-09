@@ -12,7 +12,7 @@ import { useConnectionCardData } from "../../../hooks/platform/cardCounts";
 import { useConnectionData } from "../../../hooks/platform/connection";
 import DataTable from "../../../components/DataTable";
 import CardGrid from "../../../components/CardGrid";
-import toast  from "react-hot-toast";
+import toast from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 import columnConfigurations from "../../../components/columnsConfig";
 import ViewConnection from "./components/viewConnection";
@@ -20,37 +20,36 @@ import ConnectionWizard from "./components/ConnectionWizard";
 import Modal from "../cdc/components/Modal";
 import axios from "axios";
 import { useModal } from "../cdc/context/ModalProvider";
-const Connections = () => {
 
-const {token, project, setSelectedProject, hostnameV1 }= useAuth();
-  const {openModal, closeModal}= useModal()
+const Connections = () => {
+  const { token, project, setSelectedProject, hostnameV1,hostnameV2 } = useAuth();
+  const { openModal, closeModal } = useModal()
   const {
     data: cardData,
     isLoading: isCardLoading,
     error: cardError,
-    refetch: refetchCardData, 
+    refetch: refetchCardData,
   } = useConnectionCardData();
   const {
     data: connections = [],
     isLoading: isConnectionsLoading,
     error: connectionsError,
-    refetch: refetchConnections, 
+    refetch: refetchConnections,
   } = useConnectionData();
-  // const [editConnectionData, setEditConnectionData]= useState(null)
   const [viewConnectionData, setViewConnectionData] = useState(null);
   const [connectionDetails, setConnectionDetails] = useState(null);
-  const [activeModal, setActiveModal] = useState(null); 
+  const [connectionViews, setConnectionViews] = useState([]);
+  const [activeModal, setActiveModal] = useState(null);
   const navigate = useNavigate();
 
   const openLocalModal = (modalName, data = null) => {
     setActiveModal({ name: modalName, data });
   };
-  
+
   const closeLocalModal = () => {
-    closeModal()   
+    closeModal()
     setActiveModal(null);
   };
-
 
   const cards = useMemo(() => {
     return [
@@ -92,9 +91,7 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
     ];
   }, [cardData]);
 
-
   const columns = columnConfigurations['connections']
-
 
   const handleRefresh = (id) => {
     fetch(`${hostnameV1}/refresh/${id}`, {
@@ -118,61 +115,104 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
       });
   };
 
+  const fetchViewConnections = useCallback(async (connection) => {
+    setConnectionDetails(connection)
+    setViewConnectionData(null)
+    openLocalModal('view')
+    fetch(
+      `${hostnameV1}/connection-master-metadata/find-by-conn-name-type?conn_name=${connection.connection_name}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        const sortedData = data.sort((a, b) => a.table_name.localeCompare(b.table_name));
+        setViewConnectionData(sortedData);
+      })
+      .catch((error) => {
+        console.error("Error fetching table data:", error);
+      });
+  }, []);
 
-
-      const fetchViewConnections = useCallback(async (connection) => {
-        setConnectionDetails(connection)
-        setViewConnectionData(null)
-        openLocalModal('view')
-        fetch(
-          `${hostnameV1}/connection-master-metadata/find-by-conn-name-type?conn_name=${connection.connection_name}`, {
+  const actions = [
+  {
+    label: "View",
+    icon: <Eye size={16} />,
+    onClick: (row) => fetchViewConnections(row),
+  },
+  {
+    label: "Edit",
+    icon: <Pencil size={16} />,
+    onClick: (row) => openLocalModal('editCreate', row),
+  },
+  {
+    label: "Delete",
+    icon: <Trash2 size={16} />,
+    onClick: async (row) => {
+      try {
+        const response = await fetch(`${hostnameV2}/connection-views/${row.connection_name}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            const sortedData = data.sort((a, b) => a.table_name.localeCompare(b.table_name));
-    
-            setViewConnectionData(sortedData);
-          })
-          .catch((error) => {
-            console.error("Error fetching table data:", error);
-          });
-        }, []);
+        });
 
+        if (response.ok) {
+          const views = await response.json();
+          setConnectionViews(views);
 
-    const actions = [
-      {
-        label: "View",
-        icon: <Eye size={16} />,
-        onClick: (row) => fetchViewConnections(row),
-      },
-      {
-        label: "Edit",
-        icon: <Pencil size={16} />,
-        onClick: (row) => openLocalModal('editCreate', row),
-      },
-      {
-        label: "Delete",
-        icon: <Trash2 size={16} />,
-        onClick: (row) =>  openModal({
+          if (views.length > 0) {
+            openModal({
+              title: "Confirm Deletion",
+              message: (
+                <div>
+                  <p>All views associated with this connection will be deleted</p>
+                  <ul className="list-disc pl-5 mt-2">
+                    {views.map((view, index) => (
+                      <li key={index}>{view}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-4">Are you sure you want to delete this connection?</p>
+                </div>
+              ),
+              type: "question",
+              onConfirm: () => deleteConnection(row.connection_id),
+              loadingText: "Deleting....."
+            });
+          } else {
+            // Show simple confirmation if no views exist
+            openModal({
+              title: "Confirm Deletion",
+              message: `Are you sure you want to delete connection ${row.connection_name}?`,
+              type: "question",
+              onConfirm: () => deleteConnection(row.connection_id),
+              loadingText: "Deleting....."
+            });
+          }
+        } else {
+          throw new Error('Failed to fetch views');
+        }
+      } catch (error) {
+        console.error("Error fetching views:", error);
+        openModal({
           title: "Confirm Deletion",
-          message: `Are you sure you want to delete this connection ${row.connection_name}?`,
+          message: `Are you sure you want to delete connection ${row.connection_name}?`,
           type: "question",
           onConfirm: () => deleteConnection(row.connection_id),
-           loadingText : "Deleting....."
-        }),
-      },
-      {
-        label: "Run",
-        icon: <RotateCw size={16}  />,
-        onClick: (row) => handleRefresh(row.connection_id),
-      },
-    ];
+          loadingText: "Deleting....."
+        });
+      }
+    },
+  },
+  {
+    label: "Run",
+    icon: <RotateCw size={16} />,
+    onClick: (row) => handleRefresh(row.connection_id),
+  },
+];
 
-    
   const handleCardClick = (card) => {
     const url = `/componentType=connections&dataScope=${card.title
       .replace(/\s+/g, "")
@@ -195,15 +235,15 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
       if (!projectsResponse.ok) {
         throw new Error('Failed to fetch projects');
       }
-     const projectsList = await projectsResponse.json();
+      const projectsList = await projectsResponse.json();
       setProjects(projectsList);
     } catch (error) {
       console.error("Error fetching options:", error)
     }
   }, [])
 
-  useEffect(() => { 
-    fetchProjects() 
+  useEffect(() => {
+    fetchProjects()
   }, [fetchProjects])
 
   const filteredConnections = useMemo(() => {
@@ -212,9 +252,6 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
     }
     return connections.filter((conn) => conn.project === project)
   }, [connections, project])
-
-
-
 
   const deleteConnection = async (id) => {
     try {
@@ -226,8 +263,7 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
       });
 
       if (response.status === 200) {
-        // toast.success("Connection deleted successfully");
-        refetchConnections(); 
+        refetchConnections();
       } else {
         toast.error("Failed to delete connection");
       }
@@ -235,16 +271,17 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
       console.error("Error deleting connection:", error);
       toast.error("Error deleting connection");
     }
-    finally{
+    finally {
       openModal({
         title: "Success",
         message: `Your connection has been deleted successfully!`,
         type: "success",
-        onConfirm: ()=> closeLocalModal,
-        loadingText:'Deleting'
+        onConfirm: () => closeLocalModal,
+        loadingText: 'Deleting'
       })
     }
   };
+
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -259,7 +296,7 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
             className=" w-44 text-slate-500 font-medium rounded-lg text-sm px-1 py-2.5 me-2 mb-2 text-center inline-flex items-center dark:bg-white shadow-md"
           >
             <option value="default">Default{" "}</option>
-             {projects?.map((project, idx) => (
+            {projects?.map((project, idx) => (
               <option key={idx} value={project?.project}
               >
                 {project?.project}
@@ -271,7 +308,7 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
           </div>
 
           <button
-            onClick={() =>{
+            onClick={() => {
               openLocalModal("editCreate", null)
             }}
             type="button"
@@ -282,28 +319,26 @@ const {token, project, setSelectedProject, hostnameV1 }= useAuth();
         </div>
       </div>
 
-<CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading} />
 
-<DataTable columns={columns} data={connections} actions={actions} isLoading={isConnectionsLoading} isError={connectionsError} refetch={refetchConnections}/>
- 
-{activeModal?.name === 'editCreate' && (
-  <ConnectionWizard 
-    editConnectionData={activeModal.data} 
-    closeLocalModal={closeLocalModal} 
-  />
-)}
+      <DataTable columns={columns} data={connections} actions={actions} isLoading={isConnectionsLoading} isError={connectionsError} refetch={refetchConnections} />
 
-{/* tbd */}
-{activeModal?.name === 'view' && (
-  <ViewConnection 
-    viewConnectionData={viewConnectionData} 
-    setViewConnectionData={setViewConnectionData} 
-    connectionDetails={connectionDetails} 
-    closeModal={closeLocalModal} 
-  />
-)}
+      {activeModal?.name === 'editCreate' && (
+        <ConnectionWizard
+          editConnectionData={activeModal.data}
+          closeLocalModal={closeLocalModal}
+        />
+      )}
 
-</div>
+      {activeModal?.name === 'view' && (
+        <ViewConnection
+          viewConnectionData={viewConnectionData}
+          setViewConnectionData={setViewConnectionData}
+          connectionDetails={connectionDetails}
+          closeModal={closeLocalModal}
+        />
+      )}
+    </div>
   );
 };
 
