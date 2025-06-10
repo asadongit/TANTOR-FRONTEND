@@ -8,7 +8,6 @@ export const generateSQLQuery = ({
   ruleData
 }) => {
   try {
-
     if (!tableName || !selectedColumns || selectedColumns.length === 0) {
       return '';
     }
@@ -61,7 +60,8 @@ export const generateSQLQuery = ({
 
     // Add GROUP BY if any aggregates are used
     const groupByColumns = selectedColumns
-      .filter(col => col.groupBy || (col.aggregate && col.aggregate !== 'NONE'))
+      // .filter(col => col.groupBy || (col.aggregate && col.aggregate !== 'NONE'))
+      .filter(col => col.groupBy)
       .map(col => col.name);
     
     if (groupByColumns.length > 0) {

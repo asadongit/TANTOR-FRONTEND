@@ -1,14 +1,15 @@
+// STATE 1
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
 import { X, Trash, Plus } from "lucide-react";
 import { useStateContext } from "../../Federation/context/contextViewProvider";
 
-const DimensionFilter = ({ onClose, onApply }) => {
+const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
   const { token, hostnameV1 } = useAuth();
   const dropdownRef = useRef(null);
-  
-  const {finalPayload} = useStateContext();
+
+  const { finalPayload, handleFinalPayload } = useStateContext();
 
   // Component state
   const [availableDimensions, setAvailableDimensions] = useState([]);
@@ -16,100 +17,75 @@ const DimensionFilter = ({ onClose, onApply }) => {
   const [isLoadingDimensions, setIsLoadingDimensions] = useState(false);
   const [isLoadingValues, setIsLoadingValues] = useState(false);
   const [openValueDropdown, setOpenValueDropdown] = useState(null);
-  
+
   // Filters state
-  const [filters, setFilters] = useState([{
-    dimension: { id: "", name: "" }, 
-    operator: "", 
-    value: [] 
-  }]);
+  const [filters, setFilters] = useState([
+    {
+      dimension: { id: "", name: "" },
+      operator: "",
+      value: [],
+    },
+  ]);
+
+  useEffect(() => {console.log(dimensionValues)}, [dimensionValues]);
 
   useEffect(() => {
     const cachedFilters = finalPayload?.dimensionFilters;
-    if(cachedFilters)
-      setFilters(cachedFilters);
-    
-    console.log("CACHED FILTERS ", cachedFilters);
-  }, [])
-  // Set dummy dimensions on mount with string IDs
-  useEffect(() => {
-    const dummyDimensions = [
-      {name: "dim1", id: "1"},
-      {name: "dim2", id: "2"},
-      {name: "dim3", id: "3"},
-      {name: "dim4", id: "4"}
-    ];
-    
-    setAvailableDimensions(dummyDimensions);
-    setIsLoadingDimensions(false);
+    if (cachedFilters && cachedFilters.length > 0) setFilters(cachedFilters);
+    else
+      setFilters([
+        {
+          dimension: { id: "", name: "" },
+          operator: "",
+          value: [],
+        },
+      ]);
   }, []);
 
-  // Fetch dimension values when dimension name changes
-  const fetchValues = async (dimensionId) => {
-    if (!dimensionId) return;
+  useEffect(() => {
+    setIsLoadingDimensions(true);
+    (async () => {
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(
+        `${hostnameV1}/selectDimension?fact_id=${factId}`,
+        { headers }
+      );
+      const data = await response.json();
+
+      const formattedData = data.map((item) => ({
+        id: item.fact_dimension_link_id,
+        name: item.fct_column_name,
+      }));
+
+      setAvailableDimensions(formattedData || []);
+      setIsLoadingDimensions(false);
+    })();
+  }, []);
+
+  const fetchValues = async (dimensionId, dimensionName) => {
+    
+    if (!dimensionId || !dimensionName) return;
     
     setIsLoadingValues(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Return dummy values with string IDs
-    const dummyValues = {
-      "1": [  // Category
-        {id: "101", name: "Electronics"},
-        {id: "102", name: "Clothing"},
-        {id: "103", name: "Home & Kitchen"},
-        {id: "104", name: "Books"},
-        {id: "105", name: "Sports"},
-        {id: "106", name: "Beauty"},
-        {id: "107", name: "Toys"},
-        {id: "108", name: "Furniture"}
-      ],
-      "2": [  // Region
-        {id: "201", name: "North America"},
-        {id: "202", name: "Europe"},
-        {id: "203", name: "Asia"},
-        {id: "204", name: "South America"},
-        {id: "205", name: "Africa"},
-        {id: "206", name: "Oceania"},
-        {id: "207", name: "Middle East"}
-      ],
-      "3": [  // Product
-        {id: "301", name: "Laptop"},
-        {id: "302", name: "Smartphone"},
-        {id: "303", name: "Tablet"},
-        {id: "304", name: "Headphones"},
-        {id: "305", name: "Camera"},
-        {id: "306", name: "Smartwatch"},
-        {id: "307", name: "Printer"}
-      ],
-      "4": [  // Department
-        {id: "401", name: "Sales"},
-        {id: "402", name: "Marketing"},
-        {id: "403", name: "Finance"},
-        {id: "404", name: "HR"},
-        {id: "405", name: "IT"},
-        {id: "406", name: "Operations"}
-      ],
-      "5": [  // Customer Type
-        {id: "501", name: "New Customer"},
-        {id: "502", name: "Returning Customer"},
-        {id: "503", name: "VIP Customer"},
-        {id: "504", name: "Corporate Account"}
-      ],
-      "6": [  // Sales Channel
-        {id: "601", name: "Online"},
-        {id: "602", name: "Retail Store"},
-        {id: "603", name: "Wholesale"},
-        {id: "604", name: "Mobile App"}
-      ]
+
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     };
-    
-    setDimensionValues(prev => ({ 
-      ...prev, 
-      [dimensionId]: dummyValues[dimensionId] || [] 
+    const response = await fetch(
+      `${hostnameV1}/selectDimensionValue?fact_id=${factId}&fct_column_name=${dimensionName}`,
+      { headers }
+    );
+    const data = await response.json();
+    setDimensionValues((prev) => ({
+      ...prev,
+      [dimensionId]: data || [],
     }));
-    
+
     setIsLoadingValues(false);
   };
 
@@ -120,58 +96,53 @@ const DimensionFilter = ({ onClose, onApply }) => {
         setOpenValueDropdown(null);
       }
     }
-    
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-  // Handle dimension selection
   const handleDimensionChange = (index, e) => {
     const selectedOption = e.target.options[e.target.selectedIndex];
     const name = selectedOption.getAttribute("data-name");
     const id = e.target.value;
 
-    setFilters(prev => 
-      prev.map((filter, i) => 
+    setFilters((prev) =>
+      prev.map((filter, i) =>
         i === index
-          ? { 
-              ...filter, 
-              dimension: { id, name }, 
-              operator: "", 
-              value: [] 
+          ? {
+              ...filter,
+              dimension: { id, name },
+              operator: "",
+              value: [],
             }
           : filter
       )
     );
-    
+
     // Fetch dummy values
-    if (id) {
-      fetchValues(id);
+    if (id && name) {
+      fetchValues(id, name);
     }
   };
 
-  // Handle operator selection
   const handleOperatorChange = (index, e) => {
-    setFilters(prev => 
-      prev.map((filter, i) => 
-        i === index
-          ? { ...filter, operator: e.target.value }
-          : filter
+    setFilters((prev) =>
+      prev.map((filter, i) =>
+        i === index ? { ...filter, operator: e.target.value } : filter
       )
     );
   };
 
-  // Handle value selection
   const handleValueChange = (index, dimValue, isChecked) => {
-    setFilters(prev => 
+    setFilters((prev) =>
       prev.map((filter, i) => {
         if (i !== index) return filter;
-        
+
         const currentValues = filter.value || [];
         let newValues;
-        
+
         if (isChecked) {
           newValues = [
             ...currentValues,
@@ -181,56 +152,75 @@ const DimensionFilter = ({ onClose, onApply }) => {
             },
           ];
         } else {
-          newValues = currentValues.filter(v => v.id !== dimValue.id);
+          newValues = currentValues.filter((v) => v.id !== dimValue.id);
         }
-        
+
         return { ...filter, value: newValues };
       })
     );
   };
 
-  // Add a new filter row
   const addFilter = () => {
-    setFilters(prev => [
+    setFilters((prev) => [
       ...prev,
-      { 
-        dimension: { id: "", name: "" }, 
-        operator: "", 
-        value: [] 
-      }
+      {
+        dimension: { id: "", name: "" },
+        operator: "",
+        value: [],
+      },
     ]);
   };
 
-  // Remove a filter row
   const removeFilter = (index) => {
     if (filters.length <= 1) return;
-    setFilters(prev => prev.filter((_, i) => i !== index));
-    
+    setFilters((prev) => prev.filter((_, i) => i !== index));
+
     // Close dropdown if it was for the removed filter
     if (openValueDropdown === index) {
       setOpenValueDropdown(null);
     }
   };
 
-  // Apply filters
-  const handleApply = () => {
-    const validFilters = filters.filter(
-      filter => filter.dimension.id && filter.operator && filter.value.length > 0
-    );
-    
-    onApply(validFilters);
-    // onClose();
+  const getFilterQuery = (validFilters) => {
+    if (!validFilters || validFilters.length === 0) return "";
+
+    return validFilters
+      .map((filter) => {
+        const values = filter.value.map((v) => v.name).join(", ");
+        return `${filter.dimension.name} ${filter.operator} [${values}]`;
+      })
+      .join(" , ");
   };
 
-  // Clear all filters
+  const handleApply = () => {
+    const validFilters = filters.filter(
+      (filter) =>
+        filter.dimension.id && filter.operator && filter.value.length > 0
+    );
+
+    handleFinalPayload((prev) => ({ ...prev, dimensionFilters: validFilters }));
+    updateNodeData({dimensionQuery: getFilterQuery(validFilters)});
+    onApply();
+  };
+
+  const handleSkip = () => {
+    clearAll();
+    onApply();
+  };
+
   const clearAll = () => {
-    setFilters([{ 
-      dimension: { id: "", name: "" }, 
-      operator: "", 
-      value: [] 
-    }]);
+    const updatedFilters = [
+      {
+        dimension: { id: "", name: "" },
+        operator: "",
+        value: [],
+      },
+    ];
+    
+    handleFinalPayload((prev) => ({ ...prev, dimensionFilters: [] }));
+    setFilters([...updatedFilters]);
+    updateNodeData({dimensionQuery: ""});
     setOpenValueDropdown(null);
-    onApply(null);
   };
 
   return (
@@ -240,7 +230,9 @@ const DimensionFilter = ({ onClose, onApply }) => {
         <div className="p-4 pl-6 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
           <h2 className="text-xl font-semibold">Dimension Filters</h2>
           <button
-            onClick={onClose}
+            onClick={() => {
+              setIsOpen(false);
+            }}
             className="p-1"
           >
             <X className="h-5 w-5" />
@@ -255,9 +247,12 @@ const DimensionFilter = ({ onClose, onApply }) => {
               const displayText = filter.value?.length
                 ? `${filter.value.length} selected`
                 : "Select values";
-              
+
               return (
-                <div key={index} className="flex items-center gap-5 mb-3 w-full">
+                <div
+                  key={index}
+                  className="flex items-center gap-5 mb-3 w-full"
+                >
                   {/* Dimension Selector - Wider (30%) */}
                   <div className="flex-[3] min-w-[200px] relative">
                     <select
@@ -279,7 +274,9 @@ const DimensionFilter = ({ onClose, onApply }) => {
                     </select>
                     {isLoadingDimensions && (
                       <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <span className="text-gray-500 text-sm">Loading...</span>
+                        <span className="text-gray-500 text-sm">
+                          Loading...
+                        </span>
                       </div>
                     )}
                   </div>
@@ -298,16 +295,24 @@ const DimensionFilter = ({ onClose, onApply }) => {
                     </select>
                   </div>
 
-                  {/* Value Selector - Wider (50%) */}
-                  <div className="flex-[5] min-w-[300px] relative" ref={dropdownRef}>
+                  {/* Value Selector */}
+                  <div
+                    className="flex-[5] min-w-[300px] relative"
+                    ref={dropdownRef}
+                  >
                     <button
                       type="button"
                       className={`h-14 flex justify-between items-center w-full px-4 text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        !filter.operator ? "bg-gray-100 text-gray-400" : "bg-white"
+                        !filter.operator
+                          ? "bg-gray-100 text-gray-400"
+                          : "bg-white"
                       }`}
-                      onClick={() => filter.operator && setOpenValueDropdown(
-                        openValueDropdown === index ? null : index
-                      )}
+                      onClick={() =>
+                        filter.operator &&
+                        setOpenValueDropdown(
+                          openValueDropdown === index ? null : index
+                        )
+                      }
                       disabled={!filter.operator}
                     >
                       <span className="truncate">{displayText}</span>
@@ -320,12 +325,14 @@ const DimensionFilter = ({ onClose, onApply }) => {
                       <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80">
                         <div className="p-3 text-base max-h-[320px] overflow-y-auto">
                           {isLoadingValues ? (
-                            <div className="p-2 text-gray-500 text-center">Loading values...</div>
+                            <div className="p-2 text-gray-500 text-center">
+                              Loading values...
+                            </div>
                           ) : currentValues.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
                               {currentValues.map((dimValue) => {
                                 const isChecked = filter.value?.some(
-                                  v => v.id === dimValue.id
+                                  (v) => v.id === dimValue.id
                                 );
                                 return (
                                   <label
@@ -336,19 +343,25 @@ const DimensionFilter = ({ onClose, onApply }) => {
                                       type="checkbox"
                                       className="form-checkbox text-blue-600 h-4 w-4"
                                       checked={isChecked}
-                                      onChange={(e) => handleValueChange(
-                                        index, 
-                                        dimValue, 
-                                        e.target.checked
-                                      )}
+                                      onChange={(e) =>
+                                        handleValueChange(
+                                          index,
+                                          dimValue,
+                                          e.target.checked
+                                        )
+                                      }
                                     />
-                                    <span className="truncate">{dimValue.name}</span>
+                                    <span className="truncate">
+                                      {dimValue.name}
+                                    </span>
                                   </label>
                                 );
                               })}
                             </div>
                           ) : (
-                            <div className="p-2 text-gray-500 text-center">No values available</div>
+                            <div className="p-2 text-gray-500 text-center">
+                              No values available
+                            </div>
                           )}
                         </div>
                       </div>
@@ -366,7 +379,7 @@ const DimensionFilter = ({ onClose, onApply }) => {
                 </div>
               );
             })}
-            
+
             <div className="mt-6">
               <button
                 onClick={addFilter}
@@ -381,12 +394,12 @@ const DimensionFilter = ({ onClose, onApply }) => {
 
         {/* Footer */}
         <div className="p-5 border-t flex justify-end gap-4">
-          {/* <button
-            onClick={() => { onApply(null)}}
+          <button
+            onClick={handleSkip}
             className="px-5 py-2.5 bg-[#8E77BB] text-white rounded hover:bg-opacity-90 text-base font-medium"
           >
             Skip
-          </button> */}
+          </button>
           <button
             onClick={clearAll}
             className="px-5 py-2.5 border border-gray-300 rounded hover:bg-gray-50 text-base text-black font-medium"

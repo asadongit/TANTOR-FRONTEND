@@ -10,8 +10,10 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
   const [column, setColumn] = useState([]);
   const [columnSettings, setColumnSettings] = useState({
+    id: "",
     name: "",
     type: "",
+    dimType: "",
     alias: "",
     output: true,
     order: "",
@@ -19,18 +21,21 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
     aggregate: "",
     groupBy: false,
   });
-
+    
   useEffect(() => {
     if (drawerState.isOpen && drawerState.selectedTable) {
+      console.log("Drawer state ==>> ", drawerState);
       const node = nodes.find(n => n.id === drawerState.nodeId);
       const existingColumns = node?.data?.filterConditions?.columns || [];
       const selectedTable = drawerState.selectedTable;
       const columnList = Array.isArray(selectedTable) ? selectedTable : [selectedTable];
       const mappedColumns = columnList.map(table => {
-        const existing = existingColumns.find(col => col.name === table.matric_name);
+        const existing = existingColumns.find(col => col.name === table.name);
         return {
-          name: existing?.name || table.matric_name,
+          id: existing?.id || table.id,
+          name: existing?.name || table.name,
           type: existing?.type || table.type || "varchar",
+          dimType: existing?.dimType || table.dimType,
           alias: existing?.alias || "",
           output: existing?.output ?? true,
           order: existing?.order || "",
@@ -126,8 +131,10 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
     const currentTable = column[currentColumnIndex];
     if (currentTable) {
       setColumnSettings({
+        id: currentTable.id,
         name: currentTable.name,
         type: currentTable.type,
+        dimType: currentTable.dimType,
         alias: "",
         output: true,
         order: "",
@@ -191,7 +198,7 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
               <label className="block text-sm font-medium text-gray-700">Type</label>
               <input
                 type="text"
-                value={columnSettings.type}
+                value={`${columnSettings.type} (${columnSettings.dimType})`}
                 readOnly
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
@@ -248,11 +255,10 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
               </select>
               </div>
             </div>
-
             {/* Aggregate and Group By */}
             <div className="flex space-x-4">
-              <div className="flex-1 space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Aggregate</label>
+              <div className={`flex-1 space-y-2 ${columnSettings.dimType === "metric" ? "" : "invisible"}`}>
+              <label className="block text-sm font-medium text-gray-700 invisib">Aggregate</label>
               <select
                 value={columnSettings.aggregate}
                 onChange={(e) => setColumnSettings({ ...columnSettings, aggregate: e.target.value })}
@@ -266,7 +272,7 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
                 <option value="MAX">MAX</option>
               </select>
               </div>
-              <div className="flex-1 space-y-2">
+              <div className={`flex-1 space-y-2 ${columnSettings.dimType === "dimension" ? "" : "invisible"}`}>
               <label className="block text-sm font-medium text-gray-700">Group By</label>
               <div className="flex items-center">
                 <input
@@ -275,7 +281,7 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
                   onChange={(e) => setColumnSettings({ ...columnSettings, groupBy: e.target.checked })}
                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <span className="ml-2 text-sm text-gray-700">Group by this table</span>
+                <span className="ml-2 text-sm text-gray-700">Group by</span>
               </div>
               </div>
             </div>

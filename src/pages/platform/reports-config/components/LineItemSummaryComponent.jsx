@@ -13,7 +13,7 @@ const LineItemSummary = () => {
     closeAllModals,
     reportId,
     reportName,
-    setLinkedLineItemIds
+    setLinkedLineItemIds,
   } = useLineItems();
 
   const rules = getRulesForCurrentLineItem();
@@ -43,19 +43,21 @@ const LineItemSummary = () => {
   const getTimeTransformText = (filters) => {
     if (!filters || filters.length === 0) return "";
 
-    const periodFilter = filters.find((f) => f.name === "period_id");
-    if (!periodFilter) return "";
+    const getTextForFilter = (filter) => {
+      switch (filter.type.toLowerCase()) {
+        case "asondate":
+          return "As On Date";
+        case "historicdate":
+          return `${filter.lowerOffsetUnitValue} ${filter.lowerOffsetUnit}`;
+        case "daterange":
+          return `${filter.lowerOffsetUnitValue} ${filter.lowerOffsetUnit} to ${filter.upperOffsetUnitValue} ${filter.upperOffsetUnit}`;
+        default:
+          return "";
+      }
+    };
 
-    switch (periodFilter.type.toLowerCase()) {
-      case "asondate":
-        return "As On Date";
-      case "historicdate":
-        return `${periodFilter.lowerOffsetUnitValue} ${periodFilter.lowerOffsetUnit}`;
-      case "daterange":
-        return `${periodFilter.lowerOffsetUnitValue} ${periodFilter.lowerOffsetUnit} to ${periodFilter.upperOffsetUnitValue} ${periodFilter.upperOffsetUnit}`;
-      default:
-        return "";
-    }
+    const texts = filters.map(getTextForFilter).filter((text) => text !== "");
+    return texts.join(", ");
   };
 
   const handleCreateLink = () => {
@@ -92,14 +94,14 @@ const LineItemSummary = () => {
 
         const data = await response.json();
         toast.success(data.message);
-        
-        setLinkedLineItemIds(prev => {
-          if(prev.has(currentLineItemId)){
+
+        setLinkedLineItemIds((prev) => {
+          if (prev.has(currentLineItemId)) {
             return prev;
-          }else{
+          } else {
             return new Set(prev).add(currentLineItemId);
           }
-        })
+        });
         // await addReportToDatabase();
         closeAllModals();
       } catch (error) {
@@ -119,43 +121,65 @@ const LineItemSummary = () => {
       <div className="relative z-10 w-full max-w-4xl mx-4 bg-white rounded-2xl shadow-2xl p-8 animate-fadeIn border border-gray-200 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6 border-b pb-4">
           <h2 className="text-2xl font-bold text-gray-800">
-            Line Item - {currentLineItemId ? currentLineItemId.split("_").pop() : ""}
+            Line Item -{" "}
+            {currentLineItemId ? currentLineItemId.split("_").pop() : ""}
           </h2>
         </div>
 
         <div className="flex flex-wrap items-center gap-6 mb-6">
           <div>
             <div className="text-sm text-gray-500 font-medium">Report</div>
-            <div className="text-base text-gray-900">{reportName?.toUpperCase()}</div>
+            <div className="text-base text-gray-900">
+              {reportName?.toUpperCase()}
+            </div>
           </div>
           <div>
-            <div className="text-sm text-gray-500 font-medium">Line Item ID</div>
-            <div className="text-base text-gray-900">{currentLineItemId ? currentLineItemId.split("_").pop() : ""}</div>
+            <div className="text-sm text-gray-500 font-medium">
+              Line Item ID
+            </div>
+            <div className="text-base text-gray-900">
+              {currentLineItemId ? currentLineItemId.split("_").pop() : ""}
+            </div>
           </div>
         </div>
 
         {rules.map((rule) => (
-          <div key={rule.ruleId} className="mb-6 p-5 bg-gray-50 border border-gray-200 rounded-xl shadow-sm">
+          <div
+            key={rule.ruleId}
+            className="mb-6 p-5 bg-gray-50 border border-gray-200 rounded-xl shadow-sm"
+          >
             <div className="flex flex-wrap items-center justify-between mb-4">
               <div className="text-purple-700 font-semibold text-lg">
                 Rule &lt;{rule.sequence}&gt;: {rule.ruleName}
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">Metric:</span>
-                <span className="ml-2 text-gray-800 text-sm">{rule.metrics.join(", ")}</span>
+                <span className="text-sm font-medium text-gray-500">
+                  Metric:
+                </span>
+                <span className="ml-2 text-gray-800 text-sm">
+                  {rule.metrics.join(", ")}
+                </span>
               </div>
             </div>
 
             {rule.dimensions?.length > 0 && (
               <div className="mb-4">
-                <div className="text-sm font-medium text-gray-500 mb-1">Dimensions</div>
+                <div className="text-sm font-medium text-gray-500 mb-1">
+                  Dimensions
+                </div>
                 <div className="text-sm text-gray-800 space-y-1">
                   {rule.dimensions.map((dimension, dimIndex) =>
                     dimension.name ? (
                       <div key={`dim-${dimIndex}`}>
                         {dimension.name}{" "}
-                        <span className="font-semibold">{dimension.operator.toUpperCase()}</span>{" "}
-                        (<span>{dimension.value.map((val) => val.name).join(", ")}</span>)
+                        <span className="font-semibold">
+                          {dimension.operator.toUpperCase()}
+                        </span>{" "}
+                        (
+                        <span>
+                          {dimension.value.map((val) => val.name).join(", ")}
+                        </span>
+                        )
                       </div>
                     ) : null
                   )}
@@ -164,18 +188,24 @@ const LineItemSummary = () => {
             )}
 
             <div className="mb-4">
-              <div className="text-sm font-medium text-gray-500">Time Transform</div>
-              <div className="text-sm text-gray-800">{getTimeTransformText(rule.filters)}</div>
+              <div className="text-sm font-medium text-gray-500">
+                Time Transform
+              </div>
+              <div className="text-sm text-gray-800">
+                {getTimeTransformText(rule.filters)}
+              </div>
             </div>
 
             <div className="text-sm text-gray-600">
-              <span className="font-medium">Rule Operator:</span> {rule.operator || "+"}
+              <span className="font-medium">Rule Operator:</span>{" "}
+              {rule.operator || "+"}
             </div>
           </div>
         ))}
 
         <div className="text-sm text-gray-700 mb-8">
-          <span className="font-semibold">Combined Rule Operation:</span> {getRuleOperationString(rules)}
+          <span className="font-semibold">Combined Rule Operation:</span>{" "}
+          {getRuleOperationString(rules)}
         </div>
 
         <div className="flex justify-end gap-3">
