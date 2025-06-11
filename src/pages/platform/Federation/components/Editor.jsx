@@ -118,8 +118,6 @@ export default function Editor() {
 
         // Format the data according to the new API response
         const formattedConnections = connectionsData.map(conn => ({
-          sourceConnectionId: conn.connection_id,
-          connection_type: conn.connection_type,
           connection_name: conn.connection_name,
         }));
 
