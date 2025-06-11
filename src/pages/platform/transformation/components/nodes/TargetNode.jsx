@@ -20,6 +20,8 @@ export const TargetNode = ({ id, data }) => {
   const [selectedSchema, setSelectedSchema] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [loadType, setLoadType] = useState("FullLoad");
+  const [loadStrategy, setLoadStrategy] = useState("append");
   const [dataFetchStatus, setDataFetchStatus] = useState({
     connections: "idle",
     schemas: "idle",
@@ -143,8 +145,10 @@ export const TargetNode = ({ id, data }) => {
       connectionType: selectedConnection.type,
       schema: selectedSchema,
       table: selectedTable,
+      loadType: loadType,
+      loadStrategy: loadStrategy,
     });
-  }, [selectedConnection, selectedSchema, selectedTable]);
+  }, [selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy]);
 
   const filteredTables = tables.filter((table) =>
     table.table_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -301,31 +305,7 @@ export const TargetNode = ({ id, data }) => {
             </div>
 
             <div className="space-y-1.5">
-              {dataFetchStatus.tables === "success" && tables.length > 5 && (
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search tables..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full p-1.5 pl-7 text-[11px] border border-gray-300 rounded-sm"
-                  />
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-3 w-3 absolute left-2 top-2 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-              )}
+
 
               <div className="relative">
                 <select
@@ -366,6 +346,44 @@ export const TargetNode = ({ id, data }) => {
               </p>
             )}
           </div>
+        )}
+
+        {selectedTable && (
+          <>
+            <div>
+              <label className="text-xs font-semibold text-black mb-0.5 block">
+                Load Type
+              </label>
+              <div className="relative">
+                <select
+                  className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                  value={loadType}
+                  onChange={(e) => setLoadType(e.target.value)}
+                >
+                  <option value="FullLoad">Full Load</option>
+                  <option value="Delta">Delta</option>
+                  <option value="SCD1">SCD Type 1</option>
+                  <option value="SCD2">SCD Type 2</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-black mb-0.5 block">
+                Load Strategy
+              </label>
+              <div className="relative">
+                <select
+                  className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                  value={loadStrategy}
+                  onChange={(e) => setLoadStrategy(e.target.value)}
+                >
+                  <option value="append">Append</option>
+                  <option value="overwrite">Overwrite</option>
+                </select>
+              </div>
+            </div>
+          </>
         )}
       </div>
 

@@ -13,9 +13,11 @@ import { SourceNode } from "./nodes/SourceNode";
 import { TransformationNode } from "./nodes/TransformationNode";
 import { TargetNode } from "./nodes/TargetNode";
 import { TransformationSidebar } from "./TransformationSidebar";
+import { TransformationDrawer } from "./drawer/transformationDrawer";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { TransformationProvider, useTransformation, useTrackConnections } from "./TransformationContext";
+import { X } from "lucide-react";
 
 const nodeTypes = {
   define: DefineNode,
@@ -51,6 +53,8 @@ function TransformationCanvasContent() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const nodeIdRef = useRef(1);
   const { generateTransformationJson } = useTransformation();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeTransformationNodeId, setActiveTransformationNodeId] = useState(null);
 
   useTrackConnections(nodes, edges);
 
@@ -158,7 +162,10 @@ function TransformationCanvasContent() {
   const onConnect = useCallback(
     (params) => {
       if (isValidConnection(params)) {
-        setEdges((eds) => addEdge(params, eds));
+        setEdges((eds) => {
+          const newEdges = addEdge(params, eds);
+          return newEdges;
+        });
       } else {
         toast.error("Invalid connection pattern", {
           duration: 2000,
@@ -166,7 +173,7 @@ function TransformationCanvasContent() {
         });
       }
     },
-    [setEdges, isValidConnection]
+    [setEdges, isValidConnection, nodes]
   );
 
   const onDragOver = useCallback((event) => {
@@ -252,8 +259,30 @@ function TransformationCanvasContent() {
 
   const handleSave = useCallback(() => {
     try {
+      const disconnectedNodes = nodes.filter(node => {
+        const hasIncomingEdge = edges.some(edge => edge.target === node.id);
+        const hasOutgoingEdge = edges.some(edge => edge.source === node.id);
+
+        return !(hasIncomingEdge || hasOutgoingEdge);
+      });
+
+      if (disconnectedNodes.length > 0) {
+        const nodeTypes = disconnectedNodes.map(node => node.type).join(', ');
+        toast.error(`Please connect all nodes: ${nodeTypes} ${disconnectedNodes.length > 1 ? 'nodes are' : 'node is'} disconnected`, {
+          duration: 3000,
+          position: "top-center",
+        });
+        return;
+      }
+
       const transformationData = generateTransformationJson();
       console.log("Transformation JSON:", transformationData);
+      if (Object.keys(transformationData.source).length === 0) {
+        toast.warning("Source data is empty. Make sure your source nodes are properly connected.");
+      }
+      if (Object.keys(transformationData.target).length === 0) {
+        toast.warning("Target data is empty. Make sure your target nodes are properly connected.");
+      }
 
       toast.success(
         <div>
@@ -268,24 +297,127 @@ function TransformationCanvasContent() {
           style: { maxWidth: 'none', width: 'auto' },
         }
       );
-
-
     } catch (error) {
       console.error("Error generating transformation data:", error);
       toast.error("Failed to generate transformation data");
     }
-  }, [generateTransformationJson]);
+  }, [generateTransformationJson, nodes, edges]);
 
   const handleCancel = useCallback(() => {
     navigate("/transformation");
   }, [navigate]);
 
+  const openTransformationDrawer = useCallback((nodeId) => {
+    setActiveTransformationNodeId(nodeId);
+    setDrawerOpen(true);
+
+    window.allNodes = nodes;
+    window.allEdges = edges;
+  }, [nodes, edges]);
+
+  const closeTransformationDrawer = useCallback(() => {
+    setDrawerOpen(false);
+  }, []);
+
   useEffect(() => {
     window.deleteNode = onNodeDelete;
+    window.openTransformationDrawer = openTransformationDrawer;
+
     return () => {
       window.deleteNode = undefined;
+      window.openTransformationDrawer = undefined;
+      window.allNodes = undefined;
+      window.allEdges = undefined;
     };
-  }, [onNodeDelete]);
+  }, [onNodeDelete, openTransformationDrawer]);
+
+  const getActiveTransformationNode = useCallback(() => {
+    if (!activeTransformationNodeId) return null;
+    return nodes.find(node => node.id === activeTransformationNodeId);
+  }, [activeTransformationNodeId, nodes]);
+
+  const activeNode = getActiveTransformationNode();
+
+  const updateTransformationNodesData = useCallback(() => {
+    setNodes(prevNodes => {
+      return prevNodes.map(node => {
+        if (node.type === 'transformation') {
+          const incomingEdges = edges.filter(edge => edge.target === node.id);
+          const outgoingEdges = edges.filter(edge => edge.source === node.id);
+
+          const sourceNodes = incomingEdges
+            .map(edge => prevNodes.find(n => n.id === edge.source))
+            .filter(Boolean)
+            .map((srcNode, index) => ({
+              ...srcNode,
+              dfId: `s_df_${index + 1}`
+            }));
+
+          const targetNodes = outgoingEdges
+            .map(edge => prevNodes.find(n => n.id === edge.target))
+            .filter(Boolean)
+            .map((tgtNode, index) => ({
+              ...tgtNode,
+              dfId: `t_df_${index + 1}`
+            }));
+
+          const nodeToDataframeMap = {};
+          sourceNodes.forEach(node => {
+            nodeToDataframeMap[node.id] = node.dfId;
+          });
+          targetNodes.forEach(node => {
+            nodeToDataframeMap[node.id] = node.dfId;
+          });
+
+          window.nodeToDataframeMap = nodeToDataframeMap;
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              sourceNodes,
+              targetNodes,
+              connectedSources: sourceNodes.length,
+              connectedTargets: targetNodes.length,
+              isFullyConnected: sourceNodes.length > 0 && targetNodes.length > 0,
+              onDataChange: node.data.onDataChange
+            }
+          };
+        }
+        return node;
+      });
+    });
+  }, [edges, setNodes]);
+
+  useEffect(() => {
+    updateTransformationNodesData();
+  }, [edges, updateTransformationNodesData]);
+
+  useEffect(() => {
+    updateTransformationNodesData();
+  }, [nodes.length, updateTransformationNodesData]);
+
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          onDataChange: (newData) => {
+            setNodes((prevNodes) => {
+              const updatedNodes = prevNodes.map((n) =>
+                n.id === node.id
+                  ? { ...n, data: { ...n.data, ...newData } }
+                  : n
+              );
+
+              return updatedNodes;
+            });
+          },
+        },
+      }))
+    );
+  }, [setNodes]);
 
   return (
     <div style={{ width: "100%", height: "100vh" }} className="relative">
@@ -327,6 +459,13 @@ function TransformationCanvasContent() {
           Save
         </button>
       </div>
+
+      <TransformationDrawer
+        isOpen={drawerOpen}
+        onClose={closeTransformationDrawer}
+        activeNode={activeNode}
+        activeNodeId={activeTransformationNodeId}
+      />
     </div>
   );
 }

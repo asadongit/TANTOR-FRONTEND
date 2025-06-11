@@ -156,7 +156,7 @@ const TransformationContext = createContext();
 
 export function TransformationProvider({ children }) {
   const [state, dispatch] = useReducer(transformationReducer, initialState);
-    const { decodedToken } = useAuth();
+  const { decodedToken, project } = useAuth();
 
   const generateTransformationJson = () => {
     const timestamp = new Date().toISOString();
@@ -164,14 +164,18 @@ export function TransformationProvider({ children }) {
     const result = {
       created_at: timestamp,
       created_by: decodedToken.preferred_username,
+      project: project || "default",
+      workflow_name: state.define.name,
+      workflow_type : "manual",
       description: state.define.description || "",
-      transformation_auto_name: state.define.name || "untitled_transformation",
       source: {},
-      target: {}
+      target: {},
+      transformation: {}
     };
 
     const transformationNodes = Object.keys(state.transformations);
     if (transformationNodes.length > 0) {
+      // source
       const sourceConnections = state.connections.filter(conn => {
         const sourceIds = Object.keys(state.sources);
         return sourceIds.includes(conn.source) && transformationNodes.includes(conn.target);
@@ -187,10 +191,20 @@ export function TransformationProvider({ children }) {
             sourceType: sourceData.connectionType || "unknown",
             sourceConnName: sourceData.connection || "unknown",
             column: sourceData.columns || [],
+            ConnectionParameters: {
+              sourceSchema: sourceData.schema || "",
+              sourceTable: sourceData.table || ""
+            },
+            readParameters: {
+              watermarkColumn: "",
+              watermarkColumnDataType: ""
+            },
+            EnableCountLogging: true
           };
         }
       });
 
+      // target
       const targetConnections = state.connections.filter(conn => {
         const targetIds = Object.keys(state.targets);
         return transformationNodes.includes(conn.source) && targetIds.includes(conn.target);
@@ -205,9 +219,23 @@ export function TransformationProvider({ children }) {
           result.target[targetKey] = {
             targetType: targetData.connectionType || "unknown",
             targetConnName: targetData.connection || "unknown",
-            schema: targetData.schema || "",
-            table: targetData.table || "",
+            loadType: targetData.loadType || "",
+            LoadingParams: {
+              targetschema: targetData.schema || "",
+              targetTable: targetData.table || "",
+              loadStrategy: targetData.loadStrategy || ""
+            },
+            EnableCountLogging: true
           };
+        }
+      });
+
+      //trans formation
+      transformationNodes.forEach(nodeId => {
+        const transformationData = state.transformations[nodeId];
+        if (transformationData && transformationData.transformationConfig) {
+          result.transformation = transformationData.transformationConfig.operations
+
         }
       });
     }
@@ -241,6 +269,28 @@ export function useTrackConnections(nodes, edges) {
   const { dispatch, ACTION_TYPES } = useTransformation();
 
   useEffect(() => {
+    const sourceNodeIds = new Map();
+    const targetNodeIds = new Map();
+
+    edges.forEach(edge => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      const targetNode = nodes.find(n => n.id === edge.target);
+
+      if (!sourceNode || !targetNode) return;
+
+      if (sourceNode.type === 'source' && targetNode.type === 'transformation') {
+        if (!sourceNodeIds.has(sourceNode.id)) {
+          sourceNodeIds.set(sourceNode.id, sourceNodeIds.size + 1);
+        }
+      }
+
+      if (sourceNode.type === 'transformation' && targetNode.type === 'target') {
+        if (!targetNodeIds.has(targetNode.id)) {
+          targetNodeIds.set(targetNode.id, targetNodeIds.size + 1);
+        }
+      }
+    });
+
     nodes.forEach(node => {
       const { id, type, data } = node;
 
@@ -258,20 +308,24 @@ export function useTrackConnections(nodes, edges) {
           break;
 
         case 'source':
-          dispatch({
-            type: ACTION_TYPES.ADD_SOURCE,
-            payload: {
-              id,
-              data: {
-                connection: data.connection,
-                connectionId: data.connectionId,
-                connectionType: data.connectionType,
-                schema: data.schema,
-                table: data.table,
-                columns: data.columns,
+          const sourceIndex = sourceNodeIds.get(id);
+          if (sourceIndex) {
+            dispatch({
+              type: ACTION_TYPES.ADD_SOURCE,
+              payload: {
+                id,
+                data: {
+                  connection: data.connection,
+                  connectionId: data.connectionId,
+                  connectionType: data.connectionType,
+                  schema: data.schema,
+                  table: data.table,
+                  columns: data.columns,
+                  dfId: `s_df_${sourceIndex}`
+                }
               }
-            }
-          });
+            });
+          }
           break;
 
         case 'transformation':
@@ -282,23 +336,33 @@ export function useTrackConnections(nodes, edges) {
               data: {
                 type: data.type,
                 function: data.function,
+                transformations: data.transformations || [],
+                transformationConfig: data.transformationConfig || { operations: [] }
               }
             }
           });
           break;
 
         case 'target':
-          dispatch({
-            type: ACTION_TYPES.ADD_TARGET,
-            payload: {
-              id,
-              data: {
-                connection: data.connection,
-                connectionId: data.connectionId,
-                schema: data.schema,
+          const targetIndex = targetNodeIds.get(id);
+          if (targetIndex) {
+            dispatch({
+              type: ACTION_TYPES.ADD_TARGET,
+              payload: {
+                id,
+                data: {
+                  connection: data.connection,
+                  connectionId: data.connectionId,
+                  connectionType: data.connectionType,
+                  schema: data.schema,
+                  table: data.table,
+                  loadType: data.loadType,
+                  loadStrategy: data.loadStrategy,
+                  dfId: `t_df_${targetIndex}`
+                }
               }
-            }
-          });
+            });
+          }
           break;
 
         default:
