@@ -18,6 +18,7 @@ import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { TransformationProvider, useTransformation, useTrackConnections } from "./TransformationContext";
 import { X } from "lucide-react";
+import { useAuth } from "../../../../context/AuthContext";
 
 const nodeTypes = {
   define: DefineNode,
@@ -55,6 +56,8 @@ function TransformationCanvasContent() {
   const { generateTransformationJson } = useTransformation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeTransformationNodeId, setActiveTransformationNodeId] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const { token, decodedToken, project } = useAuth();
 
   useTrackConnections(nodes, edges);
 
@@ -257,7 +260,7 @@ function TransformationCanvasContent() {
     [nodes, setNodes, setEdges]
   );
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     try {
       const disconnectedNodes = nodes.filter(node => {
         const hasIncomingEdge = edges.some(edge => edge.target === node.id);
@@ -277,31 +280,107 @@ function TransformationCanvasContent() {
 
       const transformationData = generateTransformationJson();
       console.log("Transformation JSON:", transformationData);
+
       if (Object.keys(transformationData.source).length === 0) {
         toast.warning("Source data is empty. Make sure your source nodes are properly connected.");
-      }
-      if (Object.keys(transformationData.target).length === 0) {
-        toast.warning("Target data is empty. Make sure your target nodes are properly connected.");
+        return;
       }
 
-      toast.success(
-        <div>
-          <p>Transformation data generated:</p>
-          <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-60">
-            {JSON.stringify(transformationData, null, 2)}
-          </pre>
-        </div>,
-        {
-          duration: 5000,
+      if (Object.keys(transformationData.target).length === 0) {
+        toast.warning("Target data is empty. Make sure your target nodes are properly connected.");
+        return;
+      }
+
+      const defineNode = nodes.find(node => node.type === "define");
+      if (!defineNode || !defineNode.data.name) {
+        toast.error("Please provide a name for your transformation", {
+          duration: 3000,
           position: "top-center",
-          style: { maxWidth: 'none', width: 'auto' },
+        });
+        return;
+      }
+
+      const sourceConnectionIds = [];
+      const sourceTables = [];
+      Object.values(transformationData.source).forEach(source => {
+        const sourceNode = nodes.find(n =>
+          n.type === 'source' &&
+          n.data.connection === source.sourceConnName
+        );
+        if (sourceNode && sourceNode.data.connectionId) {
+          sourceConnectionIds.push(sourceNode.data.connectionId);
         }
-      );
+        if (source.ConnectionParameters.sourceSchema && source.ConnectionParameters.sourceTable) {
+          sourceTables.push(`${source.ConnectionParameters.sourceSchema}.${source.ConnectionParameters.sourceTable}`);
+        }
+      });
+
+      const targetConnectionIds = [];
+      const targetTables = [];
+      Object.values(transformationData.target).forEach(target => {
+        const targetNode = nodes.find(n =>
+          n.type === 'target' &&
+          n.data.connection === target.targetConnName
+        );
+        if (targetNode && targetNode.data.connectionId) {
+          targetConnectionIds.push(targetNode.data.connectionId);
+        }
+        if (target.LoadingParams.targetschema && target.LoadingParams.targetTable) {
+          targetTables.push(`${target.LoadingParams.targetschema}.${target.LoadingParams.targetTable}`);
+        }
+      });
+
+      const payload = {
+        transformation_name: defineNode.data.name,
+        description: defineNode.data.description || "No description provided",
+        source_connection_ids: sourceConnectionIds,
+        source_tables: sourceTables,
+        target_connection_ids: targetConnectionIds,
+        target_tables: targetTables,
+        transformation_json: transformationData,
+        status: "creating",
+        created_by: decodedToken?.preferred_username || "unknown",
+        project: project || "default",
+        extra_info: {}
+      };
+
+      setIsSaving(true);
+
+      const response = await fetch(`${hostname}/etl/transformation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to save transformation");
+      }
+
+      // const savedData = await response.json();
+
+      toast.success("Transformation saved successfully!", {
+        duration: 3000,
+        position: "top-center",
+      });
+
+      setTimeout(() => {
+        navigate("/transformation");
+      }, 1500);
+
     } catch (error) {
-      console.error("Error generating transformation data:", error);
-      toast.error("Failed to generate transformation data");
+      console.error("Error saving transformation:", error);
+      toast.error(`Failed to save transformation: ${error.message}`, {
+        duration: 5000,
+        position: "top-center",
+      });
+    } finally {
+      setIsSaving(false);
     }
-  }, [generateTransformationJson, nodes, edges]);
+  }, [generateTransformationJson, nodes, edges, navigate, hostname, token, decodedToken, project]);
 
   const handleCancel = useCallback(() => {
     navigate("/transformation");
@@ -449,14 +528,24 @@ function TransformationCanvasContent() {
         <button
           onClick={handleCancel}
           className="bg-white rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+          disabled={isSaving}
         >
           Cancel
         </button>
         <button
           onClick={handleSave}
-          className="bg-[#8E77BB] rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-white font-medium hover:bg-[#7d68a5] transition-colors"
+          className="bg-[#8E77BB] rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-white font-medium hover:bg-[#7d68a5] transition-colors flex items-center"
+          disabled={isSaving}
         >
-          Save
+          {isSaving ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Saving...
+            </>
+          ) : "Save"}
         </button>
       </div>
 

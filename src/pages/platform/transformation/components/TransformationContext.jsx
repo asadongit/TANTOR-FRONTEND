@@ -170,6 +170,11 @@ export function TransformationProvider({ children }) {
       description: state.define.description || "",
       source: {},
       target: {},
+      logging:{
+    isLoggingEnabled :true,
+    isLoggingEnabledForEachDataset: true
+      },
+      procedureExecution:{},
       transformation: {}
     };
 
