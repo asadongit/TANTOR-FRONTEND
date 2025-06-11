@@ -4,10 +4,10 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../../../../../context/AuthContext';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-const ConfigEditorModal = ({ 
-  isOpen, 
-  onClose, 
-  configType, 
+const ConfigEditorModal = ({
+  isOpen,
+  onClose,
+  configType,
   configData,
   statusData,
   topicName,
@@ -15,6 +15,7 @@ const ConfigEditorModal = ({
 //   onToggleStatus
 }) => {
   const [config, setConfig] = useState(null);
+  const [originalConfig, setOriginalConfig] = useState(null); // Store original config for comparison
   const [status, setStatus] = useState(null);
   const [editing, setEditing] = useState(false);
   const [showJson, setShowJson] = useState(false);
@@ -22,12 +23,24 @@ const ConfigEditorModal = ({
   const [saving, setSaving] = useState(false);
   const { cdcId } = useParams();
   const {token, hostnameV2, project}= useAuth()
+
+  // Initialize config when modal opens or configData changes while not editing
   useEffect(() => {
-    if (configData) {
+    if (configData && !editing) {
       setConfig(configData?.config);
+      setOriginalConfig(configData?.config); // Store original for reset functionality
       setStatus(statusData);
     }
-  }, [configData, statusData]);
+  }, [configData, statusData, editing]);
+
+  // Handle initial load of configData
+  useEffect(() => {
+    if (configData && config === null) {
+      setConfig(configData?.config);
+      setOriginalConfig(configData?.config);
+      setStatus(statusData);
+    }
+  }, [configData, statusData, config]);
 
   useEffect(() => {
     const handleEsc = (event) => {
@@ -38,6 +51,14 @@ const ConfigEditorModal = ({
       window.removeEventListener('keydown', handleEsc);
     };
   }, [onClose]);
+
+  // Reset editing state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEditing(false);
+      setShowJson(false);
+    }
+  }, [isOpen]);
 
   const handleConfigChange = (e) => {
     try {
@@ -65,42 +86,37 @@ const ConfigEditorModal = ({
       });
   };
 
-
-
-
-const updateConnectorConfig = async () => {
-  try {
-    const connector_name = configData?.name;  
-    console.log("connector_name:", connector_name);
-    console.log("configType:", configType);
-    const response = await axios.patch(
-      `${hostnameV2}/cdc/${cdcId}/update-connector`,
-      {
-        type: configType,
-        config: config, 
-        connector_name
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
+  const updateConnectorConfig = async () => {
+    try {
+      const connector_name = configData?.name;
+      console.log("connector_name:", connector_name);
+      console.log("configType:", configType);
+      const response = await axios.patch(
+        `${hostnameV2}/cdc/${cdcId}/update-connector`,
+        {
+          type: configType,
+          config: config,
+          connector_name
         },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      toast.success("Connector updated successfully!");
+      console.log("Response:", response.data);
+      return response.data;
+    } catch (error) {
+      toast.error("Error updating connector!");
+      if (error.response && error.response.data?.detail) {
+        throw new Error(error.response.data.detail);
+      } else {
+        throw new Error('Network error or server not reachable');
       }
-    );
-
-    toast.success("Connector updated successfully!");
-    console.log("Response:", response.data);
-    return response.data;
-  } catch (error) {
-    toast.error("Error updating connector!");
-    if (error.response && error.response.data?.detail) {
-      throw new Error(error.response.data.detail);
-    } else {
-      throw new Error('Network error or server not reachable');
     }
-  }
-};
-
-
+  };
 
   const handleSave = async () => {
     try {
@@ -108,15 +124,23 @@ const updateConnectorConfig = async () => {
       await updateConnectorConfig();
       setEditing(false);
       setSaving(false);
+      // Update the original config after successful save
+      setOriginalConfig({...config});
     } catch (err) {
       setSaving(false);
       console.error("Error saving config:", err);
     }
   };
 
+  const handleCancelEdit = () => {
+    // Reset to original config and exit edit mode
+    setConfig({...originalConfig});
+    setEditing(false);
+  };
+
   const renderConfigFields = () => {
     if (!config) return null;
-    
+
     return (
       <div className="space-y-4">
         {Object.entries(config).map(([key, value]) => (
@@ -145,34 +169,34 @@ const updateConnectorConfig = async () => {
       "RUNNING": {
         bg: "bg-green-100",
         text: "text-green-800",
-        dot: "bg-green-500", 
+        dot: "bg-green-500",
       },
       "STOPPED": {
         bg: "bg-yellow-100",
         text: "text-yellow-800",
-        dot: "bg-yellow-800", 
+        dot: "bg-yellow-800",
       },
       "FAILED": {
         bg: "bg-red-100",
         text: "text-red-800",
-        dot: "bg-red-800", 
+        dot: "bg-red-800",
       },
       "PAUSED": {
         bg: "bg-blue-100",
         text: "text-blue-800",
-        dot: "bg-blue-800", 
+        dot: "bg-blue-800",
       },
       "CREATED": {
         bg: "bg-blue-100",
         text: "text-blue-800",
-        dot: "bg-blue-800", 
+        dot: "bg-blue-800",
       }
     };
-    
+
     const state = status?.toUpperCase() || 'unknown';
     const statusStyle = statusColors[state] || statusColors["FAILED"];
-    const isRunning = state === "RUNNING"; 
-    
+    const isRunning = state === "RUNNING";
+
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center ${statusStyle.bg} ${statusStyle.text}`}>
         <span className="relative ml-1 flex h-2 w-2">
@@ -188,9 +212,6 @@ const updateConnectorConfig = async () => {
 
   if (!isOpen) return null;
 
-
-
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-screen overflow-hidden">
@@ -199,18 +220,8 @@ const updateConnectorConfig = async () => {
             <h2 className="text-xl font-bold text-gray-800">
               Edit {configType === 'source' ? 'Source' : 'Target'} Configuration
             </h2>
-            {/* <div className="flex items-center mt-1">
-              <span className="text-sm text-gray-500 mr-2">
-                ID: {config?.name || 'Unknown'}
-              </span>
-              <span className="text-sm text-gray-400 mx-2">|</span>
-              <div className="flex items-center">
-                <span className="text-sm text-gray-500 mr-2">Status:</span>
-                {renderStatusBadge()}
-              </div>
-            </div> */}
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500"
           >
@@ -235,21 +246,7 @@ const updateConnectorConfig = async () => {
                   )}
                 </div>
                 <div className="flex space-x-2">
-                  {/* <button
-                    onClick={() => onToggleStatus(config?.name, configType === 'source')}
-                    className={`p-2 rounded-md text-sm flex items-center ${
-                      status?.toUpperCase() === "RUNNING" 
-                      ? 'bg-red-50 text-red-700 hover:bg-red-100' 
-                      : 'bg-green-50 text-green-700 hover:bg-green-100'
-                    }`}
-                  >
-                    {status?.toUpperCase() === "RUNNING" ? (
-                      <><Pause size={16} className="mr-1" /> Stop</>
-                    ) : (
-                      <><Play size={16} className="mr-1" /> Start</>
-                    )}
-                  </button> */}
-                  <button 
+                  <button
                     onClick={() => setShowJson(!showJson)}
                     className={`p-2 rounded-md text-sm flex items-center ${
                       showJson ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200'
@@ -262,7 +259,7 @@ const updateConnectorConfig = async () => {
                       <><Code size={16} className="mr-1" /> JSON View</>
                     )}
                   </button>
-                  <button 
+                  <button
                     onClick={copyToClipboard}
                     className="p-2 rounded-md hover:bg-gray-200 text-sm flex items-center"
                     title="Copy Config"
@@ -273,8 +270,8 @@ const updateConnectorConfig = async () => {
                       <><Copy size={16} className="mr-1" /> Copy</>
                     )}
                   </button>
-                  <button 
-                    onClick={() => setEditing(!editing)}
+                  <button
+                    onClick={() => editing ? handleCancelEdit() : setEditing(true)}
                     className={`p-2 rounded-md text-sm flex items-center ${
                       editing ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200'
                     }`}
@@ -313,18 +310,18 @@ const updateConnectorConfig = async () => {
 
         <div className="flex justify-end p-6 border-t border-gray-200 bg-gray-50">
           <div className="flex space-x-4">
-            <button 
+            <button
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               Cancel
             </button>
-            <button 
+            <button
               onClick={handleSave}
               disabled={!editing || saving}
               className={`px-6 py-2 rounded-md shadow-sm text-sm font-medium text-white flex items-center ${
                 editing && !saving
-                ? 'bg-[#8e78b7] hover:bg-gray-400' 
+                ? 'bg-[#8e78b7] hover:bg-gray-400'
                 : 'bg-[#8e78b7] cursor-not-allowed opacity-60'
               }`}
             >
