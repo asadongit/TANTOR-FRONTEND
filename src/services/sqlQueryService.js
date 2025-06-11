@@ -8,7 +8,6 @@ export const generateSQLQuery = ({
   ruleData
 }) => {
   try {
-
     if (!tableName || !selectedColumns || selectedColumns.length === 0) {
       return '';
     }
@@ -23,10 +22,14 @@ export const generateSQLQuery = ({
         let columnStr = '  ' + col.name; // Add indentation
         
         // Handle aggregate function if exists
-        if (col.aggregate && col.aggregate !== 'NONE') {
-          columnStr = `  ${col.aggregate}(${col.name})`;
+        console.log("AGGREGATE ==> ", col.aggregate);
+
+        if (col.aggregate.length > 0 && col.aggregate !== 'NONE') {
+          // columnStr = `  ${col.aggregate}(${col.name})`;
+          const aggregates = col.aggregate;
+          const aggregateStr = aggregates.map(aggr => `   ${aggr}(${col.name})`).join(",\n");
+          columnStr = aggregateStr;
         }
-        
         // Add alias if exists
         if (col.alias && col.alias.trim() !== '') {
           columnStr += ` AS "${col.alias.trim()}"`;
@@ -61,7 +64,8 @@ export const generateSQLQuery = ({
 
     // Add GROUP BY if any aggregates are used
     const groupByColumns = selectedColumns
-      .filter(col => col.groupBy || (col.aggregate && col.aggregate !== 'NONE'))
+      // .filter(col => col.groupBy || (col.aggregate && col.aggregate !== 'NONE'))
+      .filter(col => col.groupBy)
       .map(col => col.name);
     
     if (groupByColumns.length > 0) {
