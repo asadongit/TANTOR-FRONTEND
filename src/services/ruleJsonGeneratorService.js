@@ -3,7 +3,7 @@ export const getSegregatedColumns = (columns) => {
     const groupByColumns = [];
     
     columns.forEach(column => {
-        if (column.dimType.toLowerCase() === "metric" && column.aggregate) {
+        if (column.dimType.toLowerCase() === "metric" && column.aggregate.length !== 0) {
             metricColumns.push({
                 id: column.id,
                 name: column.name,

@@ -176,7 +176,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
             default:
                 return "";
         }
-    }).filter(Boolean).join(" , ");
+    }).filter(Boolean).join(" AND ");
 };
 
   const handleApply = () => {

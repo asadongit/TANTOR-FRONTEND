@@ -4,11 +4,15 @@ import { useStateContext } from "../Federation/context/contextViewProvider";
 import { Modal } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { getSegregatedColumns } from "../../../services/ruleJsonGeneratorService";
+import { useAuth } from "../../../context/AuthContext";
+
+import toast from "react-hot-toast";
 const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
   const { finalPayload } = useStateContext();
   const navigate = useNavigate();
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
 
+  const { hostnameV1, token } = useAuth();
   // Get columns from filterData
   const columns = filterData?.columns || [];
 
@@ -41,6 +45,49 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
     }
   };
 
+  const handleCreateRule = () => {
+    const { metricColumns, groupByColumns } = getSegregatedColumns(
+      filterData.columns
+    );
+
+    const payload = {
+      ruleName: finalPayload.name,
+      fact_id: selectedFact.fact_id,
+      dimensionFilters: finalPayload.dimensionFilters,
+      timeTransformationFilters: finalPayload.timeTransformationFilters,
+      metricColumns,
+      groupByColumns,
+    };
+    console.log("FINAL PAYLOAD ==> ", payload);
+
+    (async () => {
+      try {
+        const headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        const response = await fetch(`${hostnameV1}/saveRule`,{
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({rule_data: payload}),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.detail || "Failed to save rule.");
+        }
+
+        const data = await response.json();
+        toast.success(data?.message || "Rule saved successfully.");
+        navigate("/config/rule");
+      } catch (error) {
+        console.log(error);
+        toast.error(error.message);
+      }
+    })();
+  };
+
   return (
     <Modal
       open={true}
@@ -48,8 +95,8 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
       aria-labelledby="rule-summary-modal"
       BackdropProps={{
         style: {
-          backgroundColor: 'rgba(0, 0, 0, 0.5)'
-        }
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+        },
       }}
     >
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl w-[90%] max-w-6xl h-[90vh] overflow-hidden">
@@ -81,15 +128,23 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
                 {/* Name and Description */}
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Name
+                    </label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
-                      <span className="text-blue-600">{finalPayload?.name || "Not defined"}</span>
+                      <span className="text-blue-600">
+                        {finalPayload?.name || "Not defined"}
+                      </span>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
+                    </label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
-                      <span className="text-gray-600">{finalPayload?.description || "No description"}</span>
+                      <span className="text-gray-600">
+                        {finalPayload?.description || "No description"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -97,16 +152,23 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
                 {/* Table and Column */}
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Table</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Table
+                    </label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
-                      <span className="text-blue-600">{selectedFact?.fct_name || "fct_loans"}</span>
+                      <span className="text-blue-600">
+                        {selectedFact?.fct_name || "fct_loans"}
+                      </span>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Column</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Column
+                    </label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
                       <span className="text-blue-600">
-                        {columns.map(t => t.name).join(", ") || currentColumn.name}
+                        {columns.map((t) => t.name).join(", ") ||
+                          currentColumn.name}
                       </span>
                     </div>
                   </div>
@@ -124,7 +186,9 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
 
                 {/* Query Preview */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Query Preview</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Query Preview
+                  </label>
                   <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
                     <pre className="text-sm font-mono text-blue-600 whitespace-pre-wrap">
                       {previewData || "No query generated"}
@@ -147,21 +211,7 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
                   Save Draft
                 </button>
                 <button
-                  // onClick={() => navigate('/config/rule')}
-                  onClick={() => {
-                    const { metricColumns, groupByColumns } =
-                      getSegregatedColumns(filterData.columns);
-
-                    const payload = {
-                      ruleName: finalPayload.name,
-                      fact_id: selectedFact.fact_id,
-                      dimensionFilters: finalPayload.dimensionFilters,
-                      timeTransformationFilters: finalPayload.timeTransformationFilters,
-                      metricColumns,
-                      groupByColumns
-                    };
-                    console.log("FINAL PAYLOAD ==> ", payload);
-                  }}
+                  onClick={handleCreateRule}
                   className="px-4 py-2 bg-[#8e78b7] text-white rounded-md hover:bg-[#7b65a3] transition-colors"
                 >
                   Create Rule
@@ -182,7 +232,11 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
                 <button
                   onClick={handlePrevColumn}
                   disabled={currentColumnIndex === 0}
-                  className={`text-lg ${currentColumnIndex === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-gray-800'}`}
+                  className={`text-lg ${
+                    currentColumnIndex === 0
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
                 >
                   <ArrowBigLeft />
                 </button>
@@ -193,7 +247,11 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
                 <button
                   onClick={handleNextColumn}
                   disabled={currentColumnIndex === columns.length - 1}
-                  className={`text-lg ${currentColumnIndex === columns.length - 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-gray-800'}`}
+                  className={`text-lg ${
+                    currentColumnIndex === columns.length - 1
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
                 >
                   <ArrowBigRight />
                 </button>
@@ -202,19 +260,25 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
               {/* Column Properties (Read-only) */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Name
+                  </label>
                   <div className="border border-gray-200 rounded-md p-3 bg-white">
                     <span className="text-gray-900">{currentColumn.name}</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Type
+                  </label>
                   <div className="border border-gray-200 rounded-md p-3 bg-white">
                     <span className="text-gray-900">{currentColumn.type}</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Alias</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Alias
+                  </label>
                   <div className="border border-gray-200 rounded-md p-3 bg-white">
                     <span className="text-gray-900">
                       {currentColumn.alias || "-"}
@@ -257,7 +321,7 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
                   </label>
                   <div className="border border-gray-200 rounded-md p-3 bg-white">
                     <span className="text-gray-900">
-                      {currentColumn.aggregate || "-"}
+                      {currentColumn.aggregate.join(", ") || "-"}
                     </span>
                   </div>
                 </div>

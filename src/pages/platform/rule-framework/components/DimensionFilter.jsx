@@ -187,9 +187,9 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
     return validFilters
       .map((filter) => {
         const values = filter.value.map((v) => v.name).join(", ");
-        return `${filter.dimension.name} ${filter.operator} [${values}]`;
+        return `${filter.dimension.name} ${filter.operator.toUpperCase()} [${values}]`;
       })
-      .join(" , ");
+      .join(" AND ");
   };
 
   const handleApply = () => {

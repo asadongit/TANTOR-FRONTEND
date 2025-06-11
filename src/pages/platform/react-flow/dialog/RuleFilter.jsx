@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTableContext } from "../context/TableContext";
 import { Drawer } from "@mui/material";
-import { X, Info, RefreshCcw } from "lucide-react";
+import { X, Info, RefreshCcw, ChevronDown } from "lucide-react";
 import { ArrowBigLeft, ArrowBigRight } from "lucide-react";
  
 
@@ -9,6 +9,7 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
   const { drawerState, closeDrawer } = useTableContext();
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
   const [column, setColumn] = useState([]);
+  const [aggregateDropdownOpen, setAggregateDropdownOpen] = useState(false);
   const [columnSettings, setColumnSettings] = useState({
     id: "",
     name: "",
@@ -18,9 +19,17 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
     output: true,
     order: "",
     sort: "",
-    aggregate: "",
+    aggregate: [],
     groupBy: false,
   });
+
+  const aggregateOptions = [
+    { value: "SUM", label: "SUM" },
+    { value: "AVG", label: "AVG" },
+    { value: "COUNT", label: "COUNT" },
+    { value: "MIN", label: "MIN" },
+    { value: "MAX", label: "MAX" },
+  ];
     
   useEffect(() => {
     if (drawerState.isOpen && drawerState.selectedTable) {
@@ -40,7 +49,7 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
           output: existing?.output ?? true,
           order: existing?.order || "",
           sort: existing?.sort || "",
-          aggregate: existing?.aggregate || "",
+          aggregate: existing?.aggregate ? Array.isArray(existing.aggregate) ? existing.aggregate : [existing.aggregate] : [],
           groupBy: existing?.groupBy ?? false,
         };
       });
@@ -127,6 +136,16 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
     closeDrawer();
   };
 
+  const handleAggregateChange = (value) => {
+    setColumnSettings(prev => {
+      const newAggregate = prev.aggregate.includes(value) 
+        ? prev.aggregate.filter(agg => agg !== value)
+        : [...prev.aggregate, value];
+
+      return { ...prev, aggregate: newAggregate };
+    });
+  };
+
   const handleReset = () => {
     const currentTable = column[currentColumnIndex];
     if (currentTable) {
@@ -139,7 +158,7 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
         output: true,
         order: "",
         sort: "",
-        aggregate: "",
+        aggregate: [],
         groupBy: false,
       });
     }
@@ -148,6 +167,20 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
   const handleCancel = () => {
     closeDrawer();
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.aggregate-dropdown')) {
+        setAggregateDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   if (!drawerState.isOpen) return null;
 
@@ -233,56 +266,98 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
             {/* Order and Sort */}
             <div className="flex space-x-4">
               <div className="flex-1 space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Order</label>
-              <input
-                type="text"
-                value={columnSettings.order}
-                onChange={(e) => setColumnSettings({ ...columnSettings, order: e.target.value })}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter order (e.g., 1)"
-              />
+                <label className="block text-sm font-medium text-gray-700">Order</label>
+                <input
+                  type="text"
+                  value={columnSettings.order}
+                  onChange={(e) => setColumnSettings({ ...columnSettings, order: e.target.value })}
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Enter order (e.g., 1)"
+                />
               </div>
               <div className="flex-1 space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Sort</label>
-              <select
-                value={columnSettings.sort}
-                onChange={(e) => setColumnSettings({ ...columnSettings, sort: e.target.value })}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">None</option>
-                <option value="ASC">Ascending</option>
-                <option value="DESC">Descending</option>
-              </select>
+                <label className="block text-sm font-medium text-gray-700">Sort</label>
+                <select
+                  value={columnSettings.sort}
+                  onChange={(e) => setColumnSettings({ ...columnSettings, sort: e.target.value })}
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">None</option>
+                  <option value="ASC">Ascending</option>
+                  <option value="DESC">Descending</option>
+                </select>
               </div>
             </div>
+
             {/* Aggregate and Group By */}
             <div className="flex space-x-4">
               <div className={`flex-1 space-y-2 ${columnSettings.dimType === "metric" ? "" : "invisible"}`}>
-              <label className="block text-sm font-medium text-gray-700 invisib">Aggregate</label>
-              <select
-                value={columnSettings.aggregate}
-                onChange={(e) => setColumnSettings({ ...columnSettings, aggregate: e.target.value })}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">None</option>
-                <option value="SUM">SUM</option>
-                <option value="AVG">AVG</option>
-                <option value="COUNT">COUNT</option>
-                <option value="MIN">MIN</option>
-                <option value="MAX">MAX</option>
-              </select>
+                <label className="block text-sm font-medium text-gray-700">Aggregate</label>
+                <div className="relative aggregate-dropdown">
+                  <button
+                    type="button"
+                    onClick={() => setAggregateDropdownOpen(!aggregateDropdownOpen)}
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 flex items-center justify-between"
+                  >
+                    <span className="text-gray-700">
+                      {columnSettings.aggregate.length === 0 
+                        ? "Select aggregates..." 
+                        : `${columnSettings.aggregate.length} selected`}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${aggregateDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {aggregateDropdownOpen && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-auto">
+                      {aggregateOptions.map((option) => (
+                        <label
+                          key={option.value}
+                          className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={columnSettings.aggregate.includes(option.value)}
+                            onChange={() => handleAggregateChange(option.value)}
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* {columnSettings.aggregate.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {columnSettings.aggregate.map((agg) => (
+                        <span
+                          key={agg}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {agg}
+                          <button
+                            type="button"
+                            onClick={() => handleAggregateChange(agg)}
+                            className="ml-1 text-blue-600 hover:text-blue-800"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )} */}
+                </div>
               </div>
               <div className={`flex-1 space-y-2 ${columnSettings.dimType === "dimension" ? "" : "invisible"}`}>
-              <label className="block text-sm font-medium text-gray-700">Group By</label>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={!!columnSettings.groupBy}
-                  onChange={(e) => setColumnSettings({ ...columnSettings, groupBy: e.target.checked })}
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Group by</span>
-              </div>
+                <label className="block text-sm font-medium text-gray-700">Group By</label>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={!!columnSettings.groupBy}
+                    onChange={(e) => setColumnSettings({ ...columnSettings, groupBy: e.target.checked })}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Group by</span>
+                </div>
               </div>
             </div>
 

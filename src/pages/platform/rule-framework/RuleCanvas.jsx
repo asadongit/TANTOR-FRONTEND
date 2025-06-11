@@ -45,8 +45,14 @@ const RuleCanvas = () => {
       console.log("SOURCE NODE ", sourceNode);
       setIsRuleSummaryOpen(true);
       setSelectedFact(sourceNode.data.selectedFact);
+      let sqlPreview = "";
 
-      const sqlPreview = `(${sourceNode.data.dimensionQuery}) \n (${sourceNode.data.timeTransformationQuery})`;
+      if(sourceNode.data.dimensionQuery)
+        sqlPreview += `(${sourceNode.data.dimensionQuery})`
+      if(sourceNode.data.timeTransformationQuery) {
+        sqlPreview += sqlPreview.length > 0 ? " AND " : ""
+        sqlPreview += `(${sourceNode.data.timeTransformationQuery})`;
+      }
 
       setFilterData({
         ...sourceNode.data.filterConditions,
