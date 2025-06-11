@@ -161,47 +161,33 @@ const ReportConfigDashboard = () => {
         const reportFileName = row.report_name;
         const embedID = row.embed_id
 
-        if ((reportType || "").toUpperCase() === "LIST") {
-          console.log("Embed id:", embedID);
+        // ----------- SUPERSET CODE START -----------
+        // if ((reportType || "").toUpperCase() === "LIST") {
+        //   console.log("Embed id:", embedID);
           
-          if(!embedID){
-            toast.error("REPORT NOT PROCESSED!");
-            return;
-          }
-
-          setCurrentEmbedId(embedID);
-          setShowModal(true);
-          return;
-        }
-
-        // If report type is LIST, navigate to report viewer page
-
-        // if ((reportType || "").toUpperCase() === "LIST") {
-        //   const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
-        //   const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-
-        //   navigate("/reports/viewer", {
-        //     state: {
-        //       reportPath,
-        //       reportName: reportFileName,
-        //       reportId
-        //     }
-        //   });
-        //   return;
-        // }
-
-        // if ((reportType || "").toUpperCase() === "LIST") {
-        //     const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
-        //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-
-        //     window.open(
-        //       `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-        //         import.meta.env.VITE_BIRT_EXPORT_FORMAT
-        //       }`,
-        //       "_blank"
-        //     );
+        //   if(!embedID){
+        //     toast.error("REPORT NOT PROCESSED!");
         //     return;
         //   }
+
+        //   setCurrentEmbedId(embedID);
+        //   setShowModal(true);
+        //   return;
+        // }
+        // ----------- SUPERSET CODE END -----------
+
+        if ((reportType || "").toUpperCase() === "LIST") {
+            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+            const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
+
+            window.open(
+              `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+                import.meta.env.VITE_BIRT_EXPORT_FORMAT
+              }`,
+              "_blank"
+            );
+            return;
+          }
 
         const headers = {
           "Content-Type": "application/json",
