@@ -233,6 +233,8 @@ export default function Editor() {
         const payload = {
           page: page,
           query: secureQuery,
+          project: (project === "default" || project === "none") ? "default" : project,
+          created_by: decodedToken?.preferred_username,
         };
 
         return fetch(`${hostnameV1}/runQuery`, {
