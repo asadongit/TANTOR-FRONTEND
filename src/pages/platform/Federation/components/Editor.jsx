@@ -41,66 +41,20 @@ export default function Editor() {
   const [expandedItems, setExpandedItems] = useState({});
   const [originalConnections, setOriginalConnections] = useState([]);
 
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     try {
-  //       const response = await fetch(`${hostnameV1}/connection-saves`, {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //           'Content-Type': 'application/json',
-  //         },
-  //       });
-  //       let data = await response.json();
-
-  //       if (project !== "default" && project !== "none") {
-  //         data = data.filter(
-  //           (item) =>
-  //             item.project.toUpperCase() === project.toUpperCase() &&
-  //             item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-  //             !item.is_deleted
-  //         );
-  //       } else {
-  //         data = data.filter(
-  //           (item) =>
-  //             item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-  //             !item.is_deleted
-  //         );
-  //       }
-
-  //       const formattedData = data.map((item) => ({
-  //         sourceConnectionId: item.connection_id,
-  //         connection_type: item.connection_type,
-  //         connection_name: item.connection_name,
-  //         project: item.project,
-  //         created_by: item.created_by,
-  //       }));
-
-  //       setOriginalConnections(formattedData); // Store the original connections
-  //       setDisplayedConnections(formattedData); // Set initial displayed connections
-  //     } catch (error) {
-  //       console.log(error);
-  //     }
-  //   };
-
-  //   fetchData();
-  // }, []);
 
   useEffect(() => {
     const fetchConnections = async () => {
       try {
 
-        // First get the policy IDs
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-        // If no policy IDs are returned, set empty connections and return
         if (policyIds.length === 0) {
           setOriginalConnections([]);
           setDisplayedConnections([]);
           return;
         }
 
-        // Then fetch connections based on policy IDs
         const response = await fetch(`${hostnameV1}/connections/list`, {
           method: "POST",
           headers: {
@@ -116,7 +70,6 @@ export default function Editor() {
 
         const connectionsData = await response.json();
 
-        // Format the data according to the new API response
         const formattedConnections = connectionsData.map(conn => ({
           connection_name: conn.connection_name,
         }));
@@ -147,6 +100,7 @@ export default function Editor() {
   }, [searchTerm, originalConnections]);
 
   const handleClearQuery = () => {
+    setViewsDetails(null)
     setQuery("");
     setData([]);
     setColumnDefs([]);
@@ -185,6 +139,7 @@ export default function Editor() {
   const executeQuery = (query, page = 1) => {
     setData([]);
     setColumnDefs([]);
+    setViewsDetails(null);
 
     const newquery = removeComments(query);
     console.log("newquery is", newquery);
@@ -269,6 +224,31 @@ export default function Editor() {
         setColumnDefs(columns);
         setData(rows);
         setHasMore(rows.length === 100);
+
+        const historyPayload = {
+          query: query,
+          owner: decodedToken?.preferred_username,
+          project: (project === "default" || project === "none") ? "default" : project,
+        };
+
+        return fetch(`${hostnameV1}/save_query`, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(historyPayload),
+        });
+      })
+      .then(() => {
+        console.log("Query saved to history successfully");
+        return fetchQueryHistory();
+      })
+      .then((updatedHistory) => {
+        if (updatedHistory) {
+          setQueryHistory(updatedHistory);
+        }
       })
       .catch((error) => {
         if (error.message !== "secure-query failed" &&
@@ -321,53 +301,6 @@ export default function Editor() {
     }));
   };
 
-  // const handleSchema = async (event, connection) => {
-  //   const connectionId = `conn-${connection}`;
-  //   toggleExpanded(connectionId);
-
-  //   if (!expandedItems[connectionId] && !schemas[connection]) {
-  //     try {
-  //       setSchemas((prevSchemas) => ({
-  //         ...prevSchemas,
-  //         [connection]: "loading",
-  //       }));
-  //       const response = await fetch(
-  //         `${hostnameV1}/${connection}/schemas`, {
-  //         headers: {
-  //           'Authorization': `Bearer ${token}`,
-  //           'Content-Type': 'application/json',
-  //         },
-  //       });
-  //       if (!response.ok) {
-  //         setSchemas((prevSchemas) => ({
-  //           ...prevSchemas,
-  //           [connection]: [],
-  //         }));
-  //         throw new Error("Network response was not ok");
-  //       }
-  //       const data = await response.text();
-  //       const res = await JSON.parse(data);
-
-  //       if (res.length === 0) {
-  //         setSchemas((prevSchemas) => ({
-  //           ...prevSchemas,
-  //           [connection]: [],
-  //         }));
-  //       } else {
-  //         setSchemas((prevSchemas) => ({
-  //           ...prevSchemas,
-  //           [connection]: res,
-  //         }));
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching schema data:", error);
-  //       setSchemas((prevSchemas) => ({
-  //         ...prevSchemas,
-  //         [connection]: "error",
-  //       }));
-  //     }
-  //   }
-  // };
 
   const handleSchema = async (event, connection) => {
     const connectionId = `conn-${connection}`;
@@ -380,11 +313,9 @@ export default function Editor() {
           [connection]: "loading",
         }));
 
-        // First get policy IDs
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-        // If no policy IDs, set empty schemas and return
         if (policyIds.length === 0) {
           setSchemas((prevSchemas) => ({
             ...prevSchemas,
@@ -429,56 +360,6 @@ export default function Editor() {
     }
   };
 
-
-  // const handleTables = async (event, connection, schema) => {
-  //   const schemaId = `schema-${connection}-${schema}`;
-  //   toggleExpanded(schemaId);
-
-  //   if (!expandedItems[schemaId] && !tables[`${connection}-${schema}`]) {
-  //     try {
-  //       setTables((prevTables) => ({
-  //         ...prevTables,
-  //         [`${connection}-${schema}`]: "loading",
-  //       }));
-
-  //       const response = await fetch(
-  //         `${hostnameV1}/${connection}/schemas/${schema}/tables`, {
-  //         headers: {
-  //           'Authorization': `Bearer ${token}`,
-  //           'Content-Type': 'application/json',
-  //         },
-  //       });
-  //       if (!response.ok) {
-  //         setTables((prevTables) => ({
-  //           ...prevTables,
-  //           [`${connection}-${schema}`]: [],
-  //         }));
-  //         throw new Error("Network response was not ok");
-  //       }
-  //       const data = await response.text();
-  //       const res = await JSON.parse(data);
-
-  //       if (res.length === 0) {
-  //         setTables((prevTables) => ({
-  //           ...prevTables,
-  //           [`${connection}-${schema}`]: [],
-  //         }));
-  //       } else {
-  //         setTables((prevTables) => ({
-  //           ...prevTables,
-  //           [`${connection}-${schema}`]: res,
-  //         }));
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching table data:", error);
-  //       setTables((prevTables) => ({
-  //         ...prevTables,
-  //         [`${connection}-${schema}`]: "error",
-  //       }));
-  //     }
-  //   }
-  // };
-
   const handleTables = async (event, connection, schema) => {
     const schemaId = `schema-${connection}-${schema}`;
     toggleExpanded(schemaId);
@@ -490,11 +371,9 @@ export default function Editor() {
           [`${connection}-${schema}`]: "loading",
         }));
 
-        // First get policy IDs
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-        // If no policy IDs, set empty tables and return
         if (policyIds.length === 0) {
           setTables((prevTables) => ({
             ...prevTables,
@@ -503,7 +382,6 @@ export default function Editor() {
           return;
         }
 
-        // Then fetch tables for this specific connection and schema
         const response = await fetch(`${hostnameV1}/tables/list`, {
           method: "POST",
           headers: {
@@ -539,54 +417,6 @@ export default function Editor() {
     }
   };
 
-  // const handleColumns = async (event, connection, schema, table) => {
-  //   const tableId = `table-${connection}-${schema}-${table}`;
-  //   toggleExpanded(tableId);
-
-  //   if (!expandedItems[tableId] && !columns[`${connection}-${schema}-${table}`]) {
-  //     try {
-  //       setColumns((prevColumns) => ({
-  //         ...prevColumns,
-  //         [`${connection}-${schema}-${table}`]: "loading",
-  //       }));
-  //       const response = await fetch(
-  //         `${hostnameV1}/${connection}/schemas/${schema}/tables/${table}/columns`, {
-  //         headers: {
-  //           'Authorization': `Bearer ${token}`,
-  //           'Content-Type': 'application/json',
-  //         },
-  //       });
-  //       if (!response.ok) {
-  //         setColumns((prevColumns) => ({
-  //           ...prevColumns,
-  //           [`${connection}-${schema}-${table}`]: [],
-  //         }));
-  //         throw new Error("Network response was not ok");
-  //       }
-  //       const data = await response.text();
-  //       const res = await JSON.parse(data);
-
-  //       if (res.length === 0) {
-  //         setColumns((prevColumns) => ({
-  //           ...prevColumns,
-  //           [`${connection}-${schema}-${table}`]: [],
-  //         }));
-  //       } else {
-  //         setColumns((prevColumns) => ({
-  //           ...prevColumns,
-  //           [`${connection}-${schema}-${table}`]: res,
-  //         }));
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching column data:", error);
-  //       setColumns((prevColumns) => ({
-  //         ...prevColumns,
-  //         [`${connection}-${schema}-${table}`]: "error",
-  //       }));
-  //     }
-  //   }
-  // };
-
   const handleColumns = async (event, connection, schema, table) => {
     const tableId = `table-${connection}-${schema}-${table}`;
     toggleExpanded(tableId);
@@ -598,11 +428,9 @@ export default function Editor() {
           [`${connection}-${schema}-${table}`]: "loading",
         }));
 
-        // First get policy IDs
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-        // If no policy IDs, set empty columns and return
         if (policyIds.length === 0) {
           setColumns((prevColumns) => ({
             ...prevColumns,
@@ -611,7 +439,6 @@ export default function Editor() {
           return;
         }
 
-        // Then fetch columns for this specific connection, schema and table
         const response = await fetch(`${hostnameV1}/columns/list`, {
           method: "POST",
           headers: {
@@ -633,7 +460,6 @@ export default function Editor() {
         const data = await response.json();
         const columnData = data.columns || [];
 
-        // Format the columns data to match the expected structure
         const formattedColumns = columnData.map(item => ({
           column: item.column_name,
           datatype: item.metadata?.DATA_TYPE || 'unknown',
@@ -831,12 +657,14 @@ export default function Editor() {
   const [hasMore, setHasMore] = useState(false);
 
   const handleNextPage = () => {
+    setViewsDetails(null)
     const nextPage = pageNo + 1;
     setPageNo(nextPage);
     executeQuery(query, nextPage);
   };
 
   const handlePreviousPage = () => {
+    setViewsDetails(null)
     if (pageNo > 1) {
       const prevPage = pageNo - 1;
       setPageNo(prevPage);
@@ -871,13 +699,90 @@ export default function Editor() {
     URL.revokeObjectURL(url);
   }
 
+  const [queryLoading, setQueryLoading] = useState(false);
+  const [isQueryModalOpen, setIsQueryModalOpen] = useState(false)
+  const [viewsDetails, setViewsDetails] = useState(null);
+
+  const handleQueryDetails = async () => {
+    console.log("query details is ===>", viewsDetails)
+    if (viewsDetails === null) {
+      try {
+        setQueryLoading(true)
+        setIsQueryModalOpen(true);
+        const response = await fetch(`${hostnameV1}/analyzeQuery`, {
+          method: 'POST',
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sql_query: securedQuery,
+            pageNo: pageNo
+          })
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data) {
+          setLoading(false)
+          setViewsDetails(data);
+        }
+        else {
+          setQueryLoading(false)
+          setViewsDetails(null);
+          console.error("Invalid response from the API");
+        }
+      } catch (error) {
+        setQueryLoading(false)
+        console.error("Error fetching data:", error);
+        setViewsDetails({ status: "Failed", message: "Unable to fetch data" });
+      } finally {
+        setQueryLoading(false)
+        setIsQueryModalOpen(true);
+      }
+    }
+    else {
+      console.log("query details  IN ELSE is ===>", viewsDetails)
+      setIsQueryModalOpen(true);
+    }
+  };
+
+  const [queryHistory, setQueryHistory] = useState([]);
+
+  const fetchQueryHistory = async () => {
+    try {
+      const response = await fetch(`${hostnameV1}/queries/${decodedToken?.preferred_username}/${project}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch query history');
+      }
+      const data = await response.json();
+      const filteredHistory = data.filter(query => query && query.trim() !== "");
+      setQueryHistory(filteredHistory);
+      return filteredHistory;
+    } catch (error) {
+      console.error("Error fetching query history:", error);
+      toast.error("Failed to load query history");
+    }
+  };
+  useEffect(() => {
+    fetchQueryHistory();
+  }, []);
+
+
   return (
     <div className="h-[calc(100vh-64px-32px)]">
       <div className="flex flex-row h-[100%] bg-gray-50">
         {checked ? (
           <>
-            <aside className="w-1/4 pr-4 flex flex-col border-r border-gray-300">
-              <div className="h-[100%] flex flex-col pb-4">
+            <aside className="w-1/4 pr-4 flex flex-col border-r border-gray-300 h-full">
+              <div className="flex flex-col overflow-hidden h-[60%]">
                 <div className="flex justify-between items-center mb-2">
                   <h2 className="text-xl font-bold">Connection</h2>
                 </div>
@@ -898,7 +803,9 @@ export default function Editor() {
                     />
                   )}
                 </div>
-                <div className="mt-1 flex-1 ml-1 overflow-y-auto overflow-x-auto custom-scroll pr-2">
+
+                {/* Scrollable Connections Content */}
+                <div className="flex-1 overflow-y-auto custom-scroll pr-2">
                   <div className="tree-view" style={{ width: "100%" }}>
                     {displayedConnections.map((connection) => {
                       const connectionId = `conn-${connection.connection_name}`;
@@ -1023,6 +930,28 @@ export default function Editor() {
                     }
                   `}
                 </style>
+              </div>
+              <div className="h-[40%] flex flex-col overflow-hidden border-t pt-4">
+                <h2 className="text-xl font-bold mb-2">History</h2>
+
+                <div className="flex-1 overflow-y-auto custom-scroll">
+                  {queryHistory.length === 0 ? (
+                    <div className="text-gray-500 text-sm">No query history available</div>
+                  ) : (
+                    <ul className="space-y-1">
+                      {queryHistory.map((query, index) => (
+                        <li
+                          key={index}
+                          className="p-2 text-sm hover:bg-gray-100 rounded cursor-pointer break-words"
+                          onClick={() => setQuery(query)}
+                          title={query}
+                        >
+                          {query.length > 50 ? `${query.substring(0, 50)}...` : query}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </aside>
 
@@ -1172,27 +1101,37 @@ export default function Editor() {
                           </table>
                         </div>
                       </div>
-
-                      <div className="w-full flex justify-end mt-2 ">
-                        <button
-                          type="button"
-                          onClick={handlePreviousPage}
-                          disabled={pageNo === 1}
-                          className={`px-8 py-1.5 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm focus:outline-none mr-4
+                      <div className="w-full mt-2 flex justify-between">
+                        <div>
+                          <button
+                            type="button"
+                            onClick={handleQueryDetails}
+                            className="text-white px-8 py-1.5 bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+                          >
+                            Query Details
+                          </button>
+                        </div>
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={handlePreviousPage}
+                            disabled={pageNo === 1}
+                            className={`px-8 py-1.5 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm focus:outline-none mr-4
                          ${pageNo === 1 ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white bg-[#8e78b7] hover:bg-[#7a63a8]"}`}
-                        >
-                          Previous
-                        </button>
+                          >
+                            Previous
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={handleNextPage}
-                          disabled={!hasMore}
-                          className={`px-8 py-1.5 rounded-lg text-sm
+                          <button
+                            type="button"
+                            onClick={handleNextPage}
+                            disabled={!hasMore}
+                            className={`px-8 py-1.5 rounded-lg text-sm
                             ${!hasMore ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white focus:ring-1 focus:ring-[#8e78b7] bg-[#8e78b7] hover:bg-[#7a63a8]"} `}
-                        >
-                          Next
-                        </button>
+                          >
+                            Next
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1205,6 +1144,56 @@ export default function Editor() {
         )}
       </div>
       <ToastContainer />
+      {isQueryModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg min-w-[32vw] min-h-[50vh] flex flex-col justify-between">
+            <div className="p-2 pl-4 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
+              <h2 className="text-xl font-semibold">Query Details</h2>
+            </div>
+
+            <div className="mt-4 mx-10 flex justify-center">
+              {viewsDetails && viewsDetails.length > 0 && (
+                <div>
+                  {Object.entries(viewsDetails[0])
+                    .filter(([key]) => key !== "query")
+                    .map(([key, value]) => (
+                      <div
+                        key={key}
+                        style={{
+                          marginBottom: '10px',
+                          fontSize: '16px',
+                          fontWeight: '400',
+                          color: '#8E77BB',
+                          lineHeight: '1.5',
+                        }}
+                      >
+                        <strong style={{ color: '#8E77BB' }}>
+                          {key.replace(/_/g, " ").toUpperCase()}:
+                        </strong>{" "}
+                        <span style={{ color: '#555' }}>
+                          {value || "N/A"}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )}
+              {queryLoading && (
+                <CircularProgress sx={{ color: "#8e78b7" }} />
+              )}
+            </div>
+
+            <div className="py-3 pr-4 flex justify-end gap-4">
+              <button
+                onClick={() => setIsQueryModalOpen(false)}
+                className="px-6 py-1 bg-[#8E77BB] text-white rounded-lg hover:bg-opacity-80"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 }
