@@ -1,11 +1,131 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Handle, Position } from "reactflow";
-import { FilePlus } from "lucide-react";
+import { FilePlus, Loader } from "lucide-react";
+
+const hostname = import.meta.env.VITE_FAST_API;
 
 export const DefineNode = ({ id, data }) => {
+  const [nameExists, setNameExists] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const [nameError, setNameError] = useState("");
+  const [descriptionError, setDescriptionError] = useState("");
+  const [attemptedSave, setAttemptedSave] = useState(false);
+  const nameCheckTimeout = useRef(null);
+
+  const validateName = async (name) => {
+    if (!name) {
+      setNameError("Name is required");
+      return;
+    }
+
+    setIsChecking(true);
+    try {
+      const response = await fetch(
+        `${hostname}/etl/check-transformation-name?name=${encodeURIComponent(
+          name
+        )}`,
+        {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to check transformation name");
+      }
+
+      const result = await response.json();
+      setNameExists(result.exists);
+
+      if (result.exists) {
+        setNameError("Transformation name already exists");
+      } else {
+        setNameError("");
+      }
+    } catch (error) {
+      console.error("Error checking transformation name:", error);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleNameChange = (e) => {
+    const value = e.target.value;
+    data.onDataChange({ name: value });
+
+    // Only clear visible errors if we've attempted to save before
+    if (attemptedSave) {
+      setNameError("");
+    }
+
+    clearTimeout(nameCheckTimeout.current);
+    if (value) {
+      nameCheckTimeout.current = setTimeout(() => {
+        validateName(value);
+      }, 500);
+    } else {
+      setNameError("Name is required");
+      setNameExists(false);
+    }
+  };
+
+  const handleDescriptionChange = (e) => {
+    const value = e.target.value;
+    data.onDataChange({ description: value });
+
+    // Only set visible errors if we've attempted to save before
+    if (attemptedSave) {
+      if (!value) {
+        setDescriptionError("Description is required");
+      } else {
+        setDescriptionError("");
+      }
+    }
+  };
+
+  // Modified to just validate without showing errors initially
+  useEffect(() => {
+    if (data.name && data.name.trim() !== "") {
+      validateName(data.name);
+    }
+    // Removed error setting from here
+  }, []);
+
+  // Hook into data's save handler if it exists
+  useEffect(() => {
+    // If data.onSave exists, we wrap it to validate first
+    if (data.onSave) {
+      const originalOnSave = data.onSave;
+      data.onSave = () => {
+        setAttemptedSave(true);
+
+        let isValid = true;
+        if (!data.name || data.name.trim() === "") {
+          setNameError("Name is required");
+          isValid = false;
+        }
+
+        if (!data.description) {
+          setDescriptionError("Description is required");
+          isValid = false;
+        }
+
+        if (nameExists) {
+          isValid = false;
+        }
+
+        if (isValid) {
+          return originalOnSave();
+        }
+        return false;
+      };
+    }
+  }, [data, nameExists]);
+
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
-
       <Handle type="source" position={Position.Right} />
 
       <div className="flex items-center space-x-3 mb-3">
@@ -16,27 +136,48 @@ export const DefineNode = ({ id, data }) => {
       <div className="space-y-1.5">
         <div>
           <label className="text-xs font-semibold text-black mb-0.5 block">
-            Name
+            Name<span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-            placeholder="Enter transformation name"
-            value={data.name || ""}
-            onChange={(e) => data.onDataChange({ name: e.target.value })}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              className={`w-full p-1 text-[10px] bg-white rounded-sm border ${
+                attemptedSave && nameError ? "border-red-500" : "border-gray-300"
+              } text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 ${
+                attemptedSave && nameError ? "focus:ring-red-500" : "focus:ring-gray-400"
+              } focus:border-gray-400`}
+              placeholder="Enter transformation name"
+              value={data.name || ""}
+              onChange={handleNameChange}
+            />
+            {isChecking && (
+              <div className="absolute right-2 top-1">
+                <Loader size={10} className="animate-spin text-gray-400" />
+              </div>
+            )}
+          </div>
+          {attemptedSave && nameError && (
+            <p className="text-[9px] text-red-500 mt-1">{nameError}</p>
+          )}
         </div>
         <div className="mb-2">
           <label className="text-xs font-semibold text-black mb-0.5 block">
-            Description
+            Description<span className="text-red-500">*</span>
           </label>
           <textarea
-            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+            className={`w-full p-1 text-[10px] bg-white rounded-sm border ${
+              attemptedSave && descriptionError ? "border-red-500" : "border-gray-300"
+            } text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 ${
+              attemptedSave && descriptionError ? "focus:ring-red-500" : "focus:ring-gray-400"
+            } focus:border-gray-400`}
             placeholder="Enter description"
             rows="2"
             value={data.description || ""}
-            onChange={(e) => data.onDataChange({ description: e.target.value })}
+            onChange={handleDescriptionChange}
           />
+          {attemptedSave && descriptionError && (
+            <p className="text-[9px] text-red-500 mt-1">{descriptionError}</p>
+          )}
         </div>
       </div>
     </div>

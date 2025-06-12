@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
+import axios from 'axios';
 import Breadcrumb from '../../../components/Breadcrumb';
+import { useAuth } from '../../../context/AuthContext';
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -27,65 +29,86 @@ function Transformation() {
   const [activeMenu, setActiveMenu] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [viewMode, setViewMode] = useState('both');
+  const [transformationData, setTransformationData] = useState([]);
+  const {project, decodedToken, token} = useAuth()
   const rowsPerPage = 5;
 
-  const metricsData = [
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Total",
-      count: "40"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Successful",
-      count: "26"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Failed",
-      count: "7"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Average Duration",
-      count: "16"
-    },
-  ];
+const hostname = import.meta.env.VITE_FAST_API;
 
-  const transformationData = [
-    {
-      id: '1',
-      name: 'U12',
-      desc: 'ABC',
-      created: '1/1/25',
-      updated: '1/1/25',
-      owner: 'xyz',
-      sourceRecords: '300',
-      targetRecords: '200',
-      duration: '27',
-      status: 'active'
-    },
-    {
-      id: '2',
-      name: 'W23',
-      desc: 'DEF',
-      created: '3/3/25',
-      updated: '10/3/25',
-      owner: 'ccc',
-      sourceRecords: '170',
-      targetRecords: '22',
-      duration: '05',
-      status: 'active'
+
+const metricsData = [
+  {
+    icon: "material-symbols:tab-group-outline",
+    bgcolor: "bg-[#8d77ba] bg-opacity-25",
+    iconcolor: "text-[#8d77ba]",
+    title: "Total",
+    count: "40"
+  },
+  {
+    icon: "material-symbols:tab-group-outline",
+    bgcolor: "bg-[#8d77ba] bg-opacity-25",
+    iconcolor: "text-[#8d77ba]",
+    title: "Successful",
+    count: "26"
+  },
+  {
+    icon: "material-symbols:tab-group-outline",
+    bgcolor: "bg-[#8d77ba] bg-opacity-25",
+    iconcolor: "text-[#8d77ba]",
+    title: "Failed",
+    count: "7"
+  },
+  {
+    icon: "material-symbols:tab-group-outline",
+    bgcolor: "bg-[#8d77ba] bg-opacity-25",
+    iconcolor: "text-[#8d77ba]",
+    title: "Average Duration",
+    count: "16"
+  },
+];
+
+
+  useEffect(() => {
+    fetchTransformationData();
+  }, [project, decodedToken]);
+
+  const fetchTransformationData = async () => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(
+        `${hostname}/etl/transformation/tableview?project=${project}&created_by=${decodedToken.preferred_username}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      setTransformationData(response.data);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching transformation data:", error);
+      setToast({
+        show: true,
+        message: 'Failed to fetch transformation data',
+        type: 'error'
+      });
+      setIsLoading(false);
     }
-  ];
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  };
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -96,24 +119,31 @@ function Transformation() {
     setSearchTerm('');
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await fetchTransformationData();
       setToast({
         show: true,
         message: 'Transformation data refreshed successfully',
         type: 'success'
       });
-
+    } catch (error) {
+      setToast({
+        show: true,
+        message: 'Failed to refresh transformation data',
+        type: 'error'
+      });
+    } finally {
+      setIsLoading(false);
       setTimeout(() => {
         setToast({ show: false, message: '', type: '' });
       }, 3000);
-    }, 1000);
+    }
   };
 
   const filteredData = transformationData.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.desc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.owner.toLowerCase().includes(searchTerm.toLowerCase())
+    item.transformation_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (item.created_by && item.created_by.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
@@ -277,6 +307,39 @@ function Transformation() {
     );
   };
 
+  const handleTriggerETL = async (workflowName) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(
+        `${hostname}/etl/manualtrigger/${workflowName}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      if (response.status === 200) {
+        setToast({
+          show: true,
+          message: 'ETL Job in progress',
+          type: 'success'
+        });
+      }
+    } catch (error) {
+      console.error("Error triggering ETL job:", error);
+      setToast({
+        show: true,
+        message: 'Failed to trigger ETL job',
+        type: 'error'
+      });
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+    }
+  };
+
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
@@ -316,6 +379,15 @@ function Transformation() {
             />
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
+
+          <button
+            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
+            onClick={handleRefresh}
+            title="Refresh data"
+            disabled={isLoading}
+          >
+            <RefreshCcw className={`h-5 w-5 text-gray-600 ${isLoading ? 'icon-rotate' : ''}`} />
+          </button>
 
           <button
             className={`p-1 px-1.5 rounded-lg border ${viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
@@ -390,60 +462,72 @@ function Transformation() {
       )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden mt-4 mb-6">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-[#29304a] text-white">
+        {isLoading ? (
+          <div className="flex justify-center items-center p-10">
+            <RotateCw className="h-8 w-8 text-gray-400 icon-rotate" />
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="bg-[#29304a] text-white">
               <th className="text-left p-4">ID</th>
-              <th className="text-left p-4">Name</th>
-              <th className="text-left p-4">Desc</th>
-              <th className="text-left p-4">Created</th>
-              <th className="text-left p-4">Updated</th>
-              <th className="text-left p-4">Owner</th>
-              <th className="text-left p-4">Source Records</th>
-              <th className="text-left p-4">Target Records</th>
-              <th className="text-left p-4">Duration (in mins)</th>
-              <th className="text-left p-4">Quick Action</th>
-              <th className="text-left p-4">Select All</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentItems.map((item, index) => (
-              <tr key={index} className="border-b hover:bg-gray-50">
-                <td className="p-4 font-medium">{item.id}</td>
-                <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
-                <td className="p-4">{item.desc}</td>
-                <td className="p-4">{item.created}</td>
-                <td className="p-4">{item.updated}</td>
-                <td className="p-4">{item.owner}</td>
-                <td className="p-4">{item.sourceRecords}</td>
-                <td className="p-4">{item.targetRecords}</td>
-                <td className="p-4">{item.duration}</td>
-                <td className="p-4">
-                  <div className="flex items-center gap-1">
-                    <button className="p-1 rounded hover:bg-gray-100">
-                      <Icon icon="material-symbols:play-arrow" className="w-5 h-5 text-gray-600" />
-                    </button>
-                    <button className="p-1 rounded hover:bg-gray-100">
-                      <Icon icon="material-symbols:edit-outline" className="w-5 h-5 text-gray-600" />
-                    </button>
-                    <button className="p-1 rounded hover:bg-gray-100">
-                      <Icon icon="material-symbols:content-copy-outline" className="w-5 h-5 text-gray-600" />
-                    </button>
-                    <button className="p-1 rounded hover:bg-gray-100">
-                      <Icon icon="material-symbols:info-outline" className="w-5 h-5 text-gray-600" />
-                    </button>
-                    <button className="p-1 rounded hover:bg-gray-100">
-                      <Icon icon="material-symbols:delete-outline" className="w-5 h-5 text-gray-600" />
-                    </button>
-                  </div>
-                </td>
-                <td className="p-4">
-                  <input type="checkbox" className="rounded text-[#8e78b7]" />
-                </td>
+                <th className="text-left p-4">Name</th>
+                <th className="text-left p-4">Description</th>
+                <th className="text-left p-4">Created</th>
+                <th className="text-left p-4">Updated</th>
+                <th className="text-left p-4">Owner</th>
+                <th className="text-left p-4">Status</th>
+                <th className="text-left p-4">Quick Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {currentItems.map((item, index) => (
+                <tr key={index} className="border-b hover:bg-gray-50">
+                  <td className="p-4 font-medium">{indexOfFirstItem + index + 1}</td>
+                  <td className="p-4  font-medium">{item.transformation_name}</td>
+                  <td className="p-4">{item.description || "-"}</td>
+                  <td className="p-4">{formatDate(item.created_at)}</td>
+                  <td className="p-4">{formatDate(item.updated_at)}</td>
+                  <td className="p-4">{item.created_by || "-"}</td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      item.status === 'creating' ? 'bg-blue-100 text-blue-800' :
+                      item.status === 'active' ? 'bg-green-100 text-green-800' :
+                      item.status === 'failed' ? 'bg-red-100 text-red-800' :
+                      item.status === 'Ready To Run' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {item.status || "unknown"}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-1">
+                      <button
+                        className={`p-1 rounded ${item.status === 'Ready To Run' ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
+                        disabled={item.status !== 'Ready To Run'}
+                        onClick={() => item.status === 'Ready To Run' && handleTriggerETL(item.transformation_name)}
+                      >
+                        <Icon icon="material-symbols:play-arrow" className={`w-5 h-5 ${item.status === 'Ready To Run' ? 'text-gray-600' : 'text-gray-400'}`} />
+                      </button>
+                      <button className="p-1 rounded hover:bg-gray-100">
+                        <Icon icon="material-symbols:edit-outline" className="w-5 h-5 text-gray-600" />
+                      </button>
+                      <button className="p-1 rounded hover:bg-gray-100">
+                        <Icon icon="material-symbols:content-copy-outline" className="w-5 h-5 text-gray-600" />
+                      </button>
+                      <button className="p-1 rounded hover:bg-gray-100">
+                        <Icon icon="material-symbols:info-outline" className="w-5 h-5 text-gray-600" />
+                      </button>
+                      <button className="p-1 rounded hover:bg-gray-100">
+                        <Icon icon="material-symbols:delete-outline" className="w-5 h-5 text-gray-600" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
         <div className="flex justify-end items-center px-4 py-3 border-t">
           <div className="flex items-center gap-1">

@@ -278,25 +278,64 @@ function TransformationCanvasContent() {
         return;
       }
 
-      const transformationData = generateTransformationJson();
-      console.log("Transformation JSON:", transformationData);
-
-      if (Object.keys(transformationData.source).length === 0) {
-        toast.warning("Source data is empty. Make sure your source nodes are properly connected.");
-        return;
-      }
-
-      if (Object.keys(transformationData.target).length === 0) {
-        toast.warning("Target data is empty. Make sure your target nodes are properly connected.");
-        return;
-      }
-
       const defineNode = nodes.find(node => node.type === "define");
-      if (!defineNode || !defineNode.data.name) {
+      if (!defineNode) {
+        toast.error("Define node is missing", {
+          duration: 3000,
+          position: "top-center",
+        });
+        return;
+      }
+
+      if (!defineNode.data.name || defineNode.data.name.trim() === "") {
         toast.error("Please provide a name for your transformation", {
           duration: 3000,
           position: "top-center",
         });
+        return;
+      }
+
+      if (!defineNode.data.description || defineNode.data.description.trim() === "") {
+        toast.error("Please provide a description for your transformation", {
+          duration: 3000,
+          position: "top-center",
+        });
+        return;
+      }
+
+      setIsSaving(true);
+      const nameCheckResponse = await fetch(`${hostname}/etl/check-transformation-name?name=${encodeURIComponent(defineNode.data.name)}`, {
+        headers: {
+          "accept": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!nameCheckResponse.ok) {
+        throw new Error("Failed to check transformation name");
+      }
+
+      const nameCheckResult = await nameCheckResponse.json();
+      if (nameCheckResult.exists) {
+        toast.error("Transformation name already exists. Please choose another name.", {
+          duration: 3000,
+          position: "top-center",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      const transformationData = generateTransformationJson();
+
+      if (Object.keys(transformationData.source).length === 0) {
+        toast.error("Source data is empty. Make sure your source nodes are properly connected.");
+        setIsSaving(false);
+        return;
+      }
+
+      if (Object.keys(transformationData.target).length === 0) {
+        toast.error("Target data is empty. Make sure your target nodes are properly connected.");
+        setIsSaving(false);
         return;
       }
 
@@ -343,8 +382,6 @@ function TransformationCanvasContent() {
         project: project || "default",
         extra_info: {}
       };
-
-      setIsSaving(true);
 
       const response = await fetch(`${hostname}/etl/transformation`, {
         method: "POST",
