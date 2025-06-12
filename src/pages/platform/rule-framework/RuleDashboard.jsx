@@ -15,6 +15,7 @@ import { encrypt } from "../../../utils/Crypto";
 import DataTable from "../../../components/DataTable";
 import { useProjectData } from "../../../hooks/platform/project";
 import { useProjectCardData } from "../../../hooks/platform/cardCounts";
+import { useRuleData } from "../../../hooks/platform/rules";
 
 
 
@@ -46,14 +47,14 @@ const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
 
 const RuleDashboard = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
-  const { data: projectData = [], isLoading: isProjectLoading, error: projectError, refetch: refetchProjects } = useProjectData();
+  const { data: ruleData = [], isLoading: isRuleLoading, error: ruleError, refetch: refetchRules } = useRuleData();
 
 
   const navigate = useNavigate();
 
   
   const handleRefresh = () => {
-    refetchProjects();
+    refetchRules();
     refetchCardData();
   };
 
@@ -92,16 +93,16 @@ const RuleDashboard = () => {
         icon: <Pencil size={16} />,
         onClick: (row) => console.log("Edit clicked for", row),
       },
-      {
-        label: "Delete",
-        icon: <Trash2 size={16} />,
-        onClick: (row) => console.log("Delete clicked for", row),
-      },
-      {
-        label: "Run",
-        icon: <Play size={16} fill="currentColor" />,
-        onClick: (row) => console.log("Run clicked for", row),
-      },
+      // {
+      //   label: "Delete",
+      //   icon: <Trash2 size={16} />,
+      //   onClick: (row) => console.log("Delete clicked for", row),
+      // },
+      // {
+      //   label: "Run",
+      //   icon: <Play size={16} fill="currentColor" />,
+      //   onClick: (row) => console.log("Run clicked for", row),
+      // },
     ];
   
   const columns = [
@@ -111,7 +112,7 @@ const RuleDashboard = () => {
     { key: "description", label: "Desc" },
     { key: "created", label: "Created" },
     { key: "updated", label: "Updated" },
-    { key: "type", label: "Type" },
+    { key: "reports", label: "Reports" },
     { label: "Action", sortable: false },
   ];
   
@@ -138,14 +139,14 @@ const RuleDashboard = () => {
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
             onClick={handleRefresh}
           >
-            <List className={`h-5 w-5 ${isProjectLoading ? 'animate-spin' : ''}`} />
+            <List className={`h-5 w-5 ${isRuleLoading ? 'animate-spin' : ''}`} />
           </button>
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
             onClick={handleCreate}
           >
-            <Plus className={`h-5 w-5 ${isProjectLoading ? 'animate-spin' : ''}`} />
+            <Plus className={`h-5 w-5 ${isRuleLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -199,11 +200,11 @@ const RuleDashboard = () => {
      
         <DataTable
           columns={columns}
-          data={projectData}
+          data={ruleData}
           actions={actions}
-          isLoading={isProjectLoading}
-          isError={!!projectError}
-          refetch={refetchProjects}
+          isLoading={isRuleLoading}
+          isError={!!ruleError}
+          refetch={refetchRules}
 />
     </div>
   );

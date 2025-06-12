@@ -24,6 +24,7 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
           id: "",
           name: "",
           type: "",
+          dimType: "",
           alias: "",
           output: true,
           order: "",
@@ -46,9 +47,18 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
   };
 
   const handleCreateRule = () => {
+
     const { metricColumns, groupByColumns } = getSegregatedColumns(
       filterData.columns
     );
+
+    console.log("filterData.columns ==> ", filterData.columns);
+    console.log("METRIC COLUMNS ==> ", metricColumns)
+
+    if(metricColumns.length === 0){
+      toast.error("No Aggregates were selected.");
+      return;
+    }
 
     const payload = {
       ruleName: finalPayload.name,
@@ -277,6 +287,14 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Dimension Type
+                  </label>
+                  <div className="border border-gray-200 rounded-md p-3 bg-white">
+                    <span className="text-gray-900">{currentColumn.dimType}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Alias
                   </label>
                   <div className="border border-gray-200 rounded-md p-3 bg-white">
@@ -321,7 +339,9 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
                   </label>
                   <div className="border border-gray-200 rounded-md p-3 bg-white">
                     <span className="text-gray-900">
-                      {currentColumn.aggregate.join(", ") || "-"}
+                      {Array.isArray(currentColumn.aggregate) && currentColumn.aggregate.length > 0 
+                        ? currentColumn.aggregate.join(", ") 
+                        : "-"}
                     </span>
                   </div>
                 </div>
