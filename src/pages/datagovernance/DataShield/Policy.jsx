@@ -289,7 +289,7 @@ const Policy = () => {
                 artefact_type: data.artefact_type,
                 report_group: data.report_group,
                 report_type: data.report_type,
-                report_name:  data.report_name
+                report_name: data.report_name
             }
         };
         setPolicyData(newData);
@@ -584,7 +584,8 @@ const Policy = () => {
         if (!searchTerm) return sampleData;
         return sampleData.filter(
             (item) =>
-                item.Type.toLowerCase().includes(searchTerm.toLowerCase())
+                item.Type.toLowerCase().includes(searchTerm.toLowerCase()) || item.Name
+                    .toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [sampleData, searchTerm]);
 
@@ -935,7 +936,7 @@ const Policy = () => {
 
                 <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
 
-      <Breadcrumb/>
+                <Breadcrumb />
                 <div className="flex items-center justify-between mb-6">
                     <h1 className="text-2xl font-semibold">Policy</h1>
                     <div className="flex items-center gap-2">
