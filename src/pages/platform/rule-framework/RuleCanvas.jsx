@@ -15,6 +15,7 @@ import { RuleSidebar } from "./RuleSidebar";
 import { toast } from "react-hot-toast";
 import RuleSummary from "./RuleSummary";
 import { useStateContext } from "../Federation/context/contextViewProvider";
+import { generateSQLQuery } from "../../../services/sqlQueryService";
 
 const nodeTypes = {
   define: DefineNode,
@@ -30,28 +31,48 @@ const RuleCanvas = () => {
   const [isRuleSummaryOpen, setIsRuleSummaryOpen] = useState(false);
   const [selectedFact, setSelectedFact] = useState(null);
   const [filterData, setFilterData] = useState(null);
-  const [previewData, setPreviewData] = useState(''); // Added state for preview data
+  const [previewData, setPreviewData] = useState("");
   const { handleFinalPayload, finalPayload } = useStateContext();
 
-  useEffect(() => {
-    console.log(filterData);
-  })
   // Add effect to watch for showRuleSummary flag in nodes
   // Inside the useEffect that watches for showRuleSummary
+
   useEffect(() => {
-    const sourceNode = nodes.find(node => node.type === 'source' && node.data.showRuleSummary);
+    const sourceNode = nodes.find(
+      (node) => node.type === "source" && node.data.showRuleSummary
+    );
     if (sourceNode) {
+      console.log("SOURCE NODE ", sourceNode);
       setIsRuleSummaryOpen(true);
       setSelectedFact(sourceNode.data.selectedFact);
-      // Make sure filterData includes the columns
-      setFilterData(sourceNode.data.filterConditions);
-      setPreviewData(sourceNode.data.previewData || '');
-      
+      let sqlPreview = "";
+
+      if(sourceNode.data.dimensionQuery)
+        sqlPreview += `(${sourceNode.data.dimensionQuery})`
+      if(sourceNode.data.timeTransformationQuery) {
+        sqlPreview += sqlPreview.length > 0 ? " AND " : ""
+        sqlPreview += `(${sourceNode.data.timeTransformationQuery})`;
+      }
+
+      setFilterData({
+        ...sourceNode.data.filterConditions,
+        sqlPreview: sqlPreview,
+      });
+
+      const previewData = generateSQLQuery({
+        tableName: sourceNode.data.fct_name,
+        selectedColumns: sourceNode.data.filterConditions.columns,
+        filterConditions: {
+          complex_query: sqlPreview,
+        },
+      });
+      setPreviewData(previewData || "");
+
       // Reset the flag
-      setNodes(nds => 
-        nds.map(node => 
-          node.id === sourceNode.id 
-            ? { ...node, data: { ...node.data, showRuleSummary: false } } 
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === sourceNode.id
+            ? { ...node, data: { ...node.data, showRuleSummary: false } }
             : node
         )
       );
@@ -62,7 +83,7 @@ const RuleCanvas = () => {
   useEffect(() => {
     setNodes((nds) =>
       nds.map((node) => {
-        if (node.type === 'define') {
+        if (node.type === "define") {
           return {
             ...node,
             data: {
@@ -95,10 +116,10 @@ const RuleCanvas = () => {
       if (params.source && params.target) {
         const sourceNode = nodes.find(n => n.id === params.source);
         const targetNode = nodes.find(n => n.id === params.target);
-        
+
         if (sourceNode?.type === 'define' && targetNode?.type === 'source') {
           setEdges((eds) => addEdge(params, eds));
-          
+
           // When connecting, update the source node with define node data
           setNodes((nds) =>
             nds.map((node) =>
@@ -211,7 +232,7 @@ const RuleCanvas = () => {
         id: getId(),
         type,
         position,
-        data: { 
+        data: {
           ...baseData,
           label: type
         }
@@ -252,7 +273,7 @@ const RuleCanvas = () => {
           description: ''
         }));
       }
-      
+
       setNodes((nds) => nds.filter((node) => node.id !== nodeId));
       setEdges((eds) =>
         eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
@@ -289,15 +310,15 @@ const RuleCanvas = () => {
           </Panel>
         </ReactFlow>
         <DrawerContainer />
-        <RuleFilter 
-          nodes={nodes} 
+        <RuleFilter
+          nodes={nodes}
           setNodes={setNodes}
           filterData={filterData}
           setFilterData={setFilterData}
         />
       </div>
       {isRuleSummaryOpen && (
-        <RuleSummary 
+        <RuleSummary
           setIsOpen={setIsRuleSummaryOpen}
           selectedFact={selectedFact}
           filterData={filterData}

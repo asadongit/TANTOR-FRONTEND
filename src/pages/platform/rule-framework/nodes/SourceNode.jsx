@@ -5,8 +5,9 @@ import { Upload, X, Search, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../../../context/AuthContext";
 import { useTableContext } from "../../react-flow/context/TableContext";
-import FilterComponent from "../../Federation/components/FilterComponent";
-import { generateSQLQuery } from "../../../../services/sqlQueryService";
+import DimensionFilter from "../components/DimensionFilter";
+import TimeTransformationFilter from "../components/TimeTransformationFilter";
+import { useStateContext } from "../../Federation/context/contextViewProvider";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -21,6 +22,7 @@ export function SourceNode({ id, data }) {
   const [connections, setConnections] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [tables, setTables] = useState([]);
+  const [dimensionColumns, setDimensionColumns] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedFact, setSelectedFact] = useState({
@@ -29,15 +31,17 @@ export function SourceNode({ id, data }) {
   });
   const { openDrawer } = useTableContext();
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isTimeTansformationOpen,setIsTimeTansformationOpen] = useState(false);
   const [filterModalColumns, setFilterModalColumns] = useState([]);
-  const [generatedQuery, setGeneratedQuery] = useState('');
+  const [generatedQuery, setGeneratedQuery] = useState("");
   const [ruleFilterSelections, setRuleFilterSelections] = useState([]);
+  const {finalPayload, handleFinalPayload} = useStateContext();
 
   const updateNodeData = (partialData) => {
     if (data.onDataChange) {
       data.onDataChange({
         ...partialData,
-        nodeType: 'source',
+        nodeType: "source",
         selectedFact, // Include selectedFact in node data
       });
     }
@@ -78,9 +82,19 @@ export function SourceNode({ id, data }) {
           );
 
           if (!response.ok) throw new Error("Failed to fetch tables");
+          
           const tableDetails = await response.json();
-          sessionStorage.setItem(cacheKey, JSON.stringify(tableDetails));
-          setTables(tableDetails);
+          const formattedTableDetails = tableDetails.map((detail) => ({
+            id: detail.fct_metric_linkid,
+            name: detail.matric_name,
+            dimType: "metric",
+          }));
+
+          sessionStorage.setItem(
+            cacheKey,
+            JSON.stringify(formattedTableDetails)
+          );
+          setTables(formattedTableDetails);
         }
       } catch (error) {
         console.error("Error fetching tables:", error);
@@ -102,14 +116,57 @@ export function SourceNode({ id, data }) {
     }
   }, [selectedFact.fact_id, fetchTables]);
 
-  const filteredTables = tables.filter((table) =>
-    table.matric_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
+   useEffect(() => {
+  if (!selectedFact.fact_id) return;
+
+  const fetchDimensions = async () => {
+    try {
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      };
+
+      const response = await fetch(
+        `${hostnameV1}/selectDimension?fact_id=${selectedFact.fact_id}`, 
+        { headers }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const formattedData = data.map(item => ({
+        id: item.fact_dimension_link_id, 
+        name: item.fct_column_name,
+        dimType: "dimension"
+      }));
+      
+      setDimensionColumns(formattedData || []);
+    } catch (error) {
+      console.error("Error fetching dimensions:", error);
+      toast.error("Failed to load dimensions");
+      setDimensionColumns([]);
+    }
+  };
+
+  fetchDimensions();
+}, [selectedFact.fact_id, token, hostnameV1]);
+
+  const filteredMetricColumns = tables.filter((table) =>
+    table.name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
   );
+
+  const filteredDimensionColumns = dimensionColumns.filter((table) =>
+    table.name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
+  );
+
+  const filteredTables = filteredMetricColumns.concat(filteredDimensionColumns);
 
   const handleSelectAll = (e) => {
     const isChecked = e.target.checked;
     if (isChecked) {
-      setSelectedItems(filteredTables.map((table) => table.matric_name));
+      setSelectedItems(filteredTables.map((table) => table.name));
     } else {
       setSelectedItems([]);
     }
@@ -137,13 +194,13 @@ export function SourceNode({ id, data }) {
     });
 
     // Get the selected tables from filteredTables
-    const selectedTablesData = filteredTables.filter(table => 
-      selectedItems.includes(table.matric_name)
+    const selectedTablesData = filteredTables.filter((table) =>
+      selectedItems.includes(table.name)
     );
 
     // Transform tables into columns format
     const initialColumns = selectedTablesData.map((table) => ({
-      name: table.matric_name,
+      name: table.name,
       type: table.type || "varchar",
       alias: "",
       output: true,
@@ -151,13 +208,13 @@ export function SourceNode({ id, data }) {
       sort: "",
       aggregate: "",
       groupBy: false,
-      isVisible: true
+      isVisible: true,
     }));
 
     // Merge with existing columns if available
     const existingColumns = data.filterConditions?.columns || [];
-    const mergedColumns = initialColumns.map(col => {
-      const existing = existingColumns.find(e => e.name === col.name);
+    const mergedColumns = initialColumns.map((col) => {
+      const existing = existingColumns.find((e) => e.name === col.name);
       if (existing) {
         return {
           ...col,
@@ -168,7 +225,7 @@ export function SourceNode({ id, data }) {
           aggregate: existing.aggregate || col.aggregate,
           groupBy: existing.groupBy ?? col.groupBy,
           isVisible: existing.isVisible ?? col.isVisible,
-          type: existing.type || col.type
+          type: existing.type || col.type,
         };
       }
       return col;
@@ -182,33 +239,41 @@ export function SourceNode({ id, data }) {
   };
 
   const generateSQL = (filterData) => {
-    if (!filterData) return '';
-    
+    if (!filterData) return "";
+
     if (filterData.complex_query) {
       return filterData.complex_query;
     }
 
     if (!filterData.conditions || !Array.isArray(filterData.conditions)) {
-      return '';
+      return "";
     }
 
     const buildGroupSQL = (group) => {
-      if (!group.conditions || !Array.isArray(group.conditions)) return '()';
+      if (!group.conditions || !Array.isArray(group.conditions)) return "()";
 
       const conditionsSQL = group.conditions
         .map((condition, index) => {
-          const joinType = index === 0 ? '' : ` ${condition.joinType || 'AND'} `;
+          const joinType =
+            index === 0 ? "" : ` ${condition.joinType || "AND"} `;
 
-          if (condition.type === 'condition') {
-            if (!condition.column || (!condition.value && condition.operator !== 'between') ||
-              (condition.operator === 'between' && (!condition.value || !condition.value2))) {
+          if (condition.type === "condition") {
+            if (
+              !condition.column ||
+              (!condition.value && condition.operator !== "between") ||
+              (condition.operator === "between" &&
+                (!condition.value || !condition.value2))
+            ) {
               return null;
             }
 
-            const columnType = condition.conditionType?.toLowerCase() || 'varchar';
-            const shouldQuote = !['decimal', 'double', 'integer'].includes(columnType);
+            const columnType =
+              condition.conditionType?.toLowerCase() || "varchar";
+            const shouldQuote = !["decimal", "double", "integer"].includes(
+              columnType
+            );
 
-            if (condition.operator === 'between') {
+            if (condition.operator === "between") {
               return `${joinType}${condition.column} BETWEEN ${
                 shouldQuote ? `'${condition.value}'` : condition.value
               } AND ${
@@ -225,17 +290,21 @@ export function SourceNode({ id, data }) {
         })
         .filter(Boolean);
 
-      return conditionsSQL.length > 0 ? `(${conditionsSQL.join('')})` : null;
+      return conditionsSQL.length > 0 ? `(${conditionsSQL.join("")})` : null;
     };
 
     const groupsSQL = filterData.conditions
       .map((group, index) => {
         const groupSQL = buildGroupSQL(group);
-        return index === 0 ? groupSQL : groupSQL ? `${group.joinType} ${groupSQL}` : null;
+        return index === 0
+          ? groupSQL
+          : groupSQL
+          ? `${group.joinType} ${groupSQL}`
+          : null;
       })
       .filter(Boolean);
 
-    return groupsSQL.join(' ') || '';
+    return groupsSQL.join(" ") || "";
   };
 
   return (
@@ -331,21 +400,21 @@ export function SourceNode({ id, data }) {
                       <input
                         type="checkbox"
                         id={`table-${idx}`}
-                        checked={selectedItems.includes(table.matric_name)}
-                        onChange={() => handleTableSelection(table.matric_name)}
+                        checked={selectedItems.includes(table.name)}
+                        onChange={() => handleTableSelection(table.name)}
                         className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                       />
                       <label
                         htmlFor={`table-${idx}`}
                         className="text-xs font-semibold text-black"
                       >
-                        {table.matric_name}
+                        {table.name}
                       </label>
                     </div>
                     <button
                       onClick={() => {
                         const selectedTables = filteredTables.filter((t) =>
-                          selectedItems.includes(t.matric_name)
+                          selectedItems.includes(t.name)
                         );
                         openDrawer(id, selectedTables);
                       }}
@@ -377,93 +446,26 @@ export function SourceNode({ id, data }) {
 
       {/* Render FilterComponent Modal */}
       {isFilterModalOpen && (
-        <FilterComponent
-          setIsOpen={setIsFilterModalOpen}
-          columns={filterModalColumns}
-          onApply={(error, filterData) => {
-            setIsFilterModalOpen(false);
-            
-            // Handle skip case (when both error and filterData are null)
-            if (error === null && filterData === null) {
-              // Maintain existing columns data for skip case
-              const updatedFilterData = {
-                conditions: [],
-                columns: filterModalColumns, // Keep the columns data
-                sqlPreview: ''
-              };
-              
-              // Generate SQL query for skip case
-              const query = generateSQLQuery({
-                tableName: selectedFact.fct_name,
-                selectedColumns: filterModalColumns.filter(col => col.output),
-                filterConditions: updatedFilterData,
-                ruleData: data.getNodes?.()?.find(node => node.type === 'define')?.data
-              });
-              
-              updateNodeData({
-                filterConditions: updatedFilterData, // Store the updated filter data
-                selectedColumns: filterModalColumns,
-                previewData: query,
-                showRuleSummary: true
-              });
-              return;
-            }
+        <DimensionFilter 
+        setIsOpen={setIsFilterModalOpen}
+        onApply={() => {
+          setIsFilterModalOpen(false);
+          setIsTimeTansformationOpen(true);
+        }}
+        factId={selectedFact.fact_id}
+        updateNodeData={updateNodeData}
+        />
+      )}
 
-            if (!error && filterData) {
-              // Handle filter conditions
-              let conditions;
-              if (Array.isArray(filterData)) {
-                conditions = { conditions: filterData };
-              } else if (filterData.complex_query) {
-                conditions = { complex_query: filterData.complex_query };
-              } else {
-                conditions = { conditions: [] };
-              }
-
-              // Generate SQL preview
-              const sqlPreview = generateSQL(conditions);
-
-              // Update column properties from the filter component
-              const updatedColumns = filterModalColumns.map(column => {
-                const filterColumn = filterData.columns?.find(fc => fc.name === column.name);
-                
-                return {
-                  ...column,
-                  alias: filterColumn?.alias || column.alias || '',
-                  output: filterColumn?.output ?? column.output ?? true,
-                  order: filterColumn?.order || column.order || '',
-                  sort: filterColumn?.sort || column.sort || '',
-                  aggregate: filterColumn?.aggregate || column.aggregate || '',
-                  groupBy: filterColumn?.groupBy ?? column.groupBy ?? false,
-                  isVisible: filterColumn?.isVisible ?? column.isVisible ?? true,
-                  type: filterColumn?.type || column.type || 'varchar'
-                };
-              });
-
-              // Store filter conditions and column properties
-              const updatedFilterData = {
-                ...conditions,
-                sqlPreview,
-                columns: updatedColumns
-              };
-
-              // Generate SQL query
-              const query = generateSQLQuery({
-                tableName: selectedFact.fct_name,
-                selectedColumns: updatedColumns.filter(col => col.output),
-                filterConditions: updatedFilterData,
-                ruleData: data.getNodes?.()?.find(node => node.type === 'define')?.data
-              });
-
-              // Update node data with filter conditions
-              updateNodeData({
-                filterConditions: updatedFilterData,
-                selectedColumns: updatedColumns,
-                previewData: query,
-                showRuleSummary: true
-              });
-            }
-          }}
+      {isTimeTansformationOpen && (
+        <TimeTransformationFilter 
+        setIsOpen={setIsTimeTansformationOpen}
+        onApply={() => {
+          setIsTimeTansformationOpen(false);
+          updateNodeData({showRuleSummary: true})
+        }}
+        factId={selectedFact.fact_id}
+        updateNodeData={updateNodeData}
         />
       )}
     </div>
@@ -476,8 +478,8 @@ SourceNode.propTypes = {
     onDataChange: PropTypes.func,
     tables: PropTypes.array,
     getNodes: PropTypes.func,
-    filterConditions: PropTypes.object
-  })
+    filterConditions: PropTypes.object,
+  }),
 };
 
 export default SourceNode;

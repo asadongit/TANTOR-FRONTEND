@@ -123,7 +123,7 @@ const RulesReportsLinks = () => {
             reportDesc: row.reportDesc
           },
         }),
-      show: (row) => (row.report_type || "").toLowerCase() !== "list",
+      // show: (row) => (row.report_type || "").toLowerCase() !== "list",
     },
   ];
 
