@@ -188,6 +188,22 @@ const ReportConfigDashboard = () => {
             );
             return;
           }
+          else if ((reportType || "").toUpperCase() === "GRID") {
+            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+            const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
+
+            window.open(
+              `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+                import.meta.env.VITE_BIRT_EXPORT_FORMAT
+              }`,
+              "_blank"
+            );
+            return;
+          }
+          else{
+            toast.error("Invalid Report Type selected.");
+            return;
+          }
 
         const headers = {
           "Content-Type": "application/json",
