@@ -24,7 +24,7 @@ import Source from '../pages/platform/Federation/BaseView/Source';
 
 import Editor from '../pages/platform/Federation/components/Editor';
 import FederationDashBoard from "../pages/platform/Federation/components/FederationDashboard"
-
+import Transformation from '../pages/platform/transformation/Transformation';
 
 import DataView from '../pages/platform/DataView';
 import PurgeCanvas from '../pages/platform/purge/PurgeCanvas';
@@ -62,6 +62,7 @@ export function PlatformRoutes() {
         <Route path="/config/report/lineItems" element={<LineItemsPage />} />
         <Route path="/details" element={<Details />}/>
         <Route path="/reporting/lineItems" element={<LineItemsPage />} />
+        <Route path="/transformation" element={<Transformation />} />
       </Routes>
   );
 }
