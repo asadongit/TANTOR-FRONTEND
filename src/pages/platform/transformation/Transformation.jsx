@@ -30,46 +30,51 @@ function Transformation() {
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [viewMode, setViewMode] = useState('both');
   const [transformationData, setTransformationData] = useState([]);
+  const [dashboardData, setDashboardData] = useState({
+    cards: { total: 0, success: 0, failed: 0 },
+    last5transformations: [],
+    movementgraph: []
+  });
   const {project, decodedToken, token} = useAuth()
   const rowsPerPage = 5;
 
-const hostname = import.meta.env.VITE_FAST_API;
+  const hostname = import.meta.env.VITE_FAST_API;
 
-
-const metricsData = [
-  {
-    icon: "material-symbols:tab-group-outline",
-    bgcolor: "bg-[#8d77ba] bg-opacity-25",
-    iconcolor: "text-[#8d77ba]",
-    title: "Total",
-    count: "40"
-  },
-  {
-    icon: "material-symbols:tab-group-outline",
-    bgcolor: "bg-[#8d77ba] bg-opacity-25",
-    iconcolor: "text-[#8d77ba]",
-    title: "Successful",
-    count: "26"
-  },
-  {
-    icon: "material-symbols:tab-group-outline",
-    bgcolor: "bg-[#8d77ba] bg-opacity-25",
-    iconcolor: "text-[#8d77ba]",
-    title: "Failed",
-    count: "7"
-  },
-  {
-    icon: "material-symbols:tab-group-outline",
-    bgcolor: "bg-[#8d77ba] bg-opacity-25",
-    iconcolor: "text-[#8d77ba]",
-    title: "Average Duration",
-    count: "16"
-  },
-];
+  const metricsData = [
+    {
+      icon: "material-symbols:tab-group-outline",
+      bgcolor: "bg-[#8d77ba] bg-opacity-25",
+      iconcolor: "text-[#8d77ba]",
+      title: "Total",
+      count: dashboardData.cards.total
+    },
+    {
+      icon: "material-symbols:tab-group-outline",
+      bgcolor: "bg-[#8d77ba] bg-opacity-25",
+      iconcolor: "text-[#8d77ba]",
+      title: "Successful",
+      count: dashboardData.cards.success
+    },
+    {
+      icon: "material-symbols:tab-group-outline",
+      bgcolor: "bg-[#8d77ba] bg-opacity-25",
+      iconcolor: "text-[#8d77ba]",
+      title: "Failed",
+      count: dashboardData.cards.failed
+    },
+    {
+      icon: "material-symbols:tab-group-outline",
+      bgcolor: "bg-[#8d77ba] bg-opacity-25",
+      iconcolor: "text-[#8d77ba]",
+      title: "Average Duration",
+      count: "16"
+    }
+  ];
 
 
   useEffect(() => {
     fetchTransformationData();
+    fetchDashboardData();
   }, [project, decodedToken]);
 
   const fetchTransformationData = async () => {
@@ -93,6 +98,27 @@ const metricsData = [
         type: 'error'
       });
       setIsLoading(false);
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await axios.get(
+        `${hostname}/etl/dashboarddata?project=${project}&created_by=${decodedToken.preferred_username}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      setDashboardData(response.data);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      setToast({
+        show: true,
+        message: 'Failed to fetch dashboard data',
+        type: 'error'
+      });
     }
   };
 
@@ -121,6 +147,7 @@ const metricsData = [
 
     try {
       await fetchTransformationData();
+      await fetchDashboardData();
       setToast({
         show: true,
         message: 'Transformation data refreshed successfully',
@@ -172,21 +199,27 @@ const metricsData = [
   };
 
   const MovementChart = () => {
-    const chartData = [
-      { day: '1', total: 20, success: 15, failed: 4 },
-      { day: '2', total: 25, success: 19, failed: 6 },
-      { day: '3', total: 28, success: 22, failed: 6 },
-      { day: '4', total: 32, success: 26, failed: 6 },
-      { day: '5', total: 30, success: 24, failed: 6 },
-      { day: '6', total: 35, success: 28, failed: 7 },
-      { day: '7', total: 33, success: 26, failed: 7 }
-    ];
+    const chartData = dashboardData.movementgraph || [];
 
     const colors = {
       total: '#ff5555',
       success: '#55aa55',
       failed: '#5555aa'
     };
+
+    if (!chartData.length) {
+      return (
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center gap-2 mb-4">
+            <Icon icon="material-symbols:trending-up" className="w-5 h-5 text-[#8d77ba]" />
+            <h3 className="text-lg font-semibold text-gray-800">Movement</h3>
+          </div>
+          <div className="h-64 flex items-center justify-center">
+            <p className="text-gray-500">No movement data available</p>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -208,7 +241,7 @@ const metricsData = [
 
             {chartData.map((item, index) => (
               <text key={index} x={50 + index * 50} y="190" className="text-xs fill-gray-500" textAnchor="middle">
-                {item.day}
+                {new Date(item.date).getDate()}
               </text>
             ))}
 
@@ -281,13 +314,7 @@ const metricsData = [
   };
 
   const LastTransformations = () => {
-    const lastTransformations = [
-      { id: 1, name: 'Transformation 1' },
-      { id: 2, name: 'Transformation 2' },
-      { id: 3, name: 'Transformation 3' },
-      { id: 4, name: 'Transformation 4' },
-      { id: 5, name: 'Transformation 5' }
-    ];
+    const lastTransformations = dashboardData.last5transformations || [];
 
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -297,11 +324,17 @@ const metricsData = [
         </div>
 
         <div className="space-y-2">
-          {lastTransformations.map((item) => (
-            <div key={item.id} className="flex items-center justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-700 text-sm">{item.id}</span>
+          {lastTransformations.length > 0 ? (
+            lastTransformations.map((name, index) => (
+              <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100">
+                <span className="text-gray-700 text-sm">{name}</span>
+              </div>
+            ))
+          ) : (
+            <div className="py-2 text-center text-gray-500">
+              No transformation history available
             </div>
-          ))}
+          )}
         </div>
       </div>
     );
