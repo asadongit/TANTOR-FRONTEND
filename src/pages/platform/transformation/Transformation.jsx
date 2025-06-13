@@ -31,7 +31,7 @@ function Transformation() {
   const [viewMode, setViewMode] = useState('both');
   const [transformationData, setTransformationData] = useState([]);
   const [dashboardData, setDashboardData] = useState({
-    cards: { total: 0, success: 0, failed: 0 },
+    cards: { total: 0, success: 0, failed: 0, average_duration: 0 },
     last5transformations: [],
     movementgraph: []
   });
@@ -67,7 +67,7 @@ function Transformation() {
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       title: "Average Duration",
-      count: "16"
+      count: dashboardData.cards.average_duration
     }
   ];
 
@@ -510,6 +510,9 @@ function Transformation() {
                 <th className="text-left p-4">Updated</th>
                 <th className="text-left p-4">Owner</th>
                 <th className="text-left p-4">Status</th>
+                <th className='text-left p-4'>Source Records</th>
+                <th className='text-left p-4'>Target Records</th>
+                <th className='text-left p-4'>Duration</th>
                 <th className="text-left p-4">Quick Action</th>
               </tr>
             </thead>
@@ -527,20 +530,26 @@ function Transformation() {
                       item.status === 'creating' ? 'bg-blue-100 text-blue-800' :
                       item.status === 'active' ? 'bg-green-100 text-green-800' :
                       item.status === 'failed' ? 'bg-red-100 text-red-800' :
-                      item.status === 'Ready To Run' ? 'bg-yellow-100 text-yellow-800' :
+                      item.status === 'Ready to run' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
                       {item.status || "unknown"}
                     </span>
                   </td>
+                  <td className="p-4">{item.source_count || "-"}</td>
+                  <td className="p-4">{item.target_count || "-"}</td>
+                  <td className="p-4">{item.duration || "-"}</td>
+
+
+
                   <td className="p-4">
                     <div className="flex items-center gap-1">
                       <button
-                        className={`p-1 rounded ${item.status === 'Ready To Run' ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
-                        disabled={item.status !== 'Ready To Run'}
-                        onClick={() => item.status === 'Ready To Run' && handleTriggerETL(item.transformation_name)}
+                        className={`p-1 rounded ${item.status === 'Ready to run' ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
+                        disabled={item.status !== 'Ready to run'}
+                        onClick={() => item.status === 'Ready to run' && handleTriggerETL(item.transformation_name)}
                       >
-                        <Icon icon="material-symbols:play-arrow" className={`w-5 h-5 ${item.status === 'Ready To Run' ? 'text-gray-600' : 'text-gray-400'}`} />
+                        <Icon icon="material-symbols:play-arrow" className={`w-5 h-5 ${item.status === 'Ready to run' ? 'text-gray-600' : 'text-gray-400'}`} />
                       </button>
                       <button className="p-1 rounded hover:bg-gray-100">
                         <Icon icon="material-symbols:edit-outline" className="w-5 h-5 text-gray-600" />
