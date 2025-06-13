@@ -666,7 +666,7 @@ export function ConnectionNode({ id, data }) {
     setUserCheckedColumns(updatedCheckedColumns);
     // Only consider allowed columns for select all logic
     const currentApiColumnsConsidered = apiColumns.filter((col) =>
-      allowedColumns.some((allowedCol) => allowedCol.column_name === col.column)
+      allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase())
     );
     setIsAllSelected(updatedCheckedColumns.length === currentApiColumnsConsidered.length);
   };
@@ -687,7 +687,7 @@ export function ConnectionNode({ id, data }) {
 
   const handleSelectAllChange = () => {
     const currentApiColumnsConsidered = apiColumns.filter((col) =>
-      allowedColumns.some((allowedCol) => allowedCol.column_name === col.column)
+      allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase())
     );
 
     if (isAllSelected) {
@@ -885,7 +885,7 @@ export function ConnectionNode({ id, data }) {
                     {apiColumns
                       .filter((col) =>
                         allowedColumns.some(
-                          (allowedCol) => allowedCol.column_name === col.column
+                          (allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase()
                         )
                       )
                       .map((item) => (
