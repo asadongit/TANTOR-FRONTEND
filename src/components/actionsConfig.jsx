@@ -35,11 +35,11 @@ export const getActionConfigurations = ({ token, project, hostnameV2, navigate }
 
   return {
     cdc: [
-      {
-        label: "Edit",
-        icon: React.createElement(Pencil, { size: 16 }),
-        onClick: (row) => navigate(`/cdc/editcdc/${row.cdc_id}`),
-      },
+      // {
+      //   label: "Edit",
+      //   icon: React.createElement(Pencil, { size: 16 }),
+      //   onClick: (row) => navigate(`/cdc/editcdc/${row.cdc_id}`),
+      // },
       {
         label: "View",
         icon: React.createElement(Eye, { size: 16 }),
