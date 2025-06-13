@@ -27,7 +27,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
     },
   ]);
 
-  useEffect(() => {console.log(dimensionValues)}, [dimensionValues]);
+  useEffect(() => {console.log(dimensionValues);}, [dimensionValues]);
 
   useEffect(() => {
     const cachedFilters = finalPayload?.dimensionFilters;
@@ -67,9 +67,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
   }, []);
 
   const fetchValues = async (dimensionId, dimensionName) => {
-    
     if (!dimensionId || !dimensionName) return;
-    
     setIsLoadingValues(true);
 
     const headers = {
@@ -192,7 +190,20 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
       .join(" AND ");
   };
 
+  const validateFilters = () => {
+    if (filters.length === 0) return false;
+
+    return filters.some(
+      (filter) =>
+        filter.dimension.id && filter.operator && filter.value.length > 0
+    );
+  };
+
   const handleApply = () => {
+    if (!validateFilters()) {
+      toast.error("No filters selected.");
+      return;
+    }
     const validFilters = filters.filter(
       (filter) =>
         filter.dimension.id && filter.operator && filter.value.length > 0
@@ -216,7 +227,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
         value: [],
       },
     ];
-    
+
     handleFinalPayload((prev) => ({ ...prev, dimensionFilters: [] }));
     setFilters([...updatedFilters]);
     updateNodeData({dimensionQuery: ""});
@@ -408,7 +419,12 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
           </button>
           <button
             onClick={handleApply}
-            className="px-5 py-2.5 bg-[#8E77BB] text-white rounded hover:bg-opacity-90 text-base font-medium"
+            disabled={!validateFilters()}
+            className={`px-5 py-2.5 text-white rounded text-base font-medium ${
+              !validateFilters()
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-[#8E77BB] hover:bg-opacity-90"
+            }`}
           >
             Apply Filters
           </button>

@@ -184,7 +184,36 @@ export function SourceNode({ id, data }) {
     setSelectedItems([]);
   };
 
+  const validateNodeData = () => {
+
+    if(data.isConnectedToDefine === false){
+      toast.error("Define node should be created first!");
+      return false;
+    }
+    if(!data.ruleName && !finalPayload.name){
+      toast.error(`Rule Name is missing`);
+      return false;
+    }
+    if(!data.ruleDescription && !finalPayload.description){
+      toast.error(`Rule Description is missing`);
+      return false;
+    }
+
+    if(!selectedFact.fact_id || !selectedFact.fct_name){
+      toast.error(`Please select a Table before proceeding.`);
+      return false;
+    }
+
+    if(selectedItems.length === 0){
+      toast.error(`Please select at least one column before proceeding.`);
+      return false;
+    }
+    return true;
+  }
   const handleOk = () => {
+    console.log(data)
+
+    if(!validateNodeData()) return; 
     // Update the node's data with the selected items
     updateNodeData({
       tables: selectedItems,
@@ -199,14 +228,18 @@ export function SourceNode({ id, data }) {
     );
 
     // Transform tables into columns format
+    console.log("SELECTED TABLES DATA ==>> ", selectedTablesData);
+
     const initialColumns = selectedTablesData.map((table) => ({
+      id: table.id,
       name: table.name,
       type: table.type || "varchar",
+      dimType: table.dimType,
       alias: "",
       output: true,
       order: "",
       sort: "",
-      aggregate: "",
+      aggregate: [],
       groupBy: false,
       isVisible: true,
     }));
@@ -218,6 +251,7 @@ export function SourceNode({ id, data }) {
       if (existing) {
         return {
           ...col,
+          dimType: existing.dimType || col.dimType,
           alias: existing.alias || col.alias,
           output: existing.output ?? col.output,
           order: existing.order || col.order,
@@ -229,6 +263,15 @@ export function SourceNode({ id, data }) {
         };
       }
       return col;
+    });
+
+    console.log("MERGED COLS ==> ", mergedColumns);
+    // Always update the node data with the merged columns, regardless of existingColumns length
+    updateNodeData({
+      filterConditions: {
+        ...(data.filterConditions || {}),
+        columns: mergedColumns
+      }
     });
 
     setFilterModalColumns(mergedColumns);

@@ -160,24 +160,31 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
   const getFilterQuery = (transformationData) => {
     if (!transformationData || transformationData.length === 0) return "";
 
-    return transformationData.map(t => {
+    return transformationData
+      .map((t) => {
         const columnName = t.column.name;
 
         switch (t.transformationType.toLowerCase()) {
-            case "asondate":
-                return `${columnName} AsOnDate`;
+          case "asondate":
+            return `${columnName} AsOnDate`;
 
-            case "historicdate":
-                return `${columnName} >= ${t.parameters.lowerOffset} ${t.parameters.lowerUnit}`;
+          case "historicdate":
+            return `${columnName} >= ${t.parameters.lowerOffset} ${t.parameters.lowerUnit}`;
 
-            case "daterange":
-                return `${columnName} BETWEEN ${t.parameters.lowerOffset} ${t.parameters.lowerUnit} AND ${t.parameters.upperOffset > 0 ? "+" : ""}${t.parameters.upperOffset} ${t.parameters.upperUnit}`;
+          case "daterange":
+            return `${columnName} BETWEEN ${t.parameters.lowerOffset} ${
+              t.parameters.lowerUnit
+            } AND ${t.parameters.upperOffset > 0 ? "+" : ""}${
+              t.parameters.upperOffset
+            } ${t.parameters.upperUnit}`;
 
-            default:
-                return "";
+          default:
+            return "";
         }
-    }).filter(Boolean).join(" AND ");
-};
+      })
+      .filter(Boolean)
+      .join(" AND ");
+  };
 
   const handleApply = () => {
     const transformationData = transformations.map((trans) => {
@@ -208,7 +215,6 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
     handleFinalPayload((prev) => ({...prev, timeTransformationFilters: transformationData}));
     updateNodeData({timeTransformationQuery: getFilterQuery(transformationData)});
     onApply();
-    
     console.log(getFilterQuery(transformationData));
   };
 
@@ -228,10 +234,10 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
       },
     ]);
 
-    handleFinalPayload(prev => ({...prev, timeTransformationFilters: []}));
-    updateNodeData({timeTransformationQuery: ""});
+    handleFinalPayload((prev) => ({ ...prev, timeTransformationFilters: [] }));
+    updateNodeData({ timeTransformationQuery: "" });
   };
-  
+
   const handleSkip = () => {
     handleClearAll();
     onApply();
@@ -242,7 +248,6 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
     const columnId = trans?.selectedColumn?.id || "";
     const dateType = trans?.dateType || "";
 
-    if (!columnId && !dateType && transformations.length === 1) return true;
     if (!columnId || !dateType) return false;
 
     if (dateType === "asOnDate") return true;
@@ -322,7 +327,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
                         Validate
                       </button>
                     )}
-                    
+
                     {transformations.length > 1 && (
                       <button
                         onClick={() => removeTransformation(index)}
@@ -426,7 +431,12 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
                                   ? "Negative value"
                                   : "Value"
                               }
-                              className="px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                              className="px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 
+                              [-moz-appearance:textfield] 
+                               [&::-webkit-outer-spin-button]:m-0 
+                               [&::-webkit-inner-spin-button]:m-0 
+                               [&::-webkit-outer-spin-button]:appearance-none 
+                               [&::-webkit-inner-spin-button]:appearance-none"
                             />
                             <select
                               value={trans?.lowerUnit || ""}
@@ -460,7 +470,12 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
                                   })
                                 }
                                 placeholder="Value"
-                                className="px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                className="px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500
+                                [-moz-appearance:textfield] 
+                               [&::-webkit-outer-spin-button]:m-0 
+                               [&::-webkit-inner-spin-button]:m-0 
+                               [&::-webkit-outer-spin-button]:appearance-none 
+                               [&::-webkit-inner-spin-button]:appearance-none"
                               />
                               <select
                                 value={trans?.upperUnit || ""}
