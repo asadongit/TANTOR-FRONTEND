@@ -40,22 +40,22 @@ const transformationOperations = [
 	{
 		id: "colcopy",
 		name: "Column Copy",
-		operators: [], // No operators for column copy
+		operators: [],
 	},
 	{
 		id: "constantcopy",
 		name: "Constant Copy",
-		operators: [], // No operators for constant copy
+		operators: [],
 	},
 	{
 		id: "rename",
 		name: "Rename",
-		operators: [], // No operators for rename
+		operators: [],
 	},
 	{
 		id: "join",
 		name: "Join",
-		operators: [], // No operators for join
+		operators: [],
 	},
 	{
 		id: "filter",
@@ -71,7 +71,7 @@ const transformationOperations = [
 	{
 		id: "date",
 		name: "Date",
-		operators: [], // No operators for date operations
+		operators: [],
 	},
 	{
 		id: "restrictcolumns",
@@ -84,21 +84,20 @@ const transformationOperations = [
 	{
 		id: "typecast",
 		name: "Typecast",
-		operators: [], // No operators for typecast
+		operators: [],
 	},
 	{
 		id: "sorting",
 		name: "Sort",
-		operators: [], // No operators for sorting
+		operators: [],
 	},
 	{
 		id: "ranking",
 		name: "Ranking",
-		operators: [], // No operators for ranking
+		operators: [],
 	}
 ];
 
-// Memoized individual transformation component
 const TransformationItem = memo(({
   transformation,
   index,
@@ -125,8 +124,8 @@ const TransformationItem = memo(({
   updateDateParam,
   updateTargetColumn
 }) => {
-  // Get operator symbol helper
-  const getOperatorSymbol = (operation, operator) => {
+
+	const getOperatorSymbol = (operation, operator) => {
     const opType = transformationOperations.find(op => op.id === operation);
     if (!opType) return operator;
 
@@ -218,7 +217,6 @@ const TransformationItem = memo(({
     const sourceCols = dataframeColumns[source_dataframe] || [];
     const targetCols = dataframeColumns[target_dataframe] || [];
 
-    // Enhanced props with memoized callbacks
     const commonProps = {
       transformation: {
         ...transformation,
@@ -239,7 +237,6 @@ const TransformationItem = memo(({
       dropdownRefs
     };
 
-    // Return appropriate component based on operation type
     switch (transformation_operation) {
       case 'arithmetic':
         return <ArithmeticOperationFields
@@ -394,9 +391,8 @@ const TransformationItem = memo(({
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison function to prevent unnecessary re-renders
-  // Only re-render if specific props have changed
-  const relevantPropsToCompare = [
+
+	const relevantPropsToCompare = [
     'transformation',
     'openDropdowns',
     'dataframeColumns'
@@ -404,14 +400,13 @@ const TransformationItem = memo(({
 
   for (let prop of relevantPropsToCompare) {
     if (JSON.stringify(prevProps[prop]) !== JSON.stringify(nextProps[prop])) {
-      return false; // Re-render
+      return false;
     }
   }
 
-  return true; // Don't re-render
+  return true;
 });
 
-// Separate component for default column selection to reduce complexity
 const DefaultColumnSelectionFields = memo(({
   transformation,
   sourceCols,
@@ -559,8 +554,12 @@ export const TransformationDrawer = ({
 	const [dataframeColumns, setDataframeColumns] = useState({});
 	const [openDropdowns, setOpenDropdowns] = useState({});
 	const dropdownRefs = useRef({});
+	const transformationRefs = useRef([]);
 
-	// Optimize data loading with useCallback
+	useEffect(() => {
+		transformationRefs.current = transformationRefs.current.slice(0, transformations.length);
+	}, [transformations.length]);
+
 	const loadDataFramesAndColumns = useCallback(() => {
 		if (!window.allNodes || !window.allEdges) return;
 
@@ -626,14 +625,12 @@ export const TransformationDrawer = ({
 		);
 	}, [activeNode, activeNodeId]);
 
-	// Load data when drawer opens
 	useEffect(() => {
 		if (isOpen) {
 			loadDataFramesAndColumns();
 		}
 	}, [isOpen, loadDataFramesAndColumns]);
 
-    // Dropdown click outside handler
 	useEffect(() => {
 		const handleClickOutside = (event) => {
 			Object.entries(dropdownRefs.current).forEach(([key, ref]) => {
@@ -649,7 +646,6 @@ export const TransformationDrawer = ({
 		};
 	}, []);
 
-	// Update node data when transformations change
 	useEffect(() => {
 		if (activeNode && activeNode.data && activeNode.data.onDataChange) {
 			activeNode.data.onDataChange({
@@ -658,7 +654,6 @@ export const TransformationDrawer = ({
 		}
 	}, [transformations, activeNode]);
 
-	// Memoized handlers to prevent recreation on every render
 	const handleDataframeChange = useCallback((id, field, value) => {
 		setTransformations(ts =>
 			ts.map(t => {
@@ -743,10 +738,8 @@ export const TransformationDrawer = ({
 		setTransformations(ts => ts.map(t => {
 			if (t.id !== id) return t;
 
-			// Find the operation definition
 			const operationDef = transformationOperations.find(op => op.id === operation);
 
-			// For operations with operators, set a default operator
 			const defaultOperator = (operationDef?.operators?.length > 0)
 				? operationDef.operators[0].id
 				: "";
@@ -754,7 +747,6 @@ export const TransformationDrawer = ({
 			let params = { custom_value: t.params.custom_value };
 			let target_column = t.target_column;
 
-			// Set appropriate params based on operation type
 			switch (operation) {
 				case "string":
 					if (defaultOperator === "lpad" || defaultOperator === "rpad") {
@@ -933,7 +925,6 @@ export const TransformationDrawer = ({
 		setTransformations(ts => ts.map(t => {
 			if (t.id !== id) return t;
 
-			// For rename operations, ensure we're not setting empty target columns
 			let finalTargetColumns = targetColumns;
 			if (t.transformation_operation === 'rename' && sourceColumns) {
 				finalTargetColumns = targetColumns.map((targetCol, idx) =>
@@ -994,7 +985,6 @@ export const TransformationDrawer = ({
 					t.source_column.map((col, idx) => t.target_column[idx] || col);
 			}
 
-			// Base structure for all transformation types
 			const transformationData = {
 				source_dataframe: t.source_dataframe,
 				target_dataframe: t.target_dataframe,
@@ -1007,7 +997,6 @@ export const TransformationDrawer = ({
 				params: {}
 			};
 
-			// Set appropriate params based on operation type
 			switch (t.transformation_operation) {
 				case 'arithmetic':
 					transformationData.params = { custom_value: t.params.custom_value };
@@ -1066,10 +1055,17 @@ export const TransformationDrawer = ({
 		onClose();
 	}, [transformations, activeNode, onClose]);
 
-	// Don't render anything if drawer is closed
+	const scrollToTransformation = useCallback((index) => {
+		if (transformationRefs.current[index]) {
+			transformationRefs.current[index].scrollIntoView({
+				behavior: 'smooth',
+				block: 'start'
+			});
+		}
+	}, []);
+
 	if (!isOpen) return null;
 
-	// Render component with improved performance
 	return (
 		<>
 			<div
@@ -1079,9 +1075,30 @@ export const TransformationDrawer = ({
 
 			<div className="fixed right-0 top-0 h-full w-[750px] bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out translate-x-0 flex flex-col">
 				<div className="p-3 border-b border-gray-200 flex items-center justify-between">
-					<h2 className="text-lg font-medium text-gray-800">
-						Transformation
-					</h2>
+					<div className="flex items-center space-x-2">
+						<h2 className="text-lg font-medium text-gray-800">
+							Transformation
+						</h2>
+						{transformations.length > 1 && (
+							<div className="relative inline-block text-left">
+								<select
+									className="pl-3 pr-8 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB] appearance-none cursor-pointer"
+									onChange={(e) => scrollToTransformation(Number(e.target.value) - 1)}
+									defaultValue=""
+								>
+									<option value="" disabled>Jump to...</option>
+									{transformations.map((_, idx) => (
+										<option key={idx} value={idx + 1}>
+											Transformation {idx + 1}
+										</option>
+									))}
+								</select>
+								<div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+									<ChevronDown className="w-4 h-4 text-gray-500" />
+								</div>
+							</div>
+						)}
+					</div>
 					<button
 						onClick={onClose}
 						className="p-1 rounded-full hover:bg-gray-100"
@@ -1092,35 +1109,39 @@ export const TransformationDrawer = ({
 
 				<div className="flex-1 overflow-y-auto p-4">
 					<div className="space-y-6">
-						{/* Use windowing/virtualization for better performance with many transformations */}
+
 						{transformations.map((transformation, index) => (
-							<TransformationItem
+							<div
 								key={transformation.id}
-								transformation={transformation}
-								index={index}
-								allDataframes={allDataframes}
-								dataframeColumns={dataframeColumns}
-								openDropdowns={openDropdowns}
-								dropdownRefs={dropdownRefs}
-								handleRemoveTransformation={handleRemoveTransformation}
-								handleDataframeChange={handleDataframeChange}
-								handleOperationChange={handleOperationChange}
-								handleOperatorChange={handleOperatorChange}
-								toggleDropdown={toggleDropdown}
-								handleSelectAllColumns={handleSelectAllColumns}
-								handleColumnSelection={handleColumnSelection}
-								updateTransformation={updateTransformation}
-								transformationOperations={transformationOperations}
-								updateStringParam={updateStringParam}
-								updateConstantCopyParam={updateConstantCopyParam}
-								updateFilterParam={updateFilterParam}
-								updateTypecastParam={updateTypecastParam}
-								updateTargetColumns={updateTargetColumns}
-								updateSortParam={updateSortParam}
-								updateRankingParam={updateRankingParam}
-								updateDateParam={updateDateParam}
-								updateTargetColumn={updateTargetColumn}
-							/>
+								ref={el => transformationRefs.current[index] = el}
+							>
+								<TransformationItem
+									transformation={transformation}
+									index={index}
+									allDataframes={allDataframes}
+									dataframeColumns={dataframeColumns}
+									openDropdowns={openDropdowns}
+									dropdownRefs={dropdownRefs}
+									handleRemoveTransformation={handleRemoveTransformation}
+									handleDataframeChange={handleDataframeChange}
+									handleOperationChange={handleOperationChange}
+									handleOperatorChange={handleOperatorChange}
+									toggleDropdown={toggleDropdown}
+									handleSelectAllColumns={handleSelectAllColumns}
+									handleColumnSelection={handleColumnSelection}
+									updateTransformation={updateTransformation}
+									transformationOperations={transformationOperations}
+									updateStringParam={updateStringParam}
+									updateConstantCopyParam={updateConstantCopyParam}
+									updateFilterParam={updateFilterParam}
+									updateTypecastParam={updateTypecastParam}
+								 updateTargetColumns={updateTargetColumns}
+								 updateSortParam={updateSortParam}
+								 updateRankingParam={updateRankingParam}
+								 updateDateParam={updateDateParam}
+								 updateTargetColumn={updateTargetColumn}
+								/>
+							</div>
 						))}
 
 						<button
