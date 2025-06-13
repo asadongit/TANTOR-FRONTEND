@@ -7,6 +7,7 @@ export const TargetNode = ({ id, data }) => {
   const [connections, setConnections] = useState([]);
   const [schemas, setSchemas] = useState([]);
   const [tables, setTables] = useState([]);
+  const [columns, setColumns] = useState([]);
   const [loading, setLoading] = useState({
     connections: false,
     schemas: false,
@@ -122,6 +123,7 @@ export const TargetNode = ({ id, data }) => {
         }
 
         const tableData = await response.json();
+        // console.log("Fetched Tables:", tableData);
         setTables(tableData);
         setDataFetchStatus((prev) => ({ ...prev, tables: "success" }));
       } catch (error) {
@@ -147,8 +149,14 @@ export const TargetNode = ({ id, data }) => {
       table: selectedTable,
       loadType: loadType,
       loadStrategy: loadStrategy,
+      columns: columns,
     });
-  }, [selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy]);
+  }, [selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy, columns]); // <-- add columns as dependency
+
+  const getColumnsForTable = (tableName) => {
+    const tableObj = tables.find((t) => t.table_name === tableName);
+    return tableObj?.column_json || [];
+  };
 
   const filteredTables = tables.filter((table) =>
     table.table_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -305,8 +313,6 @@ export const TargetNode = ({ id, data }) => {
             </div>
 
             <div className="space-y-1.5">
-
-
               <div className="relative">
                 <select
                   className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
@@ -314,6 +320,8 @@ export const TargetNode = ({ id, data }) => {
                   onChange={(e) => {
                     const tableName = e.target.value;
                     setSelectedTable(tableName);
+                    const tableColumns = getColumnsForTable(tableName);
+                    setColumns(tableColumns.map((col) => col.column_name));
                   }}
                   disabled={loading.tables}
                 >
