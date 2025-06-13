@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Code, Copy, Save, Check, X, Edit2, Play, Pause } from 'lucide-react';
+import { Code, Copy, Save, Check, X, Edit2, Play, Pause, AlertCircle } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../../../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -21,6 +21,8 @@ const ConfigEditorModal = ({
   const [showJson, setShowJson] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [rawJsonText, setRawJsonText] = useState('');
+  const [jsonError, setJsonError] = useState(null);
   const { cdcId } = useParams();
   const {token, hostnameV2, project}= useAuth()
 
@@ -60,12 +62,22 @@ const ConfigEditorModal = ({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (config && showJson) {
+      setRawJsonText(JSON.stringify(config, null, 2));
+    }
+  }, [showJson, config]);
+
   const handleConfigChange = (e) => {
+    const jsonText = e.target.value;
+    setRawJsonText(jsonText);
+
     try {
-      const parsed = JSON.parse(e.target.value);
+      const parsed = JSON.parse(jsonText);
       setConfig(parsed);
+      setJsonError(null);
     } catch (error) {
-      console.error("Invalid JSON", error);
+      setJsonError(`Invalid JSON: ${error.message}`);
     }
   };
 
@@ -120,6 +132,11 @@ const ConfigEditorModal = ({
 
   const handleSave = async () => {
     try {
+      if (showJson && jsonError) {
+        toast.error("Cannot save invalid JSON. Please fix errors first.");
+        return;
+      }
+
       setSaving(true);
       await updateConnectorConfig();
       setEditing(false);
@@ -135,6 +152,8 @@ const ConfigEditorModal = ({
   const handleCancelEdit = () => {
     // Reset to original config and exit edit mode
     setConfig({...originalConfig});
+    setRawJsonText(JSON.stringify(originalConfig, null, 2));
+    setJsonError(null);
     setEditing(false);
   };
 
@@ -207,6 +226,33 @@ const ConfigEditorModal = ({
         </span>
         <span className="ml-2 capitalize">{state}</span>
       </span>
+    );
+  };
+
+  const renderJsonEditor = () => {
+    return (
+      <div className="relative">
+        <textarea
+          value={rawJsonText}
+          onChange={handleConfigChange}
+          readOnly={!editing}
+          className={`w-full h-96 font-mono text-sm p-4 border rounded-md bg-white
+            focus:outline-none focus:ring-blue-500 focus:border-blue-500
+            disabled:bg-gray-50 ${jsonError ? 'border-red-500' : 'border-gray-300'}`}
+        />
+        {editing && jsonError && (
+          <div className="mt-2 text-red-600 text-sm flex items-start">
+            <AlertCircle size={16} className="mr-1 mt-0.5" />
+            <span>{jsonError}</span>
+          </div>
+        )}
+        {editing && !jsonError && (
+          <div className="mt-2 text-green-600 text-sm flex items-center">
+            <Check size={16} className="mr-1" />
+            <span>Valid JSON format</span>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -288,16 +334,7 @@ const ConfigEditorModal = ({
 
               <div className="mt-4">
                 {showJson ? (
-                  <div className="relative">
-                    <textarea
-                      value={JSON.stringify(config, null, 2)}
-                      onChange={handleConfigChange}
-                      readOnly={!editing}
-                      className="w-full h-96 font-mono text-sm p-4 border border-gray-300 rounded-md bg-white
-                        focus:outline-none focus:ring-blue-500 focus:border-blue-500
-                        disabled:bg-gray-50"
-                    />
-                  </div>
+                  renderJsonEditor()
                 ) : (
                   <div>
                     {renderConfigFields()}
@@ -318,9 +355,9 @@ const ConfigEditorModal = ({
             </button>
             <button
               onClick={handleSave}
-              disabled={!editing || saving}
+              disabled={!editing || saving || (showJson && jsonError)}
               className={`px-6 py-2 rounded-md shadow-sm text-sm font-medium text-white flex items-center ${
-                editing && !saving
+                editing && !saving && !(showJson && jsonError)
                 ? 'bg-[#8e78b7] hover:bg-gray-400'
                 : 'bg-[#8e78b7] cursor-not-allowed opacity-60'
               }`}
