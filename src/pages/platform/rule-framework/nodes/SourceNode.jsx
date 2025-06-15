@@ -1,5 +1,6 @@
+// STATE - 2
 import React, { useState, useCallback, useEffect } from "react";
-import PropTypes from "prop-types";
+import PropTypes, { node } from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
@@ -7,7 +8,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import { useTableContext } from "../../react-flow/context/TableContext";
 import DimensionFilter from "../components/DimensionFilter";
 import TimeTransformationFilter from "../components/TimeTransformationFilter";
-import { useStateContext } from "../../Federation/context/contextViewProvider";
+// import { useStateContext } from "../../Federation/context/contextViewProvider";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -35,17 +36,46 @@ export function SourceNode({ id, data }) {
   const [filterModalColumns, setFilterModalColumns] = useState([]);
   const [generatedQuery, setGeneratedQuery] = useState("");
   const [ruleFilterSelections, setRuleFilterSelections] = useState([]);
-  const {finalPayload, handleFinalPayload} = useStateContext();
+  // const {finalPayload, handleFinalPayload} = useStateContext();
+
+  // Added state for rule name and description
+  const [ruleName, setRuleName] = useState(data.ruleName || "");
+  const [ruleDescription, setRuleDescription] = useState(data.ruleDescription || "");
 
   const updateNodeData = (partialData) => {
-    if (data.onDataChange) {
-      data.onDataChange({
-        ...partialData,
-        nodeType: "source",
-        selectedFact, // Include selectedFact in node data
-      });
-    }
-  };
+  if (data.onDataChange) {
+    console.log("UPDATED NODE DATA ==> ", {
+      ...partialData,
+      // nodeType: "source",
+      // selectedFact,
+      // ruleName,
+      // ruleDescription,
+      // dimensionFilters: partialData.dimensionFilters || data.dimensionFilters,
+      // timeTransformationFilters: partialData.timeTransformationFilters || data.timeTransformationFilters,
+      // timeTransformationQuery: partialData.timeTransformationQuery || data.timeTransformationQuery
+    });
+    
+    data.onDataChange({
+      ...partialData,
+      nodeType: "source",
+      selectedFact,
+      ruleName,
+      ruleDescription,
+      dimensionFilters: partialData.dimensionFilters || data.dimensionFilters,
+      timeTransformationFilters: partialData.timeTransformationFilters || data.timeTransformationFilters,
+      timeTransformationQuery: partialData.timeTransformationQuery || data.timeTransformationQuery
+    });
+  }
+};
+
+
+  // Update final payload when rule name/description changes
+  // useEffect(() => {
+  //   handleFinalPayload({
+  //     name: ruleName,
+  //     description: ruleDescription,
+  //   });
+  // }, [ruleName, ruleDescription, handleFinalPayload]);
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -185,16 +215,11 @@ export function SourceNode({ id, data }) {
   };
 
   const validateNodeData = () => {
-
-    if(data.isConnectedToDefine === false){
-      toast.error("Define node should be created first!");
-      return false;
-    }
-    if(!data.ruleName && !finalPayload.name){
+    if(!ruleName){
       toast.error(`Rule Name is missing`);
       return false;
     }
-    if(!data.ruleDescription && !finalPayload.description){
+    if(!ruleDescription ){
       toast.error(`Rule Description is missing`);
       return false;
     }
@@ -210,25 +235,14 @@ export function SourceNode({ id, data }) {
     }
     return true;
   }
+  
   const handleOk = () => {
-    console.log(data)
-
     if(!validateNodeData()) return; 
-    // Update the node's data with the selected items
-    updateNodeData({
-      tables: selectedItems,
-      fact_id: selectedFact.fact_id,
-      fct_name: selectedFact.fct_name,
-      selectedFact, // Store selected fact
-    });
-
+    
     // Get the selected tables from filteredTables
     const selectedTablesData = filteredTables.filter((table) =>
       selectedItems.includes(table.name)
     );
-
-    // Transform tables into columns format
-    console.log("SELECTED TABLES DATA ==>> ", selectedTablesData);
 
     const initialColumns = selectedTablesData.map((table) => ({
       id: table.id,
@@ -265,14 +279,21 @@ export function SourceNode({ id, data }) {
       return col;
     });
 
-    console.log("MERGED COLS ==> ", mergedColumns);
-    // Always update the node data with the merged columns, regardless of existingColumns length
+    // Always update the node data with the merged columns
+    // Update the node's data with the selected items
     updateNodeData({
+      tables: selectedItems,
+      fact_id: selectedFact.fact_id,
+      fct_name: selectedFact.fct_name,
+      selectedFact,
+      ruleName: ruleName,
+      ruleDescription: ruleDescription,
       filterConditions: {
         ...(data.filterConditions || {}),
         columns: mergedColumns
       }
-    });
+  });
+
 
     setFilterModalColumns(mergedColumns);
     setRuleFilterSelections(mergedColumns);
@@ -364,6 +385,41 @@ export function SourceNode({ id, data }) {
         <Upload className="w-5 h-5 text-[#96CF7B]" />
         <h3 className="text-black font-medium">Source</h3>
       </div>
+      
+      {/* Added Rule Name and Description Inputs */}
+      <div className="space-y-1.5">
+        <div>
+          <label className="text-xs font-semibold text-black mb-0.5 block">
+            Rule Name
+          </label>
+          <input
+            type="text"
+            value={ruleName}
+            onChange={(e) => {
+              setRuleName(e.target.value);
+              updateNodeData({ ruleName: e.target.value });
+            }}
+            placeholder="Rule Name"
+            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-black mb-0.5 block">
+            Rule Description
+          </label>
+          <input
+            type="text"
+            value={ruleDescription}
+            onChange={(e) => {
+              setRuleDescription(e.target.value);
+              updateNodeData({ ruleDescription: e.target.value });
+            }}
+            placeholder="Add Description"
+            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+          />
+        </div>
+      </div>
+      
       <div className="space-y-1.5">
         <div>
           <label className="text-xs font-semibold text-black mb-0.5 block">
@@ -497,6 +553,7 @@ export function SourceNode({ id, data }) {
         }}
         factId={selectedFact.fact_id}
         updateNodeData={updateNodeData}
+        nodeData={data}
         />
       )}
 
@@ -504,11 +561,10 @@ export function SourceNode({ id, data }) {
         <TimeTransformationFilter 
         setIsOpen={setIsTimeTansformationOpen}
         onApply={() => {
-          setIsTimeTansformationOpen(false);
-          updateNodeData({showRuleSummary: true})
         }}
         factId={selectedFact.fact_id}
         updateNodeData={updateNodeData}
+        nodeData={data}
         />
       )}
     </div>
@@ -522,6 +578,8 @@ SourceNode.propTypes = {
     tables: PropTypes.array,
     getNodes: PropTypes.func,
     filterConditions: PropTypes.object,
+    ruleName: PropTypes.string,
+    ruleDescription: PropTypes.string,
   }),
 };
 

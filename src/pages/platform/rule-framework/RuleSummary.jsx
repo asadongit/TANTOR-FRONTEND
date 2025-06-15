@@ -1,20 +1,40 @@
 import React, { useEffect, useState } from "react";
 import { X, ArrowBigLeft, ArrowBigRight } from "lucide-react";
-import { useStateContext } from "../Federation/context/contextViewProvider";
+// import { useStateContext } from "../Federation/context/contextViewProvider";
 import { Modal } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { getSegregatedColumns } from "../../../services/ruleJsonGeneratorService";
 import { useAuth } from "../../../context/AuthContext";
 
 import toast from "react-hot-toast";
-const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
-  const { finalPayload } = useStateContext();
+const RuleSummary = ({ 
+  setIsOpen, 
+  selectedFact, 
+  filterData, 
+  previewData,
+  ruleName,
+  ruleDescription,
+  dimensionFilters,
+  timeTransformationFilters }) => {
+  // const { finalPayload } = useStateContext();
   const navigate = useNavigate();
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
 
   const { hostnameV1, token } = useAuth();
   // Get columns from filterData
   const columns = filterData?.columns || [];
+  
+  useEffect(() => {
+    console.log("SUMMARY DATA ==> ", { 
+  selectedFact, 
+  filterData, 
+  previewData,
+  ruleName,
+  ruleDescription,
+  dimensionFilters,
+  timeTransformationFilters });
+  }, []);
+
 
   // Get current column or a default if no columns
   const currentColumn =
@@ -60,16 +80,26 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
       return;
     }
 
-    const payload = {
-      ruleName: finalPayload.name,
+    // const payload = {
+    //   ruleName: finalPayload.name,
+    //   fact_id: selectedFact.fact_id,
+    //   dimensionFilters: finalPayload.dimensionFilters,
+    //   timeTransformationFilters: finalPayload.timeTransformationFilters,
+    //   metricColumns,
+    //   groupByColumns,
+    // };
+
+     const payload = {
+      ruleName,
       fact_id: selectedFact.fact_id,
-      dimensionFilters: finalPayload.dimensionFilters,
-      timeTransformationFilters: finalPayload.timeTransformationFilters,
+      dimensionFilters,
+      timeTransformationFilters,
       metricColumns,
       groupByColumns,
-    };
-    console.log("FINAL PAYLOAD ==> ", payload);
+  };
 
+    console.log("FINAL PAYLOAD ==> ", payload);
+    
     (async () => {
       try {
         const headers = {
@@ -143,7 +173,7 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
                     </label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
                       <span className="text-blue-600">
-                        {finalPayload?.name || "Not defined"}
+                        {ruleName || "Not defined"}
                       </span>
                     </div>
                   </div>
@@ -153,7 +183,7 @@ const RuleSummary = ({ setIsOpen, selectedFact, filterData, previewData }) => {
                     </label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
                       <span className="text-gray-600">
-                        {finalPayload?.description || "No description"}
+                        {ruleDescription || "No description"}
                       </span>
                     </div>
                   </div>

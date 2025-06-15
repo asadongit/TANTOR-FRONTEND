@@ -1,3 +1,4 @@
+// STATE - 3
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
   addEdge,
@@ -7,18 +8,17 @@ import ReactFlow, {
   Panel,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { DefineNode } from "./nodes/DefineNode";
 import SourceNode from "./nodes/SourceNode";
 import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
 import RuleFilter from "../react-flow/dialog/RuleFilter";
 import { RuleSidebar } from "./RuleSidebar";
 import { toast } from "react-hot-toast";
 import RuleSummary from "./RuleSummary";
-import { useStateContext } from "../Federation/context/contextViewProvider";
+// import { useStateContext } from "../Federation/context/contextViewProvider";
 import { generateSQLQuery } from "../../../services/sqlQueryService";
+import { ClipboardSignature } from "lucide-react";
 
 const nodeTypes = {
-  define: DefineNode,
   source: SourceNode,
 };
 
@@ -32,58 +32,61 @@ const RuleCanvas = () => {
   const [selectedFact, setSelectedFact] = useState(null);
   const [filterData, setFilterData] = useState(null);
   const [previewData, setPreviewData] = useState("");
-  const { handleFinalPayload, finalPayload } = useStateContext();
+  const [ruleName, setRuleName] = useState("");
+  const [ruleDescription, setRuleDescription] = useState("");
+  const [dimensionFilters, setDimensionFilters] = useState([]);
+  const [timeTransformationFilters,setTimeTransformationFilters] = useState([]);
+
+  // const { handleFinalPayload, finalPayload } = useStateContext();
 
   // Add effect to watch for showRuleSummary flag in nodes
-  // Inside the useEffect that watches for showRuleSummary
-
   useEffect(() => {
-    const sourceNode = nodes.find(
-      (node) => node.type === "source" && node.data.showRuleSummary
-    );
-    if (sourceNode) {
-      console.log("SOURCE NODE ", sourceNode);
-      setIsRuleSummaryOpen(true);
-      setSelectedFact(sourceNode.data.selectedFact);
-      let sqlPreview = "";
+  const sourceNode = nodes.find(
+    (node) => node.type === "source" && node.data.showRuleSummary
+  );
+  if (sourceNode) {
+    console.log("SOURCE NODE ", sourceNode.data);
+    setIsRuleSummaryOpen(true);
+    setSelectedFact(sourceNode.data.selectedFact);
+    setFilterData(sourceNode.data.filterConditions);
+    setRuleName(sourceNode.data.ruleName);
+    setRuleDescription(sourceNode.data.ruleDescription);
+    setDimensionFilters(sourceNode.data.dimensionFilters || []);
+    setTimeTransformationFilters(sourceNode.data.timeTransformationFilters || []);
 
-      if(sourceNode.data.dimensionQuery)
-        sqlPreview += `(${sourceNode.data.dimensionQuery})`
-      if(sourceNode.data.timeTransformationQuery) {
-        sqlPreview += sqlPreview.length > 0 ? " AND " : ""
-        sqlPreview += `(${sourceNode.data.timeTransformationQuery})`;
-      }
 
-      setFilterData({
-        ...sourceNode.data.filterConditions,
-        sqlPreview: sqlPreview,
-      });
+    let sqlPreview = "";
 
-      const previewData = generateSQLQuery({
-        tableName: sourceNode.data.fct_name,
-        selectedColumns: sourceNode.data.filterConditions.columns,
-        filterConditions: {
-          complex_query: sqlPreview,
-        },
-      });
-      setPreviewData(previewData || "");
-
-      // Reset the flag
-      setNodes((nds) =>
-        nds.map((node) =>
-          node.id === sourceNode.id
-            ? { ...node, data: { ...node.data, showRuleSummary: false } }
-            : node
-        )
-      );
+    if(sourceNode.data.dimensionQuery)
+      sqlPreview += `(${sourceNode.data.dimensionQuery})`
+    if(sourceNode.data.timeTransformationQuery) {
+      sqlPreview += sqlPreview.length > 0 ? " AND " : ""
+      sqlPreview += `(${sourceNode.data.timeTransformationQuery})`;
     }
-  }, [nodes, setNodes]);
 
-  // Ensure all Define nodes always have the correct onDataChange handler
+    setPreviewData(generateSQLQuery({
+      tableName:sourceNode.data.fct_name, 
+      selectedColumns: sourceNode.data.filterConditions.columns, 
+      complexQuery: sqlPreview
+    }));
+
+
+    // Reset the flag
+    setNodes((nds) =>
+      nds.map((node) =>
+        node.id === sourceNode.id
+          ? { ...node, data: { ...node.data, showRuleSummary: false } }
+          : node
+      )
+    );
+  }
+}, [nodes, setNodes]);
+
+  // Ensure source nodes have the correct onDataChange handler
   useEffect(() => {
     setNodes((nds) =>
       nds.map((node) => {
-        if (node.type === "define") {
+        if (node.type === "source") {
           return {
             ...node,
             data: {
@@ -96,11 +99,14 @@ const RuleCanvas = () => {
                       : n
                   )
                 );
+                
                 // Sync to finalPayload for summary
-                handleFinalPayload({
-                  name: newData.name,
-                  description: newData.description,
-                });
+                // if (newData.ruleName || newData.ruleDescription) {
+                //   handleFinalPayload({
+                //     name: newData.ruleName || node.data.ruleName,
+                //     description: newData.ruleDescription || node.data.ruleDescription,
+                //   });
+                // }
               },
             },
           };
@@ -108,47 +114,14 @@ const RuleCanvas = () => {
         return node;
       })
     );
-  }, [setNodes, handleFinalPayload]);
+  }, [setNodes]);
 
+  // Simplify onConnect since we only have one node type
   const onConnect = useCallback(
     (params) => {
-      // Only allow connection from define to source
-      if (params.source && params.target) {
-        const sourceNode = nodes.find(n => n.id === params.source);
-        const targetNode = nodes.find(n => n.id === params.target);
-
-        if (sourceNode?.type === 'define' && targetNode?.type === 'source') {
-          setEdges((eds) => addEdge(params, eds));
-
-          // When connecting, update the source node with define node data
-          setNodes((nds) =>
-            nds.map((node) =>
-              node.id === targetNode.id
-                ? {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      ruleName: sourceNode.data.name,
-                      ruleDescription: sourceNode.data.description,
-                      columns: node.data.columns || [],
-                      isConnectedToDefine: true
-                    }
-                  }
-                : node
-            )
-          );
-          // Also update finalPayload for summary
-          handleFinalPayload((prev) => ({
-            ...prev,
-            name: sourceNode.data.name,
-            description: sourceNode.data.description,
-          }));
-        } else {
-          toast.error('Invalid connection. Define node must connect to Source node.');
-        }
-      }
+      toast.error('Connections are not supported in this view');
     },
-    [setEdges, nodes, setNodes, handleFinalPayload]
+    []
   );
 
   const onDragOver = useCallback((event) => {
@@ -168,10 +141,15 @@ const RuleCanvas = () => {
         y: event.clientY - 80,
       };
 
-      // Check if we already have a node of this type
-      const existingNode = nodes.find(n => n.type === type);
-      if (existingNode) {
-        toast.error(`Only one ${type} node is allowed.`);
+      // Only allow source nodes
+      if (type !== "source") {
+        toast.error('Only source nodes are allowed');
+        return;
+      }
+
+      // Check if we already have a node
+      if (nodes.length > 0) {
+        toast.error(`Only one node is allowed.`);
         return;
       }
 
@@ -185,47 +163,15 @@ const RuleCanvas = () => {
             )
           );
 
-          // If this is a define node update, propagate to connected source nodes
-          if (newData.nodeType === 'define') {
-            const connectedEdges = edges.filter(e => e.source === newNode.id);
-            connectedEdges.forEach(edge => {
-              const sourceNode = nodes.find(n => n.id === edge.target);
-              if (sourceNode) {
-                setNodes((nds) =>
-                  nds.map((node) =>
-                    node.id === sourceNode.id
-                      ? {
-                          ...node,
-                          data: {
-                            ...node.data,
-                            ruleName: newData.name,
-                            ruleDescription: newData.description,
-                            isConnectedToDefine: true
-                          }
-                        }
-                      : node
-                  )
-                );
-              }
-            });
-            // Sync to finalPayload for summary
-            handleFinalPayload((prev) => ({
-              ...prev,
-              name: newData.name,
-              description: newData.description
-            }));
-          }
-
-          // If this is a source node update, update filterData
-          if (newData.nodeType === 'source' && newData.columns) {
-            setFilterData(prev => ({
-              ...prev,
-              columns: newData.columns
-            }));
-          }
+          // Sync to finalPayload for summary
+          // if (newData.ruleName || newData.ruleDescription) {
+          //   handleFinalPayload({
+          //     name: newData.ruleName || '',
+          //     description: newData.ruleDescription || ''
+          //   });
+          // }
         },
         getNodes: () => nodes,
-        isConnectedToDefine: false
       };
 
       const newNode = {
@@ -240,46 +186,20 @@ const RuleCanvas = () => {
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [setNodes, nodes, edges, handleFinalPayload]
+    [setNodes, nodes]
   );
 
   const onNodeDelete = useCallback(
     (nodeId) => {
-      const nodeToDelete = nodes.find(n => n.id === nodeId);
-      if (nodeToDelete?.type === 'define') {
-        // Update connected source nodes when define node is deleted
-        const connectedEdges = edges.filter(e => e.source === nodeId);
-        connectedEdges.forEach(edge => {
-          setNodes((nds) =>
-            nds.map((node) =>
-              node.id === edge.target
-                ? {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      ruleName: '',
-                      ruleDescription: '',
-                      isConnectedToDefine: false
-                    }
-                  }
-                : node
-            )
-          );
-        });
-        // Clear from finalPayload when define node is deleted
-        handleFinalPayload((prev) => ({
-          ...prev,
-          name: '',
-          description: ''
-        }));
-      }
-
       setNodes((nds) => nds.filter((node) => node.id !== nodeId));
-      setEdges((eds) =>
-        eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)
-      );
+      setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+      // Clear final payload when node is deleted
+      // handleFinalPayload({
+      //   name: '',
+      //   description: ''
+      // });
     },
-    [setNodes, setEdges, nodes, edges, handleFinalPayload]
+    [setNodes, setEdges]
   );
 
   useEffect(() => {
@@ -326,7 +246,10 @@ const RuleCanvas = () => {
           nodes={nodes}
           setNodes={setNodes}
           setFilterData={setFilterData}
-          setPreviewData={setPreviewData}
+          ruleName={ruleName}
+          ruleDescription={ruleDescription}
+          dimensionFilters={dimensionFilters}
+          timeTransformationFilters={timeTransformationFilters}
         />
       )}
     </>

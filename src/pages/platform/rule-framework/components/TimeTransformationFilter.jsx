@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { CheckCircle, XCircle, Plus, Trash2, Calendar } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
-import { useStateContext } from "../../Federation/context/contextViewProvider";
+// import { useStateContext } from "../../Federation/context/contextViewProvider";
 import DateExpressionCalculator from "../../reports-config/components/TimeTransformationValidate"; // Adjust import path as needed
 
-const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
-  const { handleFinalPayload, finalPayload } = useStateContext();
+const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData }) => {
+  // const { handleFinalPayload, finalPayload } = useStateContext();
 
   // State for API data and transformations
   const [dateColumns, setDateColumns] = useState([]);
@@ -36,7 +36,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
 
   // Load cached data when component mounts
   useEffect(() => {
-    const timeDataCache = finalPayload?.timeTransformationFilters;
+    const timeDataCache = nodeData?.timeTransformationFilters;
 
     if (
       timeDataCache &&
@@ -62,9 +62,15 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
 
       setTransformations(transformedCache);
     }
-  }, [finalPayload]);
+  }, []);
 
   // Fetch date columns on component mount
+  // useEffect(() => {
+  //   console.log("nodeData.timeTransformationFilters ==> ", nodeData.timeTransformationFilters);
+  //   if(nodeData?.timeTransformationFilters && nodeData.timeTransformationFilters.length > 0)
+  //     setTransformations(nodeData.timeTransformationFilters);
+  // }, []);
+
   useEffect(() => {
     if (!factId) return;
 
@@ -166,7 +172,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
 
         switch (t.transformationType.toLowerCase()) {
           case "asondate":
-            return `${columnName} AsOnDate`;
+            return `${columnName} = AsOnDate`;
 
           case "historicdate":
             return `${columnName} >= ${t.parameters.lowerOffset} ${t.parameters.lowerUnit}`;
@@ -211,11 +217,21 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
       return config;
     });
 
+    // handleFinalPayload((prev) => ({...prev, timeTransformationFilters: transformationData}));
+    // updateNodeData({timeTransformationQuery: getFilterQuery(transformationData)});
+    console.log({
+      timeTransformationQuery: getFilterQuery(transformationData),
+      timeTransformationFilters: transformationData,
+      showRuleSummary: true
+    })
+    updateNodeData({
+      timeTransformationQuery: getFilterQuery(transformationData),
+      timeTransformationFilters: transformationData,
+      showRuleSummary: true
+    });
+    
     setIsOpen(false);
-    handleFinalPayload((prev) => ({...prev, timeTransformationFilters: transformationData}));
-    updateNodeData({timeTransformationQuery: getFilterQuery(transformationData)});
-    onApply();
-    console.log(getFilterQuery(transformationData));
+    // onApply();
   };
 
   const handleClose = () => {
@@ -223,7 +239,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
   };
 
   const handleClearAll = () => {
-    setTransformations([
+    const updatedTransformations = [
       {
         selectedColumn: { id: "", name: "" },
         dateType: "",
@@ -231,16 +247,25 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
         upperOffset: "",
         lowerUnit: "",
         upperUnit: "",
-      },
-    ]);
+      }
+    ];
+    setTransformations();
 
-    handleFinalPayload((prev) => ({ ...prev, timeTransformationFilters: [] }));
-    updateNodeData({ timeTransformationQuery: "" });
+    // handleFinalPayload((prev) => ({ ...prev, timeTransformationFilters: [] }));
+    updateNodeData({ timeTransformationQuery: "" , timeTransformationFilters: updatedTransformations});
   };
 
   const handleSkip = () => {
     handleClearAll();
-    onApply();
+    
+    setIsOpen(false);
+    
+    updateNodeData({
+      timeTransformationQuery: "",
+      timeTransformationFilters: [],
+      showRuleSummary: true
+    });
+    // onApply();
   };
 
   // Check if all transformations are complete
@@ -503,7 +528,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
           </div>
 
           {/* Add Transformation Button */}
-          <div className="mb-8">
+          {/* <div className="mb-8">
             <button
               onClick={addTransformation}
               className="flex items-center gap-2 text-purple-600 hover:text-purple-800 font-medium"
@@ -511,7 +536,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
               <Plus size={20} />
               <span>Add Transformation</span>
             </button>
-          </div>
+          </div> */}
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4">

@@ -4,10 +4,14 @@
 export const generateSQLQuery = ({
   tableName,
   selectedColumns,
-  filterConditions,
-  ruleData
+  complexQuery
 }) => {
   try {
+    console.log("QUERYYY => ",{
+  tableName,
+  selectedColumns,
+  complexQuery
+})
     if (!tableName || !selectedColumns || selectedColumns.length === 0) {
       return '';
     }
@@ -43,23 +47,8 @@ export const generateSQLQuery = ({
     query += `\nFROM ${tableName}`;
 
     // Add WHERE clause from filter conditions
-    if (filterConditions) {
-      let whereClause = '';
-      
-      if (filterConditions.complex_query) {
-        // Handle complex query
-        whereClause = filterConditions.complex_query;
-      } else if (filterConditions.conditions?.length > 0) {
-        // Handle regular conditions
-        whereClause = generateWhereClause(filterConditions.conditions);
-      } else if (filterConditions.sqlPreview) {
-        // Use the SQL preview if available
-        whereClause = filterConditions.sqlPreview;
-      }
-
-      if (whereClause && whereClause.trim() !== '') {
-        query += '\nWHERE\n  ' + whereClause;
-      }
+    if (complexQuery && complexQuery.trim() !== '') {
+      query += '\nWHERE\n  ' + complexQuery;
     }
 
     // Add GROUP BY if any aggregates are used
@@ -81,6 +70,7 @@ export const generateSQLQuery = ({
       query += '\nORDER BY\n  ' + sortColumns.join(',\n  ');
     }
 
+    console.log("GENERATED QUERY ", query);
     return query;
   } catch (error) {
     console.error('Error generating SQL query:', error);

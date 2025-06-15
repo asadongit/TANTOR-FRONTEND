@@ -3,13 +3,13 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
 import { X, Trash, Plus } from "lucide-react";
-import { useStateContext } from "../../Federation/context/contextViewProvider";
+// import { useStateContext } from "../../Federation/context/contextViewProvider";
 
-const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
+const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData }) => {
   const { token, hostnameV1 } = useAuth();
   const dropdownRef = useRef(null);
 
-  const { finalPayload, handleFinalPayload } = useStateContext();
+  // const { finalPayload, handleFinalPayload } = useStateContext();
 
   // Component state
   const [availableDimensions, setAvailableDimensions] = useState([]);
@@ -27,20 +27,19 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
     },
   ]);
 
-  useEffect(() => {console.log(dimensionValues);}, [dimensionValues]);
-
   useEffect(() => {
-    const cachedFilters = finalPayload?.dimensionFilters;
-    if (cachedFilters && cachedFilters.length > 0) setFilters(cachedFilters);
-    else
-      setFilters([
-        {
-          dimension: { id: "", name: "" },
-          operator: "",
-          value: [],
-        },
-      ]);
-  }, []);
+  if (nodeData?.dimensionFilters && nodeData.dimensionFilters.length > 0) {
+    const cachedFilters = nodeData.dimensionFilters;
+    setFilters(cachedFilters);
+
+    // Fetch values for each dimension in saved filters
+    cachedFilters.forEach((filter) => {
+      if (filter.dimension.id && filter.dimension.name) {
+        fetchValues(filter.dimension.id, filter.dimension.name);
+      }
+    });
+  }
+}, []);
 
   useEffect(() => {
     setIsLoadingDimensions(true);
@@ -119,7 +118,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
       )
     );
 
-    // Fetch dummy values
+
     if (id && name) {
       fetchValues(id, name);
     }
@@ -209,13 +208,21 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
         filter.dimension.id && filter.operator && filter.value.length > 0
     );
 
-    handleFinalPayload((prev) => ({ ...prev, dimensionFilters: validFilters }));
-    updateNodeData({dimensionQuery: getFilterQuery(validFilters)});
+    // handleFinalPayload((prev) => ({ ...prev, dimensionFilters: validFilters }));
+    // updateNodeData({dimensionQuery: getFilterQuery(validFilters)});
+    updateNodeData({
+    dimensionQuery: getFilterQuery(validFilters),
+    dimensionFilters: validFilters
+  });
     onApply();
   };
 
   const handleSkip = () => {
     clearAll();
+    updateNodeData({
+    dimensionQuery: "",
+    dimensionFilters: []
+  });
     onApply();
   };
 
@@ -228,9 +235,9 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
       },
     ];
 
-    handleFinalPayload((prev) => ({ ...prev, dimensionFilters: [] }));
+    // handleFinalPayload((prev) => ({ ...prev, dimensionFilters: [] }));
     setFilters([...updatedFilters]);
-    updateNodeData({dimensionQuery: ""});
+    updateNodeData({dimensionQuery: "", dimensionFilters: updatedFilters});
     setOpenValueDropdown(null);
   };
 

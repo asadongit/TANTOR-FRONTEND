@@ -205,53 +205,53 @@ const ReportConfigDashboard = () => {
             return;
           }
 
-        const headers = {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        };
+        // const headers = {
+        //   "Content-Type": "application/json",
+        //   authorization: `Bearer ${token}`,
+        // };
 
-        if ((reportType || "").toUpperCase() !== "LIST") {
-          try {
-            const response = await fetch(
-              `${hostnameV1}/lineItems/reports/${reportId}/exists`,
-              { headers }
-            );
+        // if ((reportType || "").toUpperCase() !== "LIST") {
+        //   try {
+        //     const response = await fetch(
+        //       `${hostnameV1}/lineItems/reports/${reportId}/exists`,
+        //       { headers }
+        //     );
 
-            if (!response.ok)
-              return toast.error(
-                "ERROR OCCURED TRYING TO CHECK IF REPORT EXISTS."
-              );
+        //     if (!response.ok)
+        //       return toast.error(
+        //         "ERROR OCCURED TRYING TO CHECK IF REPORT EXISTS."
+        //       );
 
-            const data = await response.json();
+        //     const data = await response.json();
 
-            if (data.isExists === false)
-              return toast.error(`Report isn't generated yet.`);
-          } catch (error) {
-            console.log(error);
-            toast.error("Error occured.");
-          }
-        }
+        //     if (data.isExists === false)
+        //       return toast.error(`Report isn't generated yet.`);
+        //   } catch (error) {
+        //     console.log(error);
+        //     toast.error("Error occured.");
+        //   }
+        // }
 
-        try {
-          const redirectResponse = await fetch(
-            `${import.meta.env.VITE_BIRT_BACKEND_API
-            }/templates/generate?report-id=${reportId}&report-name=${reportFileName}&report-type=${reportType}`
-          );
-          if (!redirectResponse.ok)
-            return toast.error("ERROR OCCURED TRYING TO GENERATE REPORT.");
+        // try {
+        //   const redirectResponse = await fetch(
+        //     `${import.meta.env.VITE_BIRT_BACKEND_API
+        //     }/templates/generate?report-id=${reportId}&report-name=${reportFileName}&report-type=${reportType}`
+        //   );
+        //   if (!redirectResponse.ok)
+        //     return toast.error("ERROR OCCURED TRYING TO GENERATE REPORT.");
 
-          console.log("Redirect Response: ", redirectResponse);
-          const redirectPath = await redirectResponse.text();
-          window.open(
-            `${import.meta.env.VITE_BIRT_API
-            }/frameset?__report=${redirectPath}&__format=${import.meta.env.VITE_BIRT_EXPORT_FORMAT
-            }`,
-            "_blank"
-          );
-        } catch (error) {
-          console.log(error);
-          toast.error("Error occured trying to generate report.");
-        }
+        //   console.log("Redirect Response: ", redirectResponse);
+        //   const redirectPath = await redirectResponse.text();
+        //   window.open(
+        //     `${import.meta.env.VITE_BIRT_API
+        //     }/frameset?__report=${redirectPath}&__format=${import.meta.env.VITE_BIRT_EXPORT_FORMAT
+        //     }`,
+        //     "_blank"
+        //   );
+        // } catch (error) {
+        //   console.log(error);
+        //   toast.error("Error occured trying to generate report.");
+        // }
       },
     },
     {
