@@ -45,18 +45,23 @@ export default function Editor() {
   const [queryLoading, setQueryLoading] = useState(false);
   const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
   const [viewsDetails, setViewsDetails] = useState(null);
-  
+
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
   const [apiDetails, setApiDetails] = useState({ viewName: "", curl: "" });
+
+  const [connectionsLoading, setConnectionsLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true)
 
   useEffect(() => {
     const fetchConnections = async () => {
       try {
+        setConnectionsLoading(true);
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
         if (policyIds.length === 0) {
           setOriginalConnections([]);
           setDisplayedConnections([]);
+          setConnectionsLoading(false);
           return;
         }
         const response = await fetch(`${hostnameV1}/connections/list`, {
@@ -77,6 +82,8 @@ export default function Editor() {
       } catch (error) {
         console.error("Error fetching connections:", error);
         toast.error("Failed to load connections");
+      } finally {
+        setConnectionsLoading(false);
       }
     };
     fetchConnections();
@@ -116,6 +123,7 @@ export default function Editor() {
 
   const fetchQueryHistory = async () => {
     try {
+      setHistoryLoading(true);
       const response = await fetch(`${hostnameV1}/queries/${decodedToken?.preferred_username}/${project}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -130,6 +138,8 @@ export default function Editor() {
     } catch (error) {
       console.error("Error fetching query history:", error);
       toast.error("Failed to load query history");
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -307,8 +317,8 @@ export default function Editor() {
       if (updatedHistory) setQueryHistory(updatedHistory);
     } catch (error) {
       if (error.message !== "secure-query failed" &&
-          error.message !== "runQuery failed" &&
-          error.message !== "Invalid response from secure-query") {
+        error.message !== "runQuery failed" &&
+        error.message !== "Invalid response from secure-query") {
         console.error("Unexpected error in query execution:", error);
         toast.error("Unexpected error occurred");
       }
@@ -632,6 +642,13 @@ export default function Editor() {
 
   return (
     <div className="h-[calc(100vh-64px-32px)]">
+      <style>{`
+        @keyframes rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .icon-rotate { animation: rotate 1s linear infinite; }
+      `}</style>
       <div className="flex flex-row h-[100%] bg-gray-50">
         {checked ? (
           <>
@@ -657,94 +674,104 @@ export default function Editor() {
                   )}
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scroll pr-2">
-                  <div className="tree-view" style={{ width: "100%" }}>
-                    {displayedConnections.map((connection) => {
-                      const connectionId = `conn-${connection.connection_name}`;
-                      const connectionSchemas = schemas[connection.connection_name];
-                      const isExpanded = expandedItems[connectionId];
-                      return (
-                        <div key={connection.sourceConnectionId} className="tree-item" style={{ width: "100%" }}>
-                          <div className="p-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
-                            {renderDatabaseLabel(connection)}
-                          </div>
-                          {isExpanded && (
-                            <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
-                              {connectionSchemas === "loading" && (
-                                <div className="py-1 pl-6 text-gray-500">Loading...</div>
-                              )}
-                              {connectionSchemas === "error" && (
-                                <div className="py-1 pl-6 text-red-500">Error loading schemas</div>
-                              )}
-                              {Array.isArray(connectionSchemas) && connectionSchemas.length === 0 && (
-                                <div className="py-1 pl-6 text-gray-500">No Schemas Available</div>
-                              )}
-                              {Array.isArray(connectionSchemas) && connectionSchemas.length > 0 && (
-                                connectionSchemas.map((schema, schemaIndex) => {
-                                  const schemaId = `schema-${connection.connection_name}-${schema}`;
-                                  const tableData = tables[`${connection.connection_name}-${schema}`];
-                                  const isSchemaExpanded = expandedItems[schemaId];
-                                  return (
-                                    <div key={`${schema}-${schemaIndex}`} className="tree-item" style={{ width: "100%" }}>
-                                      <div className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
-                                        {renderSchemaLabel(connection.connection_name, schema)}
-                                      </div>
-                                      {isSchemaExpanded && (
-                                        <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
-                                          {tableData === "loading" && (
-                                            <div className="py-1 pl-6 text-gray-500">Loading...</div>
-                                          )}
-                                          {tableData === "error" && (
-                                            <div className="py-1 pl-6 text-red-500">Error loading tables</div>
-                                          )}
-                                          {Array.isArray(tableData) && tableData.length === 0 && (
-                                            <div className="py-1 pl-6 text-gray-500">No Tables Available</div>
-                                          )}
-                                          {Array.isArray(tableData) && tableData.length > 0 && (
-                                            tableData.map((table, tableIndex) => {
-                                              const tableId = `table-${connection.connection_name}-${schema}-${table}`;
-                                              const columnData = columns[`${connection.connection_name}-${schema}-${table}`];
-                                              const isTableExpanded = expandedItems[tableId];
-                                              return (
-                                                <div key={`${table}-${tableIndex}`} className="tree-item" style={{ width: "100%" }}>
-                                                  <div className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
-                                                    {renderTableLabel(connection.connection_name, schema, table)}
-                                                  </div>
-                                                  {isTableExpanded && (
-                                                    <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
-                                                      {columnData === "loading" && (
-                                                        <div className="py-1 pl-6 text-gray-500">Loading...</div>
-                                                      )}
-                                                      {columnData === "error" && (
-                                                        <div className="py-1 pl-6 text-red-500">Error loading columns</div>
-                                                      )}
-                                                      {Array.isArray(columnData) && columnData.length === 0 && (
-                                                        <div className="py-1 pl-6 text-gray-500">No Columns Available</div>
-                                                      )}
-                                                      {Array.isArray(columnData) && columnData.length > 0 && (
-                                                        columnData.map((column, columnIndex) => (
-                                                          <div key={`${column.column}-${columnIndex}`} className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
-                                                            {renderColumnLabel(column)}
-                                                          </div>
-                                                        ))
+                  {connectionsLoading ? (
+                    <div className="flex justify-center items-center h-full">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
+                    </div>
+                  ) : (
+                    <div className="tree-view" style={{ width: "100%" }}>
+                      {displayedConnections.length === 0 ? (
+                        <div className="text-gray-500 text-sm p-4">No connections available</div>
+                      ) : (
+                        displayedConnections.map((connection) => {
+                          const connectionId = `conn-${connection.connection_name}`;
+                          const connectionSchemas = schemas[connection.connection_name];
+                          const isExpanded = expandedItems[connectionId];
+                          return (
+                            <div key={connection.sourceConnectionId} className="tree-item" style={{ width: "100%" }}>
+                              <div className="p-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
+                                {renderDatabaseLabel(connection)}
+                              </div>
+                              {isExpanded && (
+                                <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
+                                  {connectionSchemas === "loading" && (
+                                    <div className="py-1 pl-6 text-gray-500">Loading...</div>
+                                  )}
+                                  {connectionSchemas === "error" && (
+                                    <div className="py-1 pl-6 text-red-500">Error loading schemas</div>
+                                  )}
+                                  {Array.isArray(connectionSchemas) && connectionSchemas.length === 0 && (
+                                    <div className="py-1 pl-6 text-gray-500">No Schemas Available</div>
+                                  )}
+                                  {Array.isArray(connectionSchemas) && connectionSchemas.length > 0 && (
+                                    connectionSchemas.map((schema, schemaIndex) => {
+                                      const schemaId = `schema-${connection.connection_name}-${schema}`;
+                                      const tableData = tables[`${connection.connection_name}-${schema}`];
+                                      const isSchemaExpanded = expandedItems[schemaId];
+                                      return (
+                                        <div key={`${schema}-${schemaIndex}`} className="tree-item" style={{ width: "100%" }}>
+                                          <div className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
+                                            {renderSchemaLabel(connection.connection_name, schema)}
+                                          </div>
+                                          {isSchemaExpanded && (
+                                            <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
+                                              {tableData === "loading" && (
+                                                <div className="py-1 pl-6 text-gray-500">Loading...</div>
+                                              )}
+                                              {tableData === "error" && (
+                                                <div className="py-1 pl-6 text-red-500">Error loading tables</div>
+                                              )}
+                                              {Array.isArray(tableData) && tableData.length === 0 && (
+                                                <div className="py-1 pl-6 text-gray-500">No Tables Available</div>
+                                              )}
+                                              {Array.isArray(tableData) && tableData.length > 0 && (
+                                                tableData.map((table, tableIndex) => {
+                                                  const tableId = `table-${connection.connection_name}-${schema}-${table}`;
+                                                  const columnData = columns[`${connection.connection_name}-${schema}-${table}`];
+                                                  const isTableExpanded = expandedItems[tableId];
+                                                  return (
+                                                    <div key={`${table}-${tableIndex}`} className="tree-item" style={{ width: "100%" }}>
+                                                      <div className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
+                                                        {renderTableLabel(connection.connection_name, schema, table)}
+                                                      </div>
+                                                      {isTableExpanded && (
+                                                        <div className="ml-6 pl-2 border-l border-gray-300" style={{ width: "calc(100% - 24px)" }}>
+                                                          {columnData === "loading" && (
+                                                            <div className="py-1 pl-6 text-gray-500">Loading...</div>
+                                                          )}
+                                                          {columnData === "error" && (
+                                                            <div className="py-1 pl-6 text-red-500">Error loading columns</div>
+                                                          )}
+                                                          {Array.isArray(columnData) && columnData.length === 0 && (
+                                                            <div className="py-1 pl-6 text-gray-500">No Columns Available</div>
+                                                          )}
+                                                          {Array.isArray(columnData) && columnData.length > 0 && (
+                                                            columnData.map((column, columnIndex) => (
+                                                              <div key={`${column.column}-${columnIndex}`} className="p-1 my-1 hover:bg-gray-100 rounded" style={{ width: "100%" }}>
+                                                                {renderColumnLabel(column)}
+                                                              </div>
+                                                            ))
+                                                          )}
+                                                        </div>
                                                       )}
                                                     </div>
-                                                  )}
-                                                </div>
-                                              );
-                                            })
+                                                  );
+                                                })
+                                              )}
+                                            </div>
                                           )}
                                         </div>
-                                      )}
-                                    </div>
-                                  );
-                                })
+                                      );
+                                    })
+                                  )}
+                                </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
                 <style>
                   {`
@@ -758,8 +785,12 @@ export default function Editor() {
               <div className="h-[40%] flex flex-col overflow-hidden border-t pt-4">
                 <h2 className="text-xl font-bold mb-2">History</h2>
                 <div className="flex-1 overflow-y-auto custom-scroll">
-                  {queryHistory.length === 0 ? (
-                    <div className="text-gray-500 text-sm">No query history available</div>
+                  {historyLoading ? (
+                    <div className="flex justify-center items-center h-full">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8e78b7]"></div>
+                    </div>
+                  ) : queryHistory.length === 0 ? (
+                    <div className="text-gray-500 text-sm p-4">No query history available</div>
                   ) : (
                     <ul className="space-y-1">
                       {queryHistory.map((query, index) => (
