@@ -13,6 +13,7 @@ import {
 import { useStateContext } from "../context/contextViewProvider";
 import { defaultSetting } from "../BaseView/ColumnSettings";
 import { useAuth } from "../../../../context/AuthContext";
+import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 
 // const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
 // const FAST_BACKEND = import.meta.env.VITE_FAST_API;
@@ -408,6 +409,7 @@ export function ConnectionNode({ id, data }) {
   const [apiSchemas, setApiSchemas] = useState([]);
   const [apiTables, setApiTables] = useState([]);
   const [apiColumns, setApiColumns] = useState([]);
+  const [allowedColumns, setAllowedColumns] = useState([]); // New state for columns allowed by policy
   const [isAllSelected, setIsAllSelected] = useState(false);
   const {
     settingsList,
@@ -421,8 +423,12 @@ export function ConnectionNode({ id, data }) {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
 
   const getFilterModalColumns = () => {
-    if (apiColumns.length > 0) {
-      return apiColumns.map((column) => ({
+    // Filter apiColumns based on what's allowed by policy
+    if (apiColumns.length > 0 && allowedColumns.length > 0) {
+      const filtered = apiColumns.filter((column) =>
+        allowedColumns.some((allowedCol) => allowedCol.column_name === column.column)
+      );
+      return filtered.map((column) => ({
         name: column.column,
         type: column.datatype,
       }));
@@ -430,133 +436,145 @@ export function ConnectionNode({ id, data }) {
     return [];
   };
 
+  // Effect to fetch connections
   useEffect(() => {
-    (async () => {
-      let response;
+    const fetchConnections = async () => {
       try {
-        response = await fetch(`${hostnameV1}/connection-saves`, {
-          method: "GET",
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        if (policyIds.length === 0) {
+          setApiConnections([]);
+          // toast.error("No policies matched for connections.");
+          return;
+        }
+
+        const response = await fetch(`${hostnameV1}/connections/list`, {
+          method: "POST",
           headers: {
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({ matched_policy_ids: policyIds }),
         });
 
-        let data = await response.json();
-
-        if (response.status === 200) {
-          const uniqueConnections = [
-            ...new Map(
-              data.map((item) => [item.connection_name, item])
-            ).values(),
-          ];
-
-          const filteredConnections = uniqueConnections.filter((item) => {
-            const createdByMatches = item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase();
-            const notDeleted = !item.is_deleted;
-
-            if (project !== "default") {
-              return (
-                item.project.toUpperCase() === project.toUpperCase() &&
-                createdByMatches &&
-                notDeleted
-              );
-            } else {
-              return createdByMatches && notDeleted;
-            }
-          });
-
-          console.log("FILTERED CONNECTIONS by username==>> ", filteredConnections);
-          setApiConnections(filteredConnections);
-        } else {
-          console.log(
-            `Error fetching connections.\nResponse status: ${response.status}\nData: `,
-            data
-          );
-          data.toast?.error?.("Error fetching connections.");
+        if (!response.ok) {
+          throw new Error("Failed to fetch connections");
         }
+
+        const connectionsData = await response.json();
+        const names = connectionsData.map((item) => item.connection_name);
+        setApiConnections(names);
       } catch (error) {
-        console.log("Error fetching connections. ", error);
-        data?.toast?.error?.("Error fetching connections.");
+        console.error("Error fetching connections:", error);
+        toast.error("Failed to load connections");
+        setApiConnections([]);
       }
-    })();
-  }, []);
+    };
+    fetchConnections();
+  }, [token, hostnameV1]);
 
-
+  // Effect to fetch schemas
   useEffect(() => {
     if (selectedConnection) {
-      (async () => {
+      const fetchSchemas = async () => {
         try {
-          let response = await fetch(
-            `${hostnameV1}/${selectedConnection}/schemas`,
-            {
-              method: "GET",
-              headers: {
-                authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
+          const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+          const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-          let data = await response.json();
-          if (response.status == 200) {
-            setApiSchemas(data);
+          if (policyIds.length === 0) {
+            setApiSchemas([]);
+            toast.error("No policies matched for schemas.");
+            return;
+          }
+
+          const response = await fetch(`${hostnameV1}/schemas/list`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              matched_policy_ids: policyIds,
+              connection_name: selectedConnection,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch schemas");
+          }
+
+          const data = await response.json();
+          const connectionData = data.find((item) => item[selectedConnection]);
+          if (connectionData) {
+            setApiSchemas(connectionData[selectedConnection]);
           } else {
-            console.log(
-              `Error fetching Schemas.\nResponse status: ${response.status}\nData: `,
-              data
-            );
-            data.toast.error("Error fetching Schemas.");
+            setApiSchemas([]);
           }
         } catch (error) {
-          console.log("Error fetching schemas. ", error);
-          data.toast.error("Error fetching Schemas.");
+          console.error("Error fetching schema data:", error);
+          toast.error("Failed to load schemas");
+          setApiSchemas([]);
         }
-      })();
+      };
+      fetchSchemas();
     }
-  }, [selectedConnection]);
+  }, [selectedConnection, token, hostnameV1]);
 
+  // Effect to fetch tables
   useEffect(() => {
     if (selectedSchema) {
-      (async () => {
-        let response;
+      const fetchTables = async () => {
         try {
-          response = await fetch(
-            `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables`,
-            {
-              method: "GET",
-              headers: {
-                authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
+          const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+          const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-          let data = await response.json();
-          if (response.status == 200) {
-            console.log(data);
-            setApiTables(data);
+          if (policyIds.length === 0) {
+            setApiTables([]);
+            toast.error("No policies matched for tables.");
+            return;
+          }
+
+          const response = await fetch(`${hostnameV1}/tables/list`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              matched_policy_ids: policyIds,
+              connection_name: selectedConnection,
+              schema_name: selectedSchema,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch tables");
+          }
+
+          const data = await response.json();
+          if (data && data.tables) {
+            setApiTables(data.tables);
           } else {
-            console.log(
-              `Error fetching Tables.\nResponse status: ${response.status}\nData: `,
-              data
-            );
-            data.toast.error("Error fetching Tables.");
+            setApiTables([]);
           }
         } catch (error) {
-          console.log("Error fetching tables. ", error);
-          data.toast.error("Error fetching Tables.");
+          console.error("Error fetching table data:", error);
+          toast.error("Failed to load tables");
+          setApiTables([]);
         }
-      })();
+      };
+      fetchTables();
     }
-  }, [selectedSchema]);
+  }, [selectedSchema, selectedConnection, token, hostnameV1]);
 
+  // Effect to fetch columns (both detailed and policy-allowed)
   useEffect(() => {
     if (selectedTable) {
-      (async () => {
-        let response;
+      const fetchColumns = async () => {
         try {
-          response = await fetch(
+          // Fetch all columns with metadata
+          const detailedColumnsResponse = await fetch(
             `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
             {
               method: "GET",
@@ -566,22 +584,57 @@ export function ConnectionNode({ id, data }) {
               },
             }
           );
-          let data = await response.json();
 
-          if (response.status == 200) {
-            console.log("\n\nCOLUMNS = ", data, "\n\n\n");
-            setApiColumns(data);
+          if (!detailedColumnsResponse.ok) {
+            throw new Error("Failed to fetch detailed columns");
+          }
+          const detailedColumnsData = await detailedColumnsResponse.json();
+          setApiColumns(detailedColumnsData); // Store all columns with their types
+
+          // Fetch columns allowed by policy
+          const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+          const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+          if (policyIds.length === 0) {
+            setAllowedColumns([]);
+            toast.error("No policies matched for columns.");
+            return;
+          }
+
+          const allowedColumnsResponse = await fetch(`${hostnameV1}/columns/list`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              matched_policy_ids: policyIds,
+              connection_name: selectedConnection,
+              schema_name: selectedSchema,
+              table_name: selectedTable,
+            }),
+          });
+
+          if (!allowedColumnsResponse.ok) {
+            throw new Error("Failed to fetch allowed columns");
+          }
+          const allowedColumnsData = await allowedColumnsResponse.json();
+          if (allowedColumnsData && allowedColumnsData.columns) {
+            setAllowedColumns(allowedColumnsData.columns);
           } else {
-            console.log("Error while trying to fetch columns. ", data);
-            data.toast.error("Error while trying to fetch columns.");
+            setAllowedColumns([]);
           }
         } catch (error) {
-          console.error("Error while trying to fetch columns. ", error);
-          data.toast.error("Error while trying to fetch columns.");
+          console.error("Error fetching columns:", error);
+          toast.error("Failed to load columns");
+          setApiColumns([]);
+          setAllowedColumns([]);
         }
-      })();
+      };
+      fetchColumns();
     }
-  }, [selectedTable]);
+  }, [selectedTable, selectedConnection, selectedSchema, token, hostnameV1]);
+
 
   const handleColumnChange = (column) => {
     const columnName = column.column;
@@ -611,7 +664,11 @@ export function ConnectionNode({ id, data }) {
       return updatedSettingsList;
     });
     setUserCheckedColumns(updatedCheckedColumns);
-    setIsAllSelected(updatedCheckedColumns.length === apiColumns.length);
+    // Only consider allowed columns for select all logic
+    const currentApiColumnsConsidered = apiColumns.filter((col) =>
+      allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase())
+    );
+    setIsAllSelected(updatedCheckedColumns.length === currentApiColumnsConsidered.length);
   };
 
   const handleEditColumn = (columnName) => {
@@ -629,6 +686,10 @@ export function ConnectionNode({ id, data }) {
   };
 
   const handleSelectAllChange = () => {
+    const currentApiColumnsConsidered = apiColumns.filter((col) =>
+      allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase())
+    );
+
     if (isAllSelected) {
       setUserCheckedColumns([]);
       setSettingsList((prev) =>
@@ -641,7 +702,7 @@ export function ConnectionNode({ id, data }) {
       const updatedCheckedColumns = [];
       const newSettingList = [];
 
-      apiColumns.forEach((item) => {
+      currentApiColumnsConsidered.forEach((item) => {
         updatedCheckedColumns.push(item.column);
         newSettingList.push({
           ...defaultSetting,
@@ -674,6 +735,7 @@ export function ConnectionNode({ id, data }) {
     setApiSchemas([]);
     setApiTables([]);
     setApiColumns([]);
+    setAllowedColumns([]); // Reset allowed columns too
     setSelectedSchema("");
     setSelectedTable("");
     setUserCheckedColumns([]);
@@ -685,8 +747,10 @@ export function ConnectionNode({ id, data }) {
     setSelectedConnection(event.target.value);
     resetSelections();
     setUserSelections((prev) => {
-      const updatedSelections = new Map();
+      const updatedSelections = new Map(prev); // Keep existing selections
       updatedSelections.set("connection", event.target.value);
+      updatedSelections.delete("schema"); // Reset downstream selections
+      updatedSelections.delete("table");
       return updatedSelections;
     });
   };
@@ -695,15 +759,15 @@ export function ConnectionNode({ id, data }) {
     setSelectedSchema(event.target.value);
     setApiTables([]);
     setApiColumns([]);
+    setAllowedColumns([]); // Reset allowed columns too
     setSelectedTable("");
     setUserCheckedColumns([]);
     setSettingsList([]);
     setIsAllSelected(false);
     setUserSelections((prev) => {
-      const updatedSelections = new Map();
-      updatedSelections.set("connection", selectedConnection);
+      const updatedSelections = new Map(prev);
       updatedSelections.set("schema", event.target.value);
-
+      updatedSelections.delete("table"); // Reset downstream selections
       return updatedSelections;
     });
   };
@@ -711,13 +775,12 @@ export function ConnectionNode({ id, data }) {
   const handleTableChange = (event) => {
     setSelectedTable(event.target.value);
     setApiColumns([]);
+    setAllowedColumns([]); // Reset allowed columns too
     setUserCheckedColumns([]);
     setIsAllSelected(false);
     setSettingsList([]);
     setUserSelections((prev) => {
-      const updatedSelections = new Map();
-      updatedSelections.set("connection", selectedConnection);
-      updatedSelections.set("schema", selectedSchema);
+      const updatedSelections = new Map(prev);
       updatedSelections.set("table", event.target.value);
       return updatedSelections;
     });
@@ -818,32 +881,39 @@ export function ConnectionNode({ id, data }) {
                     </label>
                   </div>
                   <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
-                    {apiColumns.map((item) => (
-                      <div
-                        key={item.column}
-                        className="flex items-center mb-2 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          id={item.column}
-                          value={item.column}
-                          checked={userCheckedColumns.includes(item.column)}
-                          onChange={() => handleColumnChange(item)}
-                          className="text-purple-600 focus:ring-purple-500 mr-2"
-                        />
-                        <label
-                          htmlFor={item.column}
-                          className="text-sm text-gray-700"
+                    {/* Render only columns that are in allowedColumns and have detailed info */}
+                    {apiColumns
+                      .filter((col) =>
+                        allowedColumns.some(
+                          (allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase()
+                        )
+                      )
+                      .map((item) => (
+                        <div
+                          key={item.column}
+                          className="flex items-center mb-2 cursor-pointer"
                         >
-                          {item.column}
-                        </label>
-                        <Pencil
-                          name="edit"
-                          onClick={() => handleEditColumn(item.column)}
-                          className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
-                        />
-                      </div>
-                    ))}
+                          <input
+                            type="checkbox"
+                            id={item.column}
+                            value={item.column}
+                            checked={userCheckedColumns.includes(item.column)}
+                            onChange={() => handleColumnChange(item)}
+                            className="text-purple-600 focus:ring-purple-500 mr-2"
+                          />
+                          <label
+                            htmlFor={item.column}
+                            className="text-sm text-gray-700"
+                          >
+                            {item.column}
+                          </label>
+                          <Pencil
+                            name="edit"
+                            onClick={() => handleEditColumn(item.column)}
+                            className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
+                          />
+                        </div>
+                      ))}
                   </div>
                 </div>
               </div>
