@@ -8,7 +8,7 @@ import Hive from './Components/Icons/Hive.png';
 import Oracle from './Components/Icons/Oracle.png';
 import Snowflake from './Components/Icons/Snowflake.png';
 import Postgres from './Components/Icons/Postgres.png';
-import { secureQuery } from './Components/function.js';
+import { secureQuery, fetchConnectionDetails } from './Components/function.js';
 import { useAuth } from "../../../context/AuthContext.jsx";
 
 const rotateAnimation = `
@@ -68,26 +68,12 @@ const Database = () => {
 
   const navigate = useNavigate();
 
-  const fetchConnectionDetails = async (policyId) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection_details/${policyId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const data = await response.json();
-      return data || [];
-    } catch (error) {
-      console.error(`Error fetching connection details for policy ${policyId}:`, error);
-      return [];
-    }
-  };
-
   const processConnectionData = (data) => {
     const counts = {
       oracle: 0,
       hive: 0,
       snowflake: 0,
-      postgres: 0 // Added postgres
+      postgres: 0
     };
 
     const uniqueConnections = new Set();
@@ -101,7 +87,7 @@ const Database = () => {
         if (connType === 'oracle') counts.oracle++;
         else if (connType === 'hive') counts.hive++;
         else if (connType === 'snowflake') counts.snowflake++;
-        else if (connType === 'postgres') counts.postgres++; // Count Postgres
+        else if (connType === 'postgres') counts.postgres++;
       }
     });
 
@@ -192,10 +178,7 @@ const Database = () => {
       const policyIds = secureQueryResponse.matched_policy_ids || [];
       setPolicyIds(policyIds);
 
-      const allConnectionsPromises = policyIds.map(id => fetchConnectionDetails(id));
-      const allConnectionsResults = await Promise.all(allConnectionsPromises);
-
-      const allConnectionsData = allConnectionsResults.flat();
+      const allConnectionsData = await fetchConnectionDetails(policyIds, token);
       setConnectionData(allConnectionsData);
 
       const tableData = processConnectionData(allConnectionsData);
@@ -300,7 +283,7 @@ const Database = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[#29304a] text-white">
-                      <th className="text-left p-4">Id</th>
+                      <th className="text-left p-4">Sno</th>
                       <th className="text-left p-4">Connection Name</th>
                       <th className="text-left p-4">Database</th>
                       <th className="text-left p-4">Schema</th>
@@ -314,13 +297,13 @@ const Database = () => {
                   <tbody>
                     {getDbDetails(selectedDbType).length > 0 ? getDbDetails(selectedDbType).map((item, index) => (
                       <tr key={index} className="border-b">
-                        <td className="p-4">{item.id}</td>
+                        <td className="p-4">{index + 1}</td>
                         <td className="p-4">{item.connectionName}</td>
                         <td className="p-4">{item.Database}</td>
-                        <td className="p-4 text-gray-500 underline">{item.Schema}</td>
-                        <td className="p-4 text-gray-500 underline">{item.Tables}</td>
-                        <td className="p-4 text-gray-500 underline">{item.Views || 0}</td>
-                        <td className="p-4 text-gray-500 underline">{item.Column}</td>
+                        <td className="p-4  ">{item.Schema}</td>
+                        <td className="p-4  ">{item.Tables}</td>
+                        <td className="p-4  ">{item.Views || 0}</td>
+                        <td className="p-4  ">{item.Column}</td>
                         <td className="p-4">{item.CreatedDate}</td>
                         <td className="p-4">{item.updatedDate}</td>
                       </tr>
@@ -445,7 +428,7 @@ const Database = () => {
           <table className="w-full">
             <thead>
               <tr className="bg-[#29304a] text-white">
-                <th className="text-left p-4">Id</th>
+                <th className="text-left p-4">Sno</th>
                 <th className="text-left p-4">Connection Name</th>
                 <th className="text-left p-4">Database</th>
                 <th className="text-left p-4">Schema</th>
@@ -459,13 +442,13 @@ const Database = () => {
             <tbody>
               {sampleData.length > 0 ? sampleData.map((item, index) => (
                 <tr key={index} className="border-b">
-                  <td className="p-4">{item.id}</td>
+                  <td className="p-4">{index + 1}</td>
                   <td className="p-4">{item.connectionName}</td>
                   <td className="p-4">{item.Database}</td>
-                  <td className="p-4 text-gray-500 underline">{item.Schema}</td>
-                  <td className="p-4 text-gray-500 underline">{item.Tables}</td>
-                  <td className="p-4 text-gray-500 underline">{item.Views || 0}</td>
-                  <td className="p-4 text-gray-500 underline">{item.Column}</td>
+                  <td className="p-4 ">{item.Schema}</td>
+                  <td className="p-4">{item.Views || 0}</td>
+                  <td className="p-4">{item.Column}</td>
+                  <td className="p-4">{item.Tables}</td>
                   <td className="p-4">{item.CreatedDate}</td>
                   <td className="p-4">{item.updatedDate}</td>
                 </tr>
