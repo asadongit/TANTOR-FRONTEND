@@ -236,10 +236,74 @@ function Subgroup() {
     }
   };
 
-  const toggleRole = (index) => {
-    const newSubgroups = [...subgroups];
-    newSubgroups[index].enabled = !newSubgroups[index].enabled;
-    setSubgroups(newSubgroups);
+  const updateSubgroupStatus = async (subgroupName, newStatus) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/subgroupstatus`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: subgroupName,
+          status: newStatus ? "Enabled" : "Disabled"
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Status code: ${response.status}`);
+      }
+
+      return { success: true, data: await response.json() };
+    } catch (error) {
+      console.error("Error updating subgroup status:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const toggleRole = async (index) => {
+    const subgroup = subgroups[index];
+    const newStatus = !subgroup.enabled;
+
+    setTogglingStatus(index);
+
+    try {
+      const result = await updateSubgroupStatus(subgroup.title, newStatus);
+
+      if (result.success) {
+        const newSubgroups = [...subgroups];
+        newSubgroups[index].enabled = newStatus;
+        setSubgroups(newSubgroups);
+
+        setToast({
+          show: true,
+          message: `Subgroup status ${newStatus ? 'enabled' : 'disabled'} successfully`,
+          type: 'success'
+        });
+
+        await refreshAllData();
+      } else {
+        setToast({
+          show: true,
+          message: `Failed to update status: ${result.error}`,
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      console.error("Error in toggle operation:", error);
+      setToast({
+        show: true,
+        message: `Error toggling status: ${error.message}`,
+        type: 'error'
+      });
+    } finally {
+      setTogglingStatus(null);
+
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+    }
   };
 
   const handleEditClick = (subgroup) => {
@@ -353,7 +417,7 @@ function Subgroup() {
         </div>
       )}
 
-      <Breadcrumb title="Data Governance" link="/" />
+      <Breadcrumb/>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Subgroup</h1>
         <div className="flex items-center gap-2">

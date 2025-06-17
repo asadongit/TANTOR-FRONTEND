@@ -6,10 +6,14 @@ import { useAuth } from '../../../../context/AuthContext';
 const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActiveStep, setStepReportData }) => {
     const { token } = useAuth();
 
+    // Refs for each dropdown to detect outside clicks
+    const reportGroupsRef = useRef(null);
+    const reportTypesRef = useRef(null);
+    const reportNamesRef = useRef(null);
+
     const [reportGroups, setReportGroups] = useState([]);
     const [reportTypes, setReportTypes] = useState([]);
     const [reportNames, setReportNames] = useState([]);
-
 
     const [selectedArtefactType, setSelectedArtefactType] = useState('Reports');
     const [selectedReportGroups, setSelectedReportGroups] = useState([]);
@@ -21,10 +25,8 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
     const initialGroupsRef = useRef([]);
     const initialTypesRef = useRef([]);
 
-
     useEffect(() => {
         if (initialData) {
-            console.log("setting the values ##################")
             setSelectedArtefactType(initialData.artefact_type || 'Reports');
             setSelectedReportGroups(initialData.report_group || []);
             setSelectedReportTypes(initialData.report_type || []);
@@ -57,6 +59,29 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
         reportTypes: '',
         reportNames: ''
     });
+
+    // Effect to handle clicks outside of the dropdowns
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                reportGroupsRef.current && !reportGroupsRef.current.contains(event.target) &&
+                reportTypesRef.current && !reportTypesRef.current.contains(event.target) &&
+                reportNamesRef.current && !reportNamesRef.current.contains(event.target)
+            ) {
+                setDropdownOpen({
+                    reportGroups: false,
+                    reportTypes: false,
+                    reportNames: false
+                });
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
 
     useEffect(() => {
         const fetchReportGroups = async () => {
@@ -182,16 +207,10 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
             }
         };
 
-        // setSelectedReportNames([]);
-        console.log("initial render is =====>", isInitialRender.current);
         const groupsChanged = JSON.stringify(selectedReportGroups) !== JSON.stringify(initialGroupsRef.current);
         const typesChanged = JSON.stringify(selectedReportTypes) !== JSON.stringify(initialTypesRef.current);
 
         if (!isInitialRender.current && (groupsChanged || typesChanged)) {
-            console.log("selected groups are =====>", selectedReportGroups);
-            console.log("initial groups are =====>", initialGroupsRef.current);
-            console.log("selected types are =======>", selectedReportTypes);
-            console.log("initial types are =======>", initialTypesRef.current);
             setSelectedReportNames([]);
         }
 
@@ -237,8 +256,6 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
         setStepReportData(emptyReportsData);
         setActiveStep(7);
     };
-
-
 
     const handleBack = () => {
         setActiveStep(5);
@@ -286,14 +303,16 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
 
     const isFormValid = selectedArtefactType && selectedReportNames.length > 0;
 
-    const renderMultiSelectDropdown = (label, allItems, selectedItems, onToggleIndividual, loadingState, errorState, dropdownKey, setSelectedItemsCallback) => {
+    // Modified to accept a ref
+    const renderMultiSelectDropdown = (label, allItems, selectedItems, onToggleIndividual, loadingState, errorState, dropdownKey, setSelectedItemsCallback, ref) => {
         const currentSearchTerm = searchTerm[dropdownKey];
         const filteredItems = allItems.filter(item =>
             item.toLowerCase().includes(currentSearchTerm.toLowerCase())
         );
 
         return (
-            <div className="mb-6">
+            // Attach the ref here
+            <div className="mb-6" ref={ref}>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                     {label}
                     {dropdownKey === "reportGroups" && " (Optional)"}
@@ -407,7 +426,8 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
                         loading.reportTypes,
                         error.reportTypes,
                         "reportTypes",
-                        setSelectedReportTypes
+                        setSelectedReportTypes,
+                        reportTypesRef // Pass the ref
                     )}
                 </Grid>
 
@@ -420,7 +440,8 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
                         loading.reportGroups,
                         error.reportGroups,
                         "reportGroups",
-                        setSelectedReportGroups
+                        setSelectedReportGroups,
+                        reportGroupsRef // Pass the ref
                     )}
 
                     {renderMultiSelectDropdown(
@@ -431,7 +452,8 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
                         loading.reportNames,
                         error.reportNames,
                         "reportNames",
-                        setSelectedReportNames
+                        setSelectedReportNames,
+                        reportNamesRef // Pass the ref
                     )}
                 </Grid>
             </Grid>
