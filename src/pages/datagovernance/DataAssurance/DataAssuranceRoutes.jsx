@@ -3,6 +3,7 @@ import DataAssurance from './DataAssurance';
 
 //quality
 import Rules from './Quality/Rules/Rules';
+import CreateRules from './Quality/Rules/CreateRules/CreateRules';
 import Data from './Quality/Data/Data';
 import Metadata from './Quality/Metadata/Metadata';
 
@@ -15,6 +16,7 @@ export const DataAssuranceRoutes = (
   <>
     <Route path={`${PREFIX}`} element={<DataAssurance />} />
     <Route path={`${PREFIX}/rules`} element={<Rules />} />
+    <Route path={`${PREFIX}/rules/create`} element={<CreateRules />} />
     <Route path={`${PREFIX}/data`} element={<Data />} />
     <Route path={`${PREFIX}/metadata`} element={<Metadata />} />
 

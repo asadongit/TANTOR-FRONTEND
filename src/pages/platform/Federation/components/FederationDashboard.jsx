@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from "@mui/material";
 import { MenuItem, Select, InputLabel, FormControl } from "@mui/material";
 import { useAuth } from "../../../../context/AuthContext";
+import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -44,133 +45,72 @@ const FederationDashBoard = () => {
     )
     setIsModalOpen(!isModalOpen);
   };
-
-  // const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
   const [data, setData] = useState([]);
-  const [connectionData, setconnectionData] = useState([]);
+  const [connectionData, setConnectionData] = useState([]);
   const [schemaList, setSchemaList] = useState([])
   const [tableList, setTableList] = useState([])
   const [viewList, setViewList] = useState([])
-  const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
+  const { token, project, decodedToken, hostnameV1, hostnameV2 } = useAuth();
   const [count, setCount] = useState({});
 
-  useEffect(() => {
-    const fetchData = async () => {
-      console.log("token is ====>", token)
-      console.log("project is ====>", project)
-      console.log("username is =====>", decodedToken?.preferred_username)
-      try {
-        const response = await fetch(`${hostnameV1}/connection-saves`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        let data = await response.json();
 
-        if (project !== "default") {
-          data = data.filter(
-            (item) =>
-              item.project.toUpperCase() === project.toUpperCase() &&
-              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-              !item.is_deleted
-          );
-        } else {
-          data = data.filter(
-            (item) =>
-              item.created_by.toUpperCase() === decodedToken?.preferred_username.toUpperCase() &&
-              !item.is_deleted
-          );
+
+  const fetchConnectionDetails = async () => {
+  setIsLoading(true);
+  try {
+    const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+    const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+    if (policyIds.length === 0) {
+          return;
         }
-        console.log("connection data is ===>", data)
-        setconnectionData(data);
-      } catch (error) {
-        console.log(error);
-      }
-    };
 
-    fetchData();
-  }, []);
-
-
-  useEffect(() => {
-    if (connectionData.length === 0) return;
-    connectionData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    var extractedData;
-    console.log("my project is =====>",project)
-
-    if (project != "default" && project !== "none") {
-      extractedData = connectionData.filter(
-        (item) =>
-          item.project?.toUpperCase() === project.toUpperCase() &&
-          item.created_by?.toUpperCase() === decodedToken?.preferred_username?.toUpperCase() &&
-          item.is_deleted === false
-      );
-    } else {
-      extractedData = connectionData.filter(
-        (item) =>
-          item.created_by?.toUpperCase() === decodedToken?.preferred_username?.toUpperCase() &&
-          item.is_deleted === false
-      );
-    }
+    const response = await fetch(`${hostnameV1}/connection_details`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ policy_id: policyIds }) 
+    });
+    const data = await response.json();
     
-    console.log("connection data is ====>", extractedData)
-    setData(extractedData);
-    const connectionIds = extractedData.map((item) => item.connection_id);
-    const connectionNames = extractedData.map((item) => item.connection_name);
-    fetchSchemaCount(connectionNames)
-    fetchTableCount(connectionNames)
-    fetchViewCount(connectionNames)
-
-  }, [connectionData]);
-
-
-  const fetchSchemaCount = async (connectionNames) => {
-    try {
-      const response = await fetch(`${hostnameV1}/schema_names`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          "connection_names": connectionNames
-        })
+  
+    const connections = [...new Set(data.map(item => item.connection_name))];
+    const schemaList = {};
+    const tableList = {};
+    
+    connections.forEach(conn => {
+      const connData = data.filter(item => item.connection_name === conn);
+      schemaList[conn] = [...new Set(connData.map(item => item.table_schema))];
+      tableList[conn] = {};
+      schemaList[conn].forEach(schema => {
+        tableList[conn][schema] = [...new Set(connData
+          .filter(item => item.table_schema === schema)
+          .map(item => item.table_name))];
       });
-      let data = await response.json();
-      console.log("schema data is ===>", data.schema_names)
-      setSchemaList(data.schema_names)
-    } catch (error) {
-      console.log(error);
-    }
-  };
+    });
+
+    setConnectionData(data);
+    setSchemaList(schemaList);
+    setTableList(tableList);
+    setCount(prev => ({
+      ...prev,
+      connections,
+      totalSchemaCount: Object.values(schemaList).reduce((sum, schemas) => sum + schemas.length, 0),
+      totalTableCount: Object.values(tableList).reduce((sum, schemas) => 
+        sum + Object.values(schemas).reduce((s, tables) => s + tables.length, 0), 0)
+    }));
+  } catch (error) {
+    console.error("Error fetching connection details:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 
-  const fetchTableCount = async (connectionNames) => {
+const fetchViewCount = async (connectionNames) => {
     try {
-      const response = await fetch(`${hostnameV1}/table_names`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          "connection_names": connectionNames
-        })
-      });
-      let data = await response.json();
-      console.log("table data is ===>", data.table_names)
-      setTableList(data.table_names)
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const fetchViewCount = async (connectionNames) => {
-    try {
-      // const project = sessionStorage.getItem("project") || "default";
-      // const createdBy = sessionStorage.getItem("created_by") || "sabhyata";
-
       const response = await fetch(`${hostnameV2}/connections/views`, {
         method: "POST",
         headers: {
@@ -187,101 +127,29 @@ const FederationDashBoard = () => {
       let data = await response.json();
       console.log("views are  ===>", data);
       setViewList(data);
+       setCount(prev => ({
+      ...prev,
+      totalViewsCount: Object.values(data).reduce((sum, views) => sum + views.length, 0)
+    }));
     } catch (error) {
       console.error("Error fetching views:", error);
     }
   };
 
 
+useEffect(() => {
+  fetchConnectionDetails();
+}, [token, project, decodedToken]);
 
-  const getTableCount = (tableList, connectionId) => {
-    if (!tableList || !tableList[connectionId]) {
-      return 0;
-    }
-
-    let totalTables = 0;
-    Object.keys(tableList[connectionId]).forEach((user) => {
-      totalTables += Array.isArray(tableList[connectionId][user])
-        ? tableList[connectionId][user].length
-        : 0;
-    });
-    return totalTables;
-  };
-
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!connectionData || connectionData.length === 0 || !schemaList || !viewList || !tableList) {
-        return;
-      }
-      const connectionNames = connectionData.map(connection => connection.connection_name);
-      console.log("connection names are ====>", connectionNames);
-      if (!connectionNames.length) return;
-
-      const totalViewsCount = Object.values(viewList).reduce((sum, views) => sum + views.length, 0);
-      const totalSchemaCount = Object.values(schemaList).reduce((acc, schemas) => acc + schemas.length, 0);
-      const totalTableCount = Object.values(tableList).reduce((acc, db) => acc + Object.values(db).reduce((sum, tables) => sum + tables.length, 0), 0);
-
-      setCount({
-        connections: connectionNames,
-        totalSchemaCount: totalSchemaCount,
-        totalTableCount: totalTableCount,
-        totalViewsCount: totalViewsCount
-      });
-
-      const updatedRowData = connectionData.map((item) => {
-        return {
-          ID: item.connection_id,
-          Connections: item.connection_name,
-          Descriptions: item.description,
-          Schema: schemaList?.[item.connection_name]?.length || 0,
-          Tables: tableList ? getTableCount(tableList, item.connection_name) : 0,
-          Views: viewList?.[item.connection_name]?.length || 0,
-          Created: new Date(item.created_at).toLocaleDateString(),
-        };
-      });
-      setRowData(updatedRowData);
-    };
-
-    fetchData();
-  }, [connectionData, schemaList, tableList, viewList]);
-
+useEffect(() => {
+  if (connectionData.length > 0) {
+    const connectionNames = [...new Set(connectionData.map(item => item.connection_name))];
+    fetchViewCount(connectionNames);
+  }
+}, [connectionData]);
 
 
   const [cards, setCards] = useState([]);
-
-  useEffect(() => {
-    setCards([
-      {
-        icon: "material-symbols:tab-group-outline",
-        bgcolor: "bg-[#d8d3e4]",
-        iconcolor: "text-purple-700",
-        title: "Connections",
-        count: `${count?.connections?.length ?? 0}`
-      },
-      {
-        icon: "material-symbols:tab-group-outline",
-        bgcolor: "bg-[#d8d3e4]",
-        iconcolor: "text-purple-700",
-        title: "Schemas",
-        count: `${count?.totalSchemaCount ?? 0}`
-      },
-      {
-        icon: "material-symbols:tab-group-outline",
-        bgcolor: "bg-[#d8d3e4]",
-        iconcolor: "text-purple-700",
-        title: "Tables",
-        count: `${count?.totalTableCount ?? 0}`
-      },
-      {
-        icon: "material-symbols:tab-group-outline",
-        bgcolor: "bg-[#d8d3e4]",
-        iconcolor: "text-purple-700",
-        title: "Views",
-        count: `${count?.totalViewsCount ?? 0}`
-      }
-    ]);
-  }, [count]);
 
   const [rowData, setRowData] = useState([]);
 
@@ -386,17 +254,43 @@ const FederationDashBoard = () => {
     if (page < maxPage) setPage(page + 1);
   };
 
-  const paginatedData = useMemo(() => {
-    const startIndex = (page - 1) * itemsPerPage;
-    return rowData.slice(startIndex, startIndex + itemsPerPage);
-  }, [rowData, page, itemsPerPage]);
-
   const totalItems = rowData.length;
   const startItem = totalItems === 0 ? 0 : (page - 1) * itemsPerPage + 1;
   const endItem = Math.min(page * itemsPerPage, totalItems);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+  if (!connectionData.length) return;
+
+  const updatedRowData = [...new Set(connectionData.map(item => item.connection_id))].map(id => {
+    const item = connectionData.find(c => c.connection_id === id);
+    return {
+      ID: item.connection_id,
+      Connections: item.connection_name,
+      // Descriptions: item.description || "N/A",
+      Schema: schemaList[item.connection_name]?.length || 0,
+      Tables: Object.values(tableList[item.connection_name] || {}).reduce((sum, tables) => sum + tables.length, 0),
+      Views: viewList[item.connection_name]?.length || 0,
+      Created: new Date(item.created_at).toLocaleDateString()
+    };
+  }).sort((a, b) => new Date(b.Created) - new Date(a.Created));
+
+  setRowData(updatedRowData);
+
+  setCards([
+    { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Connections", count: count.connections.length },
+    { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Schemas", count: count.totalSchemaCount },
+    { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Tables", count: count.totalTableCount },
+    { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Views", count: count.totalViewsCount || 0 }
+  ]);
+}, [connectionData, schemaList, tableList, viewList, count]);
+
+const paginatedData = useMemo(() => {
+  const startIndex = (page - 1) * itemsPerPage;
+  return rowData.slice(startIndex, startIndex + itemsPerPage);
+}, [rowData, page, itemsPerPage]);
 
   return (
     <>
@@ -456,7 +350,7 @@ const FederationDashBoard = () => {
                 </div>
                 <h3 className="text-lg font-semibold">{card.title}</h3>
               </div>
-              <p className="text-black text-5xl font-bold">{card.count}</p>
+              <p className="text-black text-5xl font-bold">{card.count || 0}</p>
               <div className="flex items-center justify-between">
                 {card.title === "Schemas" && (
                   <button
@@ -502,7 +396,7 @@ const FederationDashBoard = () => {
               <tr className="bg-[#29304a] text-white">
                 <th className="text-center p-4">ID</th>
                 <th className="text-center p-4">Connections</th>
-                <th className="text-center p-4">Descriptions</th>
+                {/* <th className="text-center p-4">Descriptions</th> */}
                 <th className="text-center p-4">Schema</th>
                 <th className="text-center p-4">Tables</th>
                 <th className="text-center p-4">Views</th>
@@ -515,7 +409,7 @@ const FederationDashBoard = () => {
                 <tr key={index} className="border-b">
                   <td className="p-4 text-center">{user.ID}</td>
                   <td className="p-4 text-center">{user.Connections}</td>
-                  <td className="p-4 text-center">{user.Descriptions}</td>
+                  {/* <td className="p-4 text-center">{user.Descriptions}</td> */}
                   <td className="p-4 text-center">{user.Schema}</td>
                   <td className="p-4 text-center">{user.Tables}</td>
                   <td className="p-4 text-center">{user.Views}</td>
