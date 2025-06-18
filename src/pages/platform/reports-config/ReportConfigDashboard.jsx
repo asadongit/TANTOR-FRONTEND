@@ -162,11 +162,12 @@ const ReportConfigDashboard = () => {
         const embedID = row.embed_id
 
         // ----------- SUPERSET CODE START -----------
-        if ((reportType || "").toUpperCase() === "LIST") {
+        if ((reportType || "").toUpperCase() === "LIST" || (reportType || "").toUpperCase() === "DASHBOARD") {
+          console.log("REPORT TYPE ==> ", reportType);
           console.log("Embed id:", embedID);
           
           if(!embedID){
-            toast.error("REPORT NOT PROCESSED!");
+            toast.error("Dashboard not configured!");
             return;
           }
 
@@ -174,7 +175,8 @@ const ReportConfigDashboard = () => {
           setShowModal(true);
           return;
         }
-         else if ((reportType || "").toUpperCase() === "GRID") {
+         else if ((reportType || "").toUpperCase() === "GRID" || (reportType || "").toUpperCase() === "HYBRID") {
+          console.log("REPORT TYPE ==> ", reportType);
             const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
             const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
@@ -187,7 +189,7 @@ const ReportConfigDashboard = () => {
             return;
           }
           else{
-            toast.error("Invalid Report Type selected.");
+            toast.error("Invalid Report Type provided.");
             return;
           }
         // ----------- SUPERSET CODE END -----------
