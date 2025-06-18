@@ -162,33 +162,21 @@ const ReportConfigDashboard = () => {
         const embedID = row.embed_id
 
         // ----------- SUPERSET CODE START -----------
-        // if ((reportType || "").toUpperCase() === "LIST") {
-        //   console.log("Embed id:", embedID);
+        if ((reportType || "").toUpperCase() === "LIST" || (reportType || "").toUpperCase() === "DASHBOARD") {
+          console.log("REPORT TYPE ==> ", reportType);
+          console.log("Embed id:", embedID);
           
-        //   if(!embedID){
-        //     toast.error("REPORT NOT PROCESSED!");
-        //     return;
-        //   }
-
-        //   setCurrentEmbedId(embedID);
-        //   setShowModal(true);
-        //   return;
-        // }
-        // ----------- SUPERSET CODE END -----------
-
-        if ((reportType || "").toUpperCase() === "LIST") {
-            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
-            const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-
-            window.open(
-              `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-                import.meta.env.VITE_BIRT_EXPORT_FORMAT
-              }`,
-              "_blank"
-            );
+          if(!embedID){
+            toast.error("Dashboard not configured!");
             return;
           }
-          else if ((reportType || "").toUpperCase() === "GRID") {
+
+          setCurrentEmbedId(embedID);
+          setShowModal(true);
+          return;
+        }
+         else if ((reportType || "").toUpperCase() === "GRID" || (reportType || "").toUpperCase() === "HYBRID") {
+          console.log("REPORT TYPE ==> ", reportType);
             const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
             const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
@@ -201,57 +189,90 @@ const ReportConfigDashboard = () => {
             return;
           }
           else{
-            toast.error("Invalid Report Type selected.");
+            toast.error("Invalid Report Type provided.");
             return;
           }
+        // ----------- SUPERSET CODE END -----------
 
-        const headers = {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        };
+        // ------------- BIRT CODE START -----------------
+        // if ((reportType || "").toUpperCase() === "LIST") {
+        //     const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+        //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
-        if ((reportType || "").toUpperCase() !== "LIST") {
-          try {
-            const response = await fetch(
-              `${hostnameV1}/lineItems/reports/${reportId}/exists`,
-              { headers }
-            );
+        //     window.open(
+        //       `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+        //         import.meta.env.VITE_BIRT_EXPORT_FORMAT
+        //       }`,
+        //       "_blank"
+        //     );
+        //     return;
+        //   }
+        //   else if ((reportType || "").toUpperCase() === "GRID") {
+        //     const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+        //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
-            if (!response.ok)
-              return toast.error(
-                "ERROR OCCURED TRYING TO CHECK IF REPORT EXISTS."
-              );
+        //     window.open(
+        //       `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+        //         import.meta.env.VITE_BIRT_EXPORT_FORMAT
+        //       }`,
+        //       "_blank"
+        //     );
+        //     return;
+        //   }
+        //   else{
+        //     toast.error("Invalid Report Type selected.");
+        //     return;
+        //   }
+        // ------------- BIRT CODE END -----------------
 
-            const data = await response.json();
 
-            if (data.isExists === false)
-              return toast.error(`Report isn't generated yet.`);
-          } catch (error) {
-            console.log(error);
-            toast.error("Error occured.");
-          }
-        }
+        // const headers = {
+        //   "Content-Type": "application/json",
+        //   authorization: `Bearer ${token}`,
+        // };
 
-        try {
-          const redirectResponse = await fetch(
-            `${import.meta.env.VITE_BIRT_BACKEND_API
-            }/templates/generate?report-id=${reportId}&report-name=${reportFileName}&report-type=${reportType}`
-          );
-          if (!redirectResponse.ok)
-            return toast.error("ERROR OCCURED TRYING TO GENERATE REPORT.");
+        // if ((reportType || "").toUpperCase() !== "LIST") {
+        //   try {
+        //     const response = await fetch(
+        //       `${hostnameV1}/lineItems/reports/${reportId}/exists`,
+        //       { headers }
+        //     );
 
-          console.log("Redirect Response: ", redirectResponse);
-          const redirectPath = await redirectResponse.text();
-          window.open(
-            `${import.meta.env.VITE_BIRT_API
-            }/frameset?__report=${redirectPath}&__format=${import.meta.env.VITE_BIRT_EXPORT_FORMAT
-            }`,
-            "_blank"
-          );
-        } catch (error) {
-          console.log(error);
-          toast.error("Error occured trying to generate report.");
-        }
+        //     if (!response.ok)
+        //       return toast.error(
+        //         "ERROR OCCURED TRYING TO CHECK IF REPORT EXISTS."
+        //       );
+
+        //     const data = await response.json();
+
+        //     if (data.isExists === false)
+        //       return toast.error(`Report isn't generated yet.`);
+        //   } catch (error) {
+        //     console.log(error);
+        //     toast.error("Error occured.");
+        //   }
+        // }
+
+        // try {
+        //   const redirectResponse = await fetch(
+        //     `${import.meta.env.VITE_BIRT_BACKEND_API
+        //     }/templates/generate?report-id=${reportId}&report-name=${reportFileName}&report-type=${reportType}`
+        //   );
+        //   if (!redirectResponse.ok)
+        //     return toast.error("ERROR OCCURED TRYING TO GENERATE REPORT.");
+
+        //   console.log("Redirect Response: ", redirectResponse);
+        //   const redirectPath = await redirectResponse.text();
+        //   window.open(
+        //     `${import.meta.env.VITE_BIRT_API
+        //     }/frameset?__report=${redirectPath}&__format=${import.meta.env.VITE_BIRT_EXPORT_FORMAT
+        //     }`,
+        //     "_blank"
+        //   );
+        // } catch (error) {
+        //   console.log(error);
+        //   toast.error("Error occured trying to generate report.");
+        // }
       },
     },
     {
