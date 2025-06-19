@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
-import { secureQuery } from './Components/function.js';
+import { secureQuery, fetchConnectionDetails } from './Components/function.js';
 import { useAuth } from "../../../context/AuthContext.jsx";
 
 function Tables() {
@@ -12,20 +12,6 @@ function Tables() {
   const [showModal, setShowModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   const [allTablesRawData, setAllTablesRawData] = useState([]);
-
-  const fetchTableDetails = async (policyId) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection_details/${policyId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const data = await response.json();
-      return data || [];
-    } catch (error) {
-      console.error(`Error fetching table details for policy ${policyId}:`, error);
-      return [];
-    }
-  };
 
   const processTableData = (data) => {
     const tableMap = new Map();
@@ -89,10 +75,7 @@ function Tables() {
 
       const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-      const allTablesPromises = policyIds.map(id => fetchTableDetails(id));
-      const allTablesResults = await Promise.all(allTablesPromises);
-
-      const allTablesData = allTablesResults.flat();
+      const allTablesData = await fetchConnectionDetails(policyIds, token);
       setAllTablesRawData(allTablesData);
 
       const processedData = processTableData(allTablesData);
@@ -321,7 +304,7 @@ function Tables() {
             <table className="w-full">
               <thead>
                 <tr className="bg-[#29304a] text-white">
-                  <th className="text-left p-4">ID</th>
+                  <th className="text-left p-4">Sno</th>
                   <th className="text-left p-4">Name</th>
                   <th className="text-left p-4">Description</th>
                   <th className="text-left p-4">Schema</th>
@@ -332,31 +315,34 @@ function Tables() {
                   <th className="text-left p-4">Columns</th>
                   <th className="text-left p-4">Created Date</th>
                   <th className="text-left p-4">Last Updated</th>
-                  <th className="text-left p-4">Action</th>
+                  {/* <th className="text-left p-4">Action</th>
                   <th className="text-left p-4">
                     <input
                       type="checkbox"
                       name="selectAll"
                       onChange={handleSelectAll}
                     />
-                  </th>
+                  </th> */}
                 </tr>
               </thead>
               <tbody>
                 {tableData.length > 0 ? tableData.map((table, index) => (
                   <tr key={index} className="border-b">
-                    <td className="p-4">{table.id}</td>
-                    <td className="p-4">{table.name}</td>
+                    <td className="p-4">{index + 1}</td>
+                    <td className="p- text-blue-600 hover:underline cursor-pointer " onClick={() => {
+                          setSelectedTable(table);
+                          setShowModal(true);
+                        }} > {table.name}</td>
                     <td className="p-4">{table.description}</td>
                     <td className="p-4">{table.schema}</td>
                     <td className="p-4">{table.database}</td>
                     {/* <td className="p-4">{table.connection_name}</td> */}
                     <td className="p-4">{table.owner}</td>
                     <td className="p-4">{table.project}</td>
-                    <td className="p-4 text-blue-600 underline cursor-pointer">{table.column}</td>
+                    <td className="p-4">{table.column}</td>
                     <td className="p-4">{table.CreatedDate}</td>
                     <td className="p-4">{table.lastUpdated}</td>
-                    <td className="p-4">
+                    {/* <td className="p-4">
                       <button
                         className="text-blue-600 hover:underline"
                         onClick={() => {
@@ -374,7 +360,7 @@ function Tables() {
                         checked={table.selected || false}
                         onChange={() => handleSelectItem(index)}
                       />
-                    </td>
+                    </td> */}
                   </tr>
                 )) : (
                   <tr>

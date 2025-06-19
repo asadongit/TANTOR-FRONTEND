@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
-import { secureQuery } from './Components/function.js';
+import { secureQuery, fetchConnectionDetails } from './Components/function.js';
 import { useAuth } from "../../../context/AuthContext.jsx";
 
 function Schema() {
@@ -9,20 +9,6 @@ function Schema() {
   const [schemaData, setSchemaData] = useState([]);
   const { token } = useAuth();
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
-
-  const fetchSchemaDetails = async (policyId) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection_details/${policyId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const data = await response.json();
-      return data || [];
-    } catch (error) {
-      console.error(`Error fetching schema details for policy ${policyId}:`, error);
-      return [];
-    }
-  };
 
   const processSchemaData = (data) => {
     // Group by schema
@@ -76,10 +62,7 @@ function Schema() {
 
       const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-      const allSchemasPromises = policyIds.map(id => fetchSchemaDetails(id));
-      const allSchemasResults = await Promise.all(allSchemasPromises);
-
-      const allSchemasData = allSchemasResults.flat();
+      const allSchemasData = await fetchConnectionDetails(policyIds, token);
 
       const processedData = processSchemaData(allSchemasData);
       setSchemaData(processedData);
@@ -166,7 +149,7 @@ function Schema() {
           <table className="w-full">
             <thead>
               <tr className="bg-[#29304a] text-white">
-                <th className="text-left p-4">ID</th>
+                <th className="text-left p-4">Sno</th>
                 <th className="text-left p-4">Name</th>
                 <th className="text-left p-4">Description</th>
                 <th className="text-left p-4">Database</th>
@@ -180,13 +163,13 @@ function Schema() {
             <tbody>
               {schemaData.length > 0 ? schemaData.map((schema, index) => (
                 <tr key={index} className="border-b">
-                  <td className="p-4">{schema.id}</td>
+                  <td className="p-4">{index + 1}</td>
                   <td className="p-4">{schema.connectionName}</td>
                   <td className="p-4">{schema.description}</td>
                   <td className="p-4">{schema.database}</td>
                   <td className="p-4">{schema.owner}</td>
-                  <td className="p-4 text-gray-500 underline">{schema.tables}</td>
-                  <td className="p-4 text-gray-500 underline">{schema.views}</td>
+                  <td className="p-4">{schema.tables}</td>
+                  <td className="p-4">{schema.views}</td>
                   <td className="p-4">{schema.CreatedDate}</td>
                   <td className="p-4">{schema.lastUpdated}</td>
                 </tr>
