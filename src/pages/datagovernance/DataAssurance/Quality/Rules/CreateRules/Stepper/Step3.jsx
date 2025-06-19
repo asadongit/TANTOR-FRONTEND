@@ -6,6 +6,7 @@ function Step3({ onBack, onCreate, step1Data, step2Data }) {
   const step1 = step1Data || stepData.step1 || {};
   const step2 = step2Data || stepData.step2 || [];
 
+  // console.log('Step 3 Data:', step2);
   const groupStats = useMemo(() => {
     const stats = {};
     step2.forEach(rule => {
@@ -18,20 +19,23 @@ function Step3({ onBack, onCreate, step1Data, step2Data }) {
         };
       }
       stats[rule.group].rules += 1;
+
       const connections = rule.connection_details || [];
       connections.forEach(conn => {
         stats[rule.group].connections += 1;
 
         const tables = Array.isArray(conn.tables) ? conn.tables : (conn.tables ? [conn.tables] : []);
-        const columns = Array.isArray(conn.columns) ? conn.columns : (conn.columns ? [conn.columns] : []);
         tables.forEach(table => {
           stats[rule.group].tables.add(table);
         });
+
+        const columns = Array.isArray(conn.columns) ? conn.columns : (conn.columns ? [conn.columns] : []);
         columns.forEach(column => {
           stats[rule.group].columns.add(column);
         });
       });
     });
+
     Object.keys(stats).forEach(group => {
       stats[group].tables = stats[group].tables.size;
       stats[group].columns = stats[group].columns.size;
@@ -80,18 +84,18 @@ function Step3({ onBack, onCreate, step1Data, step2Data }) {
           );
         })}
       </div>
-      <div className="overflow-x-auto border rounded-lg" style={{ maxWidth: '100%' }}>
+      <div className="overflow-x-auto border rounded-lg">
         <table className="min-w-full bg-white">
           <thead className="bg-[#29304a] text-white">
             <tr>
-              <th className="py-3 px-4 text-left font-semibold break-all whitespace-pre-wrap">#</th>
-              <th className="py-3 px-4 text-left font-semibold break-all whitespace-pre-wrap">Name</th>
-              <th className="py-3 px-4 text-left font-semibold break-all whitespace-pre-wrap">Group</th>
-              <th className="py-3 px-4 text-left font-semibold w-1/4 break-all whitespace-pre-wrap">SQL</th>
-              <th className="py-3 px-4 text-left font-semibold break-all whitespace-pre-wrap">Connection</th>
-              <th className="py-3 px-4 text-left font-semibold break-all whitespace-pre-wrap">Schema</th>
-              <th className="py-3 px-4 text-left font-semibold break-all whitespace-pre-wrap">Table</th>
-              <th className="py-3 px-4 text-left font-semibold break-all whitespace-pre-wrap">Column</th>
+              <th className="py-3 px-4 text-left font-semibold">#</th>
+              <th className="py-3 px-4 text-left font-semibold">Name</th>
+              <th className="py-3 px-4 text-left font-semibold">Group</th>
+              <th className="py-3 px-4 text-left font-semibold w-1/4">SQL</th>
+              <th className="py-3 px-4 text-left font-semibold">Connection</th>
+              <th className="py-3 px-4 text-left font-semibold">Schema</th>
+              <th className="py-3 px-4 text-left font-semibold">Table</th>
+              <th className="py-3 px-4 text-left font-semibold">Column</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -102,47 +106,47 @@ function Step3({ onBack, onCreate, step1Data, step2Data }) {
                   {connIndex === 0 && (
                     <>
                       <td
-                        className="py-3 px-4 align-top break-all whitespace-pre-wrap"
+                        className="py-3 px-4 align-top"
                         rowSpan={connections.length || 1}
                       >
                         {index + 1}
                       </td>
                       <td
-                        className="py-3 px-4 align-top font-medium text-[#8d77ba] break-all whitespace-pre-wrap"
+                        className="py-3 px-4 align-top font-medium text-[#8d77ba]"
                         rowSpan={connections.length || 1}
                       >
                         {rule.rule?.name}
                       </td>
                       <td
-                        className="py-3 px-4 align-top break-all whitespace-pre-wrap"
+                        className="py-3 px-4 align-top"
                         rowSpan={connections.length || 1}
                       >
                         {rule.group}
                       </td>
                       <td
-                        className="py-3 px-4 align-top break-all whitespace-pre-wrap"
+                        className="py-3 px-4 align-top"
                         rowSpan={connections.length || 1}
                       >
-                        <div className="max-h-20 overflow-y-auto">
-                          <pre className="text-xs whitespace-pre-wrap bg-gray-50 p-2 rounded break-all">
+                        <div className="max-h-20">
+                          <pre className="text-xs whitespace-pre-wrap bg-gray-50 p-2 rounded">
                             {rule.rule?.query || "No SQL defined"}
                           </pre>
                         </div>
                       </td>
                     </>
                   )}
-                  <td className="py-3 px-4 break-all whitespace-pre-wrap">{conn.connection || "-"}</td>
-                  <td className="py-3 px-4 break-all whitespace-pre-wrap">
+                  <td className="py-3 px-4">{conn.connection || "-"}</td>
+                  <td className="py-3 px-4">
                     {Array.isArray(conn.schema)
                       ? conn.schema.join(', ')
                       : (conn.schema || "-")}
                   </td>
-                  <td className="py-3 px-4 break-all whitespace-pre-wrap">
+                  <td className="py-3 px-4">
                     {Array.isArray(conn.tables)
                       ? conn.tables.join(', ')
                       : (conn.tables || "-")}
                   </td>
-                  <td className="py-3 px-4 break-all whitespace-pre-wrap">
+                  <td className="py-3 px-4">
                     {Array.isArray(conn.columns)
                       ? conn.columns.join(', ')
                       : (conn.columns || "-")}

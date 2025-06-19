@@ -77,7 +77,7 @@ function Step2({ data, onBack, onNext, step2Data }) {
         initialSelected[groupName].add(ruleObj.rule?.id || ruleObj.id || ruleObj.ruleId);
 
         const ruleIdx = initialQueries[groupName].length - 1;
-        // Support both new and old structure for connections
+
         const connectionsArr = ruleObj.connection_details || ruleObj.connections || [];
         initialConnections[`${groupName}__${ruleIdx}`] = (connectionsArr || []).map((conn, idx) => ({
           id: idx + 1,
@@ -466,10 +466,12 @@ function Step2({ data, onBack, onNext, step2Data }) {
         if (!selectedRules[groupName]?.has(ruleObj.id)) return;
         const queryKey = `${groupName}__${rIdx}`;
         const connections = (connectionsByQuery[queryKey] || [])
-          .filter(conn => conn.checked)
+          .filter(conn => conn.checked && conn.connection)
           .map(conn => {
             const connection = conn.connection;
+
             const schemas = (conn.schema || []).map(s => `${connection}.${s}`);
+
             const tables = (conn.table || []).map(t => {
               const tableName = t.split('.').pop();
               let schema = '';
@@ -482,6 +484,7 @@ function Step2({ data, onBack, onNext, step2Data }) {
               }
               return schema ? `${connection}.${schema}.${tableName}` : `${connection}.${t}`;
             });
+
             const columns = (conn.column || []).map(c => {
               const columnName = c.split('.').pop();
               let schema = '', table = '';
@@ -495,53 +498,47 @@ function Step2({ data, onBack, onNext, step2Data }) {
                     break;
                   }
                 }
+                if (schema && table) break;
               }
               return schema && table ? `${connection}.${schema}.${table}.${columnName}` : `${connection}.${c}`;
             });
 
-
-            const singleOrArray = arr => arr.length === 1 ? arr[0] : arr;
-
             return {
               connection,
-              schema: singleOrArray(schemas),
-              tables: singleOrArray(tables),
-              columns: singleOrArray(columns)
+              schema: schemas.length === 1 ? schemas[0] : schemas.length > 1 ? schemas : '',
+              tables: tables.length === 1 ? tables[0] : tables.length > 1 ? tables : '',
+              columns: columns.length === 1 ? columns[0] : columns.length > 1 ? columns : ''
             };
           });
 
+      const ruleData = {
+        ...(ruleObj.id ? { id: ruleObj.id } : {}),
+        category,
+        type,
+        group: groupName,
+        rule: {
+          id: ruleObj.id,
+          name: ruleObj.name,
+          query: ruleObj.query
+        }
+      };
 
-          const ruleData = {
+      if (connections.length > 0) {
+        ruleData.connection_details = connections;
+      }
 
-            ...(ruleObj.id ? { id: ruleObj.id } : {}),
-          category,
-          type,
-          group: groupName,
-          rule: {
-            id: ruleObj.id,
-            name: ruleObj.name,
-            query: ruleObj.query
-          },
-          connection_details: connections
-        };
-        result.push(ruleData);
-      });
+      result.push(ruleData);
     });
-    return result;
+  });
+  return result;
   };
 
   const handleNextClick = () => {
     const json = generateResultJson();
+    console.log(json);
     setStepData(prev => ({ ...prev, step2: json }));
     onNext(json);
   };
-
-  useEffect(() => {
-    return () => {
-      const json = generateResultJson();
-      setStepData(prev => ({ ...prev, step2: json }));
-    };
-  }, []);
 
   const selectStyles = {
     control: (base, state) => ({
@@ -1031,4 +1028,3 @@ function Step2({ data, onBack, onNext, step2Data }) {
 }
 
 export default Step2;
-
