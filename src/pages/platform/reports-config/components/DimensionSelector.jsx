@@ -53,18 +53,18 @@ function DimensionValueSelector({
             {dimensionValuesData.length > 0 ? (
               dimensionValuesData.map((dimValue) => {
                 const isChecked = dimension.value && dimension.value.some(
-                  (v) => v.id === dimValue.product_category_id
+                  (v) => v.id === dimValue.id
                 );
                 
                 return (
                   <label
-                    key={dimValue.product_category_id}
+                    key={dimValue.id}
                     className="flex items-center space-x-2 p-2 hover:bg-gray-100 cursor-pointer"
                   >
                     <input
                       type="checkbox"
                       className="form-checkbox text-blue-600"
-                      value={dimValue.product_category_id}
+                      value={dimValue.id}
                       checked={isChecked}
                       onChange={(e) => {
                         const isChecked = e.target.checked;
@@ -72,12 +72,12 @@ function DimensionValueSelector({
                           ? [
                               ...(dimension.value || []),
                               {
-                                id: dimValue.product_category_id,
+                                id: dimValue.id,
                                 name: dimValue.fct_col_value,
                               },
                             ]
                           : (dimension.value || []).filter(
-                              (v) => v.id !== dimValue.product_category_id
+                              (v) => v.id !== dimValue.id
                             );
 
                         updateDimension(ruleIndex, index, "value", newDimValue);
