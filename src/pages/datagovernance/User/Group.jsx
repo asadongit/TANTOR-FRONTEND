@@ -495,6 +495,46 @@ function Group() {
                               </div>
                               <h3 className="text-lg font-semibold">{group.title}</h3>
                             </div>
+
+                            <div className="relative">
+                              <button
+                                onClick={() => setActiveMenu(activeMenu === `card-${index}` ? null : `card-${index}`)}
+                                className="p-1.5 rounded-full hover:bg-gray-100"
+                              >
+                                <MoreVertical className="h-5 w-5 text-gray-600" />
+                              </button>
+                              {activeMenu === `card-${index}` && (
+                                <>
+                                  <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
+                                  <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                    <div className="flex items-center p-1 gap-1">
+                                      <button
+                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                        onClick={() => {
+                                          const groupData = tableData.find(g => g.name === group.title);
+                                          setGroupToEdit(groupData || { name: group.title });
+                                          setShowEditModal(true);
+                                          setActiveMenu(null);
+                                        }}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                        onClick={() => {
+                                          const groupData = tableData.find(g => g.name === group.title);
+                                          setGroupToDelete(groupData || { name: group.title });
+                                          setShowDeleteModal(true);
+                                          setActiveMenu(null);
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
                           <p className="text-gray-500 mt-4 text-sm">{group.description}</p>
                           <div className="flex items-center justify-between mt-6">
