@@ -27,7 +27,7 @@ import toast from "react-hot-toast";
 const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {cards.map((card, index) => (
         <React.Fragment key={card.title}>
           <div
@@ -43,7 +43,7 @@ const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
               <p className="text-black text-5xl font-bold">{card.count}</p>
             )}
           </div>
-          {index === 1 && <div className="col-span-1"></div>}
+          {/* {index === 1 && <div className="col-span-1"></div>} */}
         </React.Fragment>
       ))}
     </div>
