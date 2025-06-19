@@ -14,6 +14,9 @@ const Rules = () => {
   const [viewMode, setViewMode] = useState('both');
   const rowsPerPage = 5;
   const navigate = useNavigate();
+  const [metricData, setMetricData] = useState([]);
+  const [tableData, setTableData] = useState([]);
+
 
   const metricsData = [
     {
@@ -21,102 +24,76 @@ const Rules = () => {
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       title: "Overall",
-      count: "90%"
+      count: metricData?.Overall || "-"
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       title: "Accuracy",
-      count: "92%"
+      count: metricData?.Accuracy || "-"
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       title: "Consistency",
-      count: "86%"
+      count: metricData?.Consistency || "-"
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       title: "Completeness",
-      count: "94%"
+      count: metricData?.Completeness || "-"
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       title: "Validity",
-      count: "88%"
+      count: metricData?.Validity || "-"
     },
     {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
       title: "Uniqueness",
-      count: "90%"
+      count: metricData?.Uniqueness || "-"
     }
   ];
 
-  const tableData = [
-    {
-      category: 'pre build',
-      type: 'metadata',
-      group: 'uniqueness',
-      name: 'abcd',
-      severity: 'High',
-      status: 'Active',
-      created_date: '24/10/2024',
-      updated_date: '24/10/2024',
-      last_run: '24/10/2024'
-    },
-    {
-      category: 'custom',
-      type: 'data',
-      group: 'completeness',
-      name: 'rule_xyz',
-      severity: 'Medium',
-      status: 'Inactive',
-      created_date: '20/10/2024',
-      updated_date: '22/10/2024',
-      last_run: '23/10/2024'
-    },
-    {
-      category: 'pre build',
-      type: 'data',
-      group: 'validity',
-      name: 'rule_123',
-      severity: 'Low',
-      status: 'Active',
-      created_date: '15/10/2024',
-      updated_date: '16/10/2024',
-      last_run: '20/10/2024'
-    },
-    {
-      category: 'custom',
-      type: 'data',
-      group: 'accuracy',
-      name: 'check_values',
-      severity: 'High',
-      status: 'Active',
-      created_date: '10/10/2024',
-      updated_date: '12/10/2024',
-      last_run: '18/10/2024'
-    },
-    {
-      category: 'pre build',
-      type: 'metadata',
-      group: 'consistency',
-      name: 'format_check',
-      severity: 'Medium',
-      status: 'Active',
-      created_date: '05/10/2024',
-      updated_date: '07/10/2024',
-      last_run: '15/10/2024'
+
+  const fetchCounts = async () => {
+    fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/counts`)
+      .then(response => response.json())
+      .then(data => {
+        console.log(data)
+        setMetricData(data)
+      })
+      .catch(error => {
+        console.error('Error fetching counts:', error);
+
+      });
+  };
+
+  const fetchTableData = async () => {
+    setIsLoading(true);
+    fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/table`)
+      .then(response => response.json())
+      .then(data => {
+        console.log(data.data_rules);
+        setTableData(data.data_rules || []);
+      })
+      .catch(error => {
+        console.error('Error fetching table data:', error);
+      })
     }
-  ];
+
+  useEffect(() => {
+    fetchCounts();
+    fetchTableData();
+  }, []);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -263,7 +240,7 @@ const Rules = () => {
                   <td className="p-4 font-medium">{indexOfFirstItem + index + 1}</td>
                   <td className="p-4 text-gray-600">{item.category}</td>
                   <td className="p-4 text-gray-600">{item.type}</td>
-                  <td className="p-4 text-[#8e78b7] font-medium">{item.group}</td>
+                  <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
                   <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
