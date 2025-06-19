@@ -140,7 +140,7 @@ function Group() {
 
     try {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/deletegroup/${groupToDelete.name}`, {
-        method: "DELETE",
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
