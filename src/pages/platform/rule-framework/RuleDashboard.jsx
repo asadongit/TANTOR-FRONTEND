@@ -7,6 +7,7 @@ import {
   Download,
   Plus  
 } from "lucide-react";
+import { Icon } from "@iconify-icon/react";
 
 import { LineChart } from "@mui/x-charts/LineChart";
 
@@ -22,7 +23,7 @@ import { useRuleData } from "../../../hooks/platform/rules";
 const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {cards.map((card, index) => (
                 <React.Fragment key={card.title}>
                     <div
@@ -38,7 +39,7 @@ const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
                             <p className="text-black text-5xl font-bold">{card.count}</p>
                         )}
                     </div>
-                    {index === 1 && <div className="col-span-1"></div>}
+                    {/* {index === 1 && <div className="col-span-1"></div>} */}
                 </React.Fragment>
             ))}
         </div>
@@ -70,19 +71,19 @@ const RuleDashboard = () => {
   const cards = [
     {
         title: "Total",
-        count: cardData?.purge || 0,
+        count: cardData?.purge || 18
       },
       {
         title: "Active",
-        count: cardData?.metadata || 0,
+        count: cardData?.metadata || 11,
       },
     {
         title: "Draft",
-        count: cardData?.federation || 0,
+        count: cardData?.federation || 5,
       },
       {
         title: "Disabled",
-        count: cardData?.migration || 0,
+        count: cardData?.migration || 2,
       },
   ];
 
@@ -122,6 +123,159 @@ const RuleDashboard = () => {
     navigate(`/details?${encryptedUrl}`);
   };
 
+  const RuleMovement = () => {
+    const chartData = [
+      { day: '1 day', Total: 20, Active: 15,Draft: 12, Disabled: 18 },
+      { day: '2 day', Total: 25, Active: 8, Draft: 18, Disabled: 20 },
+      { day: '3 day', Total: 22, Active: 15,Draft: 10,Disabled: 23 },
+      { day: '4 day', Total: 27, Active: 12,Draft: 18, Disabled: 23 },
+      { day: '5 day', Total: 26, Active: 10,Draft: 14, Disabled: 20 },
+      { day: '6 day', Total: 24, Active: 9, Draft: 14, Disabled: 25 },
+      { day: '7 day', Total: 20, Active: 17,Draft: 17, Disabled: 26 }
+    ];
+
+    const colors = {
+      Total: '#ff9999',
+      Active: '#9999ff',
+      Draft: '#66cccc',
+      Disabled: '#99cc99',
+      // Transformations: '#ffcc66'
+    };
+
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex items-center gap-2 mb-4">
+          <Icon icon="material-symbols:trending-up" className="w-5 h-5 text-[#8d77ba]" />
+          <h3 className="text-lg font-semibold text-gray-800">Rule Movement</h3>
+        </div>
+
+        <div className="relative h-64 mb-4">
+          <svg className="w-full h-full" viewBox="0 0 400 200">
+            {/* Y-axis labels */}
+            {[30, 25, 20, 15, 10, 5].map((value, index) => (
+              <g key={value}>
+                <text x="15" y={30 + index * 25} className="text-xs fill-gray-500" textAnchor="middle">
+                  {value}
+                </text>
+                <line x1="25" y1={30 + index * 25} x2="370" y2={30 + index * 25} stroke="#f0f0f0" strokeWidth="1" />
+              </g>
+            ))}
+
+            {/* X-axis labels */}
+            {chartData.map((item, index) => (
+              <text key={index} x={50 + index * 50} y="190" className="text-xs fill-gray-500" textAnchor="middle">
+                {item.day}
+              </text>
+            ))}
+
+            {/* Data lines */}
+            {Object.keys(colors).map((key) => {
+              const points = chartData.map((item, index) => {
+                const x = 50 + index * 50;
+                const y = 180 - (item[key] * 5);
+                return `${x},${y}`;
+              }).join(' ');
+
+              return (
+                <g key={key}>
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke={colors[key]}
+                    strokeWidth="2"
+                  />
+                  {chartData.map((item, index) => (
+                    <circle
+                      key={index}
+                      cx={50 + index * 50}
+                      cy={180 - (item[key] * 5)}
+                      r="3"
+                      fill={colors[key]}
+                    />
+                  ))}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-4 text-sm">
+          {Object.entries(colors).map(([key, color]) => (
+            <div key={key} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>
+              <span className="text-gray-600">{key}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const SchemaOverallScore = () => {
+    const schemaData = {
+      highest: [
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' }
+      ],
+      lowest: [
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%'},
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' }
+      ]
+    };
+
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex items-center gap-2 mb-4">
+          <Icon icon="material-symbols:bar-chart" className="w-5 h-5 text-[#8d77ba]" />
+          <h3 className="text-lg font-semibold text-gray-800">Schema overall score</h3>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+
+          <div>
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-md text-sm font-medium mb-3 inline-block">
+              Highest
+            </div>
+            <div className="space-y-2">
+              {schemaData.highest.map((item, index) => (
+                <div key={index} className="flex items-center justify-between py-2">
+                  <span className="text-gray-700 text-sm">{item.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{item.score}</span>
+
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="bg-gray-100 text-gray-800 px-3 py-1 rounded-md text-sm font-medium mb-3 inline-block">
+              Lowest
+            </div>
+            <div className="space-y-2">
+              {schemaData.lowest.map((item, index) => (
+                <div key={index} className="flex items-center justify-between py-2">
+                  <span className="text-gray-700 text-sm">{item.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{item.score}</span>
+
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -156,7 +310,7 @@ const RuleDashboard = () => {
 
 
         {/* Chart container */}
-      <div className="mt-6 w-full md:w-2/5">
+      {/* <div className="mt-6 w-full md:w-2/5">
         <LineChart
           width={500}
           height={300}
@@ -194,8 +348,11 @@ const RuleDashboard = () => {
             }
           }}
         />
-      </div>
-    
+      </div> */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <RuleMovement />
+        {/* <SchemaOverallScore /> */}
+    </div>
 
      
         <DataTable

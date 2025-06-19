@@ -173,15 +173,7 @@ const Dashboard = () => {
         ))}
       </div>
       <div className="mt-10">
-        <h1
-          style={{
-            fontFamily: "Proxima Nova",
-            fontWeight: 700,
-            fontSize: "20px",
-            lineHeight: "24.36px",
-            width: "1168px",
-            height: "24px",
-          }}
+        <h1 className="text-xl font-bold text-black"
         >
           Your Activities
         </h1>

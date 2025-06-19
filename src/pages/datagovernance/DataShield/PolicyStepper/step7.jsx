@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { toast } from "react-hot-toast";
 
-const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEditMode, editPolicyId }) => {
+const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEditMode, editPolicyId, onPolicyComplete }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { token, decodedToken } = useAuth();
     const [error, setError] = useState(null);
@@ -53,6 +53,17 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
 
             const data = await response.json();
             toast.success(isEditMode ? "Policy edited successfully" : "Policy added successfully");
+
+            onPolicyComplete({
+                roles: policyData.user_selections.role ? [policyData.user_selections.role] : [],
+                group: policyData.user_selections.group || [],
+                subgroups: policyData.user_selections.subGroup || [],
+                persona: policyData.user_selections.persona ? [policyData.user_selections.persona] : [],
+                id: data.id,
+                sub_policy_name: policyData.sub_policy_name,
+                datapolicy: [data.id]
+            });
+
             await fetchPolicyListData();
             setIsOpen(false);
             setActiveStep(0);

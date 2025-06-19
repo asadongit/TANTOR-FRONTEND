@@ -6,23 +6,16 @@ import {
     RotateCw,
     List,
     RefreshCcw,
-    Code,
     Plus,
-    LinkIcon,
     Search,
-    MoreVertical,
     Pencil,
     X,
-    User, Group, Users, Shield,
-    UserPlus,
-    UserRoundCog,
-    BadgeCheck,
     ChevronLeft,
     ChevronRight
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
-import { Stepper, Step, StepLabel, Button, Box, Typography } from '@mui/material';
+import { Stepper, Step, StepLabel, Button } from '@mui/material';
 import Step1 from "./PolicyStepper/step1";
 import Step2 from "./PolicyStepper/step2";
 import Step3 from "./PolicyStepper/step3";
@@ -34,7 +27,6 @@ import ReportStep from "./PolicyStepper/ReportStep";
 import { useAuth } from "../../../context/AuthContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
 
 const Toggle = ({ enabled, onToggle }) => {
     return (
@@ -49,7 +41,7 @@ const Toggle = ({ enabled, onToggle }) => {
     );
 };
 
-const Policy = () => {
+const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPolicyComplete = () => {} }) => {  
     const { token } = useAuth();
     const [policy, setPolicy] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -61,16 +53,80 @@ const Policy = () => {
         policyName: ''
     });
     const [showCards, setShowCards] = useState(true);
-
     const [currentPage, setCurrentPage] = useState(1);
     const rowsPerPage = 10;
     const [togglingStatus, setTogglingStatus] = useState(null);
     const [toast, setToast] = useState({ show: false, message: '', type: '' });
+    const [isStepperOpen, setIsStepperOpen] = useState(isOpen);
+    const [activeStep, setActiveStep] = useState(0);
+    const [policyData, setPolicyData] = useState({
+        policy_type: '',
+        policy_description: '',
+        sub_policy_name: '',
+        sub_policy_description: '',
+        user_selections: {
+            role: '',
+            group: [],
+            persona: '',
+            subGroup: [],
+        },
+        data_connection: [],
+        row_access_control: {},
+        column_access_control: {},
+    });
+    const [step1Data, setStep1Data] = useState({
+        selectedPolicy: '',
+        description: '',
+        selectedSubPolicy: '',
+        subPolicyDescription: ''
+    });
+    const [step2Data, setStep2Data] = useState({
+        selectedRole: '',
+        selectedGroup: '',
+        selectedSubgroup: ''
+    });
+    const [step3Data, setStep3Data] = useState({
+        selectedConnections: [],
+        selectedSchemas: [],
+        selectedTables: [],
+        selectedColumns: []
+    });
+    const [step6Data, setStep6Data] = useState({
+        permissions: {
+            read: false,
+            update: false,
+            write: false,
+            delete: false,
+            execute: false
+        },
+        isFormValid: false
+    });
+    const [stepReportData, setStepReportData] = useState({
+        report_name: [],
+        report_type: [],
+        report_group: [],
+        artefact_type: ''
+    });
+    const [policyType, setPolicyType] = useState('connection');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editPolicyId, setEditPolicyId] = useState(null);
+    const [isStep3Modified, setIsStep3Modified] = useState(false);
+
+    const connectionSteps = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Reports (Optional)', 'Confirmation'];
+    const steps = connectionSteps;
+    const navigate = useNavigate();
 
     useEffect(() => {
-        FetchPolicyDashboardData();
-        fetchPolicyListData();
+        if (!isEmbedded) {
+            FetchPolicyDashboardData();
+            fetchPolicyListData();
+        }
     }, []);
+
+    useEffect(() => {
+        setIsStepperOpen(isOpen);
+    }, [isOpen]);
 
     const fetchPolicyListData = async () => {
         try {
@@ -99,7 +155,7 @@ const Policy = () => {
             setSampleData(transformedData);
             return { success: true };
         } catch (error) {
-            console.error('Error fetching role list data:', error);
+            console.error('Error fetching policy list data:', error);
             return { success: false, error: error.message };
         }
     };
@@ -113,11 +169,9 @@ const Policy = () => {
                     'Content-Type': 'application/json'
                 }
             });
-
             if (!response.ok) {
                 throw new Error('Failed to delete policy');
             }
-
             const data = await response.json();
             console.log(data.message);
             fetchPolicyListData();
@@ -154,73 +208,9 @@ const Policy = () => {
         });
     };
 
-    const navigate = useNavigate();
-
     const handleClickOutside = () => {
         setActiveMenu(null);
     };
-
-    const [isOpen, setIsOpen] = useState(false);
-    const connectionSteps = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Reports (Optional)', 'Confirmation'];
-    const [activeStep, setActiveStep] = useState(0);
-    const [policyData, setPolicyData] = useState({
-        policy_type: '',
-        policy_description: '',
-        sub_policy_name: '',
-        sub_policy_description: '',
-        user_selections: {
-            role: '',
-            group: [],
-            persona: '',
-            subGroup: [],
-        },
-        data_connection: [],
-        row_access_control: {},
-        column_access_control: {},
-    });
-
-    const [step1Data, setStep1Data] = useState({
-        selectedPolicy: '',
-        description: '',
-        selectedSubPolicy: '',
-        subPolicyDescription: ''
-    });
-
-    const [step2Data, setStep2Data] = useState({
-        selectedRole: '',
-        selectedGroup: '',
-        selectedSubgroup: ''
-    });
-
-    const [step3Data, setStep3Data] = useState({
-        selectedConnections: [],
-        selectedSchemas: [],
-        selectedTables: [],
-        selectedColumns: []
-    });
-
-    const [step6Data, setStep6Data] = useState({
-        permissions: {
-            read: false,
-            update: false,
-            write: false,
-            delete: false,
-            execute: false
-        },
-        isFormValid: false
-    });
-
-    const [stepReportData, setStepReportData] = useState({
-        report_name: [],
-        report_type: [],
-        report_group: [],
-        artefact_type: ''
-
-    })
-
-    const [policyType, setPolicyType] = useState('connection');
-
-    const steps = connectionSteps;
 
     const handleNext = () => {
         switch (activeStep) {
@@ -242,17 +232,14 @@ const Policy = () => {
                 updateStep3Data(step3Data);
                 break;
             case 3:
-                // Step 4 data is already updated via onDataChange
                 break;
             case 4:
-                // Step 5 data is already updated via onDataChange
                 break;
             case 5:
                 break;
             default:
                 break;
         }
-
         if (activeStep < steps.length - 1) {
             setActiveStep(prev => prev + 1);
         }
@@ -293,7 +280,7 @@ const Policy = () => {
             }
         };
         setPolicyData(newData);
-    }
+    };
 
     const updateStep3Data = (data) => {
         const connections = processConnectionData(
@@ -302,16 +289,13 @@ const Policy = () => {
             data.selectedTables,
             data.selectedColumns
         );
-
         const isDataChanged = JSON.stringify(step3Data) !== JSON.stringify(data);
-
         setPolicyData((prev) => ({
             ...prev,
             data_connection: connections,
             row_access_control: isEditMode && isDataChanged ? {} : prev.row_access_control,
             column_access_control: isEditMode && isDataChanged ? {} : prev.column_access_control,
         }));
-
         if (isDataChanged) {
             setIsStep3Modified(true);
         }
@@ -323,7 +307,6 @@ const Policy = () => {
             console.warn('Invalid input arrays in processConnectionData');
             return result;
         }
-
         const connectionGroups = {};
         schemas.forEach((schema) => {
             if (typeof schema !== 'string') return;
@@ -341,7 +324,6 @@ const Policy = () => {
                 columns: new Set(),
             };
         });
-
         tables.forEach((table) => {
             if (typeof table !== 'string') return;
             const parts = table.split('.');
@@ -352,7 +334,6 @@ const Policy = () => {
                 connectionGroups[conn].schemas[schema].tables.add(table);
             }
         });
-
         columns.forEach((column) => {
             if (typeof column !== 'string') return;
             const parts = column.split('.');
@@ -363,7 +344,6 @@ const Policy = () => {
                 connectionGroups[conn].schemas[schema].columns.add(column);
             }
         });
-
         Object.values(connectionGroups).forEach((connGroup) => {
             Object.values(connGroup.schemas).forEach((schema) => {
                 result.push({
@@ -374,7 +354,6 @@ const Policy = () => {
                 });
             });
         });
-
         return result;
     };
 
@@ -387,10 +366,6 @@ const Policy = () => {
 
     const updatePolicyData = (newData) => {
         setPolicyData(prev => ({ ...prev, ...newData }));
-    };
-
-    const getNextStepIndex = (currentStep) => {
-        return currentStep + 1;
     };
 
     const renderStepContent = (step) => {
@@ -436,14 +411,13 @@ const Policy = () => {
                     policyData={policyData}
                     isEditMode={isEditMode}
                     initialData={stepReportData}
-                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))
-                    }
+                    onDataChange={(data) => setPolicyData((prev) => ({ ...prev, ...data }))}
                     setActiveStep={setActiveStep}
                     setStepReportData={setStepReportData}
                 />;
             case 7:
                 return <Step7
-                    setIsOpen={setIsOpen}
+                    setIsOpen={setIsStepperOpen}
                     policyData={{
                         ...policyData,
                         policy_for: 'connection'
@@ -453,6 +427,7 @@ const Policy = () => {
                     isEditMode={isEditMode}
                     editPolicyId={editPolicyId}
                     showReportOption={false}
+                    onPolicyComplete={onPolicyComplete}
                 />;
             default:
                 return null;
@@ -492,14 +467,12 @@ const Policy = () => {
             selectedTables: [],
             selectedColumns: [],
         });
-
         setStepReportData({
             report_name: [],
             report_type: [],
             report_group: [],
             artefact_type: ''
         });
-
         setPolicyType('connection');
         setIsStep3Modified(false);
         setIsEditMode(false);
@@ -571,8 +544,6 @@ const Policy = () => {
         }
     };
 
-    const [searchTerm, setSearchTerm] = useState('');
-
     const filteredPolicyCards = useMemo(() => {
         if (!searchTerm) return policy;
         return policy.filter((card) =>
@@ -627,10 +598,6 @@ const Policy = () => {
         }
     }
 
-    const [isEditMode, setIsEditMode] = useState(false);
-    const [editPolicyId, setEditPolicyId] = useState(null);
-    const [isStep3Modified, setIsStep3Modified] = useState(false);
-
     const handlePolicyEdit = async (policyId) => {
         setActiveMenu(null);
         const policy = sampleData.find(p => p.id === policyId);
@@ -646,18 +613,15 @@ const Policy = () => {
                     policy_type: policy?.Type || ""
                 })
             });
-
             if (!response.ok) {
                 throw new Error(`Failed to fetch policy details: ${response.statusText}`);
             }
-
             const data = await response.json();
             const policyDetails = {
                 ...data.policy_details,
                 row_access_control: data.policy_details.row_access_control || {},
                 column_access_control: data.policy_details.column_access_control || {},
             };
-
             setPolicyData(policyDetails);
             setStep1Data({
                 selectedPolicy: policyDetails.policy_type || "",
@@ -676,18 +640,16 @@ const Policy = () => {
                 selectedTables: policyDetails.data_connection?.flatMap(dc => dc.tables) || [],
                 selectedColumns: policyDetails.data_connection?.flatMap(dc => dc.columns) || []
             });
-
             setStepReportData({
                 report_name: policyDetails.reports?.report_name || [],
                 report_type: policyDetails.reports?.report_type || [],
                 report_group: policyDetails.reports?.report_group || [],
                 artefact_type: policyDetails.reports?.artefact_type || "Reports"
             });
-
             setIsEditMode(true);
             setEditPolicyId(policyId);
             setIsStep3Modified(false);
-            setIsOpen(true);
+            setIsStepperOpen(true);
             setActiveStep(0);
         } catch (error) {
             console.error("Error loading policy data:", error.message);
@@ -698,7 +660,6 @@ const Policy = () => {
     const handleToggleView = () => {
         setShowCards(prev => !prev);
     };
-
 
     const FetchPolicyDashboardData = async () => {
         try {
@@ -747,11 +708,9 @@ const Policy = () => {
                     status: newStatus
                 })
             });
-
             if (!response.ok) {
                 throw new Error('Failed to update policy status');
             }
-
             const data = await response.json();
             console.log(data.message);
             return true;
@@ -766,25 +725,21 @@ const Policy = () => {
     const togglePolicy = async (index) => {
         const filteredPolicy = filteredPolicyCards[index];
         const policyIndex = policy.findIndex((p) => p.title === filteredPolicy.title);
-
         if (policyIndex === -1) {
             console.error("Policy not found in full policy array");
             return;
         }
         const originalPolicy = [...policy];
         const originalSampleData = [...sampleData];
-
         const newPolicy = [...policy];
         const policyGroup = newPolicy[policyIndex];
         const currentStatus = policyGroup.enabled;
         const newStatus = currentStatus ? "inactive" : "active";
-
         newPolicy[policyIndex] = {
             ...policyGroup,
             enabled: !currentStatus,
         };
         setPolicy(newPolicy);
-
         const updatedSampleData = sampleData.map((item) => {
             if (policyGroup.ids.includes(item.id)) {
                 return {
@@ -795,18 +750,14 @@ const Policy = () => {
             return item;
         });
         setSampleData(updatedSampleData);
-
         setTogglingStatus(index);
         const success = await updatePolicyStatus(policyGroup.ids, newStatus, index);
-
         if (!success) {
             setPolicy(originalPolicy);
             setSampleData(originalSampleData);
         }
         setTogglingStatus(null);
     };
-
-    const [refreshing, setRefreshing] = useState(false);
 
     const handleRefresh = async () => {
         setRefreshing(true);
@@ -817,7 +768,6 @@ const Policy = () => {
                 FetchPolicyDashboardData(),
                 fetchPolicyListData()
             ]);
-
             if (dashboardResult.success && listResult.success) {
                 setToast({
                     show: true,
@@ -825,11 +775,9 @@ const Policy = () => {
                     type: 'success'
                 });
             } else {
-                // Show error if any operation failed
                 const errorMessages = [];
                 if (!dashboardResult.success) errorMessages.push('dashboard data');
                 if (!listResult.success) errorMessages.push('list data');
-
                 setToast({
                     show: true,
                     message: `Failed to refresh role ${errorMessages.join(' and ')}`,
@@ -861,19 +809,14 @@ const Policy = () => {
                     'Content-Type': 'application/json'
                 }
             });
-
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
-
             const data = await response.json();
-
             const refreshedPolicy = data.policies.find(p => p.id === policyId);
-
             if (!refreshedPolicy) {
                 throw new Error('Policy not found in response');
             }
-
             setSampleData(prevData =>
                 prevData.map(policy =>
                     policy.id === policyId ? {
@@ -889,9 +832,7 @@ const Policy = () => {
                     } : policy
                 )
             );
-
             showToast(`Policy ${policyId} refreshed successfully`, 'success');
-
             return { success: true };
         } catch (error) {
             console.error('Error refreshing policy:', error);
@@ -906,13 +847,102 @@ const Policy = () => {
             message,
             type
         });
-
         setTimeout(() => {
             setToast(prev => ({ ...prev, show: false }));
         }, 3000);
     };
 
+    // If embedded, only render the stepper modal
+    if (isEmbedded) {
+        return (
+            <>
+                {isStepperOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-40 z-[100] flex justify-center items-center">
+                        <div className="bg-white rounded-xl shadow-lg w-full max-w-6xl p-6 relative">
+                            <button
+                                onClick={() => {
+                                    setIsStepperOpen(false);
+                                    onClose();
+                                }}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                            {!(activeStep === 7) && (
+                                <h2 className="text-lg font-bold text-[#8e78b7] flex items-center mb-3">
+                                    Add Policy
+                                </h2>
+                            )}
+                            {!(activeStep === 7) && (
+                                <Stepper activeStep={activeStep} alternativeLabel>
+                                    {steps.map((_, index) => {
+                                        const isCompleted = index < activeStep;
+                                        const isActive = index === activeStep;
+                                        return (
+                                            <Step key={index} completed={isCompleted}>
+                                                <StepLabel
+                                                    sx={{
+                                                        color: isActive ? '#8e78b7' : 'inherit',
+                                                        '.MuiStepIcon-root': {
+                                                            color: isCompleted ? 'green' : isActive ? '#8e78b7' : '#cfd8dc',
+                                                        },
+                                                        '.MuiStepLabel-label': {
+                                                            color: isActive ? '#8e78b7' : undefined,
+                                                        },
+                                                    }}
+                                                />
+                                            </Step>
+                                        );
+                                    })}
+                                </Stepper>
+                            )}
+                            <div className="mt-6">
+                                {renderStepContent(activeStep)}
+                            </div>
+                            {!(activeStep === 6) && !(activeStep === 7) && (
+                                <div className="flex justify-between mt-7">
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleClear}
+                                            className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                        >
+                                            Clear
+                                        </button>
+                                        <button
+                                            onClick={handleNext}
+                                            disabled={
+                                                (activeStep === 0 && !step1Data.isFormValid) ||
+                                                (activeStep === 1 && !step2Data.isFormValid) ||
+                                                (activeStep === 5 && !step6Data.isFormValid)
+                                            }
+                                            className={`px-6 py-1.5 rounded-md ${(activeStep === 0 && !step1Data.isFormValid) ||
+                                                (activeStep === 1 && !step2Data.isFormValid) ||
+                                                (activeStep === 5 && !step6Data.isFormValid)
+                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
+                                                }`}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                    {activeStep !== 0 && (
+                                        <button
+                                            onClick={handleBack}
+                                            className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                        >
+                                            Back
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    }
 
+    // Default rendering for non-embedded mode
     return (
         <>
             <div>
@@ -933,9 +963,7 @@ const Policy = () => {
                         </button>
                     </div>
                 )}
-
                 <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-
                 <Breadcrumb />
                 <div className="flex items-center justify-between mb-6">
                     <h1 className="text-2xl font-semibold">Policy</h1>
@@ -960,15 +988,14 @@ const Policy = () => {
                         <button
                             type="button"
                             onClick={handleRefresh}
-                            disabled={refreshing}
                             className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
                         >
-                            <RefreshCcw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
+                            <RefreshCcw className={`h-5 w-5`} />
                         </button>
                         <button
                             type="button"
                             onClick={() => {
-                                setIsOpen(true);
+                                setIsStepperOpen(true);
                                 setActiveStep(0);
                                 setData();
                             }}
@@ -981,7 +1008,6 @@ const Policy = () => {
                         </button>
                     </div>
                 </div>
-
                 {showCards && (
                     <div className="mt-4">
                         {loading ? (
@@ -1011,28 +1037,19 @@ const Policy = () => {
                                                     {card.count.toString().padStart(2, "0")}
                                                 </div>
                                                 <div className="flex items-center justify-between mt-6">
-                                                    {/* <button
-                                                        className="text-purple-600 text-sm hover:text-purple-700"
-                                                    >
-                                                        See details
-                                                    </button> */}
                                                     {togglingStatus === index ? (
-                                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]">
-
-                                                        </div>
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
                                                     ) : (
                                                         <div className="flex items-center gap-2">
                                                             <Toggle
                                                                 enabled={card.enabled}
                                                                 onToggle={() => togglePolicy(index)}
                                                             />
-
                                                             <span className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-red-500"}`}>
                                                                 {card.enabled ? "Enabled" : "Disabled"}
                                                             </span>
                                                         </div>
                                                     )}
-
                                                 </div>
                                             </div>
                                         </div>
@@ -1042,7 +1059,6 @@ const Policy = () => {
                         )}
                     </div>
                 )}
-
                 <div className="bg-white rounded-lg shadow mt-5">
                     <div className="overflow-x-auto max-w-full">
                         <table className="w-full table-auto min-w-[1000px]">
@@ -1152,7 +1168,6 @@ const Policy = () => {
                             </tbody>
                         </table>
                     </div>
-
                     {!loading && filteredTableData.length > 0 && (
                         <div className="sticky bottom-0 bg-white p-4 flex justify-end items-center">
                             <button
@@ -1187,12 +1202,11 @@ const Policy = () => {
                     )}
                 </div>
             </div>
-
-            {isOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-center">
+            {isStepperOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-40 z-[100] flex justify-center items-center">
                     <div className="bg-white rounded-xl shadow-lg w-full max-w-6xl p-6 relative">
                         <button
-                            onClick={() => setIsOpen(false)}
+                            onClick={() => setIsStepperOpen(false)}
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
                         >
                             <X className="h-5 w-5" />
@@ -1225,52 +1239,48 @@ const Policy = () => {
                                 })}
                             </Stepper>
                         )}
-
                         <div className="mt-6">
                             {renderStepContent(activeStep)}
                         </div>
-
-                        {!(activeStep === 6) &&
-                            !(activeStep === 7) && (
-                                <div className="flex justify-between mt-7">
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={handleClear}
-                                            className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
-                                        >
-                                            Clear
-                                        </button>
-                                        <button
-                                            onClick={handleNext}
-                                            disabled={
-                                                (activeStep === 0 && !step1Data.isFormValid) ||
-                                                (activeStep === 1 && !step2Data.isFormValid) ||
-                                                (activeStep === 5 && !step6Data.isFormValid)
-                                            }
-                                            className={`px-6 py-1.5 rounded-md ${(activeStep === 0 && !step1Data.isFormValid) ||
-                                                (activeStep === 1 && !step2Data.isFormValid) ||
-                                                (activeStep === 5 && !step6Data.isFormValid)
-                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
-                                                }`}
-                                        >
-                                            Next
-                                        </button>
-                                    </div>
-                                    {activeStep !== 0 && (
-                                        <button
-                                            onClick={handleBack}
-                                            className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
-                                        >
-                                            Back
-                                        </button>
-                                    )}
+                        {!(activeStep === 6) && !(activeStep === 7) && (
+                            <div className="flex justify-between mt-7">
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={handleClear}
+                                        className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                    >
+                                        Clear
+                                    </button>
+                                    <button
+                                        onClick={handleNext}
+                                        disabled={
+                                            (activeStep === 0 && !step1Data.isFormValid) ||
+                                            (activeStep === 1 && !step2Data.isFormValid) ||
+                                            (activeStep === 5 && !step6Data.isFormValid)
+                                        }
+                                        className={`px-6 py-1.5 rounded-md ${(activeStep === 0 && !step1Data.isFormValid) ||
+                                            (activeStep === 1 && !step2Data.isFormValid) ||
+                                            (activeStep === 5 && !step6Data.isFormValid)
+                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                            : 'bg-[#8e78b7] text-white hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]'
+                                            }`}
+                                    >
+                                        Next
+                                    </button>
                                 </div>
-                            )}
+                                {activeStep !== 0 && (
+                                    <button
+                                        onClick={handleBack}
+                                        className="px-5 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                    >
+                                        Back
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
-
             {deleteConfirm.open && (
                 <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-center">
                     <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">

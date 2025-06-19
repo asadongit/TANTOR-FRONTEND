@@ -105,8 +105,19 @@ const Details = () => {
       });
     }
 
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      result = result.filter(row =>
+        Object.values(row)
+          .filter(val => typeof val === "string" || typeof val === "number")
+          .some(val =>
+            String(val).toLowerCase().includes(lowerSearch)
+          )
+      );
+    }
+
     return result;
-  }, [data, dataScope, componentType]);
+  }, [data, dataScope, componentType, searchTerm]);
 
   const actions = useMemo(() => {
     return getActionConfigurations({ token, project, hostnameV2,navigate  })[selectedType];;

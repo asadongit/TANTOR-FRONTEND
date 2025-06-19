@@ -242,6 +242,9 @@ export function TargetNode({ id, data, selected }) {
       } else if (mode === "Suffix" && option.Suffix) {
         newName = `${tableName}${option.Suffix}`;
       }
+      else if (mode === "Custom" && option.Custom) {
+        newName = `${option.Custom}`; 
+      }  
       setIsLoading(false);
       return { [tableName]: newName };
     });
@@ -616,9 +619,10 @@ export function TargetNode({ id, data, selected }) {
             value={settings}
             onChange={handleSettingsChange}
           >
-            <option>Prefix/Suffix</option>
+            <option selected disabled>Select</option>
             <option>Prefix</option>
             <option>Suffix</option>
+            {/* <option>Custom</option> */}
           </select>
         </div>
         {settings !== "Prefix/Suffix" && (
