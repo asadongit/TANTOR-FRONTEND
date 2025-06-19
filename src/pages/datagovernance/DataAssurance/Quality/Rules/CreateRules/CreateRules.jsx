@@ -26,6 +26,7 @@ function CreateRulesInner() {
   };
 
   const handleStep2Next = (resultJson) => {
+    console.log('Updating step2 data:', resultJson);
     setStepData(prev => ({ ...prev, step2: resultJson }));
     setCurrentStep(3);
   };
