@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { useAuth } from "../../../../context/AuthContext";
 import { X, ChevronDown, Search} from "lucide-react";
 import toast from "react-hot-toast";
-import { connectorConfig } from "./connectorConfig"; 
+import { connectorConfig } from "./connectorConfig";
 import Modal from "../../cdc/components/Modal";
 import { useAllConnectionData } from "../../../../hooks/platform/connection";
 
@@ -30,7 +30,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     description: "",
     host_address: "",
     username: "",
-    port_number: 0, 
+    port_number: 0,
     database_name: "",
     password: "",
     pool_type: "",
@@ -47,8 +47,8 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     region_name: "",
     url: "",
     extra_info: {
-      role: "",       
-      warehouse: "",  
+      role: "",
+      warehouse: "",
     }
   };
 
@@ -57,7 +57,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
   useEffect(() => {
     if (isEditMode && editConnectionData) {
       const extra_info = editConnectionData.extra_info || {};
-      
+
       setFormData({
         ...defaultFormData,
         ...editConnectionData,
@@ -66,7 +66,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
           ...extra_info
         }
       });
-      
+
       setSelectedConnector(editConnectionData.connection_type);
     }
   }, [isEditMode, editConnectionData]);
@@ -81,14 +81,14 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-  
+
     setTouchedFields(prev => ({
       ...prev,
       [name]: true
     }));
 
     if (name.startsWith("extra_info.")) {
-      const key = name.split(".")[1]; 
+      const key = name.split(".")[1];
       setFormData(prev => ({
         ...prev,
         extra_info: {
@@ -102,7 +102,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
         [name]: value,
       }));
     }
-    
+
     validateField(name, value);
   };
 
@@ -113,48 +113,47 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
 
   const validateField = (name, value) => {
     let newErrors = { ...errors };
-    
+
     if (name === "connection_name") {
       if (!value) {
         newErrors[name] = "Connection name is required";
-      }else if (!regexValidName.test(value)) {
+      } else if (!regexValidName.test(value)) {
         newErrors.connection_name = 'Connection names must start with a letter, end with a letter or digit, and contain only letters, numbers, and underscores. No leading or trailing underscores allowed.';
-      }
-       else if (!isEditMode && connectionNames.includes(value.toLowerCase())) {
+      } else if (!isEditMode && connectionNames.includes(value.toLowerCase())) {
         newErrors[name] = "Connection name already exists";
-      } else if (isEditMode && 
-                value.toLowerCase() !== editConnectionData.connection_name.toLowerCase() && 
+      } else if (isEditMode &&
+                value.toLowerCase() !== editConnectionData.connection_name.toLowerCase() &&
                 connectionNames.includes(value.toLowerCase())) {
         newErrors[name] = "Connection name already exists";
       } else {
         delete newErrors[name];
       }
-    } 
+    }
     else if (name.startsWith("extra_info.")) {
       const key = name.split(".")[1];
       const field = getConnectorFields(selectedConnector).find(f => f.name === name);
-      
-      if (field && field.required && !value) {
-        newErrors[name] = `${field.label} is required`;
-      } else {
-        delete newErrors[name];
-      }
-    } 
-    else if (name === "description" && !value) {
-      newErrors[name] = "Description is required";
-    } else if (name === "pool_type" && !value) {
-      newErrors[name] = "Behaviour is required";
-    } 
-    else {
-      const field = getConnectorFields(selectedConnector).find(f => f.name === name);
-      
+
       if (field && field.required && !value) {
         newErrors[name] = `${field.label} is required`;
       } else {
         delete newErrors[name];
       }
     }
-    
+    else if (name === "description" && !value) {
+      newErrors[name] = "Description is required";
+    } else if (name === "pool_type" && !value) {
+      newErrors[name] = "Behaviour is required";
+    }
+    else {
+      const field = getConnectorFields(selectedConnector).find(f => f.name === name);
+
+      if (field && field.required && !value) {
+        newErrors[name] = `${field.label} is required`;
+      } else {
+        delete newErrors[name];
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -162,56 +161,58 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
   const validateForm = () => {
     let newErrors = {};
     let allTouched = {};
-    
+
     if (!formData.connection_name) {
       newErrors.connection_name = "Connection name is required";
+    } else if (!regexValidName.test(formData.connection_name)) {
+      newErrors.connection_name = 'Connection names must start with a letter, end with a letter or digit, and contain only letters, numbers, and underscores. No leading or trailing underscores allowed.';
     } else if (!isEditMode && connectionNames.includes(formData.connection_name.toLowerCase())) {
       newErrors.connection_name = "Connection name already exists";
-    } else if (isEditMode && 
-              formData.connection_name.toLowerCase() !== editConnectionData.connection_name.toLowerCase() && 
+    } else if (isEditMode &&
+              formData.connection_name.toLowerCase() !== editConnectionData.connection_name.toLowerCase() &&
               connectionNames.includes(formData.connection_name.toLowerCase())) {
       newErrors.connection_name = "Connection name already exists";
     }
-    
+
     allTouched.connection_name = true;
-    
+
     if (!formData.description) {
       newErrors.description = "Description is required";
       allTouched.description = true;
     }
-    
+
     if (!formData.pool_type) {
       newErrors.pool_type = "Behaviour is required";
       allTouched.pool_type = true;
     }
-    
+
     const connectorFields = getConnectorFields(selectedConnector);
-    
+
     connectorFields.forEach(field => {
       if (field.required) {
         let value;
-        
+
         if (field.name.startsWith("extra_info.")) {
           const key = field.name.split(".")[1];
           value = formData.extra_info[key];
         } else {
           value = formData[field.name];
         }
-        
+
         if (!value) {
           newErrors[field.name] = `${field.label} is required`;
           allTouched[field.name] = true;
         }
       }
     });
-    
+
     setErrors(newErrors);
     setTouchedFields(prev => ({...prev, ...allTouched}));
-    
+
     return Object.keys(newErrors).length === 0;
   };
 
-  const filteredConnectors = connectorCards.filter(card => 
+  const filteredConnectors = connectorCards.filter(card =>
     card.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -220,7 +221,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     if (data) {
       setSelectedConnector(data);
     }
-    
+
     if (modalName === "details" && selectedConnector) {
       setFormData(prev => ({
         ...prev,
@@ -234,30 +235,30 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     setErrors({});
     setTouchedFields({});
   };
-  
+
   const handleCompleteClose = () => {
     closeInternalModal();
-    
+
     if (closeLocalModal) {
       closeLocalModal("modal1");
-      
+
       if (isEditMode) {
         closeLocalModal("modal2");
       }
     }
-    
+
   };
 
   const getConnectorFields = (connectorType) => {
     if (!connectorType || !connectorConfig[connectorType]) {
       return [];
     }
-    
+
     return connectorConfig[connectorType].fields;
   };
   const testConnection = async () => {
     const isValid = validateForm();
-    
+
     if (!isValid) {
       toast.error("Please fill all required fields correctly");
       return;
@@ -265,7 +266,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
 
     const filteredFormData = Object.fromEntries(
       Object.entries(formData).filter(
-        ([key, value]) => 
+        ([key, value]) =>
           !["created_by", "pool_type", "status", "project","created_at","updated_at","is_deleted","table_count","connection_id"].includes(key) && value !== null
       )
     );
@@ -297,7 +298,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
 
   const saveConnection = async () => {
     const isValid = validateForm();
-  
+
     if (!isValid) {
       toast.error("Please fill all required fields correctly");
       return;
@@ -327,7 +328,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
 
     const filteredFormData = Object.fromEntries(
       Object.entries(formData).filter(
-        ([key, value]) => 
+        ([key, value]) =>
           !["created_at", "updated_at", "is_deleted", "table_count", "connection_id"].includes(key) && value !== null
       )
     );
@@ -335,10 +336,10 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     setIsLoading(true);
 
     try {
-      const endpoint = isEditMode 
+      const endpoint = isEditMode
         ? `${hostnameV1}/connection-saves/${editConnectionData.connection_id}`
         : `${hostnameV1}/create-connection`;
-      
+
       const method = isEditMode ? "PATCH" : "POST";
 
       const response = await fetch(endpoint, {
@@ -351,11 +352,11 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
       });
 
       if (response.ok) {
-        toast.success(isEditMode 
-          ? "Connection updated successfully" 
+        toast.success(isEditMode
+          ? "Connection updated successfully"
           : "Connection created successfully"
         );
-        
+
         if (!isEditMode) {
           setFormData(defaultFormData);
           setIsTestSuccessful(false);
@@ -366,8 +367,8 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
         refetchConnections();
       } else {
         const errorData = await response.json();
-        
-        if (errorData.message?.toLowerCase().includes("already exists") || 
+
+        if (errorData.message?.toLowerCase().includes("already exists") ||
             errorData.message?.toLowerCase().includes("duplicate")) {
           setErrors(prev => ({
             ...prev,
@@ -409,11 +410,11 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
         <label className="block text-lg font-semibold text-gray-800 mb-2">
           Connect your data
         </label>
-        
+
         <div className="relative max-w-md mb-4">
           <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
             <Search className="w-4 h-4 text-gray-500" />
@@ -441,8 +442,8 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
               <div
                 key={card.title}
                 className={`p-4 rounded-lg shadow-sm border flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out transform
-                    ${selectedConnector === card.title 
-                      ? "border-2 border-[#8e78b7] scale-105 bg-[#f3f0fa] shadow-md" 
+                    ${selectedConnector === card.title
+                      ? "border-2 border-[#8e78b7] scale-105 bg-[#f3f0fa] shadow-md"
                       : "border-gray-200 hover:shadow-md hover:scale-105"
                     }`}
                 onClick={() => setSelectedConnector(card.title)}
@@ -462,7 +463,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
             onClick={()=>{
                 closeLocalModal('modal1');
                 isEditMode && closeLocalModal('modal2');
-            }} 
+            }}
            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-[#8e78b7] hover:text-white transition-colors"
           >
             Cancel
@@ -508,7 +509,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
         <label className="block text-md text-[#8e78b7] mb-1.5 font-bold">
           Connector
         </label>
@@ -516,10 +517,10 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
         <div
           onClick={() => !isEditMode && openModal("selection")}
           title={isEditMode ? "Connector cannot be changed" : "Click to change"}
-          className={`bg-white rounded-lg shadow-sm border-gray-200 border 
+          className={`bg-white rounded-lg shadow-sm border-gray-200 border
               w-[196px] h-[46px] flex items-center overflow-hidden ${
-                isEditMode 
-                  ? "cursor-not-allowed" 
+                isEditMode
+                  ? "cursor-not-allowed"
                   : "hover:shadow-md transition-all cursor-pointer"
               }`}
         >
@@ -614,11 +615,11 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
           {getConnectorFields(selectedConnector).map((field) => {
             const fieldName = field.name;
-            const fieldValue = fieldName.includes("extra_info.") 
+            const fieldValue = fieldName.includes("extra_info.")
               ? formData.extra_info?.[fieldName.split(".")[1]] || ""
               : formData[fieldName] || "";
             const hasError = touchedFields[fieldName] && errors[fieldName];
-            
+
             return (
               <div key={fieldName}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
