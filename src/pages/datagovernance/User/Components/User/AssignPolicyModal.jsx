@@ -17,7 +17,7 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-        console.log('initial policies are e ======>', initialSelectedPolicyIds);
+        setSearchQuery("")
         if (isOpen) {
             fetchPolicies();
             setError(null);

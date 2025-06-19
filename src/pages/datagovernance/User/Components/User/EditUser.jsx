@@ -31,10 +31,9 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   const [isFetchingOptions, setIsFetchingOptions] = useState(false);
   const [isLoadingSubgroups, setIsLoadingSubgroups] = useState(false);
   const { token } = useAuth();
-  const [existingPolicies, setExistingPolicies] = useState([]); // For existing policies
-  const [newPolicies, setNewPolicies] = useState([]); // For new policies
+  const [existingPolicies, setExistingPolicies] = useState([]);
+  const [newPolicies, setNewPolicies] = useState([]);
 
-  // Combine policies for display and form data
   const allPolicies = [...existingPolicies, ...newPolicies];
 
   useEffect(() => {
@@ -52,13 +51,12 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         datapolicy: userData.datapolicy || []
       });
 
-      // Initialize existing policies with userData.datapolicy
       if (userData.datapolicy && userData.datapolicy.length > 0) {
         fetchPolicyDetails(userData.datapolicy);
       }
 
       setApiResponse({ status: null, message: '' });
-      fetchDropdownOptions();
+      // fetchDropdownOptions();
     }
     if (!isOpen) {
       setApiResponse({ status: null, message: '' });
@@ -112,87 +110,16 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     }
   };
 
-  useEffect(() => {
-    if (formData.groups.length > 0) {
-      fetchSubgroups(formData.groups);
-    } else {
-      setDropdownOptions(prev => ({
-        ...prev,
-        subgroups: []
-      }));
-    }
-  }, [formData.groups]);
-
-  const fetchDropdownOptions = async () => {
-    setIsFetchingOptions(true);
-    try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/usermapper`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch dropdown options');
-      }
-
-      setDropdownOptions({
-        roles: data.roles || [],
-        groups: data.groups || [],
-        subgroups: []
-      });
-    } catch (error) {
-      console.error("Error fetching dropdown options:", error);
-      setApiResponse({
-        status: 'error',
-        message: 'Failed to load form options'
-      });
-    } finally {
-      setIsFetchingOptions(false);
-    }
-  };
-
-  const fetchSubgroups = async (groups) => {
-    setIsLoadingSubgroups(true);
-    try {
-      const subgroupPromises = groups.map(group =>
-        fetch(`${import.meta.env.VITE_FAST_API}/auth/datapolicy/subgroup/${group}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }).then(res => res.json())
-      );
-
-      const results = await Promise.all(subgroupPromises);
-
-      const allSubgroups = Array.from(new Set(
-        results.flatMap(data => data.subgroups || [])
-      ));
-
-      setDropdownOptions(prev => ({
-        ...prev,
-        subgroups: allSubgroups
-      }));
-    } catch (error) {
-      console.error("Error fetching subgroups:", error);
-      setApiResponse({
-        status: 'error',
-        message: 'Failed to load subgroups'
-      });
-      setDropdownOptions(prev => ({
-        ...prev,
-        subgroups: []
-      }));
-    } finally {
-      setIsLoadingSubgroups(false);
-    }
-  };
+  // useEffect(() => {
+  //   if (formData.groups.length > 0) {
+  //     fetchSubgroups(formData.groups);
+  //   } else {
+  //     setDropdownOptions(prev => ({
+  //       ...prev,
+  //       subgroups: []
+  //     }));
+  //   }
+  // }, [formData.groups]);
 
   const updateFormDataFromPolicies = (policies) => {
     const combinedRoles = new Set();
@@ -233,7 +160,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   };
 
   const handleApplyPoliciesFromModal = (appliedData) => {
-    console.log("applied data is ", appliedData);
     const newExistingPolicies = appliedData.datapolicy.map(id => ({
       id,
       name: appliedData.sub_policy_name || `Policy ${id}`,
@@ -244,7 +170,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     }));
 
     setExistingPolicies(newExistingPolicies);
-    console.log("updated existingPolicies:", newExistingPolicies);
     updateFormDataFromPolicies([...newExistingPolicies, ...newPolicies]);
     setIsPolicyModalOpen(false);
   };
@@ -260,7 +185,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     };
 
     setNewPolicies(prev => [...prev, newPolicy]);
-    console.log("updated newPolicies:", [...newPolicies, newPolicy]);
     updateFormDataFromPolicies([...existingPolicies, ...newPolicies, newPolicy]);
     setIsPolicyStepperOpen(false);
   };
@@ -283,233 +207,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
-  };
-
-  const SearchableMultiSelect = ({
-    title,
-    options,
-    name,
-    selectedValues,
-    onSelectionChange,
-    disabled = false,
-    loading = false,
-    required = false
-  }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [dropdownDirection, setDropdownDirection] = useState('down');
-    const dropdownRef = useRef(null);
-    const dropdownTriggerRef = useRef(null);
-
-    useEffect(() => {
-      if (isOpen && dropdownTriggerRef.current) {
-        const triggerRect = dropdownTriggerRef.current.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const spaceBelow = viewportHeight - triggerRect.bottom;
-        setDropdownDirection(spaceBelow < 200 ? 'up' : 'down');
-      }
-    }, [isOpen]);
-
-    const filteredOptions = options.filter(option =>
-      option.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-          setIsOpen(false);
-        }
-      };
-
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }, []);
-
-    const handleToggle = (value) => {
-      if (selectedValues.includes(value)) {
-        onSelectionChange(name, selectedValues.filter(item => item !== value));
-      } else {
-        onSelectionChange(name, [...selectedValues, value]);
-      }
-    };
-
-    return (
-      <div className="relative" ref={dropdownRef}>
-        <label className="block text-sm text-black mb-1.5">
-          {title} {required && <span className="text-red-500">*</span>}
-        </label>
-        <div
-          ref={dropdownTriggerRef}
-          onClick={() => !disabled && !loading && setIsOpen(!isOpen)}
-          className={`w-full p-2.5 border ${errors[name] ? 'border-red-500' : 'border-gray-400'} rounded-lg flex justify-between items-center cursor-pointer bg-white ${disabled || loading ? 'opacity-60 cursor-not-allowed' : ''}`}
-        >
-          <div className="flex flex-wrap gap-1 flex-1 min-h-6">
-            {selectedValues.length === 0 ? (
-              <span className="text-gray-500">Select {title.toLowerCase()}</span>
-            ) : (
-              selectedValues.map((value) => (
-                <span
-                  key={value}
-                  className="bg-[#8e78b7] bg-opacity-20 text-[#8e78b7] px-2 py-0.5 rounded text-sm flex items-center"
-                >
-                  {value}
-                  {!disabled && (
-                    <X
-                      className="h-3 w-3 ml-1 cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggle(value);
-                      }}
-                    />
-                  )}
-                </span>
-              ))
-            )}
-          </div>
-          {loading ? (
-            <Loader className="h-4 w-4 animate-spin" />
-          ) : (
-            isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
-          )}
-        </div>
-
-        {isOpen && !disabled && !loading && (
-          <div className={`absolute z-10 w-full ${dropdownDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} bg-white border border-gray-300 rounded-lg shadow-lg`}>
-            <div className="p-2 border-b">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={`Search ${title.toLowerCase()}`}
-                  className="w-full p-2 pl-8 border border-gray-300 rounded-md focus:outline-none focus:border-[#8e78b7]"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-            <div className="max-h-48 overflow-y-auto p-1">
-              {filteredOptions.length === 0 ? (
-                <div className="text-center py-2 text-gray-500">No {title.toLowerCase()} found</div>
-              ) : (
-                filteredOptions.map(option => (
-                  <div
-                    key={option}
-                    className="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggle(option);
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      id={`${name}-${option}`}
-                      checked={selectedValues.includes(option)}
-                      onChange={() => { }}
-                      className="cursor-pointer text-[#8e78b7] focus:ring-[#8e78b7] rounded"
-                    />
-                    <label
-                      htmlFor={`${name}-${option}`}
-                      className="ml-2 text-sm cursor-pointer select-none flex-1"
-                    >
-                      {option}
-                    </label>
-                  </div>
-                ))
-              )}
-            </div>
-            {selectedValues.length > 0 && (
-              <div className="p-2 border-t flex justify-between items-center">
-                <span className="text-xs text-gray-500">{selectedValues.length} selected</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectionChange(name, []);
-                  }}
-                  className="text-xs text-[#8e78b7] hover:underline"
-                >
-                  Clear all
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {errors[name] && (
-          <p className="mt-1 text-sm text-red-500">{errors[name]}</p>
-        )}
-      </div>
-    );
-  };
-
-  const handleCheckboxChange = (name, selectedItems) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: selectedItems
-    }));
-
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-
-    if (name === 'groups') {
-      setFormData(prev => ({
-        ...prev,
-        subgroups: []
-      }));
-    }
-  };
-
-  const TagInput = ({ value, onChange, placeholder }) => {
-    const [input, setInput] = useState('');
-    const inputRef = useRef(null);
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Enter' && input.trim()) {
-        e.preventDefault();
-        if (!value.includes(input.trim())) {
-          onChange([...value, input.trim()]);
-        }
-        setInput('');
-      } else if (e.key === 'Backspace' && !input && value.length > 0) {
-        onChange(value.slice(0, value.length - 1));
-      }
-    };
-
-    const handleRemoveTag = (tagToRemove) => {
-      onChange(value.filter(tag => tag !== tagToRemove));
-    };
-
-    return (
-      <div
-        className={`flex flex-wrap items-center gap-2 p-2.5 border border-gray-400 rounded-lg focus-within:border-[#8e78b7] focus-within:ring-1 focus:within:ring-[#8e78b7] bg-white`}
-        onClick={() => inputRef.current.focus()}
-      >
-        {value.map((tag, index) => (
-          <span
-            key={index}
-            className="bg-[#8e78b7] bg-opacity-20 text-[#8e78b7] px-2 py-0.5 rounded text-sm flex items-center"
-          >
-            {tag}
-            <X
-              className="h-3 w-3 ml-1 cursor-pointer"
-              onClick={() => handleRemoveTag(tag)}
-            />
-          </span>
-        ))}
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={value.length === 0 ? placeholder : ''}
-          className="flex-grow outline-none text-sm min-w-[120px]"
-        />
-      </div>
-    );
   };
 
   const validate = () => {
@@ -625,7 +322,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         )}
 
         <div className="grid grid-cols-3 gap-8">
-          <div className="space-y-6">
+          <div className="space-y-3">
             <h3 className="text-[#8e78b7] font-medium">User</h3>
             <div className="space-y-4">
               <div>
@@ -642,7 +339,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-3">
             <h3 className="text-[#8e78b7] font-medium">User information</h3>
             <div className="space-y-4">
               <div>
@@ -686,14 +383,14 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
 
           <div className="space-y-6">
             <h3 className="text-[#8e78b7] font-medium">Roles</h3>
-            <div className="space-y-4">
-              <div className="space-y-4 mt-4">
+            <div className="space-y-3">
+              <div className="space-y-4 mt-10">
                 <button
                   onClick={() => setIsPolicyModalOpen(true)}
                   className="w-full px-4 py-2 border border-gray-400 rounded-lg bg-gray-100 hover:bg-[#8e78b7] hover:text-white transition-colors text-black"
                   type="button"
                 >
-                  Assign Existing Policy
+                  Select existing policy
                 </button>
                 <button
                   onClick={() => {
@@ -703,7 +400,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
                   className="w-full px-4 py-2 border border-gray-400 rounded-lg bg-gray-100 hover:bg-[#8e78b7] hover:text-white transition-colors text-black"
                   type="button"
                 >
-                  Assign New Policy
+                  Add new policy
                 </button>
 
                 {allPolicies.length > 0 && (
@@ -733,9 +430,10 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
                   <p className="mt-2 text-sm text-red-500">{errors.policyAssignment}</p>
                 )}
 
-                <p className="mt-2 text-sm text-gray-600">
+                {/* <p className="mt-2 text-sm text-gray-600">
                   Policies will determine the user's roles, persona, groups, and sub-groups.
-                </p>
+                </p> */}
+
               </div>
             </div>
           </div>
@@ -770,7 +468,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         isOpen={isPolicyModalOpen}
         onClose={() => setIsPolicyModalOpen(false)}
         onApplyPolicies={handleApplyPoliciesFromModal}
-        initialSelectedPolicyIds={existingPolicies.map(policy => policy.id)}
+        initialSelectedPolicyIds={[...existingPolicies.map(policy => policy.id), ...newPolicies.map(policy => policy.id)]}
       />
       <Policy
         isEmbedded={true}

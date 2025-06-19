@@ -125,8 +125,12 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
     }, []);
 
     useEffect(() => {
-        setIsStepperOpen(isOpen);
-    }, [isOpen]);
+    if (isEmbedded && isOpen) {
+      setActiveStep(0);
+      setData();
+    }
+    setIsStepperOpen(isOpen);
+  }, [isOpen, isEmbedded]);
 
     const fetchPolicyListData = async () => {
         try {
