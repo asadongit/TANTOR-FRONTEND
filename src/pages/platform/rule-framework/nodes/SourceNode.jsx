@@ -8,7 +8,8 @@ import { useAuth } from "../../../../context/AuthContext";
 import { useTableContext } from "../../react-flow/context/TableContext";
 import DimensionFilter from "../components/DimensionFilter";
 import TimeTransformationFilter from "../components/TimeTransformationFilter";
-// import { useStateContext } from "../../Federation/context/contextViewProvider";
+import { useLocation } from "react-router-dom";
+import { getSegregatedColumns } from "../../../../services/ruleJsonGeneratorService";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -36,25 +37,46 @@ export function SourceNode({ id, data }) {
   const [filterModalColumns, setFilterModalColumns] = useState([]);
   const [generatedQuery, setGeneratedQuery] = useState("");
   const [ruleFilterSelections, setRuleFilterSelections] = useState([]);
-  // const {finalPayload, handleFinalPayload} = useStateContext();
 
   // Added state for rule name and description
   const [ruleName, setRuleName] = useState(data.ruleName || "");
   const [ruleDescription, setRuleDescription] = useState(data.ruleDescription || "");
 
+  const {pathname} = useLocation();
+
+  // NEW CODE
+  useEffect(() => {
+    if(data?.mode && (data.mode.toUpperCase() !== "EDIT")) return;
+    const existingSelectedItems = data?.filterConditions?.columns.map((col) => col.name);
+    if(existingSelectedItems)
+      setSelectedItems(existingSelectedItems);
+    else
+      setSelectedItems([]);
+
+    const existingSelectedFact = data?.selectedFact;
+    if(existingSelectedFact)
+      setSelectedFact(data.selectedFact);
+    else
+      setSelectedFact({
+        fact_id: "",
+        fct_name: "",
+    });
+  }, []);
+  // NEW CODE
+
+
+
+
+
+
+
+
+
+
+
+
   const updateNodeData = (partialData) => {
   if (data.onDataChange) {
-    console.log("UPDATED NODE DATA ==> ", {
-      ...partialData,
-      // nodeType: "source",
-      // selectedFact,
-      // ruleName,
-      // ruleDescription,
-      // dimensionFilters: partialData.dimensionFilters || data.dimensionFilters,
-      // timeTransformationFilters: partialData.timeTransformationFilters || data.timeTransformationFilters,
-      // timeTransformationQuery: partialData.timeTransformationQuery || data.timeTransformationQuery
-    });
-    
     data.onDataChange({
       ...partialData,
       nodeType: "source",
@@ -67,15 +89,6 @@ export function SourceNode({ id, data }) {
     });
   }
 };
-
-
-  // Update final payload when rule name/description changes
-  // useEffect(() => {
-  //   handleFinalPayload({
-  //     name: ruleName,
-  //     description: ruleDescription,
-  //   });
-  // }, [ruleName, ruleDescription, handleFinalPayload]);
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -216,11 +229,11 @@ export function SourceNode({ id, data }) {
 
   const validateNodeData = () => {
     if(!ruleName){
-      toast.error(`Rule Name is missing`);
+      toast.error(`Rule Name is required`);
       return false;
     }
     if(!ruleDescription ){
-      toast.error(`Rule Description is missing`);
+      toast.error(`Rule Description is required`);
       return false;
     }
 
@@ -233,6 +246,13 @@ export function SourceNode({ id, data }) {
       toast.error(`Please select at least one column before proceeding.`);
       return false;
     }
+
+    const metricColumns = getSegregatedColumns(data?.filterConditions?.columns || []).metricColumns;
+    if (metricColumns.length === 0) {
+      toast.error("No Aggregates were selected.");
+      return false;
+    }
+
     return true;
   }
   
@@ -383,7 +403,7 @@ export function SourceNode({ id, data }) {
       <Handle type="source" position={Position.Right} />
       <div className="flex items-center space-x-3 mb-3">
         <Upload className="w-5 h-5 text-[#96CF7B]" />
-        <h3 className="text-black font-medium">Source</h3>
+        <h3 className="text-black font-medium">Create Rule</h3>
       </div>
       
       {/* Added Rule Name and Description Inputs */}

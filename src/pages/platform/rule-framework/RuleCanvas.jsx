@@ -1,5 +1,6 @@
 // STATE - 3
 import React, { useCallback, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import ReactFlow, {
   addEdge,
   useNodesState,
@@ -14,9 +15,10 @@ import RuleFilter from "../react-flow/dialog/RuleFilter";
 import { RuleSidebar } from "./RuleSidebar";
 import { toast } from "react-hot-toast";
 import RuleSummary from "./RuleSummary";
-// import { useStateContext } from "../Federation/context/contextViewProvider";
 import { generateSQLQuery } from "../../../services/sqlQueryService";
 import { ClipboardSignature } from "lucide-react";
+import { useAuth } from "../../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const nodeTypes = {
   source: SourceNode,
@@ -29,15 +31,88 @@ const RuleCanvas = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isRuleSummaryOpen, setIsRuleSummaryOpen] = useState(false);
+  const [ruleSummaryData, setRuleSummaryData] = useState(null);
   const [selectedFact, setSelectedFact] = useState(null);
   const [filterData, setFilterData] = useState(null);
-  const [previewData, setPreviewData] = useState("");
   const [ruleName, setRuleName] = useState("");
+  const [ruleId, setRuleId] = useState("");
   const [ruleDescription, setRuleDescription] = useState("");
   const [dimensionFilters, setDimensionFilters] = useState([]);
   const [timeTransformationFilters,setTimeTransformationFilters] = useState([]);
+  const [filterQuery,setFilterQuery] = useState("");
 
-  // const { handleFinalPayload, finalPayload } = useStateContext();
+
+  const {mode, ruleData} = useLocation().state || {mode: "CREATE"};
+  const {hostnameV1, token} = useAuth();
+
+  const navigate = useNavigate();
+
+  // NEW CODE
+  useEffect(() => {
+
+    if(mode.toUpperCase() !== "EDIT") return;
+    
+    const ruleId = ruleData?.id;
+    if(!ruleId){
+      toast.error("Rule ID not found.");
+      return;
+    }
+
+    (async () => {
+      const headers = {"Content-Type": "application/json", "Authorization": `Bearer ${token}`};
+      try{
+
+        const response = await fetch(`${hostnameV1}/ruleJson?rule_id=${ruleId}`, {headers});
+        if(!response.ok){
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.detail || "Error occured when trying to fetch existing rule.");
+        }
+        
+        const ruleJson = await response.json();
+        if(ruleJson === null)
+           throw new Error("Rule JSON not found!");
+        
+        const sourceNode = ruleJson.find((nd) => nd.type === "source");
+        if(!sourceNode) 
+          throw new Error("Invalid Rule JSON!");
+        
+        const updatedNodes = ruleJson.map(node => {
+        if(node.type === "source") {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              mode: mode,
+              ruleId: ruleId,
+              onDataChange: (newData) => {
+                setNodes(nds => nds.map(n => 
+                  n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
+                ));
+              }
+            }
+          };
+        }
+        return node;
+      });
+
+        if(!updatedNodes) throw new Error("Error trying to show existing rule/node data");
+        
+        setNodes(updatedNodes);
+      }catch(error){
+        console.error(error);
+        toast.error(error.message);
+        setTimeout(() => {navigate("/config/rule");},2000)
+      }
+    })();
+  }, [mode, ruleData, token, hostnameV1, setNodes]);
+// NEW CODE
+
+
+
+
+
+
+
 
   // Add effect to watch for showRuleSummary flag in nodes
   useEffect(() => {
@@ -45,31 +120,17 @@ const RuleCanvas = () => {
     (node) => node.type === "source" && node.data.showRuleSummary
   );
   if (sourceNode) {
-    console.log("SOURCE NODE ", sourceNode.data);
+     setRuleSummaryData({
+      nodeId: sourceNode.id,
+      selectedFact: sourceNode.data.selectedFact,
+      filterConditions: sourceNode.data.filterConditions,
+      ruleName: sourceNode.data.ruleName,
+      ruleId: sourceNode.data.ruleId,
+      ruleDescription: sourceNode.data.ruleDescription,
+      dimensionFilters: sourceNode.data.dimensionFilters || [],
+      timeTransformationFilters: sourceNode.data.timeTransformationFilters || [],
+    });
     setIsRuleSummaryOpen(true);
-    setSelectedFact(sourceNode.data.selectedFact);
-    setFilterData(sourceNode.data.filterConditions);
-    setRuleName(sourceNode.data.ruleName);
-    setRuleDescription(sourceNode.data.ruleDescription);
-    setDimensionFilters(sourceNode.data.dimensionFilters || []);
-    setTimeTransformationFilters(sourceNode.data.timeTransformationFilters || []);
-
-
-    let sqlPreview = "";
-
-    if(sourceNode.data.dimensionQuery)
-      sqlPreview += `(${sourceNode.data.dimensionQuery})`
-    if(sourceNode.data.timeTransformationQuery) {
-      sqlPreview += sqlPreview.length > 0 ? " AND " : ""
-      sqlPreview += `(${sourceNode.data.timeTransformationQuery})`;
-    }
-
-    setPreviewData(generateSQLQuery({
-      tableName:sourceNode.data.fct_name, 
-      selectedColumns: sourceNode.data.filterConditions.columns, 
-      complexQuery: sqlPreview
-    }));
-
 
     // Reset the flag
     setNodes((nds) =>
@@ -99,14 +160,6 @@ const RuleCanvas = () => {
                       : n
                   )
                 );
-                
-                // Sync to finalPayload for summary
-                // if (newData.ruleName || newData.ruleDescription) {
-                //   handleFinalPayload({
-                //     name: newData.ruleName || node.data.ruleName,
-                //     description: newData.ruleDescription || node.data.ruleDescription,
-                //   });
-                // }
               },
             },
           };
@@ -162,14 +215,6 @@ const RuleCanvas = () => {
                 : node
             )
           );
-
-          // Sync to finalPayload for summary
-          // if (newData.ruleName || newData.ruleDescription) {
-          //   handleFinalPayload({
-          //     name: newData.ruleName || '',
-          //     description: newData.ruleDescription || ''
-          //   });
-          // }
         },
         getNodes: () => nodes,
       };
@@ -180,7 +225,7 @@ const RuleCanvas = () => {
         position,
         data: {
           ...baseData,
-          label: type
+          label: type,
         }
       };
 
@@ -193,11 +238,6 @@ const RuleCanvas = () => {
     (nodeId) => {
       setNodes((nds) => nds.filter((node) => node.id !== nodeId));
       setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
-      // Clear final payload when node is deleted
-      // handleFinalPayload({
-      //   name: '',
-      //   description: ''
-      // });
     },
     [setNodes, setEdges]
   );
@@ -240,16 +280,9 @@ const RuleCanvas = () => {
       {isRuleSummaryOpen && (
         <RuleSummary
           setIsOpen={setIsRuleSummaryOpen}
-          selectedFact={selectedFact}
-          filterData={filterData}
-          previewData={previewData}
           nodes={nodes}
-          setNodes={setNodes}
-          setFilterData={setFilterData}
-          ruleName={ruleName}
-          ruleDescription={ruleDescription}
-          dimensionFilters={dimensionFilters}
-          timeTransformationFilters={timeTransformationFilters}
+          mode={mode}
+          {...ruleSummaryData}
         />
       )}
     </>

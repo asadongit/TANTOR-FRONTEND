@@ -6,7 +6,6 @@ import toast from "react-hot-toast";
 import DateExpressionCalculator from "../../reports-config/components/TimeTransformationValidate"; // Adjust import path as needed
 
 const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData }) => {
-  // const { handleFinalPayload, finalPayload } = useStateContext();
 
   // State for API data and transformations
   const [dateColumns, setDateColumns] = useState([]);
@@ -175,7 +174,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
             return `${columnName} = AsOnDate`;
 
           case "historicdate":
-            return `${columnName} >= ${t.parameters.lowerOffset} ${t.parameters.lowerUnit}`;
+            return `${columnName} = ${t.parameters.lowerOffset} ${t.parameters.lowerUnit}`;
 
           case "daterange":
             return `${columnName} BETWEEN ${t.parameters.lowerOffset} ${
@@ -217,13 +216,6 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
       return config;
     });
 
-    // handleFinalPayload((prev) => ({...prev, timeTransformationFilters: transformationData}));
-    // updateNodeData({timeTransformationQuery: getFilterQuery(transformationData)});
-    console.log({
-      timeTransformationQuery: getFilterQuery(transformationData),
-      timeTransformationFilters: transformationData,
-      showRuleSummary: true
-    })
     updateNodeData({
       timeTransformationQuery: getFilterQuery(transformationData),
       timeTransformationFilters: transformationData,
@@ -231,7 +223,6 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
     });
     
     setIsOpen(false);
-    // onApply();
   };
 
   const handleClose = () => {
@@ -249,9 +240,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
         upperUnit: "",
       }
     ];
-    setTransformations();
-
-    // handleFinalPayload((prev) => ({ ...prev, timeTransformationFilters: [] }));
+    setTransformations(updatedTransformations);
     updateNodeData({ timeTransformationQuery: "" , timeTransformationFilters: updatedTransformations});
   };
 
@@ -263,9 +252,9 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
     updateNodeData({
       timeTransformationQuery: "",
       timeTransformationFilters: [],
-      showRuleSummary: true
+      showRuleSummary: true,
+      mode: "FALSE"
     });
-    // onApply();
   };
 
   // Check if all transformations are complete
@@ -333,7 +322,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
               >
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-700">
-                    Transformation #{index + 1}
+                    {/* Transformation #{index + 1} */}
                   </h3>
                   <div className="flex items-center gap-2">
                     {/* Validate Button - only show for historicDate and dateRange */}
@@ -540,12 +529,12 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4">
-            <button
+            {/* <button
               onClick={handleSkip}
               className="px-6 py-3 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md"
             >
               Skip
-            </button>
+            </button> */}
             <button
               onClick={handleClearAll}
               className="px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"

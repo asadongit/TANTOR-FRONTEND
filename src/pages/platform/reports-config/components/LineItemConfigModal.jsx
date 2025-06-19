@@ -113,10 +113,10 @@ function LineItemConfigModal() {
           <div className="flex justify-end gap-3 mt-4">
             <button
               type="button"
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium bg-[#8E77BB] hover:opacity-80 text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)"
               onClick={removeLastRule}
             >
-              Back
+              Remove Rule
             </button>
             <button
               type="button"

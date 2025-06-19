@@ -70,7 +70,6 @@ export const generateSQLQuery = ({
       query += '\nORDER BY\n  ' + sortColumns.join(',\n  ');
     }
 
-    console.log("GENERATED QUERY ", query);
     return query;
   } catch (error) {
     console.error('Error generating SQL query:', error);

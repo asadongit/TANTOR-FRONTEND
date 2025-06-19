@@ -3,7 +3,7 @@ import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 
 const hostnamev2 = import.meta.env.VITE_FAST_API_V2; 
-
+const hostnamev1 = import.meta.env.VITE_FAST_API;
 
 const fetchSourceTypeCounts = async (token, modelType, project) => {
   if (!token) throw new Error("Token is missing");
@@ -77,6 +77,30 @@ export const useProjectCardData = () => {
   return useQuery({
     queryKey: ["ProjectDashboard"],
     queryFn: () => fetchProjectCounts(token,project), 
+    enabled: !!token, 
+    staleTime: 3 * 60 * 1000, 
+    retry: 2, 
+    refetchOnWindowFocus: false, 
+  });
+};
+
+
+const fetchReportingRulesCounts = async (token) => {
+  if (!token) throw new Error("Token is missing");
+
+  const response = await axios.get(`${hostnamev1}/ruleGraph`, {
+      headers: {
+         Authorization: `Bearer ${token}`,
+        },  });
+
+  return response.data ?? [];
+};
+export const useReportingRulesCardData = () => {
+  const { token,project } = useAuth(); 
+
+  return useQuery({
+    queryKey: ["RulesDashboard"],
+    queryFn: () => fetchReportingRulesCounts(token,project), 
     enabled: !!token, 
     staleTime: 3 * 60 * 1000, 
     retry: 2, 

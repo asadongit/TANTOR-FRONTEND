@@ -1,41 +1,44 @@
 import React, { useEffect, useState } from "react";
 import { X, ArrowBigLeft, ArrowBigRight } from "lucide-react";
-// import { useStateContext } from "../Federation/context/contextViewProvider";
 import { Modal } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { getSegregatedColumns } from "../../../services/ruleJsonGeneratorService";
 import { useAuth } from "../../../context/AuthContext";
+import { generateSQLQuery } from "../../../services/sqlQueryService";
 
 import toast from "react-hot-toast";
 const RuleSummary = ({ 
   setIsOpen, 
+  nodes,
+  mode,
+  nodeId,
   selectedFact, 
-  filterData, 
-  previewData,
+  filterConditions,
   ruleName,
   ruleDescription,
+  ruleId,
   dimensionFilters,
-  timeTransformationFilters }) => {
-  // const { finalPayload } = useStateContext();
+  timeTransformationFilters
+ }) => {
   const navigate = useNavigate();
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
-
-  const { hostnameV1, token } = useAuth();
-  // Get columns from filterData
-  const columns = filterData?.columns || [];
   
-  useEffect(() => {
-    console.log("SUMMARY DATA ==> ", { 
-  selectedFact, 
-  filterData, 
-  previewData,
-  ruleName,
-  ruleDescription,
-  dimensionFilters,
-  timeTransformationFilters });
-  }, []);
+  const { hostnameV1, token } = useAuth();
+  
+  const columns = filterConditions?.columns || [];
 
-
+   // Compute filterQuery
+  const sourceNode = nodes.find(n => n.id === nodeId);
+  
+  let filterQuery = "";
+  if (sourceNode?.data.dimensionQuery) {
+    filterQuery += `(${sourceNode.data.dimensionQuery})`;
+  }
+  if (sourceNode?.data.timeTransformationQuery) {
+    filterQuery += filterQuery.length > 0 ? " AND " : "";
+    filterQuery += `(${sourceNode.data.timeTransformationQuery})`;
+  }
+  
   // Get current column or a default if no columns
   const currentColumn =
     columns.length > 0
@@ -66,37 +69,73 @@ const RuleSummary = ({
     }
   };
 
+  const handleEditRule = () => {
+     const { metricColumns, groupByColumns } = getSegregatedColumns(
+      filterConditions.columns
+    );
+
+     const payload = {
+      ruleId,
+      ruleName,
+      ruleDescription,
+      fact_id: selectedFact.fact_id,
+      dimensionFilters,
+      timeTransformationFilters,
+      metricColumns,
+      groupByColumns,
+    };
+
+    console.log("FINAL PAYLOAD ==> ", payload);
+    
+    console.log("EDIT JSON ==> ", nodes);
+    
+    (async () => {
+      try {
+        const headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        const response = await fetch(`${hostnameV1}/saveRule`,{
+          method: 'PUT',
+          headers: headers,
+          body: JSON.stringify({rule_data: payload, rule_json: nodes}),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.detail || "Failed to save rule.");
+        }
+
+        const data = await response.json();
+        toast.success(data?.message || "Rule Updated successfully.");
+        navigate("/config/rule");
+      } catch (error) {
+        console.log(error);
+        toast.error(error.message);
+      }
+    })();
+  }
   const handleCreateRule = () => {
 
     const { metricColumns, groupByColumns } = getSegregatedColumns(
-      filterData.columns
+      filterConditions.columns
     );
-
-    console.log("filterData.columns ==> ", filterData.columns);
-    console.log("METRIC COLUMNS ==> ", metricColumns)
 
     if(metricColumns.length === 0){
       toast.error("No Aggregates were selected.");
       return;
     }
 
-    // const payload = {
-    //   ruleName: finalPayload.name,
-    //   fact_id: selectedFact.fact_id,
-    //   dimensionFilters: finalPayload.dimensionFilters,
-    //   timeTransformationFilters: finalPayload.timeTransformationFilters,
-    //   metricColumns,
-    //   groupByColumns,
-    // };
-
      const payload = {
       ruleName,
+      ruleDescription,
       fact_id: selectedFact.fact_id,
       dimensionFilters,
       timeTransformationFilters,
       metricColumns,
       groupByColumns,
-  };
+    };
 
     console.log("FINAL PAYLOAD ==> ", payload);
     
@@ -110,7 +149,7 @@ const RuleSummary = ({
         const response = await fetch(`${hostnameV1}/saveRule`,{
           method: 'POST',
           headers: headers,
-          body: JSON.stringify({rule_data: payload}),
+          body: JSON.stringify({rule_data: payload, rule_json: nodes}),
         });
 
         if (!response.ok) {
@@ -151,7 +190,9 @@ const RuleSummary = ({
                   <span>→</span>
                   <span>Rule</span>
                   <span>→</span>
-                  <span>Create Rule</span>
+                  {mode === "CREATE" && (<span>Create Rule</span>)}
+                  {mode === "EDIT" && (<span>Edit Rule</span>)}
+                  {mode === "DISPLAY" && (<span>Display Rule</span>)}
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
@@ -219,7 +260,7 @@ const RuleSummary = ({
                   <label className="block text-sm font-medium text-gray-700 mb-2">Filter</label>
                   <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
                     <span className="text-gray-600">
-                      {filterData?.sqlPreview || "No Filter Query"}
+                      {filterConditions?.sqlPreview || "No Filter Query"}
                     </span>
                   </div>
                 </div> */}
@@ -231,7 +272,12 @@ const RuleSummary = ({
                   </label>
                   <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
                     <pre className="text-sm font-mono text-blue-600 whitespace-pre-wrap">
-                      {previewData || "No query generated"}
+                      {/* {previewData || "No query generated"} */}
+                      {generateSQLQuery({
+                            tableName:selectedFact.fct_name, 
+                            selectedColumns: filterConditions.columns, 
+                            complexQuery: filterQuery
+                          }) || "No Query generated"}
                     </pre>
                   </div>
                 </div>
@@ -239,25 +285,26 @@ const RuleSummary = ({
             </div>
 
             {/* Action Buttons - Fixed at bottom */}
-            <div className="border-t border-gray-200 p-4 bg-white">
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
-                  Save Draft
-                </button>
-                <button
-                  onClick={handleCreateRule}
-                  className="px-4 py-2 bg-[#8e78b7] text-white rounded-md hover:bg-[#7b65a3] transition-colors"
-                >
-                  Create Rule
-                </button>
-              </div>
-            </div>
+            { mode !== "DISPLAY" && (<div className="border-t border-gray-200 p-4 bg-white">
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+                    Save Draft
+                  </button>
+                  <button
+                    onClick={() => {mode.toUpperCase() === "EDIT" ? handleEditRule(): handleCreateRule()}}
+                    className="px-4 py-2 bg-[#8e78b7] text-white rounded-md hover:bg-[#7b65a3] transition-colors"
+                  >
+                    {mode.toUpperCase() === "EDIT" ? "Edit Rule" : "Create Rule"}
+                  </button>
+                </div>
+              </div>)
+            }
           </div>
 
           {/* Right Section - Column Settings (Read-only) */}
