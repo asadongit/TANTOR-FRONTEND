@@ -154,6 +154,20 @@ export default function RuleSelector() {
       return toast.error("All dimensions must have name, operator and values selected.");
     }
 
+    // Time Transformation Validation
+    const nonTimeTransformationRules = [];
+    newRules.forEach(rule => {
+      if(!rule?.filters || (rule.filters && rule.filters.length === 0)){
+        nonTimeTransformationRules.push(rule.ruleName);
+      }
+
+    });
+    if(nonTimeTransformationRules.length > 0){
+      toast.error(`Time Transformation is required for rule(s): [${nonTimeTransformationRules.join(", ")}] `);
+      return;
+    } 
+
+    // Rule and Operator Validations
     const ruleIds = rules.map((rule) => rule.ruleId);
 
     //  duplicates check.
