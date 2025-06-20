@@ -1,10 +1,131 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, X, Plus } from 'lucide-react';
 import { useStepData } from './StepContext';
 import CreateGroup from './CreateGroup';
+import { useAuth } from '../../../../../../../context/AuthContext';
+
+// Add Rule Modal Component
+function AddRuleModal({ open, onClose, onSave }) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [severity, setSeverity] = useState('High');
+  const [status, setStatus] = useState('Active');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setName('');
+      setDescription('');
+      setSeverity('High');
+      setStatus('Active');
+      setError('');
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleSave = () => {
+    if (!name.trim() || !description.trim()) {
+      setError('Rule Name and Description are required');
+      return;
+    }
+    onSave({
+      name,
+      description,
+      severity,
+      status,
+      query: "",
+      // id, owner, group_name, type, category will be added in Step1
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg border-2 border-[#8d77ba]">
+        <div className="flex justify-between items-center mb-6 pb-3 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-[#8d77ba]">Add New Rule</h2>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded-full text-gray-500 hover:text-gray-700"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <div className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Rule Name*</label>
+            <input
+              type="text"
+              className="w-full border-2 border-gray-300 focus:border-[#8d77ba] rounded-md px-4 py-2"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Enter rule name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Description*</label>
+            <textarea
+              className="w-full border-2 border-gray-300 focus:border-[#8d77ba] rounded-md px-4 py-2"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              rows={3}
+              placeholder="Describe the rule"
+            />
+          </div>
+          <div className="flex gap-5">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-2 text-gray-700">Severity</label>
+              <select
+                className="w-full border-2 border-gray-300 focus:border-[#8d77ba] rounded-md px-4 py-2"
+                value={severity}
+                onChange={e => setSeverity(e.target.value)}
+              >
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-2 text-gray-700">Status</label>
+              <select
+                className="w-full border-2 border-gray-300 focus:border-[#8d77ba] rounded-md px-4 py-2"
+                value={status}
+                onChange={e => setStatus(e.target.value)}
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          {error && <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md border border-red-200">{error}</div>}
+        </div>
+        <div className="flex justify-end mt-8 gap-3 pt-4 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-gray-600"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className={`px-5 py-2.5 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7a67a0] font-medium transition-colors flex items-center justify-center ${
+              !name.trim() || !description.trim() ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+            disabled={!name.trim() || !description.trim()}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Step1({ onNext, onCancel, step1Data }) {
   const { setStepData } = useStepData();
+  const { decodedToken, token } = useAuth();
+
 
   const [category, setCategory] = useState(step1Data?.category || null);
   const [type, setType] = useState(step1Data?.type || null);
@@ -19,8 +140,41 @@ function Step1({ onNext, onCancel, step1Data }) {
     return [];
   });
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [groupNames, setGroupNames] = useState([
+    'Accuracy', 'Consistency', 'Completeness', 'Validity', 'Uniqueness'
+  ]);
+  const [groupSearch, setGroupSearch] = useState('');
+  const [addRuleModalOpen, setAddRuleModalOpen] = useState(false);
+  // Store new rules in UI only
+  const [uiRules, setUiRules] = useState({}); // { groupName: [rule, ...] }
+
+  const fetchGroupNames = useCallback(() => {
+    fetch(`${import.meta.env.VITE_FAST_API}/rules/listgroups`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+      .then(response => response.json())
+      .then(data => {
+        if (Array.isArray(data.groups)) {
+          setGroupNames(data.groups);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching group names:', error);
+      });
+  }, [token]);
 
   useEffect(() => {
+    fetchGroupNames();
+  }, [fetchGroupNames]);
+
+  useEffect(() => {
+
     if (step1Data) {
       setCategory(step1Data.category || null);
       setType(step1Data.type || null);
@@ -39,6 +193,17 @@ function Step1({ onNext, onCancel, step1Data }) {
       rulesByGroup[groupName].push(rule);
     });
 
+    // Add UI rules that are not already selected
+    Object.entries(uiRules).forEach(([groupName, rules]) => {
+      rules.forEach(rule => {
+        if (!rulesByGroup[groupName]) rulesByGroup[groupName] = [];
+        // Only add if not already present (by id)
+        if (!rulesByGroup[groupName].some(r => r.id === rule.id)) {
+          rulesByGroup[groupName].push(rule);
+        }
+      });
+    });
+
     const selectionData = {
       category,
       type,
@@ -49,16 +214,9 @@ function Step1({ onNext, onCancel, step1Data }) {
     onNext(selectionData);
   };
 
-  const handleGroupClick = async (selectedGroup) => {
-    if (!category || !type) {
-      alert('Please select both category and type first');
-      return;
-    }
-
-    setGroup(selectedGroup);
-    setShowModal(true);
+  // Fetch rules for group (used after adding a rule)
+  const fetchGroupRules = useCallback(async (selectedGroup) => {
     setIsLoading(true);
-
     try {
       const response = await fetch(
         `${import.meta.env.VITE_FAST_API}/rules/addrule/list`,
@@ -66,6 +224,7 @@ function Step1({ onNext, onCancel, step1Data }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             category,
@@ -74,16 +233,23 @@ function Step1({ onNext, onCancel, step1Data }) {
           }),
         }
       );
-
       const data = await response.json();
-      console.log('API Response:', data.rules);
       setGroupData(data.rules || []);
     } catch (error) {
-      console.error('Error calling API:', error);
       setGroupData([]);
     } finally {
       setIsLoading(false);
     }
+  }, [category, type, token]);
+
+  const handleGroupClick = async (selectedGroup) => {
+    if (!category || !type) {
+      alert('Please select both category and type first');
+      return;
+    }
+    setGroup(selectedGroup);
+    setShowModal(true);
+    fetchGroupRules(selectedGroup);
   };
 
   const handleRuleSelection = (rule, e) => {
@@ -122,6 +288,36 @@ function Step1({ onNext, onCancel, step1Data }) {
 
   const getSelectedCountForGroup = (groupName) => {
     return selectedRules.filter(rule => rule.group_name === groupName).length;
+  };
+
+  const handleAddRuleSave = (rule) => {
+    setUiRules(prev => {
+      const groupRules = prev[group] || [];
+      // Assign a temp id for UI uniqueness
+      const tempId = `ui_${Date.now()}`;
+      return {
+        ...prev,
+        [group]: [
+          ...groupRules,
+          {
+            ...rule,
+            id: tempId,
+            group_name: group,
+            type,
+            category,
+            owner: decodedToken?.preferred_username,
+          }
+        ]
+      };
+    });
+  };
+
+  const getAllRulesForGroup = (groupName) => {
+    const apiRules = groupData.filter(r => r.group_name === groupName);
+    const uiRulesArr = uiRules[groupName] || [];
+    // Avoid duplicate ids (if any)
+    const all = [...apiRules, ...uiRulesArr.filter(u => !apiRules.some(a => a.id === u.id))];
+    return all;
   };
 
   return (
@@ -184,8 +380,17 @@ function Step1({ onNext, onCancel, step1Data }) {
         </div>
 
         <div className="w-full md:w-2/3">
-          <h3 className="text-lg font-medium mb-4 border-b pb-2">Group</h3>
-
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium border-b pb-2 mb-0">Group</h3>
+            <input
+              type="text"
+              className="border border-[#8d77ba] rounded-md px-3 py-2 w-56 focus:outline-none focus:ring-2 focus:ring-[#8d77ba] text-sm"
+              placeholder="Search group..."
+              value={groupSearch}
+              onChange={e => setGroupSearch(e.target.value)}
+              style={{ marginLeft: 'auto' }}
+            />
+          </div>
           {category === 'Custom' && (
             <button
               type="button"
@@ -198,41 +403,52 @@ function Step1({ onNext, onCancel, step1Data }) {
               Add Group
             </button>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {['Accuracy', 'Consistency', 'Completeness', 'Validity', 'Uniqueness'].map((groupName) => {
-              const selectedCount = getSelectedCountForGroup(groupName);
-              const isSelected = group === groupName;
+          <div
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            style={{
+              maxHeight: '340px',
+              overflowY: 'auto',
+              paddingRight: '4px'
+            }}
+          >
+            {groupNames
+              .filter(groupName =>
+                groupName.toLowerCase().includes(groupSearch.trim().toLowerCase())
+              )
+              .map((groupName) => {
+                const selectedCount = getSelectedCountForGroup(groupName);
+                const isSelected = group === groupName;
 
-              return (
-                <button
-                  key={groupName}
-                  onClick={() => handleGroupClick(groupName)}
-                  className={`border-2 rounded-lg cursor-pointer transition-all transform hover:-translate-y-1 hover:shadow-md ${
-                    isSelected
-                      ? 'border-[#8d77ba] bg-[#8d77ba] bg-opacity-10'
-                      : 'border-[#8d77ba] border-opacity-30 hover:border-opacity-70'
-                  }`}
-                >
-                  <div className="p-6 flex justify-between items-center">
-                    <div className="flex items-center">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3
-                        ${isSelected ? 'bg-[#8d77ba] text-white' : 'border-2 border-[#8d77ba] border-opacity-40 text-[#8d77ba]'}`}>
-                        {groupName.charAt(0).toUpperCase()}
-                      </div>
-                      <span className={`text-lg ${isSelected ? 'font-medium text-[#8d77ba]' : ''}`}>
-                        {groupName}
-                      </span>
-                      {selectedCount > 0 && (
-                        <span className="ml-2 px-2 py-1 bg-[#8d77ba] text-xs text-white rounded-full">
-                          {selectedCount}
+                return (
+                  <button
+                    key={groupName}
+                    onClick={() => handleGroupClick(groupName)}
+                    className={`border-2 rounded-lg cursor-pointer transition-all transform hover:-translate-y-1 hover:shadow-md ${
+                      isSelected
+                        ? 'border-[#8d77ba] bg-[#8d77ba] bg-opacity-10'
+                        : 'border-[#8d77ba] border-opacity-30 hover:border-opacity-70'
+                    }`}
+                  >
+                    <div className="p-6 flex justify-between items-center">
+                      <div className="flex items-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3
+                          ${isSelected ? 'bg-[#8d77ba] text-white' : 'border-2 border-[#8d77ba] border-opacity-40 text-[#8d77ba]'}`}>
+                          {groupName.charAt(0).toUpperCase()}
+                        </div>
+                        <span className={`text-lg ${isSelected ? 'font-medium text-[#8d77ba]' : ''}`}>
+                          {groupName}
                         </span>
-                      )}
+                        {selectedCount > 0 && (
+                          <span className="ml-2 px-2 py-1 bg-[#8d77ba] text-xs text-white rounded-full">
+                            {selectedCount}
+                          </span>
+                        )}
+                      </div>
+                      <ChevronRight className={`h-5 w-5 ${isSelected ? 'text-[#8d77ba]' : 'text-gray-400'}`} />
                     </div>
-                    <ChevronRight className={`h-5 w-5 ${isSelected ? 'text-[#8d77ba]' : 'text-gray-400'}`} />
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
           </div>
         </div>
       </div>
@@ -271,12 +487,24 @@ function Step1({ onNext, onCancel, step1Data }) {
           <div className="bg-white rounded-lg shadow-lg p-6 w-11/12 md:w-4/5 lg:w-3/4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-[#8d77ba]">{group} Rules</h3>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-1 hover:bg-gray-100 rounded-full"
-              >
-                <X className="h-6 w-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Add Rule button for custom category */}
+                {category === 'Custom' && (
+                  <button
+                    className="flex items-center gap-1 px-3 py-1.5 border-2 border-[#8d77ba] text-[#8d77ba] rounded-lg hover:bg-[#f3f0f9] transition"
+                    onClick={() => setAddRuleModalOpen(true)}
+                  >
+                    <Plus size={16} />
+                    Add Rule
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="p-1 hover:bg-gray-100 rounded-full"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
             </div>
 
             <div className="border-t pt-4">
@@ -303,7 +531,7 @@ function Step1({ onNext, onCancel, step1Data }) {
                     </div>
                   </div>
 
-                  {groupData.length > 0 ? (
+                  {getAllRulesForGroup(group).length > 0 ? (
                     <div className="overflow-x-auto border border-gray-200 rounded-lg">
                       <table className="w-full border-collapse">
                         <thead>
@@ -315,7 +543,7 @@ function Step1({ onNext, onCancel, step1Data }) {
                                 onChange={(e) => {
                                   if (e.target.checked) {
                                     const newSelectedRules = [...selectedRules];
-                                    groupData.forEach(rule => {
+                                    getAllRulesForGroup(group).forEach(rule => {
                                       if (!isRuleSelected(rule.id)) {
                                         newSelectedRules.push(rule);
                                       }
@@ -327,18 +555,19 @@ function Step1({ onNext, onCancel, step1Data }) {
                                     ));
                                   }
                                 }}
-                                checked={groupData.length > 0 && groupData.every(rule => isRuleSelected(rule.id))}
+                                checked={getAllRulesForGroup(group).length > 0 && getAllRulesForGroup(group).every(rule => isRuleSelected(rule.id))}
                               />
                             </th>
                             <th className="p-3 text-left">Name</th>
                             <th className="p-3 text-left">Severity</th>
+                            <th className="p-3 text-left">Status</th>
                             <th className="p-3 text-left">Owner</th>
                             <th className="p-3 text-left">Group</th>
                             <th className="p-3 text-left">Query</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {groupData.map(rule => (
+                          {getAllRulesForGroup(group).map(rule => (
                             <tr
                               key={rule.id}
                               className={`border-b hover:bg-gray-50 ${isRuleSelected(rule.id) ? 'bg-[#8d77ba] bg-opacity-5' : ''}`}
@@ -360,6 +589,14 @@ function Step1({ onNext, onCancel, step1Data }) {
                                   'bg-green-100 text-green-700'
                                 }`}>
                                   {rule.severity}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  rule.status === 'Active' ? 'bg-green-100 text-green-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {rule.status}
                                 </span>
                               </td>
                               <td className="p-3">{rule.owner}</td>
@@ -400,10 +637,23 @@ function Step1({ onNext, onCancel, step1Data }) {
               </div>
             </div>
           </div>
+          {/* AddRuleModal */}
+          <AddRuleModal
+            open={addRuleModalOpen}
+            onClose={() => setAddRuleModalOpen(false)}
+            onSave={handleAddRuleSave}
+          />
         </div>
       )}
 
-      <CreateGroup open={showCreateGroup} onClose={() => setShowCreateGroup(false)} />
+      <CreateGroup
+        open={showCreateGroup}
+        onClose={() => setShowCreateGroup(false)}
+        type={type}
+        category={category}
+        owner={decodedToken?.preferred_username}
+        onGroupCreated={fetchGroupNames}
+      />
     </div>
   );
 }
