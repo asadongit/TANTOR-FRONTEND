@@ -24,23 +24,18 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [apiResponse, setApiResponse] = useState({ status: null, message: '' });
-  const [dropdownOptions, setDropdownOptions] = useState({
-    roles: [],
-    groups: [],
-    subgroups: []
-  });
-  const [isFetchingOptions, setIsFetchingOptions] = useState(false);
-  const [isLoadingSubgroups, setIsLoadingSubgroups] = useState(false);
   const { token } = useAuth();
   const [existingPolicies, setExistingPolicies] = useState([]); 
   const [newPolicies, setNewPolicies] = useState([]);
 
-  const allPolicies = [...existingPolicies, ...newPolicies];
+  // const allPolicies = [...existingPolicies, ...newPolicies];
+    const allPolicies = Array.from(
+    new Map([...existingPolicies, ...newPolicies].map(policy => [policy.id, policy])).values()
+  );
 
   useEffect(() => {
     if (isOpen) {
       setApiResponse({ status: null, message: '' });
-      // fetchDropdownOptions();
       setFormData({
         username: '',
         password: '',
@@ -67,37 +62,26 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     onClose();
   };
 
-  // useEffect(() => {
-  //   if (formData.groups.length > 0) {
-  //     fetchSubgroups(formData.groups);
-  //   } else {
-  //     setDropdownOptions(prev => ({
-  //       ...prev,
-  //       subgroups: []
-  //     }));
-  //   }
-  // }, [formData.groups]);
-
   const updateFormDataFromPolicies = (policies) => {
     const combinedRoles = new Set();
     const combinedPersonas = new Set();
     const combinedGroups = new Set();
     const combinedSubgroups = new Set();
-    const dataPolicyIds = policies.map(policy => policy.id);
+    const dataPolicyIds = [...new Set(policies.map(policy => policy.id))];
 
     policies.forEach(policy => {
-      if (policy.roles && Array.isArray(policy.roles)) {
-        policy.roles.forEach(role => role && combinedRoles.add(role));
-      }
-      if (policy.persona && Array.isArray(policy.persona)) {
-        policy.persona.forEach(p => p && combinedPersonas.add(p));
-      }
-      if (policy.groups && Array.isArray(policy.groups)) {
-        policy.groups.forEach(group => group && combinedGroups.add(group));
-      }
-      if (policy.subgroups && Array.isArray(policy.subgroups)) {
-        policy.subgroups.forEach(subgroup => subgroup && combinedSubgroups.add(subgroup));
-      }
+        const addItemsToSet = (data, set) => {
+            if (Array.isArray(data)) {
+                data.forEach(item => item && set.add(item));
+            } else if (typeof data === 'string' && data) {
+                set.add(data);
+            }
+        };
+
+        addItemsToSet(policy.roles, combinedRoles);
+        addItemsToSet(policy.persona, combinedPersonas);
+        addItemsToSet(policy.groups, combinedGroups);
+        addItemsToSet(policy.subgroups, combinedSubgroups);
     });
 
     setFormData(prev => ({
@@ -127,7 +111,8 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     }));
 
     setExistingPolicies(newExistingPolicies);
-    updateFormDataFromPolicies([...newExistingPolicies, ...newPolicies]);
+    // updateFormDataFromPolicies([...newExistingPolicies, ...newPolicies]);
+    updateFormDataFromPolicies(newExistingPolicies);
     setIsPolicyModalOpen(false);
   };
 
@@ -229,7 +214,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
   };
 
   const handleSubmit = async () => {
-    console.log("form data is ==========>", formData);
     setApiResponse({ status: null, message: '' });
 
     const validationErrors = validate();
@@ -499,6 +483,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
         onClose={() => setIsPolicyModalOpen(false)}
         onApplyPolicies={handleApplyPoliciesFromModal}
         initialSelectedPolicyIds={[...existingPolicies.map(policy => policy.id), ...newPolicies.map(policy => policy.id)]}
+        setNewPolicies = {setNewPolicies}
       />
       <Policy
         isEmbedded={true}

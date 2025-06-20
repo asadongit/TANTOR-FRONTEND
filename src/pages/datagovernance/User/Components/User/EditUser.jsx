@@ -23,18 +23,13 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [apiResponse, setApiResponse] = useState({ status: null, message: '' });
-  const [dropdownOptions, setDropdownOptions] = useState({
-    roles: [],
-    groups: [],
-    subgroups: []
-  });
-  const [isFetchingOptions, setIsFetchingOptions] = useState(false);
-  const [isLoadingSubgroups, setIsLoadingSubgroups] = useState(false);
   const { token } = useAuth();
   const [existingPolicies, setExistingPolicies] = useState([]);
   const [newPolicies, setNewPolicies] = useState([]);
 
-  const allPolicies = [...existingPolicies, ...newPolicies];
+    const allPolicies = Array.from(
+    new Map([...existingPolicies, ...newPolicies].map(policy => [policy.id, policy])).values()
+  );
 
   useEffect(() => {
     if (isOpen && userData) {
@@ -56,7 +51,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
       }
 
       setApiResponse({ status: null, message: '' });
-      // fetchDropdownOptions();
     }
     if (!isOpen) {
       setApiResponse({ status: null, message: '' });
@@ -110,38 +104,28 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     }
   };
 
-  // useEffect(() => {
-  //   if (formData.groups.length > 0) {
-  //     fetchSubgroups(formData.groups);
-  //   } else {
-  //     setDropdownOptions(prev => ({
-  //       ...prev,
-  //       subgroups: []
-  //     }));
-  //   }
-  // }, [formData.groups]);
-
   const updateFormDataFromPolicies = (policies) => {
     const combinedRoles = new Set();
     const combinedPersonas = new Set();
     const combinedGroups = new Set();
     const combinedSubgroups = new Set();
-    const dataPolicyIds = policies.map(policy => policy.id);
+    const dataPolicyIds = [...new Set(policies.map(policy => policy.id))];
 
     policies.forEach(policy => {
-      if (policy.roles && Array.isArray(policy.roles)) {
-        policy.roles.forEach(role => role && combinedRoles.add(role));
-      }
-      if (policy.persona && Array.isArray(policy.persona)) {
-        policy.persona.forEach(p => p && combinedPersonas.add(p));
-      }
-      if (policy.groups && Array.isArray(policy.groups)) {
-        policy.groups.forEach(group => group && combinedGroups.add(group));
-      }
-      if (policy.subgroups && Array.isArray(policy.subgroups)) {
-        policy.subgroups.forEach(subgroup => subgroup && combinedSubgroups.add(subgroup));
-      }
+        const addItemsToSet = (data, set) => {
+            if (Array.isArray(data)) {
+                data.forEach(item => item && set.add(item));
+            } else if (typeof data === 'string' && data) {
+                set.add(data);
+            }
+        };
+
+        addItemsToSet(policy.roles, combinedRoles);
+        addItemsToSet(policy.persona, combinedPersonas);
+        addItemsToSet(policy.groups, combinedGroups);
+        addItemsToSet(policy.subgroups, combinedSubgroups);
     });
+
 
     setFormData(prev => ({
       ...prev,
@@ -170,7 +154,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     }));
 
     setExistingPolicies(newExistingPolicies);
-    updateFormDataFromPolicies([...newExistingPolicies, ...newPolicies]);
+    updateFormDataFromPolicies(newExistingPolicies);
     setIsPolicyModalOpen(false);
   };
 
@@ -187,14 +171,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     setNewPolicies(prev => [...prev, newPolicy]);
     updateFormDataFromPolicies([...existingPolicies, ...newPolicies, newPolicy]);
     setIsPolicyStepperOpen(false);
-  };
-
-  const handleRemovePolicy = (policyId) => {
-    const updatedExistingPolicies = existingPolicies.filter(policy => policy.id !== policyId);
-    const updatedNewPolicies = newPolicies.filter(policy => policy.id !== policyId);
-    setExistingPolicies(updatedExistingPolicies);
-    setNewPolicies(updatedNewPolicies);
-    updateFormDataFromPolicies([...updatedExistingPolicies, ...updatedNewPolicies]);
   };
 
   const handleChange = (e) => {
@@ -414,12 +390,12 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
                               Policy ID : {policy.id}
                             </p>
                           </div>
-                          <button
+                          {/* <button
                             onClick={() => handleRemovePolicy(policy.id)}
                             className="text-gray-400 hover:text-gray-600"
                           >
                             <X className="h-4 w-4" />
-                          </button>
+                          </button> */}
                         </div>
                       ))}
                     </div>
@@ -469,6 +445,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         onClose={() => setIsPolicyModalOpen(false)}
         onApplyPolicies={handleApplyPoliciesFromModal}
         initialSelectedPolicyIds={[...existingPolicies.map(policy => policy.id), ...newPolicies.map(policy => policy.id)]}
+        setNewPolicies = {setNewPolicies}
       />
       <Policy
         isEmbedded={true}
