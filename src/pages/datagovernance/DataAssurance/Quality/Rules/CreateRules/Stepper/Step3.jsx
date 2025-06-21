@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useStepData } from './StepContext';
 
-function Step3({ onBack, onCreate, step1Data, step2Data }) {
+function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
   const { stepData } = useStepData();
   const step1 = step1Data || stepData.step1 || {};
   const step2 = step2Data || stepData.step2 || [];
@@ -161,16 +161,24 @@ function Step3({ onBack, onCreate, step1Data, step2Data }) {
         <button
           onClick={onBack}
           className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          disabled={loading}
         >
           Back
         </button>
         <button
           onClick={() => {
-            onCreate(step2);
+            onCreate(step2, step1);
           }}
-          className="px-6 py-2 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7a67a0] transition-colors"
+          className="px-6 py-2 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7a67a0] transition-colors flex items-center justify-center"
+          disabled={loading}
         >
-          Create
+          {loading ? (
+            <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+            </svg>
+          ) : null}
+          {loading ? 'Creating...' : 'Create'}
         </button>
       </div>
     </div>
