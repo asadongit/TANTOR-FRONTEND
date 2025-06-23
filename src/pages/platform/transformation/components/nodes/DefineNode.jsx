@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Handle, Position } from "reactflow";
 import { FilePlus, Loader } from "lucide-react";
+import { useAuth } from "../../../../../context/AuthContext";
 
 const hostname = import.meta.env.VITE_FAST_API;
+
+const transformationNamesCache = {
+  names: [],
+  timestamp: 0,
+  expiryTime: 60000,
+};
 
 export const DefineNode = ({ id, data }) => {
   const [nameExists, setNameExists] = useState(false);
@@ -11,6 +18,54 @@ export const DefineNode = ({ id, data }) => {
   const [descriptionError, setDescriptionError] = useState("");
   const [attemptedSave, setAttemptedSave] = useState(false);
   const nameCheckTimeout = useRef(null);
+  const { project, decodedToken, token } = useAuth();
+
+  const getExistingTransformationNames = async () => {
+
+    const now = Date.now();
+    if (now - transformationNamesCache.timestamp < transformationNamesCache.expiryTime) {
+      return transformationNamesCache.names;
+    }
+
+    try {
+      const response = await fetch(
+        `${hostname}/etl/transformation/tableview?project=${project}&created_by=${decodedToken.preferred_username}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch transformation names");
+      }
+
+      const data = await response.json();
+      const names = data.map((item) => item.transformation_name.toLowerCase());
+
+      transformationNamesCache.names = names;
+      transformationNamesCache.timestamp = now;
+
+      return names;
+    } catch (error) {
+      console.error("Error fetching transformation names:", error);
+      return [];
+    }
+  };
+
+  const generateUniqueName = async (baseName) => {
+    const existingNames = await getExistingTransformationNames();
+    let uniqueName = baseName;
+    let suffix = 1;
+
+    while (existingNames.includes(uniqueName.toLowerCase())) {
+      uniqueName = `${baseName}_${suffix}`;
+      suffix++;
+    }
+
+    return uniqueName;
+  };
 
   const validateName = async (name) => {
     if (!name) {
@@ -20,29 +75,35 @@ export const DefineNode = ({ id, data }) => {
 
     setIsChecking(true);
     try {
-      const response = await fetch(
-        `${hostname}/etl/check-transformation-name?name=${encodeURIComponent(
-          name
-        )}`,
-        {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-          },
-        }
-      );
+      const existingNames = await getExistingTransformationNames();
+      const nameExists = existingNames.includes(name.toLowerCase());
 
-      if (!response.ok) {
-        throw new Error("Failed to check transformation name");
-      }
-
-      const result = await response.json();
-      setNameExists(result.exists);
-
-      if (result.exists) {
+      if (nameExists) {
+        setNameExists(true);
         setNameError("Transformation name already exists");
       } else {
-        setNameError("");
+        const response = await fetch(
+          `${hostname}/etl/check-transformation-name?name=${encodeURIComponent(name)}`,
+          {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to check transformation name");
+        }
+
+        const result = await response.json();
+        setNameExists(result.exists);
+
+        if (result.exists) {
+          setNameError("Transformation name already exists");
+        } else {
+          setNameError("");
+        }
       }
     } catch (error) {
       console.error("Error checking transformation name:", error);
@@ -55,12 +116,12 @@ export const DefineNode = ({ id, data }) => {
     const value = e.target.value;
     data.onDataChange({ name: value });
 
-    // Only clear visible errors if we've attempted to save before
     if (attemptedSave) {
       setNameError("");
     }
 
     clearTimeout(nameCheckTimeout.current);
+
     if (value) {
       nameCheckTimeout.current = setTimeout(() => {
         validateName(value);
@@ -75,7 +136,6 @@ export const DefineNode = ({ id, data }) => {
     const value = e.target.value;
     data.onDataChange({ description: value });
 
-    // Only set visible errors if we've attempted to save before
     if (attemptedSave) {
       if (!value) {
         setDescriptionError("Description is required");
@@ -85,17 +145,17 @@ export const DefineNode = ({ id, data }) => {
     }
   };
 
-  // Modified to just validate without showing errors initially
   useEffect(() => {
     if (data.name && data.name.trim() !== "") {
-      validateName(data.name);
+      if (!nameError && !nameExists) {
+        validateName(data.name);
+      }
     }
-    // Removed error setting from here
+
+    getExistingTransformationNames();
   }, []);
 
-  // Hook into data's save handler if it exists
   useEffect(() => {
-    // If data.onSave exists, we wrap it to validate first
     if (data.onSave) {
       const originalOnSave = data.onSave;
       data.onSave = () => {
@@ -123,6 +183,12 @@ export const DefineNode = ({ id, data }) => {
       };
     }
   }, [data, nameExists]);
+
+  useEffect(() => {
+    if (data.onDataChange) {
+      data.generateUniqueName = generateUniqueName;
+    }
+  }, [data.onDataChange]);
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
@@ -162,7 +228,7 @@ export const DefineNode = ({ id, data }) => {
         </div>
         <div className="mb-2">
           <label className="text-xs font-semibold text-black mb-0.5 block">
-            Description<span className="text-red-500">*</span>
+            Description
           </label>
           <textarea
             className={`w-full p-1 text-[10px] bg-white rounded-sm border ${
