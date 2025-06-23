@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2, Trash } from "lucide-react";
 import DimensionSelector from "./DimensionSelector";
 import TimeTransformationComponent from "./TimeTransformationComponent";
 import { useAuth } from "../../../../context/AuthContext";
@@ -98,6 +98,7 @@ const RuleSelector = ({
   addDimension,
   updateDimension,
   removeDimension,
+  removeRule
 }) => {
   const [ruleData, setRuleData] = useState([]);
   const [currentSelectedRuleId, setCurrentSelectedRuleId] = useState("");
@@ -252,7 +253,16 @@ const RuleSelector = ({
         rule={rule}
       />
 
-      <div className="p-6 bg-gray-100 rounded-lg shadow-md mb-6">
+      <div className="p-6 bg-gray-100 rounded-lg shadow-md mb-6 relative">
+        {/* Delete button at top-right */}
+        <button
+          className="absolute top-3 right-3 mb-11 text-gray-500 hover:text-red-500 transition-colors"
+          onClick={() => removeRule(index)}
+          aria-label="Delete rule"
+        >
+          <Trash className="h-5 w-5" />
+        </button>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label
