@@ -7,6 +7,7 @@ import { useStepData } from './StepContext';
 import 'ace-builds/src-noconflict/mode-sql';
 import 'ace-builds/src-noconflict/theme-tomorrow';
 import 'ace-builds/src-noconflict/ext-language_tools';
+import { useAuth } from '../../../../../../../context/AuthContext';
 
 const CheckboxOption = props => {
   const { isSelected, label, innerProps, selectProps } = props;
@@ -44,6 +45,9 @@ const CustomMultiValueLabel = props => {
 
 function Step2({ data, onBack, onNext, step2Data }) {
   const { stepData, setStepData } = useStepData();
+  const { token } = useAuth();
+
+  const [validationStatus, setValidationStatus] = useState({});
 
   const initialStep2Data = stepData.step2 || step2Data;
 
@@ -281,7 +285,15 @@ function Step2({ data, onBack, onNext, step2Data }) {
   const [columnsByTable, setColumnsByTable] = useState({});
 
   const fetchConnections = () => {
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/connections`)
+    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/connections`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      }
+    )
       .then(response => response.json())
       .then(data => {
         const connectionsArr = Array.isArray(data.connections) ? data.connections : [];
@@ -302,7 +314,11 @@ function Step2({ data, onBack, onNext, step2Data }) {
 
   const fetchSchemas = (connectionName) => {
     if (!connectionName || schemasByConnection[connectionName]) return;
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/schema/${encodeURIComponent(connectionName)}`)
+    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/schema/${encodeURIComponent(connectionName)}`,
+  {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+  })
       .then(response => response.json())
       .then(data => {
         const schemasArr = Array.isArray(data.schemas) ? data.schemas : [];
@@ -318,7 +334,7 @@ function Step2({ data, onBack, onNext, step2Data }) {
     fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/tables`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ connection_name: connectionName, table_schema: schemaName }),
       }
     )
@@ -340,7 +356,7 @@ function Step2({ data, onBack, onNext, step2Data }) {
 
     fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/columns`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ connection_name: connectionName, table_schema: schemaName, table_name: tableNameOnly }),
     })
       .then(response => response.json())
@@ -511,6 +527,9 @@ function Step2({ data, onBack, onNext, step2Data }) {
             };
           });
 
+      const originalRule =
+        (data.rules[groupName] || []).find(r => r.id === ruleObj.id) || {};
+
       const ruleData = {
         ...(ruleObj.id ? { id: ruleObj.id } : {}),
         category,
@@ -519,7 +538,11 @@ function Step2({ data, onBack, onNext, step2Data }) {
         rule: {
           id: ruleObj.id,
           name: ruleObj.name,
-          query: ruleObj.query
+          query: ruleObj.query,
+          description: originalRule.description ?? originalRule.desc ?? "",
+          severity: originalRule.severity ?? "High",
+          status: originalRule.status ?? "Active",
+          owner: originalRule.owner ?? "",
         }
       };
 
@@ -588,6 +611,89 @@ function Step2({ data, onBack, onNext, step2Data }) {
     Option: CheckboxOption,
     MultiValueLabel: CustomMultiValueLabel
   };
+
+  const getFirst = arr => Array.isArray(arr) && arr.length > 0 ? arr[0] : '';
+
+  const replacePlaceholders = (query, conn, schemas, tables, columns) => {
+    let result = query;
+    const skipWords = ['information_schema', 'columns', 'column_name'];
+    if (schemas && schemas.length > 0) {
+      const schema = getFirst(schemas);
+      if (schema && !skipWords.includes(schema)) {
+        result = result.replace(/connection\.schema/gi, `${conn}.${schema}`);
+      }
+    }
+    if (tables && tables.length > 0) {
+      const table = getFirst(tables);
+      if (table && !skipWords.includes(table)) {
+        result = result.replace(/connection\.schema\.table/gi, `${conn}.${getFirst(schemas)}.${table}`);
+        result = result.replace(/schema\.table/gi, `${getFirst(schemas)}.${table}`);
+        result = result.replace(/table/gi, table);
+      }
+    }
+    if (columns && columns.length > 0) {
+      const column = getFirst(columns);
+      if (column && !skipWords.includes(column)) {
+        result = result.replace(/column/gi, column);
+      }
+    }
+    return result;
+  };
+
+  const handleRunSQL = async (groupName, ruleIdx, connIdx) => {
+    const queryKey = `${groupName}__${ruleIdx}`;
+    const connKey = `${queryKey}__${connIdx}`;
+    const rule = queries[groupName][ruleIdx];
+    const conn = connectionsByQuery[queryKey][connIdx];
+    if (!rule || !conn) return;
+
+    const replacedQuery = replacePlaceholders(
+      rule.query,
+      conn.connection,
+      conn.schema,
+      conn.table,
+      conn.column
+    );
+
+    setValidationStatus(prev => ({ ...prev, [connKey]: 'pending' }));
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_FAST_API}/rules/executerule`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ query: replacedQuery }),
+      });
+      if (res.ok) {
+        setValidationStatus(prev => ({ ...prev, [connKey]: 'success' }));
+      } else {
+        setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
+      }
+    } catch {
+      setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
+    }
+  };
+
+  const allValidated = (() => {
+    let all = true;
+    groupNames.forEach((groupName) => {
+      (queries[groupName] || []).forEach((ruleObj, ruleIdx) => {
+        if (!selectedRules[groupName]?.has(ruleObj.id)) return;
+        const queryKey = `${groupName}__${ruleIdx}`;
+        const conns = connectionsByQuery[queryKey] || [];
+        conns.forEach((conn, connIdx) => {
+          if (!conn.checked) return;
+          const connKey = `${queryKey}__${connIdx}`;
+          if (validationStatus[connKey] !== 'success') {
+            all = false;
+          }
+        });
+      });
+    });
+    return all;
+  })();
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -818,6 +924,16 @@ function Step2({ data, onBack, onNext, step2Data }) {
                     };
                   });
 
+                  const connKey = `${groupNames[activeGroupIndex]}__${activeRuleIndex}__${idx}`;
+                  let statusIcon = null;
+                  if (validationStatus[connKey] === 'success') {
+                    statusIcon = <span className="text-green-600 text-xs font-semibold mr-2">Valid Query</span>;
+                  } else if (validationStatus[connKey] === 'error') {
+                    statusIcon = <span className="text-red-600 text-xs font-semibold mr-2">Invalid Query</span>;
+                  } else if (validationStatus[connKey] === 'pending') {
+                    statusIcon = <span className="text-yellow-600 text-xs font-semibold mr-2">Validating...</span>;
+                  }
+
                   return (
                     <div
                       key={conn.id}
@@ -833,9 +949,19 @@ function Step2({ data, onBack, onNext, step2Data }) {
                           />
                           <span className="font-medium">Connection {idx + 1}</span>
                         </div>
-
-
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
+                          {/* Validation status icon - moved left of Run SQL */}
+                          {statusIcon}
+                          {/* Run SQL button */}
+                          <button
+                            className="p-2 border rounded hover:bg-gray-100"
+                            type="button"
+                            title="Run SQL"
+                            onClick={() => handleRunSQL(groupNames[activeGroupIndex], activeRuleIndex, idx)}
+                            disabled={!conn.checked}
+                          >
+                            <PlayCircle size={18} />
+                          </button>
                           <button
                             className="p-2 border rounded hover:bg-gray-100"
                             type="button"
@@ -844,18 +970,6 @@ function Step2({ data, onBack, onNext, step2Data }) {
                             disabled={!conn.checked}
                           >
                             <Plus size={18} />
-                          </button>
-                          <button
-                            className="p-2 border rounded hover:bg-gray-100"
-                            type="button"
-                            title="Run SQL"
-                            onClick={() => {
-                              console.log('Connection:', conn);
-                              console.log('SQL:', getCurrentQuery());
-                            }}
-                            disabled={!conn.checked}
-                          >
-                            <PlayCircle size={18} />
                           </button>
                           <button
                             className="p-2 border rounded hover:bg-gray-100"
@@ -1018,7 +1132,12 @@ function Step2({ data, onBack, onNext, step2Data }) {
         </button>
         <button
           onClick={handleNextClick}
-          className="px-6 py-2 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7a67a0] transition-colors"
+          className={`px-6 py-2 rounded-lg transition-colors ${
+            allValidated
+              ? 'bg-[#8d77ba] text-white hover:bg-[#7a67a0]'
+              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+          }`}
+          disabled={!allValidated}
         >
           Next
         </button>

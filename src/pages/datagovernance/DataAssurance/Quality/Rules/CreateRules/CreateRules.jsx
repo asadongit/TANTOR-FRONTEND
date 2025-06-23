@@ -5,11 +5,16 @@ import Step1 from './Stepper/Step1';
 import Step2 from './Stepper/Step2';
 import Step3 from './Stepper/Step3';
 import { StepProvider, useStepData } from './Stepper/StepContext';
+import { useAuth } from '../../../../../../context/AuthContext';
+import Modal from '../../../../../../pages/platform/cdc/components/Modal';
 
 function CreateRulesInner() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const { stepData, setStepData, resetStepData } = useStepData();
+  const { token } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const handleCancel = () => {
     resetStepData();
@@ -35,8 +40,64 @@ function CreateRulesInner() {
     setCurrentStep(2);
   };
 
-  const handleStep3Create = (finalJson) => {
-    console.log('Create payload:', finalJson);
+  const handleStep3Create = async (finalJson, step1Data) => {
+    const category = (step1Data || stepData?.step1)?.category;
+    let payload;
+
+    if (category === "Pre-built") {
+      payload = {
+        prebuilt: (finalJson || []).map(rule => ({
+          id: rule.id || rule.rule?.id,
+          connection_details: rule.connection_details || []
+        }))
+      };
+    } else if (category === "Custom") {
+      payload = {
+        custom: (finalJson || []).map(rule => ({
+          type: rule.type,
+          category: rule.category,
+          group_name: rule.group,
+          name: rule.rule?.name,
+          description: rule.rule?.description ?? "",
+          severity: rule.rule?.severity ?? "",
+          status: rule.rule?.status ?? "",
+          owner: rule.rule?.owner ?? "",
+          query: rule.rule?.query,
+          id_mappings: [
+            {
+              connection_details: rule.connection_details || []
+            }
+          ]
+        }))
+      };
+    } else {
+      payload = finalJson;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        setModalOpen(true);
+      } else {
+        setLoading(false);
+      }
+    } catch (e) {
+      setLoading(false);
+    }
+  };
+
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setLoading(false);
     resetStepData();
     navigate('/datagovernance/data-assurance/rules');
   };
@@ -71,9 +132,18 @@ function CreateRulesInner() {
             onCreate={handleStep3Create}
             step1Data={stepData.step1}
             step2Data={stepData.step2}
+            loading={loading}
           />
         )}
       </div>
+      <Modal
+        isOpen={modalOpen}
+        onClose={handleModalClose}
+        type="success"
+        title="Rule Created Successfully"
+        message="Rule Created Successfully"
+        confirmText="OK"
+      />
     </div>
   );
 }

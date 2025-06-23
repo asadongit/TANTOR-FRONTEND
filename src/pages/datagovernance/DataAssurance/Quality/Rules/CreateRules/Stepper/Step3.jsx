@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useStepData } from './StepContext';
 
-function Step3({ onBack, onCreate, step1Data, step2Data }) {
+function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
   const { stepData } = useStepData();
   const step1 = step1Data || stepData.step1 || {};
   const step2 = step2Data || stepData.step2 || [];
@@ -92,6 +92,9 @@ function Step3({ onBack, onCreate, step1Data, step2Data }) {
               <th className="py-3 px-4 text-left font-semibold">Name</th>
               <th className="py-3 px-4 text-left font-semibold">Group</th>
               <th className="py-3 px-4 text-left font-semibold w-1/4">SQL</th>
+              <th className="py-3 px-4 text-left font-semibold">Severity</th>
+              <th className="py-3 px-4 text-left font-semibold">Status</th>
+              <th className="py-3 px-4 text-left font-semibold">Owner</th>
               <th className="py-3 px-4 text-left font-semibold">Connection</th>
               <th className="py-3 px-4 text-left font-semibold">Schema</th>
               <th className="py-3 px-4 text-left font-semibold">Table</th>
@@ -105,33 +108,24 @@ function Step3({ onBack, onCreate, step1Data, step2Data }) {
                 <tr key={`${rule.rule?.id || rule.rule?.name || index}-${connIndex}`} className="hover:bg-gray-50">
                   {connIndex === 0 && (
                     <>
-                      <td
-                        className="py-3 px-4 align-top"
-                        rowSpan={connections.length || 1}
-                      >
-                        {index + 1}
-                      </td>
-                      <td
-                        className="py-3 px-4 align-top font-medium text-[#8d77ba]"
-                        rowSpan={connections.length || 1}
-                      >
-                        {rule.rule?.name}
-                      </td>
-                      <td
-                        className="py-3 px-4 align-top"
-                        rowSpan={connections.length || 1}
-                      >
-                        {rule.group}
-                      </td>
-                      <td
-                        className="py-3 px-4 align-top"
-                        rowSpan={connections.length || 1}
-                      >
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>{index + 1}</td>
+                      <td className="py-3 px-4 align-top font-medium text-[#8d77ba]" rowSpan={connections.length || 1}>{rule.rule?.name}</td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>{rule.group}</td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
                         <div className="max-h-20">
                           <pre className="text-xs whitespace-pre-wrap bg-gray-50 p-2 rounded">
                             {rule.rule?.query || "No SQL defined"}
                           </pre>
                         </div>
+                      </td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
+                        {rule.rule?.severity || "-"}
+                      </td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
+                        {rule.rule?.status || "-"}
+                      </td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
+                        {rule.rule?.owner || "-"}
                       </td>
                     </>
                   )}
@@ -161,16 +155,24 @@ function Step3({ onBack, onCreate, step1Data, step2Data }) {
         <button
           onClick={onBack}
           className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          disabled={loading}
         >
           Back
         </button>
         <button
           onClick={() => {
-            onCreate(step2);
+            onCreate(step2, step1);
           }}
-          className="px-6 py-2 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7a67a0] transition-colors"
+          className="px-6 py-2 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7a67a0] transition-colors flex items-center justify-center"
+          disabled={loading}
         >
-          Create
+          {loading ? (
+            <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+            </svg>
+          ) : null}
+          {loading ? 'Creating...' : 'Create'}
         </button>
       </div>
     </div>

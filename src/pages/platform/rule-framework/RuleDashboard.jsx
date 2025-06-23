@@ -1,11 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Pencil,
   Trash2,
   List,
   Play,
   Download,
-  Plus  
+  Plus,  
+  EyeIcon
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 
@@ -14,9 +15,11 @@ import { LineChart } from "@mui/x-charts/LineChart";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
 import DataTable from "../../../components/DataTable";
-import { useProjectData } from "../../../hooks/platform/project";
-import { useProjectCardData } from "../../../hooks/platform/cardCounts";
+import {  useReportingRulesCardData } from "../../../hooks/platform/cardCounts";
 import { useRuleData } from "../../../hooks/platform/rules";
+import { useAuth } from "../../../context/AuthContext";
+import toast from "react-hot-toast";
+import RuleSummary from "./RuleSummary";
 
 
 
@@ -47,12 +50,16 @@ const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
 };
 
 const RuleDashboard = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
+  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useReportingRulesCardData();
   const { data: ruleData = [], isLoading: isRuleLoading, error: ruleError, refetch: refetchRules } = useRuleData();
-
+  
+  // Display Rule Modal
+  const [showRuleSummary, setShowRuleSummary] = useState(false);
+  const [ruleSummaryData,setRuleSummaryData] = useState({});
 
   const navigate = useNavigate();
 
+  const {hostnameV1, token} = useAuth();
   
   const handleRefresh = () => {
     refetchRules();
@@ -61,7 +68,8 @@ const RuleDashboard = () => {
 
 
   const handleCreate = () => {
-    navigate("/config/rule/create-rule");
+    navigate("/config/rule/create-rule",{state: {mode: "CREATE"}}
+    );
   };
 
 
@@ -71,28 +79,82 @@ const RuleDashboard = () => {
   const cards = [
     {
         title: "Total",
-        count: cardData?.purge || 18
+        count: cardData?.total || 0,
       },
       {
         title: "Active",
-        count: cardData?.metadata || 11,
+        count: cardData?.active || 0,
       },
     {
         title: "Draft",
-        count: cardData?.federation || 5,
+        count: cardData?.draft || 0,
       },
       {
         title: "Disabled",
-        count: cardData?.migration || 2,
+        count: cardData?.disabled || 0,
       },
   ];
 
 
   const actions = [
+    {
+        label: "View",
+        icon: <EyeIcon size={16} />,
+        onClick: (row) => {
+          console.log("View clicked for", row);
+          const ruleId = row.id;
+          if(! ruleId){
+            toast.error("Rule ID not provided.");
+            return;
+          }
+
+          (async () => {
+            try{
+              const headers = {"Content-Type": "application/json", "Authorization": `Bearer ${token}`};
+              const response = await fetch(`${hostnameV1}/ruleJson?rule_id=${ruleId}`, {headers});
+            
+            if(!response.ok){
+              const errorData = await response.json().catch(() => null);
+              throw new Error(errorData?.detail || "Error occured while trying to display rule.");
+            }
+            
+            const ruleJson = await response.json();
+
+            if(ruleJson === null)
+              throw new Error("Rule JSON not found!");
+
+            const sourceNode = ruleJson.find((nd) => nd.type === "source");
+
+            if(!sourceNode) throw new Error("Invalid Rule JSON!");
+
+            setRuleSummaryData({
+              nodeId: sourceNode.id,
+              selectedFact: sourceNode.data.selectedFact,
+              filterConditions: sourceNode.data.filterConditions,
+              ruleName: sourceNode.data.ruleName,
+              ruleId: sourceNode.data.ruleId,
+              ruleDescription: sourceNode.data.ruleDescription,
+              dimensionFilters: sourceNode.data.dimensionFilters || [],
+              timeTransformationFilters: sourceNode.data.timeTransformationFilters || [],
+              nodes: ruleJson,
+            });
+
+            setShowRuleSummary(true);
+
+            }catch(error){
+              console.error(error);
+              toast.error(error.message);
+            }
+          })();
+        },
+      },
       {
         label: "Edit",
         icon: <Pencil size={16} />,
-        onClick: (row) => console.log("Edit clicked for", row),
+        onClick: (row) => {
+          console.log("Edit clicked for", row)
+          navigate("/config/rule/edit-rule", {state: {mode: "EDIT", ruleData: {...row}}});
+        },
       },
       // {
       //   label: "Delete",
@@ -113,13 +175,13 @@ const RuleDashboard = () => {
     { key: "description", label: "Desc" },
     { key: "created", label: "Created" },
     { key: "updated", label: "Updated" },
-    { key: "reports", label: "Reports" },
+    // { key: "reports", label: "Reports" },
     { label: "Action", sortable: false },
   ];
   
   const handleCardClick = (card) => {
-    const url = `/componentType=project&cardType=${card.title}&heading=${card.title}`;
-    const encryptedUrl = encodeURIComponent(encrypt(url));
+    const url = `/componentType=rules&cardType=${card.title}&heading=${card.title}`;
+    console.log(url);
     navigate(`/details?${encryptedUrl}`);
   };
 
@@ -362,8 +424,11 @@ const RuleDashboard = () => {
           isLoading={isRuleLoading}
           isError={!!ruleError}
           refetch={refetchRules}
-/>
+        />
+
+        {showRuleSummary && (<RuleSummary setIsOpen={setShowRuleSummary} mode={"DISPLAY"} {...ruleSummaryData}/>)}
     </div>
+
   );
 };
 

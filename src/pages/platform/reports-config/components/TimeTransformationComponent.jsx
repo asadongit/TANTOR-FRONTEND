@@ -16,15 +16,22 @@ const TimeTransformationComponent = ({
   const [filterColName, setFilterColName] = useState("");
   const [dateType, setDateType] = useState("");
   const [lowerOffset, setLowerOffset] = useState("");
-  const [upperOffset, setUpperOffset] = useState("");
   const [lowerUnit, setLowerUnit] = useState("");
+  const [upperOffset, setUpperOffset] = useState("");
   const [upperUnit, setUpperUnit] = useState("");
-
   const [showValidationModal, setShowValidationModal] = useState(false);
-
-  // API data.
   const [dateColumnsData, setDateColumnsData] = useState([]);
   const { token, hostnameV1 } = useAuth();
+
+  // Calculate if save should be disabled
+  const isSaveDisabled = 
+    !filterColId || 
+    !dateType ||
+    (dateType === "historicDate" && 
+      (isNaN(parseFloat(lowerOffset)) || !lowerUnit)) ||
+    (dateType === "dateRange" && 
+      (isNaN(parseFloat(lowerOffset)) || !lowerUnit || 
+       isNaN(parseFloat(upperOffset)) || !upperUnit));
 
   useEffect(() => {
     if (!ruleId || !isOpen) return;
@@ -62,7 +69,6 @@ const TimeTransformationComponent = ({
     setIsOpen(false);
   };
 
-  // Modal close handler
   const handleClose = () => {
     setIsOpen(false);
     setFilterColId("");
@@ -75,6 +81,8 @@ const TimeTransformationComponent = ({
   };
 
   const handleSave = () => {
+    if (isSaveDisabled) return;
+    
     const newRule = JSON.parse(JSON.stringify(rule));
 
     if (!filterColId || !filterColName)
@@ -119,7 +127,6 @@ const TimeTransformationComponent = ({
     setUpperUnit("");
   };
 
-  // UseEffect to prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -349,18 +356,6 @@ const TimeTransformationComponent = ({
             )}
 
             <div className="flex justify-end gap-4 mt-6">
-              {/* <button
-                type="button"
-                className="text-[#6c757d] hover:text-black flex items-center gap-2 px-4 py-2 rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent transition-colors duration-200"
-              >
-                <ChevronLeft className="w-4 h-4" /> Back
-              </button> */}
-              {/* <button
-                type="button"
-                className="text-[#6c757d] hover:text-black flex items-center gap-2 px-4 py-2 rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent transition-colors duration-200"
-              >
-                <XCircle className="w-4 h-4" /> Cancel
-              </button> */}
               {(dateType === "historicDate" || dateType === "dateRange") && (
                 <button
                   type="button"
@@ -372,8 +367,13 @@ const TimeTransformationComponent = ({
               )}
               <button
                 type="button"
-                className="bg-[#8E77BB] text-white hover:bg-[#7864a3] flex items-center gap-2 px-4 py-2 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
+                className={`flex items-center gap-2 px-4 py-2 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200 ${
+                  isSaveDisabled
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed opacity-70"
+                    : "bg-[#8E77BB] text-white hover:bg-[#7864a3]"
+                }`}
                 onClick={handleSave}
+                disabled={isSaveDisabled}
               >
                 <SaveIcon className="w-4 h-4" /> Save
               </button>

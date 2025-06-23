@@ -3,7 +3,7 @@ import { X, Loader, Check, Eye } from 'lucide-react';
 import { useAuth } from '../../../../../context/AuthContext';
 import DetailsModal from './DetailsModal';
 
-const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPolicyIds }) => {
+const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPolicyIds,setNewPolicies }) => {
     const { token } = useAuth();
     const [policies, setPolicies] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -17,7 +17,7 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-        console.log('initial policies are e ======>', initialSelectedPolicyIds);
+        setSearchQuery("")
         if (isOpen) {
             fetchPolicies();
             setError(null);
@@ -127,6 +127,9 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
             groups: Array.from(combinedGroups),
             subgroups: Array.from(combinedSubgroups),
         });
+
+        setNewPolicies((prev) => prev.filter((policy) => selectedPolicyIds.includes(policy.id)));
+        
         onCloseModal();
     };
 
