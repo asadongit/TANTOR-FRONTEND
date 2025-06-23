@@ -5,6 +5,12 @@ import { useAuth } from "../../../../../context/AuthContext";
 
 const hostname = import.meta.env.VITE_FAST_API;
 
+const transformationNamesCache = {
+  names: [],
+  timestamp: 0,
+  expiryTime: 60000,
+};
+
 export const DefineNode = ({ id, data }) => {
   const [nameExists, setNameExists] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -15,6 +21,12 @@ export const DefineNode = ({ id, data }) => {
   const { project, decodedToken, token } = useAuth();
 
   const getExistingTransformationNames = async () => {
+
+    const now = Date.now();
+    if (now - transformationNamesCache.timestamp < transformationNamesCache.expiryTime) {
+      return transformationNamesCache.names;
+    }
+
     try {
       const response = await fetch(
         `${hostname}/etl/transformation/tableview?project=${project}&created_by=${decodedToken.preferred_username}`,
@@ -30,7 +42,12 @@ export const DefineNode = ({ id, data }) => {
       }
 
       const data = await response.json();
-      return data.map((item) => item.transformation_name.toLowerCase());
+      const names = data.map((item) => item.transformation_name.toLowerCase());
+
+      transformationNamesCache.names = names;
+      transformationNamesCache.timestamp = now;
+
+      return names;
     } catch (error) {
       console.error("Error fetching transformation names:", error);
       return [];
@@ -58,29 +75,35 @@ export const DefineNode = ({ id, data }) => {
 
     setIsChecking(true);
     try {
-      const response = await fetch(
-        `${hostname}/etl/check-transformation-name?name=${encodeURIComponent(
-          name
-        )}`,
-        {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-          },
-        }
-      );
+      const existingNames = await getExistingTransformationNames();
+      const nameExists = existingNames.includes(name.toLowerCase());
 
-      if (!response.ok) {
-        throw new Error("Failed to check transformation name");
-      }
-
-      const result = await response.json();
-      setNameExists(result.exists);
-
-      if (result.exists) {
+      if (nameExists) {
+        setNameExists(true);
         setNameError("Transformation name already exists");
       } else {
-        setNameError("");
+        const response = await fetch(
+          `${hostname}/etl/check-transformation-name?name=${encodeURIComponent(name)}`,
+          {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to check transformation name");
+        }
+
+        const result = await response.json();
+        setNameExists(result.exists);
+
+        if (result.exists) {
+          setNameError("Transformation name already exists");
+        } else {
+          setNameError("");
+        }
       }
     } catch (error) {
       console.error("Error checking transformation name:", error);
@@ -98,6 +121,7 @@ export const DefineNode = ({ id, data }) => {
     }
 
     clearTimeout(nameCheckTimeout.current);
+
     if (value) {
       nameCheckTimeout.current = setTimeout(() => {
         validateName(value);
@@ -123,8 +147,12 @@ export const DefineNode = ({ id, data }) => {
 
   useEffect(() => {
     if (data.name && data.name.trim() !== "") {
-      validateName(data.name);
+      if (!nameError && !nameExists) {
+        validateName(data.name);
+      }
     }
+
+    getExistingTransformationNames();
   }, []);
 
   useEffect(() => {
