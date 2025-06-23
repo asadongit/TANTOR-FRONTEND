@@ -520,7 +520,17 @@ function Transformation() {
               {currentItems.map((item, index) => (
                 <tr key={index} className="border-b hover:bg-gray-50">
                   <td className="p-4 font-medium">{indexOfFirstItem + index + 1}</td>
-                  <td className="p-4  font-medium">{item.transformation_name}</td>
+                  <td className="p-4 font-medium">
+
+                    <span
+                      title={item.transformation_name}
+                      style={{ cursor: item.transformation_name.length > 18 ? 'pointer' : 'default' }}
+                    >
+                      {item.transformation_name.length > 18
+                        ? item.transformation_name.slice(0, 18) + '...'
+                        : item.transformation_name}
+                    </span>
+                  </td>
                   <td className="p-4">{item.description || "-"}</td>
                   <td className="p-4">{formatDate(item.created_at)}</td>
                   <td className="p-4">{formatDate(item.updated_at)}</td>
@@ -572,7 +582,7 @@ function Transformation() {
         )}
 
         <div className="flex justify-end items-center px-4 py-3 border-t">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
               onClick={goToPreviousPage}
               disabled={currentPage === 1}
@@ -581,21 +591,19 @@ function Transformation() {
               <ChevronLeft className="h-5 w-5" />
             </button>
 
-            <div className="flex items-center">
-              {[...Array(totalPages)].map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => goToPage(index + 1)}
-                  className={`px-3 py-1 mx-1 rounded-md ${
-                    currentPage === index + 1
-                      ? 'bg-[#8e78b7] text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  {index + 1}
-                </button>
+            <span className="text-sm text-gray-600">Page</span>
+            <select
+              value={currentPage}
+              onChange={e => goToPage(Number(e.target.value))}
+              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none"
+            >
+              {[...Array(totalPages)].map((_, idx) => (
+                <option key={idx + 1} value={idx + 1}>
+                  {idx + 1}
+                </option>
               ))}
-            </div>
+            </select>
+            <span className="text-sm text-gray-600">of {totalPages}</span>
 
             <button
               onClick={goToNextPage}
