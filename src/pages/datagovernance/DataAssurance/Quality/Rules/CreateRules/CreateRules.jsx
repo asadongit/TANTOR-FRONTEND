@@ -98,6 +98,17 @@ function CreateRulesInner() {
       const rule = (finalJson && finalJson[0]) || (stepData?.step2 && stepData.step2[0]);
       if (!rule) return;
       const ruleId = rule.id || rule.rule?.id;
+
+      let id_mappings = undefined;
+      if (rule.id || rule.rule?.id) {
+        id_mappings = {
+          id: rule.id || rule.rule?.id,
+          connection_details: Array.isArray(rule.connection_details)
+            ? rule.connection_details
+            : rule.connection_details ? [rule.connection_details] : []
+        };
+      }
+
       payload = {
         type: rule.type,
         category: rule.category,
@@ -108,9 +119,9 @@ function CreateRulesInner() {
         status: rule.rule?.status ?? "",
         owner: rule.rule?.owner ?? "",
         query: rule.rule?.query,
-        connection_details: rule.connection_details || [],
-        id_mappings: rule.id_mappings || undefined
+        id_mappings
       };
+
       setLoading(true);
       try {
         const response = await fetch(
