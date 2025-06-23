@@ -90,6 +90,7 @@ const Rules = () => {
       })
     }
 
+
   useEffect(() => {
     fetchCounts();
     fetchTableData();
@@ -131,8 +132,26 @@ const Rules = () => {
     }
   };
 
-  const handleActionClick = (action, item, index) => {
-    console.log(`${action} action for item at index ${index}:`, item);
+  const handleActionClick = async (action, item, index) => {
+    if (action === 'Edit') {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/details`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ids: [item.id] }),
+        });
+        const data = await response.json();
+        navigate('/datagovernance/data-assurance/rules/create', {
+          state: { edit: true, ruleData: data }
+        });
+      } catch (error) {
+        console.error('Error fetching rule details:', error);
+      }
+    } else {
+      console.log(`${action} action for item at index ${index}:`, item);
+    }
   };
 
   return (
@@ -218,87 +237,88 @@ const Rules = () => {
 
       {(viewMode === 'list' || viewMode === 'both') && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-[#29304a] text-white">
-                <th className="text-left p-4 first:rounded-tl-lg">ID</th>
-                <th className="text-left p-4">Category</th>
-                <th className="text-left p-4">Type</th>
-                <th className="text-left p-4">Group</th>
-                <th className="text-left p-4">Name</th>
-                <th className="text-left p-4">Severity</th>
-                <th className="text-left p-4">Status</th>
-                <th className="text-left p-4">Created Date</th>
-                <th className="text-left p-4">Updated Date</th>
-                <th className="text-left p-4">Last Run</th>
-                <th className="text-left p-4 last:rounded-tr-lg">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentItems.map((item, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="p-4 font-medium">{indexOfFirstItem + index + 1}</td>
-                  <td className="p-4 text-gray-600">{item.category}</td>
-                  <td className="p-4 text-gray-600">{item.type}</td>
-                  <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
-                  <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      item.severity === 'High' ? 'bg-red-100 text-red-700' :
-                      item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-green-100 text-green-700'
-                    }`}>
-                      {item.severity}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      item.status === 'Active' ? 'bg-green-100 text-green-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-gray-600">{item.created_date}</td>
-                  <td className="p-4 text-gray-600">{item.updated_date}</td>
-                  <td className="p-4 text-gray-600">{item.last_run}</td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleActionClick('Play', item, index)}
-                        className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
-                        title="Run Rule"
-                      >
-                        <Play className="h-4 w-4 text-[#8e78b7]" />
-                      </button>
-                      <button
-                        onClick={() => handleActionClick('Edit', item, index)}
-                        className="p-1.5 hover:bg-blue-100 rounded-full"
-                        title="Edit Rule"
-                      >
-                        <Pencil className="h-4 w-4 text-[#8e78b7]" />
-                      </button>
-                      <button
-                        onClick={() => handleActionClick('Refresh', item, index)}
-                        className="p-1.5 hover:bg-green-100 rounded-full"
-                        title="Refresh Rule"
-                      >
-                        <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
-                      </button>
-                      <button
-                        onClick={() => handleActionClick('Delete', item, index)}
-                        className="p-1.5 hover:bg-red-100 rounded-full"
-                        title="Delete Rule"
-                      >
-                        <Trash2 className="h-4 w-4 text-[#8e78b7]" />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1200px]">
+              <thead>
+                <tr className="bg-[#29304a] text-white">
+                  <th className="text-left p-4 first:rounded-tl-lg">ID</th>
+                  <th className="text-left p-4">Category</th>
+                  <th className="text-left p-4">Type</th>
+                  <th className="text-left p-4">Group</th>
+                  <th className="text-left p-4">Name</th>
+                  <th className="text-left p-4">Severity</th>
+                  <th className="text-left p-4">Status</th>
+                  <th className="text-left p-4">Created Date</th>
+                  <th className="text-left p-4">Updated Date</th>
+                  <th className="text-left p-4">Last Run</th>
+                  <th className="text-left p-4 last:rounded-tr-lg">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-
+              </thead>
+              <tbody>
+                {currentItems.map((item, index) => (
+                  <tr key={index} className="border-b hover:bg-gray-50">
+                    <td className="p-4 font-medium">{indexOfFirstItem + index + 1}</td>
+                    <td className="p-4 text-gray-600">{item.category}</td>
+                    <td className="p-4 text-gray-600">{item.type}</td>
+                    <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
+                    <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        item.severity === 'High' ? 'bg-red-100 text-red-700' :
+                        item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {item.severity}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        item.status === 'Active' ? 'bg-green-100 text-green-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-gray-600">{item.created_date}</td>
+                    <td className="p-4 text-gray-600">{item.updated_date}</td>
+                    <td className="p-4 text-gray-600">{item.last_run}</td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleActionClick('Play', item, index)}
+                          className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
+                          title="Run Rule"
+                        >
+                          <Play className="h-4 w-4 text-[#8e78b7]" />
+                        </button>
+                        <button
+                          onClick={() => handleActionClick('Edit', item, index)}
+                          className="p-1.5 hover:bg-blue-100 rounded-full"
+                          title="Edit Rule"
+                        >
+                          <Pencil className="h-4 w-4 text-[#8e78b7]" />
+                        </button>
+                        <button
+                          onClick={() => handleActionClick('Refresh', item, index)}
+                          className="p-1.5 hover:bg-green-100 rounded-full"
+                          title="Refresh Rule"
+                        >
+                          <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
+                        </button>
+                        <button
+                          onClick={() => handleActionClick('Delete', item, index)}
+                          className="p-1.5 hover:bg-red-100 rounded-full"
+                          title="Delete Rule"
+                        >
+                          <Trash2 className="h-4 w-4 text-[#8e78b7]" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <div className="flex justify-end items-center px-4 py-3 border-t">
             <div className="flex items-center gap-1">
               <button
