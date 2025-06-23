@@ -290,15 +290,15 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
         {openDropdown === label && (
           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
             <div className="sticky top-0 bg-white z-10">
-              {options.length > 0 && (
-                <>
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    className="w-full p-2 border-b border-gray-200 outline-none"
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                  />
+              <>
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="w-full p-2 border-b border-gray-200 outline-none"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                />
+                {options.length > 0 && (
                   <div className="flex items-center p-2 border-b border-gray-200 hover:bg-gray-100 cursor-pointer">
                     <input
                       type="checkbox"
@@ -314,8 +314,8 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
                     />
                     <span className="font-medium">Select All</span>
                   </div>
-                </>
-              )}
+                )}
+              </>
             </div>
             {loading ? (
               <div className="flex items-center justify-center p-2 text-gray-500">
