@@ -535,6 +535,41 @@ function TransformationCanvasContent() {
     );
   }, [setNodes]);
 
+  useEffect(() => {
+    const defineNode = nodes.find(node => node.type === "define");
+    if (!defineNode) return;
+
+    const sourceNodes = nodes.filter(node => node.type === "source");
+    const targetNodes = nodes.filter(node => node.type === "target");
+
+    const connectedSource = sourceNodes.find(src =>
+      edges.some(edge => edge.source === src.id || edge.target === src.id)
+    );
+    const connectedTarget = targetNodes.find(tgt =>
+      edges.some(edge => edge.source === tgt.id || edge.target === tgt.id)
+    );
+
+    if (
+      connectedSource &&
+      connectedTarget &&
+      (!defineNode.data.name || defineNode.data.name.startsWith("etl_"))
+    ) {
+      const srcName = connectedSource.data.connection || "SRC";
+      const tgtName = connectedTarget.data.connection || "TGT";
+      const autoName = `etl_${srcName}_SRC_${tgtName}`;
+
+      if (defineNode.data.name !== autoName) {
+        setNodes(nds =>
+          nds.map(n =>
+            n.id === defineNode.id
+              ? { ...n, data: { ...n.data, name: autoName } }
+              : n
+          )
+        );
+      }
+    }
+  }, [nodes, edges, setNodes]);
+
   return (
     <div style={{ width: "100%", height: "100vh" }} className="relative">
       <ReactFlow
