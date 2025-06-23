@@ -527,6 +527,9 @@ function Step2({ data, onBack, onNext, step2Data }) {
             };
           });
 
+      const originalRule =
+        (data.rules[groupName] || []).find(r => r.id === ruleObj.id) || {};
+
       const ruleData = {
         ...(ruleObj.id ? { id: ruleObj.id } : {}),
         category,
@@ -535,7 +538,11 @@ function Step2({ data, onBack, onNext, step2Data }) {
         rule: {
           id: ruleObj.id,
           name: ruleObj.name,
-          query: ruleObj.query
+          query: ruleObj.query,
+          description: originalRule.description ?? originalRule.desc ?? "",
+          severity: originalRule.severity ?? "High",
+          status: originalRule.status ?? "Active",
+          owner: originalRule.owner ?? "",
         }
       };
 

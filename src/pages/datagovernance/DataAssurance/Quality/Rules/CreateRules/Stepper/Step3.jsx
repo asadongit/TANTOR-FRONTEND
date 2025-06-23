@@ -92,6 +92,9 @@ function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
               <th className="py-3 px-4 text-left font-semibold">Name</th>
               <th className="py-3 px-4 text-left font-semibold">Group</th>
               <th className="py-3 px-4 text-left font-semibold w-1/4">SQL</th>
+              <th className="py-3 px-4 text-left font-semibold">Severity</th>
+              <th className="py-3 px-4 text-left font-semibold">Status</th>
+              <th className="py-3 px-4 text-left font-semibold">Owner</th>
               <th className="py-3 px-4 text-left font-semibold">Connection</th>
               <th className="py-3 px-4 text-left font-semibold">Schema</th>
               <th className="py-3 px-4 text-left font-semibold">Table</th>
@@ -105,33 +108,24 @@ function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
                 <tr key={`${rule.rule?.id || rule.rule?.name || index}-${connIndex}`} className="hover:bg-gray-50">
                   {connIndex === 0 && (
                     <>
-                      <td
-                        className="py-3 px-4 align-top"
-                        rowSpan={connections.length || 1}
-                      >
-                        {index + 1}
-                      </td>
-                      <td
-                        className="py-3 px-4 align-top font-medium text-[#8d77ba]"
-                        rowSpan={connections.length || 1}
-                      >
-                        {rule.rule?.name}
-                      </td>
-                      <td
-                        className="py-3 px-4 align-top"
-                        rowSpan={connections.length || 1}
-                      >
-                        {rule.group}
-                      </td>
-                      <td
-                        className="py-3 px-4 align-top"
-                        rowSpan={connections.length || 1}
-                      >
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>{index + 1}</td>
+                      <td className="py-3 px-4 align-top font-medium text-[#8d77ba]" rowSpan={connections.length || 1}>{rule.rule?.name}</td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>{rule.group}</td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
                         <div className="max-h-20">
                           <pre className="text-xs whitespace-pre-wrap bg-gray-50 p-2 rounded">
                             {rule.rule?.query || "No SQL defined"}
                           </pre>
                         </div>
+                      </td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
+                        {rule.rule?.severity || "-"}
+                      </td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
+                        {rule.rule?.status || "-"}
+                      </td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
+                        {rule.rule?.owner || "-"}
                       </td>
                     </>
                   )}
