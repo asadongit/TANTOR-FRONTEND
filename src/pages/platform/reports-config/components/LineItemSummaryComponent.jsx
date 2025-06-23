@@ -14,6 +14,8 @@ const LineItemSummary = () => {
     reportId,
     reportName,
     setLinkedLineItemIds,
+    lineItemConfig,
+    mode,
   } = useLineItems();
 
   const rules = getRulesForCurrentLineItem();
@@ -66,14 +68,22 @@ const LineItemSummary = () => {
       return;
     }
 
+    const lineItemUiJson = lineItemConfig.find(item => item.line_item === currentLineItemId);
+    
+    
     const payload = {
       report_config: {
         regReportId: reportId,
         line_item: parseInt(currentLineItemId.split("_").pop(), 10),
         rules: rules,
+        uiJson: lineItemUiJson,
       },
     };
 
+    console.log("rules ==> ", payload);
+
+
+    // return 
     const uploadData = async () => {
       const headers = {
         "Content-Type": "application/json",
@@ -88,8 +98,69 @@ const LineItemSummary = () => {
         });
 
         if (!response.ok) {
-          toast.error("Error Saving Line Item.");
-          return;
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.detail || "Failed to save line item");
+        }
+
+        const data = await response.json();
+        toast.success(data.message);
+
+        setLinkedLineItemIds((prev) => {
+          if (prev.has(currentLineItemId)) {
+            return prev;
+          } else {
+            return new Set(prev).add(currentLineItemId);
+          }
+        });
+        closeAllModals();
+      } catch (error) {
+        console.error("Error Saving Line Item:", error);
+        toast.error(error.message);
+      }
+    };
+
+    uploadData();
+    console.log(payload);
+  };
+
+  const handleEditLink = () => {
+    if (!currentLineItemId) {
+      toast.error("Line Item ID is missing");
+      return;
+    }
+
+    const lineItemUiJson = lineItemConfig.find(item => item.line_item === currentLineItemId);
+    console.log("currentLineItemConfig ==> ", lineItemUiJson);
+    
+    const payload = {
+      report_config: {
+        regReportId: reportId,
+        line_item: parseInt(currentLineItemId.split("_").pop(), 10),
+        rules: rules,
+        uiJson: lineItemUiJson,
+      },
+    };
+
+    console.log("rules ==> ", payload);
+
+
+    // return 
+    const uploadData = async () => {
+      const headers = {
+        "Content-Type": "application/json",
+        authorization: `Bearer ${token}`,
+      };
+
+      try {
+        const response = await fetch(`${hostnameV1}/lineItems`, {
+          headers: headers,
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.detail || "Error Saving Line Item");
         }
 
         const data = await response.json();
@@ -106,7 +177,7 @@ const LineItemSummary = () => {
         closeAllModals();
       } catch (error) {
         console.error("Error Saving Line Item:", error);
-        toast.error("Error Saving Line Item");
+        toast.error(error.message);
       }
     };
 
@@ -217,9 +288,19 @@ const LineItemSummary = () => {
           </button>
           <button
             className="px-4 py-2 rounded-md bg-[#8E77BB] hover:bg-[#7a63ac] text-white font-medium transition"
-            onClick={handleCreateLink}
+            // onClick={handleCreateLink}
+            onClick={() => {
+              if(mode === "CREATE"){
+                handleCreateLink();
+              }else if(mode === "EDIT"){
+                handleEditLink();
+              }else{
+                
+              }
+            }}
           >
-            Create Link
+            {mode === "CREATE" && "Create Link"}
+            {mode === "EDIT" && "Edit Link"}
           </button>
         </div>
       </div>

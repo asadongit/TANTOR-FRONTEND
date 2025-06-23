@@ -11,7 +11,7 @@ export const LineItemsProvider = ({ children, reportData }) => {
   const { token, hostnameV1 } = useAuth();
   const navigate = useNavigate();
 
-  const { reportId, reportName, reportType, reportDesc } = reportData || {};
+  const { reportId, reportName, reportType, reportDesc, mode } = reportData || {};
 
   const [lineItemsHtml, setLineItemsHtml] = useState("");
   const [showLineItemConfigModal, setShowLineItemConfigModal] = useState(false);
@@ -30,20 +30,45 @@ export const LineItemsProvider = ({ children, reportData }) => {
     });
   }, [lineItemConfig, reportId]);
 
-  const updateLineItemConfigRules = (lineItemId, newRules) => {
-    setLineItemConfig((prev) => {
-      const existingIndex = prev.findIndex(
-        (item) => item.line_item === lineItemId
-      );
-      if (existingIndex !== -1) {
-        const updated = [...prev];
-        updated[existingIndex].rules = newRules;
-        return updated;
-      }
+  useEffect(() => {
+    if(mode === "EDIT") {
+      (async () => {
+        const response = await fetch(`${hostnameV1}/lineItems/reports/json?report_id=${reportId}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-      return [...prev, { line_item: lineItemId, rules: newRules }];
-    });
-  };
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData?.detail || "Failed to line items json");
+        }
+
+        const data = await response.json();
+        console.log("line items json ===>", data);
+
+        setLineItemConfig(data)
+      })();
+    }
+  }, [])
+ const updateLineItemConfigRules = (lineItemId, newRules) => {
+  setLineItemConfig((prev) => {
+    const existingIndex = prev.findIndex(
+      (item) => item.line_item === lineItemId
+    );
+    
+    if (existingIndex !== -1) {
+      return prev.map((item, index) => 
+        index === existingIndex 
+          ? { ...item, rules: newRules }
+          : item
+      );
+    }
+    return [...prev, { line_item: lineItemId, rules: newRules }];
+  });
+};
+
 
   const getRulesForCurrentLineItem = () => {
     return (
@@ -55,8 +80,6 @@ export const LineItemsProvider = ({ children, reportData }) => {
   useEffect(() => {
     if (!reportId) return;
     const fetchLineItems = async () => {
-      console.log("reportName ==> ", reportName);
-      console.log("API ==> ", import.meta.VITE_BIRT_BACKEND_API);
       try {
         const response = await fetch(
           `${
@@ -189,7 +212,8 @@ export const LineItemsProvider = ({ children, reportData }) => {
         closeAllModals,
         validateLineItemsJson,
         addReportToDatabase,
-        setLinkedLineItemIds
+        setLinkedLineItemIds,
+        mode
       }}
     >
       {children}

@@ -278,7 +278,18 @@ const ReportConfigDashboard = () => {
     {
       label: "Edit",
       icon: <Pencil size={16} />,
-      onClick: (row) => console.log("Edit clicked for", row),
+      onClick: (row) => {
+        console.log("Edit clicked for", row)
+        navigate(`/config/editReport`, {
+          state: {
+            reportId: row.report_id,
+            reportName: row.report_name,
+            reportType: row.report_type,
+            reportDesc: row.reportDesc,
+            mode: "EDIT",
+          },
+        });
+      },
     },
     {
       label: "Delete",

@@ -96,7 +96,7 @@ const RuleSummary = ({
           Authorization: `Bearer ${token}`,
         };
 
-        const response = await fetch(`${hostnameV1}/saveRule`,{
+        const response = await fetch(`${hostnameV1}/updateRule`,{
           method: 'PUT',
           headers: headers,
           body: JSON.stringify({rule_data: payload, rule_json: nodes}),
