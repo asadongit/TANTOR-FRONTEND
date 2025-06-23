@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import axios from 'axios';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from '../../../context/AuthContext';
+import DataTable from '../../../components/DataTable';
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -24,7 +25,6 @@ const rotateAnimation = `
 function Transformation() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
@@ -36,7 +36,6 @@ function Transformation() {
     movementgraph: []
   });
   const {project, decodedToken, token} = useAuth()
-  const rowsPerPage = 5;
 
   const hostname = import.meta.env.VITE_FAST_API;
 
@@ -88,7 +87,11 @@ function Transformation() {
           }
         }
       );
-      setTransformationData(response.data);
+
+      const sortedData = response.data.sort((a, b) =>
+        new Date(b.created_at) - new Date(a.created_at)
+      );
+      setTransformationData(sortedData);
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching transformation data:", error);
@@ -138,7 +141,6 @@ function Transformation() {
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1);
   };
 
   const handleRefresh = async () => {
@@ -172,31 +174,6 @@ function Transformation() {
     (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (item.created_by && item.created_by.toLowerCase().includes(searchTerm.toLowerCase()))
   );
-
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-  const indexOfLastItem = currentPage * rowsPerPage;
-  const indexOfFirstItem = indexOfLastItem - rowsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  const goToPage = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
-
-  const goToPreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const handleClickOutside = () => {
-    setActiveMenu(null);
-  };
 
   const MovementChart = () => {
     const chartData = dashboardData.movementgraph || [];
@@ -373,6 +350,52 @@ function Transformation() {
     }
   };
 
+  // Define columns for the DataTable
+  const columns = [
+    { key: "transformation_name", label: "Name", sortable: true },
+    { key: "description", label: "Description", sortable: true },
+    { key: "created_at", label: "Created", sortable: true,
+      render: (row) => formatDate(row.created_at) },
+    { key: "updated_at", label: "Updated", sortable: true,
+      render: (row) => formatDate(row.updated_at) },
+    { key: "created_by", label: "Owner", sortable: true },
+    { key: "status", label: "Status", sortable: true },
+    { key: "source_count", label: "Source Records", sortable: true },
+    { key: "target_count", label: "Target Records", sortable: true },
+    { key: "duration", label: "Duration", sortable: true },
+    { label: "Action", sortable: false },
+  ];
+
+  // Define actions for the DataTable
+  const actions = [
+    {
+      label: "Run",
+      icon: <Icon icon="material-symbols:play-arrow" className="w-5 h-5" />,
+      onClick: (row) => handleTriggerETL(row.transformation_name),
+      show: (row) => row.status === 'Ready to run'
+    },
+    {
+      label: "Edit",
+      icon: <Icon icon="material-symbols:edit-outline" className="w-5 h-5" />,
+      onClick: (row) => console.log("Edit:", row)
+    },
+    {
+      label: "Copy",
+      icon: <Icon icon="material-symbols:content-copy-outline" className="w-5 h-5" />,
+      onClick: (row) => console.log("Copy:", row)
+    },
+    {
+      label: "Info",
+      icon: <Icon icon="material-symbols:info-outline" className="w-5 h-5" />,
+      onClick: (row) => console.log("Info:", row)
+    },
+    {
+      label: "Delete",
+      icon: <Icon icon="material-symbols:delete-outline" className="w-5 h-5" />,
+      onClick: (row) => console.log("Delete:", row)
+    },
+  ];
+
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
@@ -494,127 +517,16 @@ function Transformation() {
         </>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden mt-4 mb-6">
-        {isLoading ? (
-          <div className="flex justify-center items-center p-10">
-            <RotateCw className="h-8 w-8 text-gray-400 icon-rotate" />
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="bg-[#29304a] text-white">
-              <th className="text-left p-4">ID</th>
-                <th className="text-left p-4">Name</th>
-                <th className="text-left p-4">Description</th>
-                <th className="text-left p-4">Created</th>
-                <th className="text-left p-4">Updated</th>
-                <th className="text-left p-4">Owner</th>
-                <th className="text-left p-4">Status</th>
-                <th className='text-left p-4'>Source Records</th>
-                <th className='text-left p-4'>Target Records</th>
-                <th className='text-left p-4'>Duration</th>
-                <th className="text-left p-4">Quick Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentItems.map((item, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="p-4 font-medium">{indexOfFirstItem + index + 1}</td>
-                  <td className="p-4 font-medium">
-
-                    <span
-                      title={item.transformation_name}
-                      style={{ cursor: item.transformation_name.length > 18 ? 'pointer' : 'default' }}
-                    >
-                      {item.transformation_name.length > 18
-                        ? item.transformation_name.slice(0, 18) + '...'
-                        : item.transformation_name}
-                    </span>
-                  </td>
-                  <td className="p-4">{item.description || "-"}</td>
-                  <td className="p-4">{formatDate(item.created_at)}</td>
-                  <td className="p-4">{formatDate(item.updated_at)}</td>
-                  <td className="p-4">{item.created_by || "-"}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      item.status === 'creating' ? 'bg-blue-100 text-blue-800' :
-                      item.status === 'active' ? 'bg-green-100 text-green-800' :
-                      item.status === 'failed' ? 'bg-red-100 text-red-800' :
-                      item.status === 'Ready to run' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {item.status || "unknown"}
-                    </span>
-                  </td>
-                  <td className="p-4">{item.source_count || "-"}</td>
-                  <td className="p-4">{item.target_count || "-"}</td>
-                  <td className="p-4">{item.duration || "-"}</td>
-
-
-
-                  <td className="p-4">
-                    <div className="flex items-center gap-1">
-                      <button
-                        className={`p-1 rounded ${item.status === 'Ready to run' ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
-                        disabled={item.status !== 'Ready to run'}
-                        onClick={() => item.status === 'Ready to run' && handleTriggerETL(item.transformation_name)}
-                      >
-                        <Icon icon="material-symbols:play-arrow" className={`w-5 h-5 ${item.status === 'Ready to run' ? 'text-gray-600' : 'text-gray-400'}`} />
-                      </button>
-                      <button className="p-1 rounded hover:bg-gray-100">
-                        <Icon icon="material-symbols:edit-outline" className="w-5 h-5 text-gray-600" />
-                      </button>
-                      <button className="p-1 rounded hover:bg-gray-100">
-                        <Icon icon="material-symbols:content-copy-outline" className="w-5 h-5 text-gray-600" />
-                      </button>
-                      <button className="p-1 rounded hover:bg-gray-100">
-                        <Icon icon="material-symbols:info-outline" className="w-5 h-5 text-gray-600" />
-                      </button>
-                      <button className="p-1 rounded hover:bg-gray-100">
-                        <Icon icon="material-symbols:delete-outline" className="w-5 h-5 text-gray-600" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        <div className="flex justify-end items-center px-4 py-3 border-t">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={goToPreviousPage}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-lg ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-
-            <span className="text-sm text-gray-600">Page</span>
-            <select
-              value={currentPage}
-              onChange={e => goToPage(Number(e.target.value))}
-              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none"
-            >
-              {[...Array(totalPages)].map((_, idx) => (
-                <option key={idx + 1} value={idx + 1}>
-                  {idx + 1}
-                </option>
-              ))}
-            </select>
-            <span className="text-sm text-gray-600">of {totalPages}</span>
-
-            <button
-              onClick={goToNextPage}
-              disabled={currentPage === totalPages}
-              className={`p-2 rounded-lg ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Replace the custom table implementation with DataTable component */}
+      <DataTable
+        columns={columns}
+        data={transformationData}
+        actions={actions}
+        isLoading={isLoading}
+        isError={false}
+        refetch={fetchTransformationData}
+        title="Transformations"
+      />
 
     </div>
   );

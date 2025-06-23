@@ -295,13 +295,6 @@ function TransformationCanvasContent() {
         return;
       }
 
-      if (!defineNode.data.description || defineNode.data.description.trim() === "") {
-        toast.error("Please provide a description for your transformation", {
-          duration: 3000,
-          position: "top-center",
-        });
-        return;
-      }
 
       setIsSaving(true);
       const nameCheckResponse = await fetch(`${hostname}/etl/check-transformation-name?name=${encodeURIComponent(defineNode.data.name)}`, {
@@ -558,15 +551,45 @@ function TransformationCanvasContent() {
       const tgtName = connectedTarget.data.connection || "TGT";
       const autoName = `etl_${srcName}_SRC_${tgtName}`;
 
-      if (defineNode.data.name !== autoName) {
-        setNodes(nds =>
-          nds.map(n =>
-            n.id === defineNode.id
-              ? { ...n, data: { ...n.data, name: autoName } }
-              : n
-          )
-        );
-      }
+      const generateAndSetUniqueName = async () => {
+        if (defineNode.data.generateUniqueName) {
+          try {
+            const uniqueName = await defineNode.data.generateUniqueName(autoName);
+            if (defineNode.data.name !== uniqueName) {
+              setNodes(nds =>
+                nds.map(n =>
+                  n.id === defineNode.id
+                    ? { ...n, data: { ...n.data, name: uniqueName } }
+                    : n
+                )
+              );
+            }
+          } catch (error) {
+            console.error("Error generating unique name:", error);
+            if (defineNode.data.name !== autoName) {
+              setNodes(nds =>
+                nds.map(n =>
+                  n.id === defineNode.id
+                    ? { ...n, data: { ...n.data, name: autoName } }
+                    : n
+                )
+              );
+            }
+          }
+        } else {
+          if (defineNode.data.name !== autoName) {
+            setNodes(nds =>
+              nds.map(n =>
+                n.id === defineNode.id
+                  ? { ...n, data: { ...n.data, name: autoName } }
+                  : n
+              )
+            );
+          }
+        }
+      };
+
+      generateAndSetUniqueName();
     }
   }, [nodes, edges, setNodes]);
 
