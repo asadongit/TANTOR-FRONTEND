@@ -10,11 +10,11 @@ const JOIN_TYPES = [
 
 const JOIN_CONDITIONS = [
     { id: "==", name: "Equal (==)" },
-    { id: "!=", name: "Not Equal (!=)" },
-    { id: "<", name: "Less Than (<)" },
-    { id: "<=", name: "Less Than or Equal (<=)" },
-    { id: ">", name: "Greater Than (>)" },
-    { id: ">=", name: "Greater Than or Equal (>=)" },
+    // { id: "!=", name: "Not Equal (!=)" },
+    // { id: "<", name: "Less Than (<)" },
+    // { id: "<=", name: "Less Than or Equal (<=)" },
+    // { id: ">", name: "Greater Than (>)" },
+    // { id: ">=", name: "Greater Than or Equal (>=)" },
 ];
 
 export const JoinsOperationFields = ({

@@ -22,7 +22,7 @@ export const RestrictColumnsOperationFields = ({
 
   return (
     <div>
-      <div className="mb-4">
+      {/* <div className="mb-4">
         <label className="block text-xs text-gray-700 mb-1">Restriction Type</label>
         <select
           className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
@@ -34,7 +34,7 @@ export const RestrictColumnsOperationFields = ({
           ))}
         </select>
         <p className="text-xs text-gray-500 mt-1">{operatorDescription}</p>
-      </div>
+      </div> */}
 
       <div className="mb-4">
         <div className="relative" ref={el => dropdownRefs.current[sourceDropdownKey] = el}>
