@@ -633,9 +633,15 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
   const replacePlaceholders = (query, conn, schemas, tables, columns) => {
     let result = query;
     const connectionName = conn || '';
-    const schemaName = Array.isArray(schemas) && schemas.length > 0 ? schemas[0] : '';
-    const tableName = Array.isArray(tables) && tables.length > 0 ? tables[0] : '';
-    const columnName = Array.isArray(columns) && columns.length > 0 ? columns[0] : '';
+    const schemaName = Array.isArray(schemas) && schemas.length > 0
+      ? (schemas[0]?.split('.').pop() || schemas[0])
+      : (schemas ? (schemas.split('.').pop() || schemas) : '');
+    const tableName = Array.isArray(tables) && tables.length > 0
+      ? (tables[0]?.split('.').pop() || tables[0])
+      : (tables ? (tables.split('.').pop() || tables) : '');
+    const columnName = Array.isArray(columns) && columns.length > 0
+      ? (columns[0]?.split('.').pop() || columns[0])
+      : (columns ? (columns.split('.').pop() || columns) : '');
 
     if (connectionName) {
       result = result.replace(/\bconnection\b/g, connectionName);
