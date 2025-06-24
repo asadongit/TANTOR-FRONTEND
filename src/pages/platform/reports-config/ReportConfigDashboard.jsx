@@ -6,7 +6,8 @@ import {
   Play,
   Download,
   Plus,
-  MoveUpRight
+  MoveUpRight,
+  Eye
 } from "lucide-react";
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -21,7 +22,7 @@ import { secureQuery } from '../../datagovernance/DataCatalogue/Components/funct
 import { useAuth } from '../../../context/AuthContext';
 import SupersetReport from './components/SupersetReport';
 import toast from "react-hot-toast";
-
+import ReportSummaryComponent from "./components/ReportSummaryComponent";
 
 
 const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
@@ -57,6 +58,8 @@ const ReportConfigDashboard = () => {
   const { token, hostnameV1 } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [currentEmbedId, setCurrentEmbedId] = useState('');
+  const [currentReportData, setCurrentReportData] = useState({});
+  const [isReportSummaryOpen, setIsReportSummaryOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -289,6 +292,46 @@ const ReportConfigDashboard = () => {
             mode: "EDIT",
           },
         });
+      },
+    },
+    {
+      label: "Display",
+      icon: <Eye size={16} />,
+      onClick: (row) => {
+        console.log("Display clicked for", row);
+        (async () => {
+          const reportId = row.report_id;
+          console.log(row.report_type.toLowerCase())
+          if(row.report_type.toLowerCase() !== "grid" && row.report_type.toLowerCase() !== "hybrid"){
+            toast.error("Only Grid/Hybrid reports config can be displayed.");
+            return;
+          }
+
+          try{
+            const response = await fetch(`${hostnameV1}/lineItems/reports/json?report_id=${reportId}`, {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            });
+  
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => null);
+              throw new Error(errorData?.detail || "Failed to fetch report config.");
+            }
+  
+            const data = await response.json();
+            setCurrentReportData({
+              "reportName": row.report_name,
+              "lineItemsConfig": data
+            });
+            setIsReportSummaryOpen(true);
+          }catch(error){
+            console.error(error);
+            toast.error(error.message);
+          }
+
+      })();
       },
     },
     {
@@ -589,6 +632,13 @@ const ReportConfigDashboard = () => {
         setShowModal={setShowModal}
         currentReportName={currentEmbedId}
       />
+
+      <ReportSummaryComponent
+        isOpen={isReportSummaryOpen}
+        onClose={() => {setIsReportSummaryOpen(false)}}
+        reportName={currentReportData.reportName || ""} 
+        lineItemsData={currentReportData?.lineItemsConfig || []}
+        />
     </div>
   );
 };

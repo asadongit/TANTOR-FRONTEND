@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, Trash2, Trash } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import DimensionSelector from "./DimensionSelector";
 import TimeTransformationComponent from "./TimeTransformationComponent";
 import { useAuth } from "../../../../context/AuthContext";
@@ -260,7 +260,7 @@ const RuleSelector = ({
           onClick={() => removeRule(index)}
           aria-label="Delete rule"
         >
-          <Trash className="h-5 w-5" />
+          <Trash2 className="h-5 w-5" />
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

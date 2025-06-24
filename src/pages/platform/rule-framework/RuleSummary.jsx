@@ -69,103 +69,63 @@ const RuleSummary = ({
     }
   };
 
-  const handleEditRule = () => {
-     const { metricColumns, groupByColumns } = getSegregatedColumns(
-      filterConditions.columns
-    );
+const handleRuleSubmit = async (ruleType) => {
+  const { metricColumns, groupByColumns } = getSegregatedColumns(
+    filterConditions.columns
+  );
 
-     const payload = {
-      ruleId,
-      ruleName,
-      ruleDescription,
-      fact_id: selectedFact.fact_id,
-      dimensionFilters,
-      timeTransformationFilters,
-      metricColumns,
-      groupByColumns,
+  if (metricColumns.length === 0) {
+    toast.error("No Aggregates were selected.");
+    return;
+  }
+
+  const payload = {
+    ruleName,
+    ruleDescription,
+    fact_id: selectedFact.fact_id,
+    dimensionFilters,
+    timeTransformationFilters,
+    metricColumns,
+    groupByColumns,
+    status: ruleType === "draft" ? "draft" : "active",
+  };
+
+  if (mode.toUpperCase() === "EDIT") {
+    payload.ruleId = ruleId;
+  }
+
+  const url =
+    mode.toUpperCase() === "EDIT"
+      ? `${hostnameV1}/updateRule`
+      : `${hostnameV1}/saveRule`;
+  const method = mode.toUpperCase() === "EDIT" ? "PUT" : "POST";
+
+  try {
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     };
 
-    console.log("FINAL PAYLOAD ==> ", payload);
-    
-    console.log("EDIT JSON ==> ", nodes);
-    
-    (async () => {
-      try {
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        };
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: JSON.stringify({ rule_data: payload, rule_json: nodes }),
+    });
 
-        const response = await fetch(`${hostnameV1}/updateRule`,{
-          method: 'PUT',
-          headers: headers,
-          body: JSON.stringify({rule_data: payload, rule_json: nodes}),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          throw new Error(errorData?.detail || "Failed to save rule.");
-        }
-
-        const data = await response.json();
-        toast.success(data?.message || "Rule Updated successfully.");
-        navigate("/config/rule");
-      } catch (error) {
-        console.log(error);
-        toast.error(error.message);
-      }
-    })();
-  }
-  const handleCreateRule = () => {
-
-    const { metricColumns, groupByColumns } = getSegregatedColumns(
-      filterConditions.columns
-    );
-
-    if(metricColumns.length === 0){
-      toast.error("No Aggregates were selected.");
-      return;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.detail || "Failed to save rule.");
     }
 
-     const payload = {
-      ruleName,
-      ruleDescription,
-      fact_id: selectedFact.fact_id,
-      dimensionFilters,
-      timeTransformationFilters,
-      metricColumns,
-      groupByColumns,
-    };
+    const data = await response.json();
+    toast.success(data?.message || "Rule saved successfully.");
+    navigate("/config/rule");
+  } catch (error) {
+    console.error(error);
+    toast.error(error.message);
+  }
+};
 
-    console.log("FINAL PAYLOAD ==> ", payload);
-    
-    (async () => {
-      try {
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        };
-
-        const response = await fetch(`${hostnameV1}/saveRule`,{
-          method: 'POST',
-          headers: headers,
-          body: JSON.stringify({rule_data: payload, rule_json: nodes}),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          throw new Error(errorData?.detail || "Failed to save rule.");
-        }
-
-        const data = await response.json();
-        toast.success(data?.message || "Rule saved successfully.");
-        navigate("/config/rule");
-      } catch (error) {
-        console.log(error);
-        toast.error(error.message);
-      }
-    })();
-  };
 
   return (
     <Modal
@@ -293,11 +253,13 @@ const RuleSummary = ({
                   >
                     Cancel
                   </button>
-                  <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+                  {mode !== "EDIT" && (<button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                    onClick={() => {handleRuleSubmit("draft")}}
+                  >
                     Save Draft
-                  </button>
+                  </button>)}
                   <button
-                    onClick={() => {mode.toUpperCase() === "EDIT" ? handleEditRule(): handleCreateRule()}}
+                    onClick={() => {handleRuleSubmit("active")}}
                     className="px-4 py-2 bg-[#8e78b7] text-white rounded-md hover:bg-[#7b65a3] transition-colors"
                   >
                     {mode.toUpperCase() === "EDIT" ? "Edit Rule" : "Create Rule"}

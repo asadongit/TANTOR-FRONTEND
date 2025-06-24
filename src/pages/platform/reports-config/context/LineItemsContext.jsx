@@ -21,8 +21,6 @@ export const LineItemsProvider = ({ children, reportData }) => {
   const [currentLineItemId, setCurrentLineItemId] = useState("");
   const [lineItemConfig, setLineItemConfig] = useState([]);
 
-  const [linkedLineItemIds, setLinkedLineItemIds] = useState(new Set());
-
   useEffect(() => {
     console.log("Final JSON ==> ", {
       regReportId: reportId,
@@ -140,9 +138,6 @@ export const LineItemsProvider = ({ children, reportData }) => {
   };
 
   const validateLineItemsJson = () => {
-    // console.log(linkedLineItemIds);
-    // console.log(`${reportId} || ${reportName} || ${reportDesc} || ${reportType}`)
-    
     // Basic validation
     if (lineItemConfig.length === 0) {
       toast.error("No Line Items have been configured.");
@@ -212,7 +207,6 @@ export const LineItemsProvider = ({ children, reportData }) => {
         closeAllModals,
         validateLineItemsJson,
         addReportToDatabase,
-        setLinkedLineItemIds,
         mode
       }}
     >
