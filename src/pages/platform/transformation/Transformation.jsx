@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios';
@@ -30,6 +30,7 @@ function Transformation() {
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [viewMode, setViewMode] = useState('both');
   const [transformationData, setTransformationData] = useState([]);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, transformation: null });
   const [dashboardData, setDashboardData] = useState({
     cards: { total: 0, success: 0, failed: 0, average_duration: 0 },
     last5transformations: [],
@@ -169,11 +170,7 @@ function Transformation() {
     }
   };
 
-  const filteredData = transformationData.filter(item =>
-    item.transformation_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (item.created_by && item.created_by.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+
 
   const MovementChart = () => {
     const chartData = dashboardData.movementgraph || [];
@@ -350,7 +347,41 @@ function Transformation() {
     }
   };
 
-  // Define columns for the DataTable
+  const handleDeleteTransformation = (transformation) => {
+    setDeleteModal({ isOpen: true, transformation });
+  };
+
+  const confirmDeleteTransformation = async (transformationId) => {
+    try {
+      const response = await axios.delete(
+        `${hostname}/etl/transformation/delete?transformation_id=${transformationId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.status === 200) {
+        fetchTransformationData();
+        fetchDashboardData();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error deleting transformation:", error);
+      setToast({
+        show: true,
+        message: 'Failed to delete transformation',
+        type: 'error'
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+      throw error;
+    }
+  };
+
   const columns = [
     { key: "transformation_name", label: "Name", sortable: true },
     { key: "description", label: "Description", sortable: true },
@@ -366,7 +397,6 @@ function Transformation() {
     { label: "Action", sortable: false },
   ];
 
-  // Define actions for the DataTable
   const actions = [
     {
       label: "Run",
@@ -392,9 +422,129 @@ function Transformation() {
     {
       label: "Delete",
       icon: <Icon icon="material-symbols:delete-outline" className="w-5 h-5" />,
-      onClick: (row) => console.log("Delete:", row)
+      onClick: (row) => handleDeleteTransformation(row)
     },
   ];
+
+
+  const DeleteTransformation = ({ isOpen, onClose, transformationData, onConfirmDelete }) => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [isDeleted, setIsDeleted] = useState(false);
+
+    useEffect(() => {
+      if (isOpen) {
+        setIsDeleted(false);
+        setIsLoading(false);
+      }
+    }, [isOpen, transformationData]);
+
+    if (!isOpen || !transformationData) return null;
+
+    const handleClose = () => {
+      setIsDeleted(false);
+      setIsLoading(false);
+      onClose();
+    };
+
+    const handleConfirm = async () => {
+      setIsLoading(true);
+
+      try {
+        const success = await onConfirmDelete(transformationData.transformation_id);
+        if (success) {
+          setToast({
+            show: true,
+            message: 'Transformation deleted successfully',
+            type: 'success'
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: '', type: '' });
+          }, 3000);
+          onClose();
+        }
+      } catch (error) {
+        console.error('Error deleting transformation:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl w-[500px] p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              {isDeleted ? (
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+              )}
+              <h2 className="text-xl font-bold text-red-500">
+                {isDeleted ? 'Transformation Deleted' : 'Delete Confirmation'}
+              </h2>
+            </div>
+            {!isLoading && (
+              <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+
+          <div className="mb-8">
+            {isLoading && (
+              <div className="p-4 bg-gray-50 rounded-lg text-center mb-6 flex flex-col items-center">
+                <Loader className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
+                <p className="text-lg font-medium text-gray-800">Deleting transformation...</p>
+              </div>
+            )}
+
+            {isDeleted && (
+              <div className="p-4 bg-green-50 rounded-lg text-center mb-6">
+                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
+                <p className="text-lg font-medium text-gray-800">
+                  Transformation "{transformationData.transformation_name}" deleted successfully
+                </p>
+                <button
+                  onClick={handleClose}
+                  className="mt-6 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+
+            {!isLoading && !isDeleted && (
+              <>
+                <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
+                  <p className="text-lg font-medium text-gray-800">
+                    You are about to delete the transformation "{transformationData.transformation_name}"
+                  </p>
+                  <p className="text-gray-500 mt-2">This action cannot be undone.</p>
+                </div>
+                <p className="text-gray-600 text-center mb-6">Do you want to continue?</p>
+
+                <div className="flex justify-center gap-4">
+                  <button
+                    onClick={handleConfirm}
+                    className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={handleClose}
+                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    No
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="p-6">
@@ -517,7 +667,6 @@ function Transformation() {
         </>
       )}
 
-      {/* Replace the custom table implementation with DataTable component */}
       <DataTable
         columns={columns}
         data={transformationData}
@@ -528,6 +677,12 @@ function Transformation() {
         title="Transformations"
       />
 
+      <DeleteTransformation
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, transformation: null })}
+        transformationData={deleteModal.transformation}
+        onConfirmDelete={confirmDeleteTransformation}
+      />
     </div>
   );
 }

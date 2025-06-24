@@ -547,9 +547,9 @@ function TransformationCanvasContent() {
       connectedTarget &&
       (!defineNode.data.name || defineNode.data.name.startsWith("etl_"))
     ) {
-      const srcName = connectedSource.data.connection || "SRC";
-      const tgtName = connectedTarget.data.connection || "TGT";
-      const autoName = `etl_${srcName}_SRC_${tgtName}`;
+      const srcName = connectedSource.data.connection || "src";
+      const tgtName = connectedTarget.data.connection || "tgt";
+      const autoName = `etl_${srcName}_src_${tgtName}`;
 
       const generateAndSetUniqueName = async () => {
         if (defineNode.data.generateUniqueName) {
