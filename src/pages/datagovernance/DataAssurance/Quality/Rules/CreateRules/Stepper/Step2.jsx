@@ -625,47 +625,22 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
 
   const replacePlaceholders = (query, conn, schemas, tables, columns) => {
     let result = query;
-    const skipWords = ['information_schema', 'columns', 'column_name', 'table_name', 'table_schema'];
     const connectionName = conn || '';
-    const schema = Array.isArray(schemas) && schemas.length > 0 ? schemas[0] : '';
-    const table = Array.isArray(tables) && tables.length > 0 ? tables[0] : '';
-    const column = Array.isArray(columns) && columns.length > 0 ? columns[0] : '';
+    const schemaName = Array.isArray(schemas) && schemas.length > 0 ? schemas[0] : '';
+    const tableName = Array.isArray(tables) && tables.length > 0 ? tables[0] : '';
+    const columnName = Array.isArray(columns) && columns.length > 0 ? columns[0] : '';
 
-    const schemaName = schema ? schema.split('.').pop() : '';
-    const tableName = table ? table.split('.').pop() : '';
-    const columnName = column ? column.split('.').pop() : '';
-
-    if (
-      connectionName &&
-      schemaName &&
-      tableName &&
-      !skipWords.includes(schemaName) &&
-      !skipWords.includes(tableName)
-    ) {
-      result = result.replace(
-        /connection\.schema\.table/gi,
-        `${connectionName}.${schemaName}.${tableName}`
-      );
+    if (connectionName) {
+      result = result.replace(/\bconnection\b/g, connectionName);
     }
-
-    if (schemaName && tableName && !skipWords.includes(schemaName) && !skipWords.includes(tableName)) {
-      result = result.replace(
-        /schema\.table/gi,
-        `${schemaName}.${tableName}`
-      );
+    if (schemaName) {
+      result = result.replace(/\bschema\b/g, schemaName);
     }
-
-    if (connectionName && schemaName && !skipWords.includes(schemaName)) {
-      result = result.replace(
-        /connection\.schema/gi,
-        `${connectionName}.${schemaName}`
-      );
+    if (tableName) {
+      result = result.replace(/\btable\b/g, tableName);
     }
-    if (tableName && !skipWords.includes(tableName)) {
-      result = result.replace(/\btable\b/gi, tableName);
-    }
-    if (columnName && !skipWords.includes(columnName)) {
-      result = result.replace(/\bcolumn\b/gi, columnName);
+    if (columnName) {
+      result = result.replace(/\bcolumn\b/g, columnName);
     }
     return result;
   };
@@ -1117,7 +1092,7 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
                 showLineNumbers: true,
                 tabSize: 2,
               }}
-              readOnly={!getCurrentQuery()}
+              readOnly={false}
               wrapEnabled={true}
             />
 

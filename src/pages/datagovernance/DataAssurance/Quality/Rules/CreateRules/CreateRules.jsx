@@ -17,53 +17,66 @@ function CreateRulesInner() {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Detect edit mode and ruleData from navigation state
   const isEdit = location.state?.edit;
   const editRuleData = location.state?.ruleData;
 
-  // Prefill step data and jump to step 2 if editing
   useEffect(() => {
     if (isEdit && editRuleData && editRuleData.rules && Array.isArray(editRuleData.rules)) {
-      // Prepare step1 and step2 data from API response
-      const rule = editRuleData.rules[0];
+      const rulesByGroup = {};
+      editRuleData.rules.forEach(rule => {
+        if (!rulesByGroup[rule.group_name]) {
+          rulesByGroup[rule.group_name] = [];
+        }
+        rulesByGroup[rule.group_name].push({
+          ...rule,
+          group_name: rule.group_name,
+          id: rule.id,
+          name: rule.name,
+          description: rule.description,
+          severity: rule.severity,
+          status: rule.status,
+          owner: rule.owner,
+          query: rule.query,
+        });
+      });
       const step1 = {
         category: 'Custom',
         type: 'Data',
-        rules: {
-          [rule.group_name]: [{
-            ...rule,
-            group_name: rule.group_name,
-            id: rule.id,
-            name: rule.name,
-            description: rule.description,
-            severity: rule.severity,
-            status: rule.status,
-            owner: rule.owner,
-            query: rule.query,
-          }]
-        }
+        rules: rulesByGroup
       };
-      // Prepare step2 data
-      const step2 = editRuleData.rules.map(r => ({
-        id: r.id,
-        category: 'Custom',
-        type: 'Data',
-        group: r.group_name,
-        rule: {
-          id: r.id,
-          name: r.name,
-          query: r.query,
-          description: r.description,
-          severity: r.severity,
-          status: r.status,
-          owner: r.owner,
-        },
-        connection_details: (r.mappings && r.mappings[0]?.connection_details) || [],
-      }));
+
+      const step2 = [];
+      editRuleData.rules.forEach(r => {
+        if (Array.isArray(r.mappings)) {
+          const allConnectionDetails = [];
+          r.mappings.forEach(mapping => {
+            if (Array.isArray(mapping.connection_details)) {
+              allConnectionDetails.push(...mapping.connection_details);
+            } else if (mapping.connection_details) {
+              allConnectionDetails.push(mapping.connection_details);
+            }
+          });
+          step2.push({
+            id: r.id,
+            category: 'Custom',
+            type: 'Data',
+            group: r.group_name,
+            rule: {
+              id: r.id,
+              name: r.name,
+              query: r.query,
+              description: r.description,
+              severity: r.severity,
+              status: r.status,
+              owner: r.owner,
+            },
+            connection_details: allConnectionDetails,
+          });
+        }
+      });
       setStepData({ step1, step2 });
       setCurrentStep(2);
     }
-    // eslint-disable-next-line
   }, [isEdit, editRuleData]);
 
   const handleCancel = () => {
