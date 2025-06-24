@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Trash2, PlayCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Trash2, PlayCircle, RefreshCw, X } from 'lucide-react';
 import AceEditor from 'react-ace';
 import Select, { components } from 'react-select';
 import { useStepData } from './StepContext';
@@ -48,6 +48,13 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
   const { stepData, setStepData } = useStepData();
   const { token } = useAuth();
   const navigate = useNavigate();
+
+  const [querySearchText, setQuerySearchText] = useState('');
+  const [validationFilter, setValidationFilter] = useState('all');
+  const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoaded, setSearchLoaded] = useState(false);
+  const editorRef = useRef(null);
 
   const [validationStatus, setValidationStatus] = useState({});
 
@@ -625,47 +632,22 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
 
   const replacePlaceholders = (query, conn, schemas, tables, columns) => {
     let result = query;
-    const skipWords = ['information_schema', 'columns', 'column_name', 'table_name', 'table_schema'];
     const connectionName = conn || '';
-    const schema = Array.isArray(schemas) && schemas.length > 0 ? schemas[0] : '';
-    const table = Array.isArray(tables) && tables.length > 0 ? tables[0] : '';
-    const column = Array.isArray(columns) && columns.length > 0 ? columns[0] : '';
+    const schemaName = Array.isArray(schemas) && schemas.length > 0 ? schemas[0] : '';
+    const tableName = Array.isArray(tables) && tables.length > 0 ? tables[0] : '';
+    const columnName = Array.isArray(columns) && columns.length > 0 ? columns[0] : '';
 
-    const schemaName = schema ? schema.split('.').pop() : '';
-    const tableName = table ? table.split('.').pop() : '';
-    const columnName = column ? column.split('.').pop() : '';
-
-    if (
-      connectionName &&
-      schemaName &&
-      tableName &&
-      !skipWords.includes(schemaName) &&
-      !skipWords.includes(tableName)
-    ) {
-      result = result.replace(
-        /connection\.schema\.table/gi,
-        `${connectionName}.${schemaName}.${tableName}`
-      );
+    if (connectionName) {
+      result = result.replace(/\bconnection\b/g, connectionName);
     }
-
-    if (schemaName && tableName && !skipWords.includes(schemaName) && !skipWords.includes(tableName)) {
-      result = result.replace(
-        /schema\.table/gi,
-        `${schemaName}.${tableName}`
-      );
+    if (schemaName) {
+      result = result.replace(/\bschema\b/g, schemaName);
     }
-
-    if (connectionName && schemaName && !skipWords.includes(schemaName)) {
-      result = result.replace(
-        /connection\.schema/gi,
-        `${connectionName}.${schemaName}`
-      );
+    if (tableName) {
+      result = result.replace(/\btable\b/g, tableName);
     }
-    if (tableName && !skipWords.includes(tableName)) {
-      result = result.replace(/\btable\b/gi, tableName);
-    }
-    if (columnName && !skipWords.includes(columnName)) {
-      result = result.replace(/\bcolumn\b/gi, columnName);
+    if (columnName) {
+      result = result.replace(/\bcolumn\b/g, columnName);
     }
     return result;
   };
@@ -725,6 +707,132 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
     return all;
   })();
 
+  const getUniqueValidationStatuses = () => {
+    const statuses = new Set(['all']);
+    Object.values(validationStatus).forEach(status => {
+      if (status) statuses.add(status);
+    });
+    return Array.from(statuses);
+  };
+
+  const shouldShowConnection = (groupName, ruleIdx, connIdx) => {
+    const queryKey = `${groupName}__${ruleIdx}`;
+    const connKey = `${queryKey}__${connIdx}`;
+    const rule = queries[groupName]?.[ruleIdx];
+
+    if (validationFilter !== 'all') {
+      if (validationStatus[connKey] !== validationFilter) {
+        return false;
+      }
+    }
+
+    if (querySearchText && rule) {
+      return rule.query.toLowerCase().includes(querySearchText.toLowerCase());
+    }
+
+    return true;
+  };
+
+
+  const searchAcrossQueries = useCallback(() => {
+    if (!querySearchText.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const results = [];
+    let totalMatches = 0;
+
+    groupNames.forEach((groupName, gIdx) => {
+      (queries[groupName] || []).forEach((ruleObj, rIdx) => {
+        if (!selectedRules[groupName]?.has(ruleObj.id)) return;
+
+        const query = ruleObj.query || '';
+        let lastIndex = 0;
+        let count = 0;
+        while (lastIndex !== -1) {
+          lastIndex = query.toLowerCase().indexOf(querySearchText.toLowerCase(), lastIndex);
+          if (lastIndex !== -1) {
+            count++;
+            lastIndex += querySearchText.length;
+          }
+        }
+
+        if (count > 0) {
+          results.push({
+            groupIndex: gIdx,
+            ruleIndex: rIdx,
+            groupName,
+            ruleName: ruleObj.name,
+            count,
+            matches: totalMatches + 1,
+            matchesTo: totalMatches + count
+          });
+          totalMatches += count;
+        }
+      });
+    });
+
+    setSearchResults(results);
+    setCurrentSearchIndex(results.length > 0 ? 0 : -1);
+
+    return results;
+  }, [querySearchText, groupNames, queries, selectedRules]);
+
+  useEffect(() => {
+    if (querySearchText.trim()) {
+      searchAcrossQueries();
+    } else {
+      setSearchResults([]);
+      setCurrentSearchIndex(-1);
+
+      if (editorRef.current?.editor) {
+        editorRef.current.editor.getSession().getSelection().clearSelection();
+      }
+    }
+  }, [querySearchText, searchAcrossQueries]);
+
+  useEffect(() => {
+    if (searchResults.length > 0 && currentSearchIndex >= 0 && currentSearchIndex < searchResults.length) {
+      const searchResult = searchResults[currentSearchIndex];
+
+      setActiveGroupIndex(searchResult.groupIndex);
+      setActiveRuleIndex(searchResult.ruleIndex);
+
+      setSearchLoaded(false);
+      setTimeout(() => {
+        if (editorRef.current?.editor) {
+          const editor = editorRef.current.editor;
+
+          editor.findAll(querySearchText, {
+            caseSensitive: false,
+            wholeWord: false,
+            regExp: false,
+            preventScroll: true
+          });
+
+          setSearchLoaded(true);
+        }
+      }, 100);
+    }
+  }, [currentSearchIndex, searchResults, querySearchText]);
+
+  const goToNextSearchResult = () => {
+    if (searchResults.length === 0) return;
+
+    const nextIndex = (currentSearchIndex + 1) % searchResults.length;
+    setCurrentSearchIndex(nextIndex);
+  };
+
+  const goToPrevSearchResult = () => {
+    if (searchResults.length === 0) return;
+
+    const prevIndex = (currentSearchIndex - 1 + searchResults.length) % searchResults.length;
+    setCurrentSearchIndex(prevIndex);
+  };
+
+  const isPrebuiltEdit = edit && data?.category === 'Pre-built';
+
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div ref={containerRef} className="flex relative" style={{ minHeight: '600px' }}>
@@ -741,6 +849,22 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
                 const isExpanded = expandedGroups[groupName];
                 const rulesCount = data.rules[groupName].length;
                 const isActive = index === activeGroupIndex;
+
+                const allSelected = data.rules[groupName].every(rule => selectedRules[groupName]?.has(rule.id));
+                const someSelected = data.rules[groupName].some(rule => selectedRules[groupName]?.has(rule.id));
+
+                const handleSelectAllGroup = (e) => {
+                  const checked = e.target.checked;
+                  setSelectedRules(prev => {
+                    const groupSet = new Set(prev[groupName] || []);
+                    if (checked) {
+                      data.rules[groupName].forEach(rule => groupSet.add(rule.id));
+                    } else {
+                      data.rules[groupName].forEach(rule => groupSet.delete(rule.id));
+                    }
+                    return { ...prev, [groupName]: groupSet };
+                  });
+                };
 
                 return (
                   <div
@@ -782,6 +906,15 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
                             <tr>
                               <th className="py-1 text-left font-medium w-8">
 
+                                <input
+                                  type="checkbox"
+                                  checked={allSelected}
+                                  ref={el => {
+                                    if (el) el.indeterminate = !allSelected && someSelected;
+                                  }}
+                                  onChange={handleSelectAllGroup}
+                                  className="form-checkbox text-[#8d77ba] h-4 w-4"
+                                />
                               </th>
                               <th className="py-1 text-left font-medium">Name</th>
                               <th className="py-1 text-left font-medium">Status</th>
@@ -884,12 +1017,87 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
           }}
         >
           <div className="mb-6">
-            <div className="flex items-center mb-3">
+            <div className="flex items-center justify-between mb-3">
               <h4 className="text-md font-semibold mr-2">Apply To</h4>
+
+              {/* Update search UI */}
+              <div className="flex items-center gap-3">
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    placeholder="Search in SQL queries..."
+                    value={querySearchText}
+                    onChange={(e) => setQuerySearchText(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg w-56 focus:outline-none focus:ring-2 focus:ring-[#8d77ba] text-sm"
+                    title="Search for text within SQL queries"
+                  />
+                  {querySearchText && (
+                    <>
+                      <div className="absolute right-2 flex items-center gap-1">
+                        <span className="text-xs text-gray-500">
+                          {searchResults.length > 0 && searchLoaded ? (
+                            `${searchResults[currentSearchIndex] ?
+                              `${searchResults[currentSearchIndex].matches}-${searchResults[currentSearchIndex].matchesTo}` : ""} of ${
+                              searchResults.reduce((total, result) => total + result.count, 0)
+                            }`
+                          ) : ""}
+                        </span>
+
+                        <button
+                          disabled={searchResults.length === 0}
+                          onClick={goToPrevSearchResult}
+                          className={`p-1 rounded-md ${searchResults.length === 0 ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}
+                          title="Previous result"
+                        >
+                          <ChevronUp size={14} />
+                        </button>
+
+                        <button
+                          disabled={searchResults.length === 0}
+                          onClick={goToNextSearchResult}
+                          className={`p-1 rounded-md ${searchResults.length === 0 ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}
+                          title="Next result"
+                        >
+                          <ChevronDown size={14} />
+                        </button>
+
+                        <button
+                          onClick={() => setQuerySearchText('')}
+                          className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                          title="Clear search"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <select
+                  value={validationFilter}
+                  onChange={(e) => setValidationFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8d77ba] text-sm"
+                  title="Filter by validation status"
+                >
+                  <option value="all">All Validations</option>
+                  {getUniqueValidationStatuses().includes('success') && (
+                    <option value="success">Valid Queries</option>
+                  )}
+                  {getUniqueValidationStatuses().includes('error') && (
+                    <option value="error">Invalid Queries</option>
+                  )}
+                </select>
+              </div>
             </div>
+
             <div className="border rounded-lg p-4">
               <div className="space-y-4">
                 {connections.map((conn, idx) => {
+                  // Apply filters to connections
+                  if (!shouldShowConnection(groupNames[activeGroupIndex], activeRuleIndex, idx)) {
+                    return null;
+                  }
+
                   const schemaOpts = conn.connection ? (schemasByConnection[conn.connection] || []) : [];
                   const tableOpts = [];
                   const columnOpts = [];
@@ -980,9 +1188,9 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
                           <span className="font-medium">Connection {idx + 1}</span>
                         </div>
                         <div className="flex gap-2 items-center">
-                          {/* Validation status icon - moved left of Run SQL */}
+
                           {statusIcon}
-                          {/* Run SQL button */}
+
                           <button
                             className="p-2 border rounded hover:bg-gray-100"
                             type="button"
@@ -1088,17 +1296,40 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
                     </div>
                   );
                 })}
+
+                {/* Show message when no connections match the filter */}
+                {connections.length > 0 && connections.every((_, idx) =>
+                  !shouldShowConnection(groupNames[activeGroupIndex], activeRuleIndex, idx)
+                ) && (
+                  <div className="text-center p-4 text-gray-500 border border-dashed border-gray-300 rounded-md">
+                    {querySearchText ? (
+                      <div>
+                        <p className="font-medium mb-1">No SQL queries found containing "{querySearchText}"</p>
+                        <p className="text-sm">Try a different search term or clear the search</p>
+                      </div>
+                    ) : (
+                      <p>No connections match your filter criteria.</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-md font-medium">Query Editor</h3>
-
+            <div className="flex items-center">
+              <h3 className="text-md font-medium">Query Editor</h3>
+              {searchResults.length > 0 && currentSearchIndex >= 0 && searchResults[currentSearchIndex] && (
+                <span className="ml-3 text-xs text-gray-500 italic">
+                  Showing results from: {searchResults[currentSearchIndex].ruleName} ({searchResults[currentSearchIndex].groupName})
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="border rounded-lg mb-4">
             <AceEditor
+              ref={editorRef}
               mode="sql"
               theme="tomorrow"
               name="query-editor"
@@ -1117,8 +1348,19 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
                 showLineNumbers: true,
                 tabSize: 2,
               }}
-              readOnly={!getCurrentQuery()}
+              readOnly={isPrebuiltEdit}
               wrapEnabled={true}
+              onLoad={(editor) => {
+                editor.execCommand("find");
+                editor.findAll(querySearchText, {
+                  caseSensitive: false,
+                  wholeWord: false,
+                  regExp: false,
+                  preventScroll: false
+                });
+                editor.execCommand("find");
+                setSearchLoaded(true);
+              }}
             />
 
             <div className="flex justify-between items-center p-3 bg-gray-50 border-t">
@@ -1147,6 +1389,26 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
                 </button>
               </div>
 
+              {querySearchText && searchResults.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Search results:</span>
+                  <button
+                    onClick={goToPrevSearchResult}
+                    className="p-1 rounded border hover:bg-gray-100"
+                  >
+                    <ChevronUp size={16} />
+                  </button>
+                  <span className="text-sm">
+                    {currentSearchIndex + 1} of {searchResults.length}
+                  </span>
+                  <button
+                    onClick={goToNextSearchResult}
+                    className="p-1 rounded border hover:bg-gray-100"
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1163,10 +1425,9 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
             }
           }}
           className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          // In edit mode, always enabled (Cancel), otherwise use default
-          disabled={!!edit ? false : undefined}
+          disabled={false}
         >
-          {edit ? 'Cancel' : 'Back'}
+          Back
         </button>
         <button
           onClick={handleNextClick}
