@@ -3,7 +3,7 @@ import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash
 import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useNavigate } from 'react-router-dom';
-import RuleRunSummaryPopup from './RuleRunSummaryPopup';
+import RuleRunSummary from './RuleRunSummary';
 
 const Rules = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,6 +14,9 @@ const Rules = () => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [showRunSummary, setShowRunSummary] = useState(false);
   const [runForId, setRunForId] = useState(null);
+  const [detailedRules, setDetailedRules] = useState([]);
+  const [ruleRunResults, setRuleRunResults] = useState([]);
+  const [isPopupLoading, setIsPopupLoading] = useState(false);
   const rowsPerPage = 5;
   const navigate = useNavigate();
   const [metricData, setMetricData] = useState([]);
@@ -91,6 +94,52 @@ const Rules = () => {
       });
   };
 
+  const fetchRuleDetails = async (ids) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/details`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await response.json();
+      return data.rules || [];
+    } catch (error) {
+      console.error('Error fetching rule details:', error);
+      setToast({
+        show: true,
+        message: 'Failed to fetch rule details',
+        type: 'error',
+      });
+      return [];
+    }
+  };
+
+  const fetchRuleRunResults = async (ids) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/rulerun`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await response.json();
+      return data || [];
+    } catch (error) {
+      console.error('Error running rules:', error);
+      setToast({
+        show: true,
+        message: 'Failed to run rules',
+        type: 'error',
+      });
+      return [];
+    }
+  };
+
   useEffect(() => {
     fetchCounts();
     fetchTableData();
@@ -125,11 +174,38 @@ const Rules = () => {
     );
   };
 
-  const handleRunSelected = (item, isRunForId = false) => {
+  const handleRunSelected = async (item, isRunForId = false) => {
+    let idsToRun = [];
+
     if (isRunForId) {
+      idsToRun = [item.id];
+      setRunForId(item.id);
+    } else if (selectedRows.length > 0) {
+      idsToRun = selectedRows;
+      setRunForId(null);
+    } else {
+      idsToRun = [item.id];
       setRunForId(item.id);
     }
+
+    setIsPopupLoading(true); 
     setShowRunSummary(true);
+
+    const [detailedRulesData, results] = await Promise.all([
+      fetchRuleDetails(idsToRun),
+      fetchRuleRunResults(idsToRun)
+    ]);
+    const enrichedRulesData = detailedRulesData.map((rule) => {
+      const tableItem = tableData.find((item) => item.id === rule.id);
+      return {
+        ...rule,
+        type: tableItem ? tableItem.type : rule.type,
+      };
+    });
+
+    setDetailedRules(enrichedRulesData);
+    setRuleRunResults(results);
+    setIsPopupLoading(false); 
   };
 
   const handleQuickAction = (action, item) => {
@@ -207,7 +283,7 @@ const Rules = () => {
             onClick={() => setToast({ show: false, message: '', type: '' })}
             className="ml-2 text-gray-500 hover:text-gray-700"
           >
-            <X className="h-4 w-4" />
+            <Icon icon="mdi:close" className="h-4 w-4" />
           </button>
         </div>
       )}
@@ -309,7 +385,7 @@ const Rules = () => {
                         className="h-4 w-4 text-[#8e78b7] rounded"
                       />
                     </td>
-                    <td className="p-4 font-medium">{indexOfFirstItem + index + 1}</td>
+                    <td className="p-4 font-medium">{item.id}</td>
                     <td className="p-4 text-gray-600">{item.category}</td>
                     <td className="p-4 text-gray-600">{item.type}</td>
                     <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
@@ -350,13 +426,10 @@ const Rules = () => {
                                 onClick={() => handleRunSelected(item, true)}
                                 className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
                               >
-                                Run for ID
+                                Run ID {item.id}
                               </button>
                               <button
-                                onClick={() => {
-                                  setRunForId(null);
-                                  setShowRunSummary(true);
-                                }}
+                                onClick={() => handleRunSelected(item)}
                                 className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
                               >
                                 Run Selected IDs
@@ -429,20 +502,19 @@ const Rules = () => {
           </div>
         </div>
       )}
-      <RuleRunSummaryPopup
+      <RuleRunSummary
         show={showRunSummary}
         onClose={() => {
           setShowRunSummary(false);
           setRunForId(null);
+          setDetailedRules([]);
+          setRuleRunResults([]);
+          setIsPopupLoading(false);
         }}
-        selectedRules={
-          runForId !== null
-            ? [tableData.find(item => item.id === runForId)].filter(Boolean)
-            : selectedRows.length > 0
-            ? tableData.filter(item => selectedRows.includes(item.id))
-            : [currentItems[0]].filter(Boolean)
-        }
+        selectedRules={detailedRules}
+        ruleRunResults={ruleRunResults}
         onQuickAction={handleQuickAction}
+        isLoading={isPopupLoading}
       />
     </div>
   );
