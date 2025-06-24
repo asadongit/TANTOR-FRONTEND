@@ -625,7 +625,7 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
 
   const replacePlaceholders = (query, conn, schemas, tables, columns) => {
     let result = query;
-    const skipWords = ['information_schema', 'columns', 'column_name'];
+    const skipWords = ['information_schema', 'columns', 'column_name', 'table_name', 'table_schema'];
     const connectionName = conn || '';
     const schema = Array.isArray(schemas) && schemas.length > 0 ? schemas[0] : '';
     const table = Array.isArray(tables) && tables.length > 0 ? tables[0] : '';
