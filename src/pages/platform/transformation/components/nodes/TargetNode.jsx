@@ -41,7 +41,7 @@ export const TargetNode = ({ id, data }) => {
   const tableDropdownRef = useRef(null);
 
   const hostnamev1 = import.meta.env.VITE_FAST_API;
-  const { token, decodedToken } = useAuth();
+  const { token, decodedToken, project } = useAuth();
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -66,6 +66,7 @@ export const TargetNode = ({ id, data }) => {
 
       const filteredConnections = connectionsData
         .filter(conn => conn.created_by === currentUser)
+        .filter(conn => conn.project === project)
         .filter(conn => conn.pool_type === "target" || conn.pool_type === "both");
 
       setConnections(filteredConnections);
