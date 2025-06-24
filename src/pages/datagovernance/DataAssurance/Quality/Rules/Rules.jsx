@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash2 } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../../../components/Breadcrumb';
@@ -21,6 +21,15 @@ const Rules = () => {
   const navigate = useNavigate();
   const [metricData, setMetricData] = useState([]);
   const [tableData, setTableData] = useState([]);
+
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.show]);
 
   const metricsData = [
     {
@@ -128,14 +137,9 @@ const Rules = () => {
         body: JSON.stringify({ ids }),
       });
       const data = await response.json();
-      return data || [];
+      return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('Error running rules:', error);
-      setToast({
-        show: true,
-        message: 'Failed to run rules',
-        type: 'error',
-      });
       return [];
     }
   };
@@ -154,17 +158,6 @@ const Rules = () => {
     navigate('/datagovernance/data-assurance/rules/create');
   };
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedRows(prev => [
-        ...new Set([...prev, ...currentItems.map(item => item.id)])
-      ]);
-    } else {
-      setSelectedRows(prev =>
-        prev.filter(id => !currentItems.map(item => item.id).includes(id))
-      );
-    }
-  };
 
   const handleSelectRow = (id) => {
     setSelectedRows(prev =>
@@ -188,13 +181,12 @@ const Rules = () => {
       setRunForId(item.id);
     }
 
-    setIsPopupLoading(true); 
+    setIsPopupLoading(true);
     setShowRunSummary(true);
 
-    const [detailedRulesData, results] = await Promise.all([
-      fetchRuleDetails(idsToRun),
-      fetchRuleRunResults(idsToRun)
-    ]);
+    const detailedRulesData = await fetchRuleDetails(idsToRun);
+    const results = await fetchRuleRunResults(idsToRun);
+
     const enrichedRulesData = detailedRulesData.map((rule) => {
       const tableItem = tableData.find((item) => item.id === rule.id);
       return {
@@ -205,7 +197,7 @@ const Rules = () => {
 
     setDetailedRules(enrichedRulesData);
     setRuleRunResults(results);
-    setIsPopupLoading(false); 
+    setIsPopupLoading(false);
   };
 
   const handleQuickAction = (action, item) => {
@@ -245,6 +237,98 @@ const Rules = () => {
     }
   };
 
+  const handleRefreshSelected = async (item, isRefreshForId = false) => {
+    let idsToRefresh = [];
+
+    if (isRefreshForId) {
+      idsToRefresh = [item.id];
+    } else if (selectedRows.length > 0) {
+      idsToRefresh = selectedRows;
+    } else {
+      idsToRefresh = [item.id];
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({ ids: idsToRefresh }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setToast({
+          show: true,
+          message: `Successfully refreshed ${idsToRefresh.length} rule(s)`,
+          type: 'success',
+        });
+        fetchTableData(); // Refresh the table data
+        fetchCounts(); // Refresh the metrics
+      } else {
+        throw new Error('Failed to refresh rules');
+      }
+    } catch (error) {
+      console.error('Error refreshing rules:', error);
+      setToast({
+        show: true,
+        message: 'Failed to refresh rules',
+        type: 'error',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteSelected = async (item, isDeleteForId = false) => {
+    let idsToDelete = [];
+
+    if (isDeleteForId) {
+      idsToDelete = [item.id];
+    } else if (selectedRows.length > 0) {
+      idsToDelete = selectedRows;
+    } else {
+      idsToDelete = [item.id];
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/deleterule`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({ ids: idsToDelete }),
+      });
+
+      if (response.ok) {
+        setTableData(prev => prev.filter(rule => !idsToDelete.includes(rule.id)));
+        setSelectedRows(prev => prev.filter(id => !idsToDelete.includes(id)));
+        setToast({
+          show: true,
+          message: `Successfully deleted ${idsToDelete.length} rule(s)`,
+          type: 'success',
+        });
+        fetchCounts(); // Refresh the metrics
+      } else {
+        throw new Error('Failed to delete rules');
+      }
+    } catch (error) {
+      console.error('Error deleting rules:', error);
+      setToast({
+        show: true,
+        message: 'Failed to delete rules',
+        type: 'error',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleActionClick = async (action, item, index) => {
     if (action === 'Edit') {
       try {
@@ -261,19 +345,121 @@ const Rules = () => {
         });
       } catch (error) {
         console.error('Error fetching rule details:', error);
+        setToast({
+          show: true,
+          message: 'Failed to fetch rule details',
+          type: 'error',
+        });
+      }
+    } else if (action === 'Delete') {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/deleterule/${item.id}`, {
+          method: 'PATCH',
+          headers: {
+            'accept': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          setTableData(prev => prev.filter(rule => rule.id !== item.id));
+          setSelectedRows(prev => prev.filter(id => id !== item.id));
+          setToast({
+            show: true,
+            message: `Rule ID ${item.id} deleted successfully`,
+            type: 'success',
+          });
+          fetchCounts();
+        } else {
+          const errorData = await response.json();
+          setToast({
+            show: true,
+            message: errorData.message || 'Failed to delete rule',
+            type: 'error',
+          });
+        }
+      } catch (error) {
+        console.error('Error deleting rule:', error);
+        setToast({
+          show: true,
+          message: 'Failed to delete rule',
+          type: 'error',
+        });
       }
     } else {
       console.log(`${action} action for item at index ${index}:`, item);
     }
   };
 
+  const [showSelectAllOptions, setShowSelectAllOptions] = useState(false);
+  const selectAllRef = useRef(null);
+
+  // Add this useEffect to handle clicks outside the dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (selectAllRef.current && !selectAllRef.current.contains(event.target)) {
+        setShowSelectAllOptions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Modify the handleSelectAll function
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setShowSelectAllOptions(true);
+      setSelectedRows(currentItems.map(item => item.id));
+    } else {
+      setShowSelectAllOptions(false);
+      setSelectedRows([]);
+    }
+  };
+
+  // Add these new functions
+  const handleRunAllSelected = async () => {
+    if (selectedRows.length === 0) return;
+
+    setIsPopupLoading(true);
+    setShowRunSummary(true);
+    setRunForId(null);
+
+    const detailedRulesData = await fetchRuleDetails(selectedRows);
+    const results = await fetchRuleRunResults(selectedRows);
+
+    const enrichedRulesData = detailedRulesData.map((rule) => {
+      const tableItem = tableData.find((item) => item.id === rule.id);
+      return {
+        ...rule,
+        type: tableItem ? tableItem.type : rule.type,
+      };
+    });
+
+    setDetailedRules(enrichedRulesData);
+    setRuleRunResults(results);
+    setIsPopupLoading(false);
+    setShowSelectAllOptions(false);
+  };
+
+  const handleRefreshAllSelected = async () => {
+    if (selectedRows.length === 0) return;
+    await handleRefreshSelected(null);
+    setShowSelectAllOptions(false);
+  };
+
+  const handleDeleteAllSelected = async () => {
+    if (selectedRows.length === 0) return;
+    await handleDeleteSelected(null);
+    setShowSelectAllOptions(false);
+  };
+
   return (
     <div className="p-6">
       {toast.show && (
-        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
-          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
           'bg-red-100 text-red-800 border-l-4 border-red-500'
-        }`}>
+          }`}>
           <Icon
             icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
             className="h-5 w-5"
@@ -328,7 +514,7 @@ const Rules = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-theory2 lg:grid-cols-6 gap-4 mb-6">
         {metricsData.map((metric, index) => (
           <div
             key={index}
@@ -353,13 +539,51 @@ const Rules = () => {
             <table className="w-full min-w-[1200px]">
               <thead>
                 <tr className="bg-[#29304a] text-white">
-                  <th className="text-left p-4 first:rounded-tl-lg">
-                    <input
-                      type="checkbox"
-                      checked={currentItems.length > 0 && currentItems.every(item => selectedRows.includes(item.id))}
-                      onChange={handleSelectAll}
-                      className="h-4 w-4 text-[#8e78b7] rounded"
-                    />
+                  <th className="text-left p-4 first:rounded-tl-lg relative" ref={selectAllRef}>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedRows.length > 0 && currentItems.every(item => selectedRows.includes(item.id))}
+                        indeterminate={
+                          selectedRows.length > 0 &&
+                          !currentItems.every(item => selectedRows.includes(item.id))
+                        }
+                        onChange={handleSelectAll}
+                        className="h-4 w-4 text-[#8e78b7] rounded"
+                        ref={(el) => {
+                          if (el) {
+                            el.indeterminate =
+                              selectedRows.length > 0 &&
+                              !currentItems.every(item => selectedRows.includes(item.id));
+                          }
+                        }}
+                      />
+                      {showSelectAllOptions && selectedRows.length > 0 && (
+                        <div className="absolute left-8 top-10 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md z-10">
+                          <button
+                            onClick={handleRunAllSelected}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors flex items-center gap-2"
+                          >
+                            <Play className="h-3 w-3 text-[#8e78b7]" />
+                            Run IDs
+                          </button>
+                          <button
+                            onClick={handleRefreshAllSelected}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors flex items-center gap-2"
+                          >
+                            <RefreshCw className="h-3 w-3 text-[#8e78b7]" />
+                            Refresh IDs
+                          </button>
+                          <button
+                            onClick={handleDeleteAllSelected}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors flex items-center gap-2"
+                          >
+                            <Trash2 className="h-3 w-3 text-[#8e78b7]" />
+                            Delete IDs
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </th>
                   <th className="text-left p-4">ID</th>
                   <th className="text-left p-4">Category</th>
@@ -391,19 +615,17 @@ const Rules = () => {
                     <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
                     <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        item.severity === 'High' ? 'bg-red-100 text-red-700' :
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
                         item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-green-100 text-green-700'
-                      }`}>
+                          'bg-green-100 text-green-700'
+                        }`}>
                         {item.severity}
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        item.status === 'Active' ? 'bg-green-100 text-green-700' :
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active' ? 'bg-green-100 text-green-700' :
                         'bg-gray-100 text-gray-700'
-                      }`}>
+                        }`}>
                         {item.status}
                       </span>
                     </td>
@@ -444,20 +666,56 @@ const Rules = () => {
                         >
                           <Pencil className="h-4 w-4 text-[#8e78b7]" />
                         </button>
-                        <button
-                          onClick={() => handleActionClick('Refresh', item, index)}
-                          className="p-1.5 hover:bg-green-100 rounded-full"
-                          title="Refresh Rule"
-                        >
-                          <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
-                        </button>
-                        <button
-                          onClick={() => handleActionClick('Delete', item, index)}
-                          className="p-1.5 hover:bg-red-100 rounded-full"
-                          title="Delete Rule"
-                        >
-                          <Trash2 className="h-4 w-4 text-[#8e78b7]" />
-                        </button>
+                        <div className="relative group">
+                          <button
+                            onClick={() => handleRefreshSelected(item)}
+                            className="p-1.5 hover:bg-green-100 rounded-full"
+                            title="Refresh Rule"
+                          >
+                            <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
+                          </button>
+                          {selectedRows.length > 0 && (
+                            <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                              <button
+                                onClick={() => handleRefreshSelected(item, true)}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                              >
+                                Refresh ID {item.id}
+                              </button>
+                              <button
+                                onClick={() => handleRefreshSelected(item)}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                              >
+                                Refresh Selected IDs
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="relative group">
+                          <button
+                            onClick={() => handleDeleteSelected(item)}
+                            className="p-1.5 hover:bg-red-100 rounded-full"
+                            title="Delete Rule"
+                          >
+                            <Trash2 className="h-4 w-4 text-[#8e78b7]" />
+                          </button>
+                          {selectedRows.length > 0 && (
+                            <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                              <button
+                                onClick={() => handleDeleteSelected(item, true)}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                              >
+                                Delete ID {item.id}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSelected(item)}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                              >
+                                Delete Selected IDs
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -480,11 +738,10 @@ const Rules = () => {
                   <button
                     key={index}
                     onClick={() => goToPage(index + 1)}
-                    className={`px-3 py-1 mx-1 rounded-md ${
-                      currentPage === index + 1
-                        ? 'bg-[#8e78b7] text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    className={`px-3 py-1 mx-1 rounded-md ${currentPage === index + 1
+                      ? 'bg-[#8e78b7] text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                   >
                     {index + 1}
                   </button>

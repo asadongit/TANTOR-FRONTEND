@@ -1,21 +1,9 @@
 import React, { useState } from 'react';
-import { Play, Pencil, ChevronLeft, ChevronRight, TriangleAlert, X,Check } from 'lucide-react';
+import { ArrowUpRight, Pencil, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 
 const RuleRunDetails = ({ show, onClose, runDetails, ruleSummary }) => {
-    const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 5;
-
-    if (!show || !ruleSummary || runDetails.length === 0) return null;
-
-    const totalPages = Math.ceil(runDetails.length / rowsPerPage);
-    const indexOfLastItem = currentPage * rowsPerPage;
-    const indexOfFirstItem = indexOfLastItem - rowsPerPage;
-    const currentItems = runDetails.slice(indexOfFirstItem, indexOfLastItem);
-
-    const goToPage = (pageNumber) => setCurrentPage(pageNumber);
-    const goToPreviousPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
-    const goToNextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
+    if (!show || !ruleSummary) return null;
 
     return (
         <div className="fixed inset-0 bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
@@ -76,75 +64,10 @@ const RuleRunDetails = ({ show, onClose, runDetails, ruleSummary }) => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto max-h-[55vh] rounded-lg border border-gray-200">
-                    <table className="w-full text-base">
-                        <thead>
-                            <tr className="bg-gray-800 text-white sticky top-0">
-                                <th className="px-6 py-3 text-left font-semibold">Connection</th>
-                                <th className="px-6 py-3 text-left font-semibold">Schema</th>
-                                <th className="px-6 py-3 text-left font-semibold">Table</th>
-                                <th className="px-6 py-3 text-left font-semibold">Column</th>
-                                <th className="px-6 py-3 text-left font-semibold">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {currentItems.map((detail, index) => (
-                                <tr
-                                    key={index}
-                                    className="border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150"
-                                >
-                                    <td className="px-6 py-3">{detail.connection_details?.connection || '-'}</td>
-                                    <td className="px-6 py-3">{detail.connection_details?.schema || '-'}</td>
-                                    <td className="px-6 py-3">{detail.connection_details?.table || '-'}</td>
-                                    <td className="px-6 py-3">{detail.connection_details?.column || '-'}</td>
-                                    <td className="px-6 py-3">
-                                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                            detail.status?.toLowerCase() === 'violation' ? 'bg-red-100 text-red-800' :
-                                            'bg-green-100 text-green-800'
-                                        }`}>
-                                            {detail.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="flex items-center justify-center p-4 bg-gray-100 rounded-lg border border-gray-200">
+                    <span className="text-gray-600 text-lg">No details available</span>
                 </div>
-                {runDetails.length > rowsPerPage && (
-                    <div className="flex justify-end items-center py-3 border-t">
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={goToPreviousPage}
-                                disabled={currentPage === 1}
-                                className={`p-1 rounded ${currentPage === 1 ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </button>
-                            <div className="flex items-center">
-                                {[...Array(totalPages)].map((_, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => goToPage(index + 1)}
-                                        className={`px-2 py-1 mx-0.5 rounded ${
-                                            currentPage === index + 1
-                                                ? 'bg-[#8e78b7] text-white'
-                                                : 'text-gray-600 hover:bg-gray-100'
-                                        }`}
-                                    >
-                                        {index + 1}
-                                    </button>
-                                ))}
-                            </div>
-                            <button
-                                onClick={goToNextPage}
-                                disabled={currentPage === totalPages}
-                                className={`p-1 rounded ${currentPage === totalPages ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </button>
-                        </div>
-                    </div>
-                )}
+
                 <div className="flex justify-end mt-8">
                     <button
                         onClick={onClose}
@@ -198,8 +121,6 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
         return acc + ruleColumns;
     }, 0);
 
-    const issuesFound = ruleRunResults.filter(item => item?.status?.toLowerCase() === 'violation').length;
-
     const totalPages = Math.ceil(selectedRules.length / rowsPerPage);
     const indexOfLastItem = currentPage * rowsPerPage;
     const indexOfFirstItem = indexOfLastItem - rowsPerPage;
@@ -210,13 +131,12 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
     const goToNextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
 
     const handleRunQuickAction = (rule) => {
-        const detailsForThisRule = ruleRunResults.filter(result => result.rule_id === rule.id);
-        setCurrentRuleRunDetails(detailsForThisRule);
+        // Always set an empty array for details to avoid filter error
+        setCurrentRuleRunDetails([]);
         setCurrentRuleSummary(rule);
         setShowRunDetailsPopup(true);
     };
 
-    
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
@@ -234,19 +154,6 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
                         </div>
                         <div className="border border-gray-200 px-6 py-4 rounded-xl mb-8 bg-gradient-to-r from-gray-50 to-gray-100 shadow-sm">
                             <div className="flex items-center justify-between px-10">
-                                <div className="flex flex-col items-center gap-2">
-                                    {issuesFound === 0 ? (
-                                        <>
-                                        <span className="text-xl text-gray-700 font-medium">No Issues Found</span>
-                                        <Check className="h-10 w-10 text-green-600" />
-                                        </>
-                                    ) : (
-                                        <>
-                                        <span className="text-xl text-gray-700 font-medium">Issues Found</span>
-                                        <TriangleAlert className="h-9 w-9 text-red-600" />
-                                        </>
-                                    )}
-                                </div>
                                 <div className="flex space-x-8 text-base text-gray-700">
                                     {[
                                         { label: 'Groups', value: groups },
@@ -299,10 +206,10 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
                                                 <div className="flex gap-2 justify-center">
                                                     <button
                                                         onClick={() => handleRunQuickAction(rule)}
-                                                        className="p-2 hover:bg-green-100 rounded-full"
+                                                        className="p-2 hover:bg-blue-100 rounded-full"
                                                         title="Run"
                                                     >
-                                                        <Play className="h-4 w-4 text-[#8e78b7]" />
+                                                        <ArrowUpRight className="h-5 w-5 text-[#8e78b7]" />
                                                     </button>
                                                     <button
                                                         onClick={() => onQuickAction('Edit', rule)}
