@@ -193,7 +193,7 @@ function Step3({ onBack, onCreate, step1Data, step2Data, loading, edit }) {
         <button
           onClick={onBack}
           className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          disabled={!!edit || loading}
+          disabled={loading}
         >
           Back
         </button>
