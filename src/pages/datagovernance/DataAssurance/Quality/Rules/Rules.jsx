@@ -1,22 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight, Play, Edit, RefreshCw } from 'lucide-react';
-import { Icon } from "@iconify-icon/react";
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useNavigate } from 'react-router-dom';
-
+import RuleRunSummaryPopup from './RuleRunSummaryPopup';
 
 const Rules = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeMenu, setActiveMenu] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [viewMode, setViewMode] = useState('both');
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [showRunSummary, setShowRunSummary] = useState(false);
+  const [runForId, setRunForId] = useState(null);
   const rowsPerPage = 5;
   const navigate = useNavigate();
   const [metricData, setMetricData] = useState([]);
   const [tableData, setTableData] = useState([]);
-
 
   const metricsData = [
     {
@@ -63,17 +64,15 @@ const Rules = () => {
     }
   ];
 
-
   const fetchCounts = async () => {
     fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/counts`)
       .then(response => response.json())
       .then(data => {
-        console.log(data)
-        setMetricData(data)
+        console.log(data);
+        setMetricData(data);
       })
       .catch(error => {
         console.error('Error fetching counts:', error);
-
       });
   };
 
@@ -84,11 +83,13 @@ const Rules = () => {
       .then(data => {
         console.log(data.data_rules);
         setTableData(data.data_rules || []);
+        setIsLoading(false);
       })
       .catch(error => {
         console.error('Error fetching table data:', error);
-      })
-    }
+        setIsLoading(false);
+      });
+  };
 
   useEffect(() => {
     fetchCounts();
@@ -102,6 +103,43 @@ const Rules = () => {
 
   const handleCreateRule = () => {
     navigate('/datagovernance/data-assurance/rules/create');
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedRows(prev => [
+        ...new Set([...prev, ...currentItems.map(item => item.id)])
+      ]);
+    } else {
+      setSelectedRows(prev =>
+        prev.filter(id => !currentItems.map(item => item.id).includes(id))
+      );
+    }
+  };
+
+  const handleSelectRow = (id) => {
+    setSelectedRows(prev =>
+      prev.includes(id)
+        ? prev.filter(rowId => rowId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleRunSelected = (item, isRunForId = false) => {
+    if (isRunForId) {
+      setRunForId(item.id);
+    }
+    setShowRunSummary(true);
+  };
+
+  const handleQuickAction = (action, item) => {
+    if (action === 'Run') {
+      console.log(`Running rule: ${item.id}`);
+      setShowRunSummary(false);
+    } else if (action === 'Edit') {
+      handleActionClick('Edit', item, tableData.findIndex(i => i.id === item.id));
+      setShowRunSummary(false);
+    }
   };
 
   const filteredData = tableData.filter(item =>
@@ -131,13 +169,30 @@ const Rules = () => {
     }
   };
 
-  const handleActionClick = (action, item, index) => {
-    console.log(`${action} action for item at index ${index}:`, item);
+  const handleActionClick = async (action, item, index) => {
+    if (action === 'Edit') {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/details`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ids: [item.id] }),
+        });
+        const data = await response.json();
+        navigate('/datagovernance/data-assurance/rules/create', {
+          state: { edit: true, ruleData: data }
+        });
+      } catch (error) {
+        console.error('Error fetching rule details:', error);
+      }
+    } else {
+      console.log(`${action} action for item at index ${index}:`, item);
+    }
   };
 
   return (
     <div className="p-6">
-
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
           toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
@@ -211,94 +266,132 @@ const Rules = () => {
               </div>
               <h3 className="text-sm font-medium text-gray-700 leading-tight">{metric.title}</h3>
             </div>
-            <p className="text-gray-900 text-3xl font-bold leading-none">{metric.count}</p>
+            <p className="text-gray-900 text-3xl font-bold">{metric.count}</p>
           </div>
         ))}
       </div>
 
       {(viewMode === 'list' || viewMode === 'both') && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-[#29304a] text-white">
-                <th className="text-left p-4 first:rounded-tl-lg">ID</th>
-                <th className="text-left p-4">Category</th>
-                <th className="text-left p-4">Type</th>
-                <th className="text-left p-4">Group</th>
-                <th className="text-left p-4">Name</th>
-                <th className="text-left p-4">Severity</th>
-                <th className="text-left p-4">Status</th>
-                <th className="text-left p-4">Created Date</th>
-                <th className="text-left p-4">Updated Date</th>
-                <th className="text-left p-4">Last Run</th>
-                <th className="text-left p-4 last:rounded-tr-lg">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentItems.map((item, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="p-4 font-medium">{indexOfFirstItem + index + 1}</td>
-                  <td className="p-4 text-gray-600">{item.category}</td>
-                  <td className="p-4 text-gray-600">{item.type}</td>
-                  <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
-                  <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      item.severity === 'High' ? 'bg-red-100 text-red-700' :
-                      item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-green-100 text-green-700'
-                    }`}>
-                      {item.severity}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      item.status === 'Active' ? 'bg-green-100 text-green-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-gray-600">{item.created_date}</td>
-                  <td className="p-4 text-gray-600">{item.updated_date}</td>
-                  <td className="p-4 text-gray-600">{item.last_run}</td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleActionClick('Play', item, index)}
-                        className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
-                        title="Run Rule"
-                      >
-                        <Play className="h-4 w-4 text-[#8e78b7]" />
-                      </button>
-                      <button
-                        onClick={() => handleActionClick('Edit', item, index)}
-                        className="p-1.5 hover:bg-blue-100 rounded-full"
-                        title="Edit Rule"
-                      >
-                        <Pencil className="h-4 w-4 text-[#8e78b7]" />
-                      </button>
-                      <button
-                        onClick={() => handleActionClick('Refresh', item, index)}
-                        className="p-1.5 hover:bg-green-100 rounded-full"
-                        title="Refresh Rule"
-                      >
-                        <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
-                      </button>
-                      <button
-                        onClick={() => handleActionClick('Delete', item, index)}
-                        className="p-1.5 hover:bg-red-100 rounded-full"
-                        title="Delete Rule"
-                      >
-                        <Trash2 className="h-4 w-4 text-[#8e78b7]" />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1200px]">
+              <thead>
+                <tr className="bg-[#29304a] text-white">
+                  <th className="text-left p-4 first:rounded-tl-lg">
+                    <input
+                      type="checkbox"
+                      checked={currentItems.length > 0 && currentItems.every(item => selectedRows.includes(item.id))}
+                      onChange={handleSelectAll}
+                      className="h-4 w-4 text-[#8e78b7] rounded"
+                    />
+                  </th>
+                  <th className="text-left p-4">ID</th>
+                  <th className="text-left p-4">Category</th>
+                  <th className="text-left p-4">Type</th>
+                  <th className="text-left p-4">Group</th>
+                  <th className="text-left p-4">Name</th>
+                  <th className="text-left p-4">Severity</th>
+                  <th className="text-left p-4">Status</th>
+                  <th className="text-left p-4">Created Date</th>
+                  <th className="text-left p-4">Updated Date</th>
+                  <th className="text-left p-4">Last Run</th>
+                  <th className="text-left p-4 last:rounded-tr-lg">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-
+              </thead>
+              <tbody>
+                {currentItems.map((item, index) => (
+                  <tr key={index} className="border-b hover:bg-gray-50">
+                    <td className="p-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedRows.includes(item.id)}
+                        onChange={() => handleSelectRow(item.id)}
+                        className="h-4 w-4 text-[#8e78b7] rounded"
+                      />
+                    </td>
+                    <td className="p-4 font-medium">{indexOfFirstItem + index + 1}</td>
+                    <td className="p-4 text-gray-600">{item.category}</td>
+                    <td className="p-4 text-gray-600">{item.type}</td>
+                    <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
+                    <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        item.severity === 'High' ? 'bg-red-100 text-red-700' :
+                        item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {item.severity}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        item.status === 'Active' ? 'bg-green-100 text-green-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-gray-600">{item.created_date}</td>
+                    <td className="p-4 text-gray-600">{item.updated_date}</td>
+                    <td className="p-4 text-gray-600">{item.last_run}</td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <div className="relative group">
+                          <button
+                            onClick={() => handleRunSelected(item)}
+                            className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
+                            title="Run"
+                          >
+                            <Play className="h-4 w-4 text-[#8e78b7]" />
+                          </button>
+                          {selectedRows.length > 0 && (
+                            <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                              <button
+                                onClick={() => handleRunSelected(item, true)}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                              >
+                                Run for ID
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setRunForId(null);
+                                  setShowRunSummary(true);
+                                }}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                              >
+                                Run Selected IDs
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleActionClick('Edit', item, index)}
+                          className="p-1.5 hover:bg-blue-100 rounded-full"
+                          title="Edit Rule"
+                        >
+                          <Pencil className="h-4 w-4 text-[#8e78b7]" />
+                        </button>
+                        <button
+                          onClick={() => handleActionClick('Refresh', item, index)}
+                          className="p-1.5 hover:bg-green-100 rounded-full"
+                          title="Refresh Rule"
+                        >
+                          <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
+                        </button>
+                        <button
+                          onClick={() => handleActionClick('Delete', item, index)}
+                          className="p-1.5 hover:bg-red-100 rounded-full"
+                          title="Delete Rule"
+                        >
+                          <Trash2 className="h-4 w-4 text-[#8e78b7]" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <div className="flex justify-end items-center px-4 py-3 border-t">
             <div className="flex items-center gap-1">
               <button
@@ -336,8 +429,21 @@ const Rules = () => {
           </div>
         </div>
       )}
-
-
+      <RuleRunSummaryPopup
+        show={showRunSummary}
+        onClose={() => {
+          setShowRunSummary(false);
+          setRunForId(null);
+        }}
+        selectedRules={
+          runForId !== null
+            ? [tableData.find(item => item.id === runForId)].filter(Boolean)
+            : selectedRows.length > 0
+            ? tableData.filter(item => selectedRows.includes(item.id))
+            : [currentItems[0]].filter(Boolean)
+        }
+        onQuickAction={handleQuickAction}
+      />
     </div>
   );
 };

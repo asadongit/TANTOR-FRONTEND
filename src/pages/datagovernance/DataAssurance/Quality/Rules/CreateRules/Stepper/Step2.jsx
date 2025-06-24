@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight, ArrowLe
 import AceEditor from 'react-ace';
 import Select, { components } from 'react-select';
 import { useStepData } from './StepContext';
+import { useNavigate } from 'react-router-dom';
 
 import 'ace-builds/src-noconflict/mode-sql';
 import 'ace-builds/src-noconflict/theme-tomorrow';
@@ -43,9 +44,10 @@ const CustomMultiValueLabel = props => {
   );
 };
 
-function Step2({ data, onBack, onNext, step2Data }) {
+function Step2({ data, onBack, onNext, step2Data, edit }) {
   const { stepData, setStepData } = useStepData();
   const { token } = useAuth();
+  const navigate = useNavigate();
 
   const [validationStatus, setValidationStatus] = useState({});
 
@@ -486,37 +488,44 @@ function Step2({ data, onBack, onNext, step2Data }) {
           .map(conn => {
             const connection = conn.connection;
 
-            const schemas = (conn.schema || []).map(s => `${connection}.${s}`);
+            const schemas = (conn.schema || []).map(s => {
+              const schemaName = s.split('.').pop();
+              return `${connection}.${schemaName}`;
+            });
 
             const tables = (conn.table || []).map(t => {
               const tableName = t.split('.').pop();
               let schema = '';
               for (const s of conn.schema || []) {
-                const tableKey = `${connection}__${s}`;
+                const schemaName = s.split('.').pop();
+                const tableKey = `${connection}__${schemaName}`;
                 if (tablesBySchema[tableKey] && tablesBySchema[tableKey].includes(tableName)) {
-                  schema = s;
+                  schema = schemaName;
                   break;
                 }
               }
-              return schema ? `${connection}.${schema}.${tableName}` : `${connection}.${t}`;
+              return schema ? `${connection}.${schema}.${tableName}` : `${connection}.${tableName}`;
             });
 
             const columns = (conn.column || []).map(c => {
               const columnName = c.split('.').pop();
               let schema = '', table = '';
               for (const s of conn.schema || []) {
+                const schemaName = s.split('.').pop();
                 for (const t of conn.table || []) {
                   const tableNameOnly = t.split('.').pop();
-                  const colKey = `${s}__${tableNameOnly}`;
+                  const colKey = `${schemaName}__${tableNameOnly}`;
                   if (columnsByTable[colKey] && columnsByTable[colKey].includes(columnName)) {
-                    schema = s;
+                    schema = schemaName;
                     table = tableNameOnly;
                     break;
                   }
                 }
                 if (schema && table) break;
               }
-              return schema && table ? `${connection}.${schema}.${table}.${columnName}` : `${connection}.${c}`;
+              return (schema && table)
+                ? `${connection}.${schema}.${table}.${columnName}`
+                : `${connection}.${columnName}`;
             });
 
             return {
@@ -616,26 +625,47 @@ function Step2({ data, onBack, onNext, step2Data }) {
 
   const replacePlaceholders = (query, conn, schemas, tables, columns) => {
     let result = query;
-    const skipWords = ['information_schema', 'columns', 'column_name'];
-    if (schemas && schemas.length > 0) {
-      const schema = getFirst(schemas);
-      if (schema && !skipWords.includes(schema)) {
-        result = result.replace(/connection\.schema/gi, `${conn}.${schema}`);
-      }
+    const skipWords = ['information_schema', 'columns', 'column_name', 'table_name', 'table_schema'];
+    const connectionName = conn || '';
+    const schema = Array.isArray(schemas) && schemas.length > 0 ? schemas[0] : '';
+    const table = Array.isArray(tables) && tables.length > 0 ? tables[0] : '';
+    const column = Array.isArray(columns) && columns.length > 0 ? columns[0] : '';
+
+    const schemaName = schema ? schema.split('.').pop() : '';
+    const tableName = table ? table.split('.').pop() : '';
+    const columnName = column ? column.split('.').pop() : '';
+
+    if (
+      connectionName &&
+      schemaName &&
+      tableName &&
+      !skipWords.includes(schemaName) &&
+      !skipWords.includes(tableName)
+    ) {
+      result = result.replace(
+        /connection\.schema\.table/gi,
+        `${connectionName}.${schemaName}.${tableName}`
+      );
     }
-    if (tables && tables.length > 0) {
-      const table = getFirst(tables);
-      if (table && !skipWords.includes(table)) {
-        result = result.replace(/connection\.schema\.table/gi, `${conn}.${getFirst(schemas)}.${table}`);
-        result = result.replace(/schema\.table/gi, `${getFirst(schemas)}.${table}`);
-        result = result.replace(/table/gi, table);
-      }
+
+    if (schemaName && tableName && !skipWords.includes(schemaName) && !skipWords.includes(tableName)) {
+      result = result.replace(
+        /schema\.table/gi,
+        `${schemaName}.${tableName}`
+      );
     }
-    if (columns && columns.length > 0) {
-      const column = getFirst(columns);
-      if (column && !skipWords.includes(column)) {
-        result = result.replace(/column/gi, column);
-      }
+
+    if (connectionName && schemaName && !skipWords.includes(schemaName)) {
+      result = result.replace(
+        /connection\.schema/gi,
+        `${connectionName}.${schemaName}`
+      );
+    }
+    if (tableName && !skipWords.includes(tableName)) {
+      result = result.replace(/\btable\b/gi, tableName);
+    }
+    if (columnName && !skipWords.includes(columnName)) {
+      result = result.replace(/\bcolumn\b/gi, columnName);
     }
     return result;
   };
@@ -1125,10 +1155,18 @@ function Step2({ data, onBack, onNext, step2Data }) {
 
       <div className="flex justify-end mt-6 p-4 border-t gap-3">
         <button
-          onClick={onBack}
+          onClick={() => {
+            if (edit) {
+              navigate('/datagovernance/data-assurance/rules');
+            } else {
+              onBack();
+            }
+          }}
           className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          // In edit mode, always enabled (Cancel), otherwise use default
+          disabled={!!edit ? false : undefined}
         >
-          Back
+          {edit ? 'Cancel' : 'Back'}
         </button>
         <button
           onClick={handleNextClick}

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useStepData } from './StepContext';
 
-function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
+function Step3({ onBack, onCreate, step1Data, step2Data, loading, edit }) {
   const { stepData } = useStepData();
   const step1 = step1Data || stepData.step1 || {};
   const step2 = step2Data || stepData.step2 || [];
@@ -155,7 +155,7 @@ function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
         <button
           onClick={onBack}
           className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          disabled={loading}
+          disabled={!!edit || loading}
         >
           Back
         </button>
@@ -172,7 +172,7 @@ function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
             </svg>
           ) : null}
-          {loading ? 'Creating...' : 'Create'}
+          {loading ? (edit ? 'Updating...' : 'Creating...') : (edit ? 'Update' : 'Create')}
         </button>
       </div>
     </div>
