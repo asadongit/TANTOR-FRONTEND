@@ -21,7 +21,6 @@ const Rules = () => {
   const navigate = useNavigate();
   const [metricData, setMetricData] = useState([]);
   const [tableData, setTableData] = useState([]);
-
   useEffect(() => {
     if (toast.show) {
       const timer = setTimeout(() => {
@@ -136,10 +135,17 @@ const Rules = () => {
         },
         body: JSON.stringify({ ids }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
+        console.error('API Error running rules:', response.status, errorData);
+        return [];
+      }
+
       const data = await response.json();
-      return Array.isArray(data) ? data : [];
+      return data || [];
     } catch (error) {
-      console.error('Error running rules:', error);
+      console.error('Network or parsing error running rules:', error);
       return [];
     }
   };
@@ -157,7 +163,6 @@ const Rules = () => {
   const handleCreateRule = () => {
     navigate('/datagovernance/data-assurance/rules/create');
   };
-
 
   const handleSelectRow = (id) => {
     setSelectedRows(prev =>
@@ -184,8 +189,11 @@ const Rules = () => {
     setIsPopupLoading(true);
     setShowRunSummary(true);
 
-    const detailedRulesData = await fetchRuleDetails(idsToRun);
-    const results = await fetchRuleRunResults(idsToRun);
+    const [detailedRulesData, results] = await Promise.all([
+      fetchRuleDetails(idsToRun),
+      fetchRuleRunResults(idsToRun)
+    ]);
+
 
     const enrichedRulesData = detailedRulesData.map((rule) => {
       const tableItem = tableData.find((item) => item.id === rule.id);
@@ -236,7 +244,6 @@ const Rules = () => {
       setCurrentPage(currentPage + 1);
     }
   };
-
   const handleRefreshSelected = async (item, isRefreshForId = false) => {
     let idsToRefresh = [];
 
@@ -283,6 +290,13 @@ const Rules = () => {
     }
   };
 
+  const [deleteConfirmation, setDeleteConfirmation] = useState({
+    show: false,
+    ids: [],
+    isSingle: false,
+    item: null
+  });
+
   const handleDeleteSelected = async (item, isDeleteForId = false) => {
     let idsToDelete = [];
 
@@ -294,6 +308,27 @@ const Rules = () => {
       idsToDelete = [item.id];
     }
 
+    setDeleteConfirmation({
+      show: true,
+      ids: idsToDelete,
+      isSingle: isDeleteForId,
+      item: item
+    });
+  };
+
+  const handleDeleteAllSelected = async () => {
+    if (selectedRows.length === 0) return;
+    setDeleteConfirmation({
+      show: true,
+      ids: selectedRows,
+      isSingle: false,
+      item: null
+    });
+    setShowSelectAllOptions(false);
+  };
+
+  // The actual delete function (previously in handleDeleteSelected)
+  const performDelete = async (idsToDelete) => {
     setIsLoading(true);
     try {
       const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/deleterule`, {
@@ -313,7 +348,7 @@ const Rules = () => {
           message: `Successfully deleted ${idsToDelete.length} rule(s)`,
           type: 'success',
         });
-        fetchCounts(); // Refresh the metrics
+        fetchCounts();
       } else {
         throw new Error('Failed to delete rules');
       }
@@ -328,7 +363,6 @@ const Rules = () => {
       setIsLoading(false);
     }
   };
-
   const handleActionClick = async (action, item, index) => {
     if (action === 'Edit') {
       try {
@@ -353,11 +387,12 @@ const Rules = () => {
       }
     } else if (action === 'Delete') {
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/deleterule/${item.id}`, {
+        const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/deleterule`, {
           method: 'PATCH',
           headers: {
             'accept': 'application/json',
           },
+          body: JSON.stringify({ ids: [item.id] }),
         });
 
         if (response.ok) {
@@ -389,7 +424,6 @@ const Rules = () => {
       console.log(`${action} action for item at index ${index}:`, item);
     }
   };
-
   const [showSelectAllOptions, setShowSelectAllOptions] = useState(false);
   const selectAllRef = useRef(null);
 
@@ -448,11 +482,6 @@ const Rules = () => {
     setShowSelectAllOptions(false);
   };
 
-  const handleDeleteAllSelected = async () => {
-    if (selectedRows.length === 0) return;
-    await handleDeleteSelected(null);
-    setShowSelectAllOptions(false);
-  };
 
   return (
     <div className="p-6">
@@ -514,7 +543,7 @@ const Rules = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-theory2 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
         {metricsData.map((metric, index) => (
           <div
             key={index}
@@ -665,8 +694,7 @@ const Rules = () => {
                           title="Edit Rule"
                         >
                           <Pencil className="h-4 w-4 text-[#8e78b7]" />
-                        </button>
-                        <div className="relative group">
+                        </button><div className="relative group">
                           <button
                             onClick={() => handleRefreshSelected(item)}
                             className="p-1.5 hover:bg-green-100 rounded-full"
@@ -759,6 +787,36 @@ const Rules = () => {
           </div>
         </div>
       )}
+      {deleteConfirmation.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h3 className="text-lg font-medium mb-4">Confirm Deletion</h3>
+            <p className="mb-6">
+              {deleteConfirmation.ids.length > 1
+                ? `Are you sure you want to delete ${deleteConfirmation.ids.length} selected rules?`
+                : `Are you sure you want to delete rule ID ${deleteConfirmation.ids[0]}?`}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirmation({ show: false, ids: [], isSingle: false, item: null })}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setDeleteConfirmation({ show: false, ids: [], isSingle: false, item: null });
+                  await handleDeleteSelected(deleteConfirmation.item, deleteConfirmation.isSingle);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <RuleRunSummary
         show={showRunSummary}
         onClose={() => {
