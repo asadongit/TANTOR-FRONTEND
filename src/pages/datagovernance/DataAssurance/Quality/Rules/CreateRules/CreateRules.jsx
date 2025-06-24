@@ -22,6 +22,10 @@ function CreateRulesInner() {
 
   useEffect(() => {
     if (isEdit && editRuleData && editRuleData.rules && Array.isArray(editRuleData.rules)) {
+      const firstRule = editRuleData.rules[0];
+      const category = firstRule?.category || 'Custom';
+      const type = firstRule?.type || 'Data';
+
       const rulesByGroup = {};
       editRuleData.rules.forEach(rule => {
         if (!rulesByGroup[rule.group_name]) {
@@ -40,8 +44,8 @@ function CreateRulesInner() {
         });
       });
       const step1 = {
-        category: 'Custom',
-        type: 'Data',
+        category,
+        type,
         rules: rulesByGroup
       };
 
@@ -58,8 +62,8 @@ function CreateRulesInner() {
           });
           step2.push({
             id: r.id,
-            category: 'Custom',
-            type: 'Data',
+            category: r.category || category,
+            type: r.type || type,
             group: r.group_name,
             rule: {
               id: r.id,
