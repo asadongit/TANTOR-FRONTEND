@@ -35,7 +35,7 @@ export const SourceNode = ({ id, data }) => {
   const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
 
   const hostnamev1 = import.meta.env.VITE_FAST_API;
-  const { token, decodedToken } = useAuth();
+  const { token, decodedToken, project } = useAuth();
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -60,10 +60,12 @@ export const SourceNode = ({ id, data }) => {
 
       const connectionsData = await connectionResponse.json();
 
+
       const currentUser = decodedToken?.preferred_username;
 
       const filteredConnections = connectionsData
         .filter(conn => conn.created_by === currentUser)
+        .filter(conn => conn.project === project)
         .filter(conn => conn.pool_type === "source" || conn.pool_type === "both");
 
       setConnections(filteredConnections);
