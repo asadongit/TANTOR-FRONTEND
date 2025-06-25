@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import DimensionSelector from "./DimensionSelector";
 import TimeTransformationComponent from "./TimeTransformationComponent";
 import { useAuth } from "../../../../context/AuthContext";
@@ -98,30 +98,29 @@ const RuleSelector = ({
   addDimension,
   updateDimension,
   removeDimension,
+  removeRule
 }) => {
   const [ruleData, setRuleData] = useState([]);
-
   const [currentSelectedRuleId, setCurrentSelectedRuleId] = useState("");
   const [metricData, setMetricData] = useState([]);
   const [dimensionNamesData, setDimensionNamesData] = useState([]);
+  const [isTimeTransformationOpen, setIsTimeTransformationOpen] = useState(false);
 
   const { token, hostnameV1 } = useAuth();
-  const [isTimeTransformationOpen, setIsTimeTransformationOpen] =
-    useState(false);
 
+  // Load rule data on mount
   useEffect(() => {
     const fetchRules = async () => {
       try {
-        const headers = {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        };
-
         const response = await fetch(`${hostnameV1}/lineItems/selectRule`, {
-          headers: headers,
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
         });
+
         if (!response.ok) {
-          toast.error("ERROR OCCURED WHILE FETCHING RULES");
+          toast.error("Error occurred while fetching rules.");
           return;
         }
 
@@ -129,77 +128,87 @@ const RuleSelector = ({
         setRuleData(data);
       } catch (error) {
         console.error("Failed to fetch rules:", error);
-        toast.error("ERROR OCCURED WHILE FETCHING RULES");
+        toast.error("Error occurred while fetching rules.");
       }
     };
 
     fetchRules();
-  }, []);
+  }, [hostnameV1, token]);
 
+  // Handle existing ruleId on edit or reopen)
+  useEffect(() => {
+    if (rule?.ruleId) {
+      setCurrentSelectedRuleId(rule.ruleId);
+    }
+  }, [rule?.ruleId]);
+
+  // Fetch metrics when ruleId changes
   useEffect(() => {
     const fetchMetrics = async () => {
       if (!currentSelectedRuleId) return;
 
       try {
-        const headers = {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        };
         const response = await fetch(
           `${hostnameV1}/lineItems/selectMatric?rule_id=${currentSelectedRuleId}`,
-          { headers }
+          {
+            headers: {
+              "Content-Type": "application/json",
+              authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         if (!response.ok) {
-          toast.error("ERROR OCCURED WHILE FETCHING METRICS.");
+          toast.error("Error occurred while fetching metrics.");
           return;
         }
 
         const data = await response.json();
-        setMetricData(data.metric_config);
+        setMetricData(data.metric_config || []);
       } catch (error) {
         console.error("Failed to fetch metrics:", error);
-        toast.error("ERROR OCCURED WHILE FETCHING METRICS.");
+        toast.error("Error occurred while fetching metrics.");
       }
     };
 
     fetchMetrics();
-  }, [currentSelectedRuleId]);
+  }, [currentSelectedRuleId, hostnameV1, token]);
 
+  // Fetch dimension names when ruleId changes
   useEffect(() => {
     const fetchDimensionNames = async () => {
       if (!currentSelectedRuleId) return;
 
       try {
-        const headers = {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        };
-
         const response = await fetch(
           `${hostnameV1}/lineItems/selectDimension?rule_id=${currentSelectedRuleId}`,
-          { headers }
+          {
+            headers: {
+              "Content-Type": "application/json",
+              authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         if (!response.ok) {
-          toast.error("ERROR OCCURED WHILE FETCHING DIMENSIONS.");
+          toast.error("Error occurred while fetching dimensions.");
           return;
         }
 
         const data = await response.json();
-        console.log(data);
-        setDimensionNamesData(data);
+        setDimensionNamesData(data || []);
       } catch (error) {
-        console.error("Failed to fetch metrics:", error);
-        toast.error("ERROR OCCURED WHILE FETCHING DIMENSIONS.");
+        console.error("Failed to fetch dimensions:", error);
+        toast.error("Error occurred while fetching dimensions.");
       }
     };
 
     fetchDimensionNames();
-  }, [currentSelectedRuleId]);
+  }, [currentSelectedRuleId, hostnameV1, token]);
 
-  const handleRuleChange = async (e) => {
+  const handleRuleChange = (e) => {
     const selectedRuleId = e.target.value;
+
     if (!selectedRuleId) {
       updateRule(index, null, {
         ruleId: "",
@@ -213,8 +222,12 @@ const RuleSelector = ({
       setDimensionNamesData([]);
       return;
     }
+
+    // Prevent clearing if same rule is reselected
+    if (selectedRuleId === rule.ruleId) return;
+
     const selectedRule = ruleData.find(
-      (rule) => rule.rule_id.toString() === selectedRuleId
+      (r) => r.rule_id.toString() === selectedRuleId
     );
 
     if (selectedRule) {
@@ -225,9 +238,7 @@ const RuleSelector = ({
         dimensions: [{ id: "", name: "", operator: "", value: [] }],
         filters: [],
       });
-      setTimeout(() => {
-        setCurrentSelectedRuleId(selectedRuleId);
-      }, 0);
+      setTimeout(() => setCurrentSelectedRuleId(selectedRuleId), 0);
     }
   };
 
@@ -241,7 +252,17 @@ const RuleSelector = ({
         ruleIndex={index}
         rule={rule}
       />
-      <div className="p-6 bg-gray-100 rounded-lg shadow-md mb-6">
+
+      <div className="p-6 bg-gray-100 rounded-lg shadow-md mb-6 relative">
+        {/* Delete button at top-right */}
+        <button
+          className="absolute top-3 right-3 mb-11 text-gray-500 hover:text-red-500 transition-colors"
+          onClick={() => removeRule(index)}
+          aria-label="Delete rule"
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label
@@ -299,6 +320,7 @@ const RuleSelector = ({
             />
           ))}
         </div>
+
         <div className="text-right">
           <button
             className="flex-1 px-4 py-2 bg-[#8E77BB] text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)]"

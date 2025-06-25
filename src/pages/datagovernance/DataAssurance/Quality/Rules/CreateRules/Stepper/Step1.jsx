@@ -271,15 +271,14 @@ function Step1({ onNext, onCancel, step1Data }) {
     return [];
   });
   const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [addGroupModalOpen, setAddGroupModalOpen] = useState(false); // new state
-  const [uiGroups, setUiGroups] = useState([]); // UI-only groups
+  const [addGroupModalOpen, setAddGroupModalOpen] = useState(false);
+  const [uiGroups, setUiGroups] = useState([]);
   const [groupNames, setGroupNames] = useState([
     'Accuracy', 'Consistency', 'Completeness', 'Validity', 'Uniqueness'
   ]);
   const [groupSearch, setGroupSearch] = useState('');
   const [addRuleModalOpen, setAddRuleModalOpen] = useState(false);
-  // Store new rules in UI only
-  const [uiRules, setUiRules] = useState({}); // { groupName: [rule, ...] }
+  const [uiRules, setUiRules] = useState({});
 
   const fetchGroupNames = useCallback(() => {
     fetch(`${import.meta.env.VITE_FAST_API}/rules/listgroups`,
@@ -694,10 +693,7 @@ function Step1({ onNext, onCancel, step1Data }) {
                         <span className="font-medium text-gray-600 mr-2">Type:</span>
                         <span className="px-3 py-1 rounded-full bg-[#8d77ba] text-white text-sm">{type}</span>
                       </div>
-                      <div className="flex items-center">
-                        <span className="font-medium text-gray-600 mr-2">Group:</span>
-                        <span className="px-3 py-1 rounded-full bg-[#8d77ba] text-white text-sm">{group}</span>
-                      </div>
+
                     </div>
                   </div>
 
@@ -732,7 +728,6 @@ function Step1({ onNext, onCancel, step1Data }) {
                             <th className="p-3 text-left">Severity</th>
                             <th className="p-3 text-left">Status</th>
                             <th className="p-3 text-left">Owner</th>
-                            <th className="p-3 text-left">Group</th>
                             <th className="p-3 text-left">Query</th>
                           </tr>
                         </thead>
@@ -770,7 +765,6 @@ function Step1({ onNext, onCancel, step1Data }) {
                                 </span>
                               </td>
                               <td className="p-3">{rule.owner}</td>
-                              <td className="p-3">{rule.group_name}</td>
                               <td className="p-3 truncate max-w-[200px]">
                                 {rule.query || "N/A"}
                               </td>
@@ -807,7 +801,7 @@ function Step1({ onNext, onCancel, step1Data }) {
               </div>
             </div>
           </div>
-          {/* AddRuleModal */}
+
           <AddRuleModal
             open={addRuleModalOpen}
             onClose={() => setAddRuleModalOpen(false)}
