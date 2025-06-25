@@ -508,6 +508,11 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
     );
   };
 
+  const handleDelete = (id) => {
+    setConnectionsForCurrent(connections.filter(conn => conn.id !== id));
+  };
+
+
   const handleDuplicateConnection = (conn) => {
     setConnectionsForCurrent([
       ...connections,
