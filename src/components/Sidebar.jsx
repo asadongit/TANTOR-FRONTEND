@@ -107,7 +107,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance`,
       subItems: [
         {
-          name: 'Quality',
+          name: 'Data Quality',
           subItems: [
             { name: 'Data', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/data` },
             { name: 'Metadata', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/metadata` },

@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useStepData } from './StepContext';
 
-function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
+function Step3({ onBack, onCreate, step1Data, step2Data, loading, edit }) {
   const { stepData } = useStepData();
   const step1 = step1Data || stepData.step1 || {};
   const step2 = step2Data || stepData.step2 || [];
+  const [search, setSearch] = useState('');
 
   // console.log('Step 3 Data:', step2);
   const groupStats = useMemo(() => {
@@ -43,9 +44,46 @@ function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
     return stats;
   }, [step2]);
 
+  const filteredStep2 = useMemo(() => {
+    if (!search.trim()) return step2;
+    const lower = search.trim().toLowerCase();
+    return step2.filter(rule => {
+      const ruleFields = [
+        rule.rule?.name,
+        rule.group,
+        rule.rule?.query,
+        rule.rule?.severity,
+        rule.rule?.status,
+        rule.rule?.owner
+      ].join(' ').toLowerCase();
+      if (ruleFields.includes(lower)) return true;
+      if (Array.isArray(rule.connection_details)) {
+        return rule.connection_details.some(conn =>
+          [
+            conn.connection,
+            Array.isArray(conn.schema) ? conn.schema.join(',') : conn.schema,
+            Array.isArray(conn.tables) ? conn.tables.join(',') : conn.tables,
+            Array.isArray(conn.columns) ? conn.columns.join(',') : conn.columns
+          ].join(' ').toLowerCase().includes(lower)
+        );
+      }
+      return false;
+    });
+  }, [search, step2]);
+
   return (
     <div className="rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-6">Summary</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Summary</h2>
+        <input
+          type="text"
+          placeholder="Search..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="border border-gray-400 rounded px-3 py-2 w-64 focus:outline-none focus:ring-2 focus:ring-[#8d77ba]"
+          style={{ maxWidth: 260 }}
+        />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {Object.keys(groupStats).map((group) => {
           const stats = groupStats[group];
@@ -92,6 +130,9 @@ function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
               <th className="py-3 px-4 text-left font-semibold">Name</th>
               <th className="py-3 px-4 text-left font-semibold">Group</th>
               <th className="py-3 px-4 text-left font-semibold w-1/4">SQL</th>
+              <th className="py-3 px-4 text-left font-semibold">Severity</th>
+              <th className="py-3 px-4 text-left font-semibold">Status</th>
+              <th className="py-3 px-4 text-left font-semibold">Owner</th>
               <th className="py-3 px-4 text-left font-semibold">Connection</th>
               <th className="py-3 px-4 text-left font-semibold">Schema</th>
               <th className="py-3 px-4 text-left font-semibold">Table</th>
@@ -99,39 +140,30 @@ function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {step2.map((rule, index) => {
+            {filteredStep2.map((rule, index) => {
               const connections = rule.connection_details || [];
               return (connections.length ? connections : [{}]).map((conn, connIndex) => (
                 <tr key={`${rule.rule?.id || rule.rule?.name || index}-${connIndex}`} className="hover:bg-gray-50">
                   {connIndex === 0 && (
                     <>
-                      <td
-                        className="py-3 px-4 align-top"
-                        rowSpan={connections.length || 1}
-                      >
-                        {index + 1}
-                      </td>
-                      <td
-                        className="py-3 px-4 align-top font-medium text-[#8d77ba]"
-                        rowSpan={connections.length || 1}
-                      >
-                        {rule.rule?.name}
-                      </td>
-                      <td
-                        className="py-3 px-4 align-top"
-                        rowSpan={connections.length || 1}
-                      >
-                        {rule.group}
-                      </td>
-                      <td
-                        className="py-3 px-4 align-top"
-                        rowSpan={connections.length || 1}
-                      >
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>{index + 1}</td>
+                      <td className="py-3 px-4 align-top font-medium text-[#8d77ba]" rowSpan={connections.length || 1}>{rule.rule?.name}</td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>{rule.group}</td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
                         <div className="max-h-20">
                           <pre className="text-xs whitespace-pre-wrap bg-gray-50 p-2 rounded">
                             {rule.rule?.query || "No SQL defined"}
                           </pre>
                         </div>
+                      </td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
+                        {rule.rule?.severity || "-"}
+                      </td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
+                        {rule.rule?.status || "-"}
+                      </td>
+                      <td className="py-3 px-4 align-top" rowSpan={connections.length || 1}>
+                        {rule.rule?.owner || "-"}
                       </td>
                     </>
                   )}
@@ -178,7 +210,7 @@ function Step3({ onBack, onCreate, step1Data, step2Data, loading }) {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
             </svg>
           ) : null}
-          {loading ? 'Creating...' : 'Create'}
+          {loading ? (edit ? 'Updating...' : 'Creating...') : (edit ? 'Update' : 'Create')}
         </button>
       </div>
     </div>

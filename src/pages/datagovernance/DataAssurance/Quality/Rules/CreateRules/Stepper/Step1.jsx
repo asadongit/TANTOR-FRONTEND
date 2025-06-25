@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, X, Plus } from 'lucide-react';
 import { useStepData } from './StepContext';
-import CreateGroup from './CreateGroup';
 import { useAuth } from '../../../../../../../context/AuthContext';
 
-// Add Rule Modal Component
 function AddRuleModal({ open, onClose, onSave }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -35,7 +33,6 @@ function AddRuleModal({ open, onClose, onSave }) {
       severity,
       status,
       query: "",
-      // id, owner, group_name, type, category will be added in Step1
     });
     onClose();
   };
@@ -122,6 +119,140 @@ function AddRuleModal({ open, onClose, onSave }) {
   );
 }
 
+function AddGroupModal({ open, onClose, onSave }) {
+  const [groupName, setGroupName] = useState('');
+  const [ruleName, setRuleName] = useState('');
+  const [description, setDescription] = useState('');
+  const [severity, setSeverity] = useState('High');
+  const [status, setStatus] = useState('Active');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setGroupName('');
+      setRuleName('');
+      setDescription('');
+      setSeverity('High');
+      setStatus('Active');
+      setError('');
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleSave = () => {
+    if (!groupName.trim() || !ruleName.trim() || !description.trim()) {
+      setError('Group Name, Rule Name and Description are required');
+      return;
+    }
+    onSave({
+      groupName,
+      rule: {
+        name: ruleName,
+        description,
+        severity,
+        status,
+        query: "",
+      }
+    });
+    onClose();
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('tantor-toast', { detail: { message: 'This Group and Rule is not saved until performed all the steps till step 3', type: 'info' } }));
+    }, 100);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg border-2 border-[#8d77ba]">
+        <div className="flex justify-between items-center mb-6 pb-3 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-[#8d77ba]">Add New Group</h2>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded-full text-gray-500 hover:text-gray-700"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <div className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Group Name*</label>
+            <input
+              type="text"
+              className="w-full border-2 border-gray-300 focus:border-[#8d77ba] rounded-md px-4 py-2"
+              value={groupName}
+              onChange={e => setGroupName(e.target.value)}
+              placeholder="Enter group name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Rule Name*</label>
+            <input
+              type="text"
+              className="w-full border-2 border-gray-300 focus:border-[#8d77ba] rounded-md px-4 py-2"
+              value={ruleName}
+              onChange={e => setRuleName(e.target.value)}
+              placeholder="Enter rule name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Description*</label>
+            <textarea
+              className="w-full border-2 border-gray-300 focus:border-[#8d77ba] rounded-md px-4 py-2"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              rows={3}
+              placeholder="Describe the rule"
+            />
+          </div>
+          <div className="flex gap-5">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-2 text-gray-700">Severity</label>
+              <select
+                className="w-full border-2 border-gray-300 focus:border-[#8d77ba] rounded-md px-4 py-2"
+                value={severity}
+                onChange={e => setSeverity(e.target.value)}
+              >
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-2 text-gray-700">Status</label>
+              <select
+                className="w-full border-2 border-gray-300 focus:border-[#8d77ba] rounded-md px-4 py-2"
+                value={status}
+                onChange={e => setStatus(e.target.value)}
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          {error && <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md border border-red-200">{error}</div>}
+        </div>
+        <div className="flex justify-end mt-8 gap-3 pt-4 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-gray-600"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className={`px-5 py-2.5 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7a67a0] font-medium transition-colors flex items-center justify-center ${
+              !groupName.trim() || !ruleName.trim() || !description.trim() ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+            disabled={!groupName.trim() || !ruleName.trim() || !description.trim()}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Step1({ onNext, onCancel, step1Data }) {
   const { setStepData } = useStepData();
   const { decodedToken, token } = useAuth();
@@ -140,13 +271,14 @@ function Step1({ onNext, onCancel, step1Data }) {
     return [];
   });
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [addGroupModalOpen, setAddGroupModalOpen] = useState(false);
+  const [uiGroups, setUiGroups] = useState([]);
   const [groupNames, setGroupNames] = useState([
     'Accuracy', 'Consistency', 'Completeness', 'Validity', 'Uniqueness'
   ]);
   const [groupSearch, setGroupSearch] = useState('');
   const [addRuleModalOpen, setAddRuleModalOpen] = useState(false);
-  // Store new rules in UI only
-  const [uiRules, setUiRules] = useState({}); // { groupName: [rule, ...] }
+  const [uiRules, setUiRules] = useState({});
 
   const fetchGroupNames = useCallback(() => {
     fetch(`${import.meta.env.VITE_FAST_API}/rules/listgroups`,
@@ -190,16 +322,26 @@ function Step1({ onNext, onCancel, step1Data }) {
       if (!rulesByGroup[groupName]) {
         rulesByGroup[groupName] = [];
       }
-      rulesByGroup[groupName].push(rule);
+      rulesByGroup[groupName].push({
+        ...rule,
+        description: rule.description ?? rule.desc ?? "",
+        owner: rule.owner ?? decodedToken?.preferred_username ?? "",
+        severity: rule.severity ?? "High",
+        status: rule.status ?? "Active",
+      });
     });
 
-    // Add UI rules that are not already selected
     Object.entries(uiRules).forEach(([groupName, rules]) => {
       rules.forEach(rule => {
         if (!rulesByGroup[groupName]) rulesByGroup[groupName] = [];
-        // Only add if not already present (by id)
         if (!rulesByGroup[groupName].some(r => r.id === rule.id)) {
-          rulesByGroup[groupName].push(rule);
+          rulesByGroup[groupName].push({
+            ...rule,
+            description: rule.description ?? rule.desc ?? "",
+            owner: rule.owner ?? decodedToken?.preferred_username ?? "",
+            severity: rule.severity ?? "High",
+            status: rule.status ?? "Active",
+          });
         }
       });
     });
@@ -214,7 +356,6 @@ function Step1({ onNext, onCancel, step1Data }) {
     onNext(selectionData);
   };
 
-  // Fetch rules for group (used after adding a rule)
   const fetchGroupRules = useCallback(async (selectedGroup) => {
     setIsLoading(true);
     try {
@@ -306,16 +447,44 @@ function Step1({ onNext, onCancel, step1Data }) {
             type,
             category,
             owner: decodedToken?.preferred_username,
+            description: rule.description ?? rule.desc ?? "",
+            severity: rule.severity ?? "High",
+            status: rule.status ?? "Active",
           }
         ]
       };
     });
   };
 
+  const handleAddGroupSave = ({ groupName, rule }) => {
+    setUiGroups(prev => prev.includes(groupName) ? prev : [...prev, groupName]);
+    setUiRules(prev => {
+      const groupRules = prev[groupName] || [];
+      const tempId = `ui_${Date.now()}`;
+      return {
+        ...prev,
+        [groupName]: [
+          ...groupRules,
+          {
+            ...rule,
+            id: tempId,
+            group_name: groupName,
+            type,
+            category,
+            owner: decodedToken?.preferred_username,
+            description: rule.description ?? rule.desc ?? "",
+            severity: rule.severity ?? "High",
+            status: rule.status ?? "Active",
+          }
+        ]
+      };
+    });
+    setGroupNames(prev => prev.includes(groupName) ? prev : [...prev, groupName]);
+  };
+
   const getAllRulesForGroup = (groupName) => {
     const apiRules = groupData.filter(r => r.group_name === groupName);
     const uiRulesArr = uiRules[groupName] || [];
-    // Avoid duplicate ids (if any)
     const all = [...apiRules, ...uiRulesArr.filter(u => !apiRules.some(a => a.id === u.id))];
     return all;
   };
@@ -396,7 +565,7 @@ function Step1({ onNext, onCancel, step1Data }) {
               type="button"
               className={`mb-4 flex items-center gap-2 px-4 py-2 border-2 border-dashed border-[#8d77ba] rounded-lg text-[#8d77ba] hover:bg-[#f3f0f9] transition
                 ${!type ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
-              onClick={() => type && setShowCreateGroup(true)}
+              onClick={() => type && setAddGroupModalOpen(true)}
               disabled={!type}
             >
               <Plus size={18} />
@@ -411,7 +580,7 @@ function Step1({ onNext, onCancel, step1Data }) {
               paddingRight: '4px'
             }}
           >
-            {groupNames
+            {[...new Set([...groupNames, ...uiGroups])]
               .filter(groupName =>
                 groupName.toLowerCase().includes(groupSearch.trim().toLowerCase())
               )
@@ -524,10 +693,7 @@ function Step1({ onNext, onCancel, step1Data }) {
                         <span className="font-medium text-gray-600 mr-2">Type:</span>
                         <span className="px-3 py-1 rounded-full bg-[#8d77ba] text-white text-sm">{type}</span>
                       </div>
-                      <div className="flex items-center">
-                        <span className="font-medium text-gray-600 mr-2">Group:</span>
-                        <span className="px-3 py-1 rounded-full bg-[#8d77ba] text-white text-sm">{group}</span>
-                      </div>
+
                     </div>
                   </div>
 
@@ -562,7 +728,6 @@ function Step1({ onNext, onCancel, step1Data }) {
                             <th className="p-3 text-left">Severity</th>
                             <th className="p-3 text-left">Status</th>
                             <th className="p-3 text-left">Owner</th>
-                            <th className="p-3 text-left">Group</th>
                             <th className="p-3 text-left">Query</th>
                           </tr>
                         </thead>
@@ -600,7 +765,6 @@ function Step1({ onNext, onCancel, step1Data }) {
                                 </span>
                               </td>
                               <td className="p-3">{rule.owner}</td>
-                              <td className="p-3">{rule.group_name}</td>
                               <td className="p-3 truncate max-w-[200px]">
                                 {rule.query || "N/A"}
                               </td>
@@ -637,7 +801,7 @@ function Step1({ onNext, onCancel, step1Data }) {
               </div>
             </div>
           </div>
-          {/* AddRuleModal */}
+
           <AddRuleModal
             open={addRuleModalOpen}
             onClose={() => setAddRuleModalOpen(false)}
@@ -646,13 +810,10 @@ function Step1({ onNext, onCancel, step1Data }) {
         </div>
       )}
 
-      <CreateGroup
-        open={showCreateGroup}
-        onClose={() => setShowCreateGroup(false)}
-        type={type}
-        category={category}
-        owner={decodedToken?.preferred_username}
-        onGroupCreated={fetchGroupNames}
+      <AddGroupModal
+        open={addGroupModalOpen}
+        onClose={() => setAddGroupModalOpen(false)}
+        onSave={handleAddGroupSave}
       />
     </div>
   );

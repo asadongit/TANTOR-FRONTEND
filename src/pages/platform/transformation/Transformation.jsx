@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from '../../../context/AuthContext';
+import DataTable from '../../../components/DataTable';
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -24,19 +25,18 @@ const rotateAnimation = `
 function Transformation() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [viewMode, setViewMode] = useState('both');
   const [transformationData, setTransformationData] = useState([]);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, transformation: null });
   const [dashboardData, setDashboardData] = useState({
     cards: { total: 0, success: 0, failed: 0, average_duration: 0 },
     last5transformations: [],
     movementgraph: []
   });
   const {project, decodedToken, token} = useAuth()
-  const rowsPerPage = 5;
 
   const hostname = import.meta.env.VITE_FAST_API;
 
@@ -88,7 +88,11 @@ function Transformation() {
           }
         }
       );
-      setTransformationData(response.data);
+
+      const sortedData = response.data.sort((a, b) =>
+        new Date(b.created_at) - new Date(a.created_at)
+      );
+      setTransformationData(sortedData);
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching transformation data:", error);
@@ -138,7 +142,6 @@ function Transformation() {
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1);
   };
 
   const handleRefresh = async () => {
@@ -167,36 +170,7 @@ function Transformation() {
     }
   };
 
-  const filteredData = transformationData.filter(item =>
-    item.transformation_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (item.created_by && item.created_by.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-  const indexOfLastItem = currentPage * rowsPerPage;
-  const indexOfFirstItem = indexOfLastItem - rowsPerPage;
-  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
-
-  const goToPage = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
-
-  const goToPreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const handleClickOutside = () => {
-    setActiveMenu(null);
-  };
 
   const MovementChart = () => {
     const chartData = dashboardData.movementgraph || [];
@@ -373,6 +347,205 @@ function Transformation() {
     }
   };
 
+  const handleDeleteTransformation = (transformation) => {
+    setDeleteModal({ isOpen: true, transformation });
+  };
+
+  const confirmDeleteTransformation = async (transformationId) => {
+    try {
+      const response = await axios.delete(
+        `${hostname}/etl/transformation/delete?transformation_id=${transformationId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.status === 200) {
+        fetchTransformationData();
+        fetchDashboardData();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error deleting transformation:", error);
+      setToast({
+        show: true,
+        message: 'Failed to delete transformation',
+        type: 'error'
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+      throw error;
+    }
+  };
+
+  const columns = [
+    { key: "transformation_name", label: "Name", sortable: true },
+    { key: "description", label: "Description", sortable: true },
+    { key: "created_at", label: "Created", sortable: true,
+      render: (row) => formatDate(row.created_at) },
+    { key: "updated_at", label: "Updated", sortable: true,
+      render: (row) => formatDate(row.updated_at) },
+    { key: "created_by", label: "Owner", sortable: true },
+    { key: "status", label: "Status", sortable: true },
+    { key: "source_count", label: "Source Records", sortable: true },
+    { key: "target_count", label: "Target Records", sortable: true },
+    { key: "duration", label: "Duration", sortable: true },
+    { label: "Action", sortable: false },
+  ];
+
+  const actions = [
+    {
+      label: "Run",
+      icon: <Icon icon="material-symbols:play-arrow" className="w-5 h-5" />,
+      onClick: (row) => handleTriggerETL(row.transformation_name),
+      show: (row) => row.status === 'Ready to run'
+    },
+    {
+      label: "Edit",
+      icon: <Icon icon="material-symbols:edit-outline" className="w-5 h-5" />,
+      onClick: (row) => console.log("Edit:", row)
+    },
+    {
+      label: "Copy",
+      icon: <Icon icon="material-symbols:content-copy-outline" className="w-5 h-5" />,
+      onClick: (row) => console.log("Copy:", row)
+    },
+    {
+      label: "Info",
+      icon: <Icon icon="material-symbols:info-outline" className="w-5 h-5" />,
+      onClick: (row) => console.log("Info:", row)
+    },
+    {
+      label: "Delete",
+      icon: <Icon icon="material-symbols:delete-outline" className="w-5 h-5" />,
+      onClick: (row) => handleDeleteTransformation(row)
+    },
+  ];
+
+
+  const DeleteTransformation = ({ isOpen, onClose, transformationData, onConfirmDelete }) => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [isDeleted, setIsDeleted] = useState(false);
+
+    useEffect(() => {
+      if (isOpen) {
+        setIsDeleted(false);
+        setIsLoading(false);
+      }
+    }, [isOpen, transformationData]);
+
+    if (!isOpen || !transformationData) return null;
+
+    const handleClose = () => {
+      setIsDeleted(false);
+      setIsLoading(false);
+      onClose();
+    };
+
+    const handleConfirm = async () => {
+      setIsLoading(true);
+
+      try {
+        const success = await onConfirmDelete(transformationData.transformation_id);
+        if (success) {
+          setToast({
+            show: true,
+            message: 'Transformation deleted successfully',
+            type: 'success'
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: '', type: '' });
+          }, 3000);
+          onClose();
+        }
+      } catch (error) {
+        console.error('Error deleting transformation:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl w-[500px] p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              {isDeleted ? (
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+              )}
+              <h2 className="text-xl font-bold text-red-500">
+                {isDeleted ? 'Transformation Deleted' : 'Delete Confirmation'}
+              </h2>
+            </div>
+            {!isLoading && (
+              <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+
+          <div className="mb-8">
+            {isLoading && (
+              <div className="p-4 bg-gray-50 rounded-lg text-center mb-6 flex flex-col items-center">
+                <Loader className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
+                <p className="text-lg font-medium text-gray-800">Deleting transformation...</p>
+              </div>
+            )}
+
+            {isDeleted && (
+              <div className="p-4 bg-green-50 rounded-lg text-center mb-6">
+                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
+                <p className="text-lg font-medium text-gray-800">
+                  Transformation "{transformationData.transformation_name}" deleted successfully
+                </p>
+                <button
+                  onClick={handleClose}
+                  className="mt-6 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+
+            {!isLoading && !isDeleted && (
+              <>
+                <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
+                  <p className="text-lg font-medium text-gray-800">
+                    You are about to delete the transformation "{transformationData.transformation_name}"
+                  </p>
+                  <p className="text-gray-500 mt-2">This action cannot be undone.</p>
+                </div>
+                <p className="text-gray-600 text-center mb-6">Do you want to continue?</p>
+
+                <div className="flex justify-center gap-4">
+                  <button
+                    onClick={handleConfirm}
+                    className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={handleClose}
+                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    No
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
@@ -494,120 +667,22 @@ function Transformation() {
         </>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden mt-4 mb-6">
-        {isLoading ? (
-          <div className="flex justify-center items-center p-10">
-            <RotateCw className="h-8 w-8 text-gray-400 icon-rotate" />
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="bg-[#29304a] text-white">
-              <th className="text-left p-4">ID</th>
-                <th className="text-left p-4">Name</th>
-                <th className="text-left p-4">Description</th>
-                <th className="text-left p-4">Created</th>
-                <th className="text-left p-4">Updated</th>
-                <th className="text-left p-4">Owner</th>
-                <th className="text-left p-4">Status</th>
-                <th className='text-left p-4'>Source Records</th>
-                <th className='text-left p-4'>Target Records</th>
-                <th className='text-left p-4'>Duration</th>
-                <th className="text-left p-4">Quick Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentItems.map((item, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="p-4 font-medium">{indexOfFirstItem + index + 1}</td>
-                  <td className="p-4  font-medium">{item.transformation_name}</td>
-                  <td className="p-4">{item.description || "-"}</td>
-                  <td className="p-4">{formatDate(item.created_at)}</td>
-                  <td className="p-4">{formatDate(item.updated_at)}</td>
-                  <td className="p-4">{item.created_by || "-"}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      item.status === 'creating' ? 'bg-blue-100 text-blue-800' :
-                      item.status === 'active' ? 'bg-green-100 text-green-800' :
-                      item.status === 'failed' ? 'bg-red-100 text-red-800' :
-                      item.status === 'Ready to run' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {item.status || "unknown"}
-                    </span>
-                  </td>
-                  <td className="p-4">{item.source_count || "-"}</td>
-                  <td className="p-4">{item.target_count || "-"}</td>
-                  <td className="p-4">{item.duration || "-"}</td>
+      <DataTable
+        columns={columns}
+        data={transformationData}
+        actions={actions}
+        isLoading={isLoading}
+        isError={false}
+        refetch={fetchTransformationData}
+        title="Transformations"
+      />
 
-
-
-                  <td className="p-4">
-                    <div className="flex items-center gap-1">
-                      <button
-                        className={`p-1 rounded ${item.status === 'Ready to run' ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
-                        disabled={item.status !== 'Ready to run'}
-                        onClick={() => item.status === 'Ready to run' && handleTriggerETL(item.transformation_name)}
-                      >
-                        <Icon icon="material-symbols:play-arrow" className={`w-5 h-5 ${item.status === 'Ready to run' ? 'text-gray-600' : 'text-gray-400'}`} />
-                      </button>
-                      <button className="p-1 rounded hover:bg-gray-100">
-                        <Icon icon="material-symbols:edit-outline" className="w-5 h-5 text-gray-600" />
-                      </button>
-                      <button className="p-1 rounded hover:bg-gray-100">
-                        <Icon icon="material-symbols:content-copy-outline" className="w-5 h-5 text-gray-600" />
-                      </button>
-                      <button className="p-1 rounded hover:bg-gray-100">
-                        <Icon icon="material-symbols:info-outline" className="w-5 h-5 text-gray-600" />
-                      </button>
-                      <button className="p-1 rounded hover:bg-gray-100">
-                        <Icon icon="material-symbols:delete-outline" className="w-5 h-5 text-gray-600" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        <div className="flex justify-end items-center px-4 py-3 border-t">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={goToPreviousPage}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-lg ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-
-            <div className="flex items-center">
-              {[...Array(totalPages)].map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => goToPage(index + 1)}
-                  className={`px-3 py-1 mx-1 rounded-md ${
-                    currentPage === index + 1
-                      ? 'bg-[#8e78b7] text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={goToNextPage}
-              disabled={currentPage === totalPages}
-              className={`p-2 rounded-lg ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
+      <DeleteTransformation
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, transformation: null })}
+        transformationData={deleteModal.transformation}
+        onConfirmDelete={confirmDeleteTransformation}
+      />
     </div>
   );
 }
