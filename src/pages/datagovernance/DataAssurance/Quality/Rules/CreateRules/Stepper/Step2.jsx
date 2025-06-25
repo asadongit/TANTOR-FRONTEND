@@ -56,7 +56,24 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
   const [searchLoaded, setSearchLoaded] = useState(false);
   const editorRef = useRef(null);
 
-  const [validationStatus, setValidationStatus] = useState({});
+  const [validationStatus, setValidationStatusState] = useState(() => stepData.validationStatus || {});
+
+  useEffect(() => {
+    setStepData(prev => ({ ...prev, validationStatus }));
+  }, [validationStatus]);
+
+  useEffect(() => {
+    if (stepData.validationStatus) {
+      setValidationStatusState(stepData.validationStatus);
+    }
+  }, []);
+
+  const setValidationStatus = useCallback((updater) => {
+    setValidationStatusState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      return { ...prev, ...next };
+    });
+  }, []);
 
   const initialStep2Data = stepData.step2 || step2Data;
 
@@ -191,10 +208,20 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
   const handleQueryChange = (value) => {
     const currentGroup = groupNames[activeGroupIndex];
     const updatedQueries = { ...queries };
-
     if (updatedQueries[currentGroup] && updatedQueries[currentGroup][activeRuleIndex]) {
       updatedQueries[currentGroup][activeRuleIndex].query = value;
       setQueries(updatedQueries);
+
+      const queryKey = `${currentGroup}__${activeRuleIndex}`;
+      const conns = connectionsByQuery[queryKey] || [];
+      setValidationStatus(prev => {
+        const updated = { ...prev };
+        conns.forEach((_, idx) => {
+          const connKey = `${queryKey}__${idx}`;
+          delete updated[connKey];
+        });
+        return updated;
+      });
     }
   };
 
@@ -390,6 +417,16 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
       ...prev,
       [getCurrentQueryKey()]: newConnections
     }));
+
+    const queryKey = getCurrentQueryKey();
+    setValidationStatus(prev => {
+      const updated = { ...prev };
+      (newConnections || []).forEach((_, idx) => {
+        const connKey = `${queryKey}__${idx}`;
+        delete updated[connKey];
+      });
+      return updated;
+    });
   };
 
   const handleConnectionChange = (id, selectedOption) => {
@@ -1036,7 +1073,6 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-md font-semibold mr-2">Apply To</h4>
 
-              {/* Update search UI */}
               <div className="flex items-center gap-3">
                 <div className="relative flex items-center">
                   <input
