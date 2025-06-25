@@ -44,7 +44,7 @@ const CustomMultiValueLabel = props => {
   );
 };
 
-function Step2({ data, onBack, onNext, step2Data, edit }) {
+function Step2({ data, onBack, onNext, step2Data, edit =false }) {
   const { stepData, setStepData } = useStepData();
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -884,7 +884,7 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
     setCurrentSearchIndex(prevIndex);
   };
 
-  const isPrebuiltEdit = edit && data?.category === 'Pre-built';
+  const isPrebuiltEdit = data?.category.toLowerCase() === 'pre-built';
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
