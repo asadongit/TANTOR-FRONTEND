@@ -13,7 +13,8 @@ const LineItemSummary = () => {
     closeAllModals,
     reportId,
     reportName,
-    setLinkedLineItemIds,
+    lineItemConfig,
+    mode,
   } = useLineItems();
 
   const rules = getRulesForCurrentLineItem();
@@ -60,59 +61,54 @@ const LineItemSummary = () => {
     return texts.join(", ");
   };
 
-  const handleCreateLink = () => {
-    if (!currentLineItemId) {
-      toast.error("Line Item ID is missing");
-      return;
+ const handleLineItemLink = async () => {
+  if (!currentLineItemId) {
+    toast.error("Line Item ID is missing");
+    return;
+  }
+
+  const lineItemUiJson = lineItemConfig.find(
+    (item) => item.line_item === currentLineItemId
+  );
+
+  const payload = {
+    report_config: {
+      regReportId: reportId,
+      line_item: parseInt(currentLineItemId.split("_").pop(), 10),
+      rules: rules,
+      uiJson: lineItemUiJson,
+    },
+  };
+
+  const method = mode === "EDIT" ? "PUT" : "POST";
+
+  const headers = {
+    "Content-Type": "application/json",
+    authorization: `Bearer ${token}`,
+  };
+
+  try {
+    const response = await fetch(`${hostnameV1}/lineItems`, {
+      method,
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.detail || "Failed to save line item");
     }
 
-    const payload = {
-      report_config: {
-        regReportId: reportId,
-        line_item: parseInt(currentLineItemId.split("_").pop(), 10),
-        rules: rules,
-      },
-    };
+    const data = await response.json();
+    toast.success(data?.message || "Line item saved successfully");
 
-    const uploadData = async () => {
-      const headers = {
-        "Content-Type": "application/json",
-        authorization: `Bearer ${token}`,
-      };
+    closeAllModals();
+  } catch (error) {
+    console.error("Error Saving Line Item:", error);
+    toast.error(error.message);
+  }
+};
 
-      try {
-        const response = await fetch(`${hostnameV1}/lineItems`, {
-          headers: headers,
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          toast.error("Error Saving Line Item.");
-          return;
-        }
-
-        const data = await response.json();
-        toast.success(data.message);
-
-        setLinkedLineItemIds((prev) => {
-          if (prev.has(currentLineItemId)) {
-            return prev;
-          } else {
-            return new Set(prev).add(currentLineItemId);
-          }
-        });
-        // await addReportToDatabase();
-        closeAllModals();
-      } catch (error) {
-        console.error("Error Saving Line Item:", error);
-        toast.error("Error Saving Line Item");
-      }
-    };
-
-    uploadData();
-    console.log(payload);
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center font-sans">
@@ -217,9 +213,9 @@ const LineItemSummary = () => {
           </button>
           <button
             className="px-4 py-2 rounded-md bg-[#8E77BB] hover:bg-[#7a63ac] text-white font-medium transition"
-            onClick={handleCreateLink}
+            onClick={handleLineItemLink}
           >
-            Create Link
+            {mode === "EDIT" ? "Edit Link" : "Create Link"}
           </button>
         </div>
       </div>

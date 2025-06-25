@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   PlusCircle,
   ChevronDown,
@@ -28,6 +28,18 @@ export default function RuleSelector() {
     },
   ]);
   const [disableSubmit, setDisableSubmit] = useState(true);
+
+  useEffect(() => {
+    if (rules && rules.length > 0 && rules.every(rule => rule?.ruleId && rule?.operator && rule?.sequence)) {
+      const validRules = rules.filter(rule => rule?.ruleId && rule?.operator).sort((a, b) => a.sequence - b.sequence).map(rule => {
+        return {
+          ruleId: rule.ruleId,
+          operator: rule.operator,
+        }
+      });
+      setRuleOperators(validRules);
+    }
+  }, []);
 
   const addSelectOperator = () => {
     setDisableSubmit(true);
@@ -85,25 +97,20 @@ export default function RuleSelector() {
   };
 
   const handleNext = () => {
-    const newRules = [...rules];
-    let ruleSequence = 1;
 
-    ruleOperators.forEach((ruleOp) => {
-      if (ruleOp.ruleId) {
-        const ruleIndex = newRules.findIndex(
-          (rule) => rule.ruleId === ruleOp.ruleId
-        );
-        if (ruleIndex !== -1) {
-          newRules[ruleIndex].operator = ruleOp.operator;
-          newRules[ruleIndex].sequence = ruleSequence;
-          ruleSequence++;
-        }
+    const newRules = rules.map(rule => {
+      const ruleOp = ruleOperators.find(op => op.ruleId === rule.ruleId);
+      if (ruleOp) {
+        return {
+          ...rule,
+          operator: ruleOp.operator,
+          sequence: ruleOperators.findIndex(op => op.ruleId === rule.ruleId) + 1
+        };
       }
+      return rule;
     });
 
     updateRules(lineItemId, newRules);
-    // setShowLineItemModal(false);
-    // setIsOpen(false);
     setShowSummaryModal(true);
   };
 
@@ -117,7 +124,7 @@ export default function RuleSelector() {
       return toast.error("A Line_Item must be linked to at least one rule.");
     }
 
-    // Clean up empty dimensions and update state
+    // Clean up empty dimensions
     const newRules = rules.map(rule => ({
       ...rule,
       dimensions: rule.dimensions.filter(dim => 
