@@ -412,7 +412,7 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
 
   const connections = connectionsByQuery[getCurrentQueryKey()] || [];
 
-  const setConnectionsForCurrent = (newConnections) => {
+  const setConnectionsForCurrent = (newConnections, changedId = null) => {
     setConnectionsByQuery(prev => ({
       ...prev,
       [getCurrentQueryKey()]: newConnections
@@ -421,35 +421,63 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
     const queryKey = getCurrentQueryKey();
     setValidationStatus(prev => {
       const updated = { ...prev };
-      (newConnections || []).forEach((_, idx) => {
-        const connKey = `${queryKey}__${idx}`;
-        delete updated[connKey];
-      });
+      if (changedId !== null) {
+        const idx = newConnections.findIndex(conn => conn.id === changedId);
+        if (idx !== -1) {
+          const connKey = `${queryKey}__${idx}`;
+          if (
+            prev[connKey] === 'success' ||
+            prev[connKey] === 'error' ||
+            prev[connKey] === 'pending'
+          ) {
+            updated[connKey] = "validate_again";
+          } else {
+            delete updated[connKey];
+          }
+        }
+      } else {
+        (newConnections || []).forEach((_, idx) => {
+          const connKey = `${queryKey}__${idx}`;
+          if (
+            prev[connKey] === 'success' ||
+            prev[connKey] === 'error' ||
+            prev[connKey] === 'pending'
+          ) {
+            updated[connKey] = "validate_again";
+          } else {
+            delete updated[connKey];
+          }
+        });
+      }
       return updated;
     });
   };
 
   const handleConnectionChange = (id, selectedOption) => {
     const value = selectedOption ? selectedOption.value : '';
-    setConnectionsForCurrent(connections.map(conn =>
-      conn.id === id
-        ? { ...conn, connection: value, schema: [], table: [], column: [] }
-        : conn
-    ));
+    setConnectionsForCurrent(
+      connections.map(conn =>
+        conn.id === id
+          ? { ...conn, connection: value, schema: [], table: [], column: [] }
+          : conn
+      ),
+      id
+    );
     if (value) fetchSchemas(value);
   };
 
   const handleSchemaChange = (id, selectedOptions) => {
     const conn = connections.find(c => c.id === id);
     const values = selectedOptions ? selectedOptions.map(option => option.value) : [];
-
-    setConnectionsForCurrent(connections.map(conn =>
-      conn.id === id
-        ? { ...conn, schema: values, table: [], column: [] }
-        : conn
-    ));
-
-    if (conn.connection) {
+    setConnectionsForCurrent(
+      connections.map(conn =>
+        conn.id === id
+          ? { ...conn, schema: values, table: [], column: [] }
+          : conn
+      ),
+      id
+    );
+    if (conn && conn.connection) {
       values.forEach(schema => fetchTables(conn.connection, schema));
     }
   };
@@ -457,14 +485,15 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
   const handleTableChange = (id, selectedOptions) => {
     const conn = connections.find(c => c.id === id);
     const values = selectedOptions ? selectedOptions.map(option => option.value) : [];
-
-    setConnectionsForCurrent(connections.map(conn =>
-      conn.id === id
-        ? { ...conn, table: values, column: [] }
-        : conn
-    ));
-
-    if (conn.connection && conn.schema) {
+    setConnectionsForCurrent(
+      connections.map(conn =>
+        conn.id === id
+          ? { ...conn, table: values, column: [] }
+          : conn
+      ),
+      id
+    );
+    if (conn && conn.connection && conn.schema) {
       (conn.schema || []).forEach(schema =>
         values.forEach(table => fetchColumns(conn.connection, schema, table))
       );
@@ -473,11 +502,14 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
 
   const handleColumnChange = (id, selectedOptions) => {
     const values = selectedOptions ? selectedOptions.map(option => option.value) : [];
-    setConnectionsForCurrent(connections.map(conn =>
-      conn.id === id
-        ? { ...conn, column: values }
-        : conn
-    ));
+    setConnectionsForCurrent(
+      connections.map(conn =>
+        conn.id === id
+          ? { ...conn, column: values }
+          : conn
+      ),
+      id
+    );
   };
 
   const handleCheck = (id) => {
@@ -1222,6 +1254,8 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
                     statusIcon = <span className="text-red-600 text-xs font-semibold mr-2">Invalid Query</span>;
                   } else if (validationStatus[connKey] === 'pending') {
                     statusIcon = <span className="text-yellow-600 text-xs font-semibold mr-2">Validating...</span>;
+                  } else if (validationStatus[connKey] === 'validate_again') {
+                    statusIcon = <span className="text-orange-600 text-xs font-semibold mr-2">Validate Again</span>;
                   }
 
                   return (
