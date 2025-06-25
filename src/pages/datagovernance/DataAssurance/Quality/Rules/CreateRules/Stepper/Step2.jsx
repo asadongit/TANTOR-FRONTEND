@@ -56,7 +56,24 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
   const [searchLoaded, setSearchLoaded] = useState(false);
   const editorRef = useRef(null);
 
-  const [validationStatus, setValidationStatus] = useState({});
+  const [validationStatus, setValidationStatusState] = useState(() => stepData.validationStatus || {});
+
+  useEffect(() => {
+    setStepData(prev => ({ ...prev, validationStatus }));
+  }, [validationStatus]);
+
+  useEffect(() => {
+    if (stepData.validationStatus) {
+      setValidationStatusState(stepData.validationStatus);
+    }
+  }, []);
+
+  const setValidationStatus = useCallback((updater) => {
+    setValidationStatusState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      return { ...prev, ...next };
+    });
+  }, []);
 
   const initialStep2Data = stepData.step2 || step2Data;
 
@@ -191,10 +208,20 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
   const handleQueryChange = (value) => {
     const currentGroup = groupNames[activeGroupIndex];
     const updatedQueries = { ...queries };
-
     if (updatedQueries[currentGroup] && updatedQueries[currentGroup][activeRuleIndex]) {
       updatedQueries[currentGroup][activeRuleIndex].query = value;
       setQueries(updatedQueries);
+
+      const queryKey = `${currentGroup}__${activeRuleIndex}`;
+      const conns = connectionsByQuery[queryKey] || [];
+      setValidationStatus(prev => {
+        const updated = { ...prev };
+        conns.forEach((_, idx) => {
+          const connKey = `${queryKey}__${idx}`;
+          delete updated[connKey];
+        });
+        return updated;
+      });
     }
   };
 
@@ -390,6 +417,16 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
       ...prev,
       [getCurrentQueryKey()]: newConnections
     }));
+
+    const queryKey = getCurrentQueryKey();
+    setValidationStatus(prev => {
+      const updated = { ...prev };
+      (newConnections || []).forEach((_, idx) => {
+        const connKey = `${queryKey}__${idx}`;
+        delete updated[connKey];
+      });
+      return updated;
+    });
   };
 
   const handleConnectionChange = (id, selectedOption) => {
@@ -660,37 +697,47 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
 
   const handleRunSQL = async (groupName, ruleIdx, connIdx) => {
     const queryKey = `${groupName}__${ruleIdx}`;
-    const connKey = `${queryKey}__${connIdx}`;
-    const rule = queries[groupName][ruleIdx];
-    const conn = connectionsByQuery[queryKey][connIdx];
-    if (!rule || !conn) return;
+    const conns = connectionsByQuery[queryKey] || [];
+    const targetConn = conns[connIdx];
+    if (!targetConn) return;
 
-    const replacedQuery = replacePlaceholders(
-      rule.query,
-      conn.connection,
-      conn.schema,
-      conn.table,
-      conn.column
-    );
+    const sameConnIndices = conns
+      .map((c, idx) => (c.connection === targetConn.connection && c.checked ? idx : null))
+      .filter(idx => idx !== null);
 
-    setValidationStatus(prev => ({ ...prev, [connKey]: 'pending' }));
+    for (const idx of sameConnIndices) {
+      const conn = conns[idx];
+      const connKey = `${queryKey}__${idx}`;
+      const rule = queries[groupName][ruleIdx];
+      if (!rule || !conn) continue;
 
-    try {
-      const res = await fetch(`${import.meta.env.VITE_FAST_API}/rules/executerule`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ query: replacedQuery }),
-      });
-      if (res.ok) {
-        setValidationStatus(prev => ({ ...prev, [connKey]: 'success' }));
-      } else {
+      const replacedQuery = replacePlaceholders(
+        rule.query,
+        conn.connection,
+        conn.schema,
+        conn.table,
+        conn.column
+      );
+
+      setValidationStatus(prev => ({ ...prev, [connKey]: 'pending' }));
+
+      try {
+        const res = await fetch(`${import.meta.env.VITE_FAST_API}/rules/executerule`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ query: replacedQuery }),
+        });
+        if (res.ok) {
+          setValidationStatus(prev => ({ ...prev, [connKey]: 'success' }));
+        } else {
+          setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
+        }
+      } catch {
         setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
       }
-    } catch {
-      setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
     }
   };
 
@@ -1026,7 +1073,6 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-md font-semibold mr-2">Apply To</h4>
 
-              {/* Update search UI */}
               <div className="flex items-center gap-3">
                 <div className="relative flex items-center">
                   <input
