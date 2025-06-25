@@ -660,37 +660,47 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
 
   const handleRunSQL = async (groupName, ruleIdx, connIdx) => {
     const queryKey = `${groupName}__${ruleIdx}`;
-    const connKey = `${queryKey}__${connIdx}`;
-    const rule = queries[groupName][ruleIdx];
-    const conn = connectionsByQuery[queryKey][connIdx];
-    if (!rule || !conn) return;
+    const conns = connectionsByQuery[queryKey] || [];
+    const targetConn = conns[connIdx];
+    if (!targetConn) return;
 
-    const replacedQuery = replacePlaceholders(
-      rule.query,
-      conn.connection,
-      conn.schema,
-      conn.table,
-      conn.column
-    );
+    const sameConnIndices = conns
+      .map((c, idx) => (c.connection === targetConn.connection && c.checked ? idx : null))
+      .filter(idx => idx !== null);
 
-    setValidationStatus(prev => ({ ...prev, [connKey]: 'pending' }));
+    for (const idx of sameConnIndices) {
+      const conn = conns[idx];
+      const connKey = `${queryKey}__${idx}`;
+      const rule = queries[groupName][ruleIdx];
+      if (!rule || !conn) continue;
 
-    try {
-      const res = await fetch(`${import.meta.env.VITE_FAST_API}/rules/executerule`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ query: replacedQuery }),
-      });
-      if (res.ok) {
-        setValidationStatus(prev => ({ ...prev, [connKey]: 'success' }));
-      } else {
+      const replacedQuery = replacePlaceholders(
+        rule.query,
+        conn.connection,
+        conn.schema,
+        conn.table,
+        conn.column
+      );
+
+      setValidationStatus(prev => ({ ...prev, [connKey]: 'pending' }));
+
+      try {
+        const res = await fetch(`${import.meta.env.VITE_FAST_API}/rules/executerule`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ query: replacedQuery }),
+        });
+        if (res.ok) {
+          setValidationStatus(prev => ({ ...prev, [connKey]: 'success' }));
+        } else {
+          setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
+        }
+      } catch {
         setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
       }
-    } catch {
-      setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
     }
   };
 
