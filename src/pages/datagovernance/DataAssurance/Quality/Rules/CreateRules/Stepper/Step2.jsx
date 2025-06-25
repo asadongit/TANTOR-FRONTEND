@@ -412,7 +412,7 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
 
   const connections = connectionsByQuery[getCurrentQueryKey()] || [];
 
-  const setConnectionsForCurrent = (newConnections, changedId = null) => {
+  const setConnectionsForCurrent = (newConnections, changedId = null, isDuplicate = false) => {
     setConnectionsByQuery(prev => ({
       ...prev,
       [getCurrentQueryKey()]: newConnections
@@ -421,30 +421,26 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
     const queryKey = getCurrentQueryKey();
     setValidationStatus(prev => {
       const updated = { ...prev };
-      if (changedId !== null) {
+      if (changedId !== null && !isDuplicate) {
         const idx = newConnections.findIndex(conn => conn.id === changedId);
         if (idx !== -1) {
           const connKey = `${queryKey}__${idx}`;
           if (
             prev[connKey] === 'success' ||
             prev[connKey] === 'error' ||
-            prev[connKey] === 'pending'
+            prev[connKey] === 'pending' ||
+            prev[connKey] === 'validate_again'
           ) {
             updated[connKey] = "validate_again";
           } else {
             delete updated[connKey];
           }
         }
-      } else {
-        (newConnections || []).forEach((_, idx) => {
+      }
+      if (isDuplicate) {
+        newConnections.forEach((conn, idx) => {
           const connKey = `${queryKey}__${idx}`;
-          if (
-            prev[connKey] === 'success' ||
-            prev[connKey] === 'error' ||
-            prev[connKey] === 'pending'
-          ) {
-            updated[connKey] = "validate_again";
-          } else {
+          if (!(connKey in prev)) {
             delete updated[connKey];
           }
         });
@@ -512,16 +508,6 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
     );
   };
 
-  const handleCheck = (id) => {
-    setConnectionsForCurrent(connections.map(conn =>
-      conn.id === id ? { ...conn, checked: !conn.checked } : conn
-    ));
-  };
-
-  const handleDelete = (id) => {
-    setConnectionsForCurrent(connections.filter(conn => conn.id !== id));
-  };
-
   const handleDuplicateConnection = (conn) => {
     setConnectionsForCurrent([
       ...connections,
@@ -533,10 +519,10 @@ function Step2({ data, onBack, onNext, step2Data, edit }) {
         table: conn.table,
         column: conn.column
       }
-    ]);
-    fetchSchemas(conn.connection);
-    fetchTables(conn.connection, conn.schema);
-    fetchColumns(conn.connection, conn.schema, conn.table);
+    ], null, true);
+    if (conn.connection) fetchSchemas(conn.connection);
+    if (conn.connection && conn.schema) fetchTables(conn.connection, conn.schema);
+    if (conn.connection && conn.schema && conn.table) fetchColumns(conn.connection, conn.schema, conn.table);
   };
 
   const handleRefresh = (conn) => {
