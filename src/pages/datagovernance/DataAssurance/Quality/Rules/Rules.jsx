@@ -21,6 +21,9 @@ const Rules = () => {
   const navigate = useNavigate();
   const [metricData, setMetricData] = useState([]);
   const [tableData, setTableData] = useState([]);
+  const selectAllRef = useRef(null); 
+  const [showSelectAllOptions, setShowSelectAllOptions] = useState(false);
+
   useEffect(() => {
     if (toast.show) {
       const timer = setTimeout(() => {
@@ -273,8 +276,8 @@ const Rules = () => {
           message: `Successfully refreshed ${idsToRefresh.length} rule(s)`,
           type: 'success',
         });
-        fetchTableData(); // Refresh the table data
-        fetchCounts(); // Refresh the metrics
+        fetchTableData(); 
+        fetchCounts(); 
       } else {
         throw new Error('Failed to refresh rules');
       }
@@ -424,9 +427,6 @@ const Rules = () => {
       console.log(`${action} action for item at index ${index}:`, item);
     }
   };
-  const [showSelectAllOptions, setShowSelectAllOptions] = useState(false);
-  const selectAllRef = useRef(null);
-
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -442,13 +442,21 @@ const Rules = () => {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
+      const currentItemIds = currentItems.map(item => item.id);
+      setSelectedRows(prev => [...new Set([...prev, ...currentItemIds])]);
       setShowSelectAllOptions(true);
-      setSelectedRows(currentItems.map(item => item.id));
     } else {
+      const currentItemIds = currentItems.map(item => item.id);
+      setSelectedRows(prev => prev.filter(id => !currentItemIds.includes(id)));
       setShowSelectAllOptions(false);
-      setSelectedRows([]);
     }
   };
+
+  const areAllCurrentItemsSelected = currentItems.length > 0 &&
+    currentItems.every(item => selectedRows.includes(item.id));
+
+  const isIndeterminate = currentItems.some(item => selectedRows.includes(item.id)) &&
+    !areAllCurrentItemsSelected;
 
 
   const handleRunAllSelected = async () => {
@@ -571,20 +579,10 @@ const Rules = () => {
                     <div className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={selectedRows.length > 0 && currentItems.every(item => selectedRows.includes(item.id))}
-                        indeterminate={
-                          selectedRows.length > 0 &&
-                          !currentItems.every(item => selectedRows.includes(item.id))
-                        }
+                        checked={areAllCurrentItemsSelected}
+                        ref={el => el && (el.indeterminate = isIndeterminate)}
                         onChange={handleSelectAll}
                         className="h-4 w-4 text-[#8e78b7] rounded"
-                        ref={(el) => {
-                          if (el) {
-                            el.indeterminate =
-                              selectedRows.length > 0 &&
-                              !currentItems.every(item => selectedRows.includes(item.id));
-                          }
-                        }}
                       />
                       {showSelectAllOptions && selectedRows.length > 0 && (
                         <div className="absolute left-8 top-10 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md z-10">
@@ -593,21 +591,21 @@ const Rules = () => {
                             className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors flex items-center gap-2"
                           >
                             <Play className="h-3 w-3 text-[#8e78b7]" />
-                            Run IDs
+                            Run Selected
                           </button>
                           <button
                             onClick={handleRefreshAllSelected}
                             className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors flex items-center gap-2"
                           >
                             <RefreshCw className="h-3 w-3 text-[#8e78b7]" />
-                            Refresh IDs
+                            Refresh Selected
                           </button>
                           <button
                             onClick={handleDeleteAllSelected}
                             className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors flex items-center gap-2"
                           >
                             <Trash2 className="h-3 w-3 text-[#8e78b7]" />
-                            Delete IDs
+                            Delete Selected
                           </button>
                         </div>
                       )}
@@ -628,7 +626,7 @@ const Rules = () => {
               </thead>
               <tbody>
                 {currentItems.map((item, index) => (
-                  <tr key={index} className="border-b hover:bg-gray-50">
+                  <tr key={item.id} className="border-b hover:bg-gray-50"> {/* Use item.id as key for better performance */}
                     <td className="p-4">
                       <input
                         type="checkbox"
@@ -664,7 +662,7 @@ const Rules = () => {
                       <div className="flex items-center gap-2">
                         <div className="relative group">
                           <button
-                            onClick={() => handleRunSelected(item)}
+                            onClick={() => handleRunSelected(item, true)}
                             className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
                             title="Run"
                           >
@@ -679,7 +677,7 @@ const Rules = () => {
                                 Run ID {item.id}
                               </button>
                               <button
-                                onClick={() => handleRunSelected(item)}
+                                onClick={handleRunAllSelected}
                                 className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
                               >
                                 Run Selected IDs
@@ -695,7 +693,7 @@ const Rules = () => {
                           <Pencil className="h-4 w-4 text-[#8e78b7]" />
                         </button><div className="relative group">
                           <button
-                            onClick={() => handleRefreshSelected(item)}
+                            onClick={() => handleRefreshSelected(item, true)}
                             className="p-1.5 hover:bg-green-100 rounded-full"
                             title="Refresh Rule"
                           >
@@ -710,7 +708,7 @@ const Rules = () => {
                                 Refresh ID {item.id}
                               </button>
                               <button
-                                onClick={() => handleRefreshSelected(item)}
+                                onClick={handleRefreshAllSelected}
                                 className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
                               >
                                 Refresh Selected IDs
@@ -720,7 +718,7 @@ const Rules = () => {
                         </div>
                         <div className="relative group">
                           <button
-                            onClick={() => handleDeleteSelected(item)}
+                            onClick={() => handleDeleteSelected(item, true)}
                             className="p-1.5 hover:bg-red-100 rounded-full"
                             title="Delete Rule"
                           >
@@ -735,7 +733,7 @@ const Rules = () => {
                                 Delete ID {item.id}
                               </button>
                               <button
-                                onClick={() => handleDeleteSelected(item)}
+                                onClick={handleDeleteAllSelected}
                                 className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
                               >
                                 Delete Selected IDs
