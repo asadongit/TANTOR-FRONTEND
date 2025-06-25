@@ -327,7 +327,7 @@ const Rules = () => {
     setShowSelectAllOptions(false);
   };
 
-  // The actual delete function (previously in handleDeleteSelected)
+
   const performDelete = async (idsToDelete) => {
     setIsLoading(true);
     try {
@@ -427,7 +427,7 @@ const Rules = () => {
   const [showSelectAllOptions, setShowSelectAllOptions] = useState(false);
   const selectAllRef = useRef(null);
 
-  // Add this useEffect to handle clicks outside the dropdown
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (selectAllRef.current && !selectAllRef.current.contains(event.target)) {
@@ -440,7 +440,6 @@ const Rules = () => {
     };
   }, []);
 
-  // Modify the handleSelectAll function
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setShowSelectAllOptions(true);
@@ -451,7 +450,7 @@ const Rules = () => {
     }
   };
 
-  // Add these new functions
+
   const handleRunAllSelected = async () => {
     if (selectedRows.length === 0) return;
 
@@ -804,9 +803,9 @@ const Rules = () => {
                 Cancel
               </button>
               <button
-                onClick={async () => {
+                onClick={() => {
                   setDeleteConfirmation({ show: false, ids: [], isSingle: false, item: null });
-                  await handleDeleteSelected(deleteConfirmation.item, deleteConfirmation.isSingle);
+                  performDelete(deleteConfirmation.ids);
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
               >
