@@ -209,7 +209,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
   );
 
   const columnOptions = getUnique(
-    columnData.flatMap(item => item.columns.map(c => `${item.connection_schema_table}.${c}`))
+    columnData.flatMap(item => item.columns.map(c => `${item.connection_schema_table}.${c.column_name}`))
   );
   const filteredColumns = columnOptions.filter(col =>
     col.toLowerCase().includes(columnSearch.toLowerCase())
@@ -443,9 +443,9 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
           selectedTables,
           tableSearch,
           setTableSearch,
-          loadingTables, 
+          loadingTables,
           [setSelectedColumns],
-          setColumnData 
+          setColumnData
         )}
         {renderSearchableSelect(
           'Column',
@@ -453,7 +453,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
           selectedColumns,
           columnSearch,
           setColumnSearch,
-          loadingColumns 
+          loadingColumns
         )}
       </div>
     </div>
