@@ -28,7 +28,6 @@ import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/fu
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const FederationDashBoard = () => {
-
   const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,75 +40,140 @@ const FederationDashBoard = () => {
     setModalState({
       queryType: "Regular",
       viewType: ""
-    }
-    )
+    });
     setIsModalOpen(!isModalOpen);
   };
+
   const [data, setData] = useState([]);
   const [connectionData, setConnectionData] = useState([]);
-  const [schemaList, setSchemaList] = useState([])
-  const [tableList, setTableList] = useState([])
-  const [viewList, setViewList] = useState([])
+  const [schemaList, setSchemaList] = useState([]);
+  const [tableList, setTableList] = useState([]);
+  const [viewList, setViewList] = useState([]);
   const { token, project, decodedToken, hostnameV1, hostnameV2 } = useAuth();
   const [count, setCount] = useState({});
-
-
+  const [showCards, setShowCards] = useState(true);
+  const [isCardsLoading, setIsCardsLoading] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [refreshingRow, setRefreshingRow] = useState(null);
 
   const fetchConnectionDetails = async () => {
-  setIsLoading(true);
-  try {
-    const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-    const policyIds = secureQueryResponse.matched_policy_ids || [];
-
-    if (policyIds.length === 0) {
-          return;
-        }
-
-    const response = await fetch(`${hostnameV1}/connection_details`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ policy_id: policyIds }) 
-    });
-    const data = await response.json();
+    setIsLoading(true);
+    setIsCardsLoading(true);
+    setIsTableLoading(true);
     
-  
-    const connections = [...new Set(data.map(item => item.connection_name))];
-    const schemaList = {};
-    const tableList = {};
-    
-    connections.forEach(conn => {
-      const connData = data.filter(item => item.connection_name === conn);
-      schemaList[conn] = [...new Set(connData.map(item => item.table_schema))];
-      tableList[conn] = {};
-      schemaList[conn].forEach(schema => {
-        tableList[conn][schema] = [...new Set(connData
-          .filter(item => item.table_schema === schema)
-          .map(item => item.table_name))];
+    try {
+      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+      const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+      if (policyIds.length === 0) {
+        return;
+      }
+
+      const response = await fetch(`${hostnameV1}/connection_details`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ policy_id: policyIds })
       });
-    });
+      const data = await response.json();
 
-    setConnectionData(data);
-    setSchemaList(schemaList);
-    setTableList(tableList);
-    setCount(prev => ({
-      ...prev,
-      connections,
-      totalSchemaCount: Object.values(schemaList).reduce((sum, schemas) => sum + schemas.length, 0),
-      totalTableCount: Object.values(tableList).reduce((sum, schemas) => 
-        sum + Object.values(schemas).reduce((s, tables) => s + tables.length, 0), 0)
-    }));
-  } catch (error) {
-    console.error("Error fetching connection details:", error);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      const connections = [...new Set(data.map(item => item.connection_name))];
+      const schemaList = {};
+      const tableList = {};
 
+      connections.forEach(conn => {
+        const connData = data.filter(item => item.connection_name === conn);
+        schemaList[conn] = [...new Set(connData.map(item => item.table_schema))];
+        tableList[conn] = {};
+        schemaList[conn].forEach(schema => {
+          tableList[conn][schema] = [...new Set(connData
+            .filter(item => item.table_schema === schema)
+            .map(item => item.table_name))];
+        });
+      });
 
-const fetchViewCount = async (connectionNames) => {
+      setConnectionData(data);
+      setSchemaList(schemaList);
+      setTableList(tableList);
+      setCount(prev => ({
+        ...prev,
+        connections,
+        totalSchemaCount: Object.values(schemaList).reduce((sum, schemas) => sum + schemas.length, 0),
+        totalTableCount: Object.values(tableList).reduce((sum, schemas) =>
+          sum + Object.values(schemas).reduce((s, tables) => s + tables.length, 0), 0)
+      }));
+    } catch (error) {
+      console.error("Error fetching connection details:", error);
+    } finally {
+      setIsLoading(false);
+      setIsCardsLoading(false);
+      setIsTableLoading(false);
+    }
+  };
+
+  const refreshConnection = async (connectionId) => {
+    setRefreshingRow(connectionId);
+    try {
+      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+      const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+      if (policyIds.length === 0) return;
+
+      const response = await fetch(`${hostnameV1}/connection_details`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ policy_id: policyIds })
+      });
+      const data = await response.json();
+
+      // Update the specific connection's data
+      const updatedConnectionData = connectionData.map(conn => 
+        conn.connection_id === connectionId ? 
+        data.find(item => item.connection_id === connectionId) || conn : 
+        conn
+      );
+
+      setConnectionData(updatedConnectionData);
+      
+      // Recalculate counts and update UI
+      const connections = [...new Set(data.map(item => item.connection_name))];
+      const schemaList = {};
+      const tableList = {};
+
+      connections.forEach(conn => {
+        const connData = data.filter(item => item.connection_name === conn);
+        schemaList[conn] = [...new Set(connData.map(item => item.table_schema))];
+        tableList[conn] = {};
+        schemaList[conn].forEach(schema => {
+          tableList[conn][schema] = [...new Set(connData
+            .filter(item => item.table_schema === schema)
+            .map(item => item.table_name))];
+        });
+      });
+
+      setSchemaList(schemaList);
+      setTableList(tableList);
+      setCount(prev => ({
+        ...prev,
+        connections,
+        totalSchemaCount: Object.values(schemaList).reduce((sum, schemas) => sum + schemas.length, 0),
+        totalTableCount: Object.values(tableList).reduce((sum, schemas) =>
+          sum + Object.values(schemas).reduce((s, tables) => s + tables.length, 0), 0)
+      }));
+
+    } catch (error) {
+      console.error("Error refreshing connection:", error);
+    } finally {
+      setRefreshingRow(null);
+    }
+  };
+
+  const fetchViewCount = async (connectionNames) => {
     try {
       const response = await fetch(`${hostnameV2}/connections/views`, {
         method: "POST",
@@ -125,43 +189,32 @@ const fetchViewCount = async (connectionNames) => {
       });
 
       let data = await response.json();
-      console.log("views are  ===>", data);
       setViewList(data);
-       setCount(prev => ({
-      ...prev,
-      totalViewsCount: Object.values(data).reduce((sum, views) => sum + views.length, 0)
-    }));
+      setCount(prev => ({
+        ...prev,
+        totalViewsCount: Object.values(data).reduce((sum, views) => sum + views.length, 0)
+      }));
     } catch (error) {
       console.error("Error fetching views:", error);
     }
   };
 
+  useEffect(() => {
+    fetchConnectionDetails();
+  }, [token, project, decodedToken]);
 
-useEffect(() => {
-  fetchConnectionDetails();
-}, [token, project, decodedToken]);
-
-useEffect(() => {
-  if (connectionData.length > 0) {
-    const connectionNames = [...new Set(connectionData.map(item => item.connection_name))];
-    fetchViewCount(connectionNames);
-  }
-}, [connectionData]);
-
-
-  const [cards, setCards] = useState([]);
+  useEffect(() => {
+    if (connectionData.length > 0) {
+      const connectionNames = [...new Set(connectionData.map(item => item.connection_name))];
+      fetchViewCount(connectionNames);
+    }
+  }, [connectionData]);
 
   const [rowData, setRowData] = useState([]);
-
   const [activeMenu, setActiveMenu] = useState(null);
 
   const handleClickOutside = () => {
     setActiveMenu(null);
-  };
-
-  const openModal = (modalName, data = null) => {
-    setIsModalOpen((prev) => ({ ...prev, [modalName]: true }));
-    setModalData((prev) => ({ ...prev, [modalName]: data }));
   };
 
   const [connectionsOpen, setConnectionsOpen] = useState(false);
@@ -223,7 +276,6 @@ useEffect(() => {
   };
 
   const [selectedView, setSelectedView] = useState("");
-
   const [viewOpen, setViewOpen] = useState(false);
   const handleViewsOpen = () => setViewOpen(true);
   const handleViewsClose = () => setViewOpen(false);
@@ -244,11 +296,11 @@ useEffect(() => {
     setItemsPerPage(Number(e.target.value));
     setPage(1);
   };
-  
+
   const handlePrevPage = () => {
     if (page > 1) setPage(page - 1);
   };
-  
+
   const handleNextPage = () => {
     const maxPage = Math.ceil(rowData.length / itemsPerPage);
     if (page < maxPage) setPage(page + 1);
@@ -259,38 +311,38 @@ useEffect(() => {
   const endItem = Math.min(page * itemsPerPage, totalItems);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
+  const [cards, setCards] = useState([]);
 
   useEffect(() => {
-  if (!connectionData.length) return;
+    if (!connectionData.length) return;
 
-  const updatedRowData = [...new Set(connectionData.map(item => item.connection_id))].map(id => {
-    const item = connectionData.find(c => c.connection_id === id);
-    return {
-      ID: item.connection_id,
-      Connections: item.connection_name,
-      // Descriptions: item.description || "N/A",
-      Schema: schemaList[item.connection_name]?.length || 0,
-      Tables: Object.values(tableList[item.connection_name] || {}).reduce((sum, tables) => sum + tables.length, 0),
-      Views: viewList[item.connection_name]?.length || 0,
-      Created: new Date(item.created_at).toLocaleDateString()
-    };
-  }).sort((a, b) => new Date(b.Created) - new Date(a.Created));
+    const updatedRowData = [...new Set(connectionData.map(item => item.connection_id))].map(id => {
+      const item = connectionData.find(c => c.connection_id === id);
+      return {
+        ID: item.connection_id,
+        Connections: item.connection_name,
+        Schema: schemaList[item.connection_name]?.length || 0,
+        Tables: Object.values(tableList[item.connection_name] || {}).reduce((sum, tables) => sum + tables.length, 0),
+        Views: viewList[item.connection_name]?.length || 0,
+        Created: new Date(item.created_at).toLocaleDateString()
+      };
+    }).sort((a, b) => new Date(b.Created) - new Date(a.Created));
 
-  setRowData(updatedRowData);
+    setRowData(updatedRowData);
 
-  setCards([
-    { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Connections", count: count.connections.length },
-    { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Schemas", count: count.totalSchemaCount },
-    { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Tables", count: count.totalTableCount },
-    { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Views", count: count.totalViewsCount || 0 }
-  ]);
-}, [connectionData, schemaList, tableList, viewList, count]);
+    setCards([
+      { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Connections", count: count.connections?.length || 0 },
+      { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Schemas", count: count.totalSchemaCount || 0 },
+      { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Tables", count: count.totalTableCount || 0 },
+      { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#d8d3e4]", iconcolor: "text-purple-700", title: "Views", count: count.totalViewsCount || 0 }
+    ]);
+  }, [connectionData, schemaList, tableList, viewList, count]);
 
-const paginatedData = useMemo(() => {
-  const startIndex = (page - 1) * itemsPerPage;
-  return rowData.slice(startIndex, startIndex + itemsPerPage);
-}, [rowData, page, itemsPerPage]);
+  const paginatedData = useMemo(() => {
+    const startIndex = (page - 1) * itemsPerPage;
+    return rowData.slice(startIndex, startIndex + itemsPerPage);
+  }, [rowData, page, itemsPerPage]);
 
   return (
     <>
@@ -313,15 +365,24 @@ const paginatedData = useMemo(() => {
             </button>
             <button
               type="button"
+              onClick={() => setShowCards(!showCards)}
               className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
             >
               <List className="h-5 w-5" />
             </button>
             <button
               type="button"
+              onClick={() => {
+                setIsCardsLoading(true);
+                setIsTableLoading(true);
+                fetchConnectionDetails().finally(() => {
+                  setIsCardsLoading(false);
+                  setIsTableLoading(false);
+                });
+              }}
               className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
             >
-              <RefreshCcw className="h-5 w-5" />
+              <RefreshCcw className={`h-5 w-5 ${isCardsLoading || isTableLoading ? 'animate-spin' : ''}`} />
             </button>
             <button
               type="button"
@@ -335,68 +396,82 @@ const paginatedData = useMemo(() => {
             </button>
           </div>
         </div>
-        {/* Render modal when it's open */}
-        <div className="grid grid-cols-1 md:grid-cols-2 justify-center lg:grid-cols-4 gap-12 mt-6">
-          {cards.map((card) => (
-            <div
-              key={card.title}
-              className={`bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md`}
-            >
-              <div className="flex items-center mb-2">
-                <div
-                  className={`flex items-center justify-center aspect-square w-8 md:w-8 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}
-                >
-                  <Icon icon={card.icon} />
-                </div>
-                <h3 className="text-lg font-semibold">{card.title}</h3>
-              </div>
-              <p className="text-black text-5xl font-bold">{card.count || 0}</p>
-              <div className="flex items-center justify-between">
-                {card.title === "Schemas" && (
-                  <button
-                    onClick={handleSchemasOpen}
-                    className="mt-4 text-purple-600 text-sm hover:text-purple-700"
-                  >
-                    See details
-                  </button>
-                )}
-                {card.title === "Connections" && (
-                  <button
-                    onClick={handleConnectionsOpen}
-                    className="mt-4 text-purple-600 text-sm hover:text-purple-700"
-                  >
-                    See details
-                  </button>
-                )}
-                {card.title === "Tables" && (
-                  <button
-                    onClick={handleTablesOpen}
-                    className="mt-4 text-purple-600 text-sm hover:text-purple-700"
-                  >
-                    See details
-                  </button>
-                )}
-                {card.title === "Views" && (
-                  <button
-                    onClick={handleViewsOpen}
-                    className="mt-4 text-purple-600 text-sm hover:text-purple-700"
-                  >
-                    See details
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
 
-        <div className="bg-white rounded-lg shadow overflow-auto mt-10 mb-4 "
+        {showCards && (
+          <div className="grid grid-cols-1 md:grid-cols-2 justify-center lg:grid-cols-4 gap-12 mt-6">
+            {isCardsLoading ? (
+              Array(4).fill().map((_, index) => (
+                <div key={index} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                  <div className="flex items-center mb-2">
+                    <div className="flex items-center justify-center aspect-square w-8 md:w-8 bg-gray-200 rounded-full mr-2 animate-pulse"></div>
+                    <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                  <div className="h-12 w-20 bg-gray-200 rounded animate-pulse mb-4"></div>
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ))
+            ) : (
+              cards.map((card) => (
+                <div
+                  key={card.title}
+                  className={`bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md`}
+                >
+                  <div className="flex items-center mb-2">
+                    <div
+                      className={`flex items-center justify-center aspect-square w-8 md:w-8 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}
+                    >
+                      <Icon icon={card.icon} />
+                    </div>
+                    <h3 className="text-lg font-semibold">{card.title}</h3>
+                  </div>
+                  <p className="text-black text-5xl font-bold">{card.count || 0}</p>
+                  <div className="flex items-center justify-between">
+                    {card.title === "Schemas" && (
+                      <button
+                        onClick={handleSchemasOpen}
+                        className="mt-4 text-purple-600 text-sm hover:text-purple-700"
+                      >
+                        See details
+                      </button>
+                    )}
+                    {card.title === "Connections" && (
+                      <button
+                        onClick={handleConnectionsOpen}
+                        className="mt-4 text-purple-600 text-sm hover:text-purple-700"
+                      >
+                        See details
+                      </button>
+                    )}
+                    {card.title === "Tables" && (
+                      <button
+                        onClick={handleTablesOpen}
+                        className="mt-4 text-purple-600 text-sm hover:text-purple-700"
+                      >
+                        See details
+                      </button>
+                    )}
+                    {card.title === "Views" && (
+                      <button
+                        onClick={handleViewsOpen}
+                        className="mt-4 text-purple-600 text-sm hover:text-purple-700"
+                      >
+                        See details
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        <div className="bg-white rounded-lg shadow overflow-auto mt-10 mb-4"
           style={{ maxHeight: "calc(100vh - 240px)" }}>
           <table className="w-full">
             <thead className="text-sm">
               <tr className="bg-[#29304a] text-white">
                 <th className="text-center p-4">ID</th>
                 <th className="text-center p-4">Connections</th>
-                {/* <th className="text-center p-4">Descriptions</th> */}
                 <th className="text-center p-4">Schema</th>
                 <th className="text-center p-4">Tables</th>
                 <th className="text-center p-4">Views</th>
@@ -405,51 +480,77 @@ const paginatedData = useMemo(() => {
               </tr>
             </thead>
             <tbody className="text-sm">
-              {paginatedData.map((user, index) => (
-                <tr key={index} className="border-b">
-                  <td className="p-4 text-center">{user.ID}</td>
-                  <td className="p-4 text-center">{user.Connections}</td>
-                  {/* <td className="p-4 text-center">{user.Descriptions}</td> */}
-                  <td className="p-4 text-center">{user.Schema}</td>
-                  <td className="p-4 text-center">{user.Tables}</td>
-                  <td className="p-4 text-center">{user.Views}</td>
-                  <td className="p-4 text-center">{user.Created}</td>
-                  <td className="p-4 text-center">
-                    <div className="relative">
-                      <button
-                        onClick={() =>
-                          setActiveMenu(activeMenu === index ? null : index)
-                        }
-                        className="p-1.5 rounded-full hover:bg-gray-100"
-                      >
-                        <MoreHorizontal className="h-5 w-5" />
-                      </button>
+              {isTableLoading && !refreshingRow ? (
+                Array(5).fill().map((_, index) => (
+                  <tr key={index} className="border-b">
+                    {Array(7).fill().map((_, colIndex) => (
+                      <td key={colIndex} className="p-4 text-center">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse mx-auto" style={{ width: '80%' }}></div>
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                paginatedData.map((user, index) => (
+                  <tr key={index} className="border-b">
+                    {refreshingRow === user.ID ? (
+                      Array(7).fill().map((_, colIndex) => (
+                        <td key={colIndex} className="p-4 text-center">
+                          <div className="h-4 bg-gray-200 rounded animate-pulse mx-auto" style={{ width: '80%' }}></div>
+                        </td>
+                      ))
+                    ) : (
+                      <>
+                        <td className="p-4 text-center">{user.ID}</td>
+                        <td className="p-4 text-center">{user.Connections}</td>
+                        <td className="p-4 text-center">{user.Schema}</td>
+                        <td className="p-4 text-center">{user.Tables}</td>
+                        <td className="p-4 text-center">{user.Views}</td>
+                        <td className="p-4 text-center">{user.Created}</td>
+                        <td className="p-4 text-center">
+                          <div className="relative">
+                            <button
+                              onClick={() =>
+                                setActiveMenu(activeMenu === index ? null : index)
+                              }
+                              className="p-1.5 rounded-full hover:bg-gray-100"
+                              disabled={refreshingRow === user.ID}
+                            >
+                              <MoreHorizontal className="h-5 w-5" />
+                            </button>
 
-                      {activeMenu === index && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={handleClickOutside}
-                          />
-                          <div className="absolute top-0 right-14 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                            <div className="flex items-center p-1 gap-1">
-                              <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                                <RotateCw className="h-4 w-4" />
-                              </button>
-                              <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                            {activeMenu === index && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-10"
+                                  onClick={handleClickOutside}
+                                />
+                                <div className="absolute top-0 right-14 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                  <div className="flex items-center p-1 gap-1">
+                                    <button 
+                                      className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                      onClick={() => {
+                                        refreshConnection(user.ID);
+                                        setActiveMenu(null);
+                                      }}
+                                    >
+                                      <RotateCw className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
+
         <div className="flex flex-col md:flex-row items-center justify-between">
           <div className="text-sm text-gray-500 mb-2 md:mb-0">
             {isLoading ? (
@@ -493,17 +594,8 @@ const paginatedData = useMemo(() => {
             </div>
           </div>
         </div>
-        {/* <AgGridReact className="ag-theme-alpine border rounded-lg mt-4"
-    rowData={rowData}
-    columnDefs={colDefs}
-    rowHeight={50}
-    headerHeight={50}
-    paginationPageSize={10}
-    pagination= {true}
-    getRowClass={getRowClass}
-    theme="legacy" 
-  /> */}
       </div>
+
       {isModalOpen && (
         <CreateViewDialog
           isModalOpen={isModalOpen}
