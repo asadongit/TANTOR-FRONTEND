@@ -5,7 +5,7 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
   const [selectedTable, setSelectedTable] = useState('');
   const [tableSearch, setTableSearch] = useState('');
   const [openTableDropdown, setOpenTableDropdown] = useState(false);
-
+  const [columnDataTypes, setColumnDataTypes] = useState({});
   const initialFilters = policyData.row_access_control || {};
   const [tableFilters, setTableFilters] = useState(initialFilters);
 
@@ -25,6 +25,38 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
     }
   }, [isStep3Modified]);
 
+useEffect(() => {
+    const fetchColumnDataTypes = async () => {
+      try {
+        const tables = policyData.data_connection.flatMap((conn) => conn.tables);
+        const response = await fetch(`${import.meta.env.VITE_FAST_API}/datapolicy/columns`, {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(tables),
+        });
+        const data = await response.json();
+        const columnTypeMap = {};
+        data.forEach((table) => {
+          columnTypeMap[table.connection_schema_table] = table.columns.reduce((acc, col) => {
+            const cleanDataType = col.data_type.replace(/\(\d+\)/, '').toLowerCase();
+            acc[col.column_name] = cleanDataType;
+            return acc;
+          }, {});
+        });
+        setColumnDataTypes(columnTypeMap);
+      } catch (error) {
+        console.error('Error fetching column data types:', error);
+      }
+    };
+
+    if (policyData.data_connection?.length > 0) {
+      fetchColumnDataTypes();
+    }
+  }, [policyData.data_connection]);
+
   const allTables = policyData.data_connection.flatMap((conn) =>
     conn.tables.map((table) => ({
       fullPath: table,
@@ -41,7 +73,7 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
   const getColumnsForSelectedTable = () => {
     if (!selectedTable) return [];
 
-    const usedColumns = (tableFilters[selectedTable] || []).map(filter => filter.column);
+    const usedColumns = (tableFilters[selectedTable] || []).map((filter) => filter.column);
 
     const tableConn = policyData.data_connection.find((conn) =>
       conn.tables.includes(selectedTable)
@@ -85,7 +117,7 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
           ? {
               ...filter,
               [field]: value,
-              ...(field === 'column' && { value: '' }),
+              ...(field === 'column' && { value: '', operator: '=' }),
             }
           : filter
       ),
@@ -119,6 +151,30 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
     return filter.column && filter.value;
   };
 
+  const getOperatorsForColumn = (table, column) => {
+    const numericTypes = ['integer', 'int', 'mediumint','number', 'bigint', 'decimal', 'numeric', 'float', 'double precision','binary','double','smallint','tinyint','varbinary'];
+    const stringTypes = ['character varying', 'varchar', 'varchar2', 'char', 'text','longtext','mediumtext','tinytext'];
+    const dateTypes = ['date','time', 'timestamp', 'timestamp with time zone', 'timestamp without time zone'];
+
+    const normalizedDataType = columnDataTypes[table]?.[column]?.toLowerCase() || 'unknown';
+
+    if (numericTypes.includes(normalizedDataType)) {
+      return ['=', '!=', '>', '<', '>=', '<='];
+    } else if (stringTypes.includes(normalizedDataType)) {
+      return ['=', '!=', 'LIKE'];
+    } else if (dateTypes.includes(normalizedDataType)) {
+      return ['=', '!=', '>', '<', '>=', '<='];
+    } else {
+      return ['=', '!=', '>', '<', '>=', '<='];
+    }
+  };
+
+  const isDateType = (table, column) => {
+    const dateTypes = ['date', 'timestamp', 'timestamp with time zone'];
+    const normalizedDataType = columnDataTypes[table]?.[column]?.toLowerCase() || 'unknown';
+    return dateTypes.includes(normalizedDataType);
+  };
+
   const renderTableSelect = () => (
     <div className="relative mb-6">
       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -130,8 +186,8 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
       >
         <span className="whitespace-nowrap">
           {selectedTable
-            ? allTables.find((t) => t.fullPath === selectedTable)?.tableName ||
-              'Select Table'
+            ? allTables.find((t) => t.fullPath === selectedTable)?.tableName || 
+            'Select Table'
             : 'Select Table'}
         </span>
       </div>
@@ -143,7 +199,7 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
             className="w-full p-2 border-b border-gray-200 outline-none"
             value={tableSearch}
             onChange={(e) => setTableSearch(e.target.value)}
-          />
+          /> 
           {filteredTables.map((table) => (
             <div
               key={table.fullPath}
@@ -166,15 +222,12 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
       {Object.keys(tableFilters).map((table) => (
         <span
           key={table}
-          className={`px-3 py-1 rounded-sm text-sm font-medium cursor-pointer ${selectedTable === table
-            ? 'text-white'
+          className={`px-3 py-1 rounded-sm text-sm font-medium cursor-pointer ${selectedTable === table 
+            ? 'text-white' 
             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
           style={{
             backgroundColor: selectedTable === table ? '#8e78b7' : undefined,
-            ...(selectedTable === table && {
-              ':hover': { backgroundColor: '#7b689e' },
-            }),
           }}
           onClick={() => setSelectedTable(table)}
         >
@@ -196,19 +249,19 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
           </h4>
           <button
             className={`flex items-center px-3 py-1 border rounded-md text-sm font-medium ${filters.length > 0 && !isFilterComplete(filters[filters.length - 1])
-              ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-              : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
+                ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+                : 'text-[#8e78b7] hover:bg-[#8e78b7]/10'
             }`}
             style={{
               borderColor:
                 filters.length > 0 &&
-                !isFilterComplete(filters[filters.length - 1])
+                 !isFilterComplete(filters[filters.length - 1])
                   ? undefined
                   : '#8e78b7',
             }}
             onClick={handleAddFilter}
             disabled={
-              filters.length > 0 &&
+              filters.length > 0 && 
               !isFilterComplete(filters[filters.length - 1])
             }
           >
@@ -235,12 +288,12 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
                       value={filter.column || ''}
                       onChange={(e) =>
                         handleFilterChange(
-                          selectedTable,
-                          index,
-                          'column',
+                          selectedTable, 
+                          index, 
+                          'column', 
                           e.target.value
                         )
-                      }
+                                              }
                     >
                       <option value="">Select Column</option>
                       {getColumnsForSelectedTable().map((col) => (
@@ -248,11 +301,9 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
                           {col.columnName}
                         </option>
                       ))}
-                      {filter.column && !getColumnsForSelectedTable().some(c => c.columnName === filter.column) && (
-                        <option value={filter.column}>
-                          {filter.column}
-                        </option>
-                      )}
+                      {filter.column && !getColumnsForSelectedTable().some((c) => c.columnName === filter.column) && (
+                          <option value={filter.column}>{filter.column}</option>
+                        )}
                     </select>
                   </div>
 
@@ -264,15 +315,10 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
                       className="w-full p-2 border border-gray-300 rounded-md text-sm"
                       value={filter.operator}
                       onChange={(e) =>
-                        handleFilterChange(
-                          selectedTable,
-                          index,
-                          'operator',
-                          e.target.value
-                        )
+                        handleFilterChange(selectedTable, index, 'operator', e.target.value)
                       }
                     >
-                      {['=', '!=', '>', '<', '>=', '<='].map((op) => (
+                      {getOperatorsForColumn(selectedTable, filter.column).map((op) => (
                         <option key={op} value={op}>
                           {op}
                         </option>
@@ -284,19 +330,25 @@ const Step4 = ({ policyData, onDataChange, isStep3Modified }) => {
                     <label className="block text-sm text-gray-700 mb-1">
                       Value
                     </label>
-                    <input
-                      type="text"
-                      className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                      value={filter.value || ''}
-                      onChange={(e) =>
-                        handleFilterChange(
-                          selectedTable,
-                          index,
-                          'value',
-                          e.target.value
-                        )
-                      }
-                    />
+                    {isDateType(selectedTable, filter.column) ? (
+                      <input
+                        type="date"
+                        className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                        value={filter.value || ''}
+                        onChange={(e) =>
+                          handleFilterChange(selectedTable, index, 'value', e.target.value)
+                        }
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                        value={filter.value || ''}
+                        onChange={(e) =>
+                          handleFilterChange(selectedTable, index, 'value', e.target.value)
+                        }
+                      />
+                    )}
                   </div>
 
                   <button
