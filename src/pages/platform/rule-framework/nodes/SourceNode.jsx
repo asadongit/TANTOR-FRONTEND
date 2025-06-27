@@ -9,7 +9,6 @@ import { useTableContext } from "../../react-flow/context/TableContext";
 import DimensionFilter from "../components/DimensionFilter";
 import TimeTransformationFilter from "../components/TimeTransformationFilter";
 import { useLocation } from "react-router-dom";
-import { getSegregatedColumns } from "../../../../services/ruleJsonGeneratorService";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -227,7 +226,8 @@ export function SourceNode({ id, data }) {
     setSelectedItems([]);
   };
 
-  const validateNodeData = () => {
+  const validateNodeData = (columns) => {
+
     if(!ruleName){
       toast.error(`Rule Name is required`);
       return false;
@@ -247,57 +247,74 @@ export function SourceNode({ id, data }) {
       return false;
     }
 
-    const metricColumns = getSegregatedColumns(data?.filterConditions?.columns || []).metricColumns;
-    if (metricColumns.length === 0) {
-      toast.error("No Aggregates were selected.");
+    const selectedAggregateColumns = [];
+    const selectedColumnsWithNoAggregates = [];
+
+    columns.forEach(col => {
+      if(col.dimType.toLowerCase() === "metric" && (!col.aggregate || col.aggregate.length === 0))
+        selectedColumnsWithNoAggregates.push(col.name);
+      
+      if(col.dimType.toLowerCase() === "metric" && col.aggregate.length > 0)
+        selectedAggregateColumns.push(col.name);
+    });
+
+    if(selectedAggregateColumns.length === 0){
+      toast.error("No aggregates were selected for metric columns!");
       return false;
     }
 
+    if(selectedColumnsWithNoAggregates.length > 0){
+      toast.error(`No aggregates were selected for column(s): ${selectedAggregateColumns.join(", ")}`);
+      return false;
+    }
     return true;
   }
   
   const handleOk = () => {
-    if(!validateNodeData()) return; 
     
     // Get the selected tables from filteredTables
     const selectedTablesData = filteredTables.filter((table) =>
       selectedItems.includes(table.name)
-    );
-
-    const initialColumns = selectedTablesData.map((table) => ({
-      id: table.id,
-      name: table.name,
-      type: table.type || "varchar",
-      dimType: table.dimType,
-      alias: "",
-      output: true,
-      order: "",
-      sort: "",
-      aggregate: [],
-      groupBy: false,
-      isVisible: true,
-    }));
-
-    // Merge with existing columns if available
-    const existingColumns = data.filterConditions?.columns || [];
-    const mergedColumns = initialColumns.map((col) => {
-      const existing = existingColumns.find((e) => e.name === col.name);
-      if (existing) {
-        return {
-          ...col,
-          dimType: existing.dimType || col.dimType,
-          alias: existing.alias || col.alias,
-          output: existing.output ?? col.output,
-          order: existing.order || col.order,
-          sort: existing.sort || col.sort,
-          aggregate: existing.aggregate || col.aggregate,
-          groupBy: existing.groupBy ?? col.groupBy,
-          isVisible: existing.isVisible ?? col.isVisible,
-          type: existing.type || col.type,
-        };
+  );
+  
+  const initialColumns = selectedTablesData.map((table) => ({
+    id: table.id,
+    name: table.name,
+    type: table.type || "varchar",
+    dimType: table.dimType,
+    alias: "",
+    output: true,
+    order: "",
+    sort: "",
+    aggregate: [],
+    groupBy: false,
+    isVisible: true,
+  }));
+  
+  // Merge with existing columns if available
+  const existingColumns = data.filterConditions?.columns || [];
+  const mergedColumns = initialColumns.map((col) => {
+    const existing = existingColumns.find((e) => e.name === col.name);
+    if (existing) {
+      return {
+        ...col,
+        dimType: existing.dimType || col.dimType,
+        alias: existing.alias || col.alias,
+        output: existing.output ?? col.output,
+        order: existing.order || col.order,
+        sort: existing.sort || col.sort,
+        aggregate: existing.aggregate || col.aggregate,
+        groupBy: existing.groupBy ?? col.groupBy,
+        isVisible: existing.isVisible ?? col.isVisible,
+        type: existing.type || col.type,
+      };
       }
       return col;
     });
+    
+    console.log(mergedColumns);
+    
+    if(!validateNodeData(mergedColumns)) return; 
 
     // Always update the node data with the merged columns
     // Update the node's data with the selected items

@@ -11,7 +11,7 @@ export const LineItemsProvider = ({ children, reportData }) => {
   const { token, hostnameV1 } = useAuth();
   const navigate = useNavigate();
 
-  const { reportId, reportName, reportType, reportDesc, mode } = reportData || {};
+  const { reportId, reportName, reportType, reportDesc } = reportData || {};
 
   const [lineItemsHtml, setLineItemsHtml] = useState("");
   const [showLineItemConfigModal, setShowLineItemConfigModal] = useState(false);
@@ -20,36 +20,48 @@ export const LineItemsProvider = ({ children, reportData }) => {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentLineItemId, setCurrentLineItemId] = useState("");
   const [lineItemConfig, setLineItemConfig] = useState([]);
+  const [existingLineItems, setExistingLineItems] = useState([]);
 
-  useEffect(() => {
-    console.log("Final JSON ==> ", {
-      regReportId: reportId,
-      lineItemConfig: lineItemConfig,
+  const syncExistingLineItems = (lineItemsJson) => {
+    
+    setExistingLineItems(prev => {
+      return lineItemsJson.map(itemJson => itemJson.line_item);
     });
-  }, [lineItemConfig, reportId]);
+  }
+
+  const getMode = () => {
+    return existingLineItems.includes(currentLineItemId) ? "EDIT" : "CREATE";
+  }
 
   useEffect(() => {
-    if(mode === "EDIT") {
       (async () => {
-        const response = await fetch(`${hostnameV1}/lineItems/reports/json?report_id=${reportId}`, {
+        try{
+          const response = await fetch(`${hostnameV1}/lineItems/reports/json?report_id=${reportId}`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData?.detail || "Failed to line items json");
+        if(response.status === 404){
+          console.log("No Line Item JSON available");
+        }
+        else if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.detail || "Error occured trying to fetch existing line items JSON.");
+        }else{
+          const data = await response.json();
+          setLineItemConfig(data);
+          syncExistingLineItems(data);
         }
 
-        const data = await response.json();
-        console.log("line items json ===>", data);
-
-        setLineItemConfig(data)
+      }catch(error){
+        console.error(error);
+        toast.error(error.message);
+      }
       })();
-    }
-  }, [])
+  }, [currentLineItemId, setCurrentLineItemId]);
+
  const updateLineItemConfigRules = (lineItemId, newRules) => {
   setLineItemConfig((prev) => {
     const existingIndex = prev.findIndex(
@@ -207,7 +219,7 @@ export const LineItemsProvider = ({ children, reportData }) => {
         closeAllModals,
         validateLineItemsJson,
         addReportToDatabase,
-        mode
+        getMode,
       }}
     >
       {children}

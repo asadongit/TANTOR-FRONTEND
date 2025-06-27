@@ -14,10 +14,13 @@ const LineItemSummary = () => {
     reportId,
     reportName,
     lineItemConfig,
-    mode,
+    getMode,
+    setCurrentLineItemId
   } = useLineItems();
 
   const rules = getRulesForCurrentLineItem();
+
+  const mode = getMode();
 
   const operatorStringToSymbol = (operatorValue) => {
     switch (operatorValue.toLowerCase()) {
@@ -102,6 +105,7 @@ const LineItemSummary = () => {
     const data = await response.json();
     toast.success(data?.message || "Line item saved successfully");
 
+    setCurrentLineItemId("");
     closeAllModals();
   } catch (error) {
     console.error("Error Saving Line Item:", error);
