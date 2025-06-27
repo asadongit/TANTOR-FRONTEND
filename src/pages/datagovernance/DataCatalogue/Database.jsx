@@ -376,9 +376,9 @@ const Database = () => {
                         </div>
                         <h3 className="text-lg font-semibold">{card.title}</h3>
                       </div>
-                      <button className="p-1 rounded-lg hover:bg-gray-100">
+                      {/* <button className="p-1 rounded-lg hover:bg-gray-100">
                         <MoreVertical className="h-4 w-4" />
-                      </button>
+                      </button> */}
                     </div>
                     <div className="text-6xl font-semibold text-gray-800 mt-6">
                       {card.count.toString().padStart(2, "0")}
