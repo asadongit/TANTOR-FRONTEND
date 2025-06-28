@@ -69,14 +69,7 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
     }
 
     if (selectedOption === "manual") {
-      if (!startDate) {
-        toast.error("Please select a start date!", { duration: 4000 });
-        return;
-      }
-      if (!endDate) {
-        toast.error("Please select an end date!", { duration: 4000 });
-        return;
-      }
+
       if (endDate < startDate) {
         toast.error("End date cannot be before start date!", { duration: 4000 });
         return;
