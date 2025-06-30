@@ -68,13 +68,6 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       return;
     }
 
-    if (selectedOption === "manual") {
-
-      if (endDate < startDate) {
-        toast.error("End date cannot be before start date!", { duration: 4000 });
-        return;
-      }
-    }
 
     const tableOperations = {};
 
