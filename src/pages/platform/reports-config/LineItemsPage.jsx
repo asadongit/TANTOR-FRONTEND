@@ -76,7 +76,7 @@ function LineItemsContent() {
     reportName: location.state?.reportName,
     reportType: location.state?.reportType,
     reportDesc: location.state?.reportDesc,
-    mode: location.state?.mode || "CREATE",
+    // mode: location.state?.mode || "CREATE",
   };
 
   return (
