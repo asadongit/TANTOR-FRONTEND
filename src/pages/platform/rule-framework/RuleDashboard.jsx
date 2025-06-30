@@ -1,97 +1,148 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Pencil,
   Trash2,
   List,
   Play,
   Download,
-  Plus  
+  RefreshCcw,
+  Plus,  
+  EyeIcon,
+  Search
 } from "lucide-react";
+import { Icon } from "@iconify-icon/react";
 
 import { LineChart } from "@mui/x-charts/LineChart";
 
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
 import DataTable from "../../../components/DataTable";
-import { useProjectData } from "../../../hooks/platform/project";
-import { useProjectCardData } from "../../../hooks/platform/cardCounts";
-import { useRuleData } from "../../../hooks/platform/rules";
-
-
-
-const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
-
-    return (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {cards.map((card, index) => (
-                <React.Fragment key={card.title}>
-                    <div
-                        className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
-                        onClick={() => onCardClick && onCardClick(card)}
-                    >
-                        <div className="flex items-center mb-2">
-                            <h3 className="text-lg font-semibold">{card.title}</h3>
-                        </div>
-                        {isLoading ? (
-                            <div className="w-8 md:w-10 h-8 md:h-10 bg-gray-200 rounded-full mr-2"></div>
-                        ) : (
-                            <p className="text-black text-5xl font-bold">{card.count}</p>
-                        )}
-                    </div>
-                    {index === 1 && <div className="col-span-1"></div>}
-                </React.Fragment>
-            ))}
-        </div>
-    );
-};
-
+import { useAuth } from "../../../context/AuthContext";
+import {CardGrid} from "../../../components/ReportingCardGrid"
+import toast from "react-hot-toast";
+import RuleSummary from "./RuleSummary";
+import { useRuleData } from "../../../hooks/platform/reportingframework/rules";
+import { useRulesCardData } from "../../../hooks/platform/cardCounts";
 const RuleDashboard = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
-  const { data: ruleData = [], isLoading: isRuleLoading, error: ruleError, refetch: refetchRules } = useRuleData();
-
+  
+  const [showRuleSummary, setShowRuleSummary] = useState(false);
+  const [ruleSummaryData,setRuleSummaryData] = useState({});
+  
+  const [ruleData, setRuleData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const { data: ruleList = [], isLoading: isRuleLoading, isError: ruleError, refetch: refetchRules } = useRuleData();
+  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useRulesCardData();
+  
+  // Filter active rules. Filter rules by search
+  useEffect(() => {
+    let updatedRuleList = ruleList.filter(row => row?.status?.toLowerCase() === "active").map((row, index) => ({...row, s_no: index + 1}));
+    
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      updatedRuleList = updatedRuleList.filter((row) =>
+        Object.values(row).some((value) =>
+          String(value || "")
+            .toLowerCase()
+            .includes(lowerSearch)
+        )
+      );
+    }
+    setRuleData(updatedRuleList);
+  }, [ruleData, searchTerm]);
 
   const navigate = useNavigate();
+  const {hostnameV1, token} = useAuth();
 
-  
   const handleRefresh = () => {
-    refetchRules();
     refetchCardData();
+    refetchRules();
   };
-
 
   const handleCreate = () => {
-    navigate("/config/rule/create-rule");
+    navigate("/config/rule/create-rule",{state: {mode: "CREATE"}}
+    );
   };
-
-
-
-
 
   const cards = [
     {
         title: "Total",
-        count: cardData?.purge || 0,
+        count: cardData?.total || 0,
       },
       {
         title: "Active",
-        count: cardData?.metadata || 0,
+        count: cardData?.active || 0,
       },
     {
         title: "Draft",
-        count: cardData?.federation || 0,
+        count: cardData?.draft || 0,
       },
       {
         title: "Disabled",
-        count: cardData?.migration || 0,
+        count: cardData?.disabled || 0,
       },
   ];
 
 
   const actions = [
+    {
+        label: "View",
+        icon: <EyeIcon size={16} />,
+        onClick: (row) => {
+          console.log("View clicked for", row);
+          const ruleId = row.id;
+          if(! ruleId){
+            toast.error("Rule ID not provided.");
+            return;
+          }
+
+          (async () => {
+            try{
+              const headers = {"Content-Type": "application/json", "Authorization": `Bearer ${token}`};
+              const response = await fetch(`${hostnameV1}/ruleJson?rule_id=${ruleId}`, {headers});
+            
+            if(!response.ok){
+              const errorData = await response.json().catch(() => null);
+              throw new Error(errorData?.detail || "Error occured while trying to display rule.");
+            }
+            
+            const ruleJson = await response.json();
+
+            if(ruleJson === null)
+              throw new Error("Rule JSON not found!");
+
+            const sourceNode = ruleJson.find((nd) => nd.type === "source");
+
+            if(!sourceNode) throw new Error("Invalid Rule JSON!");
+
+            setRuleSummaryData({
+              nodeId: sourceNode.id,
+              selectedFact: sourceNode.data.selectedFact,
+              filterConditions: sourceNode.data.filterConditions,
+              ruleName: sourceNode.data.ruleName,
+              ruleId: sourceNode.data.ruleId,
+              ruleDescription: sourceNode.data.ruleDescription,
+              dimensionFilters: sourceNode.data.dimensionFilters || [],
+              timeTransformationFilters: sourceNode.data.timeTransformationFilters || [],
+              nodes: ruleJson,
+            });
+
+            setShowRuleSummary(true);
+
+            }catch(error){
+              console.error(error);
+              toast.error(error.message);
+            }
+          })();
+        },
+      },
       {
         label: "Edit",
         icon: <Pencil size={16} />,
-        onClick: (row) => console.log("Edit clicked for", row),
+        onClick: (row) => {
+          console.log("Edit clicked for", row)
+          navigate("/config/rule/edit-rule", {state: {mode: "EDIT", ruleData: {...row}}});
+        },
       },
       // {
       //   label: "Delete",
@@ -112,16 +163,178 @@ const RuleDashboard = () => {
     { key: "description", label: "Desc" },
     { key: "created", label: "Created" },
     { key: "updated", label: "Updated" },
-    { key: "reports", label: "Reports" },
+    // { key: "reports", label: "Reports" },
     { label: "Action", sortable: false },
   ];
   
   const handleCardClick = (card) => {
-    const url = `/componentType=project&cardType=${card.title}&heading=${card.title}`;
+    const cardType = "rules"
+    
+    
+    if(card?.title?.toLowerCase() === "disabled")
+      return;
+    
+    const url = card?.title?.toLowerCase() === "total" ?
+      `componentType=rules&cardType=${cardType}&heading=${card.title}` : 
+      `componentType=rules&cardType=${cardType}&heading=${card.title}&dataScope=${card.title}`
+    
     const encryptedUrl = encodeURIComponent(encrypt(url));
     navigate(`/details?${encryptedUrl}`);
+};
+
+  const RuleMovement = () => {
+    const chartData = [
+      { day: '1 day', Total: 20, Active: 15,Draft: 12, Disabled: 18 },
+      { day: '2 day', Total: 25, Active: 8, Draft: 18, Disabled: 20 },
+      { day: '3 day', Total: 22, Active: 15,Draft: 10,Disabled: 23 },
+      { day: '4 day', Total: 27, Active: 12,Draft: 18, Disabled: 23 },
+      { day: '5 day', Total: 26, Active: 10,Draft: 14, Disabled: 20 },
+      { day: '6 day', Total: 24, Active: 9, Draft: 14, Disabled: 25 },
+      { day: '7 day', Total: 20, Active: 17,Draft: 17, Disabled: 26 }
+    ];
+
+    const colors = {
+      Total: '#ff9999',
+      Active: '#9999ff',
+      Draft: '#66cccc',
+      Disabled: '#99cc99',
+      // Transformations: '#ffcc66'
+    };
+
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex items-center gap-2 mb-4">
+          <Icon icon="material-symbols:trending-up" className="w-5 h-5 text-[#8d77ba]" />
+          <h3 className="text-lg font-semibold text-gray-800">Rule Movement</h3>
+        </div>
+
+        <div className="relative h-64 mb-4">
+          <svg className="w-full h-full" viewBox="0 0 400 200">
+            {/* Y-axis labels */}
+            {[30, 25, 20, 15, 10, 5].map((value, index) => (
+              <g key={value}>
+                <text x="15" y={30 + index * 25} className="text-xs fill-gray-500" textAnchor="middle">
+                  {value}
+                </text>
+                <line x1="25" y1={30 + index * 25} x2="370" y2={30 + index * 25} stroke="#f0f0f0" strokeWidth="1" />
+              </g>
+            ))}
+
+            {/* X-axis labels */}
+            {chartData.map((item, index) => (
+              <text key={index} x={50 + index * 50} y="190" className="text-xs fill-gray-500" textAnchor="middle">
+                {item.day}
+              </text>
+            ))}
+
+            {/* Data lines */}
+            {Object.keys(colors).map((key) => {
+              const points = chartData.map((item, index) => {
+                const x = 50 + index * 50;
+                const y = 180 - (item[key] * 5);
+                return `${x},${y}`;
+              }).join(' ');
+
+              return (
+                <g key={key}>
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke={colors[key]}
+                    strokeWidth="2"
+                  />
+                  {chartData.map((item, index) => (
+                    <circle
+                      key={index}
+                      cx={50 + index * 50}
+                      cy={180 - (item[key] * 5)}
+                      r="3"
+                      fill={colors[key]}
+                    />
+                  ))}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-4 text-sm">
+          {Object.entries(colors).map(([key, color]) => (
+            <div key={key} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>
+              <span className="text-gray-600">{key}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
+  const SchemaOverallScore = () => {
+    const schemaData = {
+      highest: [
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' }
+      ],
+      lowest: [
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%'},
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' },
+        { name: 'Oracle_1', score: '97%' }
+      ]
+    };
+
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex items-center gap-2 mb-4">
+          <Icon icon="material-symbols:bar-chart" className="w-5 h-5 text-[#8d77ba]" />
+          <h3 className="text-lg font-semibold text-gray-800">Schema overall score</h3>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+
+          <div>
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-md text-sm font-medium mb-3 inline-block">
+              Highest
+            </div>
+            <div className="space-y-2">
+              {schemaData.highest.map((item, index) => (
+                <div key={index} className="flex items-center justify-between py-2">
+                  <span className="text-gray-700 text-sm">{item.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{item.score}</span>
+
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="bg-gray-100 text-gray-800 px-3 py-1 rounded-md text-sm font-medium mb-3 inline-block">
+              Lowest
+            </div>
+            <div className="space-y-2">
+              {schemaData.lowest.map((item, index) => (
+                <div key={index} className="flex items-center justify-between py-2">
+                  <span className="text-gray-700 text-sm">{item.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{item.score}</span>
+
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -134,6 +347,13 @@ const RuleDashboard = () => {
           >
             <Download className="h-5 w-5" />
           </button>
+          {/* <button
+            type="button"
+            className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
+            onClick={handleRefresh}
+          >
+            <RefreshCcw className={`h-5 w-5 ${isRuleLoading ? 'animate-spin' : ''}`} />
+          </button> */}
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
@@ -156,7 +376,7 @@ const RuleDashboard = () => {
 
 
         {/* Chart container */}
-      <div className="mt-6 w-full md:w-2/5">
+      {/* <div className="mt-6 w-full md:w-2/5">
         <LineChart
           width={500}
           height={300}
@@ -194,10 +414,29 @@ const RuleDashboard = () => {
             }
           }}
         />
-      </div>
-    
+      </div> */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <RuleMovement />
+        {/* <SchemaOverallScore /> */}
+    </div>
 
-     
+        
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 mt-10">
+        {/* {title && <h2 className="text-xl font-bold mb-2 md:mb-0">{title}</h2>} */}
+        <div className="relative w-full md:w-64">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search size={18} className="text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search..."
+            className="pl-10 pr-4 py-2 border rounded-lg w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            aria-label="Search records"
+          />
+        </div>
+      </div>
         <DataTable
           columns={columns}
           data={ruleData}
@@ -205,8 +444,11 @@ const RuleDashboard = () => {
           isLoading={isRuleLoading}
           isError={!!ruleError}
           refetch={refetchRules}
-/>
+        />
+
+        {showRuleSummary && (<RuleSummary setIsOpen={setShowRuleSummary} mode={"DISPLAY"} {...ruleSummaryData}/>)}
     </div>
+
   );
 };
 

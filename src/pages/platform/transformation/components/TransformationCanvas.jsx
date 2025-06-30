@@ -295,13 +295,6 @@ function TransformationCanvasContent() {
         return;
       }
 
-      if (!defineNode.data.description || defineNode.data.description.trim() === "") {
-        toast.error("Please provide a description for your transformation", {
-          duration: 3000,
-          position: "top-center",
-        });
-        return;
-      }
 
       setIsSaving(true);
       const nameCheckResponse = await fetch(`${hostname}/etl/check-transformation-name?name=${encodeURIComponent(defineNode.data.name)}`, {
@@ -534,6 +527,71 @@ function TransformationCanvasContent() {
       }))
     );
   }, [setNodes]);
+
+  useEffect(() => {
+    const defineNode = nodes.find(node => node.type === "define");
+    if (!defineNode) return;
+
+    const sourceNodes = nodes.filter(node => node.type === "source");
+    const targetNodes = nodes.filter(node => node.type === "target");
+
+    const connectedSource = sourceNodes.find(src =>
+      edges.some(edge => edge.source === src.id || edge.target === src.id)
+    );
+    const connectedTarget = targetNodes.find(tgt =>
+      edges.some(edge => edge.source === tgt.id || edge.target === tgt.id)
+    );
+
+    if (
+      connectedSource &&
+      connectedTarget &&
+      (!defineNode.data.name || defineNode.data.name.startsWith("etl_"))
+    ) {
+      const srcName = connectedSource.data.connection || "src";
+      const tgtName = connectedTarget.data.connection || "tgt";
+      const autoName = `etl_${srcName}_src_${tgtName}`.toLowerCase();
+
+      const generateAndSetUniqueName = async () => {
+        if (defineNode.data.generateUniqueName) {
+          try {
+            const uniqueName = await defineNode.data.generateUniqueName(autoName);
+            if (defineNode.data.name !== uniqueName) {
+              setNodes(nds =>
+                nds.map(n =>
+                  n.id === defineNode.id
+                    ? { ...n, data: { ...n.data, name: uniqueName } }
+                    : n
+                )
+              );
+            }
+          } catch (error) {
+            console.error("Error generating unique name:", error);
+            if (defineNode.data.name !== autoName) {
+              setNodes(nds =>
+                nds.map(n =>
+                  n.id === defineNode.id
+                    ? { ...n, data: { ...n.data, name: autoName } }
+                    : n
+                )
+              );
+            }
+          }
+        } else {
+          if (defineNode.data.name !== autoName) {
+            setNodes(nds =>
+              nds.map(n =>
+                n.id === defineNode.id
+                  ? { ...n, data: { ...n.data, name: autoName } }
+                  : n
+              )
+            );
+          }
+        }
+      };
+
+      generateAndSetUniqueName();
+    }
+  }, [nodes, edges, setNodes]);
 
   return (
     <div style={{ width: "100%", height: "100vh" }} className="relative">

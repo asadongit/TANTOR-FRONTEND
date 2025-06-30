@@ -21,11 +21,14 @@ import { useCDCData } from "../../hooks/platform/cdc";
 import { useArchivalData } from "../../hooks/platform/archival";
 import { useMigrationData } from "../../hooks/platform/migration";
 import { useProjectData } from "../../hooks/platform/project";
+import { useRuleData } from "../../hooks/platform/reportingframework/rules";
 import DataTable from "../../components/DataTable";
 import { getActionConfigurations } from "../../components/actionsConfig";
 import columnConfigurations from "../../components/columnsConfig";
 import { useAuth } from "../../context/AuthContext";
+
 const useDynamicData = (componentType) => {
+  
   const hookMap = {
     cdc: useCDCData,
     migration: useMigrationData,
@@ -34,6 +37,7 @@ const useDynamicData = (componentType) => {
     connections: useConnectionData,
     transformation: useArchivalData,
     report: useReportData,
+    rules: useRuleData,
     //   federation: useFederationData,
   };
 
@@ -55,7 +59,7 @@ const Details = () => {
   const cardType = params.get("cardType")?.toLowerCase();
   const dataScope = params.get("dataScope");
   const heading = params.get("heading");
-
+  
   const columnAliases = {
     migration: "migration",
     cdc: "cdc",
@@ -64,7 +68,7 @@ const Details = () => {
     "metadata-archivals": "migration",
   };
   const selectedType = cardType || componentType;
-
+  
   const { data = [], isLoading, isError, refetch } = useDynamicData(selectedType);
 
   const [page, setPage] = useState(1);
@@ -100,13 +104,26 @@ const Details = () => {
           migration: row.source_conn_type === dataScope,
           purge: row.source_conn_type === dataScope,
           transformation: row.source_conn_type === dataScope,
+          rules: row.status?.toLowerCase() === dataScope?.toLocaleLowerCase(),
         };
+
         return filterMap[selectedType] ?? true;
       });
     }
 
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      result = result.filter(row =>
+        Object.values(row)
+          .filter(val => typeof val === "string" || typeof val === "number")
+          .some(val =>
+            String(val).toLowerCase().includes(lowerSearch)
+          )
+      );
+    }
+
     return result;
-  }, [data, dataScope, componentType]);
+  }, [data, dataScope, componentType, searchTerm]);
 
   const actions = useMemo(() => {
     return getActionConfigurations({ token, project, hostnameV2,navigate  })[selectedType];;

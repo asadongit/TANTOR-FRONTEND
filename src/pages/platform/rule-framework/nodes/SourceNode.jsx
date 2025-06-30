@@ -1,5 +1,6 @@
+// STATE - 2
 import React, { useState, useCallback, useEffect } from "react";
-import PropTypes from "prop-types";
+import PropTypes, { node } from "prop-types";
 import { Handle, Position } from "reactflow";
 import { Upload, X, Search, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
@@ -7,7 +8,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import { useTableContext } from "../../react-flow/context/TableContext";
 import DimensionFilter from "../components/DimensionFilter";
 import TimeTransformationFilter from "../components/TimeTransformationFilter";
-import { useStateContext } from "../../Federation/context/contextViewProvider";
+import { useLocation } from "react-router-dom";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -35,17 +36,58 @@ export function SourceNode({ id, data }) {
   const [filterModalColumns, setFilterModalColumns] = useState([]);
   const [generatedQuery, setGeneratedQuery] = useState("");
   const [ruleFilterSelections, setRuleFilterSelections] = useState([]);
-  const {finalPayload, handleFinalPayload} = useStateContext();
+
+  // Added state for rule name and description
+  const [ruleName, setRuleName] = useState(data.ruleName || "");
+  const [ruleDescription, setRuleDescription] = useState(data.ruleDescription || "");
+
+  const {pathname} = useLocation();
+
+  // NEW CODE
+  useEffect(() => {
+    if(data?.mode && (data.mode.toUpperCase() !== "EDIT")) return;
+    const existingSelectedItems = data?.filterConditions?.columns.map((col) => col.name);
+    if(existingSelectedItems)
+      setSelectedItems(existingSelectedItems);
+    else
+      setSelectedItems([]);
+
+    const existingSelectedFact = data?.selectedFact;
+    if(existingSelectedFact)
+      setSelectedFact(data.selectedFact);
+    else
+      setSelectedFact({
+        fact_id: "",
+        fct_name: "",
+    });
+  }, []);
+  // NEW CODE
+
+
+
+
+
+
+
+
+
+
+
 
   const updateNodeData = (partialData) => {
-    if (data.onDataChange) {
-      data.onDataChange({
-        ...partialData,
-        nodeType: "source",
-        selectedFact, // Include selectedFact in node data
-      });
-    }
-  };
+  if (data.onDataChange) {
+    data.onDataChange({
+      ...partialData,
+      nodeType: "source",
+      selectedFact,
+      ruleName,
+      ruleDescription,
+      dimensionFilters: partialData.dimensionFilters || data.dimensionFilters,
+      timeTransformationFilters: partialData.timeTransformationFilters || data.timeTransformationFilters,
+      timeTransformationQuery: partialData.timeTransformationQuery || data.timeTransformationQuery
+    });
+  }
+};
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -184,18 +226,14 @@ export function SourceNode({ id, data }) {
     setSelectedItems([]);
   };
 
-  const validateNodeData = () => {
+  const validateNodeData = (columns) => {
 
-    if(data.isConnectedToDefine === false){
-      toast.error("Define node should be created first!");
+    if(!ruleName){
+      toast.error(`Rule Name is required`);
       return false;
     }
-    if(!data.ruleName && !finalPayload.name){
-      toast.error(`Rule Name is missing`);
-      return false;
-    }
-    if(!data.ruleDescription && !finalPayload.description){
-      toast.error(`Rule Description is missing`);
+    if(!ruleDescription ){
+      toast.error(`Rule Description is required`);
       return false;
     }
 
@@ -208,71 +246,91 @@ export function SourceNode({ id, data }) {
       toast.error(`Please select at least one column before proceeding.`);
       return false;
     }
+
+    const selectedAggregateColumns = [];
+    const selectedColumnsWithNoAggregates = [];
+
+    columns.forEach(col => {
+      if(col.dimType.toLowerCase() === "metric" && (!col.aggregate || col.aggregate.length === 0))
+        selectedColumnsWithNoAggregates.push(col.name);
+      
+      if(col.dimType.toLowerCase() === "metric" && col.aggregate.length > 0)
+        selectedAggregateColumns.push(col.name);
+    });
+
+    if(selectedAggregateColumns.length === 0){
+      toast.error("No aggregates were selected for metric columns!");
+      return false;
+    }
+
+    if(selectedColumnsWithNoAggregates.length > 0){
+      toast.error(`No aggregates were selected for column(s): ${selectedAggregateColumns.join(", ")}`);
+      return false;
+    }
     return true;
   }
+  
   const handleOk = () => {
-    console.log(data)
+    
+    // Get the selected tables from filteredTables
+    const selectedTablesData = filteredTables.filter((table) =>
+      selectedItems.includes(table.name)
+  );
+  
+  const initialColumns = selectedTablesData.map((table) => ({
+    id: table.id,
+    name: table.name,
+    type: table.type || "varchar",
+    dimType: table.dimType,
+    alias: "",
+    output: true,
+    order: "",
+    sort: "",
+    aggregate: [],
+    groupBy: false,
+    isVisible: true,
+  }));
+  
+  // Merge with existing columns if available
+  const existingColumns = data.filterConditions?.columns || [];
+  const mergedColumns = initialColumns.map((col) => {
+    const existing = existingColumns.find((e) => e.name === col.name);
+    if (existing) {
+      return {
+        ...col,
+        dimType: existing.dimType || col.dimType,
+        alias: existing.alias || col.alias,
+        output: existing.output ?? col.output,
+        order: existing.order || col.order,
+        sort: existing.sort || col.sort,
+        aggregate: existing.aggregate || col.aggregate,
+        groupBy: existing.groupBy ?? col.groupBy,
+        isVisible: existing.isVisible ?? col.isVisible,
+        type: existing.type || col.type,
+      };
+      }
+      return col;
+    });
+    
+    console.log(mergedColumns);
+    
+    if(!validateNodeData(mergedColumns)) return; 
 
-    if(!validateNodeData()) return; 
+    // Always update the node data with the merged columns
     // Update the node's data with the selected items
     updateNodeData({
       tables: selectedItems,
       fact_id: selectedFact.fact_id,
       fct_name: selectedFact.fct_name,
-      selectedFact, // Store selected fact
-    });
-
-    // Get the selected tables from filteredTables
-    const selectedTablesData = filteredTables.filter((table) =>
-      selectedItems.includes(table.name)
-    );
-
-    // Transform tables into columns format
-    console.log("SELECTED TABLES DATA ==>> ", selectedTablesData);
-
-    const initialColumns = selectedTablesData.map((table) => ({
-      id: table.id,
-      name: table.name,
-      type: table.type || "varchar",
-      dimType: table.dimType,
-      alias: "",
-      output: true,
-      order: "",
-      sort: "",
-      aggregate: [],
-      groupBy: false,
-      isVisible: true,
-    }));
-
-    // Merge with existing columns if available
-    const existingColumns = data.filterConditions?.columns || [];
-    const mergedColumns = initialColumns.map((col) => {
-      const existing = existingColumns.find((e) => e.name === col.name);
-      if (existing) {
-        return {
-          ...col,
-          dimType: existing.dimType || col.dimType,
-          alias: existing.alias || col.alias,
-          output: existing.output ?? col.output,
-          order: existing.order || col.order,
-          sort: existing.sort || col.sort,
-          aggregate: existing.aggregate || col.aggregate,
-          groupBy: existing.groupBy ?? col.groupBy,
-          isVisible: existing.isVisible ?? col.isVisible,
-          type: existing.type || col.type,
-        };
-      }
-      return col;
-    });
-
-    console.log("MERGED COLS ==> ", mergedColumns);
-    // Always update the node data with the merged columns, regardless of existingColumns length
-    updateNodeData({
+      selectedFact,
+      ruleName: ruleName,
+      ruleDescription: ruleDescription,
       filterConditions: {
         ...(data.filterConditions || {}),
         columns: mergedColumns
       }
-    });
+  });
+
 
     setFilterModalColumns(mergedColumns);
     setRuleFilterSelections(mergedColumns);
@@ -362,8 +420,43 @@ export function SourceNode({ id, data }) {
       <Handle type="source" position={Position.Right} />
       <div className="flex items-center space-x-3 mb-3">
         <Upload className="w-5 h-5 text-[#96CF7B]" />
-        <h3 className="text-black font-medium">Source</h3>
+        <h3 className="text-black font-medium">Create Rule</h3>
       </div>
+      
+      {/* Added Rule Name and Description Inputs */}
+      <div className="space-y-1.5">
+        <div>
+          <label className="text-xs font-semibold text-black mb-0.5 block">
+            Rule Name
+          </label>
+          <input
+            type="text"
+            value={ruleName}
+            onChange={(e) => {
+              setRuleName(e.target.value);
+              updateNodeData({ ruleName: e.target.value });
+            }}
+            placeholder="Rule Name"
+            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-black mb-0.5 block">
+            Rule Description
+          </label>
+          <input
+            type="text"
+            value={ruleDescription}
+            onChange={(e) => {
+              setRuleDescription(e.target.value);
+              updateNodeData({ ruleDescription: e.target.value });
+            }}
+            placeholder="Add Description"
+            className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+          />
+        </div>
+      </div>
+      
       <div className="space-y-1.5">
         <div>
           <label className="text-xs font-semibold text-black mb-0.5 block">
@@ -497,6 +590,7 @@ export function SourceNode({ id, data }) {
         }}
         factId={selectedFact.fact_id}
         updateNodeData={updateNodeData}
+        nodeData={data}
         />
       )}
 
@@ -504,11 +598,10 @@ export function SourceNode({ id, data }) {
         <TimeTransformationFilter 
         setIsOpen={setIsTimeTansformationOpen}
         onApply={() => {
-          setIsTimeTansformationOpen(false);
-          updateNodeData({showRuleSummary: true})
         }}
         factId={selectedFact.fact_id}
         updateNodeData={updateNodeData}
+        nodeData={data}
         />
       )}
     </div>
@@ -522,6 +615,8 @@ SourceNode.propTypes = {
     tables: PropTypes.array,
     getNodes: PropTypes.func,
     filterConditions: PropTypes.object,
+    ruleName: PropTypes.string,
+    ruleDescription: PropTypes.string,
   }),
 };
 

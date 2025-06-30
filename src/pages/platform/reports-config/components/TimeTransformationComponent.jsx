@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChevronLeft, XCircle, CheckCircle, SaveIcon } from "lucide-react";
+import { XCircle, CheckCircle, SaveIcon } from "lucide-react";
 import DateExpressionCalculator from "./TimeTransformationValidate";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
@@ -16,16 +16,26 @@ const TimeTransformationComponent = ({
   const [filterColName, setFilterColName] = useState("");
   const [dateType, setDateType] = useState("");
   const [lowerOffset, setLowerOffset] = useState("");
-  const [upperOffset, setUpperOffset] = useState("");
   const [lowerUnit, setLowerUnit] = useState("");
+  const [upperOffset, setUpperOffset] = useState("");
   const [upperUnit, setUpperUnit] = useState("");
-
   const [showValidationModal, setShowValidationModal] = useState(false);
-
-  // API data.
   const [dateColumnsData, setDateColumnsData] = useState([]);
+
   const { token, hostnameV1 } = useAuth();
 
+  const isSaveDisabled =
+    !filterColId ||
+    !dateType ||
+    (dateType === "historicDate" &&
+      (isNaN(parseFloat(lowerOffset)) || !lowerUnit)) ||
+    (dateType === "dateRange" &&
+      (isNaN(parseFloat(lowerOffset)) ||
+        !lowerUnit ||
+        isNaN(parseFloat(upperOffset)) ||
+        !upperUnit));
+
+  // Fetch date columns for the selected rule
   useEffect(() => {
     if (!ruleId || !isOpen) return;
 
@@ -40,31 +50,58 @@ const TimeTransformationComponent = ({
           `${hostnameV1}/lineItems/selectDimensionDateName?rule_id=${ruleId}`,
           { headers }
         );
-        if (!response.ok)
-          return toast.error(
-            "Error fetching Date Columns for time transformation."
-          );
+        if (!response.ok) {
+          toast.error("Error fetching Date Columns for time transformation.");
+          return;
+        }
         const data = await response.json();
         setDateColumnsData(data);
       } catch (error) {
         toast.error("Error fetching Date Columns for time transformation.");
       }
     };
+
     fetchFilterDateColumns();
   }, [ruleId, isOpen]);
 
+  // Pre-fill form if existing transformation is configured
+  useEffect(() => {
+    if (!isOpen || dateColumnsData.length === 0 || !rule?.filters) return;
+
+    const existingFilter = rule.filters.find((filter) =>
+      dateColumnsData.some((col) => col.fact_dimension_link_id.toString() === filter.id)
+    );
+
+    if (existingFilter) {
+      setFilterColId(existingFilter.id || "");
+      setFilterColName(existingFilter.name || "");
+      setDateType(existingFilter.type || "");
+      setLowerOffset(existingFilter.lowerOffsetUnitValue || "");
+      setLowerUnit(existingFilter.lowerOffsetUnit || "");
+      setUpperOffset(existingFilter.upperOffsetUnitValue || "");
+      setUpperUnit(existingFilter.upperOffsetUnit || "");
+    }
+  }, [isOpen, dateColumnsData, rule?.filters]);
+
   const handleValidate = () => {
-    if (!filterColId || !filterColName)
-      return toast.error("Select atleast one column before validating.");
-    if (!dateType)
-      return toast.error("Select Time Transformation Type Before validating.");
+    if (!filterColId || !filterColName) {
+      toast.error("Select at least one column before validating.");
+      return;
+    }
+    if (!dateType) {
+      toast.error("Select Time Transformation Type Before validating.");
+      return;
+    }
     setShowValidationModal(true);
     setIsOpen(false);
   };
 
-  // Modal close handler
   const handleClose = () => {
     setIsOpen(false);
+    resetForm();
+  };
+
+  const resetForm = () => {
     setFilterColId("");
     setFilterColName("");
     setDateType("");
@@ -75,57 +112,42 @@ const TimeTransformationComponent = ({
   };
 
   const handleSave = () => {
-    const newRule = JSON.parse(JSON.stringify(rule));
+    if (isSaveDisabled) return;
 
-    if (!filterColId || !filterColName)
-      return toast.error(
-        "Apply Time Transformation on atleast on column before saving."
-      );
-    if (!dateType) return toast.error("Select Transformation Type Before Saving.");
+    const newRule = {
+      ...rule,
+      filters: rule.filters ? [...rule.filters] : [],
+    };
+    console.log(filterColName);
+    const newFilter = {
+      id: filterColId,
+      name: filterColName,
+      type: dateType,
+      lowerOffsetUnit: lowerUnit,
+      lowerOffsetUnitValue: lowerOffset.toString(),
+      upperOffsetUnit: upperUnit,
+      upperOffsetUnitValue: upperOffset ? upperOffset.toString() : "",
+    };
 
-    let foundFilterIndex = newRule.filters?.findIndex(
-      (filter) => filter.id == filterColId
+    const foundFilterIndex = newRule.filters.findIndex(
+      (filter) => filter.id === filterColId
     );
-    if (foundFilterIndex >= 0) {
-      newRule.filters[foundFilterIndex] = {
-        id: filterColId,
-        name: filterColName,
-        type: dateType,
-        lowerOffsetUnit: lowerUnit,
-        lowerOffsetUnitValue: lowerOffset.toString(),
-        upperOffsetUnit: upperUnit,
-        upperOffsetUnitValue: upperOffset ? upperOffset.toString() : "",
-      };
-    } else {
-      newRule.filters.push({
-        id: filterColId,
-        name: filterColName,
-        type: dateType,
-        lowerOffsetUnit: lowerUnit,
-        lowerOffsetUnitValue: lowerOffset.toString(),
-        upperOffsetUnit: upperUnit,
-        upperOffsetUnitValue: upperOffset ? upperOffset.toString() : "",
-      });
-    }
-    updateRule(ruleIndex, "filters", newRule.filters);
-    setIsOpen(false);
 
-    setFilterColId("");
-    setFilterColName("");
-    setDateType("");
-    setLowerOffset("");
-    setLowerUnit("");
-    setUpperOffset("");
-    setUpperUnit("");
+    const updatedFilters =
+      foundFilterIndex >= 0
+        ? newRule.filters.map((filter, index) =>
+            index === foundFilterIndex ? newFilter : filter
+          )
+        : [...newRule.filters, newFilter];
+
+    updateRule(ruleIndex, "filters", updatedFilters);
+    setIsOpen(false);
+    resetForm();
   };
 
-  // UseEffect to prevent body scroll when modal is open
+  // Prevent body scroll when modal is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
+    document.body.style.overflow = isOpen ? "hidden" : "unset";
     return () => {
       document.body.style.overflow = "unset";
     };
@@ -149,19 +171,20 @@ const TimeTransformationComponent = ({
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white backdrop-blur-md p-6 rounded-xl shadow-2xl border border-gray-200 w-full max-w-xl relative z-50">
+          <div className="bg-white p-6 rounded-xl shadow-2xl border w-full max-w-xl">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-2xl font-bold text-gray-900">
                 Time Transformation
               </h2>
               <button
                 onClick={handleClose}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-gray-500 hover:text-gray-700"
                 aria-label="Close"
               >
                 <XCircle className="w-6 h-6" />
               </button>
             </div>
+
             <div className="mb-4">
               <label
                 htmlFor="date-column-select"
@@ -172,27 +195,18 @@ const TimeTransformationComponent = ({
               <select
                 value={filterColId}
                 id="date-column-select"
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#8E77BB]"
                 onChange={(e) => {
-                  e.preventDefault();
-                  setFilterColId(e.target.value);
-
-                  if (!e.target.value) {
-                    setFilterColName("");
-                    setDateType("");
-                    setLowerOffset("");
-                    setLowerUnit("");
-                    setUpperOffset("");
-                    setUpperUnit("");
-                    return;
-                  }
-
-                  setFilterColName(
-                    (prev) =>
-                      dateColumnsData.find(
-                        (item) => item.fact_dimension_link_id == e.target.value
-                      ).fct_column_name
+                  const selected = dateColumnsData.find(
+                    (item) => item.fact_dimension_link_id.toString() === e.target.value
                   );
+                  setFilterColId(e.target.value);
+                  setFilterColName(selected?.fct_column_name || "");
+                  setDateType("");
+                  setLowerOffset("");
+                  setLowerUnit("");
+                  setUpperOffset("");
+                  setUpperUnit("");
                 }}
               >
                 <option value="">Select a column</option>
@@ -206,99 +220,61 @@ const TimeTransformationComponent = ({
                 ))}
               </select>
             </div>
+
+            {/* Date Type Options */}
             <div className="mb-4 space-y-2">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="asOnDate"
-                  value="asOnDate"
-                  checked={dateType === "asOnDate"}
-                  onChange={() => setDateType("asOnDate")}
-                  disabled={!filterColId}
-                  className="mr-2"
-                />
-                <label
-                  htmlFor="asOnDate"
-                  className="text-[#6c757d] font-medium"
-                >
-                  As on Date
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="historicDate"
-                  value="historicDate"
-                  checked={dateType === "historicDate"}
-                  onChange={() => setDateType("historicDate")}
-                  disabled={!filterColId}
-                  className="mr-2"
-                />
-                <label
-                  htmlFor="historicDate"
-                  className="text-[#6c757d] font-medium"
-                >
-                  Historic Date
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="dateRange"
-                  value="dateRange"
-                  checked={dateType === "dateRange"}
-                  onChange={() => setDateType("dateRange")}
-                  disabled={!filterColId}
-                  className="mr-2"
-                />
-                <label
-                  htmlFor="dateRange"
-                  className="text-[#6c757d] font-medium"
-                >
-                  Date Range
-                </label>
-              </div>
+              {["asOnDate", "historicDate", "dateRange"].map((type) => (
+                <div key={type} className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id={type}
+                    value={type}
+                    checked={dateType === type}
+                    onChange={() => setDateType(type)}
+                    disabled={!filterColId}
+                  />
+                  <label htmlFor={type} className="text-[#6c757d] font-medium">
+                    {type === "asOnDate"
+                      ? "As on Date"
+                      : type === "historicDate"
+                      ? "Historic Date"
+                      : "Date Range"}
+                  </label>
+                </div>
+              ))}
             </div>
 
+            {/* Offset Inputs */}
             {(dateType === "historicDate" || dateType === "dateRange") && (
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label
-                    htmlFor="lowerOffset"
-                    className="block text-sm font-medium text-[#6c757d]"
-                  >
-                    {dateType === "historicDate"? "Offset" : "Lower Offset"}
+                  <label className="block text-sm font-medium text-[#6c757d]">
+                    {dateType === "historicDate" ? "Offset" : "Lower Offset"}
                   </label>
                   <input
-                    id="lowerOffset"
                     type="number"
-                    max={dateType === "historicDate" ? "0" : undefined}
                     value={lowerOffset}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      if (dateType === "historicDate" && value > 0) {
-                        setLowerOffset(-value);
-                      } else {
-                        setLowerOffset(e.target.value);
-                      }
-                    }}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
-                    disabled={dateType === "asOnDate"}
-                    placeholder={dateType === "historicDate" ? "Enter negative value" : "Enter positive or negative value"}
+                    onChange={(e) =>
+                      dateType === "historicDate" && e.target.value > 0
+                        ? setLowerOffset(-e.target.value)
+                        : setLowerOffset(e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder={
+                      dateType === "historicDate"
+                        ? "Enter negative value"
+                        : "Enter value"
+                    }
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="lowerUnit"
-                    className="block text-sm font-medium text-[#6c757d]"
-                  >
+                  <label className="block text-sm font-medium text-[#6c757d]">
                     Unit
                   </label>
                   <select
                     value={lowerUnit}
                     onChange={(e) => setLowerUnit(e.target.value)}
-                    disabled={dateType === "asOnDate"}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="">Select unit</option>
                     <option value="days">Days</option>
@@ -312,32 +288,25 @@ const TimeTransformationComponent = ({
             {dateType === "dateRange" && (
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label
-                    htmlFor="upperOffset"
-                    className="block text-sm font-medium text-[#6c757d]"
-                  >
+                  <label className="block text-sm font-medium text-[#6c757d]">
                     Upper Offset
                   </label>
                   <input
-                    id="upperOffset"
                     type="number"
                     value={upperOffset}
                     onChange={(e) => setUpperOffset(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
-                    placeholder="Enter positive or negative value"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Enter value"
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="upperUnit"
-                    className="block text-sm font-medium text-[#6c757d]"
-                  >
+                  <label className="block text-sm font-medium text-[#6c757d]">
                     Unit
                   </label>
                   <select
                     value={upperUnit}
                     onChange={(e) => setUpperUnit(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="">Select unit</option>
                     <option value="days">Days</option>
@@ -349,31 +318,22 @@ const TimeTransformationComponent = ({
             )}
 
             <div className="flex justify-end gap-4 mt-6">
-              {/* <button
-                type="button"
-                className="text-[#6c757d] hover:text-black flex items-center gap-2 px-4 py-2 rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent transition-colors duration-200"
-              >
-                <ChevronLeft className="w-4 h-4" /> Back
-              </button> */}
-              {/* <button
-                type="button"
-                className="text-[#6c757d] hover:text-black flex items-center gap-2 px-4 py-2 rounded-md border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-transparent transition-colors duration-200"
-              >
-                <XCircle className="w-4 h-4" /> Cancel
-              </button> */}
               {(dateType === "historicDate" || dateType === "dateRange") && (
                 <button
-                  type="button"
-                  className="bg-[#8E77BB] text-white hover:bg-[#7864a3] flex items-center gap-2 px-4 py-2 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
+                  className="bg-[#8E77BB] text-white px-4 py-2 rounded-md hover:bg-[#7864a3] flex items-center gap-2"
                   onClick={handleValidate}
                 >
                   <CheckCircle className="w-4 h-4" /> Validate
                 </button>
               )}
               <button
-                type="button"
-                className="bg-[#8E77BB] text-white hover:bg-[#7864a3] flex items-center gap-2 px-4 py-2 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:ring-opacity-50 transition-colors duration-200"
+                className={`px-4 py-2 rounded-md flex items-center gap-2 ${
+                  isSaveDisabled
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-[#8E77BB] text-white hover:bg-[#7864a3]"
+                }`}
                 onClick={handleSave}
+                disabled={isSaveDisabled}
               >
                 <SaveIcon className="w-4 h-4" /> Save
               </button>

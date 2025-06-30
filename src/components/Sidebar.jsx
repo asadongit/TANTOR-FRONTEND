@@ -40,8 +40,9 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     }
   }, [activeSection]);
 
-  const isGlobalAdmin = decodedToken?.resource_access?.darch?.roles?.includes('global-admin');
-  // console.log('Is Global Admin:', isGlobalAdmin);
+  const isGlobalAdmin = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'global-admin');
+  const isPolicyManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'policy manager');
+  const isUserManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'user manager');
 
   const toggleExpand = (e, routeName) => {
     e.preventDefault();
@@ -63,7 +64,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Pipeline', icon: ArrowPathIcon, path: '/pipeline' },
     { name: 'Reports', icon: DocumentTextIcon, path: '/report' },
     {
-      name: 'Configuration',
+      name: 'Business Reports',
       icon: ArrowPathIcon,
       path: '/config/rule',
       subItems: [
@@ -85,7 +86,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Dashboard', icon: ChartBarIcon, path: '/dashboard' },
     {
       name: 'User',
-      requiresGlobalAdmin: true,
+      requiresUserManager: true,
       icon: UserIcon,
       path: `${DATAGOVERNANCE_PREFIX}/user`,
       subItems: [
@@ -107,7 +108,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Data Assurance', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-assurance`,
       subItems: [
         {
-          name: 'Quality',
+          name: 'Data Quality',
           subItems: [
             { name: 'Data', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/data` },
             { name: 'Metadata', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/metadata` },
@@ -121,7 +122,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`,
       subItems: [
         { name: 'Protection', path: `${DATAGOVERNANCE_PREFIX}/data-shield/protection` },
-        { name: 'Policy', path: `${DATAGOVERNANCE_PREFIX}/data-shield/policy` },
+        { name: 'Policy', path: `${DATAGOVERNANCE_PREFIX}/data-shield/policy`, requiresPolicyManager: true },
         { name: 'Collaboration', path: `${DATAGOVERNANCE_PREFIX}/data-shield/collaboration` }
       ]
     },
@@ -132,9 +133,21 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
   ];
 
-  const dataGovernanceRoutes = allDataGovernanceRoutes.filter(
-    route => !route.requiresGlobalAdmin || isGlobalAdmin
-  );
+  const dataGovernanceRoutes = allDataGovernanceRoutes
+    .map(route => {
+      if (route.requiresUserManager && !isUserManager) return null;
+      if (route.subItems) {
+        const filteredSubItems = route.subItems.filter(
+          subItem => !subItem.requiresPolicyManager || isPolicyManager
+        );
+        if (filteredSubItems.length === 0 && route.path === `${DATAGOVERNANCE_PREFIX}/data-shield`) {
+          return null;
+        }
+        return { ...route, subItems: filteredSubItems };
+      }
+      return route;
+    })
+    .filter(route => route !== null);
 
   const currentRoutes = currentActiveSection === 'platform' ? platformRoutes : dataGovernanceRoutes;
 

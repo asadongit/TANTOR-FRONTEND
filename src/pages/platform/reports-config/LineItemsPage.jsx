@@ -15,8 +15,7 @@ function LineItemsContent() {
     showSummaryModal,
     setCurrentLineItemId,
     setShowLineItemConfigModal,
-    validateLineItemsJson,
-    addReportToDatabase
+    validateLineItemsJson
   } = useLineItems();
 
   const contentRef = useRef(null);
@@ -46,13 +45,7 @@ function LineItemsContent() {
       />
     );
   };
-  const handleSave = async () => {
-    const isValid = validateLineItemsJson();
-    if (isValid) {
-      await addReportToDatabase();
-      navigate("/config/report");
-    }
-  };
+  
 
   return (
     <>
@@ -62,14 +55,14 @@ function LineItemsContent() {
       {showLineItemConfigModal && <LineItemConfigModal />}
       {showRuleOperatorSelector && <RuleOperatorSelector />}
       {showSummaryModal && <LineItemSummary />}
-      <div className={`text-center ${showLineItemConfigModal ? "hidden" : "block"}`}>
+      {/* <div className={`text-center ${showLineItemConfigModal ? "hidden" : "block"}`}>
         <button
           className="bg-[#8e78b7] px-3 py-2 rounded-lg ring-1 ring-[#56486e] text-white font-semibold hover:bg-[#61527d]"
           onClick={handleSave}
         >
           SAVE
         </button>
-      </div>
+      </div> */}
     </>
   );
   
@@ -83,6 +76,7 @@ function LineItemsContent() {
     reportName: location.state?.reportName,
     reportType: location.state?.reportType,
     reportDesc: location.state?.reportDesc,
+    // mode: location.state?.mode || "CREATE",
   };
 
   return (

@@ -87,6 +87,16 @@ const columnConfigurations = {
       { key: "is_virtualization", label: "Data Federation", sortable: true },
       { key: "cdc_enabled", label: "CDC", sortable: true },
     ],
+    rules: [
+      // { key: "s_no", label: "#", sortable: true },
+      { key: "id", label: "ID", sortable: true },
+      { key: "name", label: "Name", sortable: true },
+      { key: "description", label: "Description", sortable: true },
+      { key: "status", label: "Status", sortable: true },
+      { key: "created", label: "Created", sortable: true },
+      { key: "updated", label: "Updated", sortable: true },
+      { label: "Action", sortable: false },
+],
   };
   
   export default columnConfigurations;

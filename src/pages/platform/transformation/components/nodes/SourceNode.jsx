@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Handle, Position } from "reactflow";
 import { X, Database, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
@@ -21,15 +21,25 @@ export const SourceNode = ({ id, data }) => {
   const [selectedSchema, setSelectedSchema] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [connectionSearch, setConnectionSearch] = useState("");
+  const [schemaSearch, setSchemaSearch] = useState("");
+  const [tableSearch, setTableSearch] = useState("");
+  const [columnSearch, setColumnSearch] = useState("");
   const [dataFetchStatus, setDataFetchStatus] = useState({
     connections: "idle",
     schemas: "idle",
     tables: "idle",
   });
+  const [connectionDropdownOpen, setConnectionDropdownOpen] = useState(false);
+  const [schemaDropdownOpen, setSchemaDropdownOpen] = useState(false);
+  const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
 
   const hostnamev1 = import.meta.env.VITE_FAST_API;
-  const { token, decodedToken } = useAuth();
+  const { token, decodedToken, project } = useAuth();
+
+  const connectionDropdownRef = useRef(null);
+  const schemaDropdownRef = useRef(null);
+  const tableDropdownRef = useRef(null);
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -50,11 +60,13 @@ export const SourceNode = ({ id, data }) => {
 
       const connectionsData = await connectionResponse.json();
 
+
       const currentUser = decodedToken?.preferred_username;
 
-      const filteredConnections = currentUser === "admin" ?
-        connectionsData :
-        connectionsData.filter(conn => conn.created_by === currentUser);
+      const filteredConnections = connectionsData
+        .filter(conn => conn.created_by === currentUser)
+        .filter(conn => conn.project === project)
+        .filter(conn => conn.pool_type === "source" || conn.pool_type === "both");
 
       setConnections(filteredConnections);
       setDataFetchStatus(prev => ({ ...prev, connections: "success" }));
@@ -147,9 +159,38 @@ export const SourceNode = ({ id, data }) => {
     return tableObj?.column_json || [];
   };
 
-  const filteredTables = tables.filter(table =>
-    table.table_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredConnections = connections.filter(conn =>
+    conn.connection_name?.toLowerCase().includes(connectionSearch.toLowerCase())
   );
+  const filteredSchemas = schemas.filter(schema =>
+    schema.table_schema?.toLowerCase().includes(schemaSearch.toLowerCase())
+  );
+  const filteredTables = tables.filter(table =>
+    table.table_name?.toLowerCase().includes(tableSearch.toLowerCase())
+  );
+
+  const filteredColumns = columns.filter(col =>
+    col.column_name?.toLowerCase().includes(columnSearch.toLowerCase())
+  );
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        connectionDropdownRef.current &&
+        !connectionDropdownRef.current.contains(event.target)
+      ) setConnectionDropdownOpen(false);
+      if (
+        schemaDropdownRef.current &&
+        !schemaDropdownRef.current.contains(event.target)
+      ) setSchemaDropdownOpen(false);
+      if (
+        tableDropdownRef.current &&
+        !tableDropdownRef.current.contains(event.target)
+      ) setTableDropdownOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[280px] max-w-[320px] relative group">
@@ -170,6 +211,7 @@ export const SourceNode = ({ id, data }) => {
 
       <div className="space-y-3">
         <div>
+
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-black mb-0.5 block">
               Connection
@@ -181,37 +223,55 @@ export const SourceNode = ({ id, data }) => {
               </div>
             )}
           </div>
-          <div className="relative">
-            <select
-              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-              value={selectedConnection.name}
-              onChange={(e) => {
-                const connection = connections.find(c => c.connection_name === e.target.value);
-                if (connection) {
-                  setSelectedConnection({
-                    name: connection.connection_name,
-                    id: connection.connection_id,
-                    type: connection.connection_type,
-                  });
-                  setSelectedSchema("");
-                  setSelectedTable("");
-                  setSelectedColumns([]);
-                  fetchSchemas(connection.connection_name);
-                }
-              }}
+          <div className="relative" ref={connectionDropdownRef}>
+            <button
+              type="button"
+              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+              onClick={() => setConnectionDropdownOpen(v => !v)}
               disabled={loading.connections}
             >
-              <option value="">
-                {dataFetchStatus.connections === 'loading'
+              {selectedConnection.name
+                ? `${selectedConnection.name} (${selectedConnection.type})`
+                : dataFetchStatus.connections === 'loading'
                   ? 'Loading connections...'
                   : 'Select connection'}
-              </option>
-              {connections.map((connection, idx) => (
-                <option key={idx} value={connection.connection_name}>
-                  {connection.connection_name} ({connection.connection_type})
-                </option>
-              ))}
-            </select>
+              <span className="ml-auto pl-2">&#9662;</span>
+            </button>
+            {connectionDropdownOpen && (
+              <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
+                <input
+                  type="search"
+                  placeholder="Search connections..."
+                  className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                  value={connectionSearch}
+                  onChange={e => setConnectionSearch(e.target.value)}
+                  autoFocus
+                />
+                {filteredConnections.length === 0 && (
+                  <div className="p-2 text-xs text-gray-500">No connections found</div>
+                )}
+                {filteredConnections.map((connection, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedConnection.name === connection.connection_name ? "bg-gray-100" : ""}`}
+                    onClick={() => {
+                      setSelectedConnection({
+                        name: connection.connection_name,
+                        id: connection.connection_id,
+                        type: connection.connection_type,
+                      });
+                      setSelectedSchema("");
+                      setSelectedTable("");
+                      setSelectedColumns([]);
+                      fetchSchemas(connection.connection_name);
+                      setConnectionDropdownOpen(false);
+                    }}
+                  >
+                    {connection.connection_name} ({connection.connection_type})
+                  </div>
+                ))}
+              </div>
+            )}
             {loading.connections && (
               <div className="absolute right-2 top-2">
                 <Loader size={12} className="animate-spin text-gray-400" />
@@ -227,6 +287,7 @@ export const SourceNode = ({ id, data }) => {
         </div>
 
         <div>
+
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-black mb-0.5 block">
               Schema
@@ -238,33 +299,52 @@ export const SourceNode = ({ id, data }) => {
               </div>
             )}
           </div>
-          <div className="relative">
-            <select
-              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-              value={selectedSchema}
-              onChange={(e) => {
-                setSelectedSchema(e.target.value);
-                setSelectedTable("");
-                setSelectedColumns([]);
-                if (e.target.value) {
-                  fetchTablesAndColumns(selectedConnection.name, e.target.value);
-                }
-              }}
+          <div className="relative" ref={schemaDropdownRef}>
+            <button
+              type="button"
+              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+              onClick={() => setSchemaDropdownOpen(v => !v)}
               disabled={!selectedConnection.name || loading.schemas}
             >
-              <option value="">
-                {!selectedConnection.name
+              {selectedSchema
+                ? selectedSchema
+                : !selectedConnection.name
                   ? 'Select connection first'
                   : dataFetchStatus.schemas === 'loading'
-                  ? 'Loading schemas...'
-                  : 'Select schema'}
-              </option>
-              {schemas.map((schema, idx) => (
-                <option key={idx} value={schema.table_schema}>
-                  {schema.table_schema}
-                </option>
-              ))}
-            </select>
+                    ? 'Loading schemas...'
+                    : 'Select schema'}
+              <span className="ml-auto pl-2">&#9662;</span>
+            </button>
+            {schemaDropdownOpen && (
+              <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
+                <input
+                  type="search"
+                  placeholder="Search schemas..."
+                  className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                  value={schemaSearch}
+                  onChange={e => setSchemaSearch(e.target.value)}
+                  autoFocus
+                />
+                {filteredSchemas.length === 0 && (
+                  <div className="p-2 text-xs text-gray-500">No schemas found</div>
+                )}
+                {filteredSchemas.map((schema, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedSchema === schema.table_schema ? "bg-gray-100" : ""}`}
+                    onClick={() => {
+                      setSelectedSchema(schema.table_schema);
+                      setSelectedTable("");
+                      setSelectedColumns([]);
+                      fetchTablesAndColumns(selectedConnection.name, schema.table_schema);
+                      setSchemaDropdownOpen(false);
+                    }}
+                  >
+                    {schema.table_schema}
+                  </div>
+                ))}
+              </div>
+            )}
             {loading.schemas && (
               <div className="absolute right-2 top-2">
                 <Loader size={12} className="animate-spin text-gray-400" />
@@ -282,6 +362,7 @@ export const SourceNode = ({ id, data }) => {
         {selectedSchema && (
           <>
             <div>
+
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-black mb-0.5 block">
                   Table
@@ -293,34 +374,51 @@ export const SourceNode = ({ id, data }) => {
                   </div>
                 )}
               </div>
-
-              <div className="space-y-1.5">
-
-
+              <div className="space-y-1.5" ref={tableDropdownRef}>
                 <div className="relative">
-                  <select
-                    className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                    value={selectedTable}
-                    onChange={(e) => {
-                      const tableName = e.target.value;
-                      setSelectedTable(tableName);
-                      setSelectedColumns([]);
-                      const tableColumns = getColumnsForTable(tableName);
-                      setColumns(tableColumns);
-                    }}
+                  <button
+                    type="button"
+                    className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                    onClick={() => setTableDropdownOpen(v => !v)}
                     disabled={loading.tables}
                   >
-                    <option value="">
-                      {dataFetchStatus.tables === 'loading'
+                    {selectedTable
+                      ? selectedTable
+                      : dataFetchStatus.tables === 'loading'
                         ? 'Loading tables...'
                         : 'Select table'}
-                    </option>
-                    {filteredTables.map((table, idx) => (
-                      <option key={idx} value={table.table_name}>
-                        {table.table_name}
-                      </option>
-                    ))}
-                  </select>
+                    <span className="ml-auto pl-2">&#9662;</span>
+                  </button>
+                  {tableDropdownOpen && (
+                    <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
+                      <input
+                        type="search"
+                        placeholder="Search tables..."
+                        className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                        value={tableSearch}
+                        onChange={e => setTableSearch(e.target.value)}
+                        autoFocus
+                      />
+                      {filteredTables.length === 0 && (
+                        <div className="p-2 text-xs text-gray-500">No tables found</div>
+                      )}
+                      {filteredTables.map((table, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-2 text-[11px] text-black *:cursor-pointer hover:bg-gray-100 ${selectedTable === table.table_name ? "bg-gray-100" : ""}`}
+                          onClick={() => {
+                            setSelectedTable(table.table_name);
+                            setSelectedColumns([]);
+                            const tableColumns = getColumnsForTable(table.table_name);
+                            setColumns(tableColumns);
+                            setTableDropdownOpen(false);
+                          }}
+                        >
+                          {table.table_name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {loading.tables && (
                     <div className="absolute right-2 top-2">
                       <Loader size={12} className="animate-spin text-gray-400" />
@@ -338,10 +436,20 @@ export const SourceNode = ({ id, data }) => {
 
             {selectedTable && columns.length > 0 ? (
               <div>
-                <label className="text-xs font-semibold text-black mb-0.5 block">
-                  Columns
-                </label>
-                <div className="max-h-40 overflow-y-auto border text-black border-gray-300 rounded-sm p-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-black mb-0.5 block">
+                    Columns
+                  </label>
+
+                  <input
+                    type="search"
+                    placeholder="Search columns..."
+                    className="ml-2 p-1 text-[11px] text-black border border-gray-400 rounded-sm w-32"
+                    value={columnSearch}
+                    onChange={e => setColumnSearch(e.target.value)}
+                  />
+                </div>
+                <div className="max-h-40 mt-2 overflow-y-auto border text-black border-gray-300 rounded-sm p-2">
                   <div className="mb-2">
                     <label className="flex items-center text-[11px]">
                       <input
@@ -360,7 +468,8 @@ export const SourceNode = ({ id, data }) => {
                     </label>
                   </div>
 
-                  {columns.map((column, idx) => (
+                  {/* Use filteredColumns instead of columns */}
+                  {filteredColumns.map((column, idx) => (
                     <div key={idx} className="mb-1.5">
                       <label className="flex items-center text-[11px]">
                         <input
@@ -380,6 +489,11 @@ export const SourceNode = ({ id, data }) => {
                       </label>
                     </div>
                   ))}
+                  {filteredColumns.length === 0 && (
+                    <div className="text-center py-2 text-[11px] text-gray-500">
+                      No columns match your search
+                    </div>
+                  )}
                 </div>
               </div>
             ) : selectedTable && columns.length === 0 ? (

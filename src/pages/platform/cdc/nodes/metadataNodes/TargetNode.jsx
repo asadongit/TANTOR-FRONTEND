@@ -233,7 +233,7 @@ export function TargetNode({ id, data, selected }) {
     setSettings(event.target.value);
   };
 
-  function generateTableMappings(tables, option = {}, mode = "none") {
+  function generateTableMappings(tables, option = {}, mode = "none", schemaName = "") {
     return tables.map((tableName) => {
       let newName = tableName;
 
@@ -241,9 +241,10 @@ export function TargetNode({ id, data, selected }) {
         newName = `${option.Prefix}${tableName}`;
       } else if (mode === "Suffix" && option.Suffix) {
         newName = `${tableName}${option.Suffix}`;
-      }
+      }  
       setIsLoading(false);
-      return { [tableName]: newName };
+      const targetTableName = schemaName ? `${schemaName}.${newName}` : newName;
+      return { [tableName]: targetTableName };
     });
   }
 
@@ -267,7 +268,8 @@ export function TargetNode({ id, data, selected }) {
     return generateTableMappings(
       bulkList,
       { [settings]: settingsValue },
-      settings
+      settings,
+      selectedSchema
     );
   }, [bulkList, selectedConnection, selectedSchema, settings, settingsValue]);
 
@@ -616,9 +618,10 @@ export function TargetNode({ id, data, selected }) {
             value={settings}
             onChange={handleSettingsChange}
           >
-            <option>Prefix/Suffix</option>
+            <option>As is</option>
             <option>Prefix</option>
             <option>Suffix</option>
+            {/* <option>Custom</option> */}
           </select>
         </div>
         {settings !== "Prefix/Suffix" && (

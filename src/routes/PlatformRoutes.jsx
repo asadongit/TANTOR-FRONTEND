@@ -57,9 +57,11 @@ export function PlatformRoutes() {
         <Route path="/PurgeCanvas" element={<PurgeCanvas />} />
         <Route path="/config/rule" element={<RuleDashboard />} />
         <Route path="/config/rule/create-rule" element={<RuleCanvas />} />
+        <Route path="/config/rule/edit-rule" element={<RuleCanvas />} />
         <Route path="/config/report" element={<ReportConfigDashboard />} />
         <Route path="/config/report/ruleLinks" element={<RulesReportsLinks />} />
         <Route path="/config/report/lineItems" element={<LineItemsPage />} />
+        <Route path="/config/editReport" element={<LineItemsPage />} />
         <Route path="/details" element={<Details />}/>
         <Route path="/reporting/lineItems" element={<LineItemsPage />} />
         <Route path="/transformation" element={<Transformation />} />

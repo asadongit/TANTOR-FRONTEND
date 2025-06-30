@@ -2,11 +2,10 @@ import React, { useState, useEffect } from "react";
 import { CheckCircle, XCircle, Plus, Trash2, Calendar } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
-import { useStateContext } from "../../Federation/context/contextViewProvider";
+// import { useStateContext } from "../../Federation/context/contextViewProvider";
 import DateExpressionCalculator from "../../reports-config/components/TimeTransformationValidate"; // Adjust import path as needed
 
-const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }) => {
-  const { handleFinalPayload, finalPayload } = useStateContext();
+const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData }) => {
 
   // State for API data and transformations
   const [dateColumns, setDateColumns] = useState([]);
@@ -36,7 +35,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
 
   // Load cached data when component mounts
   useEffect(() => {
-    const timeDataCache = finalPayload?.timeTransformationFilters;
+    const timeDataCache = nodeData?.timeTransformationFilters;
 
     if (
       timeDataCache &&
@@ -62,9 +61,15 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
 
       setTransformations(transformedCache);
     }
-  }, [finalPayload]);
+  }, []);
 
   // Fetch date columns on component mount
+  // useEffect(() => {
+  //   console.log("nodeData.timeTransformationFilters ==> ", nodeData.timeTransformationFilters);
+  //   if(nodeData?.timeTransformationFilters && nodeData.timeTransformationFilters.length > 0)
+  //     setTransformations(nodeData.timeTransformationFilters);
+  // }, []);
+
   useEffect(() => {
     if (!factId) return;
 
@@ -166,10 +171,10 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
 
         switch (t.transformationType.toLowerCase()) {
           case "asondate":
-            return `${columnName} AsOnDate`;
+            return `${columnName} = AsOnDate`;
 
           case "historicdate":
-            return `${columnName} >= ${t.parameters.lowerOffset} ${t.parameters.lowerUnit}`;
+            return `${columnName} = ${t.parameters.lowerOffset} ${t.parameters.lowerUnit}`;
 
           case "daterange":
             return `${columnName} BETWEEN ${t.parameters.lowerOffset} ${
@@ -211,11 +216,13 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
       return config;
     });
 
+    updateNodeData({
+      timeTransformationQuery: getFilterQuery(transformationData),
+      timeTransformationFilters: transformationData,
+      showRuleSummary: true
+    });
+    
     setIsOpen(false);
-    handleFinalPayload((prev) => ({...prev, timeTransformationFilters: transformationData}));
-    updateNodeData({timeTransformationQuery: getFilterQuery(transformationData)});
-    onApply();
-    console.log(getFilterQuery(transformationData));
   };
 
   const handleClose = () => {
@@ -223,7 +230,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
   };
 
   const handleClearAll = () => {
-    setTransformations([
+    const updatedTransformations = [
       {
         selectedColumn: { id: "", name: "" },
         dateType: "",
@@ -231,16 +238,23 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
         upperOffset: "",
         lowerUnit: "",
         upperUnit: "",
-      },
-    ]);
-
-    handleFinalPayload((prev) => ({ ...prev, timeTransformationFilters: [] }));
-    updateNodeData({ timeTransformationQuery: "" });
+      }
+    ];
+    setTransformations(updatedTransformations);
+    updateNodeData({ timeTransformationQuery: "" , timeTransformationFilters: updatedTransformations});
   };
 
   const handleSkip = () => {
     handleClearAll();
-    onApply();
+    
+    setIsOpen(false);
+    
+    updateNodeData({
+      timeTransformationQuery: "",
+      timeTransformationFilters: [],
+      showRuleSummary: true,
+      mode: "FALSE"
+    });
   };
 
   // Check if all transformations are complete
@@ -308,7 +322,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
               >
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-700">
-                    Transformation #{index + 1}
+                    {/* Transformation #{index + 1} */}
                   </h3>
                   <div className="flex items-center gap-2">
                     {/* Validate Button - only show for historicDate and dateRange */}
@@ -503,7 +517,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
           </div>
 
           {/* Add Transformation Button */}
-          <div className="mb-8">
+          {/* <div className="mb-8">
             <button
               onClick={addTransformation}
               className="flex items-center gap-2 text-purple-600 hover:text-purple-800 font-medium"
@@ -511,16 +525,16 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
               <Plus size={20} />
               <span>Add Transformation</span>
             </button>
-          </div>
+          </div> */}
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4">
-            <button
+            {/* <button
               onClick={handleSkip}
               className="px-6 py-3 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md"
             >
               Skip
-            </button>
+            </button> */}
             <button
               onClick={handleClearAll}
               className="px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
@@ -533,7 +547,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData }
               className={`px-6 py-3 text-sm font-medium text-white rounded-md flex items-center gap-2 ${
                 !isFormComplete
                   ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-purple-600 hover:bg-purple-700"
+                  : "bg-[#8e78b7] hover:bg-[#766497]"
               }`}
             >
               <CheckCircle className="w-4 h-4" /> Apply

@@ -1,22 +1,33 @@
 import { useAuth } from '../../../../context/AuthContext';
 import { useEffect, useState, useRef } from 'react';
+import { Loader } from 'lucide-react';
 
 const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified }) => {
   const { token } = useAuth();
-  const fetchedRef = useRef(false);
-  const dropdownRef = useRef(null); // Create a ref for the dropdown container
+  const dropdownRef = useRef(null);
 
-  const [data, setData] = useState([]);
+  const [connectionData, setConnectionData] = useState([]);
+  const [schemaData, setSchemaData] = useState([]);
+  const [tableData, setTableData] = useState([]);
+  const [columnData, setColumnData] = useState([]);
+
   const [selectedConnections, setSelectedConnections] = useState(initialData.selectedConnections || []);
   const [selectedSchemas, setSelectedSchemas] = useState(initialData.selectedSchemas || []);
   const [selectedTables, setSelectedTables] = useState(initialData.selectedTables || []);
   const [selectedColumns, setSelectedColumns] = useState(initialData.selectedColumns || []);
+
   const [connectionSearch, setConnectionSearch] = useState('');
   const [schemaSearch, setSchemaSearch] = useState('');
   const [tableSearch, setTableSearch] = useState('');
   const [columnSearch, setColumnSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+
+  const [loadingConnections, setLoadingConnections] = useState(false);
+  const [loadingSchemas, setLoadingSchemas] = useState(false);
+  const [loadingTables, setLoadingTables] = useState(false);
+  const [loadingColumns, setLoadingColumns] = useState(false);
+
   const [openDropdown, setOpenDropdown] = useState(null);
+
 
   useEffect(() => {
     const stepData = {
@@ -42,7 +53,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
         });
       }
     }
-  }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns, onDataChange]);
+  }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns]);
 
   useEffect(() => {
     setSelectedConnections(initialData.selectedConnections || []);
@@ -52,10 +63,29 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
   }, [initialData.selectedConnections, initialData.selectedSchemas, initialData.selectedTables, initialData.selectedColumns]);
 
   useEffect(() => {
-    if (token && !fetchedRef.current) {
-      fetchData();
-      fetchedRef.current = true;
-    }
+    const fetchConnections = async () => {
+      if (!token) return;
+      setLoadingConnections(true);
+      try {
+        const response = await fetch(`${import.meta.env.VITE_FAST_API}/datapolicy/connection`, {
+          method: 'GET',
+          headers: {
+            'accept': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          }
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setConnectionData(data);
+      } catch (error) {
+        console.error('Error fetching connections:', error);
+      } finally {
+        setLoadingConnections(false);
+      }
+    };
+    fetchConnections();
   }, [token]);
 
   useEffect(() => {
@@ -76,99 +106,162 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
     };
   }, [openDropdown]);
 
-
-  const fetchData = async () => {
+  const fetchSchemas = async () => {
+    if (selectedConnections.length === 0 || !token || (schemaData.length > 0 && selectedConnections.every(conn => schemaData.some(s => s.connection_name === conn)))) {
+      return;
+    }
+    setLoadingSchemas(true);
     try {
-      setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/connectionscreen`, {
-        method: 'GET',
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/datapolicy/schemas`, {
+        method: 'POST',
         headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify(selectedConnections)
       });
-      const responseData = await response.json();
-      setData(responseData);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setSchemaData(data);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching schemas:', error);
     } finally {
-      setLoading(false);
+      setLoadingSchemas(false);
+    }
+  };
+
+  const fetchTables = async () => {
+    if (selectedSchemas.length === 0 || !token || (tableData.length > 0 && selectedSchemas.every(schema => tableData.some(t => t.connection_schema === schema)))) {
+      return;
+    }
+    setLoadingTables(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/datapolicy/tables`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(selectedSchemas)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setTableData(data);
+    } catch (error) {
+      console.error('Error fetching tables:', error);
+    } finally {
+      setLoadingTables(false);
+    }
+  };
+
+  const fetchColumns = async () => {
+    if (selectedTables.length === 0 || !token || (columnData.length > 0 && selectedTables.every(table => columnData.some(c => c.connection_schema_table === table)))) {
+      return;
+    }
+    setLoadingColumns(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/datapolicy/columns`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(selectedTables)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setColumnData(data);
+    } catch (error) {
+      console.error('Error fetching columns:', error);
+    } finally {
+      setLoadingColumns(false);
     }
   };
 
   const getUnique = (arr) => [...new Set(arr)];
 
-  const connectionOptions = getUnique(data.map(item => item.connection_name));
+  const connectionOptions = getUnique(connectionData);
   const filteredConnections = connectionOptions.filter(c =>
     c.toLowerCase().includes(connectionSearch.toLowerCase())
   );
 
   const schemaOptions = getUnique(
-    data
-      .filter(d => selectedConnections.includes(d.connection_name))
-      .map(d => `${d.connection_name}.${d.table_schema}`)
+    schemaData.flatMap(item => item.schemas.map(s => `${item.connection_name}.${s}`))
   );
   const filteredSchemas = schemaOptions.filter(s =>
     s.toLowerCase().includes(schemaSearch.toLowerCase())
   );
 
   const tableOptions = getUnique(
-    data
-      .filter(d =>
-        selectedConnections.includes(d.connection_name) &&
-        selectedSchemas.includes(`${d.connection_name}.${d.table_schema}`)
-      )
-      .map(d => `${d.connection_name}.${d.table_schema}.${d.table_name}`)
+    tableData.flatMap(item => item.tables.map(t => `${item.connection_schema}.${t}`))
   );
   const filteredTables = tableOptions.filter(t =>
     t.toLowerCase().includes(tableSearch.toLowerCase())
   );
 
   const columnOptions = getUnique(
-    data
-      .filter(d =>
-        selectedConnections.includes(d.connection_name) &&
-        selectedSchemas.includes(`${d.connection_name}.${d.table_schema}`) &&
-        selectedTables.includes(`${d.connection_name}.${d.table_schema}.${d.table_name}`)
-      )
-      .flatMap(d =>
-        d.column_json.map(col =>
-          `${d.connection_name}.${d.table_schema}.${d.table_name}.${col.column_name}`
-        )
-      )
+    columnData.flatMap(item => item.columns.map(c => `${item.connection_schema_table}.${c.column_name}`))
   );
   const filteredColumns = columnOptions.filter(col =>
     col.toLowerCase().includes(columnSearch.toLowerCase())
   );
 
-  const handleSelection = (setter, resetList = []) => (value) => {
+  const handleSelection = (setter, resetList = [], dataSetter = null) => (value) => {
     setter(prev => {
-      if (prev.includes(value)) {
-        return prev.filter(item => item !== value);
+      const newSelection = prev.includes(value)
+        ? prev.filter(item => item !== value)
+        : [...prev, value];
+
+      if (dataSetter) {
+        dataSetter([]);
       }
-      return [...prev, value];
+      return newSelection;
     });
     resetList.forEach(reset => reset([]));
     setIsStep3Modified(true);
   };
 
-  const handleSelectAll = (options, setter, resetList = []) => {
+  const handleSelectAll = (options, setter, resetList = [], dataSetter = null) => {
     setter(prev => {
-      if (options.every(option => prev.includes(option))) {
-        return [];
+      const newSelection = options.every(option => prev.includes(option))
+        ? []
+        : [...new Set([...prev, ...options])];
+
+      if (dataSetter) {
+        dataSetter([]);
       }
-      return [...new Set([...prev, ...options])];
+      return newSelection;
     });
     resetList.forEach(reset => reset([]));
     setIsStep3Modified(true);
   };
 
   const toggleDropdown = (dropdown) => {
-    setOpenDropdown(openDropdown === dropdown ? null : dropdown);
+    setOpenDropdown(prevDropdown => {
+      const newDropdown = prevDropdown === dropdown ? null : dropdown;
+
+      if (newDropdown === 'Schema' && selectedConnections.length > 0 && schemaData.length === 0) {
+        fetchSchemas();
+      } else if (newDropdown === 'Table' && selectedSchemas.length > 0 && tableData.length === 0) {
+        fetchTables();
+      } else if (newDropdown === 'Column' && selectedTables.length > 0 && columnData.length === 0) {
+        fetchColumns();
+      }
+      return newDropdown;
+    });
   };
 
-  const renderSearchableSelect = (label, options, selectedValues, setSelectedValues, searchValue, setSearchValue, resetList = []) => {
-    const allFilteredSelected = options.every(option => selectedValues.includes(option));
+  const renderSearchableSelect = (label, options, selectedValues, searchValue, setSearchValue, loading, resetList = [], dataSetter = null) => {
+    const allFilteredSelected = options.length > 0 && options.every(option => selectedValues.includes(option));
     const someFilteredSelected = options.some(option => selectedValues.includes(option)) && !allFilteredSelected;
 
     return (
@@ -186,50 +279,73 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
           </span>
         </div>
         <style jsx>{`
-          .no-scrollbar {
-            -ms-overflow-style: none; /* IE and Edge */
-            scrollbar-width: none; /* Firefox */
-          }
-          .no-scrollbar::-webkit-scrollbar {
-            display: none; /* Chrome, Safari, and Opera */
-          }
-        `}</style>
+                    .no-scrollbar {
+                        -ms-overflow-style: none; /* IE and Edge */
+                        scrollbar-width: none; /* Firefox */
+                    }
+                    .no-scrollbar::-webkit-scrollbar {
+                        display: none; /* Chrome, Safari, and Opera */
+                    }
+                `}</style>
         {openDropdown === label && (
           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
             <div className="sticky top-0 bg-white z-10">
-              <input
-                type="text"
-                placeholder="Search..."
-                className="w-full p-2 border-b border-gray-200 outline-none"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-              />
-              <div className="flex items-center p-2 border-b border-gray-200 hover:bg-gray-100 cursor-pointer">
+              <>
                 <input
-                  type="checkbox"
-                  checked={allFilteredSelected}
-                  ref={el => el && (el.indeterminate = someFilteredSelected)}
-                  onChange={() => handleSelectAll(options, setSelectedValues, resetList)}
-                  className="mr-2"
+                  type="text"
+                  placeholder="Search..."
+                  className="w-full p-2 border-b border-gray-200 outline-none"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
                 />
-                <span className="font-medium">Select All</span>
-              </div>
+                {options.length > 0 && (
+                  <div className="flex items-center p-2 border-b border-gray-200 hover:bg-gray-100 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      ref={el => el && (el.indeterminate = someFilteredSelected)}
+                      onChange={() => handleSelectAll(options, (val) => {
+                        if (label === 'Connection') setSelectedConnections(val);
+                        else if (label === 'Schema') setSelectedSchemas(val);
+                        else if (label === 'Table') setSelectedTables(val);
+                        else if (label === 'Column') setSelectedColumns(val);
+                      }, resetList, dataSetter)}
+                      className="mr-2"
+                    />
+                    <span className="font-medium">Select All</span>
+                  </div>
+                )}
+              </>
             </div>
-            {options.map((option) => (
-              <div
-                key={option}
-                className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
-                onClick={() => handleSelection(setSelectedValues, resetList)(option)}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedValues.includes(option)}
-                  readOnly
-                  className="mr-2"
-                />
-                <span>{option}</span>
+            {loading ? (
+              <div className="flex items-center justify-center p-2 text-gray-500">
+                <Loader className="animate-spin h-4 w-4 mr-2" />
+                Loading...
               </div>
-            ))}
+            ) : options.length === 0 ? (
+              <div className="p-2 text-center text-gray-500">No options available</div>
+            ) : (
+              options.map((option) => (
+                <div
+                  key={option}
+                  className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => {
+                    if (label === 'Connection') handleSelection(setSelectedConnections, resetList, dataSetter)(option);
+                    else if (label === 'Schema') handleSelection(setSelectedSchemas, resetList, dataSetter)(option);
+                    else if (label === 'Table') handleSelection(setSelectedTables, resetList, dataSetter)(option);
+                    else if (label === 'Column') handleSelection(setSelectedColumns, resetList, dataSetter)(option);
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedValues.includes(option)}
+                    readOnly
+                    className="mr-2"
+                  />
+                  <span>{option}</span>
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>
@@ -297,14 +413,6 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
     return result;
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <span>Loading...</span>
-      </div>
-    );
-  }
-
   return (
     <div>
       <h3 className="text-lg font-medium text-gray-700 mb-2">{name}</h3>
@@ -313,36 +421,39 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
           'Connection',
           filteredConnections,
           selectedConnections,
-          setSelectedConnections,
           connectionSearch,
           setConnectionSearch,
-          [setSelectedSchemas, setSelectedTables, setSelectedColumns]
+          loadingConnections,
+          [setSelectedSchemas, setSelectedTables, setSelectedColumns],
+          setSchemaData
         )}
         {renderSearchableSelect(
           'Schema',
           filteredSchemas,
           selectedSchemas,
-          setSelectedSchemas,
           schemaSearch,
           setSchemaSearch,
-          [setSelectedTables, setSelectedColumns]
+          loadingSchemas,
+          [setSelectedTables, setSelectedColumns],
+          setTableData
         )}
         {renderSearchableSelect(
           'Table',
           filteredTables,
           selectedTables,
-          setSelectedTables,
           tableSearch,
           setTableSearch,
-          [setSelectedColumns]
+          loadingTables,
+          [setSelectedColumns],
+          setColumnData
         )}
         {renderSearchableSelect(
           'Column',
           filteredColumns,
           selectedColumns,
-          setSelectedColumns,
           columnSearch,
-          setColumnSearch
+          setColumnSearch,
+          loadingColumns
         )}
       </div>
     </div>

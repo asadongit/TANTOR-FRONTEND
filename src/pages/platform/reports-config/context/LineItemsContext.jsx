@@ -20,30 +20,69 @@ export const LineItemsProvider = ({ children, reportData }) => {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentLineItemId, setCurrentLineItemId] = useState("");
   const [lineItemConfig, setLineItemConfig] = useState([]);
+  const [existingLineItems, setExistingLineItems] = useState([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  const [linkedLineItemIds, setLinkedLineItemIds] = useState(new Set());
+  const syncExistingLineItems = (lineItemsJson) => {
+    
+    setExistingLineItems(prev => {
+      return lineItemsJson.map(itemJson => itemJson.line_item);
+    });
+  }
+
+  const getMode = () => {
+    return existingLineItems.includes(currentLineItemId) ? "EDIT" : "CREATE";
+  }
 
   useEffect(() => {
-    console.log("Final JSON ==> ", {
-      regReportId: reportId,
-      lineItemConfig: lineItemConfig,
-    });
-  }, [lineItemConfig, reportId]);
+    if(!reportId || isDataLoaded) return;
 
-  const updateLineItemConfigRules = (lineItemId, newRules) => {
-    setLineItemConfig((prev) => {
-      const existingIndex = prev.findIndex(
-        (item) => item.line_item === lineItemId
-      );
-      if (existingIndex !== -1) {
-        const updated = [...prev];
-        updated[existingIndex].rules = newRules;
-        return updated;
+      (async () => {
+        try{
+          const response = await fetch(`${hostnameV1}/lineItems/reports/json?report_id=${reportId}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if(response.status === 404){
+          console.log("No Line Item JSON available");
+        }
+        else if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.detail || "Error occured trying to fetch existing line items JSON.");
+        }else{
+          const data = await response.json();
+          setLineItemConfig(data);
+          syncExistingLineItems(data);
+        }
+        setIsDataLoaded(true);
+      }catch(error){
+        console.error(error);
+        toast.error(error.message);
+        setIsDataLoaded(true);
       }
+      })();
+  }, [currentLineItemId, setCurrentLineItemId]);
 
-      return [...prev, { line_item: lineItemId, rules: newRules }];
-    });
-  };
+ const updateLineItemConfigRules = (lineItemId, newRules) => {
+  setLineItemConfig((prev) => {
+    const existingIndex = prev.findIndex(
+      (item) => item.line_item === lineItemId
+    );
+    
+    if (existingIndex !== -1) {
+      return prev.map((item, index) => 
+        index === existingIndex 
+          ? { ...item, rules: newRules }
+          : item
+      );
+    }
+    return [...prev, { line_item: lineItemId, rules: newRules }];
+  });
+};
+
 
   const getRulesForCurrentLineItem = () => {
     return (
@@ -55,8 +94,6 @@ export const LineItemsProvider = ({ children, reportData }) => {
   useEffect(() => {
     if (!reportId) return;
     const fetchLineItems = async () => {
-      console.log("reportName ==> ", reportName);
-      console.log("API ==> ", import.meta.VITE_BIRT_BACKEND_API);
       try {
         const response = await fetch(
           `${
@@ -117,9 +154,6 @@ export const LineItemsProvider = ({ children, reportData }) => {
   };
 
   const validateLineItemsJson = () => {
-    // console.log(linkedLineItemIds);
-    // console.log(`${reportId} || ${reportName} || ${reportDesc} || ${reportType}`)
-    
     // Basic validation
     if (lineItemConfig.length === 0) {
       toast.error("No Line Items have been configured.");
@@ -189,7 +223,9 @@ export const LineItemsProvider = ({ children, reportData }) => {
         closeAllModals,
         validateLineItemsJson,
         addReportToDatabase,
-        setLinkedLineItemIds
+        getMode,
+        isDataLoaded,
+        setExistingLineItems,
       }}
     >
       {children}

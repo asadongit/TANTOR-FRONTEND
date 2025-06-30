@@ -6,7 +6,9 @@ import {
   Play,
   Download,
   Plus,
-  MoveUpRight
+  MoveUpRight,
+  Search,
+  Eye
 } from "lucide-react";
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -15,69 +17,39 @@ import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
 import DataTable from "../../../components/DataTable";
 import { useProjectData } from "../../../hooks/platform/project";
-import { useProjectCardData } from "../../../hooks/platform/cardCounts";
-import { useRuleReportsData } from "../../../hooks/platform/ruleReports";
+// import { useProjectCardData } from "../../../hooks/platform/cardCounts";
 import { secureQuery } from '../../datagovernance/DataCatalogue/Components/function';
 import { useAuth } from '../../../context/AuthContext';
 import SupersetReport from './components/SupersetReport';
 import toast from "react-hot-toast";
-
-
-
-const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
-
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-      {cards.map((card, index) => (
-        <React.Fragment key={card.title}>
-          <div
-            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
-            onClick={() => onCardClick && onCardClick(card)}
-          >
-            <div className="flex items-center mb-2">
-              <h3 className="text-lg font-semibold">{card.title}</h3>
-            </div>
-            {isLoading ? (
-              <div className="w-8 md:w-10 h-8 md:h-10 bg-gray-200 rounded-full mr-2"></div>
-            ) : (
-              <p className="text-black text-5xl font-bold">{card.count}</p>
-            )}
-          </div>
-          {index === 1 && <div className="col-span-1"></div>}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-};
+import ReportSummaryComponent from "./components/ReportSummaryComponent";
+import {CardGrid} from "../../../components/ReportingCardGrid"
 
 const ReportConfigDashboard = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
-  // const { data: reportsData = [], isLoading: isReportsLoading, error: reportError, refetch: refetchReports } = useRuleReportsData();
+  // const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
   const [hoveredBar, setHoveredBar] = useState(null);
   const { token, hostnameV1 } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [currentEmbedId, setCurrentEmbedId] = useState('');
+  const [currentReportData, setCurrentReportData] = useState({});
+  const [isReportSummaryOpen, setIsReportSummaryOpen] = useState(false);
+  const [cards, setCards] = useState([]);
+  const[filteredReportData,setFilteredReportData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const navigate = useNavigate();
-
 
   const handleRefresh = () => {
     refetchReports();
     refetchCardData();
   };
-
-
-  const handleCreate = () => {
-    navigate("/config/report/ruleLinks");
-  };
-
-
-  const [cards, setCards] = useState([]);
-
+  // const handleCreate = () => {
+  //   navigate("/config/report/ruleLinks");
+  // };
+  
   useEffect(() => {
     const fetchData = async () => {
       try {
-
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
         console.log("policy ids are =====>", policyIds)
@@ -114,7 +86,7 @@ const ReportConfigDashboard = () => {
           },
           {
             title: "Disabled",
-            count: cardData?.migration || 0,
+            count: data?.disabled || 0,
           },
         ];
 
@@ -130,27 +102,6 @@ const ReportConfigDashboard = () => {
     fetchData();
   }, []);
 
-
-  // const cards = [
-  //   {
-  //     title: "Total",
-  //     count: cardData?.purge || 0,
-  //   },
-  //   {
-  //     title: "Published",
-  //     count: cardData?.metadata || 0,
-  //   },
-  //   {
-  //     title: "Draft",
-  //     count: cardData?.federation || 0,
-  //   },
-  //   {
-  //     title: "Disabled",
-  //     count: cardData?.migration || 0,
-  //   },
-  // ];
-
-
   const actions = [
     {
       label: "View",
@@ -162,11 +113,12 @@ const ReportConfigDashboard = () => {
         const embedID = row.embed_id
 
         // ----------- SUPERSET CODE START -----------
-        if ((reportType || "").toUpperCase() === "LIST") {
+        if ((reportType || "").toUpperCase() === "LIST" || (reportType || "").toUpperCase() === "DASHBOARD") {
+          console.log("REPORT TYPE ==> ", reportType);
           console.log("Embed id:", embedID);
           
           if(!embedID){
-            toast.error("REPORT NOT PROCESSED!");
+            toast.error("Dashboard not configured!");
             return;
           }
 
@@ -174,7 +126,8 @@ const ReportConfigDashboard = () => {
           setShowModal(true);
           return;
         }
-         else if ((reportType || "").toUpperCase() === "GRID") {
+         else if ((reportType || "").toUpperCase() === "GRID" || (reportType || "").toUpperCase() === "HYBRID") {
+          console.log("REPORT TYPE ==> ", reportType);
             const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
             const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
@@ -187,7 +140,7 @@ const ReportConfigDashboard = () => {
             return;
           }
           else{
-            toast.error("Invalid Report Type selected.");
+            toast.error("Invalid Report Type provided.");
             return;
           }
         // ----------- SUPERSET CODE END -----------
@@ -276,30 +229,72 @@ const ReportConfigDashboard = () => {
     {
       label: "Edit",
       icon: <Pencil size={16} />,
-      onClick: (row) => console.log("Edit clicked for", row),
+      onClick: (row) => {
+        console.log("Edit clicked for", row)
+        navigate(`/config/report/lineItems`, {
+          state: {
+            reportId: row.report_id,
+            reportName: row.report_name,
+            reportType: row.report_type,
+            reportDesc: row.reportDesc,
+            // mode: "EDIT",
+          },
+        });
+      },
+      show: (row) => {return ["GRID", "HYBRID"].includes(row.report_type.toUpperCase())}
     },
-    {
-      label: "Delete",
-      icon: <Trash2 size={16} />,
-      onClick: (row) => console.log("Delete clicked for", row),
-    },
-    {
-      label: "Run",
-      icon: <Play size={16} fill="currentColor" />,
-      onClick: (row) => console.log("Run clicked for", row),
-    },
-  ];
+    // {
+    //   label: "Display",
+    //   icon: <Eye size={16} />,
+    //   onClick: (row) => {
+    //     console.log("Display clicked for", row);
+    //     (async () => {
+    //       const reportId = row.report_id;
+    //       console.log(row.report_type.toLowerCase())
+    //       if(row.report_type.toLowerCase() !== "grid" && row.report_type.toLowerCase() !== "hybrid"){
+    //         toast.error("Only Grid/Hybrid reports config can be displayed.");
+    //         return;
+    //       }
 
-  // const columns = [
-  //   { key: "s_no", label: "#" },
-  //   { key: "id", label: "ID" },
-  //   { key: "name", label: "Name" },
-  //   { key: "description", label: "Desc" },
-  //   { key: "created", label: "Created" },
-  //   { key: "updated", label: "Updated" },
-  //   { key: "type", label: "Type" },
-  //   { label: "Action", sortable: false },
-  // ];
+    //       try{
+    //         const response = await fetch(`${hostnameV1}/lineItems/reports/json?report_id=${reportId}`, {
+    //           headers: {
+    //             "Content-Type": "application/json",
+    //             Authorization: `Bearer ${token}`,
+    //           },
+    //         });
+  
+    //         if (!response.ok) {
+    //           const errorData = await response.json().catch(() => null);
+    //           throw new Error(errorData?.detail || "Failed to fetch report config.");
+    //         }
+  
+    //         const data = await response.json();
+    //         setCurrentReportData({
+    //           "reportName": row.report_name,
+    //           "lineItemsConfig": data
+    //         });
+    //         setIsReportSummaryOpen(true);
+    //       }catch(error){
+    //         console.error(error);
+    //         toast.error(error.message);
+    //       }
+
+    //   })();
+    //   },
+    //   show: (row) => {return ["GRID", "HYBRID"].includes(row.report_type.toUpperCase())}
+    // },
+    // {
+    //   label: "Delete",
+    //   icon: <Trash2 size={16} />,
+    //   onClick: (row) => console.log("Delete clicked for", row),
+    // },
+    // {
+    //   label: "Run",
+    //   icon: <Play size={16} fill="currentColor" />,
+    //   onClick: (row) => console.log("Run clicked for", row),
+    // },
+  ];
 
   const [reportsData, setReportsData] = useState([]);
   const [isReportsLoading, setIsReportsLoading] = useState(false);
@@ -353,8 +348,9 @@ const ReportConfigDashboard = () => {
         };
       });
 
-      console.log("Reports with serial ", reportsWithSerial);
       setReportsData(reportsWithSerial);
+      setFilteredReportData(reportsWithSerial);
+      
     } catch (error) {
       setReportError(error.message);
       console.error('Error fetching reports:', error);
@@ -367,28 +363,23 @@ const ReportConfigDashboard = () => {
     fetchReports();
   }, []);
 
+  useEffect(() => {
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      const filteredReportData = reportsData.filter((row) =>
+        Object.values(row).some((value) =>
+          String(value || "")
+            .toLowerCase()
+            .includes(lowerSearch)
+        )
+      );
+
+      setFilteredReportData(filteredReportData);
+    }
+  }, [reportsData, searchTerm, setSearchTerm]);
   const refetchReports = () => {
     fetchReports();
   };
-
-  // const data = [
-  //   {
-  //     name: 'Grid',
-  //     blue: 40,
-  //   },
-  //   {
-  //     name: 'Other',
-  //     teal: 70,
-  //   },
-  //   {
-  //     name: 'Hybrid',
-  //     redStripes: 20,
-  //   },
-  //   {
-  //     name: 'List',
-  //     gray: 10,
-  //   },
-  // ];
 
   const [chartData, setChartData] = useState( [
     {
@@ -518,18 +509,18 @@ const ReportConfigDashboard = () => {
           >
             <List className={`h-5 w-5 ${isReportsLoading ? 'animate-spin' : ''}`} />
           </button>
-          <button
+          {/* <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
             onClick={handleCreate}
           >
             <Plus className={`h-5 w-5 ${isReportsLoading ? 'animate-spin' : ''}`} />
-          </button>
+          </button> */}
         </div>
       </div>
 
 
-      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading} />
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={false} />
 
 
       {/* Chart container */}
@@ -561,10 +552,26 @@ const ReportConfigDashboard = () => {
       </div>
 
 
-
+      
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 mt-10">
+        {/* {title && <h2 className="text-xl font-bold mb-2 md:mb-0">{title}</h2>} */}
+        <div className="relative w-full md:w-64">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search size={18} className="text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search..."
+            className="pl-10 pr-4 py-2 border rounded-lg w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            aria-label="Search records"
+          />
+        </div>
+      </div>
       <DataTable
         columns={columns}
-        data={reportsData}
+        data={filteredReportData}
         actions={actions}
         isLoading={isReportsLoading}
         isError={!!reportError}
@@ -576,6 +583,13 @@ const ReportConfigDashboard = () => {
         setShowModal={setShowModal}
         currentReportName={currentEmbedId}
       />
+
+      <ReportSummaryComponent
+        isOpen={isReportSummaryOpen}
+        onClose={() => {setIsReportSummaryOpen(false)}}
+        reportName={currentReportData.reportName || ""} 
+        lineItemsData={currentReportData?.lineItemsConfig || []}
+        />
     </div>
   );
 };
