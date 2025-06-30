@@ -84,23 +84,24 @@ export const useProjectCardData = () => {
   });
 };
 
-
-const fetchReportingRulesCounts = async (token) => {
+const fetchRuleCounts = async (token) => {
   if (!token) throw new Error("Token is missing");
 
-  const response = await axios.get(`${hostnamev1}/ruleGraph`, {
+  const response = await axios.get(`${hostnamev1}/ruleCount`, {
       headers: {
          Authorization: `Bearer ${token}`,
-        },  });
+        },
+      });
 
   return response.data ?? [];
 };
-export const useReportingRulesCardData = () => {
+
+export const useRulesCardData = () => {
   const { token,project } = useAuth(); 
 
   return useQuery({
-    queryKey: ["RulesDashboard"],
-    queryFn: () => fetchReportingRulesCounts(token,project), 
+    queryKey: ["RuleDashboard"],
+    queryFn: () => fetchRuleCounts(token), 
     enabled: !!token, 
     staleTime: 3 * 60 * 1000, 
     retry: 2, 

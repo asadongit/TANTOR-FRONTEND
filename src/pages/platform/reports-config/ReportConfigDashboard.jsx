@@ -7,6 +7,7 @@ import {
   Download,
   Plus,
   MoveUpRight,
+  Search,
   Eye
 } from "lucide-react";
 
@@ -16,71 +17,39 @@ import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
 import DataTable from "../../../components/DataTable";
 import { useProjectData } from "../../../hooks/platform/project";
-import { useProjectCardData } from "../../../hooks/platform/cardCounts";
-import { useRuleReportsData } from "../../../hooks/platform/ruleReports";
+// import { useProjectCardData } from "../../../hooks/platform/cardCounts";
 import { secureQuery } from '../../datagovernance/DataCatalogue/Components/function';
 import { useAuth } from '../../../context/AuthContext';
 import SupersetReport from './components/SupersetReport';
 import toast from "react-hot-toast";
 import ReportSummaryComponent from "./components/ReportSummaryComponent";
-
-
-const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
-
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {cards.map((card, index) => (
-        <React.Fragment key={card.title}>
-          <div
-            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
-            onClick={() => onCardClick && onCardClick(card)}
-          >
-            <div className="flex items-center mb-2">
-              <h3 className="text-lg font-semibold">{card.title}</h3>
-            </div>
-            {isLoading ? (
-              <div className="w-8 md:w-10 h-8 md:h-10 bg-gray-200 rounded-full mr-2"></div>
-            ) : (
-              <p className="text-black text-5xl font-bold">{card.count}</p>
-            )}
-          </div>
-          {/* {index === 1 && <div className="col-span-1"></div>} */}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-};
+import {CardGrid} from "../../../components/ReportingCardGrid"
 
 const ReportConfigDashboard = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
-  // const { data: reportsData = [], isLoading: isReportsLoading, error: reportError, refetch: refetchReports } = useRuleReportsData();
+  // const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
   const [hoveredBar, setHoveredBar] = useState(null);
   const { token, hostnameV1 } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [currentEmbedId, setCurrentEmbedId] = useState('');
   const [currentReportData, setCurrentReportData] = useState({});
   const [isReportSummaryOpen, setIsReportSummaryOpen] = useState(false);
+  const [cards, setCards] = useState([]);
+  const[filteredReportData,setFilteredReportData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const navigate = useNavigate();
-
 
   const handleRefresh = () => {
     refetchReports();
     refetchCardData();
   };
-
-
   // const handleCreate = () => {
   //   navigate("/config/report/ruleLinks");
   // };
-
-
-  const [cards, setCards] = useState([]);
-
+  
   useEffect(() => {
     const fetchData = async () => {
       try {
-
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
         console.log("policy ids are =====>", policyIds)
@@ -117,7 +86,7 @@ const ReportConfigDashboard = () => {
           },
           {
             title: "Disabled",
-            count: cardData?.migration || 0,
+            count: data?.disabled || 0,
           },
         ];
 
@@ -132,27 +101,6 @@ const ReportConfigDashboard = () => {
 
     fetchData();
   }, []);
-
-
-  // const cards = [
-  //   {
-  //     title: "Total",
-  //     count: cardData?.purge || 0,
-  //   },
-  //   {
-  //     title: "Published",
-  //     count: cardData?.metadata || 0,
-  //   },
-  //   {
-  //     title: "Draft",
-  //     count: cardData?.federation || 0,
-  //   },
-  //   {
-  //     title: "Disabled",
-  //     count: cardData?.migration || 0,
-  //   },
-  // ];
-
 
   const actions = [
     {
@@ -348,17 +296,6 @@ const ReportConfigDashboard = () => {
     // },
   ];
 
-  // const columns = [
-  //   { key: "s_no", label: "#" },
-  //   { key: "id", label: "ID" },
-  //   { key: "name", label: "Name" },
-  //   { key: "description", label: "Desc" },
-  //   { key: "created", label: "Created" },
-  //   { key: "updated", label: "Updated" },
-  //   { key: "type", label: "Type" },
-  //   { label: "Action", sortable: false },
-  // ];
-
   const [reportsData, setReportsData] = useState([]);
   const [isReportsLoading, setIsReportsLoading] = useState(false);
   const [reportError, setReportError] = useState(null);
@@ -411,8 +348,9 @@ const ReportConfigDashboard = () => {
         };
       });
 
-      console.log("Reports with serial ", reportsWithSerial);
       setReportsData(reportsWithSerial);
+      setFilteredReportData(reportsWithSerial);
+      
     } catch (error) {
       setReportError(error.message);
       console.error('Error fetching reports:', error);
@@ -425,28 +363,23 @@ const ReportConfigDashboard = () => {
     fetchReports();
   }, []);
 
+  useEffect(() => {
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      const filteredReportData = reportsData.filter((row) =>
+        Object.values(row).some((value) =>
+          String(value || "")
+            .toLowerCase()
+            .includes(lowerSearch)
+        )
+      );
+
+      setFilteredReportData(filteredReportData);
+    }
+  }, [reportsData, searchTerm, setSearchTerm]);
   const refetchReports = () => {
     fetchReports();
   };
-
-  // const data = [
-  //   {
-  //     name: 'Grid',
-  //     blue: 40,
-  //   },
-  //   {
-  //     name: 'Other',
-  //     teal: 70,
-  //   },
-  //   {
-  //     name: 'Hybrid',
-  //     redStripes: 20,
-  //   },
-  //   {
-  //     name: 'List',
-  //     gray: 10,
-  //   },
-  // ];
 
   const [chartData, setChartData] = useState( [
     {
@@ -587,7 +520,7 @@ const ReportConfigDashboard = () => {
       </div>
 
 
-      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading} />
+      <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={false} />
 
 
       {/* Chart container */}
@@ -619,10 +552,26 @@ const ReportConfigDashboard = () => {
       </div>
 
 
-
+      
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 mt-10">
+        {/* {title && <h2 className="text-xl font-bold mb-2 md:mb-0">{title}</h2>} */}
+        <div className="relative w-full md:w-64">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search size={18} className="text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search..."
+            className="pl-10 pr-4 py-2 border rounded-lg w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            aria-label="Search records"
+          />
+        </div>
+      </div>
       <DataTable
         columns={columns}
-        data={reportsData}
+        data={filteredReportData}
         actions={actions}
         isLoading={isReportsLoading}
         isError={!!reportError}

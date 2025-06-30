@@ -21,6 +21,7 @@ export const LineItemsProvider = ({ children, reportData }) => {
   const [currentLineItemId, setCurrentLineItemId] = useState("");
   const [lineItemConfig, setLineItemConfig] = useState([]);
   const [existingLineItems, setExistingLineItems] = useState([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const syncExistingLineItems = (lineItemsJson) => {
     
@@ -34,6 +35,8 @@ export const LineItemsProvider = ({ children, reportData }) => {
   }
 
   useEffect(() => {
+    if(!reportId || isDataLoaded) return;
+
       (async () => {
         try{
           const response = await fetch(`${hostnameV1}/lineItems/reports/json?report_id=${reportId}`, {
@@ -54,10 +57,11 @@ export const LineItemsProvider = ({ children, reportData }) => {
           setLineItemConfig(data);
           syncExistingLineItems(data);
         }
-
+        setIsDataLoaded(true);
       }catch(error){
         console.error(error);
         toast.error(error.message);
+        setIsDataLoaded(true);
       }
       })();
   }, [currentLineItemId, setCurrentLineItemId]);
@@ -220,6 +224,8 @@ export const LineItemsProvider = ({ children, reportData }) => {
         validateLineItemsJson,
         addReportToDatabase,
         getMode,
+        isDataLoaded,
+        setExistingLineItems,
       }}
     >
       {children}
