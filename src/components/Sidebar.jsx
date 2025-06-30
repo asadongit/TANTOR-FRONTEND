@@ -64,7 +64,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Pipeline', icon: ArrowPathIcon, path: '/pipeline' },
     { name: 'Reports', icon: DocumentTextIcon, path: '/report' },
     {
-      name: 'Configuration',
+      name: 'Business Reports',
       icon: ArrowPathIcon,
       path: '/config/rule',
       subItems: [

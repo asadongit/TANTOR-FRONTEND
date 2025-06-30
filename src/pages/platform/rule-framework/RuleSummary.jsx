@@ -5,8 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { getSegregatedColumns } from "../../../services/ruleJsonGeneratorService";
 import { useAuth } from "../../../context/AuthContext";
 import { generateSQLQuery } from "../../../services/sqlQueryService";
-
 import toast from "react-hot-toast";
+
 const RuleSummary = ({ 
   setIsOpen, 
   nodes,
@@ -69,63 +69,62 @@ const RuleSummary = ({
     }
   };
 
-const handleRuleSubmit = async (ruleType) => {
-  const { metricColumns, groupByColumns } = getSegregatedColumns(
-    filterConditions.columns
-  );
+  const handleRuleSubmit = async (ruleType) => {
+    const { metricColumns, groupByColumns } = getSegregatedColumns(
+      filterConditions.columns
+    );
 
-  if (metricColumns.length === 0) {
-    toast.error("No Aggregates were selected.");
-    return;
-  }
-
-  const payload = {
-    ruleName,
-    ruleDescription,
-    fact_id: selectedFact.fact_id,
-    dimensionFilters,
-    timeTransformationFilters,
-    metricColumns,
-    groupByColumns,
-    status: ruleType === "draft" ? "draft" : "active",
-  };
-
-  if (mode.toUpperCase() === "EDIT") {
-    payload.ruleId = ruleId;
-  }
-
-  const url =
-    mode.toUpperCase() === "EDIT"
-      ? `${hostnameV1}/updateRule`
-      : `${hostnameV1}/saveRule`;
-  const method = mode.toUpperCase() === "EDIT" ? "PUT" : "POST";
-
-  try {
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
-
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: JSON.stringify({ rule_data: payload, rule_json: nodes }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.detail || "Failed to save rule.");
+    if (metricColumns.length === 0) {
+      toast.error("No Aggregates were selected.");
+      return;
     }
 
-    const data = await response.json();
-    toast.success(data?.message || "Rule saved successfully.");
-    navigate("/config/rule");
-  } catch (error) {
-    console.error(error);
-    toast.error(error.message);
-  }
-};
+    const payload = {
+      ruleName,
+      ruleDescription,
+      fact_id: selectedFact.fact_id,
+      dimensionFilters,
+      timeTransformationFilters,
+      metricColumns,
+      groupByColumns,
+      status: ruleType === "draft" ? "draft" : "active",
+    };
 
+    if (mode.toUpperCase() === "EDIT") {
+      payload.ruleId = ruleId;
+    }
+
+    const url =
+      mode.toUpperCase() === "EDIT"
+        ? `${hostnameV1}/updateRule`
+        : `${hostnameV1}/saveRule`;
+    const method = mode.toUpperCase() === "EDIT" ? "PUT" : "POST";
+
+    try {
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: JSON.stringify({ rule_data: payload, rule_json: nodes }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || "Failed to save rule.");
+      }
+
+      const data = await response.json();
+      toast.success(data?.message || "Rule saved successfully.");
+      navigate("/config/rule");
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message);
+    }
+  };
 
   return (
     <Modal
@@ -162,28 +161,28 @@ const handleRuleSubmit = async (ruleType) => {
                 </button>
               </div>
 
-              <h2 className="text-xl font-semibold mb-6">Summary</h2>
+              <h2 className="text-xl font-semibold mb-6 text-gray-700">Summary</h2>
 
               {/* Main Content Grid */}
               <div className="space-y-6">
                 {/* Name and Description */}
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-2">
                       Name
                     </label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
-                      <span className="text-blue-600">
+                      <span className="text-gray-800">
                         {ruleName || "Not defined"}
                       </span>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-2">
                       Description
                     </label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
-                      <span className="text-gray-600">
+                      <span className="text-gray-800">
                         {ruleDescription || "No description"}
                       </span>
                     </div>
@@ -193,21 +192,21 @@ const handleRuleSubmit = async (ruleType) => {
                 {/* Table and Column */}
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-2">
                       Table
                     </label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
-                      <span className="text-blue-600">
+                      <span className="text-gray-800">
                         {selectedFact?.fct_name || "fct_loans"}
                       </span>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-2">
                       Column
                     </label>
                     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
-                      <span className="text-blue-600">
+                      <span className="text-gray-800">
                         {columns.map((t) => t.name).join(", ") ||
                           currentColumn.name}
                       </span>
@@ -215,24 +214,13 @@ const handleRuleSubmit = async (ruleType) => {
                   </div>
                 </div>
 
-                {/* Filter */}
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Filter</label>
-                  <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
-                    <span className="text-gray-600">
-                      {filterConditions?.sqlPreview || "No Filter Query"}
-                    </span>
-                  </div>
-                </div> */}
-
                 {/* Query Preview */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#8e78b7] mb-2">
                     Query Preview
                   </label>
                   <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
-                    <pre className="text-sm font-mono text-blue-600 whitespace-pre-wrap">
-                      {/* {previewData || "No query generated"} */}
+                    <pre className="text-sm font-mono text-gray-800 whitespace-pre-wrap">
                       {generateSQLQuery({
                             tableName:selectedFact.fct_name, 
                             selectedColumns: filterConditions.columns, 
@@ -269,129 +257,141 @@ const handleRuleSubmit = async (ruleType) => {
             }
           </div>
 
-          {/* Right Section - Column Settings (Read-only) */}
+          {/* Right Section - Column Settings (Compact Layout) */}
           <div className="w-[400px] overflow-y-auto p-6 bg-gray-50">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Column Settings</h3>
             </div>
 
             <div className="space-y-6">
-              {/* Navigation Arrows */}
-              <div className="flex justify-between items-center bg-white p-3 rounded-md border border-gray-200">
+              {/* Navigation Arrows - Improved */}
+              <div className="flex justify-between items-center bg-white p-3 rounded-md border border-gray-200 shadow-sm">
                 <button
                   onClick={handlePrevColumn}
                   disabled={currentColumnIndex === 0}
-                  className={`text-lg ${
+                  className={`p-1 rounded-full ${
                     currentColumnIndex === 0
-                      ? "text-gray-400 cursor-not-allowed"
-                      : "text-gray-600 hover:text-gray-800"
+                      ? "text-gray-300 cursor-not-allowed"
+                      : "text-[#6d5993] hover:bg-[#f0edf5]"
                   }`}
                 >
-                  <ArrowBigLeft />
+                  <ArrowBigLeft size={20} />
                 </button>
-                <span className="text-sm font-medium">
-                  Column {currentColumnIndex + 1} of {columns.length}:{" "}
-                  {currentColumn.name}
-                </span>
+                <div className="flex flex-col items-center">
+                  <span className="text-xs text-gray-500 font-medium">
+                    Column {currentColumnIndex + 1} of {columns.length}
+                  </span>
+                  <span className="text-sm font-medium text-[#6d5993] truncate max-w-[200px]">
+                    {currentColumn.name}
+                  </span>
+                </div>
                 <button
                   onClick={handleNextColumn}
                   disabled={currentColumnIndex === columns.length - 1}
-                  className={`text-lg ${
+                  className={`p-1 rounded-full ${
                     currentColumnIndex === columns.length - 1
-                      ? "text-gray-400 cursor-not-allowed"
-                      : "text-gray-600 hover:text-gray-800"
+                      ? "text-gray-300 cursor-not-allowed"
+                      : "text-[#6d5993] hover:bg-[#f0edf5]"
                   }`}
                 >
-                  <ArrowBigRight />
+                  <ArrowBigRight size={20} />
                 </button>
               </div>
 
-              {/* Column Properties (Read-only) */}
+              {/* Column Properties */}
               <div className="space-y-4">
+                {/* Name - Full Width */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[#8e78b7] mb-1">
                     Name
                   </label>
-                  <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">{currentColumn.name}</span>
+                  <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center w-full">
+                    {currentColumn.name}
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Type
-                  </label>
-                  <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">{currentColumn.type}</span>
+                
+                {/* Other Properties in Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-1">
+                      Type
+                    </label>
+                    <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
+                      {currentColumn.type}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dimension Type
-                  </label>
-                  <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">{currentColumn.dimType}</span>
+                  
+                  {/* Dimension Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-1">
+                      Dim Type
+                    </label>
+                    <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
+                      {currentColumn.dimType}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Alias
-                  </label>
-                  <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">
+                  
+                  {/* Alias */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-1">
+                      Alias
+                    </label>
+                    <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
                       {currentColumn.alias || "-"}
-                    </span>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Output
-                  </label>
-                  <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">
+                  
+                  {/* Output */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-1">
+                      Output
+                    </label>
+                    <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
                       {currentColumn.output ? "Yes" : "No"}
-                    </span>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Order
-                  </label>
-                  <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">
+                  
+                  {/* Order */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-1">
+                      Order
+                    </label>
+                    <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
                       {currentColumn.order || "-"}
-                    </span>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sort
-                  </label>
-                  <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">
+                  
+                  {/* Sort */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-1">
+                      Sort
+                    </label>
+                    <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
                       {currentColumn.sort || "-"}
-                    </span>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Aggregate
-                  </label>
-                  <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">
+                  
+                  {/* Aggregate */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-1">
+                      Aggregate
+                    </label>
+                    <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base  h-10 flex items-center">
                       {Array.isArray(currentColumn.aggregate) && currentColumn.aggregate.length > 0 
                         ? currentColumn.aggregate.join(", ") 
                         : "-"}
-                    </span>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Group By
-                  </label>
-                  <div className="border border-gray-200 rounded-md p-3 bg-white">
-                    <span className="text-gray-900">
+                  
+                  {/* Group By */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#8e78b7] mb-1">
+                      Group By
+                    </label>
+                    <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
                       {currentColumn.groupBy ? "Yes" : "No"}
-                    </span>
+                    </div>
                   </div>
                 </div>
               </div>

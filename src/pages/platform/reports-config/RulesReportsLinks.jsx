@@ -3,19 +3,11 @@ import { MoveUpRight, Link } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import DataTable from "../../../components/DataTable";
-import { useRuleReportData } from "../../../hooks/platform/ruleLinkedReports";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 import { secureQuery } from '../../datagovernance/DataCatalogue/Components/function';
 
 const RulesReportsLinks = () => {
-  // const {
-  //   data: ruleReportData = [],
-  //   isLoading: isRuleReportLoading,
-  //   error: ruleReportError,
-  //   refetch: refetchRuleReport,
-  // } = useRuleReportData();
-
   const { token, hostnameV1 } = useAuth();
 
   const navigate = useNavigate();
