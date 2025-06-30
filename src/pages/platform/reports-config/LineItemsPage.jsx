@@ -40,6 +40,7 @@ function LineItemsContent() {
   const LineItemsHtmlComponent = () => {
     return (
       <div
+      className="w-full max-w-7xl mx-auto overflow-x-auto box-border"
         ref={contentRef}
         dangerouslySetInnerHTML={{ __html: lineItemsHtml }}
       />
