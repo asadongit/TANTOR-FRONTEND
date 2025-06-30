@@ -22,6 +22,8 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
   const { updatePipelineData,deletePipeline, pipelines,setNodes,setEdge,deleteMappings} = useWorkflow();
 
   const [selectedOption, setSelectedOption] = useState("manual");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   // const { minimizePipeline, deletePipeline } = useWorkflow();
   // const pipelineId = id.split("_").pop();
   const handleOptionChange = useCallback((event) => {
@@ -66,6 +68,14 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       return;
     }
 
+    if (selectedOption === "manual") {
+
+      if (endDate < startDate) {
+        toast.error("End date cannot be before start date!", { duration: 4000 });
+        return;
+      }
+    }
+
     const tableOperations = {};
 
     const tableOpTypes = pipelineData.source?.table_op_types || {};
@@ -89,6 +99,12 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       }
     });
 
+    tableOperations["scheduler"] = {
+      mode: selectedOption,
+      startDateTime: startDate,
+      endDateTime: endDate
+    };
+
     const finalPayload = {
       project: project,
       created_by: decodedToken.preferred_username,
@@ -103,7 +119,7 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       op_types: tableOperations,
     };
 
-    // console.log("Final Payload:", finalPayload);
+    console.log("Final Payload:", finalPayload);
     try {
       const response = await fetch(`${hostnameV2}/create-cdc`, {
         method: "POST",
@@ -183,7 +199,7 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
             </label>
           </div>
           <div className="flex items-center">
-            <input
+            {/* <input
               type="radio"
               id="auto"
               name="scheduleMode"
@@ -194,7 +210,7 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
             />
             <label htmlFor="auto" className="ml-2 text-xs text-gray-700">
               Auto
-            </label>
+            </label> */}
           </div>
         </div>
       </div>
@@ -212,6 +228,8 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
               type="datetime-local"
               id="start-date"
               className="w-full border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-700 focus:ring-2 focus:ring-[#8e78b7]"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
             />
           </div>
           <div className="w-full">
@@ -225,6 +243,9 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
               type="datetime-local"
               id="end-date"
               className="w-full border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-700 focus:ring-2 focus:ring-[#8e78b7]"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              min={startDate}
             />
           </div>
         </div>

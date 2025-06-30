@@ -98,7 +98,7 @@ export function TargetNode({ id, data, selected }) {
     }
   }, [pipelines, pipelineId, data?.source, isPipelineNode]);
 
-  
+
 
 
   const filteredTables = useMemo(() => {
@@ -163,7 +163,7 @@ export function TargetNode({ id, data, selected }) {
 
   const showTablesList = Boolean(
     selectedMode === "bulk"
-      ? !loading || filteredTables?.length > 0 
+      ? !loading || filteredTables?.length > 0
       : (pipelineMappings[pipelineId]?.length ?? 0) > 0 ||
           (pipelineMappings[constructedKey]?.length ?? 0) > 0
   );
@@ -229,6 +229,42 @@ export function TargetNode({ id, data, selected }) {
     }
   }, [filteredTables]);
 
+  const [connectionDropdownOpen, setConnectionDropdownOpen] = useState(false);
+  const [connectionSearch, setConnectionSearch] = useState("");
+  const [schemaDropdownOpen, setSchemaDropdownOpen] = useState(false);
+  const [schemaSearch, setSchemaSearch] = useState("");
+  // Add state for subset table dropdown open/search
+  const [subsetTableDropdownOpen, setSubsetTableDropdownOpen] = useState(false);
+  const [subsetTableSearch, setSubsetTableSearch] = useState("");
+
+  // Filtered connections and schemas for dropdowns
+  const filteredConnections = useMemo(() => {
+    if (!connections) return [];
+    if (!connectionSearch) return connections;
+    return connections.filter(conn =>
+      conn.connection_name.toLowerCase().includes(connectionSearch.toLowerCase())
+    );
+  }, [connections, connectionSearch]);
+
+  const filteredSchemas = useMemo(() => {
+    if (!schemas) return [];
+    if (!schemaSearch) return schemas;
+    return schemas.filter(schema =>
+      schema.table_schema.toLowerCase().includes(schemaSearch.toLowerCase())
+    );
+  }, [schemas, schemaSearch]);
+
+  // Filtered tables for subset dropdown
+  const filteredSubsetTables = useMemo(() => {
+    if (!filteredTables) return [];
+    if (!subsetTableSearch) return filteredTables;
+    return filteredTables.filter(table =>
+      (table.target_table || "")
+        .toLowerCase()
+        .includes(subsetTableSearch.toLowerCase())
+    );
+  }, [filteredTables, subsetTableSearch]);
+
   return (
     <div
       className={`bg-white rounded-lg p-3 pt-2 shadow-md border-2 ${
@@ -266,36 +302,52 @@ export function TargetNode({ id, data, selected }) {
           <label className="text-xs font-medium text-black mb-0.5 block">
             Connection
           </label>
-          <div className="w-full">
-            <select
-              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              value={
-                selectedConnectionObj
-                  ? JSON.stringify(selectedConnectionObj)
-                  : ""
-              }
-              onChange={(e) => {
-                const selectedConnection = JSON.parse(e.target.value);
-                setSelectedConnectionObj(selectedConnection);
-                setSelectedConnection(selectedConnection.connection_name);
-                setSelectedSchema("");
-                setNodeData((prevData) => ({
-                  ...prevData,
-                  target_conn_id: selectedConnection.connection_id,
-                }));
-              }}
+          <div className="w-full relative">
+            <button
+              type="button"
+              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 flex justify-between items-center"
+              onClick={() => setConnectionDropdownOpen((open) => !open)}
             >
-              <option value="">Select Connection</option>
-              {connections?.length > 0 ? (
-                connections.map((connection, idx) => (
-                  <option key={idx} value={JSON.stringify(connection)}>
-                    {connection.connection_name}
-                  </option>
-                ))
-              ) : (
-                <option disabled>No connections available</option>
-              )}
-            </select>
+              {selectedConnectionObj ? selectedConnectionObj.connection_name : "Select Connection"}
+              <span className="ml-2">&#9662;</span>
+            </button>
+            {connectionDropdownOpen && (
+              <div className="absolute z-10 bg-white border text-black border-gray-300 rounded shadow w-full mt-1 max-h-48 overflow-auto">
+                <input
+                  type="text"
+                  placeholder="Search connection..."
+                  className="w-full p-1 text-xs border-b border-gray-200"
+                  value={connectionSearch}
+                  onChange={e => setConnectionSearch(e.target.value)}
+                  autoFocus
+                />
+                <div>
+                  {filteredConnections.length > 0 ? (
+                    filteredConnections.map((connection, idx) => (
+                      <div
+                        key={idx}
+                        className={`px-2 py-1 text-xs text-black cursor-pointer hover:bg-gray-100 ${selectedConnectionObj && selectedConnectionObj.connection_id === connection.connection_id ? "bg-gray-100" : ""}`}
+                        onClick={() => {
+                          setSelectedConnectionObj(connection);
+                          setSelectedConnection(connection.connection_name);
+                          setSelectedSchema("");
+                          setNodeData((prevData) => ({
+                            ...prevData,
+                            target_conn_id: connection.connection_id,
+                          }));
+                          setConnectionDropdownOpen(false);
+                          setConnectionSearch("");
+                        }}
+                      >
+                        {connection.connection_name}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1 text-xs text-gray-400">No connections found</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -305,37 +357,55 @@ export function TargetNode({ id, data, selected }) {
           </label>
           <div className="relative w-full flex items-center gap-2">
             <div className="w-full relative">
-              <select
-                className="w-full min-w-0 p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-                value={selectedSchema}
-                onChange={(e) => {
-                  const schemaName = e.target.value;
-                  setSelectedSchema(schemaName);
-                  setLoading(true);
-                }}
+              <button
+                type="button"
+                className="w-full min-w-0 p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 flex justify-between items-center"
+                onClick={() => setSchemaDropdownOpen((open) => !open)}
                 disabled={!selectedConnection || schemaLoading}
               >
-                {schemaLoading ? (
-                  <option value="">Loading schemas...</option>
-                ) : (
-                  <>
-                    <option value="">Select Schema</option>
-                    {schemas?.map((schema, idx) => (
-                      <option key={idx} value={schema.table_schema}>
-                        {schema.table_schema}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </select>
-
+                {selectedSchema || "Select Schema"}
+                <span className="ml-2">&#9662;</span>
+              </button>
+              {schemaDropdownOpen && (
+                <div className="absolute z-10 bg-white text-black border border-gray-300 rounded shadow w-full mt-1 max-h-48 overflow-auto">
+                  <input
+                    type="text"
+                    placeholder="Search schema..."
+                    className="w-full p-1 text-xs border-b border-gray-200"
+                    value={schemaSearch}
+                    onChange={e => setSchemaSearch(e.target.value)}
+                    autoFocus
+                  />
+                  <div>
+                    {schemaLoading ? (
+                      <div className="px-2 py-1 text-xs text-gray-400">Loading schemas...</div>
+                    ) : filteredSchemas.length > 0 ? (
+                      filteredSchemas.map((schema, idx) => (
+                        <div
+                          key={idx}
+                          className={`px-2 py-1 text-xs text-black cursor-pointer hover:bg-gray-100 ${selectedSchema === schema.table_schema ? "bg-gray-100" : ""}`}
+                          onClick={() => {
+                            setSelectedSchema(schema.table_schema);
+                            setLoading(true);
+                            setSchemaDropdownOpen(false);
+                            setSchemaSearch("");
+                          }}
+                        >
+                          {schema.table_schema}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1 text-xs text-gray-400">No schemas found</div>
+                    )}
+                  </div>
+                </div>
+              )}
               {schemaLoading && (
                 <div className="absolute right-2 top-1/2 -translate-y-1/2">
                   <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
                 </div>
               )}
             </div>
-
             <span className="text-black font-bold">
               {schemaCount?.schema_count}
             </span>
@@ -363,29 +433,52 @@ export function TargetNode({ id, data, selected }) {
                 {sourceTable || "No source selected"}
               </span>
             </div>
-            <select
-              id="connection-select"
-              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              // value={selectedConnection}
-              onChange={(e) =>
-                completeMapping(
-                  ID,
-                  firstSource?.id,
-                  e.target.value,
-                  isPipelineNode
-                )
-              }
-            >
-              <option value="">Select Table</option>
-              {filteredTables.map((table, idx) => (
-                <option
-                  key={idx}
-                  // value={table.connection_name}
-                >
-                  {table.target_table}
-                </option>
-              ))}
-            </select>
+            <div className="relative w-full">
+              <button
+                type="button"
+                className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 flex justify-between items-center"
+                onClick={() => setSubsetTableDropdownOpen((open) => !open)}
+              >
+                Select Table
+                <span className="ml-2">&#9662;</span>
+              </button>
+              {subsetTableDropdownOpen && (
+                <div className="absolute z-10 bg-white text-black border border-gray-300 rounded shadow w-full mt-1 max-h-48 overflow-auto">
+                  <input
+                    type="text"
+                    placeholder="Search tables..."
+                    className="w-full p-1 text-xs border-b border-gray-200"
+                    value={subsetTableSearch}
+                    onChange={e => setSubsetTableSearch(e.target.value)}
+                    autoFocus
+                  />
+                  <div>
+                    {filteredSubsetTables.length > 0 ? (
+                      filteredSubsetTables.map((table, idx) => (
+                        <div
+                          key={idx}
+                          className="px-2 py-1 text-xs text-black cursor-pointer hover:bg-gray-100"
+                          onClick={() => {
+                            completeMapping(
+                              ID,
+                              firstSource?.id,
+                              table.target_table,
+                              isPipelineNode
+                            );
+                            setSubsetTableDropdownOpen(false);
+                            setSubsetTableSearch("");
+                          }}
+                        >
+                          {table.target_table}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1 text-xs text-gray-400">No tables found</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -663,11 +756,11 @@ export function TargetNode({ id, data, selected }) {
             setTables([]);
           }
           }
-        
+
         >
           Cancel
         </button>
-        <button 
+        <button
           onClick={handleOkClick}
           className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded">
           OK

@@ -1279,7 +1279,7 @@ export default function CDCJobView() {
             </div>
           </div>
 
-          <div className="px-6 py-4">
+          {/* <div className="px-6 py-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               <MetricsCard
                 title="Records Processed"
@@ -1333,7 +1333,7 @@ export default function CDCJobView() {
                 change={0.2}
               />
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div className="bg-white rounded-t-lg shadow-sm border border-gray-200 mb-5">
@@ -1474,7 +1474,7 @@ Connectors              </button> */}
 
                           <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                             <div className="flex justify-end space-x-2">
-                              <button
+                              {/* <button
                                 className="text-gray-600 hover:text-gray-900"
                                 title="Clone Configuration"
                               >
@@ -1491,7 +1491,7 @@ Connectors              </button> */}
                                 title="Clone Configuration"
                               >
                                 <Copy className="w-4 h-4" />
-                              </button>
+                              </button> */}
                               <button
                                 className="text-red-600 hover:text-gray-900"
                                 title="Clone Configuration"
@@ -1576,7 +1576,7 @@ Connectors              </button> */}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                             <div className="flex justify-end space-x-2">
-                              <button
+                              {/* <button
                                 className="text-gray-600 hover:text-gray-900"
                                 title="Clone Configuration"
                               >
@@ -1593,7 +1593,7 @@ Connectors              </button> */}
                                 title="Clone Configuration"
                               >
                                 <Copy className="w-4 h-4" />
-                              </button>
+                              </button> */}
                               <button
                                 className="text-red-600 hover:text-gray-900"
                                 title="Clone Configuration"

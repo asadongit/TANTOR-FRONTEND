@@ -657,7 +657,7 @@ const Rules = () => {
                     </td>
                     <td className="p-4 text-gray-600">{item.created_date}</td>
                     <td className="p-4 text-gray-600">{item.updated_date}</td>
-                    <td className="p-4 text-gray-600">{item.last_run}</td>
+                    <td className="p-4 text-gray-600">{item.last_run_date}</td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         <div className="relative group">
