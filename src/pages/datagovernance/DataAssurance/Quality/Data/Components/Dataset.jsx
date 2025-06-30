@@ -14,9 +14,9 @@ function Dataset() {
   const [selectedTable, setSelectedTable] = useState('dim_customer')
   const [editorContent, setEditorContent] = useState('')
   const [expandedItems, setExpandedItems] = useState({ Oracle: true, 'Oracle.SCHEMA_1': true })
-  const [activeTab, setActiveTab] = useState('explorer') // 'explorer' or 'history'
+  const [activeTab, setActiveTab] = useState('explorer') 
   const [isEditorMaximized, setIsEditorMaximized] = useState(false)
-  const [isOutputMaximized, setIsOutputMaximized] = useState(false) // New state for output
+  const [isOutputMaximized, setIsOutputMaximized] = useState(false)
 
   const explorerItems = [
     {
@@ -114,24 +114,22 @@ function Dataset() {
 
   const toggleEditorMaximize = () => {
     setIsEditorMaximized(!isEditorMaximized)
-    setIsOutputMaximized(false) // Ensure output is not maximized
+    setIsOutputMaximized(false) 
   }
 
   const toggleOutputMaximize = () => {
     setIsOutputMaximized(!isOutputMaximized)
-    setIsEditorMaximized(false) // Ensure editor is not maximized
+    setIsEditorMaximized(false) 
   }
 
   return (
     <div className="w-full h-[calc(100vh-190px)]">
       <div className="flex gap-5 h-full">
-        {/* Combined Left Panel - Hidden when either editor or output is maximized */}
         {!(isEditorMaximized || isOutputMaximized) && (
           <div className="w-[280px] bg-white rounded-lg shadow-sm overflow-hidden flex flex-col">
-            {/* Tabs */}
             <div className="flex border-b border-gray-200">
               <button
-                className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2
+                className={`flex-1 py-3 font-medium flex items-center justify-center gap-2
                   ${activeTab === 'explorer' ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]' : 'text-gray-600'}`}
                 onClick={() => setActiveTab('explorer')}
               >
@@ -139,7 +137,7 @@ function Dataset() {
                 Explorer
               </button>
               <button
-                className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2
+                className={`flex-1 py-3 font-medium flex items-center justify-center gap-2
                   ${activeTab === 'history' ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]' : 'text-gray-600'}`}
                 onClick={() => setActiveTab('history')}
               >
@@ -148,7 +146,6 @@ function Dataset() {
               </button>
             </div>
 
-            {/* Search Bar */}
             <div className="flex items-center mx-4 my-3 px-2.5 py-1.5 border border-gray-200 rounded bg-gray-50">
               <Search size={14} className="text-gray-500" />
               <input 
@@ -158,7 +155,6 @@ function Dataset() {
               />
             </div>
 
-            {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-2">
               {activeTab === 'explorer' ? (
                 <div>
@@ -235,13 +231,11 @@ function Dataset() {
           </div>
         )}
 
-        {/* Main Content Area */}
         <div className={`${isEditorMaximized || isOutputMaximized ? 'flex-1' : 'flex-1 flex flex-col gap-5'} h-full`}>
-          {/* Editor Panel - Hidden when output is maximized */}
           {!isOutputMaximized && (
             <div className={`bg-white rounded-lg shadow-sm overflow-hidden ${isEditorMaximized ? 'h-full' : 'flex-1'} flex flex-col`}>
               <div className="flex justify-between items-center p-3 border-b border-gray-100">
-                <div className="text-sm font-medium text-gray-800">Editor</div>
+                <div className="font-medium text-gray-800">Editor</div>
                 <div className="flex gap-2">
                   <button className="flex items-center gap-2 bg-[#8d77ba] text-white rounded px-3 py-1 text-sm font-medium hover:bg-[#7d69a8] transition" onClick={handleRunQuery}>
                     Run query
@@ -275,11 +269,10 @@ function Dataset() {
             </div>
           )}
 
-          {/* Output Panel - Hidden when editor is maximized */}
           {!isEditorMaximized && (
             <div className={`bg-white rounded-lg shadow-sm overflow-hidden ${isOutputMaximized ? 'h-full' : 'flex-1'} flex flex-col`}>
               <div className="flex justify-between items-center p-3 border-b border-gray-100">
-                <div className="text-sm font-medium text-gray-800">Output</div>
+                <div className="font-medium text-gray-800">Output</div>
                 <button 
                   className="text-gray-500 p-1 hover:bg-gray-50 rounded"
                   onClick={toggleOutputMaximize}
