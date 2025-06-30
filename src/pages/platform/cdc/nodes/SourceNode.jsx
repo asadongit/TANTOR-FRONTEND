@@ -50,6 +50,12 @@ export function SourceNode({ id, data, selected }) {
     source_conn_id:""
   }));
   const [selectedSubsetTable, setSelectedSubsetTable] = useState("");    // NEW
+  const [connectionDropdownOpen, setConnectionDropdownOpen] = useState(false);
+  const [connectionSearch, setConnectionSearch] = useState("");
+  const [schemaDropdownOpen, setSchemaDropdownOpen] = useState(false);
+  const [schemaSearch, setSchemaSearch] = useState("");
+  const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
+  const [tableSearch, setTableSearch] = useState("");
 
   const { data: connections, isLoading: isLoadingConnections } = useConnections('source');
   const { data: schemaCount } = useSchemaCount(selectedConnection);
@@ -89,6 +95,23 @@ export function SourceNode({ id, data, selected }) {
     }
   }, [selectedConnection, selectedSchema, selectedMode, selectedItems, pipelineMappings]);
 
+  // Filtered connections and schemas for dropdowns
+  const filteredConnections = useMemo(() => {
+    if (!connections) return [];
+    if (!connectionSearch) return connections;
+    return connections.filter(conn =>
+      conn.connection_name.toLowerCase().includes(connectionSearch.toLowerCase())
+    );
+  }, [connections, connectionSearch]);
+
+  const filteredSchemas = useMemo(() => {
+    if (!schemas) return [];
+    if (!schemaSearch) return schemas;
+    return schemas.filter(schema =>
+      schema.table_schema.toLowerCase().includes(schemaSearch.toLowerCase())
+    );
+  }, [schemas, schemaSearch]);
+
   const filteredTables = useMemo(() => {
     if (!tables || !tables.length) return [];
 
@@ -97,9 +120,10 @@ export function SourceNode({ id, data, selected }) {
       .filter((table) =>
         table.source_table
           .toLowerCase()
-          .includes(searchTerm?.toLowerCase() || "")
+          .includes((searchTerm || tableSearch)?.toLowerCase() || "")
       );
-  }, [tables, searchTerm]);
+  }, [tables, searchTerm, tableSearch]);
+
   const handleSelectConnection = (selectedConnection) => {
     setSelectedConnectionObj(selectedConnection);
     setSelectedConnection(selectedConnection.connection_name);
@@ -229,6 +253,7 @@ export function SourceNode({ id, data, selected }) {
       <Handle type="source" position={Position.Right} />
 
       <div className="space-y-1.5">
+        {/* Connection Dropdown with Search */}
         <div>
           <label
             htmlFor="connection-select"
@@ -236,28 +261,46 @@ export function SourceNode({ id, data, selected }) {
           >
             Connection
           </label>
-          <div className="w-full">
-            <select
-              id="connection-select"
-              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-              value={selectedConnectionObj ? JSON.stringify(selectedConnectionObj) : ""}
-                onChange={(e) => {
-                const selectedConnection = JSON.parse(e.target.value);
-                handleSelectConnection(selectedConnection)
-              }}
+          <div className="w-full relative">
+            <button
+              type="button"
+              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 flex justify-between items-center"
+              onClick={() => setConnectionDropdownOpen((open) => !open)}
             >
-
-              <option value="">Select Connection</option>
-              {connections?.length > 0 ? (
-                connections.map((connection, idx) => (
-                  <option key={idx} value={JSON.stringify(connection)}>
-                    {connection.connection_name}
-                  </option>
-                ))
-              ) : (
-                <option disabled>No connections available</option>
-              )}
-            </select>
+              {selectedConnectionObj ? selectedConnectionObj.connection_name : "Select Connection"}
+              <span className="ml-2">&#9662;</span>
+            </button>
+            {connectionDropdownOpen && (
+              <div className="absolute z-10 bg-white border text-black border-gray-300 rounded shadow w-full mt-1 max-h-48 overflow-auto">
+                <input
+                  type="text"
+                  placeholder="Search connection..."
+                  className="w-full p-1 text-xs border-b border-gray-200"
+                  value={connectionSearch}
+                  onChange={e => setConnectionSearch(e.target.value)}
+                  autoFocus
+                />
+                <div>
+                  {filteredConnections.length > 0 ? (
+                    filteredConnections.map((connection, idx) => (
+                      <div
+                        key={idx}
+                        className={`px-2 py-1 text-xs text-black cursor-pointer hover:bg-gray-100 ${selectedConnectionObj && selectedConnectionObj.connection_id === connection.connection_id ? "bg-gray-100" : ""}`}
+                        onClick={() => {
+                          handleSelectConnection(connection);
+                          setConnectionDropdownOpen(false);
+                          setConnectionSearch("");
+                        }}
+                      >
+                        {connection.connection_name}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1 text-xs text-gray-400">No connections found</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -270,37 +313,54 @@ export function SourceNode({ id, data, selected }) {
           </label>
           <div className="relative w-full flex items-center gap-2">
             <div className="w-full relative">
-              <select
-                id="schema-select"
-                className="w-full min-w-0 p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-                value={selectedSchema}
-                onChange={(e) => handleSelectSchema(e.target.value)}
+              <button
+                type="button"
+                className="w-full min-w-0 p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 flex justify-between items-center"
+                onClick={() => setSchemaDropdownOpen((open) => !open)}
                 disabled={!selectedConnection || isLoadingSchemas}
               >
-                {isLoadingSchemas ? (
-                  <option value="">Loading schemas...</option>
-                ) : (
-                  <>
-                    <option value="">Select Schema</option>
-                    {schemas?.map((schema) => (
-                      <option
-                        key={schema.table_schema}
-                        value={schema.table_schema}
-                      >
-                        {schema.table_schema}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </select>
-
+                {selectedSchema || "Select Schema"}
+                <span className="ml-2">&#9662;</span>
+              </button>
+              {schemaDropdownOpen && (
+                <div className="absolute z-10 bg-white text-black border border-gray-300 rounded shadow w-full mt-1 max-h-48 overflow-auto">
+                  <input
+                    type="text"
+                    placeholder="Search schema..."
+                    className="w-full p-1 text-xs border-b border-gray-200"
+                    value={schemaSearch}
+                    onChange={e => setSchemaSearch(e.target.value)}
+                    autoFocus
+                  />
+                  <div>
+                    {isLoadingSchemas ? (
+                      <div className="px-2 py-1 text-xs text-gray-400">Loading schemas...</div>
+                    ) : filteredSchemas.length > 0 ? (
+                      filteredSchemas.map((schema) => (
+                        <div
+                          key={schema.table_schema}
+                          className={`px-2 py-1 text-xs text-black cursor-pointer hover:bg-gray-100 ${selectedSchema === schema.table_schema ? "bg-gray-100" : ""}`}
+                          onClick={() => {
+                            handleSelectSchema(schema.table_schema);
+                            setSchemaDropdownOpen(false);
+                            setSchemaSearch("");
+                          }}
+                        >
+                          {schema.table_schema}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1 text-xs text-gray-400">No schemas found</div>
+                    )}
+                  </div>
+                </div>
+              )}
               {isLoadingSchemas && (
                 <div className="absolute right-2 top-1/2 -translate-y-1/2">
                   <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
                 </div>
               )}
             </div>
-
             {schemaCount?.schema_count && (
               <span className="text-black font-bold">
                 {schemaCount.schema_count}
@@ -358,32 +418,58 @@ export function SourceNode({ id, data, selected }) {
       <div className="mt-2">
         {filteredTables?.length > 0 && selectedMode === "subset" && (
           <div className="flex items-center gap-2">
-            <select
-              value={selectedSubsetTable}
-              onChange={(e) => {
-                const tbl = e.target.value;
-                setSelectedSubsetTable(tbl);
-                selectSource(ID, tbl, connectedTargets, isPipelineNode);
-
-                // Ensure the selected table is added to subset_list if not already there
-                const updatedNodeData = {
-                  ...nodeData,
-                  subset_list: nodeData.subset_list.includes(tbl)
-                    ? nodeData.subset_list
-                    : [...nodeData.subset_list, tbl]
-                };
-                setNodeData(updatedNodeData);
-                updateData(ID, isPipelineNode, "source", updatedNodeData);
-              }}
-              className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-            >
-              <option value="">Select Table</option>
-              {filteredTables.map((table, idx) => (
-                <option key={idx} value={table.source_table}>
-                  {table.source_table}
-                </option>
-              ))}
-            </select>
+            <div className="w-full relative">
+              <button
+                type="button"
+                className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 flex justify-between items-center"
+                onClick={() => setTableDropdownOpen((open) => !open)}
+              >
+                {selectedSubsetTable || "Select Table"}
+                <span className="ml-2">&#9662;</span>
+              </button>
+              {tableDropdownOpen && (
+                <div className="absolute z-10 bg-white text-black border border-gray-300 rounded shadow w-full mt-1 max-h-48 overflow-auto">
+                  <input
+                    type="text"
+                    placeholder="Search table..."
+                    className="w-full p-1 text-xs border-b border-gray-200"
+                    value={tableSearch}
+                    onChange={e => setTableSearch(e.target.value)}
+                    autoFocus
+                  />
+                  <div>
+                    {filteredTables.length > 0 ? (
+                      filteredTables.map((table, idx) => (
+                        <div
+                          key={idx}
+                          className={`px-2 py-1 text-xs cursor-pointer hover:bg-gray-100 ${selectedSubsetTable === table.source_table ? "bg-gray-100" : ""}`}
+                          onClick={() => {
+                            const tbl = table.source_table;
+                            setSelectedSubsetTable(tbl);
+                            selectSource(ID, tbl, connectedTargets, isPipelineNode);
+                            // Ensure the selected table is added to subset_list if not already there
+                            const updatedNodeData = {
+                              ...nodeData,
+                              subset_list: nodeData.subset_list.includes(tbl)
+                                ? nodeData.subset_list
+                                : [...nodeData.subset_list, tbl]
+                            };
+                            setNodeData(updatedNodeData);
+                            updateData(ID, isPipelineNode, "source", updatedNodeData);
+                            setTableDropdownOpen(false);
+                            setTableSearch("");
+                          }}
+                        >
+                          {table.source_table}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1 text-xs text-gray-400">No tables found</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
