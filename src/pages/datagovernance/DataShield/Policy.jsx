@@ -167,7 +167,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
     const deletePolicy = async (policyId) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_FAST_API}/deletepolicy/${policyId}`, {
-                method: 'DELETE',
+                method: 'PATCH',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -178,9 +178,19 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
             }
             const data = await response.json();
             console.log(data.message);
+            setToast({
+                show: true,
+                message: 'Policy deleted successfully',
+                type: 'success'
+            });
             fetchPolicyListData();
         } catch (error) {
             console.error('Error deleting policy:', error);
+        }
+        finally {
+            setTimeout(() => {
+                setToast({ show: false, message: '', type: '' });
+            }, 3000);
         }
     };
 
@@ -802,6 +812,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
             }, 3000);
         }
     };
+     const [refreshing, setRefreshing] = useState(false);
 
     const refreshPolicy = async (policyId) => {
         setActiveMenu(null);
