@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { X, Plus, ChevronDown } from "lucide-react";
 
-import ArithmeticOperationFields, { CustomValueInput } from "./operations/arithmatic";
+import ArithmeticOperationFields from "./operations/arithmatic";
 import StringOperationFields, { StringOperationParameters, getStringParams } from "./operations/string";
 import ColCopyOperationFields from "./operations/colcopy";
 import ConstantCopyOperationFields, { getConstantCopyParams } from "./operations/constantcopy";
@@ -17,85 +17,51 @@ import RankingOperationFields, { getRankingParams } from "./operations/ranking";
 const transformationOperations = [
 	{
 		id: "arithmetic",
-		name: "Arithmetic",
-		operators: [
-			{ id: "addition", name: "Add", symbol: "+" },
-			{ id: "subtraction", name: "Subtract", symbol: "-" },
-			{ id: "multiplication", name: "Multiply", symbol: "×" },
-			{ id: "division", name: "Divide", symbol: "÷" },
-		],
-	},
-	{
-		id: "string",
-		name: "String",
-		operators: [
-			{ id: "lpad", name: "Lpad", symbol: "Lpad" },
-			{ id: "rpad", name: "Rpad", symbol: "Rpad" },
-			{ id: "substr", name: "Substr", symbol: "Substr" },
-			{ id: "trim", name: "Trim", symbol: "Trim" },
-			{ id: "ltrim", name: "Ltrim", symbol: "Ltrim" },
-			{ id: "rtrim", name: "Rtrim", symbol: "Rtrim" },
-		],
-	},
-	{
-		id: "colcopy",
-		name: "Column Copy",
-		operators: [],
-	},
-	{
-		id: "constantcopy",
-		name: "Constant Copy",
-		operators: [],
-	},
-	{
-		id: "rename",
-		name: "Rename",
-		operators: [],
-	},
-	{
-		id: "join",
-		name: "Join",
-		operators: [],
-	},
-	{
-		id: "filter",
-		name: "Filter",
-		operators: [
-			{ id: ">=", name: "Greater Than or Equal", symbol: ">=" },
-			{ id: "<=", name: "Less Than or Equal", symbol: "<=" },
-			{ id: "==", name: "Equal", symbol: "==" },
-			{ id: ">", name: "Greater Than", symbol: ">" },
-			{ id: "<", name: "Less Than", symbol: "<" },
-		],
-	},
-	{
-		id: "date",
-		name: "Date",
-		operators: [],
-	},
-	{
-		id: "restrictcolumns",
-		name: "Restrict Columns",
-		operators: [
-			{ id: "select", name: "Select", symbol: "Select" },
-			{ id: "drop", name: "Drop", symbol: "Drop" },
-		],
-	},
-	{
-		id: "typecast",
-		name: "Typecast",
-		operators: [],
-	},
-	{
-		id: "sorting",
-		name: "Sort",
-		operators: [],
-	},
-	{
-		id: "ranking",
-		name: "Ranking",
-		operators: [],
-	}
+		name: "Arithmetic"},
+	// {
+	// 	id: "string",
+	// 	name: "String"
+	// },
+	// {
+	// 	id: "colcopy",
+	// 	name: "Column Copy"
+	// },
+	// {
+	// 	id: "constantcopy",
+	// 	name: "Constant Copy"
+	// },
+	// {
+	// 	id: "rename",
+	// 	name: "Rename"
+	// },
+	// {
+	// 	id: "join",
+	// 	name: "Join"
+	// },
+	// {
+	// 	id: "filter",
+	// 	name: "Filter"
+	// },
+	// {
+	// 	id: "date",
+	// 	name: "Date"
+	// },
+	// {
+	// 	id: "restrictcolumns",
+	// 	name: "Restrict Columns"
+	// },
+	// {
+	// 	id: "typecast",
+	// 	name: "Typecast"
+	// },
+	// {
+	// 	id: "sorting",
+	// 	name: "Sort"
+	// },
+	// {
+	// 	id: "ranking",
+	// 	name: "Ranking"
+	// }
 ];
 
 const TransformationItem = memo(({
@@ -108,7 +74,6 @@ const TransformationItem = memo(({
   handleRemoveTransformation,
   handleDataframeChange,
   handleOperationChange,
-  handleOperatorChange,
   toggleDropdown,
   handleSelectAllColumns,
   handleColumnSelection,
@@ -122,100 +87,49 @@ const TransformationItem = memo(({
   updateSortParam,
   updateRankingParam,
   updateDateParam,
-  updateTargetColumn
+  updateTargetColumn,
+  onAddNewTargetColumn
 }) => {
 
-	const getOperatorSymbol = (operation, operator) => {
-    const opType = transformationOperations.find(op => op.id === operation);
-    if (!opType) return operator;
-
-    const op = opType.operators.find(o => o.id === operator);
-    return op?.symbol || operator;
-  };
-
-  const renderOperatorSelection = () => {
-    if (transformation.transformation_operation === 'colcopy' ||
-        transformation.transformation_operation === 'constantcopy' ||
-        transformation.transformation_operation === 'rename' ||
-        transformation.transformation_operation === 'join' ||
-        transformation.transformation_operation === 'filter' ||
-        transformation.transformation_operation === 'date' ||
-        transformation.transformation_operation === 'typecast' ||
-        transformation.transformation_operation === 'sorting' ||
-        transformation.transformation_operation === 'ranking') {
-      return null;
-    }
-
-    return (
-      <div>
-        <label className="block text-sm text-gray-700 mb-1">
-          Operator
-        </label>
-        {transformation.transformation_operation === 'arithmetic' ? (
-          <div className="grid grid-cols-4 gap-2">
-            {transformationOperations
-              .find(op => op.id === 'arithmetic')
-              ?.operators.map(op => (
-              <button
-                key={op.id}
-                className={`py-2 px-3 text-sm rounded-md ${
-                  transformation.transformation_operator === op.id
-                    ? 'bg-[#8E77BB] text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-                onClick={() => handleOperatorChange(
-                  transformation.id,
-                  op.id
-                )}
-              >
-                {op.symbol}
-              </button>
-            ))}
-          </div>
-        ) : transformation.transformation_operation === 'string' ? (
-          <select
-            className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-            value={transformation.transformation_operator}
-            onChange={(e) => handleOperatorChange(
-              transformation.id,
-              e.target.value
-            )}
-          >
-            {transformationOperations
-              .find(op => op.id === 'string')
-              ?.operators.map(op => (
-              <option key={op.id} value={op.id}>
-                {op.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <select
-            className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-            value={transformation.transformation_operator}
-            onChange={(e) => handleOperatorChange(
-              transformation.id,
-              e.target.value
-            )}
-          >
-            {transformationOperations
-              .find(op => op.id === transformation.transformation_operation)
-              ?.operators.map(op => (
-              <option key={op.id} value={op.id}>
-                {op.name}
-              </option>
-            ))}
-          </select>
-        )}
+  const renderSourceAndOperationRow = () => (
+    <div className="flex gap-2 mb-3">
+      <div className="flex-1">
+        <label className="block text-xs text-gray-700 mb-1">Source</label>
+        <select
+          className="w-full p-2 text-black text-xs border border-gray-300 rounded bg-white"
+          value={transformation.source_dataframe}
+          onChange={e => handleDataframeChange(transformation.id, "source_dataframe", e.target.value)}
+        >
+          <option value="">Select source</option>
+          {allDataframes.map(df => (
+            <option key={df.id} value={df.id}>{df.label}</option>
+          ))}
+        </select>
       </div>
-    );
-  };
+      <div className="flex-1">
+        <label className="block text-xs text-gray-700 mb-1">Operation</label>
+        <select
+          className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+          value={transformation.transformation_operation}
+          onChange={(e) => handleOperationChange(
+            transformation.id,
+            e.target.value
+          )}
+        >
+          {transformationOperations.map((op) => (
+            <option key={op.id} value={op.id}>
+              {op.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
 
   const renderTransformationFields = () => {
     const { transformation_operation, source_dataframe, target_dataframe } = transformation;
-
     const sourceCols = dataframeColumns[source_dataframe] || [];
-    const targetCols = dataframeColumns[target_dataframe] || [];
+    const targetCols = sourceCols;
 
     const commonProps = {
       transformation: {
@@ -234,14 +148,18 @@ const TransformationItem = memo(({
       toggleDropdown,
       handleSelectAllColumns,
       handleColumnSelection,
-      dropdownRefs
+      dropdownRefs,
+      updateTransformation
     };
 
     switch (transformation_operation) {
       case 'arithmetic':
         return <ArithmeticOperationFields
           {...commonProps}
-          getOperatorSymbol={getOperatorSymbol}
+          onAddNewTargetColumn={(colName) =>
+            onAddNewTargetColumn(colName, transformation.source_dataframe, "arithmetic")
+          }
+          target_dataframe={target_dataframe}
         />;
       case 'string':
         return <StringOperationFields {...commonProps} />;
@@ -264,7 +182,6 @@ const TransformationItem = memo(({
       case 'filter':
         return <FilterOperationFields
           {...commonProps}
-          handleOperatorChange={handleOperatorChange}
         />;
       case 'date':
         return <DateOperationFields
@@ -274,7 +191,6 @@ const TransformationItem = memo(({
       case 'restrictcolumns':
         return <RestrictColumnsOperationFields
           {...commonProps}
-          handleOperatorChange={handleOperatorChange}
         />;
       case 'typecast':
         return <TypecastOperationFields
@@ -316,58 +232,7 @@ const TransformationItem = memo(({
         </button>
       </div>
 
-      <div className="flex gap-2 mb-3">
-        <div className="flex-1">
-          <label className="block text-xs text-gray-700 mb-1">Source Dataframe</label>
-          <select
-            className="w-full p-2 text-black text-xs border border-gray-300 rounded bg-white"
-            value={transformation.source_dataframe}
-            onChange={e => handleDataframeChange(transformation.id, "source_dataframe", e.target.value)}
-          >
-            <option value="">Select source dataframe</option>
-            {allDataframes.map(df => (
-              <option key={df.id} value={df.id}>{df.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex-1">
-          <label className="block text-xs text-gray-700 mb-1">Target Dataframe</label>
-          <select
-            className="w-full p-2 text-black text-xs border border-gray-300 rounded bg-white"
-            value={transformation.target_dataframe}
-            onChange={e => handleDataframeChange(transformation.id, "target_dataframe", e.target.value)}
-          >
-            <option value="">Select target dataframe</option>
-            {allDataframes.map (df => (
-              <option key={df.id} value={df.id}>{df.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="mb-4 space-y-3">
-        <div>
-          <label className="block text-sm text-gray-700 mb-1">
-            Operation Type
-          </label>
-          <select
-            className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-            value={transformation.transformation_operation}
-            onChange={(e) => handleOperationChange(
-              transformation.id,
-              e.target.value
-            )}
-          >
-            {transformationOperations.map((op) => (
-              <option key={op.id} value={op.id}>
-                {op.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {renderOperatorSelection()}
-      </div>
+      {renderSourceAndOperationRow()}
 
       <div className="mb-4">
         <label className="block text-sm text-gray-700 mb-2">
@@ -381,13 +246,6 @@ const TransformationItem = memo(({
           renderTransformationFields()
         )}
       </div>
-
-      {transformation.transformation_operation === 'arithmetic' && (
-        <CustomValueInput
-          transformation={transformation}
-          updateTransformation={updateTransformation}
-        />
-      )}
     </div>
   );
 }, (prevProps, nextProps) => {
@@ -530,6 +388,7 @@ export const TransformationDrawer = ({
 	onClose,
 	activeNode,
 	activeNodeId,
+	onApplyTransformations
 }) => {
 	const [transformations, setTransformations] = useState([
 		{
@@ -560,7 +419,7 @@ export const TransformationDrawer = ({
 		transformationRefs.current = transformationRefs.current.slice(0, transformations.length);
 	}, [transformations.length]);
 
-	const loadDataFramesAndColumns = useCallback(() => {
+	const syncDataframeColumnsFromNodes = useCallback(() => {
 		if (!window.allNodes || !window.allEdges) return;
 
 		const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
@@ -569,12 +428,12 @@ export const TransformationDrawer = ({
 		const sources = incomingEdges
 			.map(edge => window.allNodes.find(node => node.id === edge.source))
 			.filter(Boolean)
-			.map((node, index) => {
-				const dfId = `s_df_${index + 1}`;
+			.map((node) => {
+				const alias = node.data?.alias || `unnamed_source_${node.id}`;
 				return {
-					id: dfId,
+					id: alias,
 					columns: node.data?.columns || [],
-					label: dfId,
+					label: alias,
 					nodeId: node.id
 				};
 			});
@@ -582,12 +441,12 @@ export const TransformationDrawer = ({
 		const targets = outgoingEdges
 			.map(edge => window.allNodes.find(node => node.id === edge.target))
 			.filter(Boolean)
-			.map((node, index) => {
-				const dfId = `t_df_${index + 1}`;
+			.map((node) => {
+				const alias = node.data?.alias || `unnamed_target_${node.id}`;
 				return {
-					id: dfId,
+					id: alias,
 					columns: node.data?.columns || [],
-					label: dfId,
+					label: alias,
 					nodeId: node.id
 				};
 			});
@@ -623,36 +482,23 @@ export const TransformationDrawer = ({
 				target_column: Array.isArray(t.target_column) ? t.target_column : [],
 			}))
 		);
-	}, [activeNode, activeNodeId]);
+	}, [activeNodeId]);
 
 	useEffect(() => {
 		if (isOpen) {
-			loadDataFramesAndColumns();
+			syncDataframeColumnsFromNodes();
 		}
-	}, [isOpen, loadDataFramesAndColumns]);
+	}, [isOpen, syncDataframeColumnsFromNodes]);
 
 	useEffect(() => {
-		const handleClickOutside = (event) => {
-			Object.entries(dropdownRefs.current).forEach(([key, ref]) => {
-				if (ref && !ref.contains(event.target)) {
-					setOpenDropdowns(prev => ({...prev, [key]: false}));
-				}
-			});
+		const handler = () => {
+			if (isOpen) {
+				syncDataframeColumnsFromNodes();
+			}
 		};
-
-		document.addEventListener("mousedown", handleClickOutside);
-		return () => {
-			document.removeEventListener("mousedown", handleClickOutside);
-		};
-	}, []);
-
-	useEffect(() => {
-		if (activeNode && activeNode.data && activeNode.data.onDataChange) {
-			activeNode.data.onDataChange({
-				transformations
-			});
-		}
-	}, [transformations, activeNode]);
+		window.addEventListener("tantor-columns-updated", handler);
+		return () => window.removeEventListener("tantor-columns-updated", handler);
+	}, [isOpen, syncDataframeColumnsFromNodes]);
 
 	const handleDataframeChange = useCallback((id, field, value) => {
 		setTransformations(ts =>
@@ -1052,8 +898,12 @@ export const TransformationDrawer = ({
 			});
 		}
 
+		if (typeof onApplyTransformations === "function") {
+			onApplyTransformations(activeNodeId, result);
+		}
+
 		onClose();
-	}, [transformations, activeNode, onClose]);
+	}, [transformations, activeNode, onClose, onApplyTransformations]);
 
 	const scrollToTransformation = useCallback((index) => {
 		if (transformationRefs.current[index]) {
@@ -1063,6 +913,41 @@ export const TransformationDrawer = ({
 			});
 		}
 	}, []);
+
+	// Utility to append a column to a dataframe in the local dataframeColumns state
+	const appendColumnToDataframe = useCallback((dataframeId, columnName) => {
+		setDataframeColumns(prev => {
+			const prevCols = prev[dataframeId] || [];
+			if (!prevCols.includes(columnName)) {
+				return {
+					...prev,
+					[dataframeId]: [...prevCols, columnName]
+				};
+			}
+			return prev;
+		});
+	}, []);
+
+	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic") => {
+		// For arithmetic, always add to source dataframe
+		const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
+		if (window.allNodes && Array.isArray(window.allNodes)) {
+			const reactNode = window.allNodes.find(n =>
+				(n.data?.alias === actualDfId) || (n.id === actualDfId)
+			);
+			if (reactNode && typeof reactNode.data.onDataChange === "function") {
+				const newCols = Array.isArray(reactNode.data.columns)
+					? [...reactNode.data.columns]
+					: [];
+				if (!newCols.includes(columnName)) {
+					newCols.push(columnName);
+					reactNode.data.onDataChange({ columns: newCols });
+					window.dispatchEvent(new Event("tantor-columns-updated"));
+				}
+			}
+		}
+		appendColumnToDataframe(actualDfId, columnName);
+	}, [appendColumnToDataframe]);
 
 	if (!isOpen) return null;
 
@@ -1125,7 +1010,6 @@ export const TransformationDrawer = ({
 									handleRemoveTransformation={handleRemoveTransformation}
 									handleDataframeChange={handleDataframeChange}
 									handleOperationChange={handleOperationChange}
-									handleOperatorChange={handleOperatorChange}
 									toggleDropdown={toggleDropdown}
 									handleSelectAllColumns={handleSelectAllColumns}
 									handleColumnSelection={handleColumnSelection}
@@ -1140,6 +1024,7 @@ export const TransformationDrawer = ({
 								 updateRankingParam={updateRankingParam}
 								 updateDateParam={updateDateParam}
 								 updateTargetColumn={updateTargetColumn}
+								 onAddNewTargetColumn={handleAddNewTargetColumn}
 								/>
 							</div>
 						))}
@@ -1172,5 +1057,7 @@ export const TransformationDrawer = ({
 		</>
 	);
 };
+
+
 
 export default TransformationDrawer;

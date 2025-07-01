@@ -53,7 +53,7 @@ function TransformationCanvasContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const nodeIdRef = useRef(1);
-  const { generateTransformationJson } = useTransformation();
+  const { generateTransformationJson, dispatch, ACTION_TYPES } = useTransformation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeTransformationNodeId, setActiveTransformationNodeId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -376,6 +376,7 @@ function TransformationCanvasContent() {
         extra_info: {}
       };
 
+      console.log(payload);
       const response = await fetch(`${hostname}/etl/transformation`, {
         method: "POST",
         headers: {
@@ -412,9 +413,18 @@ function TransformationCanvasContent() {
     }
   }, [generateTransformationJson, nodes, edges, navigate, hostname, token, decodedToken, project]);
 
-  const handleCancel = useCallback(() => {
-    navigate("/transformation");
-  }, [navigate]);
+ const handleNewFlow = useCallback(() => {
+  dispatch({ type: ACTION_TYPES.RESET });
+  setNodes(initialNodes);
+  setEdges(initialEdges);
+  nodeIdRef.current = 1;
+}, [dispatch, setNodes, setEdges]);
+
+const handleCancel = useCallback(() => {
+  handleNewFlow();
+  navigate("/transformation");
+}, [navigate, handleNewFlow]);
+
 
   const openTransformationDrawer = useCallback((nodeId) => {
     setActiveTransformationNodeId(nodeId);
@@ -449,6 +459,18 @@ function TransformationCanvasContent() {
 
   const updateTransformationNodesData = useCallback(() => {
     setNodes(prevNodes => {
+      // Build id->alias map for sources and targets
+      const sourceIdToAlias = {};
+      const targetIdToAlias = {};
+      prevNodes.forEach(node => {
+        if (node.type === 'source') {
+          sourceIdToAlias[node.id] = node.data.alias || `unnamed_source_${node.id}`;
+        }
+        if (node.type === 'target') {
+          targetIdToAlias[node.id] = node.data.alias || `unnamed_target_${node.id}`;
+        }
+      });
+
       return prevNodes.map(node => {
         if (node.type === 'transformation') {
           const incomingEdges = edges.filter(edge => edge.target === node.id);
@@ -457,17 +479,17 @@ function TransformationCanvasContent() {
           const sourceNodes = incomingEdges
             .map(edge => prevNodes.find(n => n.id === edge.source))
             .filter(Boolean)
-            .map((srcNode, index) => ({
+            .map((srcNode) => ({
               ...srcNode,
-              dfId: `s_df_${index + 1}`
+              dfId: sourceIdToAlias[srcNode.id] || srcNode.id
             }));
 
           const targetNodes = outgoingEdges
             .map(edge => prevNodes.find(n => n.id === edge.target))
             .filter(Boolean)
-            .map((tgtNode, index) => ({
+            .map((tgtNode) => ({
               ...tgtNode,
-              dfId: `t_df_${index + 1}`
+              dfId: targetIdToAlias[tgtNode.id] || tgtNode.id
             }));
 
           const nodeToDataframeMap = {};
@@ -493,6 +515,23 @@ function TransformationCanvasContent() {
             }
           };
         }
+
+        if (node.type === 'target') {
+          const incomingEdges = edges.filter(edge => edge.target === node.id);
+          const connectedSources = incomingEdges
+            .map(edge => prevNodes.find(n => n.id === edge.source && n.type === 'transformation'))
+            .filter(Boolean).length;
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              connectedSources,
+              onDataChange: node.data.onDataChange
+            }
+          };
+        }
+
         return node;
       });
     });
@@ -593,6 +632,68 @@ function TransformationCanvasContent() {
     }
   }, [nodes, edges, setNodes]);
 
+  const handleAddNewTargetColumn = useCallback((columnName) => {
+    setNodes(prevNodes => {
+      if (!activeTransformationNodeId) return prevNodes;
+      const outgoingEdges = edges.filter(edge => edge.source === activeTransformationNodeId);
+      const targetNodeIds = outgoingEdges
+        .map(edge => {
+          const tgtNode = prevNodes.find(n => n.id === edge.target && n.type === 'target');
+          return tgtNode ? tgtNode.id : null;
+        })
+        .filter(Boolean);
+
+      return prevNodes.map(node => {
+        if (targetNodeIds.includes(node.id)) {
+          let columns = Array.isArray(node.data.columns) ? [...node.data.columns] : [];
+          if (!columns.includes(columnName)) {
+            columns.push(columnName);
+          }
+          let columnMapping = { ...(node.data.columnMapping || {}) };
+          if (!(columnName in columnMapping)) {
+            columnMapping[columnName] = "";
+          }
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              columns,
+              columnMapping,
+            }
+          };
+        }
+        return node;
+      });
+    });
+  }, [edges, activeTransformationNodeId, setNodes]);
+
+  const handleTransformationApply = useCallback((transformationNodeId, transformations) => {
+    setNodes(prevNodes => {
+      const outgoingEdges = edges.filter(edge => edge.source === transformationNodeId);
+      const targetNodeIds = outgoingEdges
+        .map(edge => {
+          const tgtNode = prevNodes.find(n => n.id === edge.target && n.type === 'target');
+          return tgtNode ? tgtNode.id : null;
+        })
+        .filter(Boolean);
+
+      return prevNodes.map(node => {
+        if (targetNodeIds.includes(node.id)) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              transformations: transformations,
+            }
+          };
+        }
+        return node;
+      });
+    });
+  }, [edges, setNodes]);
+
+
+
   return (
     <div style={{ width: "100%", height: "100vh" }} className="relative">
       <ReactFlow
@@ -620,6 +721,12 @@ function TransformationCanvasContent() {
       </ReactFlow>
 
       <div className="fixed bottom-8 right-8 flex space-x-4">
+        {/* <button
+          onClick={handleNewFlow}
+          className="bg-white rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+        >
+          New Flow
+        </button> */}
         <button
           onClick={handleCancel}
           className="bg-white rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
@@ -649,6 +756,8 @@ function TransformationCanvasContent() {
         onClose={closeTransformationDrawer}
         activeNode={activeNode}
         activeNodeId={activeTransformationNodeId}
+        onAddNewTargetColumn={handleAddNewTargetColumn}
+        onApplyTransformations={handleTransformationApply}
       />
     </div>
   );
