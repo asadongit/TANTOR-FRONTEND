@@ -95,18 +95,24 @@ export const LineItemsProvider = ({ children, reportData }) => {
     if (!reportId) return;
     const fetchLineItems = async () => {
       try {
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BIRT_BACKEND_API
-          }/templates/parse?report-name=${reportName}`,
-          { headers: { "Content-Type": "application/json" } }
-        );
+        // const response = await fetch(
+        //   `${
+        //     import.meta.env.VITE_BIRT_BACKEND_API
+        //   }/templates/parse?report-name=${reportName}`,
+        //   { headers: { "Content-Type": "application/json" } }
+        // );
+        const response = await fetch(`${hostnameV1}/templates/parse?report_name=${reportName}`, { 
+          headers: { "Content-Type": "application/json" } 
+        });
+          
         if (response.ok) {
           const data = await response.text();
+          console.log(response);
+          
           setLineItemsHtml(data);
         } else {
-          toast.error(`Error fetching line items for report: ${reportName}`);
-          navigate("/config/report");
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.detail || `Error fetching line items for report: ${reportName}`);
         }
       } catch (error) {
         console.log(error);
