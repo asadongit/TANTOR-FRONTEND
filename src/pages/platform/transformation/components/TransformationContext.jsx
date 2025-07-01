@@ -183,7 +183,6 @@ export function TransformationProvider({ children }) {
   const generateTransformationJson = () => {
       const timestamp = new Date().toISOString();
 
-      // Build nodeId -> alias map for sources and targets
       const sourceIdToAlias = {};
       Object.entries(state.sources).forEach(([id, src]) => {
         sourceIdToAlias[id] = src.alias || `source_${id}`;
@@ -191,6 +190,15 @@ export function TransformationProvider({ children }) {
       const targetIdToAlias = {};
       Object.entries(state.targets).forEach(([id, tgt]) => {
         targetIdToAlias[id] = tgt.alias || `target_${id}`;
+      });
+
+      const sourceIdToDfId = {};
+      Object.entries(state.sources).forEach(([id, src]) => {
+        sourceIdToDfId[id] = src.dfId || `s_df_${id}`;
+      });
+      const targetIdToDfId = {};
+      Object.entries(state.targets).forEach(([id, tgt]) => {
+        targetIdToDfId[id] = tgt.dfId || `t_df_${id}`;
       });
 
       const result = {
@@ -227,15 +235,15 @@ export function TransformationProvider({ children }) {
 
             let columnArr = [];
             if (Array.isArray(sourceData.columns)) {
-              columnArr = sourceData.columns.map(col =>
-                typeof col === "string"
-                  ? col
-                  : col.name || col.column_name
-              ).filter(Boolean);
+              columnArr = sourceData.columns
+                .filter(col => typeof col === "object" && col.name)
+                .map(col => col.name)
+                .filter(Boolean);
             }
             result.source[sourceKey] = {
               sourceType: sourceData.connectionType || "unknown",
               sourceConnName: sourceData.connection || "unknown",
+              sourceConnId: sourceData.connectionId || "",
               column: columnArr,
               ConnectionParameters: {
                 sourceSchema: sourceData.schema || "",
@@ -262,10 +270,26 @@ export function TransformationProvider({ children }) {
 
           if (targetData) {
             const targetKey = targetData.alias || `target_${targetId}`;
+
+            const transformationNodeId = conn.source;
+            const incomingSourceEdge = state.connections.find(
+              c => c.target === transformationNodeId && Object.keys(state.sources).includes(c.source)
+            );
+            let sourceDataframe = "";
+            let sourceConnId = "";
+            if (incomingSourceEdge) {
+              const srcId = incomingSourceEdge.source;
+              sourceDataframe = state.sources[srcId]?.alias || `source_${srcId}`;
+              sourceConnId = state.sources[srcId]?.connectionId || "";
+            }
+
             result.target[targetKey] = {
               targetType: targetData.connectionType || "unknown",
               targetConnName: targetData.connection || "unknown",
+              targetConnId: targetData.connectionId || "",
               loadType: targetData.loadType || "",
+              sourceDataframe: sourceDataframe,
+              // sourceConnId: sourceConnId,
               LoadingParams: {
                 targetschema: targetData.schema || "",
                 targetTable: targetData.table || "",
@@ -282,7 +306,6 @@ export function TransformationProvider({ children }) {
           if (transformationData && transformationData.transformationConfig) {
             const patchedOps = (transformationData.transformationConfig.operations || []).map(op => {
               const patchedOp = { ...op };
-              // Always set both source_dataframe and target_dataframe to the selected alias (from either source or target node)
               if (patchedOp.source_dataframe) {
                 let alias = null;
                 if (sourceIdToAlias[patchedOp.source_dataframe]) {

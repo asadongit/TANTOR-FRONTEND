@@ -341,11 +341,19 @@ export const ArithmeticOperationFields = ({
                         Custom Value
                     </label>
                     <input
-                        type="text"
+                        type="number"
+                        step="1"
+                        pattern="[0-9]*"
                         className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
                         placeholder="Enter custom value"
                         value={transformation.params?.custom_value || ""}
-                        onChange={e => updateTransformation(transformation.id, "params.custom_value", e.target.value)}
+                        onChange={e => {
+                            const val = e.target.value;
+                            if (val === "" || /^-?\d+$/.test(val)) {
+                                updateTransformation(transformation.id, "params.custom_value", val);
+                            }
+                        }}
+                        inputMode="numeric"
                     />
                 </div>
             </div>
