@@ -377,30 +377,30 @@ function TransformationCanvasContent() {
       };
 
       console.log(payload);
-      // const response = await fetch(`${hostname}/etl/transformation`, {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     "Authorization": `Bearer ${token}`
-      //   },
-      //   body: JSON.stringify(payload)
-      // });
+      const response = await fetch(`${hostname}/etl/transformation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
 
-      // if (!response.ok) {
-      //   const errorData = await response.json();
-      //   throw new Error(errorData.detail || "Failed to save transformation");
-      // }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to save transformation");
+      }
 
-      // // const savedData = await response.json();
+      // const savedData = await response.json();
 
-      // toast.success("Transformation saved successfully!", {
-      //   duration: 3000,
-      //   position: "top-center",
-      // });
+      toast.success("Transformation saved successfully!", {
+        duration: 3000,
+        position: "top-center",
+      });
 
-      // setTimeout(() => {
-      //   navigate("/transformation");
-      // }, 1500);
+      setTimeout(() => {
+        navigate("/transformation");
+      }, 1500);
 
     } catch (error) {
       console.error("Error saving transformation:", error);
