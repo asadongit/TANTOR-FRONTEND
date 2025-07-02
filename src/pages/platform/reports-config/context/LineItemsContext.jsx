@@ -95,15 +95,16 @@ export const LineItemsProvider = ({ children, reportData }) => {
     if (!reportId) return;
     const fetchLineItems = async () => {
       try {
-        // const response = await fetch(
-        //   `${
-        //     import.meta.env.VITE_BIRT_BACKEND_API
-        //   }/templates/parse?report-name=${reportName}`,
-        //   { headers: { "Content-Type": "application/json" } }
-        // );
-        const response = await fetch(`${hostnameV1}/templates/parse?report_name=${reportName}`, { 
-          headers: { "Content-Type": "application/json" } 
-        });
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_BIRT_BACKEND_API
+          }/templates/parse?report-name=${reportName}`,
+          { headers: { "Content-Type": "application/json" } }
+        );
+        
+        // const response = await fetch(`${hostnameV1}/templates/parse?report_name=${reportName}`, { 
+        //   headers: { "Content-Type": "application/json" } 
+        // });
           
         if (response.ok) {
           const data = await response.text();
