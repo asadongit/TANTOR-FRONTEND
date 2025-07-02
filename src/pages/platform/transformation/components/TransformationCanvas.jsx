@@ -677,13 +677,33 @@ const handleCancel = useCallback(() => {
         })
         .filter(Boolean);
 
+      const processedTransformations = transformations.map(t => {
+        if (t.transformation_operation === 'filter' && !t.transformation_operator) {
+          return { ...t, transformation_operator: "==" };
+        }
+        return t;
+      });
+
       return prevNodes.map(node => {
+        if (node.id === transformationNodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              transformations: processedTransformations,
+              transformationConfig: {
+                ...node.data.transformationConfig,
+                operations: processedTransformations
+              }
+            }
+          };
+        }
         if (targetNodeIds.includes(node.id)) {
           return {
             ...node,
             data: {
               ...node.data,
-              transformations: transformations,
+              transformations: processedTransformations,
             }
           };
         }

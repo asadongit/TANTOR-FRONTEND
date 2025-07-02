@@ -3,7 +3,7 @@ export const DataTypeGroups = {
     "int", "integer", "numeric", "int4", "int8","number"
   ],
   string: [
-    "char", "varchar", "varchar2", "nvarchar", "nvarchar2", "text", "string"
+    "varchar", "varchar2", "string"
   ],
   date: [
     "date", "datetime", "timestamp", "time"

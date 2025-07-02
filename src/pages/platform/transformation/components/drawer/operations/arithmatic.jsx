@@ -105,7 +105,6 @@ export const ArithmeticOperationFields = ({
         }
     };
 
-    // Operator selection handler
     const handleOperatorChange = (operatorId) => {
         updateTransformation(transformation.id, "transformation_operator", operatorId);
     };

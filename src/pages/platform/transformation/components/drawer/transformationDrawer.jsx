@@ -7,7 +7,7 @@ import ColCopyOperationFields from "./operations/colcopy";
 import ConstantCopyOperationFields, { getConstantCopyParams } from "./operations/constantcopy";
 import RenameOperationFields from "./operations/rename";
 import JoinsOperationFields, { getJoinsParams } from "./operations/joins";
-import FilterOperationFields, { getFilterParams } from "./operations/filter";
+import FilterOperationFields, { getFilterParams, FILTER_OPERATORS } from "./operations/filter";
 import DateOperationFields, { getDateParams } from "./operations/date";
 import RestrictColumnsOperationFields, { getRestrictColumnsParams } from "./operations/restrictColumns";
 import TypecastOperationFields, { getTypecastParams } from "./operations/typecast";
@@ -38,10 +38,10 @@ const transformationOperations = [
 	// 	id: "join",
 	// 	name: "Join"
 	// },
-	// {
-	// 	id: "filter",
-	// 	name: "Filter"
-	// },
+	{
+		id: "filter",
+		name: "Filter"
+	},
 	// {
 	// 	id: "date",
 	// 	name: "Date"
@@ -88,7 +88,8 @@ const TransformationItem = memo(({
   updateRankingParam,
   updateDateParam,
   updateTargetColumn,
-  onAddNewTargetColumn
+  onAddNewTargetColumn,
+  handleOperatorChange
 }) => {
 
   const renderSourceAndOperationRow = () => (
@@ -180,8 +181,31 @@ const TransformationItem = memo(({
           updateJoinsParam={(id, name, value) => updateFilterParam(id, name, value)}
         />;
       case 'filter':
+        // Determine operator options based on column type
+        let operatorOptions = FILTER_OPERATORS;
+        let selectedColType;
+        if (sourceCols && transformation.source_column && transformation.source_column.length > 0) {
+          const colObj = sourceCols.find(
+            c => (typeof c === "object" ? c.name : c) === transformation.source_column[0]
+          );
+          if (colObj && colObj.datatype) {
+            const t = colObj.datatype.toLowerCase();
+            if (t.includes("char") || t.includes("string")) {
+              operatorOptions = FILTER_OPERATORS.filter(op => op.id === "==");
+              selectedColType = "string";
+            } else if (t.includes("int") || t.includes("float") || t.includes("double") || t.includes("number")) {
+              operatorOptions = FILTER_OPERATORS.filter(op => op.id !== "==");
+              selectedColType = "numeric";
+            } else if (t.includes("date") || t.includes("time")) {
+              selectedColType = "date";
+            }
+          }
+        }
         return <FilterOperationFields
           {...commonProps}
+          operatorOptions={operatorOptions}
+          transformation_operator={transformation.transformation_operator}
+          handleOperatorChange={handleOperatorChange}
         />;
       case 'date':
         return <DateOperationFields
@@ -235,9 +259,9 @@ const TransformationItem = memo(({
       {renderSourceAndOperationRow()}
 
       <div className="mb-4">
-        <label className="block text-sm text-gray-700 mb-2">
+        {/* <label className="block text-sm text-gray-700 mb-2">
           Column Selection
-        </label>
+        </label> */}
         {(!transformation.source_dataframe || (dataframeColumns[transformation.source_dataframe] || []).length === 0) ? (
           <p className="text-amber-500 text-xs mb-2">
             No columns available. Make sure a source node with columns is connected.
@@ -592,6 +616,7 @@ export const TransformationDrawer = ({
 
 			let params = { custom_value: t.params.custom_value };
 			let target_column = t.target_column;
+			let transformation_operator = "";
 
 			switch (operation) {
 				case "string":
@@ -638,6 +663,24 @@ export const TransformationDrawer = ({
 						filter_type: "",
 						expression: ""
 					};
+					// Set default operator for filter
+					if (t.source_column && t.source_column.length > 0 && dataframeColumns[t.source_dataframe]) {
+						const colObj = dataframeColumns[t.source_dataframe].find(
+							c => (typeof c === "object" ? c.name : c) === t.source_column[0]
+						);
+						if (colObj && colObj.datatype) {
+							const ttype = colObj.datatype.toLowerCase();
+							if (ttype.includes("char") || ttype.includes("string")) {
+								transformation_operator = "==";
+							} else {
+								transformation_operator = ">=";
+							}
+						} else {
+							transformation_operator = "==";
+						}
+					} else {
+						transformation_operator = "==";
+					}
 					break;
 				case "date":
 					params = {
@@ -671,39 +714,19 @@ export const TransformationDrawer = ({
 			return {
 				...t,
 				transformation_operation: operation,
-				transformation_operator: defaultOperator,
+				transformation_operator,
 				params,
 				target_column
 			};
 		}));
-	}, []);
+	}, [dataframeColumns]);
 
 	const handleOperatorChange = useCallback((id, operator) => {
 		setTransformations(ts => ts.map(t => {
 			if (t.id !== id) return t;
-
-			let params = { ...t.params };
-
-			if (t.transformation_operation === "string") {
-				if (operator === "lpad" || operator === "rpad") {
-					params = {
-						...params,
-						max_length: params.max_length || "",
-						padding_character: params.padding_character || "*"
-					};
-				} else if (operator === "substr") {
-					params = {
-						...params,
-						start_position: params.start_position || "",
-						no_of_character: params.no_of_character || ""
-					};
-				}
-			}
-
 			return {
 				...t,
-				transformation_operator: operator,
-				params
+				transformation_operator: operator
 			};
 		}));
 	}, []);
@@ -1025,6 +1048,7 @@ export const TransformationDrawer = ({
 								 updateDateParam={updateDateParam}
 								 updateTargetColumn={updateTargetColumn}
 								 onAddNewTargetColumn={handleAddNewTargetColumn}
+								 handleOperatorChange={handleOperatorChange}
 								/>
 							</div>
 						))}
