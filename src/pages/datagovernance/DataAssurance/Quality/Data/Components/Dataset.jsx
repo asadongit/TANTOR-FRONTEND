@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Search,
   RefreshCw,
@@ -7,100 +7,231 @@ import {
   Maximize2,
   Minimize2,
   Database,
-  Clock
+  Clock,
+  ChevronRight,
+  Table as TableIcon,
+  Type,
+  Hash,
+  X
 } from 'lucide-react'
+import { useAuth } from '../../../../../../context/AuthContext.jsx';
+import { secureQuery } from '../../../../DataCatalogue/Components/function.js';
+import { toast } from 'react-toastify'
 
 function Dataset() {
-  const [selectedTable, setSelectedTable] = useState('dim_customer')
+  const { token, hostnameV1 } = useAuth()
+  const [selectedTable, setSelectedTable] = useState('')
   const [editorContent, setEditorContent] = useState('')
-  const [expandedItems, setExpandedItems] = useState({ Oracle: true, 'Oracle.SCHEMA_1': true })
-  const [activeTab, setActiveTab] = useState('explorer') 
+  const [expandedItems, setExpandedItems] = useState({})
+  const [activeTab, setActiveTab] = useState('explorer')
   const [isEditorMaximized, setIsEditorMaximized] = useState(false)
   const [isOutputMaximized, setIsOutputMaximized] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [connections, setConnections] = useState([])
+  const [schemas, setSchemas] = useState({})
+  const [tables, setTables] = useState({})
+  const [columns, setColumns] = useState({})
+  const [connectionsLoading, setConnectionsLoading] = useState(true)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyItems, setHistoryItems] = useState([])
 
-  const explorerItems = [
-    {
-      name: 'Snowflake',
-      type: 'database',
-      schemas: [
-        {
-          name: 'PUBLIC',
-          tables: ['dim_customer', 'fact_sales', 'dim_product']
-        },
-        {
-          name: 'ANALYTICS',
-          tables: ['user_profiles', 'clickstream', 'campaigns']
+  useEffect(() => {
+    const fetchConnections = async () => {
+      try {
+        setConnectionsLoading(true)
+        const secureQueryResponse = await secureQuery({ user_query: '' }, token)
+        const policyIds = secureQueryResponse.matched_policy_ids || []
+        
+        if (policyIds.length === 0) {
+          setConnections([])
+          setConnectionsLoading(false)
+          return
         }
-      ]
-    },
-    {
-      name: 'Hive',
-      type: 'database',
-      schemas: [
-        {
-          name: 'DEFAULT',
-          tables: ['transactions', 'users', 'products']
-        },
-        {
-          name: 'MARKETING',
-          tables: ['campaigns', 'leads', 'conversions']
-        }
-      ]
-    },
-    {
-      name: 'Postgres',
-      type: 'database',
-      schemas: [
-        {
-          name: 'public',
-          tables: ['customers', 'orders', 'inventory']
-        }
-      ]
-    },
-    {
-      name: 'Oracle',
-      type: 'database',
-      schemas: [
-        {
-          name: 'SCHEMA_1',
-          tables: ['dim_customer', 'dim_product', 'fact_sales', 'dim_location']
-        },
-        {
-          name: 'SCHEMA_2',
-          tables: ['employees', 'departments', 'salaries']
-        }
-      ]
+        
+        const response = await fetch(`${hostnameV1}/connections/list`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ matched_policy_ids: policyIds })
+        })
+        
+        if (!response.ok) throw new Error('Failed to fetch connections')
+        const connectionsData = await response.json()
+        setConnections(connectionsData)
+      } catch (error) {
+        console.error('Error fetching connections:', error)
+        toast.error('Failed to load connections')
+      } finally {
+        setConnectionsLoading(false)
+      }
     }
-  ]
+    
+    fetchConnections()
+  }, [token, hostnameV1])
 
-  const historyItems = [
-    'dim_customer',
-    'dim_product',
-    'fact_sales',
-    'dim_location',
-    'customers',
-    'orders',
-    'inventory'
-  ]
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      return
+    }
+    
+    const filteredConnections = connections.filter(connection =>
+      connection.connection_name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [searchTerm, connections])
 
-  const outputData = [
-    { id: '#01', connection: 'Oracle', database: 'Oracle', schema: 'Oracle_1', overall: '97%', accuracy: '99%', validity: '99%', lastRun: '24/10/2024' },
-    { id: '#01', connection: 'Oracle', database: 'Oracle', schema: 'Oracle_1', overall: '97%', accuracy: '99%', validity: '99%', lastRun: '24/10/2024' },
-    { id: '#01', connection: 'Oracle', database: 'Oracle', schema: 'Oracle_1', overall: '97%', accuracy: '99%', validity: '99%', lastRun: '24/10/2024' },
-    { id: '#01', connection: 'Oracle', database: 'Oracle', schema: 'Oracle_1', overall: '97%', accuracy: '99%', validity: '99%', lastRun: '24/10/2024' },
-    { id: '#01', connection: 'Oracle', database: 'Oracle', schema: 'Oracle_1', overall: '97%', accuracy: '99%', validity: '99%', lastRun: '24/10/2024' }
-  ]
+  const toggleExpand = async (itemName, connection, schema, table) => {
+    if (connection && !schema && !table) {
+      if (!expandedItems[itemName] && !schemas[connection]) {
+        await fetchSchemas(connection)
+      }
+    }
 
-  const toggleExpand = (itemName) => {
+    else if (connection && schema && !table) {
+      if (!expandedItems[itemName] && !tables[`${connection}-${schema}`]) {
+        await fetchTables(connection, schema)
+      }
+    }
+    else if (connection && schema && table) {
+      if (!expandedItems[itemName] && !columns[`${connection}-${schema}-${table}`]) {
+        await fetchColumns(connection, schema, table)
+      }
+    }
+    
     setExpandedItems(prev => ({
       ...prev,
       [itemName]: !prev[itemName]
     }))
   }
 
-  const handleSelectTable = (table) => {
-    setSelectedTable(table)
-    setEditorContent(`SELECT * FROM ${table}\nLIMIT 100;`)
+  const fetchSchemas = async (connection) => {
+    try {
+      setSchemas(prev => ({ ...prev, [connection]: 'loading' }))
+      const secureQueryResponse = await secureQuery({ user_query: '' }, token)
+      const policyIds = secureQueryResponse.matched_policy_ids || []
+      
+      if (policyIds.length === 0) {
+        setSchemas(prev => ({ ...prev, [connection]: [] }))
+        return
+      }
+      
+      const response = await fetch(`${hostnameV1}/schemas/list`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          matched_policy_ids: policyIds,
+          connection_name: connection
+        })
+      })
+      
+      if (!response.ok) throw new Error('Failed to fetch schemas')
+      const data = await response.json()
+      const connectionData = data.find(item => item[connection])
+      const schemaNames = connectionData ? connectionData[connection] : []
+      
+      setSchemas(prev => ({
+        ...prev,
+        [connection]: schemaNames.length > 0 ? schemaNames : [],
+      }))
+    } catch (error) {
+      console.error('Error fetching schema data:', error)
+      setSchemas(prev => ({ ...prev, [connection]: 'error' }))
+      toast.error('Failed to load schemas')
+    }
+  }
+
+  const fetchTables = async (connection, schema) => {
+    try {
+      setTables(prev => ({ ...prev, [`${connection}-${schema}`]: 'loading' }))
+      const secureQueryResponse = await secureQuery({ user_query: '' }, token)
+      const policyIds = secureQueryResponse.matched_policy_ids || []
+      
+      if (policyIds.length === 0) {
+        setTables(prev => ({ ...prev, [`${connection}-${schema}`]: [] }))
+        return
+      }
+      
+      const response = await fetch(`${hostnameV1}/tables/list`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          matched_policy_ids: policyIds,
+          connection_name: connection,
+          schema_name: schema
+        })
+      })
+      
+      if (!response.ok) throw new Error('Failed to fetch tables')
+      const data = await response.json()
+      const tableNames = data.tables || []
+      
+      setTables(prev => ({
+        ...prev,
+        [`${connection}-${schema}`]: tableNames.length > 0 ? tableNames : [],
+      }))
+    } catch (error) {
+      console.error('Error fetching table data:', error)
+      setTables(prev => ({ ...prev, [`${connection}-${schema}`]: 'error' }))
+      toast.error('Failed to load tables')
+    }
+  }
+
+  const fetchColumns = async (connection, schema, table) => {
+    try {
+      setColumns(prev => ({ ...prev, [`${connection}-${schema}-${table}`]: 'loading' }))
+      const secureQueryResponse = await secureQuery({ user_query: '' }, token)
+      const policyIds = secureQueryResponse.matched_policy_ids || []
+      
+      if (policyIds.length === 0) {
+        setColumns(prev => ({ ...prev, [`${connection}-${schema}-${table}`]: [] }))
+        return
+      }
+      
+      const response = await fetch(`${hostnameV1}/columns/list`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          matched_policy_ids: policyIds,
+          connection_name: connection,
+          schema_name: schema,
+          table_name: table
+        })
+      })
+      
+      if (!response.ok) throw new Error('Failed to fetch columns')
+      const data = await response.json()
+      const columnData = data.columns || []
+      const formattedColumns = columnData.map(item => ({
+        column: item.column_name,
+        datatype: item.metadata?.DATA_TYPE || 'unknown',
+        metadata: item.metadata
+      }))
+      
+      setColumns(prev => ({
+        ...prev,
+        [`${connection}-${schema}-${table}`]: formattedColumns.length > 0 ? formattedColumns : [],
+      }))
+    } catch (error) {
+      console.error('Error fetching column data:', error)
+      setColumns(prev => ({ ...prev, [`${connection}-${schema}-${table}`]: 'error' }))
+      toast.error('Failed to load columns')
+    }
+  }
+
+  const handleSelectTable = (connection, schema, table) => {
+    const fullTableName = `${connection}.${schema}.${table}`
+    setSelectedTable(fullTableName)
+    setEditorContent(`SELECT * FROM ${fullTableName}\nLIMIT 100;`)
   }
 
   const handleRefresh = () => {
@@ -110,17 +241,101 @@ function Dataset() {
 
   const handleRunQuery = () => {
     console.log('Running query:', editorContent)
+    // Here you would implement the actual query execution similar to the executeQuery function
+    // from the provided code, but we'll keep it simple for this example
   }
 
   const toggleEditorMaximize = () => {
     setIsEditorMaximized(!isEditorMaximized)
-    setIsOutputMaximized(false) 
+    setIsOutputMaximized(false)
   }
 
   const toggleOutputMaximize = () => {
     setIsOutputMaximized(!isOutputMaximized)
-    setIsEditorMaximized(false) 
+    setIsEditorMaximized(false)
   }
+
+  const renderDatabaseLabel = (connection) => {
+    const connectionId = `conn-${connection.connection_name}`
+    const isExpanded = expandedItems[connectionId]
+    return (
+      <div className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
+        onClick={() => toggleExpand(connectionId, connection.connection_name)}>
+        {isExpanded ? (
+          <ChevronDown size={14} className="mr-2 text-gray-400" />
+        ) : (
+          <ChevronRight size={14} className="mr-2 text-gray-400" />
+        )}
+        <Database size={14} className="mr-2 text-gray-400" />
+        <span className="truncate">{connection.connection_name}</span>
+      </div>
+    )
+  }
+
+  const renderSchemaLabel = (connection, schema) => {
+    const schemaId = `schema-${connection}-${schema}`
+    const isExpanded = expandedItems[schemaId]
+    return (
+      <div className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
+        onClick={() => toggleExpand(schemaId, connection, schema)}>
+        {isExpanded ? (
+          <ChevronDown size={14} className="mr-2 text-gray-400" />
+        ) : (
+          <ChevronRight size={14} className="mr-2 text-gray-400" />
+        )}
+        <Database size={14} className="mr-2 text-gray-400" />
+        <span className="truncate">{schema}</span>
+      </div>
+    )
+  }
+
+  const renderTableLabel = (connection, schema, table) => {
+    const tableId = `table-${connection}-${schema}-${table}`
+    const isExpanded = expandedItems[tableId]
+    return (
+      <div className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
+        onClick={() => toggleExpand(tableId, connection, schema, table)}>
+        {isExpanded ? (
+          <ChevronDown size={14} className="mr-2 text-gray-400" />
+        ) : (
+          <ChevronRight size={14} className="mr-2 text-gray-400" />
+        )}
+        <TableIcon size={14} className="mr-2 text-gray-400" />
+        <span 
+          className="truncate"
+          onDoubleClick={() => handleSelectTable(connection, schema, table)}
+        >
+          {table}
+        </span>
+      </div>
+    )
+  }
+
+  const renderColumnLabel = (column) => {
+    const isNumber = column.datatype.split('(')[0] === 'int' ||
+      column.datatype.split('(')[0] === 'integer' ||
+      column.datatype.split('(')[0] === 'decimal' ||
+      column.datatype.split('(')[0] === 'double'
+    
+    return (
+      <div className="flex items-center px-4 py-1 text-sm text-gray-700 pl-8">
+        {isNumber ? (
+          <Hash size={14} className="mr-2 text-gray-400" />
+        ) : (
+          <Type size={14} className="mr-2 text-gray-400" />
+        )}
+        <span className="truncate">{column.column}</span>
+      </div>
+    )
+  }
+
+  const outputData = [
+    { id: '#01', connection: 'Oracle', database: 'Oracle', schema: 'Oracle_1', overall: '97%', accuracy: '99%', validity: '99%', lastRun: '24/10/2024' },
+    { id: '#01', connection: 'Oracle', database: 'Oracle', schema: 'Oracle_1', overall: '97%', accuracy: '99%', validity: '99%', lastRun: '24/10/2024' },
+    { id: '#01', connection: 'Oracle', database: 'Oracle', schema: 'Oracle_1', overall: '97%', accuracy: '99%', validity: '99%', lastRun: '24/10/2024' },
+    { id: '#01', connection: 'Oracle', database: 'Oracle', schema: 'Oracle_1', overall: '97%', accuracy: '99%', validity: '99%', lastRun: '24/10/2024' },
+    { id: '#01', connection: 'Oracle', database: 'Oracle', schema: 'Oracle_1', overall: '97%', accuracy: '99%', validity: '99%', lastRun: '24/10/2024' }
+  ]
 
   return (
     <div className="w-full h-[calc(100vh-190px)]">
@@ -152,79 +367,151 @@ function Dataset() {
                 type="text" 
                 placeholder={activeTab === 'explorer' ? "Search databases..." : "Search history..."} 
                 className="w-full border-none bg-transparent px-2 text-xs outline-none" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
+              {searchTerm && (
+                <X 
+                  size={14} 
+                  className="text-gray-500 cursor-pointer" 
+                  onClick={() => setSearchTerm('')}
+                />
+              )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto">
               {activeTab === 'explorer' ? (
                 <div>
-                  {explorerItems.map((database, dbIndex) => (
-                    <div key={dbIndex} className="mb-0.5">
-                      <div
-                        className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
-                        onClick={() => toggleExpand(database.name)}
-                      >
-                        <ChevronDown
-                          size={14}
-                          className={`mr-2 text-gray-400 transition-transform duration-200 ${expandedItems[database.name] ? "transform rotate-180" : ""}`}
-                        />
-                        <span>{database.name}</span>
-                      </div>
-
-                      {expandedItems[database.name] && (
-                        <div className="pl-6">
-                          {database.schemas.map((schema, schemaIndex) => {
-                            const schemaKey = `${database.name}.${schema.name}`
-                            return (
-                              <div key={schemaIndex}>
-                                <div
-                                  className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
-                                  onClick={() => toggleExpand(schemaKey)}
-                                >
-                                  <ChevronDown
-                                    size={14}
-                                    className={`mr-2 text-gray-400 transition-transform duration-200 ${expandedItems[schemaKey] ? "transform rotate-180" : ""}`}
-                                  />
-                                  <span>{schema.name}</span>
-                                </div>
-
-                                {expandedItems[schemaKey] && (
-                                  <div className="pl-6">
-                                    {schema.tables.map((table, tableIndex) => (
-                                      <div
-                                        key={tableIndex}
-                                        className={`flex items-center px-4 py-1 text-sm gap-2 cursor-pointer
-                                        ${selectedTable === table
-                                          ? 'text-[#8d77ba] bg-[#8d77ba10]'
-                                          : 'text-gray-700 hover:bg-gray-50'}`}
-                                        onClick={() => handleSelectTable(table)}
-                                      >
-                                        <Play size={12} />
-                                        <span>{table}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
+                  {connectionsLoading ? (
+                    <div className="flex justify-center items-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#8d77ba]"></div>
                     </div>
-                  ))}
+                  ) : connections.length === 0 ? (
+                    <div className="text-gray-500 text-sm p-4">No connections available</div>
+                  ) : (
+                    connections.map((connection) => {
+                      const connectionId = `conn-${connection.connection_name}`
+                      const connectionSchemas = schemas[connection.connection_name]
+                      const isExpanded = expandedItems[connectionId]
+                      
+                      return (
+                        <div key={connection.connection_name} className="mb-0.5">
+                          {renderDatabaseLabel(connection)}
+                          
+                          {isExpanded && (
+                            <div className="pl-6">
+                              {connectionSchemas === 'loading' && (
+                                <div className="px-4 py-1 text-sm text-gray-500">Loading schemas...</div>
+                              )}
+                              {connectionSchemas === 'error' && (
+                                <div className="px-4 py-1 text-sm text-red-500">Error loading schemas</div>
+                              )}
+                              {Array.isArray(connectionSchemas) && connectionSchemas.length === 0 && (
+                                <div className="px-4 py-1 text-sm text-gray-500">No schemas available</div>
+                              )}
+                              {Array.isArray(connectionSchemas) && connectionSchemas.length > 0 && (
+                                connectionSchemas.map((schema, schemaIndex) => {
+                                  const schemaId = `schema-${connection.connection_name}-${schema}`
+                                  const tableData = tables[`${connection.connection_name}-${schema}`]
+                                  const isSchemaExpanded = expandedItems[schemaId]
+                                  
+                                  return (
+                                    <div key={`${schema}-${schemaIndex}`}>
+                                      {renderSchemaLabel(connection.connection_name, schema)}
+                                      
+                                      {isSchemaExpanded && (
+                                        <div className="pl-6">
+                                          {tableData === 'loading' && (
+                                            <div className="px-4 py-1 text-sm text-gray-500">Loading tables...</div>
+                                          )}
+                                          {tableData === 'error' && (
+                                            <div className="px-4 py-1 text-sm text-red-500">Error loading tables</div>
+                                          )}
+                                          {Array.isArray(tableData) && tableData.length === 0 && (
+                                            <div className="px-4 py-1 text-sm text-gray-500">No tables available</div>
+                                          )}
+                                          {Array.isArray(tableData) && tableData.length > 0 && (
+                                            tableData.map((table, tableIndex) => {
+                                              const tableId = `table-${connection.connection_name}-${schema}-${table}`
+                                              const columnData = columns[`${connection.connection_name}-${schema}-${table}`]
+                                              const isTableExpanded = expandedItems[tableId]
+                                              
+                                              return (
+                                                <div key={`${table}-${tableIndex}`}>
+                                                  {renderTableLabel(connection.connection_name, schema, table)}
+                                                  
+                                                  {isTableExpanded && (
+                                                    <div className="pl-6">
+                                                      {columnData === 'loading' && (
+                                                        <div className="px-4 py-1 text-sm text-gray-500">Loading columns...</div>
+                                                      )}
+                                                      {columnData === 'error' && (
+                                                        <div className="px-4 py-1 text-sm text-red-500">Error loading columns</div>
+                                                      )}
+                                                      {Array.isArray(columnData) && columnData.length === 0 && (
+                                                        <div className="px-4 py-1 text-sm text-gray-500">No columns available</div>
+                                                      )}
+                                                      {Array.isArray(columnData) && columnData.length > 0 && (
+                                                        columnData.map((column, columnIndex) => (
+                                                          <div key={`${column.column}-${columnIndex}`}>
+                                                            {renderColumnLabel(column)}
+                                                          </div>
+                                                        ))
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              )
+                                            })
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
+                  )}
                 </div>
               ) : (
                 <div>
-                  {historyItems.map((item, index) => (
-                    <div
-                      key={index}
-                      className={`px-4 py-2 text-sm cursor-pointer rounded
-                      ${selectedTable === item ? 'text-[#8d77ba] bg-[#8d77ba10]' : 'text-gray-700 hover:bg-gray-50'}`}
-                      onClick={() => handleSelectTable(item)}
-                    >
-                      {item}
+                  {historyLoading ? (
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#8d77ba]"></div>
                     </div>
-                  ))}
+                  ) : historyItems.length === 0 ? (
+                    <div className="text-gray-500 text-sm pl-4">No history available</div>
+                  ) : (
+                    historyItems.map((item, index) => (
+                      <div
+                        key={index}
+                        className={`px-4 py-2 text-sm cursor-pointer rounded
+                        ${selectedTable.includes(item) ? 'text-[#8d77ba] bg-[#8d77ba10]' : 'text-gray-700 hover:bg-gray-50'}`}
+                        onClick={() => {
+                          // For simplicity, we'll just select the first connection/schema that has this table
+                          let found = false
+                          for (const connection of connections) {
+                            const schemasList = schemas[connection.connection_name] || []
+                            for (const schema of schemasList) {
+                              const tablesList = tables[`${connection.connection_name}-${schema}`] || []
+                              if (tablesList.includes(item)) {
+                                handleSelectTable(connection.connection_name, schema, item)
+                                found = true
+                                break
+                              }
+                            }
+                            if (found) break
+                          }
+                        }}
+                      >
+                        {item}
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>
