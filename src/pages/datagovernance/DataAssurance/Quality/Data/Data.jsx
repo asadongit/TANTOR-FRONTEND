@@ -54,10 +54,10 @@ function Data() {
         <CurrentComponent />
       </div>
 
-      {/* <div className="flex justify-end gap-3 p-5">
+      <div className="flex justify-end gap-3 mt-2">
         {activeStep > 0 && (
           <button
-            className="py-2 px-4 bg-transparent border border-[#8d77ba] text-[#8d77ba] rounded hover:bg-[#8d77ba10] transition-all duration-200"
+            className="py-1.5 px-4 bg-transparent border border-[#8d77ba] text-[#8d77ba] rounded hover:bg-[#8d77ba10] transition-all duration-200"
             onClick={handlePrev}
           >
             Previous
@@ -65,13 +65,13 @@ function Data() {
         )}
         {activeStep < steps.length - 1 && (
           <button
-            className="py-2 px-4 bg-[#8d77ba] text-white border border-[#8d77ba] rounded hover:bg-[#7d69a8] transition-all duration-200"
+            className="py-1.5 px-5 bg-[#8d77ba] text-white border border-[#8d77ba] rounded hover:bg-[#7d69a8] transition-all duration-200"
             onClick={handleNext}
           >
             Next
           </button>
         )}
-      </div> */}
+      </div>
     </div>
   )
 }

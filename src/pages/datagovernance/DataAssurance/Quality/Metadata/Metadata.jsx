@@ -508,10 +508,10 @@ const Metadata = () => {
       )}
 
       {/* Score Movement and Schema Overall Score Components */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <ScoreMovement />
         <SchemaOverallScore />
-      </div>
+      </div> */}
     </div>
   );
 };
