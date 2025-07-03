@@ -54,14 +54,14 @@ const transformationOperations = [
 	// 	id: "typecast",
 	// 	name: "Typecast"
 	// },
-	// {
-	// 	id: "sorting",
-	// 	name: "Sort"
-	// },
-	// {
-	// 	id: "ranking",
-	// 	name: "Ranking"
-	// }
+	{
+		id: "sorting",
+		name: "Sort"
+	},
+	{
+		id: "ranking",
+		name: "Ranking"
+	}
 ];
 
 const TransformationItem = memo(({
