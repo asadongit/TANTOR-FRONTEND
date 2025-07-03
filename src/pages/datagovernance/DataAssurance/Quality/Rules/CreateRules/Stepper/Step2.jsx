@@ -55,6 +55,7 @@ function Step2({ data, onBack, onNext, step2Data, edit =false }) {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoaded, setSearchLoaded] = useState(false);
   const editorRef = useRef(null);
+  const [isCustomCreate,setIsCustomCreate] = useState(false)
 
   const [validationStatus, setValidationStatusState] = useState(() => stepData.validationStatus || {});
 
@@ -307,6 +308,31 @@ function Step2({ data, onBack, onNext, step2Data, edit =false }) {
     setActiveGroupIndex(groupIdx);
     setActiveRuleIndex(ruleIdx);
   };
+
+  const getQueryById = (data, id) => {
+  if (!data?.rules) return '';
+
+  for (const group of Object.values(data.rules)) {
+    const rule = group.find(rule => rule.id === id);
+    if (rule) {
+      return rule.query || '';
+    }
+  }
+  return '';
+};
+
+useEffect(() => {
+  const currentGroup = groupNames[activeGroupIndex];
+  const rule = queries[currentGroup]?.[activeRuleIndex];
+  if (rule && selectedRules[currentGroup]?.has(rule.id)) {
+    const givenQuery = getQueryById(data, rule.id);
+    const isQueryEmpty = givenQuery === '' || givenQuery == null;
+    setIsCustomCreate(!edit && data?.category.toLowerCase() === 'custom' && !isQueryEmpty);
+  } else {
+    setIsCustomCreate(false);
+  }
+}, [activeGroupIndex, activeRuleIndex, queries, selectedRules, data, edit]);
+
 
   const getCurrentQuery = () => {
     const currentGroup = groupNames[activeGroupIndex];
@@ -866,7 +892,7 @@ function Step2({ data, onBack, onNext, step2Data, edit =false }) {
         editorRef.current.editor.getSession().getSelection().clearSelection();
       }
     }
-  }, [querySearchText, searchAcrossQueries]);
+  }, [querySearchText]);
 
   useEffect(() => {
     if (searchResults.length > 0 && currentSearchIndex >= 0 && currentSearchIndex < searchResults.length) {
@@ -1425,7 +1451,7 @@ function Step2({ data, onBack, onNext, step2Data, edit =false }) {
                 showLineNumbers: true,
                 tabSize: 2,
               }}
-              readOnly={isPrebuiltEdit}
+              readOnly={isPrebuiltEdit || isCustomCreate}
               wrapEnabled={true}
               onLoad={(editor) => {
                 editor.execCommand("find");

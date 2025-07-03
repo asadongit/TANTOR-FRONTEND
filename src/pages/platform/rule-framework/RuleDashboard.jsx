@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Pencil,
   Trash2,
   List,
   Play,
   Download,
+  RefreshCcw,
   Plus,  
-  EyeIcon
+  EyeIcon,
+  Search
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 
@@ -15,66 +17,52 @@ import { LineChart } from "@mui/x-charts/LineChart";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
 import DataTable from "../../../components/DataTable";
-import {  useReportingRulesCardData } from "../../../hooks/platform/cardCounts";
-import { useRuleData } from "../../../hooks/platform/rules";
 import { useAuth } from "../../../context/AuthContext";
+import {CardGrid} from "../../../components/ReportingCardGrid"
 import toast from "react-hot-toast";
 import RuleSummary from "./RuleSummary";
-
-
-
-const CardGrid = ({ cards, isLoading = false, onCardClick }) => {
-
-    return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {cards.map((card, index) => (
-                <React.Fragment key={card.title}>
-                    <div
-                        className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 transition-transform transform hover:scale-105 hover:shadow-md"
-                        onClick={() => onCardClick && onCardClick(card)}
-                    >
-                        <div className="flex items-center mb-2">
-                            <h3 className="text-lg font-semibold">{card.title}</h3>
-                        </div>
-                        {isLoading ? (
-                            <div className="w-8 md:w-10 h-8 md:h-10 bg-gray-200 rounded-full mr-2"></div>
-                        ) : (
-                            <p className="text-black text-5xl font-bold">{card.count}</p>
-                        )}
-                    </div>
-                    {/* {index === 1 && <div className="col-span-1"></div>} */}
-                </React.Fragment>
-            ))}
-        </div>
-    );
-};
-
+import { useRuleData } from "../../../hooks/platform/reportingframework/rules";
+import { useRulesCardData } from "../../../hooks/platform/cardCounts";
 const RuleDashboard = () => {
-  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useReportingRulesCardData();
-  const { data: ruleData = [], isLoading: isRuleLoading, error: ruleError, refetch: refetchRules } = useRuleData();
   
-  // Display Rule Modal
   const [showRuleSummary, setShowRuleSummary] = useState(false);
   const [ruleSummaryData,setRuleSummaryData] = useState({});
+  
+  const [ruleData, setRuleData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const { data: ruleList = [], isLoading: isRuleLoading, isError: ruleError, refetch: refetchRules } = useRuleData();
+  const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useRulesCardData();
+  
+  // Filter active rules. Filter rules by search
+  useEffect(() => {
+    let updatedRuleList = ruleList.filter(row => row?.status?.toLowerCase() === "active").map((row, index) => ({...row, s_no: index + 1}));
+    
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      updatedRuleList = updatedRuleList.filter((row) =>
+        Object.values(row).some((value) =>
+          String(value || "")
+            .toLowerCase()
+            .includes(lowerSearch)
+        )
+      );
+    }
+    setRuleData(updatedRuleList);
+  }, [ruleData, searchTerm]);
 
   const navigate = useNavigate();
-
   const {hostnameV1, token} = useAuth();
-  
-  const handleRefresh = () => {
-    refetchRules();
-    refetchCardData();
-  };
 
+  const handleRefresh = () => {
+    refetchCardData();
+    refetchRules();
+  };
 
   const handleCreate = () => {
     navigate("/config/rule/create-rule",{state: {mode: "CREATE"}}
     );
   };
-
-
-
-
 
   const cards = [
     {
@@ -180,10 +168,19 @@ const RuleDashboard = () => {
   ];
   
   const handleCardClick = (card) => {
-    const url = `/componentType=rules&cardType=${card.title}&heading=${card.title}`;
-    console.log(url);
+    const cardType = "rules"
+    
+    
+    if(card?.title?.toLowerCase() === "disabled")
+      return;
+    
+    const url = card?.title?.toLowerCase() === "total" ?
+      `componentType=rules&cardType=${cardType}&heading=${card.title}` : 
+      `componentType=rules&cardType=${cardType}&heading=${card.title}&dataScope=${card.title}`
+    
+    const encryptedUrl = encodeURIComponent(encrypt(url));
     navigate(`/details?${encryptedUrl}`);
-  };
+};
 
   const RuleMovement = () => {
     const chartData = [
@@ -350,6 +347,13 @@ const RuleDashboard = () => {
           >
             <Download className="h-5 w-5" />
           </button>
+          {/* <button
+            type="button"
+            className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
+            onClick={handleRefresh}
+          >
+            <RefreshCcw className={`h-5 w-5 ${isRuleLoading ? 'animate-spin' : ''}`} />
+          </button> */}
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
@@ -416,7 +420,23 @@ const RuleDashboard = () => {
         {/* <SchemaOverallScore /> */}
     </div>
 
-     
+        
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 mt-10">
+        {/* {title && <h2 className="text-xl font-bold mb-2 md:mb-0">{title}</h2>} */}
+        <div className="relative w-full md:w-64">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search size={18} className="text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search..."
+            className="pl-10 pr-4 py-2 border rounded-lg w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            aria-label="Search records"
+          />
+        </div>
+      </div>
         <DataTable
           columns={columns}
           data={ruleData}

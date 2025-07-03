@@ -34,49 +34,46 @@ function getAvailableFilterColumns(sourceCols, allTransformations) {
 }
 
 export const FilterParameters = ({ params, onChange, selectedColType }) => (
-  <div className="space-y-3 mt-4">
-    <div>
-      <label className="block text-xs text-gray-700 mb-1">Value</label>
-      {isStringType(selectedColType) ? (
-        <input
-          type="text"
-          className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-          placeholder="Enter filter value"
-          value={params.value || ""}
-          onChange={(e) => onChange("value", e.target.value)}
-        />
-      ) : isNumericType(selectedColType) ? (
-        <input
-          type="number"
-          step="1"
-          className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-          placeholder="Enter integer value"
-          value={params.value || ""}
-          onChange={(e) => {
-            const val = e.target.value;
-            if (val === "" || /^-?\d+$/.test(val)) {
-              onChange("value", val);
-            }
-          }}
-        />
-      ) : selectedColType === "date" ? (
-        <input
-          type="date"
-          className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-          value={params.value || ""}
-          onChange={(e) => onChange("value", e.target.value)}
-        />
-      ) : (
-        <input
-          type="text"
-          className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-          placeholder="Enter filter value"
-          value={params.value || ""}
-          onChange={(e) => onChange("value", e.target.value)}
-        />
-      )}
-
-    </div>
+  <div>
+    <label className="block text-xs text-gray-700 mb-1">Value</label>
+    {isStringType(selectedColType) ? (
+      <input
+        type="text"
+        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+        placeholder="Enter filter value"
+        value={params.value || ""}
+        onChange={(e) => onChange("value", e.target.value)}
+      />
+    ) : isNumericType(selectedColType) ? (
+      <input
+        type="number"
+        step="1"
+        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+        placeholder="Enter integer value"
+        value={params.value || ""}
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val === "" || /^-?\d+$/.test(val)) {
+            onChange("value", val);
+          }
+        }}
+      />
+    ) : selectedColType === "date" ? (
+      <input
+        type="date"
+        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+        value={params.value || ""}
+        onChange={(e) => onChange("value", e.target.value)}
+      />
+    ) : (
+      <input
+        type="text"
+        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+        placeholder="Enter filter value"
+        value={params.value || ""}
+        onChange={(e) => onChange("value", e.target.value)}
+      />
+    )}
   </div>
 );
 
@@ -205,51 +202,60 @@ export const FilterOperationFields = ({
 
   return (
     <div>
-      <div className="mb-4">
-        <label className="text-xs text-gray-600 block mb-1">Source Column to Filter</label>
-        <Select
-          options={columnOptions}
-          value={selectedOption}
-          onChange={handleColumnChange}
-          placeholder="Select column to filter"
-          className="text-sm"
-          styles={customStyles}
-          isClearable
-          isMulti={false}
-          noOptionsMessage={() => "No columns available"}
-          theme={theme => ({
-            ...theme,
-            colors: {
-              ...theme.colors,
-              primary: '#8E77BB',
-              primary25: '#f3f4f6',
-              neutral0: 'white',
-              neutral80: '#111827',
-            },
-          })}
-        />
+      {/* Row: Source Column and Filter Operator dropdowns */}
+      <div className="flex gap-4 mb-2">
+        <div className="w-1/2">
+          <label className="text-xs text-gray-600 block mb-1">Source Column to Filter</label>
+          <Select
+            options={columnOptions}
+            value={selectedOption}
+            onChange={handleColumnChange}
+            placeholder="Select column to filter"
+            className="text-sm"
+            styles={customStyles}
+            isClearable
+            isMulti={false}
+            noOptionsMessage={() => "No columns available"}
+            theme={theme => ({
+              ...theme,
+              colors: {
+                ...theme.colors,
+                primary: '#8E77BB',
+                primary25: '#f3f4f6',
+                neutral0: 'white',
+                neutral80: '#111827',
+              },
+            })}
+          />
+        </div>
+        <div className="w-1/2">
+          <label className="block text-xs text-gray-700 mb-1">Filter Operator</label>
+          <select
+            className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+            value={selectedOperator}
+            onChange={(e) => handleOperatorChange(transformation.id, e.target.value)}
+          >
+            {operatorOptionsFiltered.map(op => (
+              <option key={op.id} value={op.id}>
+                {op.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
-
-      <div className="mb-4">
-        <label className="block text-xs text-gray-700 mb-1">Filter Operator</label>
-        <select
-          className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-          value={selectedOperator}
-          onChange={(e) => handleOperatorChange(transformation.id, e.target.value)}
-        >
-          {operatorOptionsFiltered.map(op => (
-            <option key={op.id} value={op.id}>
-              {op.name}
-            </option>
-          ))}
-        </select>
+      {/* Row: Value input under Source Column, right side empty for alignment */}
+      <div className="flex gap-4 mb-4">
+        <div className="w-1/2">
+          <div className="mt-0">
+            <FilterParameters
+              params={transformation.params}
+              onChange={updateParam}
+              selectedColType={selectedColType}
+            />
+          </div>
+        </div>
+        <div className="w-1/2"></div>
       </div>
-
-      <FilterParameters
-        params={transformation.params}
-        onChange={updateParam}
-        selectedColType={selectedColType}
-      />
     </div>
   );
 };

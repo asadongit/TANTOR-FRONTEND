@@ -5,7 +5,7 @@ const JOIN_TYPES = [
     { id: "left", name: "Left Join" },
     { id: "right", name: "Right Join" },
     { id: "inner", name: "Inner Join" },
-    { id: "full", name: "Full Join" },
+    // { id: "full", name: "Full Join" },
 ];
 
 const JOIN_CONDITIONS = [
@@ -83,16 +83,64 @@ export const JoinsOperationFields = ({
         }
     }, [transformation.params.join_condition]);
 
-    useEffect(() => {
-        if (transformation.source_dataframe && transformation.params.right_dataframe &&
-            (!joinConditions[0].leftDataframe || !joinConditions[0].rightDataframe)) {
+    const handleSourceDataframeChange = (e) => {
+        const newSourceDf = e.target.value;
+        updateJoinsParam(transformation.id, "source_dataframe", newSourceDf);
 
+        setJoinConditions([{
+            ...joinConditions[0],
+            leftDataframe: newSourceDf,
+            leftColumn: "",
+        }]);
+        updateJoinsParam(transformation.id, "join_condition", "");
+    };
+
+    const handleRightDataframeChange = (e) => {
+        const newRightDf = e.target.value;
+        updateJoinsParam(transformation.id, "right_dataframe", newRightDf);
+
+        setJoinConditions([{
+            ...joinConditions[0],
+            rightDataframe: newRightDf,
+            rightColumn: "",
+        }]);
+        updateJoinsParam(transformation.id, "join_condition", "");
+    };
+
+    const getColumnOptions = (dfId) => {
+        if (!dfId || !dataframeColumns[dfId]) return [];
+        return dataframeColumns[dfId].map(col => {
+            if (typeof col === "object" && col !== null) {
+                return {
+                    value: col.name,
+                    label: col.name,
+                    key: col.name
+                };
+            }
+            return {
+                value: col,
+                label: col,
+                key: col
+            };
+        });
+    };
+
+    useEffect(() => {
+        if (
+            transformation.source_dataframe &&
+            transformation.params.right_dataframe &&
+            (
+                joinConditions[0].leftDataframe !== transformation.source_dataframe ||
+                joinConditions[0].rightDataframe !== transformation.params.right_dataframe
+            )
+        ) {
             setJoinConditions([{
                 ...joinConditions[0],
-                leftDataframe: joinConditions[0].leftDataframe || transformation.source_dataframe,
-                rightDataframe: joinConditions[0].rightDataframe || transformation.params.right_dataframe
+                leftDataframe: transformation.source_dataframe,
+                rightDataframe: transformation.params.right_dataframe
             }]);
         }
+    // eslint-disable-next-line
     }, [transformation.source_dataframe, transformation.params.right_dataframe]);
 
     const updateJoinCondition = (index, field, value) => {
@@ -146,20 +194,39 @@ export const JoinsOperationFields = ({
     return (
         <div>
             <div className="space-y-4">
+                {/* New: Source Dataframe Dropdown */}
                 <div>
-                    <label className="block text-xs text-gray-700 mb-1">Right Dataframe</label>
+                    <label className="block text-xs text-gray-700 mb-1">Source Dataframe</label>
                     <select
                         className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                        value={transformation.params.right_dataframe || ""}
-                        onChange={(e) => updateJoinsParam(transformation.id, "right_dataframe", e.target.value)}
+                        value={transformation.source_dataframe || ""}
+                        onChange={handleSourceDataframeChange}
                     >
-                        <option value="">Select right dataframe</option>
+                        <option value="">Select source dataframe</option>
                         {allDataframes.map(df => (
                             <option key={df.id} value={df.id}>{df.label}</option>
                         ))}
                     </select>
                 </div>
 
+                {/* Right Dataframe Dropdown */}
+                <div>
+                    <label className="block text-xs text-gray-700 mb-1">Right Dataframe</label>
+                    <select
+                        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                        value={transformation.params.right_dataframe || ""}
+                        onChange={handleRightDataframeChange}
+                    >
+                        <option value="">Select right dataframe</option>
+                        {allDataframes
+                            .filter(df => df.id !== transformation.source_dataframe)
+                            .map(df => (
+                                <option key={df.id} value={df.id}>{df.label}</option>
+                            ))}
+                    </select>
+                </div>
+
+                {/* Join Type Dropdown */}
                 <div>
                     <label className="block text-xs text-gray-700 mb-1">Join Type</label>
                     <select
@@ -173,23 +240,12 @@ export const JoinsOperationFields = ({
                     </select>
                 </div>
 
+                {/* Join Condition */}
                 <div>
                     <label className="block text-xs text-gray-700 mb-2">Join Condition</label>
                     {joinConditions.map((condition, index) => (
-                        <div key={index} className="grid grid-cols-5 gap-2 items-center mb-2">
-                            <div>
-                                <select
-                                    className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                                    value={condition.leftDataframe}
-                                    onChange={(e) => updateJoinCondition(index, "leftDataframe", e.target.value)}
-                                >
-                                    <option value="">Select dataframe</option>
-                                    {allDataframes.map(df => (
-                                        <option key={df.id} value={df.id}>{df.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
+                        <div key={index} className="grid grid-cols-4 gap-2 items-center mb-2">
+                            {/* Left Column */}
                             <div>
                                 <select
                                     className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
@@ -198,12 +254,13 @@ export const JoinsOperationFields = ({
                                     disabled={!condition.leftDataframe}
                                 >
                                     <option value="">Select column</option>
-                                    {condition.leftDataframe && dataframeColumns[condition.leftDataframe]?.map(col => (
-                                        <option key={col} value={col}>{col}</option>
+                                    {getColumnOptions(condition.leftDataframe).map(opt => (
+                                        <option key={opt.key} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>
                             </div>
 
+                            {/* Condition Operator */}
                             <div>
                                 <select
                                     className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
@@ -216,19 +273,7 @@ export const JoinsOperationFields = ({
                                 </select>
                             </div>
 
-                            <div>
-                                <select
-                                    className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                                    value={condition.rightDataframe}
-                                    onChange={(e) => updateJoinCondition(index, "rightDataframe", e.target.value)}
-                                >
-                                    <option value="">Select dataframe</option>
-                                    {allDataframes.map(df => (
-                                        <option key={df.id} value={df.id}>{df.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
+                            {/* Right Column */}
                             <div>
                                 <select
                                     className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
@@ -237,10 +282,17 @@ export const JoinsOperationFields = ({
                                     disabled={!condition.rightDataframe}
                                 >
                                     <option value="">Select column</option>
-                                    {condition.rightDataframe && dataframeColumns[condition.rightDataframe]?.map(col => (
-                                        <option key={col} value={col}>{col}</option>
+                                    {getColumnOptions(condition.rightDataframe).map(opt => (
+                                        <option key={opt.key} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>
+                            </div>
+
+                            {/* Right Dataframe label (for clarity, optional) */}
+                            <div>
+                                <span className="text-xs text-gray-600">
+                                    {allDataframes.find(df => df.id === condition.rightDataframe)?.label || ""}
+                                </span>
                             </div>
                         </div>
                     ))}

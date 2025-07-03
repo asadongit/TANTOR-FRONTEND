@@ -465,6 +465,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
                               <option value="days">Days</option>
                               <option value="months">Months</option>
                               <option value="years">Years</option>
+                              {trans?.dateType === "historicDate" && (<option value = "pfy">Previous Financial Year</option>) }
                             </select>
                           </div>
                         </div>
@@ -547,7 +548,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
               className={`px-6 py-3 text-sm font-medium text-white rounded-md flex items-center gap-2 ${
                 !isFormComplete
                   ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-purple-600 hover:bg-purple-700"
+                  : "bg-[#8e78b7] hover:bg-[#766497]"
               }`}
             >
               <CheckCircle className="w-4 h-4" /> Apply

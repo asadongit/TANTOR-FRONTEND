@@ -10,11 +10,10 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
   const calculateDateFromOffset = (offset, unit) => {
     if (offset === null || offset === undefined) return null;
     
-    const today = new Date();
     const offsetValue = parseFloat(offset);
-    
     if (isNaN(offsetValue)) return null;
     
+    const today = new Date();
     const newDate = new Date(today);
     
     if (unit === "days") {
@@ -32,7 +31,6 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
     if (!date) return null;
     
     const today = new Date();
-    // Set both dates to midnight to avoid time differences affecting day calculations
     today.setHours(0, 0, 0, 0);
     const compareDate = new Date(date);
     compareDate.setHours(0, 0, 0, 0);
@@ -42,37 +40,30 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
     if (unit === "days") {
       return Math.round(diffMs / (1000 * 60 * 60 * 24));
     } else if (unit === "months") {
-      return ((date.getFullYear() - today.getFullYear()) * 12 + 
-              date.getMonth() - today.getMonth() + 
-              (date.getDate() - today.getDate()) / 30).toFixed(2);
+      const months = (compareDate.getFullYear() - today.getFullYear()) * 12 + 
+                    compareDate.getMonth() - today.getMonth();
+      return months;
     } else {
-      return (diffMs / (1000 * 60 * 60 * 24 * 365.25)).toFixed(2);
+      return Math.round(diffMs / (1000 * 60 * 60 * 24 * 365.25));
     }
   };
 
   useEffect(() => {
     if (dateType === "historicDate" && lowerOffset && lowerUnit) {
-      // Ensuring lowerOffset is negative for historicDate
       const offset = parseFloat(lowerOffset);
-      if (offset > 0) {
-        const calculatedDate = calculateDateFromOffset(-offset, lowerUnit);
-        setStartDate(calculatedDate);
-      } else {
-        const calculatedDate = calculateDateFromOffset(lowerOffset, lowerUnit);
-        setStartDate(calculatedDate);
-      }
+      const calculatedDate = calculateDateFromOffset(
+        offset > 0 ? -offset : offset, 
+        lowerUnit
+      );
+      setStartDate(calculatedDate);
       setTimeUnit(lowerUnit);
     } else if (dateType === "dateRange") {
       if (lowerOffset && lowerUnit) {
-        // For dateRange, lowerOffset can be positive or negative
-        const lowerDate = calculateDateFromOffset(lowerOffset, lowerUnit);
-        setStartDate(lowerDate);
+        setStartDate(calculateDateFromOffset(lowerOffset, lowerUnit));
         setTimeUnit(lowerUnit);
       }
-      
       if (upperOffset && upperUnit) {
-        const upperDate = calculateDateFromOffset(upperOffset, upperUnit);
-        setEndDate(upperDate);
+        setEndDate(calculateDateFromOffset(upperOffset, upperUnit));
       }
     }
   }, [dateType, lowerOffset, upperOffset, lowerUnit, upperUnit]);
@@ -80,30 +71,12 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
   useEffect(() => {
     if (!startDate) return;
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     if (dateType === "historicDate") {
       const offset = calculateOffsetFromDate(startDate, timeUnit);
       setOutputExpression(`${offset}, ${timeUnit}`);
     } else if (dateType === "dateRange" && endDate) {
       const lowerOffset = calculateOffsetFromDate(startDate, timeUnit);
-      
-      const compareEndDate = new Date(endDate);
-      compareEndDate.setHours(0, 0, 0, 0);
-      const todayToUpperMs = compareEndDate - today;
-      let upperOffset;
-      
-      if (timeUnit === "days") {
-        upperOffset = Math.round(todayToUpperMs / (1000 * 60 * 60 * 24));
-      } else if (timeUnit === "months") {
-        upperOffset = ((endDate.getFullYear() - today.getFullYear()) * 12 + 
-                       endDate.getMonth() - today.getMonth() + 
-                       (endDate.getDate() - today.getDate()) / 30).toFixed(2);
-      } else {
-        upperOffset = (todayToUpperMs / (1000 * 60 * 60 * 24 * 365.25)).toFixed(2);
-      }
-      
+      const upperOffset = calculateOffsetFromDate(endDate, timeUnit);
       setOutputExpression(`${lowerOffset}, ${timeUnit}\n${upperOffset}, ${timeUnit}`);
     }
   }, [startDate, endDate, timeUnit, dateType]);
