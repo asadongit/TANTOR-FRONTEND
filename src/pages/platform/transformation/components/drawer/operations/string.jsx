@@ -109,7 +109,7 @@ export const StringOperationFields = ({
         if (typeof col === "object" && col.datatype) {
           return isStringType(col.datatype);
         }
-        return true; 
+        return true;
       })
     : [];
 
@@ -430,9 +430,9 @@ export const StringOperationFields = ({
         onChange={handleParamChange}
       />
 
-      <div className="flex justify-center mt-4">
+      <div className="flex mt-4">
         <div className="w-1/2">
-          <label className="text-xs text-gray-600 block mb-1 text-center">Target Column</label>
+          <label className="text-xs text-gray-600 block mb-1">Target Column</label>
           <Select
             options={targetColumnOptions}
             value={selectedTargetOption}

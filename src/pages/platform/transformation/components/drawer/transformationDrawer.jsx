@@ -95,7 +95,11 @@ const TransformationItem = memo(({
   const renderSourceAndOperationRow = () => (
     <div className="flex gap-2 mb-3">
       <div className="flex-1">
-        <label className="block text-xs text-gray-700 mb-1">Source</label>
+        <label className="block text-xs text-gray-700 mb-1">
+          {transformation.transformation_operation === "join"
+            ? "Source (Left Table)"
+            : "Source"}
+        </label>
         <select
           className="w-full p-2 text-black text-xs border border-gray-300 rounded bg-white"
           value={transformation.source_dataframe}
@@ -863,9 +867,9 @@ export const TransformationDrawer = ({
 					t.source_column.map((col, idx) => t.target_column[idx] || col);
 			}
 
-			const transformationData = {
+			let transformationData = {
 				source_dataframe: t.source_dataframe,
-				target_dataframe: t.target_dataframe,
+				target_dataframe: t.source_dataframe,
 				source_column: t.transformation_operation === 'constantcopy' ? [""] :
 							t.transformation_operation === 'join' ? ["", ""] : t.source_column,
 				target_column: targetColumns,
@@ -946,7 +950,6 @@ export const TransformationDrawer = ({
 		}
 	}, []);
 
-	// Utility to append a column to a dataframe in the local dataframeColumns state
 	const appendColumnToDataframe = useCallback((dataframeId, columnName,datatype) => {
 		setDataframeColumns(prev => {
 			const prevCols = prev[dataframeId] || [];
@@ -964,7 +967,6 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic") => {
-		// For arithmetic, always add to source dataframe
 		const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
 		const datatype = operationType === "string" ? "VARCHAR" : "NUMBER";
 		if (window.allNodes && Array.isArray(window.allNodes)) {
