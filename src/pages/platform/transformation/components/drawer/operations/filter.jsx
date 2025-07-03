@@ -33,45 +33,111 @@ function getAvailableFilterColumns(sourceCols, allTransformations) {
   return cols;
 }
 
-export const FilterParameters = ({ params, onChange, selectedColType }) => (
+export const FilterParameters = ({ params, onChange, selectedColType, filterType, columnOptions, sourceColumn }) => (
   <div>
-    <label className="block text-xs text-gray-700 mb-1">Value</label>
-    {isStringType(selectedColType) ? (
-      <input
-        type="text"
-        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-        placeholder="Enter filter value"
-        value={params.value || ""}
-        onChange={(e) => onChange("value", e.target.value)}
-      />
-    ) : isNumericType(selectedColType) ? (
-      <input
-        type="number"
-        step="1"
-        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-        placeholder="Enter integer value"
-        value={params.value || ""}
-        onChange={(e) => {
-          const val = e.target.value;
-          if (val === "" || /^-?\d+$/.test(val)) {
-            onChange("value", val);
-          }
+    <label className="block text-xs text-gray-700 mb-1">
+      {filterType === "column" ? "Compare With Column" : "Value"}
+    </label>
+    {filterType === "column" ? (
+      <Select
+        options={columnOptions.filter(opt => opt.value !== sourceColumn)}
+        value={columnOptions.find(opt => opt.value === params.value) || null}
+        onChange={selected => onChange("value", selected ? selected.value : "")}
+        placeholder="Select column"
+        className="text-sm"
+        isDisabled={!filterType}
+        styles={{
+          control: (provided) => ({
+            ...provided,
+            minHeight: '38px',
+            border: '1px solid #e2e8f0',
+            fontSize: '0.875rem',
+            backgroundColor: 'white',
+            boxShadow: 'none'
+          }),
+          valueContainer: (provided) => ({
+            ...provided,
+            padding: '0 6px'
+          }),
+          input: (provided) => ({
+            ...provided,
+            margin: '0px',
+            color: '#111827'
+          }),
+          indicatorSeparator: () => ({
+            display: 'none'
+          }),
+          indicatorsContainer: (provided) => ({
+            ...provided,
+            height: '38px'
+          }),
+          placeholder: (provided) => ({
+            ...provided,
+            color: '#9ca3af',
+            fontSize: '0.875rem'
+          }),
+          menu: (provided) => ({
+            ...provided,
+            zIndex: 9999,
+            backgroundColor: 'white',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+          }),
+          option: (provided, state) => ({
+            ...provided,
+            backgroundColor: state.isSelected
+              ? '#8E77BB'
+              : state.isFocused
+                ? '#f3f4f6'
+                : 'white',
+            color: state.isSelected ? 'white' : '#111827',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            ':active': {
+              backgroundColor: state.isSelected ? '#8E77BB' : '#f3f4f6',
+            }
+          }),
+          noOptionsMessage: (provided) => ({
+            ...provided,
+            color: '#4b5563',
+            fontSize: '0.875rem'
+          }),
+          singleValue: (provided) => ({
+            ...provided,
+            color: '#111827'
+          }),
         }}
-      />
-    ) : selectedColType === "date" ? (
-      <input
-        type="date"
-        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-        value={params.value || ""}
-        onChange={(e) => onChange("value", e.target.value)}
+        isClearable
+        isMulti={false}
+        noOptionsMessage={() => "No columns available"}
       />
     ) : (
       <input
-        type="text"
+        type={
+          isStringType(selectedColType) ? "text"
+          : isNumericType(selectedColType) ? "number"
+          : selectedColType === "date" ? "date"
+          : "text"
+        }
+        step={isNumericType(selectedColType) ? "1" : undefined}
         className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-        placeholder="Enter filter value"
+        placeholder={
+          isStringType(selectedColType) ? "Enter filter value"
+          : isNumericType(selectedColType) ? "Enter integer value"
+          : "Enter filter value"
+        }
         value={params.value || ""}
-        onChange={(e) => onChange("value", e.target.value)}
+        onChange={e => {
+          if (!filterType) return;
+          if (isNumericType(selectedColType)) {
+            const val = e.target.value;
+            if (val === "" || /^-?\d+$/.test(val)) {
+              onChange("value", val);
+            }
+          } else {
+            onChange("value", e.target.value);
+          }
+        }}
+        disabled={!filterType}
       />
     )}
   </div>
@@ -129,6 +195,19 @@ export const FilterOperationFields = ({
       handleSelectAllColumns(transformation.id, 'source', [selected.value], true);
     } else {
       handleSelectAllColumns(transformation.id, 'source', [], true);
+    }
+  };
+
+  const filterType = transformation.params?.filter_type || "";
+
+  const handleFilterTypeChange = (e) => {
+    const value = e.target.value;
+    if (typeof transformation.updateFilterParam === 'function') {
+      transformation.updateFilterParam(transformation.id, "filter_type", value);
+      transformation.updateFilterParam(transformation.id, "value", "");
+    }
+    if (!value) {
+      handleOperatorChange(transformation.id, "");
     }
   };
 
@@ -202,7 +281,6 @@ export const FilterOperationFields = ({
 
   return (
     <div>
-      {/* Row: Source Column and Filter Operator dropdowns */}
       <div className="flex gap-4 mb-2">
         <div className="w-1/2">
           <label className="text-xs text-gray-600 block mb-1">Source Column to Filter</label>
@@ -229,12 +307,37 @@ export const FilterOperationFields = ({
           />
         </div>
         <div className="w-1/2">
-          <label className="block text-xs text-gray-700 mb-1">Filter Operator</label>
+          <label className="block text-xs text-gray-700 mb-1">Filter Type</label>
+          <select
+            className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+            value={filterType}
+            onChange={handleFilterTypeChange}
+          >
+            <option value="">Select filter type</option>
+            <option value="value">Value</option>
+            <option value="column">Column</option>
+          </select>
+        </div>
+      </div>
+      <div className="flex gap-4 mb-4 mt-4">
+        <div className="w-1/2">
+          <label className="block text-xs text-gray-700 mb-1">
+            Filter Operator
+            {!filterType && (
+              <span className="text-xs text-gray-400 ml-1">
+                (Please select filter type first)
+              </span>
+            )}
+          </label>
           <select
             className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
             value={selectedOperator}
             onChange={(e) => handleOperatorChange(transformation.id, e.target.value)}
+            disabled={!filterType}
           >
+            <option value="">
+              {filterType ? "Select operator" : "Select option type first"}
+            </option>
             {operatorOptionsFiltered.map(op => (
               <option key={op.id} value={op.id}>
                 {op.name}
@@ -242,29 +345,30 @@ export const FilterOperationFields = ({
             ))}
           </select>
         </div>
-      </div>
-      {/* Row: Value input under Source Column, right side empty for alignment */}
-      <div className="flex gap-4 mb-4">
         <div className="w-1/2">
           <div className="mt-0">
             <FilterParameters
               params={transformation.params}
               onChange={updateParam}
               selectedColType={selectedColType}
+              filterType={filterType}
+              columnOptions={columnOptions}
+              sourceColumn={transformation.source_column && transformation.source_column[0]}
             />
           </div>
         </div>
-        <div className="w-1/2"></div>
       </div>
     </div>
   );
 };
 
 export const getFilterParams = (transformation) => {
+  const filterType = transformation.params.filter_type || "value";
   return {
-    value: transformation.params.value || "",
-    filter_type: "",
-    expression: ""
+    expression: "",
+    filter_column: filterType === "column" ? (transformation.params.value || "") : "",
+    filter_type: filterType,
+    value: filterType === "value" ? (transformation.params.value || "") : ""
   };
 };
 
