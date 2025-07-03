@@ -34,10 +34,10 @@ const transformationOperations = [
 	// 	id: "rename",
 	// 	name: "Rename"
 	// },
-	// {
-	// 	id: "join",
-	// 	name: "Join"
-	// },
+	{
+		id: "join",
+		name: "Join"
+	},
 	{
 		id: "filter",
 		name: "Filter"
