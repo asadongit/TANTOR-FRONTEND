@@ -433,7 +433,7 @@ export const TransformationDrawer = ({
 			source_column: [],
 			target_column: [],
 			transformation_operation: "arithmetic",
-			transformation_operator: "addition",
+			transformation_operator: "",
 			params: {
 				custom_value: "",
 				max_length: "",
@@ -651,12 +651,17 @@ export const TransformationDrawer = ({
 			}
 			transformation_operator = defaultOperator;
 			break;
+		case "arithmetic":
+			transformation_operator = "";
+			params = { custom_value: "" };
+			break;
 		case "colcopy":
 		case "rename":
 			params = {};
 			if (operation === "rename") {
 			target_column = t.source_column.slice();
 			}
+			transformation_operator = "";
 			break;
 		case "constantcopy":
 			params = {
@@ -664,6 +669,7 @@ export const TransformationDrawer = ({
 			value_type: "c",
 			datatype: "string",
 			};
+			transformation_operator = "";
 			break;
 		case "join":
 			params = {
@@ -673,6 +679,7 @@ export const TransformationDrawer = ({
 			drop_left_dataframe_collist: [],
 			drop_right_dataframe_collist: [],
 			};
+			transformation_operator = "";
 			break;
 		case "filter":
 			params = {
@@ -701,25 +708,30 @@ export const TransformationDrawer = ({
 			target_timezone: "",
 			target_timeformat: "",
 			};
+			transformation_operator = "";
 			break;
 		case "restrictcolumns":
 			params = {};
+			transformation_operator = "";
 			break;
 		case "typecast":
 			params = {
 			target_datatype: "string",
 			};
+			transformation_operator = "";
 			break;
 		case "sorting":
 			params = {
 			order_by: {},
 			};
+			transformation_operator = "";
 			break;
 		case "ranking":
 			params = {
 			group_by: [],
 			order_by: {},
 			};
+			transformation_operator = "";
 			break;
 		}
 
@@ -833,7 +845,7 @@ export const TransformationDrawer = ({
 				source_column: [],
 				target_column: [],
 				transformation_operation: "arithmetic",
-				transformation_operator: "addition",
+				transformation_operator: "", // <-- set to "" by default
 				params: {
 					custom_value: "",
 					max_length: "",
@@ -867,6 +879,8 @@ export const TransformationDrawer = ({
 					t.source_column.map((col, idx) => t.target_column[idx] || col);
 			}
 
+			let transformationOperatorToSend = t.transformation_operator || "";
+
 			let transformationData = {
 				source_dataframe: t.source_dataframe,
 				target_dataframe: t.source_dataframe,
@@ -874,7 +888,7 @@ export const TransformationDrawer = ({
 							t.transformation_operation === 'join' ? ["", ""] : t.source_column,
 				target_column: targetColumns,
 				transformation_operation: t.transformation_operation,
-				transformation_operator: t.transformation_operator,
+				transformation_operator: transformationOperatorToSend,
 				transformation_order: t.transformation_order,
 				params: {}
 			};
