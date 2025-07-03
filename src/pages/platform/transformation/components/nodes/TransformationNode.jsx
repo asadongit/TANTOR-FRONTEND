@@ -44,8 +44,8 @@ export const TransformationNode = ({ id, data }) => {
         <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
       </button>
 
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="target" position={Position.Left} style={{ width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Right} style={{ width: 10, height: 10 }} />
 
       <div className="flex items-center space-x-3 mb-3">
         <Pencil className="w-5 h-5 text-[#96CF7B]" />
@@ -119,11 +119,17 @@ export const TransformationNode = ({ id, data }) => {
         </div>
       </div>
 
-      {/* Display source and target dataframe IDs if available */}
       {data.sourceNodes && data.sourceNodes.length > 0 && (
         <div className="mt-2 pt-2 border-t border-gray-200">
           <span className="text-[10px] text-gray-500">
             Sources: {data.sourceNodes.map(node => node.dfId).join(', ')}
+          </span>
+        </div>
+      )}
+      {data.targetNodes && data.targetNodes.length > 0 && (
+        <div className="mt-1">
+          <span className="text-[10px] text-gray-500">
+            Targets: {data.targetNodes.map(node => node.dfId).join(', ')}
           </span>
         </div>
       )}

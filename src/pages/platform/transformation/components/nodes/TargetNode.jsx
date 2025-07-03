@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Handle, Position } from "reactflow";
 import { X, Database, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
+import { useTransformation } from "../TransformationContext";
 
 export const TargetNode = ({ id, data }) => {
   const [connections, setConnections] = useState([]);
@@ -36,12 +37,18 @@ export const TargetNode = ({ id, data }) => {
   const [schemaDropdownOpen, setSchemaDropdownOpen] = useState(false);
   const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
 
+  const [alias, setAlias] = useState(data.alias || "");
+
+  const [columnMapping, setColumnMapping] = useState(data.columnMapping || {});
+  const [targetMapping, setTargetMapping] = useState(data.targetMapping || {});
+
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
   const tableDropdownRef = useRef(null);
 
   const hostnamev1 = import.meta.env.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
+  const { getAllSelectedSourceColumns } = useTransformation();
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -134,7 +141,6 @@ export const TargetNode = ({ id, data }) => {
         }
 
         const tableData = await response.json();
-        // console.log("Fetched Tables:", tableData);
         setTables(tableData);
         setDataFetchStatus((prev) => ({ ...prev, tables: "success" }));
       } catch (error) {
@@ -160,9 +166,40 @@ export const TargetNode = ({ id, data }) => {
       table: selectedTable,
       loadType: loadType,
       loadStrategy: loadStrategy,
-      columns: columns,
+      columns:
+        tables.find(t => t.table_name === selectedTable)?.column_json?.map(col => ({
+          name: col.column_name,
+          datatype: col.DATA_TYPE
+        })) || [],
+      alias: alias,
+      columnMapping,
+      targetMapping,
     });
-  }, [selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy, columns]); // <-- add columns as dependency
+  }, [
+    selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
+    tables, alias, columnMapping, targetMapping
+  ]);
+
+  const getNextAlias = useCallback(() => {
+    if (window.allNodes) {
+      const targetNodes = window.allNodes.filter(n => n.type === "target");
+      let max = 0;
+      targetNodes.forEach(n => {
+        const match = (n.data?.alias || "").match(/^unnamed_target_(\d+)$/);
+        if (match) {
+          max = Math.max(max, parseInt(match[1], 10));
+        }
+      });
+      return `unnamed_target_${max + 1}`;
+    }
+    return "unnamed_target_1";
+  }, []);
+
+  useEffect(() => {
+    if (selectedTable && !alias) {
+      setAlias(getNextAlias());
+    }
+  }, [selectedTable, alias, getNextAlias]);
 
   const getColumnsForTable = (tableName) => {
     const tableObj = tables.find((t) => t.table_name === tableName);
@@ -198,6 +235,65 @@ export const TargetNode = ({ id, data }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const getAllSourceColumns = () => {
+    // 1. All selected columns from all source nodes (context)
+    let allCols = getAllSelectedSourceColumns();
+
+    // 2. Add ALL columns from all transformation drawer operations (target_column and source_column)
+    if (data && Array.isArray(data.transformations)) {
+      data.transformations.forEach(tr => {
+        // Add target_column(s)
+        if (Array.isArray(tr.target_column)) {
+          allCols = allCols.concat(tr.target_column);
+        }
+        // Add source_column(s)
+        if (Array.isArray(tr.source_column)) {
+          allCols = allCols.concat(tr.source_column);
+        }
+      });
+    }
+
+    // Remove duplicates and falsy values
+    return Array.from(new Set(allCols.filter(Boolean)));
+  };
+
+  const getAllTargetColumns = () => {
+    let targetCols = [];
+    if (Array.isArray(columns) && columns.length > 0) {
+      targetCols = columns.map(col => (typeof col === "string" ? col : col.name || col));
+    } else {
+      const tableObj = tables.find(t => t.table_name === selectedTable);
+      if (tableObj && Array.isArray(tableObj.column_json)) {
+        targetCols = tableObj.column_json.map(col => col.column_name);
+      }
+    }
+    return targetCols;
+  };
+
+  useEffect(() => {
+    if (data.columnMapping && JSON.stringify(data.columnMapping) !== JSON.stringify(columnMapping)) {
+      setColumnMapping(data.columnMapping);
+    }
+  }, [data.columnMapping]);
+
+  // Update targetMapping to always have all target columns as keys
+  useEffect(() => {
+    const targetCols = getAllTargetColumns();
+    setTargetMapping(prev => {
+      const updated = {};
+      targetCols.forEach(col => {
+        updated[col] = prev && Object.prototype.hasOwnProperty.call(prev, col) ? prev[col] : "";
+      });
+      return updated;
+    });
+    // eslint-disable-next-line
+  }, [columns, tables, selectedTable, data.transformations]);
+
+  const sourceColumnOptions = getAllSourceColumns().map(col => ({
+    value: col,
+    label: col
+  }));
+
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[280px] max-w-[320px] relative group">
       <button
@@ -207,7 +303,7 @@ export const TargetNode = ({ id, data }) => {
         <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
       </button>
 
-      <Handle type="target" position={Position.Left} />
+      <Handle type="target" position={Position.Left} style={{ width: 10, height: 10 }} />
 
       <div className="flex items-center space-x-3 mb-3">
         <Database className="w-5 h-5 text-[#96CF7B]" />
@@ -450,6 +546,21 @@ export const TargetNode = ({ id, data }) => {
         )}
 
         {selectedTable && (
+          <div className="mt-2">
+            <label className="text-xs font-semibold text-black mb-0.5 block">
+              Alias Name
+            </label>
+            <input
+              type="text"
+              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
+              value={alias}
+              onChange={e => setAlias(e.target.value)}
+              placeholder="Enter alias name"
+            />
+          </div>
+        )}
+
+        {selectedTable && (
           <>
             <div>
               <label className="text-xs font-semibold text-black mb-0.5 block">
@@ -486,6 +597,45 @@ export const TargetNode = ({ id, data }) => {
             </div>
           </>
         )}
+
+        {selectedTable && data.connectedSources > 0 && (
+          <div className="mt-4">
+            <div className="text-xs font-semibold text-black mb-1">Target Mapping</div>
+            <div
+              className="border border-gray-300 rounded p-2"
+              style={{ maxHeight: "220px", overflowY: "auto", minHeight: "80px" }}
+            >
+              <div className="grid grid-cols-2 gap-2 text-black font-semibold text-xs mb-2">
+                <div>Target Columns</div>
+                <div>Source Columns</div>
+              </div>
+              <div>
+                {getAllTargetColumns().map((targetCol) => (
+                  <div key={targetCol} className="grid grid-cols-2 gap-2 items-center mb-2">
+                    <div className="text-xs text-gray-800">{targetCol}</div>
+                    <select
+                      className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
+                      value={targetMapping[targetCol] || ""}
+                      onChange={e => {
+                        const value = e.target.value;
+                        setTargetMapping(prev => ({
+                          ...prev,
+                          [targetCol]: value
+                        }));
+                      }}
+                    >
+                      <option value="">-- Select source column --</option>
+                      {sourceColumnOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {selectedConnection.type && (

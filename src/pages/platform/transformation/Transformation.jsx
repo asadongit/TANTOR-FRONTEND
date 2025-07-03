@@ -410,11 +410,6 @@ function Transformation() {
       onClick: (row) => console.log("Edit:", row)
     },
     {
-      label: "Copy",
-      icon: <Icon icon="material-symbols:content-copy-outline" className="w-5 h-5" />,
-      onClick: (row) => console.log("Copy:", row)
-    },
-    {
       label: "Info",
       icon: <Icon icon="material-symbols:info-outline" className="w-5 h-5" />,
       onClick: (row) => console.log("Info:", row)
