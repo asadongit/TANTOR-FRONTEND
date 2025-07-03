@@ -366,16 +366,10 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
                         </div>
                         <div className="flex justify-end gap-4 mt-4">
                             <button
-                                className="px-6 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                                onClick={onClose}
-                            >
-                                Cancel
-                            </button>
-                            <button
                                 className="px-6 py-2 bg-[#8e78b7] text-white rounded hover:bg-[#7a67a0]"
                                 onClick={onClose}
                             >
-                                OK
+                                Close
                             </button>
                         </div>
                     </>
