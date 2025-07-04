@@ -27,7 +27,7 @@ const nodeTypes = {
   target: TargetNode,
 };
 
-const hostname = import.meta.env.VITE_FAST_API;
+const hostname = window._env_?.VITE_FAST_API;
 
 let id = 0;
 const getId = () => `node_${id++}`;

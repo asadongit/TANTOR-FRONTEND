@@ -144,7 +144,7 @@ const Database = () => {
 
   const fetchRecentAccess = async (policyIds) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/recentaccess`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/recentaccess`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

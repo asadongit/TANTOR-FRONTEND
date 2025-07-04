@@ -48,7 +48,7 @@ const User = () => {
   const fetchUserData = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/users`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

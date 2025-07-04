@@ -43,7 +43,7 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
     try {
       setLoading(true);
 
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/editrole`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/editrole`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

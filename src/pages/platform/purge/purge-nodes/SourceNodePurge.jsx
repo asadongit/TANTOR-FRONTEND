@@ -11,8 +11,8 @@ import { usePurgeContext } from "../../react-flow/context/PurgeContext";
 
 export function SourceNode({ id }) {
 
-  const hostname = import.meta.env.VITE_FAST_API;
-  const hostnameV2 = import.meta.env.VITE_FAST_API_V2;
+  const hostname = window._env_?.VITE_FAST_API;
+  const hostnameV2 = window._env_?.VITE_FAST_API_V2;
   const { token, decodedToken, project } = useAuth();
 
   const [connections, setConnections] = useState([]);

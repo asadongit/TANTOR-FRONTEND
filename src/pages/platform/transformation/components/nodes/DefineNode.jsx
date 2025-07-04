@@ -3,7 +3,7 @@ import { Handle, Position } from "reactflow";
 import { FilePlus, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
 
-const hostname = import.meta.env.VITE_FAST_API;
+const hostname = window._env_?.VITE_FAST_API;
 
 // Use a module-level cache for transformation names
 const transformationNamesCache = {

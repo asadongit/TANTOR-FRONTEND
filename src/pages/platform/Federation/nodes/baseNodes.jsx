@@ -15,9 +15,9 @@ import { defaultSetting } from "../BaseView/ColumnSettings";
 import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 
-// const AUTH_TOKEN = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
-// const FAST_BACKEND = import.meta.env.VITE_FAST_API;
-// const FAST_BACKEND_v2 = import.meta.env.VITE_FAST_API_V2;
+// const AUTH_TOKEN = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
+// const FAST_BACKEND = window._env_?.VITE_FAST_API;
+// const FAST_BACKEND_v2 = window._env_?.VITE_FAST_API_V2;
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);

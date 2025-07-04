@@ -57,7 +57,7 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
 
     const fetchPolicy = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policytypes`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/policytypes`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -83,7 +83,7 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
     const fetchSubPolicies = async (policyType) => {
         try {
             const encodedPolicyType = encodeURIComponent(policyType);
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/subpolicytypes/${encodedPolicyType}`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/subpolicytypes/${encodedPolicyType}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -138,7 +138,7 @@ const Step1 = ({ onDataChange, initialData, nextButtonRef }) => {
                 description: newSubPolicyDesc
             };
 
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/addsubpolicy`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/addsubpolicy`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

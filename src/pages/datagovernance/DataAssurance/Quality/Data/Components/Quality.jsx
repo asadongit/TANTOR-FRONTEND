@@ -34,7 +34,7 @@ function Quality() {
     const fetchOverallQualityData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/scores/data/scorecards`);
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/scorecards`);
         const data = await response.json();
         setOverallQualityData(data);
       } catch (error) {
@@ -57,7 +57,7 @@ function Quality() {
   const handleRefresh = () => {
     if (viewMode === 'overall') {
       setIsLoading(true);
-      fetch(`${import.meta.env.VITE_FAST_API}/scores/data/scorecards`)
+      fetch(`${window._env_?.VITE_FAST_API}/scores/data/scorecards`)
         .then(response => response.json())
         .then(data => {
           setOverallQualityData(data);

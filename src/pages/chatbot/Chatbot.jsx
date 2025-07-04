@@ -3,7 +3,7 @@ import { Send, MessageSquare, Maximize, Minimize, GripVertical, User } from 'luc
 import Logo from '../../assets/tantor_favicon.png';
 
 const Chatbot = () => {
-  const hostname = import.meta.env.VITE_CHATBOT_API || '';  // Add fallback empty string
+  const hostname = window._env_?.VITE_CHATBOT_API || '';  // Add fallback empty string
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([

@@ -29,7 +29,7 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/listpolicy`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/listpolicy`, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -56,7 +56,7 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
         setIsFetchingConnections(true);
         setError(null);
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/listconnectiondetails/${policyId}`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/listconnectiondetails/${policyId}`, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${token}`,

@@ -100,7 +100,7 @@ const DataCatalogue = () => {
       try {
         console.log(`Fetching catalog for policy ${policyId}`);
         const response = await fetch(
-          `${import.meta.env.VITE_FAST_API}/catalog/${policyId}`,
+          `${window._env_?.VITE_FAST_API}/catalog/${policyId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -124,7 +124,7 @@ const DataCatalogue = () => {
 
   const fetchRecentAccess = async (policyIds) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/recentaccess`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/recentaccess`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
