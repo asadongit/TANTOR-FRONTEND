@@ -18,10 +18,10 @@ const transformationOperations = [
 	{
 		id: "arithmetic",
 		name: "Arithmetic"},
-	// {
-	// 	id: "string",
-	// 	name: "String"
-	// },
+	{
+		id: "string",
+		name: "String"
+	},
 	// {
 	// 	id: "colcopy",
 	// 	name: "Column Copy"
@@ -34,10 +34,10 @@ const transformationOperations = [
 	// 	id: "rename",
 	// 	name: "Rename"
 	// },
-	// {
-	// 	id: "join",
-	// 	name: "Join"
-	// },
+	{
+		id: "join",
+		name: "Join"
+	},
 	{
 		id: "filter",
 		name: "Filter"
@@ -54,14 +54,14 @@ const transformationOperations = [
 	// 	id: "typecast",
 	// 	name: "Typecast"
 	// },
-	// {
-	// 	id: "sorting",
-	// 	name: "Sort"
-	// },
-	// {
-	// 	id: "ranking",
-	// 	name: "Ranking"
-	// }
+	{
+		id: "sorting",
+		name: "Sort"
+	},
+	{
+		id: "ranking",
+		name: "Ranking"
+	}
 ];
 
 const TransformationItem = memo(({
@@ -95,7 +95,11 @@ const TransformationItem = memo(({
   const renderSourceAndOperationRow = () => (
     <div className="flex gap-2 mb-3">
       <div className="flex-1">
-        <label className="block text-xs text-gray-700 mb-1">Source</label>
+        <label className="block text-xs text-gray-700 mb-1">
+          {transformation.transformation_operation === "join"
+            ? "Source (Left Table)"
+            : "Source"}
+        </label>
         <select
           className="w-full p-2 text-black text-xs border border-gray-300 rounded bg-white"
           value={transformation.source_dataframe}
@@ -150,7 +154,8 @@ const TransformationItem = memo(({
       handleSelectAllColumns,
       handleColumnSelection,
       dropdownRefs,
-      updateTransformation
+      updateTransformation,
+	  updateStringParam,
     };
 
     switch (transformation_operation) {
@@ -163,7 +168,14 @@ const TransformationItem = memo(({
           target_dataframe={target_dataframe}
         />;
       case 'string':
-        return <StringOperationFields {...commonProps} />;
+				return (
+					<StringOperationFields
+						{...commonProps}
+						onAddNewTargetColumn={(colName) =>
+							onAddNewTargetColumn(colName, transformation.source_dataframe, "string")
+						}
+					/>
+				);
       case 'colcopy':
         return <ColCopyOperationFields {...commonProps} />;
       case 'constantcopy':
@@ -181,7 +193,6 @@ const TransformationItem = memo(({
           updateJoinsParam={(id, name, value) => updateFilterParam(id, name, value)}
         />;
       case 'filter':
-        // Determine operator options based on column type
         let operatorOptions = FILTER_OPERATORS;
         let selectedColType;
         if (sourceCols && transformation.source_column && transformation.source_column.length > 0) {
@@ -422,7 +433,7 @@ export const TransformationDrawer = ({
 			source_column: [],
 			target_column: [],
 			transformation_operation: "arithmetic",
-			transformation_operator: "addition",
+			transformation_operator: "",
 			params: {
 				custom_value: "",
 				max_length: "",
@@ -593,10 +604,19 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const updateStringParam = useCallback((id, paramName, value) => {
-		setTransformations(ts => ts.map(t =>
-			t.id === id ? { ...t, params: { ...t.params, [paramName]: value } } : t
-		));
-	}, []);
+  setTransformations(ts => ts.map(t =>
+    t.id === id ? {
+      ...t,
+      ...(t.transformation_operation === "string" && paramName === "transformation_operator"
+        ? { transformation_operator: value }
+        : {}),
+      params: {
+        ...t.params,
+        [paramName]: value,
+      },
+    } : t
+  ));
+}, []);
 
 	const updateTargetColumns = useCallback((id, columns) => {
 		setTransformations(ts => ts.map(t =>
@@ -604,122 +624,127 @@ export const TransformationDrawer = ({
 		));
 	}, []);
 
-	const handleOperationChange = useCallback((id, operation) => {
-		setTransformations(ts => ts.map(t => {
-			if (t.id !== id) return t;
+		const handleOperationChange = useCallback((id, operation) => {
+	    setTransformations(ts => ts.map(t => {
+		if (t.id !== id) return t;
 
-			const operationDef = transformationOperations.find(op => op.id === operation);
+		const operationDef = transformationOperations.find(op => op.id === operation);
+		const defaultOperator = operation === "string" ? "lpad" : "";
+		let params = { custom_value: t.params.custom_value };
+		let target_column = t.target_column;
+		let transformation_operator = t.transformation_operator;
 
-			const defaultOperator = (operationDef?.operators?.length > 0)
-				? operationDef.operators[0].id
-				: "";
-
-			let params = { custom_value: t.params.custom_value };
-			let target_column = t.target_column;
-			let transformation_operator = "";
-
-			switch (operation) {
-				case "string":
-					if (defaultOperator === "lpad" || defaultOperator === "rpad") {
-						params = {
-							...params,
-							max_length: "",
-							padding_character: "*"
-						};
-					} else if (defaultOperator === "substr") {
-						params = {
-							...params,
-							start_position: "",
-							no_of_character: ""
-						};
-					}
-					break;
-				case "colcopy":
-				case "rename":
-					params = {};
-					if (operation === "rename") {
-						target_column = t.source_column.slice();
-					}
-					break;
-				case "constantcopy":
-					params = {
-						value: "",
-						value_type: "c",
-						datatype: "string"
-					};
-					break;
-				case "join":
-					params = {
-						right_dataframe: "",
-						join_type: "left",
-						join_condition: "",
-						drop_left_dataframe_collist: [],
-						drop_right_dataframe_collist: []
-					};
-					break;
-				case "filter":
-					params = {
-						value: "",
-						filter_type: "",
-						expression: ""
-					};
-					// Set default operator for filter
-					if (t.source_column && t.source_column.length > 0 && dataframeColumns[t.source_dataframe]) {
-						const colObj = dataframeColumns[t.source_dataframe].find(
-							c => (typeof c === "object" ? c.name : c) === t.source_column[0]
-						);
-						if (colObj && colObj.datatype) {
-							const ttype = colObj.datatype.toLowerCase();
-							if (ttype.includes("char") || ttype.includes("string")) {
-								transformation_operator = "==";
-							} else {
-								transformation_operator = ">=";
-							}
-						} else {
-							transformation_operator = "==";
-						}
-					} else {
-						transformation_operator = "==";
-					}
-					break;
-				case "date":
-					params = {
-						source_timezone: "",
-						source_timeformat: "",
-						target_timezone: "",
-						target_timeformat: ""
-					};
-					break;
-				case "restrictcolumns":
-					params = {};
-					break;
-				case "typecast":
-					params = {
-						target_datatype: "string"
-					};
-					break;
-				case "sorting":
-					params = {
-						order_by: {}
-					};
-					break;
-				case "ranking":
-					params = {
-						group_by: [],
-						order_by: {}
-					};
-					break;
-			}
-
-			return {
-				...t,
-				transformation_operation: operation,
-				transformation_operator,
-				params,
-				target_column
+		switch (operation) {
+		case "string":
+			if (defaultOperator === "lpad" || defaultOperator === "rpad") {
+			params = {
+				...params,
+				max_length: "",
+				padding_character: "*",
 			};
-		}));
-	}, [dataframeColumns]);
+			} else if (defaultOperator === "substr") {
+			params = {
+				...params,
+				start_position: "",
+				no_of_character: "",
+			};
+			}
+			transformation_operator = defaultOperator;
+			break;
+		case "arithmetic":
+			transformation_operator = "";
+			params = { custom_value: "" };
+			break;
+		case "colcopy":
+		case "rename":
+			params = {};
+			if (operation === "rename") {
+			target_column = t.source_column.slice();
+			}
+			transformation_operator = "";
+			break;
+		case "constantcopy":
+			params = {
+			value: "",
+			value_type: "c",
+			datatype: "string",
+			};
+			transformation_operator = "";
+			break;
+		case "join":
+			params = {
+			right_dataframe: "",
+			join_type: "left",
+			join_condition: "",
+			drop_left_dataframe_collist: [],
+			drop_right_dataframe_collist: [],
+			};
+			transformation_operator = "";
+			break;
+		case "filter":
+			params = {
+			value: "",
+			filter_type: "",
+			expression: "",
+			};
+			if (t.source_column && t.source_column.length > 0 && dataframeColumns[t.source_dataframe]) {
+			const colObj = dataframeColumns[t.source_dataframe].find(
+				c => (typeof c === "object" ? c.name : c) === t.source_column[0]
+			);
+			if (colObj && colObj.datatype) {
+				const ttype = colObj.datatype.toLowerCase();
+				transformation_operator = ttype.includes("char") || ttype.includes("string") ? "==" : ">=";
+			} else {
+				transformation_operator = "==";
+			}
+			} else {
+			transformation_operator = "==";
+			}
+			break;
+		case "date":
+			params = {
+			source_timezone: "",
+			source_timeformat: "",
+			target_timezone: "",
+			target_timeformat: "",
+			};
+			transformation_operator = "";
+			break;
+		case "restrictcolumns":
+			params = {};
+			transformation_operator = "";
+			break;
+		case "typecast":
+			params = {
+			target_datatype: "string",
+			};
+			transformation_operator = "";
+			break;
+		case "sorting":
+			params = {
+			order_by: {},
+			};
+			transformation_operator = "";
+			break;
+		case "ranking":
+			params = {
+			group_by: [],
+			order_by: {},
+			};
+			transformation_operator = "";
+			break;
+		}
+
+		return {
+		...t,
+		transformation_operation: operation,
+		transformation_operator,
+		params,
+		target_column,
+		};
+	}));
+	}, [transformationOperations, dataframeColumns]);
+
 
 	const handleOperatorChange = useCallback((id, operator) => {
 		setTransformations(ts => ts.map(t => {
@@ -820,7 +845,7 @@ export const TransformationDrawer = ({
 				source_column: [],
 				target_column: [],
 				transformation_operation: "arithmetic",
-				transformation_operator: "addition",
+				transformation_operator: "", // <-- set to "" by default
 				params: {
 					custom_value: "",
 					max_length: "",
@@ -854,14 +879,16 @@ export const TransformationDrawer = ({
 					t.source_column.map((col, idx) => t.target_column[idx] || col);
 			}
 
-			const transformationData = {
+			let transformationOperatorToSend = t.transformation_operator || "";
+
+			let transformationData = {
 				source_dataframe: t.source_dataframe,
-				target_dataframe: t.target_dataframe,
+				target_dataframe: t.source_dataframe,
 				source_column: t.transformation_operation === 'constantcopy' ? [""] :
 							t.transformation_operation === 'join' ? ["", ""] : t.source_column,
 				target_column: targetColumns,
 				transformation_operation: t.transformation_operation,
-				transformation_operator: t.transformation_operator,
+				transformation_operator: transformationOperatorToSend,
 				transformation_order: t.transformation_order,
 				params: {}
 			};
@@ -937,14 +964,16 @@ export const TransformationDrawer = ({
 		}
 	}, []);
 
-	// Utility to append a column to a dataframe in the local dataframeColumns state
-	const appendColumnToDataframe = useCallback((dataframeId, columnName) => {
+	const appendColumnToDataframe = useCallback((dataframeId, columnName,datatype) => {
 		setDataframeColumns(prev => {
 			const prevCols = prev[dataframeId] || [];
-			if (!prevCols.includes(columnName)) {
+			const columnExists = prevCols.some(col =>
+				(typeof col === "object" ? col.name : col) === columnName
+				);
+			if (!columnExists) {
 				return {
 					...prev,
-					[dataframeId]: [...prevCols, columnName]
+					[dataframeId]: [...prevCols, { name: columnName, datatype }]
 				};
 			}
 			return prev;
@@ -952,8 +981,8 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic") => {
-		// For arithmetic, always add to source dataframe
 		const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
+		const datatype = operationType === "string" ? "VARCHAR" : "NUMBER";
 		if (window.allNodes && Array.isArray(window.allNodes)) {
 			const reactNode = window.allNodes.find(n =>
 				(n.data?.alias === actualDfId) || (n.id === actualDfId)
@@ -962,15 +991,20 @@ export const TransformationDrawer = ({
 				const newCols = Array.isArray(reactNode.data.columns)
 					? [...reactNode.data.columns]
 					: [];
-				if (!newCols.includes(columnName)) {
-					newCols.push(columnName);
+				const columnExists = newCols.some(col =>
+						(typeof col === "object" ? col.name : col) === columnName
+					);
+					if (!columnExists) {
+					newCols.push({ name: columnName, datatype });
 					reactNode.data.onDataChange({ columns: newCols });
 					window.dispatchEvent(new Event("tantor-columns-updated"));
 				}
+				console.log("$$$$$$ new cols are e=====>",newCols)
 			}
 		}
-		appendColumnToDataframe(actualDfId, columnName);
+		appendColumnToDataframe(actualDfId, columnName,datatype);
 	}, [appendColumnToDataframe]);
+
 
 	if (!isOpen) return null;
 

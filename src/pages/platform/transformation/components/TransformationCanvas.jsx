@@ -443,6 +443,8 @@ const handleCancel = useCallback(() => {
   useEffect(() => {
     window.deleteNode = onNodeDelete;
     window.openTransformationDrawer = openTransformationDrawer;
+    window.allNodes = nodes;
+    window.allEdges = edges;
 
     return () => {
       window.deleteNode = undefined;
@@ -450,7 +452,7 @@ const handleCancel = useCallback(() => {
       window.allNodes = undefined;
       window.allEdges = undefined;
     };
-  }, [onNodeDelete, openTransformationDrawer]);
+  }, [onNodeDelete, openTransformationDrawer, nodes, edges]);
 
   const [arthDrawerProps, setArthDrawerProps] = useState({});
   useEffect(() => {

@@ -38,11 +38,74 @@ function LineItemsContent() {
 
   // COMPONENTS
   const LineItemsHtmlComponent = () => {
+    const containerRef = useRef(null);
+    const contentRef = useRef(null);
+  
+    useEffect(() => {
+      const adjustScale = () => {
+        if (containerRef.current && contentRef.current) {
+          const container = containerRef.current;
+          const content = contentRef.current;
+          
+          // Reset styles to get accurate measurements
+          content.style.transform = 'none';
+          content.style.width = '';
+  
+          // Get dimensions
+          const containerWidth = container.clientWidth;
+          const contentWidth = content.scrollWidth;
+          
+          // Calculate scale to fit width exactly
+          const scale = containerWidth / contentWidth;
+          
+          // Apply scaling
+          content.style.transform = `scale(${scale})`;
+          content.style.transformOrigin = 'top left';
+          
+          // Calculate new content height after scaling
+          const scaledHeight = content.scrollHeight * scale;
+          
+          // Set container height to match scaled content
+          container.style.height = `${scaledHeight}px`;
+        }
+      };
+  
+      // Handle initial render and HTML changes
+      const observer = new MutationObserver(adjustScale);
+      if (contentRef.current) {
+        observer.observe(contentRef.current, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+      }
+  
+      // Use ResizeObserver for container
+      const resizeObserver = new ResizeObserver(adjustScale);
+      if (containerRef.current) {
+        resizeObserver.observe(containerRef.current);
+      }
+  
+      // Initial adjustment
+      adjustScale();
+  
+      return () => {
+        observer.disconnect();
+        resizeObserver.disconnect();
+      };
+    }, [lineItemsHtml]);
+  
     return (
-      <div
-        ref={contentRef}
-        dangerouslySetInnerHTML={{ __html: lineItemsHtml }}
-      />
+      <div 
+        ref={containerRef}
+        className="w-full overflow-x-hidden overflow-y-auto"
+        style={{ minHeight: '100vh' }}
+      >
+        <div
+          ref={contentRef}
+          dangerouslySetInnerHTML={{ __html: lineItemsHtml }}
+        />
+      </div>
     );
   };
   
@@ -76,7 +139,7 @@ function LineItemsContent() {
     reportName: location.state?.reportName,
     reportType: location.state?.reportType,
     reportDesc: location.state?.reportDesc,
-    mode: location.state?.mode || "CREATE",
+    // mode: location.state?.mode || "CREATE",
   };
 
   return (

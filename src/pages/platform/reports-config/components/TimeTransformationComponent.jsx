@@ -280,6 +280,7 @@ const TimeTransformationComponent = ({
                     <option value="days">Days</option>
                     <option value="months">Months</option>
                     <option value="years">Years</option>
+                    {dateType === "historicDate" && (<option value="pfy">Previous Financial Year</option>)}
                   </select>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import axios from "axios";
 import React from "react";
-import { Pencil, Trash2, Play, Pause, Eye } from "lucide-react";
+import { Pencil, Trash2, Play, Pause, Eye, EyeIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import { deleteCDCConnectors } from "../hooks/platform/cdc";
 export const getActionConfigurations = ({ token, project, hostnameV2, navigate }) => {
@@ -90,6 +90,20 @@ export const getActionConfigurations = ({ token, project, hostnameV2, navigate }
         label: "Delete",
         icon: React.createElement(Trash2, { size: 16 }),
         onClick: (row) => console.log("Delete Migration", row),
+      },
+    ],
+    rules: [
+      // {
+      //   label: "View",
+      //   icon: <EyeIcon size={16} />,
+      //   onClick: (row) => handleRuleView(row.id),
+      //   show: (row) => row?.status?.toLowerCase() !== "disabled",
+      // },
+      {
+        label: "Edit",
+        icon: <Pencil size={16} />,
+        onClick: (row) => navigate("/config/rule/edit-rule", {state: {mode: "EDIT", ruleData: {...row}}}),
+        show: (row) => row?.status?.toLowerCase() !== "disabled"
       },
     ],
   };
