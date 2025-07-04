@@ -41,6 +41,7 @@ export const TargetNode = ({ id, data }) => {
 
   const [columnMapping, setColumnMapping] = useState(data.columnMapping || {});
   const [targetMapping, setTargetMapping] = useState(data.targetMapping || {});
+  const [mappingConfirmed, setMappingConfirmed] = useState(false);
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -263,6 +264,7 @@ export const TargetNode = ({ id, data }) => {
     return Array.from(new Set(allCols.filter(Boolean)));
   };
 
+  // Helper to get all valid target columns
   const getAllTargetColumns = () => {
     let targetCols = [];
     if (Array.isArray(columns) && columns.length > 0) {
@@ -276,18 +278,12 @@ export const TargetNode = ({ id, data }) => {
     return targetCols;
   };
 
+  // Always keep targetMapping in sync with valid columns
   useEffect(() => {
-    if (data.columnMapping && JSON.stringify(data.columnMapping) !== JSON.stringify(columnMapping)) {
-      setColumnMapping(data.columnMapping);
-    }
-  }, [data.columnMapping]);
-
-  // Update targetMapping to always have all target columns as keys
-  useEffect(() => {
-    const targetCols = getAllTargetColumns();
+    const validCols = getAllTargetColumns();
     setTargetMapping(prev => {
       const updated = {};
-      targetCols.forEach(col => {
+      validCols.forEach(col => {
         updated[col] = prev && Object.prototype.hasOwnProperty.call(prev, col) ? prev[col] : "";
       });
       return updated;
@@ -295,10 +291,47 @@ export const TargetNode = ({ id, data }) => {
     // eslint-disable-next-line
   }, [columns, tables, selectedTable, data.transformations]);
 
+  // When targetMapping changes, update node data
+  useEffect(() => {
+    if (typeof data.onDataChange === "function") {
+      data.onDataChange({ targetMapping });
+    }
+    // eslint-disable-next-line
+  }, [targetMapping]);
+
+  // When data.targetMapping changes from outside, sync local state
+  useEffect(() => {
+    if (data.targetMapping && JSON.stringify(data.targetMapping) !== JSON.stringify(targetMapping)) {
+      setTargetMapping(data.targetMapping);
+    }
+  }, [data.targetMapping]);
+
   const sourceColumnOptions = getAllSourceColumns().map(col => ({
     value: col,
     label: col
   }));
+
+  // Setter for mapping, always updates both local state and node data
+  const handleSetTargetMapping = useCallback((newMapping) => {
+    if (JSON.stringify(newMapping) !== JSON.stringify(targetMapping)) {
+      setTargetMapping(newMapping);
+      if (typeof data.onDataChange === "function") {
+        data.onDataChange({ targetMapping: newMapping });
+      }
+    }
+  }, [data.onDataChange, targetMapping]);
+
+  const handleSlideClick = () => {
+    if (window.openTargetMappingDrawer) {
+      // Pass the latest mapping and getter/setter functions to the drawer
+      window.openTargetMappingDrawer(id, {
+        getAllTargetColumns,
+        targetMapping, // Current mapping state
+        setTargetMapping: handleSetTargetMapping, // Stabilized setter
+        sourceColumnOptions,
+      });
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[280px] max-w-[320px] relative group">
@@ -606,39 +639,17 @@ export const TargetNode = ({ id, data }) => {
 
         {selectedTable && data.connectedSources > 0 && (
           <div className="mt-4">
-            <div className="text-xs font-semibold text-black mb-1">Target Mapping</div>
-            <div
-              className="border border-gray-300 rounded p-2"
-              style={{ maxHeight: "220px", overflowY: "auto", minHeight: "80px" }}
+            <button
+              className={`mt-2 w-full ${mappingConfirmed ? 'bg-green-600' : 'bg-[#8E77BB]'} text-white text-xs font-semibold py-1 px-2 rounded hover:bg-${mappingConfirmed ? 'green-700' : '[#7a6bb0]'} transition-colors`}
+              onClick={handleSlideClick}
             >
-              <div className="grid grid-cols-2 gap-2 text-black font-semibold text-xs mb-2">
-                <div>Target Columns</div>
-                <div>Source Columns</div>
+              {mappingConfirmed ? 'Target Mapping (Confirmed)' : 'Target Mapping'}
+            </button>
+            {mappingConfirmed && (
+              <div className="mt-1 text-[10px] text-green-600">
+                Target mapping has been confirmed
               </div>
-              <div>
-                {getAllTargetColumns().map((targetCol) => (
-                  <div key={targetCol} className="grid grid-cols-2 gap-2 items-center mb-2">
-                    <div className="text-xs text-gray-800">{targetCol}</div>
-                    <select
-                      className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-                      value={targetMapping[targetCol] || ""}
-                      onChange={e => {
-                        const value = e.target.value;
-                        setTargetMapping(prev => ({
-                          ...prev,
-                          [targetCol]: value
-                        }));
-                      }}
-                    >
-                      <option value="">-- Select source column --</option>
-                      {sourceColumnOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         )}
 

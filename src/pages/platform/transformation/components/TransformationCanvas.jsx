@@ -19,7 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { TransformationProvider, useTransformation, useTrackConnections } from "./TransformationContext";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
-
+import  TargetMappingDrawer  from "./TargetDrawer/TargetMappingDrawer"
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
@@ -58,6 +58,8 @@ function TransformationCanvasContent() {
   const [activeTransformationNodeId, setActiveTransformationNodeId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const { token, decodedToken, project } = useAuth();
+  const [arthDrawerOpen, setArthDrawerOpen] = useState(false);
+  const [arthDrawerNodeId, setArthDrawerNodeId] = useState(null);
 
   useTrackConnections(nodes, edges);
 
@@ -332,6 +334,25 @@ function TransformationCanvasContent() {
         return;
       }
 
+      const targetNodes = nodes.filter(n => n.type === 'target');
+      for (const targetNode of targetNodes) {
+        if (!targetNode.data?.connectedSources) continue;
+
+        const mapping = targetNode.data?.targetMapping || {};
+        const hasAnyMapping = Object.values(mapping).some(val => val && val.trim() !== "");
+        if (!hasAnyMapping) {
+          const confirmed = window.localStorage.getItem(`targetMappingConfirmed_${targetNode.id}`) === "true";
+          if (!confirmed) {
+            toast.error(`Please confirm target mapping for '${targetNode.data.alias || 'target node'}' before saving.`, {
+              duration: 3000,
+              position: "top-center",
+            });
+            setIsSaving(false);
+            return;
+          }
+        }
+      }
+
       const sourceConnectionIds = [];
       const sourceTables = [];
       Object.values(transformationData.source).forEach(source => {
@@ -451,6 +472,28 @@ const handleCancel = useCallback(() => {
       window.allEdges = undefined;
     };
   }, [onNodeDelete, openTransformationDrawer, nodes, edges]);
+
+  const [arthDrawerProps, setArthDrawerProps] = useState({});
+
+  useEffect(() => {
+    window.openTargetMappingDrawer = (nodeId, props = {}) => {
+      setArthDrawerNodeId(nodeId);
+      // Always use the latest props passed from the target node
+      setArthDrawerProps({...props});
+      setArthDrawerOpen(true);
+    };
+
+    window.closeTargetMappingDrawer = () => {
+      setArthDrawerOpen(false);
+      setArthDrawerNodeId(null);
+      setArthDrawerProps({});
+    };
+
+    return () => {
+      window.openTargetMappingDrawer = null;
+      window.closeTargetMappingDrawer = null;
+    };
+  }, []);
 
   const getActiveTransformationNode = useCallback(() => {
     if (!activeTransformationNodeId) return null;
@@ -781,6 +824,13 @@ const handleCancel = useCallback(() => {
         onAddNewTargetColumn={handleAddNewTargetColumn}
         onApplyTransformations={handleTransformationApply}
       />
+      {arthDrawerOpen && (
+        <TargetMappingDrawer
+          nodeId={arthDrawerNodeId}
+          onClose={() => setArthDrawerOpen(false)}
+          {...arthDrawerProps}
+        />
+      )}
     </div>
   );
 }

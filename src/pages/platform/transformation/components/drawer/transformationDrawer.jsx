@@ -30,10 +30,10 @@ const transformationOperations = [
 	// 	id: "constantcopy",
 	// 	name: "Constant Copy"
 	// },
-	// {
-	// 	id: "rename",
-	// 	name: "Rename"
-	// },
+	{
+		id: "rename",
+		name: "Rename"
+	},
 	{
 		id: "join",
 		name: "Join"
@@ -46,14 +46,14 @@ const transformationOperations = [
 	// 	id: "date",
 	// 	name: "Date"
 	// },
-	// {
-	// 	id: "restrictcolumns",
-	// 	name: "Restrict Columns"
-	// },
-	// {
-	// 	id: "typecast",
-	// 	name: "Typecast"
-	// },
+	{
+		id: "restrictcolumns",
+		name: "Restrict Columns"
+	},
+	{
+		id: "typecast",
+		name: "Typecast"
+	},
 	{
 		id: "sorting",
 		name: "Sort"
@@ -226,11 +226,15 @@ const TransformationItem = memo(({
       case 'restrictcolumns':
         return <RestrictColumnsOperationFields
           {...commonProps}
+          handleOperatorChange={handleOperatorChange}
         />;
       case 'typecast':
-        return <TypecastOperationFields
-          {...commonProps}
-        />;
+  return <TypecastOperationFields
+    {...commonProps}
+    onAddNewTargetColumn={(colName) =>
+      onAddNewTargetColumn(colName, transformation.source_dataframe, "typecast", transformation.params.target_datatype || "string")
+    }
+  />;
       case 'sorting':
         return <SortOperationFields
           {...commonProps}
@@ -980,9 +984,12 @@ export const TransformationDrawer = ({
 		});
 	}, []);
 
-	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic") => {
+	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic",givendatatype = "NUMBER") => {
+		console.log("operation type is ====>",operationType)
+		console.log("given datatype is  =====>",givendatatype)
 		const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
-		const datatype = operationType === "string" ? "VARCHAR" : "NUMBER";
+		const datatype = operationType === "typecast" ? givendatatype : (operationType === "string" ? "VARCHAR" : "NUMBER");
+		console.log("column name is ======>",columnName)
 		if (window.allNodes && Array.isArray(window.allNodes)) {
 			const reactNode = window.allNodes.find(n =>
 				(n.data?.alias === actualDfId) || (n.id === actualDfId)

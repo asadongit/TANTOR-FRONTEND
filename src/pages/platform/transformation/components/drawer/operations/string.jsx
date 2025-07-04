@@ -9,6 +9,7 @@ const STRING_OPERATIONS = [
   { id: "trim", name: "Trim" },
   { id: "ltrim", name: "Left Trim" },
   { id: "rtrim", name: "Right Trim" },
+  { id: "concat", name: "Concat" }, // Added concat
 ];
 
 const isStringType = (datatype) => {
@@ -21,6 +22,11 @@ export const StringOperationParameters = ({ operator, params, onChange }) => {
   const handleNumberChange = (paramName, value) => {
     const parsedValue = value.trim() === "" ? "" : parseInt(value, 10);
     onChange(paramName, isNaN(parsedValue) ? "" : parsedValue);
+  };
+
+  const handleMiddleCharacterChange = (value) => {
+    if (value.includes("/") || value.includes('"')) return;
+    onChange("middle_character", value);
   };
 
   switch (operator) {
@@ -72,6 +78,25 @@ export const StringOperationParameters = ({ operator, params, onChange }) => {
                 value={params.no_of_character ?? ""}
                 onChange={(e) => handleNumberChange("no_of_character", e.target.value)}
               />
+            </div>
+          </div>
+        </div>
+      );
+    case 'concat':
+      return (
+        <div className="space-y-3 mt-3">
+          <div className="flex gap-4 items-end">
+            <div className="flex-1">
+              <label className="block text-xs text-gray-700 mb-1">Middle Character</label>
+              <input
+                type="text"
+                maxLength={1}
+                className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                value={params.middle_character ?? ""}
+                onChange={(e) => handleMiddleCharacterChange(e.target.value)}
+                placeholder="Enter character"
+              />
+              <div className="text-xs text-gray-400 mt-1">Cannot use / or "</div>
             </div>
           </div>
         </div>
@@ -133,7 +158,16 @@ export const StringOperationFields = ({
     ? { value: transformation.target_column[0], label: transformation.target_column[0] }
     : null;
 
-  const selectedSourceOption = transformation.source_column && transformation.source_column.length > 0
+
+
+  const isConcat = transformation.transformation_operator === "concat";
+
+  const selectedSourceOption = isConcat
+    ? (transformation.source_column || []).map(col => ({
+        value: col,
+        label: col,
+      }))
+    : transformation.source_column && transformation.source_column.length > 0
     ? { value: transformation.source_column[0], label: transformation.source_column[0] }
     : null;
 
@@ -156,8 +190,14 @@ export const StringOperationFields = ({
   }, [showAddModal]);
 
   const handleSourceChange = (selected) => {
-    const selectedColumn = selected ? selected.value : null;
-    handleSelectAllColumns(transformation.id, "source", selectedColumn ? [selectedColumn] : [], true);
+    if (isConcat) {
+      // Multi-select: selected is array
+      const selectedColumns = selected ? selected.map(opt => opt.value) : [];
+      handleSelectAllColumns(transformation.id, "source", selectedColumns, true);
+    } else {
+      const selectedColumn = selected ? selected.value : null;
+      handleSelectAllColumns(transformation.id, "source", selectedColumn ? [selectedColumn] : [], true);
+    }
   };
 
   const handleTargetChange = (selected, { action }) => {
@@ -388,6 +428,7 @@ export const StringOperationFields = ({
             className="text-sm"
             styles={customStyles}
             noOptionsMessage={() => "No string columns available"}
+            isMulti={isConcat}
             theme={(theme) => ({
               ...theme,
               colors: {
@@ -474,6 +515,10 @@ export const getStringParams = (transformation) => {
       return {
         start_position: transformation.params.start_position,
         no_of_character: transformation.params.no_of_character,
+      };
+    case "concat":
+      return {
+        middle_character: transformation.params.middle_character,
       };
     case "trim":
     case "ltrim":

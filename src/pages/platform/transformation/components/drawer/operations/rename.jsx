@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import Select from "react-select";
 import { ChevronDown, X } from "lucide-react";
 
 export const RenameOperationFields = ({
@@ -13,7 +14,17 @@ export const RenameOperationFields = ({
 }) => {
     const sourceDropdownKey = `${transformation.id}-source`;
     const isSourceDropdownOpen = openDropdowns[sourceDropdownKey] || false;
+
+    const newColumnNamesRef = useRef({});
     const [newColumnNames, setNewColumnNames] = useState({});
+    const [selectedSourceCol, setSelectedSourceCol] = useState("");
+
+    const sourceColOptions = Array.isArray(sourceCols)
+        ? sourceCols.map(col => {
+            const colName = typeof col === "object" && col !== null ? col.name : col;
+            return { value: colName, label: colName };
+        })
+        : [];
 
     useEffect(() => {
         const namesMap = {};
@@ -23,6 +34,16 @@ export const RenameOperationFields = ({
         });
         setNewColumnNames(namesMap);
     }, [transformation.source_column, transformation.target_column]);
+
+    useEffect(() => {
+        if (
+            transformation.source_column.length === 0
+        ) {
+            setSelectedSourceCol("");
+        } else if (!transformation.source_column.includes(selectedSourceCol)) {
+            setSelectedSourceCol(transformation.source_column[0]);
+        }
+    }, [transformation.source_column]);
 
     const handleNameChange = (sourceCol, newName) => {
         setNewColumnNames(prev => {
@@ -53,118 +74,139 @@ export const RenameOperationFields = ({
             delete updated[sourceCol];
             return updated;
         });
+        if (selectedSourceCol === sourceCol) setSelectedSourceCol("");
     };
 
-    useEffect(() => {
-        if (transformation.source_column.length > 0) {
-            const targetCols = transformation.source_column.map(col =>
-                newColumnNames[col] && newColumnNames[col].trim() !== "" ?
-                newColumnNames[col].trim() : col
-            );
-
-            const needsUpdate = targetCols.length !== transformation.target_column.length ||
-                targetCols.some((col, idx) => col !== transformation.target_column[idx]);
-
-            if (needsUpdate) {
-                updateTargetColumn(transformation.id, targetCols);
+    // When dropdown changes, update selectedSourceCol and source_column
+    const handleDropdownSelect = (selected) => {
+        if (selected && selected.value) {
+            if (!transformation.source_column.includes(selected.value)) {
+                handleSelectAllColumns(transformation.id, 'source', [selected.value], true);
             }
+            setSelectedSourceCol(selected.value);
+        } else {
+            setSelectedSourceCol("");
+            handleSelectAllColumns(transformation.id, 'source', [], true);
         }
-    }, [transformation.source_column]);
+    };
+
+    // Remove selected source column
+    const handleRemoveSelected = () => {
+        handleRemoveColumn(selectedSourceCol);
+    };
+
+    // For react-select value
+    const selectedOption = selectedSourceCol
+        ? { value: selectedSourceCol, label: selectedSourceCol }
+        : null;
+
+    // Custom styles (from arithmatic)
+    const customStyles = {
+        control: (provided) => ({
+            ...provided,
+            minHeight: '38px',
+            border: '1px solid #e2e8f0',
+            fontSize: '0.875rem',
+            backgroundColor: 'white',
+            boxShadow: 'none'
+        }),
+        valueContainer: (provided) => ({
+            ...provided,
+            padding: '0 6px'
+        }),
+        input: (provided) => ({
+            ...provided,
+            margin: '0px',
+            color: '#111827'
+        }),
+        indicatorSeparator: () => ({
+            display: 'none'
+        }),
+        indicatorsContainer: (provided) => ({
+            ...provided,
+            height: '38px'
+        }),
+        placeholder: (provided) => ({
+            ...provided,
+            color: '#9ca3af',
+            fontSize: '0.875rem'
+        }),
+        menu: (provided) => ({
+            ...provided,
+            zIndex: 9999,
+            backgroundColor: 'white',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+        }),
+        option: (provided, state) => ({
+            ...provided,
+            backgroundColor: state.isSelected
+                ? '#8E77BB'
+                : state.isFocused
+                    ? '#f3f4f6'
+                    : 'white',
+            color: state.isSelected ? 'white' : '#111827',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            ':active': {
+                backgroundColor: state.isSelected ? '#8E77BB' : '#f3f4f6',
+            }
+        }),
+        noOptionsMessage: (provided) => ({
+            ...provided,
+            color: '#4b5563',
+            fontSize: '0.875rem'
+        }),
+        singleValue: (provided) => ({
+            ...provided,
+            color: '#111827'
+        }),
+    };
 
     return (
         <div>
-            <div className="mb-4">
-                <div className="relative" ref={el => dropdownRefs.current[sourceDropdownKey] = el}>
-                    <label className="text-xs text-gray-600 block mb-1">Source Columns</label>
-                    <button
-                        className="w-full p-2 text-black text-sm border border-gray-300 rounded bg-white flex justify-between items-center"
-                        onClick={() => toggleDropdown(transformation.id, 'source')}
-                    >
-                        {transformation.source_column.length === 0 ? (
-                            <span className="text-gray-400">Select columns to rename</span>
-                        ) : (
-                            <span className="truncate">
-                                {transformation.source_column.length} column(s) selected
-                            </span>
-                        )}
-                        <ChevronDown className={`w-4 h-4 transition-transform ${isSourceDropdownOpen ? 'transform rotate-180' : ''}`} />
-                    </button>
-
-                    {isSourceDropdownOpen && (
-                        <div className="absolute z-10 mt-1 w-full text-black bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                            <div className="p-2 border-b border-gray-200">
-                                <label className="flex items-center text-sm">
-                                    <input
-                                        type="checkbox"
-                                        className="mr-2"
-                                        checked={transformation.source_column.length === sourceCols.length && sourceCols.length > 0}
-                                        onChange={(e) => handleSelectAllColumns(transformation.id, 'source', sourceCols, e.target.checked)}
-                                    />
-                                    Select All
-                                </label>
-                            </div>
-                            <div className="py-1">
-                                {sourceCols.map((column, idx) => (
-                                    <label key={idx} className="flex items-center px-3 py-2 hover:bg-gray-100">
-                                        <input
-                                            type="checkbox"
-                                            className="mr-2"
-                                            checked={transformation.source_column.includes(column)}
-                                            onChange={(e) => handleColumnSelection(transformation.id, 'source', column, e.target.checked)}
-                                        />
-                                        <span className="text-sm">{column}</span>
-                                    </label>
-                                ))}
-                                {sourceCols.length === 0 && (
-                                    <div className="px-3 py-2 text-gray-500 text-sm">No columns available</div>
-                                )}
-                            </div>
+            <div className="mb-4 flex gap-4">
+                <div className="w-1/2">
+                    <label className="text-xs text-gray-600 block mb-1">Source Column</label>
+                    <Select
+                        options={sourceColOptions}
+                        value={selectedOption}
+                        onChange={handleDropdownSelect}
+                        placeholder="Select column to rename"
+                        className="text-sm"
+                        styles={customStyles}
+                        isClearable
+                        isMulti={false}
+                        noOptionsMessage={() => "No columns available"}
+                    />
+                </div>
+                <div className="w-1/2 flex items-end">
+                    {selectedSourceCol && (
+                        <div className="w-full relative">
+                            <label className="text-xs text-gray-600 block mb-1">Target Column</label>
+                            <input
+                                type="text"
+                                className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                                value={newColumnNames[selectedSourceCol] || ""}
+                                placeholder={selectedSourceCol}
+                                onChange={(e) => handleNameChange(selectedSourceCol, e.target.value)}
+                                onBlur={() => {
+                                    if (!newColumnNames[selectedSourceCol]) {
+                                        handleNameChange(selectedSourceCol, selectedSourceCol);
+                                    }
+                                }}
+                            />
+                            <button
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
+                                type="button"
+                                onClick={handleRemoveSelected}
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
                         </div>
                     )}
                 </div>
             </div>
 
-            {transformation.source_column.length > 0 && (
-                <div className="mt-4">
-                    <label className="block text-xs text-gray-600 mb-2">Column Mappings</label>
-                    <div className="space-y-2">
-                        {transformation.source_column.map((col, idx) => (
-                            <div key={col} className="flex items-center gap-2">
-                                <div className="flex-1 p-2 bg-gray-50 border border-gray-200 rounded text-sm">
-                                    {col}
-                                </div>
-                                <div className="flex-none">→</div>
-                                <div className="flex-1 relative">
-                                    <input
-                                        type="text"
-                                        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                                        value={newColumnNames[col] || ""}
-                                        placeholder={col}
-                                        onChange={(e) => handleNameChange(col, e.target.value)}
-                                        onBlur={() => {
-                                            if (!newColumnNames[col]) {
-                                                handleNameChange(col, col);
-                                            }
-                                        }}
-                                    />
-                                    <button
-                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
-                                        onClick={() => handleRemoveColumn(col)}
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-md">
-                        <p className="text-xs text-blue-800">
-                            Enter new names for columns or leave fields empty to keep original names.
-                        </p>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

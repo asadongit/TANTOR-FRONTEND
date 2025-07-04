@@ -10,6 +10,9 @@ export const DataTypeGroups = {
   ],
   boolean: [
     "bool", "boolean"
+  ],
+  float:[
+    "float","double","double precision","decimal"
   ]
 };
 
@@ -23,5 +26,11 @@ export function isStringType(type) {
   if (!type) return false;
   const t = type.toLowerCase();
   return DataTypeGroups.string.some(dt => t.includes(dt));
+}
+
+export function isFloatType(type) {
+  if (!type) return false;
+  const t = type.toLowerCase();
+  return DataTypeGroups.float.some(dt => t.includes(dt));
 }
 
