@@ -50,10 +50,10 @@ const transformationOperations = [
 		id: "restrictcolumns",
 		name: "Restrict Columns"
 	},
-	// {
-	// 	id: "typecast",
-	// 	name: "Typecast"
-	// },
+	{
+		id: "typecast",
+		name: "Typecast"
+	},
 	{
 		id: "sorting",
 		name: "Sort"
@@ -229,9 +229,12 @@ const TransformationItem = memo(({
           handleOperatorChange={handleOperatorChange}
         />;
       case 'typecast':
-        return <TypecastOperationFields
-          {...commonProps}
-        />;
+  return <TypecastOperationFields
+    {...commonProps}
+    onAddNewTargetColumn={(colName) =>
+      onAddNewTargetColumn(colName, transformation.source_dataframe, "typecast", transformation.params.target_datatype || "string")
+    }
+  />;
       case 'sorting':
         return <SortOperationFields
           {...commonProps}
@@ -981,9 +984,12 @@ export const TransformationDrawer = ({
 		});
 	}, []);
 
-	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic") => {
+	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic",givendatatype = "NUMBER") => {
+		console.log("operation type is ====>",operationType)
+		console.log("given datatype is  =====>",givendatatype)
 		const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
-		const datatype = operationType === "string" ? "VARCHAR" : "NUMBER";
+		const datatype = operationType === "typecast" ? givendatatype : (operationType === "string" ? "VARCHAR" : "NUMBER");
+		console.log("column name is ======>",columnName)
 		if (window.allNodes && Array.isArray(window.allNodes)) {
 			const reactNode = window.allNodes.find(n =>
 				(n.data?.alias === actualDfId) || (n.id === actualDfId)

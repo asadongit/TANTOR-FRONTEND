@@ -120,34 +120,72 @@ export const FilterParameters = ({ params, onChange, selectedColType, filterType
         noOptionsMessage={() => "No columns available"}
       />
     ) : (
-      <input
-        type={
-          isStringType(selectedColType) ? "text"
-          : isNumericType(selectedColType) ? "number"
-          : selectedColType === "date" ? "date"
-          : "text"
-        }
-        step={isNumericType(selectedColType) ? "1" : undefined}
-        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-        placeholder={
-          isStringType(selectedColType) ? "Enter filter value"
-          : isNumericType(selectedColType) ? "Enter integer value"
-          : "Enter filter value"
-        }
-        value={params.value || ""}
-        onChange={e => {
-          if (!filterType) return;
-          if (isNumericType(selectedColType)) {
-            const val = e.target.value;
-            if (val === "" || /^-?\d+$/.test(val)) {
-              onChange("value", val);
-            }
-          } else {
-            onChange("value", e.target.value);
+      <>
+        <input
+          type={
+            isStringType(selectedColType) ? "text"
+            : isNumericType(selectedColType) ? "number"
+            : selectedColType === "date" ? "date"
+            : selectedColType === "timestamp" ? "datetime-local"
+            : "text"
           }
-        }}
-        disabled={!filterType}
-      />
+          step={isNumericType(selectedColType) ? "1" : undefined}
+          className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+          placeholder={
+            isStringType(selectedColType) ? "Enter filter value"
+            : isNumericType(selectedColType) ? "Enter integer value"
+            : selectedColType === "date" ? "yyyy-mm-dd"
+            : selectedColType === "timestamp" ? "yyyy-mm-ddThh:mm"
+            : "Enter filter value"
+          }
+          value={
+            (selectedColType === "date" || selectedColType === "timestamp")
+              ? (params.value || "")
+              : (params.value || "")
+          }
+          onChange={e => {
+            if (!filterType) return;
+            if (isNumericType(selectedColType)) {
+              const val = e.target.value;
+              if (val === "" || /^-?\d+$/.test(val)) {
+                onChange("value", val);
+              }
+            } else if (selectedColType === "date") {
+              const val = e.target.value;
+              if (val === "" || /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                onChange("value", val);
+              }
+            } else if (selectedColType === "timestamp") {
+              const val = e.target.value;
+              // Accept yyyy-mm-ddThh:mm or empty
+              if (val === "" || /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(val)) {
+                onChange("value", val);
+              }
+            } else {
+              onChange("value", e.target.value);
+            }
+          }}
+          disabled={!filterType}
+          pattern={
+            selectedColType === "date"
+              ? "\\d{4}-\\d{2}-\\d{2}"
+              : selectedColType === "timestamp"
+              ? "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}"
+              : undefined
+          }
+          inputMode={
+            selectedColType === "date" || selectedColType === "timestamp"
+              ? "numeric"
+              : undefined
+          }
+        />
+        {/* {selectedColType === "date" && (
+          <div className="text-xs text-gray-400 mt-1">Format: yyyy-mm-dd</div>
+        )}
+        {selectedColType === "timestamp" && (
+          <div className="text-xs text-gray-400 mt-1">Format: yyyy-mm-ddThh:mm</div>
+        )} */}
+      </>
     )}
   </div>
 );
@@ -189,6 +227,7 @@ export const FilterOperationFields = ({
       const t = selectedColDatatype.toLowerCase();
       if (isStringType(t)) selectedColType = t;
       else if (isNumericType(t)) selectedColType = t;
+      else if (t.includes("timestamp")) selectedColType = "timestamp";
       else if (t.includes("date") || t.includes("time")) selectedColType = "date";
     }
   }

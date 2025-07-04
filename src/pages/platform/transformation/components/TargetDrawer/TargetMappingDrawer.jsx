@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 
 const TargetMappingDrawer = ({
     nodeId,
@@ -11,21 +11,88 @@ const TargetMappingDrawer = ({
     const [dropdownOpen, setDropdownOpen] = useState({});
     const [searchTerms, setSearchTerms] = useState({});
     const [globalSearch, setGlobalSearch] = useState("");
-    const [selectedLabels, setSelectedLabels] = useState({});
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [localMapping, setLocalMapping] = useState({ ...targetMapping });
 
-    const filteredTargetColumns = getAllTargetColumns().filter(col =>
-        col.toLowerCase().includes(globalSearch.toLowerCase())
+    const filteredTargetColumns = useMemo(
+        () => getAllTargetColumns().filter(col =>
+            col.toLowerCase().includes(globalSearch.toLowerCase())
+        ),
+        [getAllTargetColumns, globalSearch]
     );
+
+    useEffect(() => {
+        setLocalMapping({ ...targetMapping });
+    }, [targetMapping]);
+
+    const handleClearMapping = () => {
+        const cleared = {};
+        getAllTargetColumns().forEach(col => {
+            cleared[col] = "";
+        });
+        setLocalMapping(cleared);
+
+        window.localStorage.removeItem(`targetMappingConfirmed_${nodeId}`);
+    };
+
+    const handleConfirmMapping = () => {
+        const hasAnyMapping = Object.values(localMapping).some(val => val && val.trim() !== "");
+        if (!hasAnyMapping) {
+            setShowConfirmModal(true);
+            return;
+        }
+        finalizeMappingAndClose();
+    };
+
+    const finalizeMappingAndClose = () => {
+        setTargetMapping(localMapping);
+
+        window.localStorage.setItem(`targetMappingConfirmed_${nodeId}`, "true");
+
+        onClose();
+    };
+
+    const handleModalConfirm = () => {
+        finalizeMappingAndClose();
+        setShowConfirmModal(false);
+    };
+
+    const handleModalCancel = () => {
+        setShowConfirmModal(false);
+    };
+
+    const handleUpdateMapping = (targetCol, sourceCol) => {
+        setLocalMapping(prev => ({
+            ...prev,
+            [targetCol]: sourceCol
+        }));
+    };
 
     return (
         <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col border-l border-gray-200 transition-transform duration-300">
-            <button
-                onClick={onClose}
-                className="self-end m-3 text-3xl text-gray-500 hover:text-red-500 transition-colors focus:outline-none"
-                aria-label="Close"
-            >
-                ×
-            </button>
+            <div className="flex items-center justify-between m-3">
+                <button
+                    onClick={onClose}
+                    className="text-3xl text-gray-500 hover:text-red-500 transition-colors focus:outline-none"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={handleClearMapping}
+                        className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200"
+                    >
+                        Clear Mapping
+                    </button>
+                    <button
+                        onClick={handleConfirmMapping}
+                        className="px-3 py-1 text-xs bg-[#8E77BB] text-white rounded border border-[#8E77BB] hover:bg-[#7a6bb0]"
+                    >
+                        Confirm Mapping
+                    </button>
+                </div>
+            </div>
             <div className="flex-1 flex flex-col px-6 pb-6">
                 <div className="flex items-center justify-between gap-4 mb-4 mt-2">
                     <div className="text-base font-semibold text-[#8E77BB] tracking-wide">
@@ -58,7 +125,13 @@ const TargetMappingDrawer = ({
                             const filteredOptions = sourceColumnOptions.filter(opt =>
                                 opt.label.toLowerCase().includes(search.toLowerCase())
                             );
-                            const selectedLabel = selectedLabels[targetCol] || sourceColumnOptions.find(opt => opt.value === targetMapping[targetCol])?.label;
+                            // Always compute selectedLabel from latest local mapping
+                            const selectedLabel = (() => {
+                                const val = localMapping[targetCol];
+                                if (!val) return "";
+                                const found = sourceColumnOptions.find(opt => opt.value === val);
+                                return found ? found.label : "";
+                            })();
                             return (
                                 <div key={targetCol} className="flex flex-row items-center mb-4 gap-2">
                                     <div className="text-xs text-gray-800 break-words font-medium px-1 py-1 h-8 bg-gray-50 rounded border border-gray-100 shadow-sm min-w-0 flex-1">
@@ -75,7 +148,9 @@ const TargetMappingDrawer = ({
                                                 }))
                                             }
                                         >
-                                            <span className={targetMapping[targetCol] ? "" : "text-black"}>{selectedLabel}</span>
+                                            <span className={localMapping[targetCol] ? "" : "text-black"}>
+                                                {selectedLabel || "Select source column"}
+                                            </span>
                                             <span className="ml-auto pl-2 text-xs">&#9662;</span>
                                         </button>
                                         {open && (
@@ -97,39 +172,30 @@ const TargetMappingDrawer = ({
                                                     <div className="p-2 text-xs text-gray-400">No columns found</div>
                                                 )}
                                                 <div>
+                                                    {/* Empty option */}
                                                     <div
-                                                        className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#f3eaff] rounded ${!targetMapping[targetCol] ? "bg-gray-100" : ""}`}
+                                                        className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#f3eaff] rounded ${!localMapping[targetCol] ? "bg-gray-100" : ""}`}
                                                         onClick={() => {
-                                                            setTargetMapping(prev => ({
-                                                                ...prev,
-                                                                [targetCol]: ""
-                                                            }));
+                                                            handleUpdateMapping(targetCol, "");
                                                             setDropdownOpen(prev => ({
                                                                 ...prev,
                                                                 [targetCol]: false
                                                             }));
                                                         }}
                                                     >
+                                                        <span className="text-gray-400">No Mapping</span>
                                                     </div>
                                                     {filteredOptions.map(opt => (
                                                         <div
                                                             key={opt.value}
-                                                            className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#e9e3f7] rounded ${targetMapping[targetCol] === opt.value ? "bg-[#e9e3f7] font-semibold" : ""}`}
+                                                            className={`p-2 text-xs text-gray-700 cursor-pointer hover:bg-[#e9e3f7] rounded ${localMapping[targetCol] === opt.value ? "bg-[#e9e3f7] font-semibold" : ""}`}
                                                             onClick={() => {
-                                                                setTargetMapping(prev => ({
-                                                                    ...prev,
-                                                                    [targetCol]: opt.value
-                                                                }));
-                                                                setSelectedLabels(prev => ({
-                                                                    ...prev,
-                                                                    [targetCol]: opt.label
-                                                                }));
+                                                                handleUpdateMapping(targetCol, opt.value);
                                                                 setDropdownOpen(prev => ({
                                                                     ...prev,
                                                                     [targetCol]: false
                                                                 }));
                                                             }}
-                                                            
                                                         >
                                                             {opt.label}
                                                         </div>
@@ -144,6 +210,34 @@ const TargetMappingDrawer = ({
                     </div>
                 </div>
             </div>
+            {showConfirmModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+                    <div className="bg-white rounded shadow-lg p-6 max-w-xs w-full">
+                        <div className="text-base font-semibold mb-2 text-[#8E77BB]">Confirm Empty Mapping</div>
+                        <div className="text-sm text-gray-700 mb-4">
+                            {
+                                Object.values(localMapping).some(val => val && val.trim() !== "")
+                                    ? "You have selected some mappings."
+                                    : "No mappings are selected. Are you sure you want to confirm with empty mappings?"
+                            }
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200"
+                                onClick={handleModalCancel}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="px-3 py-1 text-xs bg-[#8E77BB] text-white rounded border border-[#8E77BB] hover:bg-[#7a6bb0]"
+                                onClick={handleModalConfirm}
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

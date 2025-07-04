@@ -335,21 +335,22 @@ function TransformationCanvasContent() {
       }
 
       const targetNodes = nodes.filter(n => n.type === 'target');
-      let hasAtLeastOneTargetMapping = false;
       for (const targetNode of targetNodes) {
+        if (!targetNode.data?.connectedSources) continue;
+
         const mapping = targetNode.data?.targetMapping || {};
-        if (Object.values(mapping).some(val => val && val.trim() !== "")) {
-          hasAtLeastOneTargetMapping = true;
-          break;
+        const hasAnyMapping = Object.values(mapping).some(val => val && val.trim() !== "");
+        if (!hasAnyMapping) {
+          const confirmed = window.localStorage.getItem(`targetMappingConfirmed_${targetNode.id}`) === "true";
+          if (!confirmed) {
+            toast.error(`Please confirm target mapping for '${targetNode.data.alias || 'target node'}' before saving.`, {
+              duration: 3000,
+              position: "top-center",
+            });
+            setIsSaving(false);
+            return;
+          }
         }
-      }
-      if (!hasAtLeastOneTargetMapping) {
-        toast.error("Please provide at least one target mapping before saving.", {
-          duration: 3000,
-          position: "top-center",
-        });
-        setIsSaving(false);
-        return;
       }
 
       const sourceConnectionIds = [];
@@ -473,17 +474,21 @@ const handleCancel = useCallback(() => {
   }, [onNodeDelete, openTransformationDrawer, nodes, edges]);
 
   const [arthDrawerProps, setArthDrawerProps] = useState({});
+
   useEffect(() => {
     window.openTargetMappingDrawer = (nodeId, props = {}) => {
       setArthDrawerNodeId(nodeId);
-      setArthDrawerProps(props);
+      // Always use the latest props passed from the target node
+      setArthDrawerProps({...props});
       setArthDrawerOpen(true);
     };
+
     window.closeTargetMappingDrawer = () => {
       setArthDrawerOpen(false);
       setArthDrawerNodeId(null);
       setArthDrawerProps({});
     };
+
     return () => {
       window.openTargetMappingDrawer = null;
       window.closeTargetMappingDrawer = null;
