@@ -33,14 +33,23 @@ function getAvailableFilterColumns(sourceCols, allTransformations) {
   return cols;
 }
 
-export const FilterParameters = ({ params, onChange, selectedColType, filterType, columnOptions, sourceColumn }) => (
+export const FilterParameters = ({ params, onChange, selectedColType, filterType, columnOptions, sourceColumn, sourceColDatatype }) => (
   <div>
     <label className="block text-xs text-gray-700 mb-1">
       {filterType === "column" ? "Compare With Column" : "Value"}
     </label>
     {filterType === "column" ? (
       <Select
-        options={columnOptions.filter(opt => opt.value !== sourceColumn)}
+        options={
+          columnOptions.filter(opt =>
+            opt.value !== sourceColumn &&
+            (
+              !sourceColDatatype ||
+              !opt.datatype ||
+              (opt.datatype && sourceColDatatype && opt.datatype.toLowerCase() === sourceColDatatype.toLowerCase())
+            )
+          )
+        }
         value={columnOptions.find(opt => opt.value === params.value) || null}
         onChange={selected => onChange("value", selected ? selected.value : "")}
         placeholder="Select column"
@@ -168,15 +177,16 @@ export const FilterOperationFields = ({
   ) || null;
 
   let selectedColType = undefined;
+  let selectedColDatatype = undefined;
   if (selectedOption) {
-    selectedColType =
+    selectedColDatatype =
       selectedOption.datatype ||
       (availableColumns.find(
         c => (typeof c === "object" ? c.name : c) === selectedOption.value
       )?.datatype) ||
       undefined;
-    if (selectedColType) {
-      const t = selectedColType.toLowerCase();
+    if (selectedColDatatype) {
+      const t = selectedColDatatype.toLowerCase();
       if (isStringType(t)) selectedColType = t;
       else if (isNumericType(t)) selectedColType = t;
       else if (t.includes("date") || t.includes("time")) selectedColType = "date";
@@ -354,6 +364,7 @@ export const FilterOperationFields = ({
               filterType={filterType}
               columnOptions={columnOptions}
               sourceColumn={transformation.source_column && transformation.source_column[0]}
+              sourceColDatatype={selectedColDatatype}
             />
           </div>
         </div>
