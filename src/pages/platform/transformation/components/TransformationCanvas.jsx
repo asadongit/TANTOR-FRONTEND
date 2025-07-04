@@ -27,7 +27,7 @@ const nodeTypes = {
   target: TargetNode,
 };
 
-const hostname = import.meta.env.VITE_FAST_API;
+const hostname = window._env_?.VITE_FAST_API;
 
 let id = 0;
 const getId = () => `node_${id++}`;
@@ -441,6 +441,8 @@ const handleCancel = useCallback(() => {
   useEffect(() => {
     window.deleteNode = onNodeDelete;
     window.openTransformationDrawer = openTransformationDrawer;
+    window.allNodes = nodes;
+    window.allEdges = edges;
 
     return () => {
       window.deleteNode = undefined;
@@ -448,7 +450,7 @@ const handleCancel = useCallback(() => {
       window.allNodes = undefined;
       window.allEdges = undefined;
     };
-  }, [onNodeDelete, openTransformationDrawer]);
+  }, [onNodeDelete, openTransformationDrawer, nodes, edges]);
 
   const getActiveTransformationNode = useCallback(() => {
     if (!activeTransformationNodeId) return null;

@@ -46,7 +46,7 @@ export const TargetNode = ({ id, data }) => {
   const schemaDropdownRef = useRef(null);
   const tableDropdownRef = useRef(null);
 
-  const hostnamev1 = import.meta.env.VITE_FAST_API;
+  const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
   const { getAllSelectedSourceColumns } = useTransformation();
 
@@ -181,19 +181,25 @@ export const TargetNode = ({ id, data }) => {
   ]);
 
   const getNextAlias = useCallback(() => {
-    if (window.allNodes) {
-      const targetNodes = window.allNodes.filter(n => n.type === "target");
-      let max = 0;
-      targetNodes.forEach(n => {
-        const match = (n.data?.alias || "").match(/^unnamed_target_(\d+)$/);
-        if (match) {
-          max = Math.max(max, parseInt(match[1], 10));
+    const targetNodesFromWindow = window.allNodes ?
+      window.allNodes.filter(n => n.type === "target") : [];
+
+    let maxNumber = 0;
+
+    targetNodesFromWindow.forEach(node => {
+      if (node.id !== id) {
+        const aliasMatch = (node.data?.alias || "").match(/^unnamed_target_(\d+)$/);
+        if (aliasMatch && aliasMatch[1]) {
+          const num = parseInt(aliasMatch[1], 10);
+          if (!isNaN(num) && num > maxNumber) {
+            maxNumber = num;
+          }
         }
-      });
-      return `unnamed_target_${max + 1}`;
-    }
-    return "unnamed_target_1";
-  }, []);
+      }
+    });
+
+    return `unnamed_target_${maxNumber + 1}`;
+  }, [id]);
 
   useEffect(() => {
     if (selectedTable && !alias) {

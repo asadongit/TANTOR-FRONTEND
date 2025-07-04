@@ -36,7 +36,7 @@ function EditGroup({ showModal, setShowModal, groupData, onGroupEdited }) {
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/editgroup`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/editgroup`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

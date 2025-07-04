@@ -347,7 +347,7 @@ useEffect(() => {
   const [columnsByTable, setColumnsByTable] = useState({});
 
   const fetchConnections = () => {
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/connections`,
+    fetch(`${window._env_?.VITE_FAST_API}/rules/addrule/connections`,
       {
         method: 'GET',
         headers: {
@@ -376,7 +376,7 @@ useEffect(() => {
 
   const fetchSchemas = (connectionName) => {
     if (!connectionName || schemasByConnection[connectionName]) return;
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/schema/${encodeURIComponent(connectionName)}`,
+    fetch(`${window._env_?.VITE_FAST_API}/rules/addrule/schema/${encodeURIComponent(connectionName)}`,
   {
       method: 'GET',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
@@ -393,7 +393,7 @@ useEffect(() => {
 
   const fetchTables = (connectionName, schemaName) => {
     if (!connectionName || !schemaName || tablesBySchema[`${connectionName}__${schemaName}`]) return;
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/tables`,
+    fetch(`${window._env_?.VITE_FAST_API}/rules/addrule/tables`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -416,7 +416,7 @@ useEffect(() => {
     const key = `${schemaName}__${tableNameOnly}`;
     if (columnsByTable[key]) return;
 
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/columns`, {
+    fetch(`${window._env_?.VITE_FAST_API}/rules/addrule/columns`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ connection_name: connectionName, table_schema: schemaName, table_name: tableNameOnly }),
@@ -771,7 +771,7 @@ useEffect(() => {
       setValidationStatus(prev => ({ ...prev, [connKey]: 'pending' }));
 
       try {
-        const res = await fetch(`${import.meta.env.VITE_FAST_API}/rules/executerule`, {
+        const res = await fetch(`${window._env_?.VITE_FAST_API}/rules/executerule`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

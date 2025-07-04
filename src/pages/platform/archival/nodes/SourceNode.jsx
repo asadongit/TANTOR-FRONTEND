@@ -16,8 +16,8 @@ const SkeletonLoader = () => (
 
 export function SourceNode({ id, data }) {
   const { onDataChange } = data;
-  const hostnamev1 = import.meta.env.VITE_FAST_API;
-  const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
+  const hostnamev1 = window._env_?.VITE_FAST_API;
+  const hostnamev2 = window._env_?.VITE_FAST_API_V2;
   const { token, decodedToken } = useAuth();
   const [connections, setConnections] = useState([]);
   const [schemaCount, setSchemacount] = useState([]);

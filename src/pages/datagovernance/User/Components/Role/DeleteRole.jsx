@@ -27,7 +27,7 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API}/auth/deleterole/${encodeURIComponent(roleName)}`,
+        `${window._env_?.VITE_FAST_API}/auth/deleterole/${encodeURIComponent(roleName)}`,
         {
           method: "PATCH",
           headers: {

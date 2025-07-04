@@ -28,7 +28,7 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/groupsdropdown`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/groupsdropdown`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -62,7 +62,7 @@ function AddSubgroup({ showModal, setShowModal, onSubgroupAdded }) {
     setError("");
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/addsubgroup`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/addsubgroup`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

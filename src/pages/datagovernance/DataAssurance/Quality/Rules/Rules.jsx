@@ -79,7 +79,7 @@ const Rules = () => {
   ];
 
   const fetchCounts = async () => {
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/counts`)
+    fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/counts`)
       .then(response => response.json())
       .then(data => {
         console.log(data);
@@ -92,7 +92,7 @@ const Rules = () => {
 
   const fetchTableData = async () => {
     setIsLoading(true);
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/table`)
+    fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/table`)
       .then(response => response.json())
       .then(data => {
         console.log(data.data_rules);
@@ -107,7 +107,7 @@ const Rules = () => {
 
   const fetchRuleDetails = async (ids) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/details`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/details`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +130,7 @@ const Rules = () => {
 
   const fetchRuleRunResults = async (ids) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/rulerun`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/rulerun`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -260,7 +260,7 @@ const Rules = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/refresh`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -334,7 +334,7 @@ const Rules = () => {
   const performDelete = async (idsToDelete) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/deleterule`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/deleterule`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -369,7 +369,7 @@ const Rules = () => {
   const handleActionClick = async (action, item, index) => {
     if (action === 'Edit') {
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/details`, {
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/details`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -390,7 +390,7 @@ const Rules = () => {
       }
     } else if (action === 'Delete') {
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/deleterule`, {
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/deleterule`, {
           method: 'PATCH',
           headers: {
             'accept': 'application/json',

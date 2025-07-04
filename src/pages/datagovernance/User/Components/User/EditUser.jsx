@@ -77,7 +77,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   const fetchPolicyDetails = async (policyIds) => {
     try {
       const policies = await Promise.all(policyIds.map(async (id) => {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/listpolicy/${id}`, {
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/listpolicy/${id}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -232,7 +232,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         datapolicy: formData.datapolicy
       };
 
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/users/${userData.id}`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users/${userData.id}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

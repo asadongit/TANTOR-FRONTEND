@@ -37,7 +37,7 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
     setError("");
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/editsubgroup`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/editsubgroup`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

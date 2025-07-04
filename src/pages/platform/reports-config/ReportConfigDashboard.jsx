@@ -128,12 +128,12 @@ const ReportConfigDashboard = () => {
         }
          else if ((reportType || "").toUpperCase() === "GRID" || (reportType || "").toUpperCase() === "HYBRID") {
           console.log("REPORT TYPE ==> ", reportType);
-            const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+            const reportFolder = window._env_?.VITE_BIRT_REPORT_FOLDER;
             const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
             window.open(
-              `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-                import.meta.env.VITE_BIRT_EXPORT_FORMAT
+              `${window._env_?.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+                window._env_?.VITE_BIRT_EXPORT_FORMAT
               }`,
               "_blank"
             );
@@ -147,24 +147,24 @@ const ReportConfigDashboard = () => {
 
         // ------------- BIRT CODE START -----------------
         // if ((reportType || "").toUpperCase() === "LIST") {
-        //     const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+        //     const reportFolder = window._env_?.VITE_BIRT_REPORT_FOLDER;
         //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
         //     window.open(
-        //       `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-        //         import.meta.env.VITE_BIRT_EXPORT_FORMAT
+        //       `${window._env_?.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+        //         window._env_?.VITE_BIRT_EXPORT_FORMAT
         //       }`,
         //       "_blank"
         //     );
         //     return;
         //   }
         //   else if ((reportType || "").toUpperCase() === "GRID") {
-        //     const reportFolder = import.meta.env.VITE_BIRT_REPORT_FOLDER;
+        //     const reportFolder = window._env_?.VITE_BIRT_REPORT_FOLDER;
         //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
         //     window.open(
-        //       `${import.meta.env.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-        //         import.meta.env.VITE_BIRT_EXPORT_FORMAT
+        //       `${window._env_?.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+        //         window._env_?.VITE_BIRT_EXPORT_FORMAT
         //       }`,
         //       "_blank"
         //     );
@@ -206,7 +206,7 @@ const ReportConfigDashboard = () => {
 
         // try {
         //   const redirectResponse = await fetch(
-        //     `${import.meta.env.VITE_BIRT_BACKEND_API
+        //     `${window._env_?.VITE_BIRT_BACKEND_API
         //     }/templates/generate?report-id=${reportId}&report-name=${reportFileName}&report-type=${reportType}`
         //   );
         //   if (!redirectResponse.ok)
@@ -215,8 +215,8 @@ const ReportConfigDashboard = () => {
         //   console.log("Redirect Response: ", redirectResponse);
         //   const redirectPath = await redirectResponse.text();
         //   window.open(
-        //     `${import.meta.env.VITE_BIRT_API
-        //     }/frameset?__report=${redirectPath}&__format=${import.meta.env.VITE_BIRT_EXPORT_FORMAT
+        //     `${window._env_?.VITE_BIRT_API
+        //     }/frameset?__report=${redirectPath}&__format=${window._env_?.VITE_BIRT_EXPORT_FORMAT
         //     }`,
         //     "_blank"
         //   );

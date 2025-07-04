@@ -36,7 +36,7 @@ export const SourceNode = ({ id, data }) => {
   const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
   const [alias, setAlias] = useState(data.alias || "");
 
-  const hostnamev1 = import.meta.env.VITE_FAST_API;
+  const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
   const { dispatch, ACTION_TYPES } = useTransformation();
 
@@ -160,7 +160,6 @@ export const SourceNode = ({ id, data }) => {
       alias: alias,
     });
 
-    // Update context with selected column names for this source node
     dispatch({
       type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
       payload: {
@@ -208,23 +207,27 @@ export const SourceNode = ({ id, data }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Helper to get next alias number
   const getNextAlias = useCallback(() => {
-    if (window.allNodes) {
-      const sourceNodes = window.allNodes.filter(n => n.type === "source");
-      let max = 0;
-      sourceNodes.forEach(n => {
-        const match = (n.data?.alias || "").match(/^unnamed_source_(\d+)$/);
-        if (match) {
-          max = Math.max(max, parseInt(match[1], 10));
-        }
-      });
-      return `unnamed_source_${max + 1}`;
-    }
-    return "unnamed_source_1";
-  }, []);
+    const sourceNodesFromWindow = window.allNodes ?
+      window.allNodes.filter(n => n.type === "source") : [];
 
-  // Set alias after table selection if not set
+    let maxNumber = 0;
+
+    sourceNodesFromWindow.forEach(node => {
+      if (node.id !== id) {
+        const aliasMatch = (node.data?.alias || "").match(/^unnamed_source_(\d+)$/);
+        if (aliasMatch && aliasMatch[1]) {
+          const num = parseInt(aliasMatch[1], 10);
+          if (!isNaN(num) && num > maxNumber) {
+            maxNumber = num;
+          }
+        }
+      }
+    });
+
+    return `unnamed_source_${maxNumber + 1}`;
+  }, [id]);
+
   useEffect(() => {
     if (selectedTable && !alias) {
       setAlias(getNextAlias());

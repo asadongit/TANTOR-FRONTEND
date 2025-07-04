@@ -142,7 +142,7 @@ function CreateRulesInner() {
       setLoading(true);
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_FAST_API}/rules/editrule/${ruleId}`,
+          `${window._env_?.VITE_FAST_API}/rules/editrule/${ruleId}`,
           {
             method: 'PATCH',
             headers: {
@@ -195,7 +195,7 @@ function CreateRulesInner() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/create`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

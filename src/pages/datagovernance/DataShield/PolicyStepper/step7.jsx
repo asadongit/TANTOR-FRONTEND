@@ -23,8 +23,8 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
 
         try {
             const url = isEditMode
-                ? `${import.meta.env.VITE_FAST_API}/editpolicy/${editPolicyId}`
-                : `${import.meta.env.VITE_FAST_API}/addpolicy`;
+                ? `${window._env_?.VITE_FAST_API}/editpolicy/${editPolicyId}`
+                : `${window._env_?.VITE_FAST_API}/addpolicy`;
 
             const method = isEditMode ? 'PATCH' : 'POST';
 
