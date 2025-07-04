@@ -19,7 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { TransformationProvider, useTransformation, useTrackConnections } from "./TransformationContext";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
-
+import  TargetMappingDrawer  from "./TargetDrawer/TargetMappingDrawer"
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
@@ -58,6 +58,8 @@ function TransformationCanvasContent() {
   const [activeTransformationNodeId, setActiveTransformationNodeId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const { token, decodedToken, project } = useAuth();
+  const [arthDrawerOpen, setArthDrawerOpen] = useState(false);
+  const [arthDrawerNodeId, setArthDrawerNodeId] = useState(null);
 
   useTrackConnections(nodes, edges);
 
@@ -332,6 +334,24 @@ function TransformationCanvasContent() {
         return;
       }
 
+      const targetNodes = nodes.filter(n => n.type === 'target');
+      let hasAtLeastOneTargetMapping = false;
+      for (const targetNode of targetNodes) {
+        const mapping = targetNode.data?.targetMapping || {};
+        if (Object.values(mapping).some(val => val && val.trim() !== "")) {
+          hasAtLeastOneTargetMapping = true;
+          break;
+        }
+      }
+      if (!hasAtLeastOneTargetMapping) {
+        toast.error("Please provide at least one target mapping before saving.", {
+          duration: 3000,
+          position: "top-center",
+        });
+        setIsSaving(false);
+        return;
+      }
+
       const sourceConnectionIds = [];
       const sourceTables = [];
       Object.values(transformationData.source).forEach(source => {
@@ -451,6 +471,24 @@ const handleCancel = useCallback(() => {
       window.allEdges = undefined;
     };
   }, [onNodeDelete, openTransformationDrawer, nodes, edges]);
+
+  const [arthDrawerProps, setArthDrawerProps] = useState({});
+  useEffect(() => {
+    window.openTargetMappingDrawer = (nodeId, props = {}) => {
+      setArthDrawerNodeId(nodeId);
+      setArthDrawerProps(props);
+      setArthDrawerOpen(true);
+    };
+    window.closeTargetMappingDrawer = () => {
+      setArthDrawerOpen(false);
+      setArthDrawerNodeId(null);
+      setArthDrawerProps({});
+    };
+    return () => {
+      window.openTargetMappingDrawer = null;
+      window.closeTargetMappingDrawer = null;
+    };
+  }, []);
 
   const getActiveTransformationNode = useCallback(() => {
     if (!activeTransformationNodeId) return null;
@@ -781,6 +819,13 @@ const handleCancel = useCallback(() => {
         onAddNewTargetColumn={handleAddNewTargetColumn}
         onApplyTransformations={handleTransformationApply}
       />
+      {arthDrawerOpen && (
+        <TargetMappingDrawer
+          nodeId={arthDrawerNodeId}
+          onClose={() => setArthDrawerOpen(false)}
+          {...arthDrawerProps}
+        />
+      )}
     </div>
   );
 }
