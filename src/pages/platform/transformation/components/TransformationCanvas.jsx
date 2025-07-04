@@ -19,7 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { TransformationProvider, useTransformation, useTrackConnections } from "./TransformationContext";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
-
+import  ArthmeticsDrawer  from "./TargetDrawer/ArthmeticsDrawer"
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
@@ -58,7 +58,9 @@ function TransformationCanvasContent() {
   const [activeTransformationNodeId, setActiveTransformationNodeId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const { token, decodedToken, project } = useAuth();
-
+  const [arthDrawerOpen, setArthDrawerOpen] = useState(false);
+  const [arthDrawerNodeId, setArthDrawerNodeId] = useState(null);
+  
   useTrackConnections(nodes, edges);
 
   useEffect(() => {
@@ -377,30 +379,30 @@ function TransformationCanvasContent() {
       };
 
       console.log(payload);
-      const response = await fetch(`${hostname}/etl/transformation`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      // const response = await fetch(`${hostname}/etl/transformation`, {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     "Authorization": `Bearer ${token}`
+      //   },
+      //   body: JSON.stringify(payload)
+      // });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to save transformation");
-      }
+      // if (!response.ok) {
+      //   const errorData = await response.json();
+      //   throw new Error(errorData.detail || "Failed to save transformation");
+      // }
 
-      // const savedData = await response.json();
+      // // const savedData = await response.json();
 
-      toast.success("Transformation saved successfully!", {
-        duration: 3000,
-        position: "top-center",
-      });
+      // toast.success("Transformation saved successfully!", {
+      //   duration: 3000,
+      //   position: "top-center",
+      // });
 
-      setTimeout(() => {
-        navigate("/transformation");
-      }, 1500);
+      // setTimeout(() => {
+      //   navigate("/transformation");
+      // }, 1500);
 
     } catch (error) {
       console.error("Error saving transformation:", error);
@@ -449,6 +451,24 @@ const handleCancel = useCallback(() => {
       window.allEdges = undefined;
     };
   }, [onNodeDelete, openTransformationDrawer]);
+
+  const [arthDrawerProps, setArthDrawerProps] = useState({});
+  useEffect(() => {
+    window.openArthmeticsDrawer = (nodeId, props = {}) => {
+      setArthDrawerNodeId(nodeId);
+      setArthDrawerProps(props);
+      setArthDrawerOpen(true);
+    };
+    window.closeArthmeticsDrawer = () => {
+      setArthDrawerOpen(false);
+      setArthDrawerNodeId(null);
+      setArthDrawerProps({});
+    };
+    return () => {
+      window.openArthmeticsDrawer = null;
+      window.closeArthmeticsDrawer = null;
+    };
+  }, []);
 
   const getActiveTransformationNode = useCallback(() => {
     if (!activeTransformationNodeId) return null;
@@ -779,6 +799,13 @@ const handleCancel = useCallback(() => {
         onAddNewTargetColumn={handleAddNewTargetColumn}
         onApplyTransformations={handleTransformationApply}
       />
+      {arthDrawerOpen && (
+        <ArthmeticsDrawer
+          nodeId={arthDrawerNodeId}
+          onClose={() => setArthDrawerOpen(false)}
+          {...arthDrawerProps}
+        />
+      )}
     </div>
   );
 }
