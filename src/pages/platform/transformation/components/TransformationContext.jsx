@@ -219,6 +219,21 @@ export function TransformationProvider({ children }) {
       };
 
       const transformationNodes = Object.keys(state.transformations);
+      const transformationCreatedColumns = new Set();
+      Object.values(state.transformations).forEach(tr => {
+        if (tr.transformationConfig && Array.isArray(tr.transformationConfig.operations)) {
+          tr.transformationConfig.operations.forEach(op => {
+            if (Array.isArray(op.target_column)) {
+              op.target_column.forEach(col => {
+                if (col && typeof col === "string") {
+                  transformationCreatedColumns.add(col);
+                }
+              });
+            }
+          });
+        }
+      });
+
       if (transformationNodes.length > 0) {
         // source
         const sourceConnections = state.connections.filter(conn => {
@@ -233,13 +248,19 @@ export function TransformationProvider({ children }) {
           if (sourceData) {
             const sourceKey = sourceData.alias || `source_${sourceId}`;
 
+            // PATCH: Only include columns not created by transformations
             let columnArr = [];
             if (Array.isArray(sourceData.columns)) {
               columnArr = sourceData.columns
-                .filter(col => typeof col === "object" && col.name)
-                .map(col => col.name)
+                .filter(col => {
+                  const colName = typeof col === "object" && col.name ? col.name : col;
+                  return colName && !transformationCreatedColumns.has(colName);
+                })
+                .map(col => typeof col === "object" && col.name ? col.name : col)
                 .filter(Boolean);
             }
+            // END PATCH
+
             result.source[sourceKey] = {
               sourceType: sourceData.connectionType || "unknown",
               sourceConnName: sourceData.connection || "unknown",
