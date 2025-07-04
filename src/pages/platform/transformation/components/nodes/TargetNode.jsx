@@ -301,8 +301,8 @@ export const TargetNode = ({ id, data }) => {
   }));
   const handleSlideClick = () => {
 
-    if (window.openArthmeticsDrawer) {
-      window.openArthmeticsDrawer(id, {
+    if (window.openTargetMappingDrawer) {
+      window.openTargetMappingDrawer(id, {
         getAllTargetColumns,
         targetMapping,
         setTargetMapping,
