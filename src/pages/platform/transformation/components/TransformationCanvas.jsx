@@ -60,7 +60,7 @@ function TransformationCanvasContent() {
   const { token, decodedToken, project } = useAuth();
   const [arthDrawerOpen, setArthDrawerOpen] = useState(false);
   const [arthDrawerNodeId, setArthDrawerNodeId] = useState(null);
-  
+
   useTrackConnections(nodes, edges);
 
   useEffect(() => {
@@ -330,6 +330,24 @@ function TransformationCanvasContent() {
 
       if (Object.keys(transformationData.target).length === 0) {
         toast.error("Target data is empty. Make sure your target nodes are properly connected.");
+        setIsSaving(false);
+        return;
+      }
+
+      const targetNodes = nodes.filter(n => n.type === 'target');
+      let hasAtLeastOneTargetMapping = false;
+      for (const targetNode of targetNodes) {
+        const mapping = targetNode.data?.targetMapping || {};
+        if (Object.values(mapping).some(val => val && val.trim() !== "")) {
+          hasAtLeastOneTargetMapping = true;
+          break;
+        }
+      }
+      if (!hasAtLeastOneTargetMapping) {
+        toast.error("Please provide at least one target mapping before saving.", {
+          duration: 3000,
+          position: "top-center",
+        });
         setIsSaving(false);
         return;
       }
