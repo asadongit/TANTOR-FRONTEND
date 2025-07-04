@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }) => {
       }
       inactivityTimerRef.current = setTimeout(
         logoutDueToInactivity,
-        5 * 60 * 1000
+        500000 * 600000 * 1000
       );
     };
 
