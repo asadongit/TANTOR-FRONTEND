@@ -263,6 +263,19 @@ function TransformationCanvasContent() {
   );
 
   const handleSave = useCallback(async () => {
+    const targetNodes = nodes.filter(n => n.type === 'target');
+    for (const targetNode of targetNodes) {
+      if (!targetNode.data?.connectedSources) continue;
+      const confirmed = window.localStorage.getItem(`targetMappingConfirmed_${targetNode.id}`) === "true";
+      if (!confirmed) {
+        toast.error(`Please confirm target mapping for '${targetNode.data.alias || 'target node'}' before saving.`, {
+          duration: 3000,
+          position: "top-center",
+        });
+        return;
+      }
+    }
+
     try {
       const disconnectedNodes = nodes.filter(node => {
         const hasIncomingEdge = edges.some(edge => edge.target === node.id);
@@ -296,7 +309,6 @@ function TransformationCanvasContent() {
         });
         return;
       }
-
 
       setIsSaving(true);
       const nameCheckResponse = await fetch(`${hostname}/etl/check-transformation-name?name=${encodeURIComponent(defineNode.data.name)}`, {
@@ -338,18 +350,14 @@ function TransformationCanvasContent() {
       for (const targetNode of targetNodes) {
         if (!targetNode.data?.connectedSources) continue;
 
-        const mapping = targetNode.data?.targetMapping || {};
-        const hasAnyMapping = Object.values(mapping).some(val => val && val.trim() !== "");
-        if (!hasAnyMapping) {
-          const confirmed = window.localStorage.getItem(`targetMappingConfirmed_${targetNode.id}`) === "true";
-          if (!confirmed) {
-            toast.error(`Please confirm target mapping for '${targetNode.data.alias || 'target node'}' before saving.`, {
-              duration: 3000,
-              position: "top-center",
-            });
-            setIsSaving(false);
-            return;
-          }
+        const confirmed = window.localStorage.getItem(`targetMappingConfirmed_${targetNode.id}`) === "true";
+        if (!confirmed) {
+          toast.error(`Please confirm target mapping for '${targetNode.data.alias || 'target node'}' before saving.`, {
+            duration: 3000,
+            position: "top-center",
+          });
+          setIsSaving(false);
+          return;
         }
       }
 

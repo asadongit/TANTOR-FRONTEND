@@ -612,9 +612,9 @@ export const TargetNode = ({ id, data }) => {
                   onChange={(e) => setLoadType(e.target.value)}
                 >
                   <option value="FullLoad">Full Load</option>
-                  <option value="Delta">Delta</option>
+                  {/* <option value="Delta">Delta</option>
                   <option value="SCD1">SCD Type 1</option>
-                  <option value="SCD2">SCD Type 2</option>
+                  <option value="SCD2">SCD Type 2</option> */}
                 </select>
               </div>
             </div>

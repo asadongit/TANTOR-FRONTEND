@@ -280,6 +280,16 @@ export const JoinsOperationFields = ({
         updateJoinsParam(transformation.id, "drop_right_dataframe_collist", columns);
     };
 
+    const getSourceDataframes = () => {
+        if (!window.allNodes) return allDataframes;
+        const sourceNodeIds = window.allNodes
+            .filter(n => n.type === "source")
+            .map(n => n.id);
+        return allDataframes.filter(df =>
+            sourceNodeIds.includes(df.nodeId)
+        );
+    };
+
     return (
         <div>
             <div className="space-y-4">
@@ -293,8 +303,7 @@ export const JoinsOperationFields = ({
                             onChange={handleRightDataframeChange}
                         >
                             <option value="">Select right dataframe</option>
-                            {allDataframes
-                                .filter(df => df.id !== transformation.source_dataframe)
+                            {getSourceDataframes()
                                 .map(df => (
                                     <option key={df.id} value={df.id}>{df.label}</option>
                                 ))}
