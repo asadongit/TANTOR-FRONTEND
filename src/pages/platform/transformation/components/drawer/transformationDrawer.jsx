@@ -217,7 +217,7 @@ const TransformationItem = memo(({
               operatorOptions = FILTER_OPERATORS.filter(op => op.id === "==");
               selectedColType = "string";
             } else if (t.includes("int") || t.includes("float") || t.includes("double") || t.includes("number")) {
-              operatorOptions = FILTER_OPERATORS.filter(op => op.id !== "==");
+              operatorOptions = FILTER_OPERATORS
               selectedColType = "numeric";
             } else if (t.includes("date") || t.includes("time")) {
               selectedColType = "date";
@@ -477,10 +477,10 @@ export const TransformationDrawer = ({
 		if (!window.allNodes || !window.allEdges) return;
 
 		const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
-		const outgoingEdges = window.allEdges.filter(edge => edge.source === activeNodeId);
 
+		// Only consider source nodes as dataframes
 		const sources = incomingEdges
-			.map(edge => window.allNodes.find(node => node.id === edge.source))
+			.map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
 			.filter(Boolean)
 			.map((node) => {
 				const alias = node.data?.alias || `unnamed_source_${node.id}`;
@@ -492,21 +492,9 @@ export const TransformationDrawer = ({
 				};
 			});
 
-		const targets = outgoingEdges
-			.map(edge => window.allNodes.find(node => node.id === edge.target))
-			.filter(Boolean)
-			.map((node) => {
-				const alias = node.data?.alias || `unnamed_target_${node.id}`;
-				return {
-					id: alias,
-					columns: node.data?.columns || [],
-					label: alias,
-					nodeId: node.id
-				};
-			});
-
+		// Remove targets from dataframe list
 		const allDfsMap = {};
-		[...sources, ...targets].forEach(df => {
+		sources.forEach(df => {
 			allDfsMap[df.id] = df;
 		});
 		const allDfs = Object.values(allDfsMap);
@@ -520,18 +508,17 @@ export const TransformationDrawer = ({
 		setDataframeColumns(dfCols);
 
 		window.nodeToDataframeMap = {};
-		[...sources, ...targets].forEach(df => {
+		sources.forEach(df => {
 			window.nodeToDataframeMap[df.nodeId] = df.id;
 		});
 
 		const firstSource = sources[0]?.id || "";
-		const firstTarget = targets[0]?.id || "";
 
 		setTransformations(prev =>
 			prev.map(t => ({
 				...t,
 				source_dataframe: t.source_dataframe || firstSource,
-				target_dataframe: t.target_dataframe || firstTarget,
+				target_dataframe: t.target_dataframe || firstSource,
 				source_column: Array.isArray(t.source_column) ? t.source_column : [],
 				target_column: Array.isArray(t.target_column) ? t.target_column : [],
 			}))
