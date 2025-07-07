@@ -234,9 +234,7 @@ const TransformationItem = memo(({
         return <DateOperationFields
           {...commonProps}
           updateDateParam={updateDateParam}
-          onAddNewTargetColumn={(colName) =>
-            onAddNewTargetColumn(colName, transformation.source_dataframe, "date", "date")
-          }
+          onAddNewTargetColumn={onAddNewTargetColumn}
         />;
       case 'restrictcolumns':
         return <RestrictColumnsOperationFields
@@ -257,6 +255,7 @@ const TransformationItem = memo(({
       case 'ranking':
         return <RankingOperationFields
           {...commonProps}
+          onAddNewTargetColumn={onAddNewTargetColumn}
         />;
       default:
         return <DefaultColumnSelectionFields
@@ -1028,33 +1027,40 @@ export const TransformationDrawer = ({
 		});
 	}, []);
 
-	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic",givendatatype = "NUMBER") => {
-		console.log("operation type is ====>",operationType)
-		console.log("given datatype is  =====>",givendatatype)
-		const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
-		const datatype = operationType === "typecast" ? givendatatype : (operationType === "string" ? "VARCHAR" : "NUMBER");
-		console.log("column name is ======>",columnName)
-		if (window.allNodes && Array.isArray(window.allNodes)) {
-			const reactNode = window.allNodes.find(n =>
-				(n.data?.alias === actualDfId) || (n.id === actualDfId)
-			);
-			if (reactNode && typeof reactNode.data.onDataChange === "function") {
-				const newCols = Array.isArray(reactNode.data.columns)
-					? [...reactNode.data.columns]
-					: [];
-				const columnExists = newCols.some(col =>
-						(typeof col === "object" ? col.name : col) === columnName
-					);
-					if (!columnExists) {
-					newCols.push({ name: columnName, datatype });
-					reactNode.data.onDataChange({ columns: newCols });
-					window.dispatchEvent(new Event("tantor-columns-updated"));
-				}
-				console.log("$$$$$$ new cols are e=====>",newCols)
+	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic", givendatatype = "NUMBER") => {
+	console.log("operation type is ====>", operationType)
+	console.log("given datatype is  =====>", givendatatype)
+	const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
+	let datatype = "NUMBER";
+	if (operationType === "typecast") {
+		datatype = givendatatype;
+	} else if (operationType === "string") {
+		datatype = "VARCHAR";
+	} else if (operationType === "date") {
+		datatype = "date"; // <-- Always use "date" for date operation
+	}
+	console.log("column name is ======>", columnName)
+	if (window.allNodes && Array.isArray(window.allNodes)) {
+		const reactNode = window.allNodes.find(n =>
+			(n.data?.alias === actualDfId) || (n.id === actualDfId)
+		);
+		if (reactNode && typeof reactNode.data.onDataChange === "function") {
+			const newCols = Array.isArray(reactNode.data.columns)
+				? [...reactNode.data.columns]
+				: [];
+			const columnExists = newCols.some(col =>
+					(typeof col === "object" ? col.name : col) === columnName
+				);
+				if (!columnExists) {
+				newCols.push({ name: columnName, datatype });
+				reactNode.data.onDataChange({ columns: newCols });
+				window.dispatchEvent(new Event("tantor-columns-updated"));
 			}
+			console.log("$$$$$$ new cols are e=====>", newCols)
 		}
-		appendColumnToDataframe(actualDfId, columnName,datatype);
-	}, [appendColumnToDataframe]);
+	}
+	appendColumnToDataframe(actualDfId, columnName, datatype);
+}, [appendColumnToDataframe]);
 
 
 	if (!isOpen) return null;

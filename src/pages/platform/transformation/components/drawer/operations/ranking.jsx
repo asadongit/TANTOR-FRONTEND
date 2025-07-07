@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown, X, Plus, ArrowUp, ArrowDown } from "lucide-react";
-import Select from "react-select";
+import Select, { components } from "react-select";
 
 export const RankingOperationFields = ({
   transformation,
@@ -11,11 +11,12 @@ export const RankingOperationFields = ({
   handleSelectAllColumns,
   handleColumnSelection,
   dropdownRefs,
+  onAddNewTargetColumn, // <-- add this prop
 }) => {
   const [showOrderByDropdown, setShowOrderByDropdown] = useState(false);
-  const targetDropdownKey = `${transformation.id}-target`;
-  const isTargetDropdownOpen = openDropdowns[targetDropdownKey] || false;
-  const targetDropdownRef = useRef(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [modalInput, setModalInput] = useState("");
+  const modalInputRef = useRef(null);
 
   // Prepare options for the Select component
   const columnOptions = sourceCols.map((col) => ({
@@ -23,11 +24,22 @@ export const RankingOperationFields = ({
     label: typeof col === "object" ? col.name : col,
   }));
 
-  // Selected options for group_by
-  const selectedGroupByOptions = (transformation.params.group_by || []).map((col) => ({
-    value: col,
-    label: col,
-  }));
+  // For rank column dropdown (target column)
+  const targetColumnOptions = [
+    ...targetCols.map((col) => ({
+      value: typeof col === "object" ? col.name : col,
+      label: typeof col === "object" ? col.name : col,
+    })),
+  ];
+
+  // Selected option for rank column
+  const selectedTargetOption =
+    transformation.target_column && transformation.target_column.length > 0
+      ? {
+          value: transformation.target_column[0],
+          label: transformation.target_column[0],
+        }
+      : null;
 
   // Custom styles for react-select
   const customStyles = {
@@ -50,22 +62,182 @@ export const RankingOperationFields = ({
       color: "#6b7280",
       "&:hover": { backgroundColor: "#ef4444", color: "white" },
     }),
+    menu: (provided) => ({
+      ...provided,
+      zIndex: 9999,
+      backgroundColor: "white",
+      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+    }),
+    option: (provided, state) => ({
+      ...provided,
+      backgroundColor: state.isSelected
+        ? "#8E77BB"
+        : state.isFocused
+        ? "#f3f4f6"
+        : "white",
+      color: state.isSelected ? "white" : "#111827",
+      fontSize: "0.875rem",
+      cursor: "pointer",
+      ":active": {
+        backgroundColor: state.isSelected ? "#8E77BB" : "#f3f4f6",
+      },
+    }),
+    noOptionsMessage: (provided) => ({
+      ...provided,
+      color: "#4b5563",
+      fontSize: "0.875rem",
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      color: "#111827",
+    }),
   };
 
+  // Restore updateRankingParam
   const updateRankingParam = (paramName, value) => {
     if (typeof transformation.updateRankingParam === "function") {
       transformation.updateRankingParam(transformation.id, paramName, value);
     }
   };
 
-  // Initialize group_by and order_by if not present
-  if (!transformation.params.group_by) {
-    updateRankingParam("group_by", []);
-  }
+  // Move handleModalOk above AddColumnModal
+  const handleModalOk = () => {
+    const name = modalInput.trim();
+    if (name) {
+      setShowAddModal(false);
+      if (typeof transformation.updateTargetColumns === "function") {
+        transformation.updateTargetColumns(transformation.id, [name]);
+      }
+      if (onAddNewTargetColumn && typeof onAddNewTargetColumn === "function") {
+        onAddNewTargetColumn(name, transformation.source_dataframe, "ranking");
+      }
+    }
+  };
 
-  if (!transformation.params.order_by) {
-    updateRankingParam("order_by", {});
-  }
+  // Custom menu list to add new column
+  const CustomMenuList = (props) => (
+    <components.MenuList {...props}>
+      <div
+        style={{
+          padding: "8px 12px",
+          borderBottom: "1px solid #e5e7eb",
+          background: "white",
+          cursor: "pointer",
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setShowAddModal(true);
+          setModalInput("");
+        }}
+      >
+        <span style={{ color: "#8E77BB", fontWeight: 500 }}>Add New +</span>
+      </div>
+      {props.children}
+    </components.MenuList>
+  );
+
+  // Modal for adding new column
+  const AddColumnModal = (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "rgba(0,0,0,0.2)",
+        zIndex: 10000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      onClick={() => setShowAddModal(false)}
+    >
+      <div
+        style={{
+          background: "white",
+          padding: 24,
+          borderRadius: 8,
+          minWidth: 320,
+          boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 text-base font-medium text-gray-700">Add New Rank Column</div>
+        <input
+          ref={modalInputRef}
+          type="text"
+          className="w-full p-2 mb-4 border border-gray-300 rounded text-gray-800"
+          placeholder="Enter new column name"
+          value={modalInput}
+          onChange={(e) => setModalInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleModalOk();
+            }
+          }}
+        />
+        <div className="flex justify-end gap-2">
+          <button
+            className="px-3 py-1 rounded bg-gray-200 text-gray-700"
+            onClick={() => setShowAddModal(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-3 py-1 rounded bg-[#8E77BB] text-white"
+            onClick={handleModalOk}
+            disabled={!modalInput.trim()}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  useEffect(() => {
+    if (showAddModal && modalInputRef.current) {
+      modalInputRef.current.focus();
+    }
+  }, [showAddModal]);
+
+  const handleTargetChange = (selected, { action }) => {
+    if (action === "clear") {
+      if (typeof transformation.updateTargetColumns === "function") {
+        transformation.updateTargetColumns(transformation.id, []);
+      }
+      return;
+    }
+    if (selected) {
+      if (typeof transformation.updateTargetColumns === "function") {
+        transformation.updateTargetColumns(transformation.id, [selected.value]);
+      }
+      // If new column, call onAddNewTargetColumn
+      if (
+        onAddNewTargetColumn &&
+        typeof onAddNewTargetColumn === "function" &&
+        !targetCols.some(
+          (col) =>
+            (typeof col === "object" ? col.name : col) === selected.value
+        )
+      ) {
+        onAddNewTargetColumn(selected.value, transformation.source_dataframe, "ranking");
+      }
+    }
+  };
+
+  // Initialize group_by and order_by if not present
+  useEffect(() => {
+    if (!transformation.params.group_by) {
+      updateRankingParam("group_by", []);
+    }
+    if (!transformation.params.order_by) {
+      updateRankingParam("order_by", {});
+    }
+    // eslint-disable-next-line
+  }, []);
 
   // Handle changes in the Select component for group_by
   const handleGroupByChange = (selectedOptions) => {
@@ -73,9 +245,10 @@ export const RankingOperationFields = ({
     updateRankingParam("group_by", newGroupBy);
   };
 
+  // Order By logic
   const addOrderByColumn = (column) => {
     const columnName = typeof column === "object" ? column.name : column;
-    if (!Object.keys(transformation.params.order_by).includes(columnName)) {
+    if (!Object.keys(transformation.params.order_by || {}).includes(columnName)) {
       const newOrderBy = { ...transformation.params.order_by, [columnName]: "asc" };
       updateRankingParam("order_by", newOrderBy);
       setShowOrderByDropdown(false);
@@ -97,104 +270,51 @@ export const RankingOperationFields = ({
 
   const availableOrderByColumns = sourceCols.filter(
     (col) =>
-      !Object.keys(transformation.params.order_by).includes(
+      !Object.keys(transformation.params.order_by || {}).includes(
         typeof col === "object" ? col.name : col
       )
   );
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        targetDropdownRef.current &&
-        !targetDropdownRef.current.contains(event.target) &&
-        isTargetDropdownOpen
-      ) {
-        toggleDropdown(transformation.id, "target");
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isTargetDropdownOpen, toggleDropdown, transformation.id]);
+  // For group by select
+  const selectedGroupByOptions = (transformation.params.group_by || []).map((col) => ({
+    value: col,
+    label: col,
+  }));
 
   return (
     <div className="space-y-4">
       {/* Rank Column Dropdown */}
-      <div
-        className="relative"
-        ref={(el) => {
-          dropdownRefs.current[targetDropdownKey] = el;
-          targetDropdownRef.current = el;
-        }}
-      >
+      <div className="relative">
         <label className="text-xs text-gray-600 block mb-1">Select Rank Column</label>
-        <button
-          className="w-full p-2 text-black text-sm border border-gray-300 rounded bg-white flex justify-between items-center"
-          onClick={() => toggleDropdown(transformation.id, "target")}
-        >
-          {transformation.target_column.length === 0 ? (
-            <span className="text-gray-400">Select column to store ranks</span>
-          ) : (
-            <span className="truncate">
-              {transformation.target_column.join(", ")}
-            </span>
-          )}
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${
-              isTargetDropdownOpen ? "transform rotate-180" : ""
-            }`}
-          />
-        </button>
-
-        {isTargetDropdownOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => toggleDropdown(transformation.id, "target")}
-            />
-            <div className="absolute z-20 mt-1 w-full text-black bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-              <div className="py-1">
-                {targetCols.map((column, idx) => (
-                  <label
-                    key={idx}
-                    className="flex items-center px-3 py-2 hover:bg-gray-100"
-                  >
-                    <input
-                      type="radio"
-                      className="mr-2"
-                      checked={transformation.target_column.includes(
-                        typeof column === "object" ? column.name : column
-                      )}
-                      onChange={() => {
-                        const newTargetColumns = [
-                          typeof column === "object" ? column.name : column,
-                        ];
-                        if (typeof transformation.updateTargetColumns === "function") {
-                          transformation.updateTargetColumns(
-                            transformation.id,
-                            newTargetColumns
-                          );
-                        }
-                      }}
-                    />
-                    <span className="text-sm">
-                      {typeof column === "object" ? column.name : column}
-                    </span>
-                  </label>
-                ))}
-                {targetCols.length === 0 && (
-                  <div className="px-3 py-2 text-gray-500 text-sm">
-                    No columns available
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
+        <Select
+          options={targetColumnOptions}
+          value={selectedTargetOption}
+          onChange={handleTargetChange}
+          placeholder="Select column to store ranks"
+          className="text-sm text-black"
+          styles={customStyles}
+          noOptionsMessage={() =>
+            targetCols.length === 0
+              ? "No columns available"
+              : "All columns have been added"
+          }
+          isClearable
+          components={{ MenuList: CustomMenuList }}
+          theme={(theme) => ({
+            ...theme,
+            colors: {
+              ...theme.colors,
+              primary: "#8E77BB",
+              primary25: "#f3f4f6",
+              neutral0: "white",
+              neutral80: "#111827",
+            },
+          })}
+        />
+        {showAddModal && AddColumnModal}
       </div>
 
+      {/* Group By Columns */}
       <div>
         <label className="text-xs text-gray-700 mb-1 block">Group By Columns</label>
         <Select
