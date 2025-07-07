@@ -9,7 +9,7 @@ const STRING_OPERATIONS = [
   { id: "trim", name: "Trim" },
   { id: "ltrim", name: "Left Trim" },
   { id: "rtrim", name: "Right Trim" },
-  { id: "concat", name: "Concat" }, // Added concat
+  { id: "concat", name: "Concat" },
 ];
 
 const isStringType = (datatype) => {
@@ -25,7 +25,7 @@ export const StringOperationParameters = ({ operator, params, onChange }) => {
   };
 
   const handleMiddleCharacterChange = (value) => {
-    if (value.includes("/") || value.includes('"')) return;
+    if (value.includes("/") || value.includes('"') || value.includes("'") || value.includes("\\")) return;
     onChange("middle_character", value);
   };
 
@@ -90,13 +90,13 @@ export const StringOperationParameters = ({ operator, params, onChange }) => {
               <label className="block text-xs text-gray-700 mb-1">Middle Character</label>
               <input
                 type="text"
-                maxLength={1}
+                maxLength={100}
                 className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
                 value={params.middle_character ?? ""}
                 onChange={(e) => handleMiddleCharacterChange(e.target.value)}
                 placeholder="Enter character"
               />
-              <div className="text-xs text-gray-400 mt-1">Cannot use / or "</div>
+              <div className="text-xs text-gray-400 mt-1">Cannot use /, ", ', or \</div>
             </div>
           </div>
         </div>
@@ -415,6 +415,9 @@ export const StringOperationFields = ({
     </div>
   );
 
+  const concatSourceColCount = isConcat ? (transformation.source_column || []).length : 0;
+  const showConcatSourceColWarning = isConcat && concatSourceColCount < 2;
+
   return (
     <div className="string-operation-fields space-y-4">
       <div className="flex gap-4 items-end mb-4">
@@ -465,6 +468,12 @@ export const StringOperationFields = ({
         </div>
       </div>
 
+      {showConcatSourceColWarning && (
+        <div className="text-xs text-red-500 mb-2">
+          Please select at least 2 source columns for concat operation.
+        </div>
+      )}
+
       <StringOperationParameters
         operator={transformation.transformation_operator}
         params={transformation.params || {}}
@@ -494,6 +503,7 @@ export const StringOperationFields = ({
                 neutral80: "#111827",
               },
             })}
+            isDisabled={showConcatSourceColWarning}
           />
         </div>
       </div>
@@ -527,6 +537,13 @@ export const getStringParams = (transformation) => {
     default:
       return {};
   }
+};
+
+export const validateStringTransformation = (transformation) => {
+  if (transformation.transformation_operator === "concat") {
+    return Array.isArray(transformation.source_column) && transformation.source_column.length >= 2;
+  }
+  return true;
 };
 
 export default StringOperationFields;
