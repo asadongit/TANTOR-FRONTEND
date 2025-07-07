@@ -9,7 +9,7 @@ const STRING_OPERATIONS = [
   { id: "trim", name: "Trim" },
   { id: "ltrim", name: "Left Trim" },
   { id: "rtrim", name: "Right Trim" },
-  { id: "concat", name: "Concat" }, // Added concat
+  { id: "concat", name: "Concat" },
 ];
 
 const isStringType = (datatype) => {
@@ -90,7 +90,7 @@ export const StringOperationParameters = ({ operator, params, onChange }) => {
               <label className="block text-xs text-gray-700 mb-1">Middle Character</label>
               <input
                 type="text"
-                maxLength={1}
+                maxLength={100}
                 className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
                 value={params.middle_character ?? ""}
                 onChange={(e) => handleMiddleCharacterChange(e.target.value)}
@@ -468,7 +468,6 @@ export const StringOperationFields = ({
         </div>
       </div>
 
-      {/* Concat validation warning */}
       {showConcatSourceColWarning && (
         <div className="text-xs text-red-500 mb-2">
           Please select at least 2 source columns for concat operation.
