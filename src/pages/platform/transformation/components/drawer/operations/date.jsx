@@ -187,29 +187,30 @@ const DateFormatSelect = ({ value, onChange, label }) => {
 export const DateParameters = ({ params, onChange }) => {
   return (
     <div className="mt-4 space-y-2">
-      <TimezoneCategorySelect
-        label="Source Timezone"
-        value={params.source_timezone}
-        onChange={(value) => onChange("source_timezone", value)}
-      />
-
-      <DateFormatSelect
-        label="Source Format"
-        value={params.source_timeformat}
-        onChange={(value) => onChange("source_timeformat", value)}
-      />
-
-      <TimezoneCategorySelect
-        label="Target Timezone"
-        value={params.target_timezone}
-        onChange={(value) => onChange("target_timezone", value)}
-      />
-
-      <DateFormatSelect
-        label="Target Format"
-        value={params.target_timeformat}
-        onChange={(value) => onChange("target_timeformat", value)}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <TimezoneCategorySelect
+          label="Source Timezone"
+          value={params.source_timezone}
+          onChange={(value) => onChange("source_timezone", value)}
+        />
+        <DateFormatSelect
+          label="Source Format"
+          value={params.source_timeformat}
+          onChange={(value) => onChange("source_timeformat", value)}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <TimezoneCategorySelect
+          label="Target Timezone"
+          value={params.target_timezone}
+          onChange={(value) => onChange("target_timezone", value)}
+        />
+        <DateFormatSelect
+          label="Target Format"
+          value={params.target_timeformat}
+          onChange={(value) => onChange("target_timeformat", value)}
+        />
+      </div>
     </div>
   );
 };
@@ -466,7 +467,7 @@ export const DateOperationFields = ({
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-2 items-center">
+      <div className="grid grid-cols-2 gap-4 items-center">
         <div>
           <label className="text-xs text-gray-600 block mb-1">Source Column</label>
           <Select
@@ -530,6 +531,7 @@ export const DateOperationFields = ({
         </div>
       )}
 
+      {/* Updated layout for date parameters */}
       <DateParameters
         params={transformation.params || {}}
         onChange={handleParamChange}

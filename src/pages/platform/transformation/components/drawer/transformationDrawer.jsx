@@ -42,10 +42,10 @@ const transformationOperations = [
 		id: "filter",
 		name: "Filter"
 	},
-	// {
-	// 	id: "date",
-	// 	name: "Date"
-	// },
+	{
+		id: "date",
+		name: "Date"
+	},
 	{
 		id: "restrictcolumns",
 		name: "Restrict Columns"
@@ -234,6 +234,9 @@ const TransformationItem = memo(({
         return <DateOperationFields
           {...commonProps}
           updateDateParam={updateDateParam}
+          onAddNewTargetColumn={(colName) =>
+            onAddNewTargetColumn(colName, transformation.source_dataframe, "date", "date")
+          }
         />;
       case 'restrictcolumns':
         return <RestrictColumnsOperationFields

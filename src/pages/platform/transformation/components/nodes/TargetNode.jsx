@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Handle, Position } from "reactflow";
 import { X, Database, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
@@ -321,14 +321,69 @@ export const TargetNode = ({ id, data }) => {
     }
   }, [data.onDataChange, targetMapping]);
 
+  // New: State for selected source for mapping
+  const [selectedSourceForMapping, setSelectedSourceForMapping] = useState("");
+
+  // New: Get all connected sources for this target node
+  const connectedSourceNodes = useMemo(() => {
+    if (!window.allNodes || !window.allEdges) return [];
+    // Find transformation node(s) connected to this target
+    const incomingEdges = window.allEdges.filter(e => e.target === id);
+    const transformationNodeIds = incomingEdges
+      .map(e => e.source)
+      .filter(srcId => {
+        const n = window.allNodes.find(n => n.id === srcId);
+        return n && n.type === "transformation";
+      });
+
+    // For each transformation node, find its connected sources
+    let sources = [];
+    transformationNodeIds.forEach(transId => {
+      const transIncoming = window.allEdges.filter(e => e.target === transId);
+      transIncoming.forEach(e => {
+        const srcNode = window.allNodes.find(n => n.id === e.source && n.type === "source");
+        if (srcNode) {
+          sources.push(srcNode);
+        }
+      });
+    });
+    // Remove duplicates by id
+    const uniqueSources = [];
+    const seen = new Set();
+    for (const s of sources) {
+      if (!seen.has(s.id)) {
+        uniqueSources.push(s);
+        seen.add(s.id);
+      }
+    }
+    return uniqueSources;
+  }, [id, window.allNodes, window.allEdges]);
+
+  // New: Get columns for selected source for mapping
+  const selectedSourceNode = useMemo(() => {
+    if (!selectedSourceForMapping) return null;
+    return connectedSourceNodes.find(n => n.id === selectedSourceForMapping);
+  }, [selectedSourceForMapping, connectedSourceNodes]);
+
+  const sourceColumnOptionsForMapping = useMemo(() => {
+    if (!selectedSourceNode) return [];
+    const cols = Array.isArray(selectedSourceNode.data?.columns)
+      ? selectedSourceNode.data.columns
+      : [];
+    return cols.map(col =>
+      typeof col === "object"
+        ? { value: col.name, label: col.name }
+        : { value: col, label: col }
+    );
+  }, [selectedSourceNode]);
+
   const handleSlideClick = () => {
     if (window.openTargetMappingDrawer) {
-      // Pass the latest mapping and getter/setter functions to the drawer
       window.openTargetMappingDrawer(id, {
         getAllTargetColumns,
         targetMapping, // Current mapping state
         setTargetMapping: handleSetTargetMapping, // Stabilized setter
-        sourceColumnOptions,
+        sourceColumnOptions: sourceColumnOptionsForMapping,
       });
     }
   };
@@ -639,15 +694,39 @@ export const TargetNode = ({ id, data }) => {
 
         {selectedTable && data.connectedSources > 0 && (
           <div className="mt-4">
+            {/* New: Source selection dropdown */}
+            <div className="mb-2">
+              <label className="text-xs font-semibold text-black mb-1 block">
+                Select Source for Mapping
+              </label>
+              <select
+                className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
+                value={selectedSourceForMapping}
+                onChange={e => setSelectedSourceForMapping(e.target.value)}
+              >
+                <option value="">Select source</option>
+                {connectedSourceNodes.map(src => (
+                  <option key={src.id} value={src.id}>
+                    {src.data?.alias || src.data?.connection || src.id}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               className={`mt-2 w-full ${mappingConfirmed ? 'bg-green-600' : 'bg-[#8E77BB]'} text-white text-xs font-semibold py-1 px-2 rounded hover:bg-${mappingConfirmed ? 'green-700' : '[#7a6bb0]'} transition-colors`}
               onClick={handleSlideClick}
+              disabled={!selectedSourceForMapping}
             >
               {mappingConfirmed ? 'Target Mapping (Confirmed)' : 'Target Mapping'}
             </button>
             {mappingConfirmed && (
               <div className="mt-1 text-[10px] text-green-600">
                 Target mapping has been confirmed
+              </div>
+            )}
+            {!selectedSourceForMapping && (
+              <div className="mt-1 text-[10px] text-red-500">
+                Please select a source to map columns.
               </div>
             )}
           </div>
