@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { X, Plus, ChevronDown } from "lucide-react";
 
 import ArithmeticOperationFields from "./operations/arithmatic";
-import StringOperationFields, { StringOperationParameters, getStringParams } from "./operations/string";
+import StringOperationFields, { StringOperationParameters, getStringParams, validateStringTransformation } from "./operations/string";
 import ColCopyOperationFields from "./operations/colcopy";
 import ConstantCopyOperationFields, { getConstantCopyParams } from "./operations/constantcopy";
 import RenameOperationFields from "./operations/rename";
@@ -42,10 +42,10 @@ const transformationOperations = [
 		id: "filter",
 		name: "Filter"
 	},
-	// {
-	// 	id: "date",
-	// 	name: "Date"
-	// },
+	{
+		id: "date",
+		name: "Date"
+	},
 	{
 		id: "restrictcolumns",
 		name: "Restrict Columns"
@@ -89,9 +89,9 @@ const TransformationItem = memo(({
   updateDateParam,
   updateTargetColumn,
   onAddNewTargetColumn,
-  handleOperatorChange
+  handleOperatorChange,
+  setTransformationValidity // <-- new prop
 }) => {
-
   const renderSourceAndOperationRow = () => (
     <div className="flex gap-2 mb-3">
       <div className="flex-1">
@@ -131,6 +131,13 @@ const TransformationItem = memo(({
     </div>
   );
 
+  // For arithmetic validation
+  const arithmeticRef = useRef();
+
+  // For string validation
+  const isStringInvalid = transformation.transformation_operation === "string"
+    && !validateStringTransformation(transformation);
+
   const renderTransformationFields = () => {
     const { transformation_operation, source_dataframe, target_dataframe } = transformation;
     const sourceCols = dataframeColumns[source_dataframe] || [];
@@ -166,16 +173,21 @@ const TransformationItem = memo(({
             onAddNewTargetColumn(colName, transformation.source_dataframe, "arithmetic")
           }
           target_dataframe={target_dataframe}
+          ref={arithmeticRef}
+          setIsValid={isValid => setTransformationValidity(transformation.id, isValid)}
         />;
       case 'string':
-				return (
-					<StringOperationFields
-						{...commonProps}
-						onAddNewTargetColumn={(colName) =>
-							onAddNewTargetColumn(colName, transformation.source_dataframe, "string")
-						}
-					/>
-				);
+        return (
+          <>
+            <StringOperationFields
+              {...commonProps}
+              onAddNewTargetColumn={(colName) =>
+                onAddNewTargetColumn(colName, transformation.source_dataframe, "string")
+              }
+            />
+
+          </>
+        );
       case 'colcopy':
         return <ColCopyOperationFields {...commonProps} />;
       case 'constantcopy':
@@ -205,7 +217,7 @@ const TransformationItem = memo(({
               operatorOptions = FILTER_OPERATORS.filter(op => op.id === "==");
               selectedColType = "string";
             } else if (t.includes("int") || t.includes("float") || t.includes("double") || t.includes("number")) {
-              operatorOptions = FILTER_OPERATORS.filter(op => op.id !== "==");
+              operatorOptions = FILTER_OPERATORS
               selectedColType = "numeric";
             } else if (t.includes("date") || t.includes("time")) {
               selectedColType = "date";
@@ -222,6 +234,9 @@ const TransformationItem = memo(({
         return <DateOperationFields
           {...commonProps}
           updateDateParam={updateDateParam}
+          onAddNewTargetColumn={(colName) =>
+            onAddNewTargetColumn(colName, transformation.source_dataframe, "date", "date")
+          }
         />;
       case 'restrictcolumns':
         return <RestrictColumnsOperationFields
@@ -462,10 +477,10 @@ export const TransformationDrawer = ({
 		if (!window.allNodes || !window.allEdges) return;
 
 		const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
-		const outgoingEdges = window.allEdges.filter(edge => edge.source === activeNodeId);
 
+		// Only consider source nodes as dataframes
 		const sources = incomingEdges
-			.map(edge => window.allNodes.find(node => node.id === edge.source))
+			.map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
 			.filter(Boolean)
 			.map((node) => {
 				const alias = node.data?.alias || `unnamed_source_${node.id}`;
@@ -477,21 +492,9 @@ export const TransformationDrawer = ({
 				};
 			});
 
-		const targets = outgoingEdges
-			.map(edge => window.allNodes.find(node => node.id === edge.target))
-			.filter(Boolean)
-			.map((node) => {
-				const alias = node.data?.alias || `unnamed_target_${node.id}`;
-				return {
-					id: alias,
-					columns: node.data?.columns || [],
-					label: alias,
-					nodeId: node.id
-				};
-			});
-
+		// Remove targets from dataframe list
 		const allDfsMap = {};
-		[...sources, ...targets].forEach(df => {
+		sources.forEach(df => {
 			allDfsMap[df.id] = df;
 		});
 		const allDfs = Object.values(allDfsMap);
@@ -505,18 +508,17 @@ export const TransformationDrawer = ({
 		setDataframeColumns(dfCols);
 
 		window.nodeToDataframeMap = {};
-		[...sources, ...targets].forEach(df => {
+		sources.forEach(df => {
 			window.nodeToDataframeMap[df.nodeId] = df.id;
 		});
 
 		const firstSource = sources[0]?.id || "";
-		const firstTarget = targets[0]?.id || "";
 
 		setTransformations(prev =>
 			prev.map(t => ({
 				...t,
 				source_dataframe: t.source_dataframe || firstSource,
-				target_dataframe: t.target_dataframe || firstTarget,
+				target_dataframe: t.target_dataframe || firstSource,
 				source_column: Array.isArray(t.source_column) ? t.source_column : [],
 				target_column: Array.isArray(t.target_column) ? t.target_column : [],
 			}))
@@ -874,7 +876,49 @@ export const TransformationDrawer = ({
 		});
 	}, []);
 
+	// Track validity for each transformation
+  const [transformationsValidity, setTransformationsValidity] = useState({});
+
+  // Callback to update validity
+  const setTransformationValidity = useCallback((id, isValid) => {
+    setTransformationsValidity(prev => ({
+      ...prev,
+      [id]: isValid
+    }));
+  }, []);
+
+	// Add string validation to the validity state
+	useEffect(() => {
+		setTransformationsValidity(prev => {
+			const updated = { ...prev };
+			transformations.forEach(t => {
+				if (t.transformation_operation === "string") {
+					updated[t.id] = validateStringTransformation(t);
+				}
+			});
+			return updated;
+		});
+		// eslint-disable-next-line
+	}, [transformations]);
+
 	const handleSave = useCallback(() => {
+		// Validate all transformations before saving
+		let allValid = true;
+		for (let i = 0; i < transformations.length; i++) {
+			const t = transformations[i];
+			if (
+				(t.transformation_operation === "arithmetic" && transformationsValidity[t.id] === false) ||
+				(t.transformation_operation === "string" && transformationsValidity[t.id] === false)
+			) {
+				allValid = false;
+				break;
+			}
+		}
+		if (!allValid) {
+			alert("Please fill all required fields before applying transformations.");
+			return;
+		}
+
 		const result = transformations.map(t => {
 			let targetColumns = t.target_column;
 			if (t.transformation_operation === 'rename' && t.source_column.length > 0) {
@@ -957,7 +1001,7 @@ export const TransformationDrawer = ({
 		}
 
 		onClose();
-	}, [transformations, activeNode, onClose, onApplyTransformations]);
+	}, [transformations, activeNode, onClose, onApplyTransformations, transformationsValidity]);
 
 	const scrollToTransformation = useCallback((index) => {
 		if (transformationRefs.current[index]) {
@@ -1058,7 +1102,6 @@ export const TransformationDrawer = ({
 
 				<div className="flex-1 overflow-y-auto p-4">
 					<div className="space-y-6">
-
 						{transformations.map((transformation, index) => (
 							<div
 								key={transformation.id}
@@ -1090,6 +1133,7 @@ export const TransformationDrawer = ({
 								 updateTargetColumn={updateTargetColumn}
 								 onAddNewTargetColumn={handleAddNewTargetColumn}
 								 handleOperatorChange={handleOperatorChange}
+								 setTransformationValidity={setTransformationValidity}
 								/>
 							</div>
 						))}
@@ -1114,6 +1158,10 @@ export const TransformationDrawer = ({
 					<button
 						onClick={handleSave}
 						className="px-5 py-2 bg-[#8E77BB] border border-[#8E77BB] rounded-md text-sm text-white hover:bg-[#7d68a5] transition-colors"
+						disabled={transformations.some(t =>
+							(t.transformation_operation === "arithmetic" && transformationsValidity[t.id] === false) ||
+							(t.transformation_operation === "string" && transformationsValidity[t.id] === false)
+						)}
 					>
 						Apply
 					</button>
