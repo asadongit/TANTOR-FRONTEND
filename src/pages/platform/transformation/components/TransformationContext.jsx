@@ -248,18 +248,19 @@ export function TransformationProvider({ children }) {
           if (sourceData) {
             const sourceKey = sourceData.alias || `source_${sourceId}`;
 
-            // PATCH: Only include columns not created by transformations
+            const selectedColumnsSet = state.selectedSourceColumnsSet[sourceId] || new Set();
+
             let columnArr = [];
             if (Array.isArray(sourceData.columns)) {
               columnArr = sourceData.columns
                 .filter(col => {
                   const colName = typeof col === "object" && col.name ? col.name : col;
-                  return colName && !transformationCreatedColumns.has(colName);
+                  // Only include if it's in the selected columns set or it's not from a transformation
+                  return colName && selectedColumnsSet.has(colName) && !transformationCreatedColumns.has(colName);
                 })
                 .map(col => typeof col === "object" && col.name ? col.name : col)
                 .filter(Boolean);
             }
-            // END PATCH
 
             result.source[sourceKey] = {
               sourceType: sourceData.connectionType || "unknown",

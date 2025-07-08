@@ -25,7 +25,8 @@ export const JoinsOperationFields = ({
     dropdownRefs,
     openDropdowns,
     toggleDropdown,
-    updateJoinsParam
+    updateJoinsParam,
+    appendColumnsFromRightToLeft // <-- accept as prop
 }) => {
     const [joinConditions, setJoinConditions] = useState([
         { leftDataframe: "", leftColumn: "", condition: "==", rightDataframe: "", rightColumn: "" }
@@ -99,6 +100,27 @@ export const JoinsOperationFields = ({
             rightColumn: "",
         }]);
         updateJoinsParam(transformation.id, "join_condition", "");
+
+        // Only append if right table is different from source
+        if (
+            appendColumnsFromRightToLeft &&
+            transformation.source_dataframe &&
+            newRightDf &&
+            transformation.source_dataframe !== newRightDf
+        ) {
+            // Call appendColumnsFromRightToLeft and force dataframe update
+            appendColumnsFromRightToLeft(transformation.source_dataframe, newRightDf, true);
+
+            // Force update UI after a brief delay to ensure columns are synced
+            setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('tantor-columns-updated', {
+                    detail: {
+                        sourceId: transformation.source_dataframe,
+                        rightId: newRightDf
+                    }
+                }));
+            }, 100);
+        }
     };
 
     const customStyles = {
