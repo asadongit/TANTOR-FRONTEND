@@ -36,13 +36,6 @@ export const JoinsOperationFields = ({
             updateJoinsParam(transformation.id, "join_type", "left");
         }
 
-        if (!transformation.params.right_dataframe && allDataframes.length > 0) {
-            const availableDf = allDataframes.find(df => df.id !== transformation.source_dataframe);
-            if (availableDf) {
-                updateJoinsParam(transformation.id, "right_dataframe", availableDf.id);
-            }
-        }
-
         if (!transformation.params.join_condition) {
             updateJoinsParam(transformation.id, "join_condition", "");
         }
