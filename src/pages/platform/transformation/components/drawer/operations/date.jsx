@@ -30,7 +30,7 @@ const TimezoneCategorySelect = ({ value, onChange, label }) => {
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
         >
-          <Info className="w-3.5 h-3.5" />
+          {/* <Info className="w-3.5 h-3.5" /> */}
         </button>
         {showTooltip && (
           <div className="absolute z-10 mt-8 p-2 bg-gray-800 text-white text-xs rounded shadow-lg max-w-xs">
@@ -122,7 +122,7 @@ const DateFormatSelect = ({ value, onChange, label }) => {
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
         >
-          <Info className="w-3.5 h-3.5" />
+          {/* <Info className="w-3.5 h-3.5" /> */}
         </button>
         {showTooltip && (
           <div className="absolute z-10 mt-8 p-2 bg-gray-800 text-white text-xs rounded shadow-lg max-w-xs">

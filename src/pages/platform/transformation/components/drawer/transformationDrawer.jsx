@@ -90,7 +90,8 @@ const TransformationItem = memo(({
   updateTargetColumn,
   onAddNewTargetColumn,
   handleOperatorChange,
-  setTransformationValidity // <-- new prop
+  setTransformationValidity,
+  appendColumnsFromRightToLeft,
 }) => {
   const renderSourceAndOperationRow = () => (
     <div className="flex gap-2 mb-3">
@@ -203,6 +204,7 @@ const TransformationItem = memo(({
           allDataframes={allDataframes}
           dataframeColumns={dataframeColumns}
           updateJoinsParam={(id, name, value) => updateFilterParam(id, name, value)}
+          appendColumnsFromRightToLeft={appendColumnsFromRightToLeft} // <-- pass here
         />;
       case 'filter':
         let operatorOptions = FILTER_OPERATORS;
@@ -1063,6 +1065,104 @@ export const TransformationDrawer = ({
 }, [appendColumnToDataframe]);
 
 
+	// Improved version with forceUpdate parameter and better dataframe column state sync
+	const appendColumnsFromRightToLeft = useCallback((leftDfId, rightDfId, forceUpdate = false) => {
+		if (!leftDfId || !rightDfId || leftDfId === rightDfId) return;
+
+		if (window.allNodes) {
+			const leftNode = window.allNodes.find(
+				n => (n.data?.alias === leftDfId) || (n.id === leftDfId)
+			);
+			const rightNode = window.allNodes.find(
+				n => (n.data?.alias === rightDfId) || (n.id === rightDfId)
+			);
+
+			if (leftNode && rightNode) {
+				const leftCols = Array.isArray(leftNode.data.columns) ? [...leftNode.data.columns] : [];
+				const rightCols = Array.isArray(rightNode.data.columns) ? [...rightNode.data.columns] : [];
+				const leftColNames = new Set(
+					leftCols.map(col => typeof col === "object" && col.name ? col.name : col)
+				);
+
+				let appended = false;
+				const newColumns = [];
+
+				rightCols.forEach(col => {
+					const colName = typeof col === "object" && col.name ? col.name : col;
+					if (colName && !leftColNames.has(colName)) {
+						if (typeof col === "object" && col.name) {
+							leftCols.push({ ...col });
+							newColumns.push({ ...col });
+						} else {
+							leftCols.push(colName);
+							newColumns.push(colName);
+						}
+						appended = true;
+					}
+				});
+
+				if (appended && typeof leftNode.data.onDataChange === "function") {
+					// Update the node data
+					leftNode.data.onDataChange({ columns: leftCols });
+
+					// Also update our local dataframe columns state
+					setDataframeColumns(prev => ({
+						...prev,
+						[leftDfId]: leftCols
+					}));
+
+					// If force update flag is true, refresh all transformations
+					if (forceUpdate) {
+						// Force refresh dataframe columns in the next render cycle
+						setTimeout(() => {
+							syncDataframeColumnsFromNodes();
+						}, 50);
+					}
+
+					// Dispatch column update event
+					window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
+						detail: {
+							sourceId: leftDfId,
+							addedColumns: newColumns
+						}
+					}));
+				}
+			}
+		}
+	}, [setDataframeColumns, syncDataframeColumnsFromNodes]);
+
+	// Add an event listener for tantor-columns-updated events with details
+	useEffect(() => {
+		const handler = (event) => {
+			if (isOpen) {
+				// Extract details if available
+				const details = event.detail || {};
+
+				// Check if specific dataframes were updated
+				if (details.sourceId) {
+					// Update specific dataframe
+					syncDataframeColumnsFromNodes();
+
+					// Make sure transformations are refreshed with new columns
+					setTransformations(prev => {
+						return prev.map(t => {
+							if (t.source_dataframe === details.sourceId) {
+								return { ...t };  // Create a new reference to force re-render
+							}
+							return t;
+						});
+					});
+				} else {
+					// General update
+					syncDataframeColumnsFromNodes();
+				}
+			}
+		};
+
+		window.addEventListener("tantor-columns-updated", handler);
+		return () => window.removeEventListener("tantor-columns-updated", handler);
+	}, [isOpen, syncDataframeColumnsFromNodes]);
+
 	if (!isOpen) return null;
 
 	return (
@@ -1138,6 +1238,7 @@ export const TransformationDrawer = ({
 								 updateDateParam={updateDateParam}
 								 updateTargetColumn={updateTargetColumn}
 								 onAddNewTargetColumn={handleAddNewTargetColumn}
+								 appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
 								 handleOperatorChange={handleOperatorChange}
 								 setTransformationValidity={setTransformationValidity}
 								/>

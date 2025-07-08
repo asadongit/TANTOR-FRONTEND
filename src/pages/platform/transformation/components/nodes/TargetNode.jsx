@@ -243,28 +243,22 @@ export const TargetNode = ({ id, data }) => {
   }, []);
 
   const getAllSourceColumns = () => {
-    // 1. All selected columns from all source nodes (context)
     let allCols = getAllSelectedSourceColumns();
 
-    // 2. Add ALL columns from all transformation drawer operations (target_column and source_column)
     if (data && Array.isArray(data.transformations)) {
       data.transformations.forEach(tr => {
-        // Add target_column(s)
         if (Array.isArray(tr.target_column)) {
           allCols = allCols.concat(tr.target_column);
         }
-        // Add source_column(s)
         if (Array.isArray(tr.source_column)) {
           allCols = allCols.concat(tr.source_column);
         }
       });
     }
 
-    // Remove duplicates and falsy values
     return Array.from(new Set(allCols.filter(Boolean)));
   };
 
-  // Helper to get all valid target columns
   const getAllTargetColumns = () => {
     let targetCols = [];
     if (Array.isArray(columns) && columns.length > 0) {
@@ -278,7 +272,6 @@ export const TargetNode = ({ id, data }) => {
     return targetCols;
   };
 
-  // Always keep targetMapping in sync with valid columns
   useEffect(() => {
     const validCols = getAllTargetColumns();
     setTargetMapping(prev => {
@@ -288,18 +281,14 @@ export const TargetNode = ({ id, data }) => {
       });
       return updated;
     });
-    // eslint-disable-next-line
   }, [columns, tables, selectedTable, data.transformations]);
 
-  // When targetMapping changes, update node data
   useEffect(() => {
     if (typeof data.onDataChange === "function") {
       data.onDataChange({ targetMapping });
     }
-    // eslint-disable-next-line
   }, [targetMapping]);
 
-  // When data.targetMapping changes from outside, sync local state
   useEffect(() => {
     if (data.targetMapping && JSON.stringify(data.targetMapping) !== JSON.stringify(targetMapping)) {
       setTargetMapping(data.targetMapping);
@@ -311,7 +300,6 @@ export const TargetNode = ({ id, data }) => {
     label: col
   }));
 
-  // Setter for mapping, always updates both local state and node data
   const handleSetTargetMapping = useCallback((newMapping) => {
     if (JSON.stringify(newMapping) !== JSON.stringify(targetMapping)) {
       setTargetMapping(newMapping);
@@ -321,13 +309,10 @@ export const TargetNode = ({ id, data }) => {
     }
   }, [data.onDataChange, targetMapping]);
 
-  // New: State for selected source for mapping
   const [selectedSourceForMapping, setSelectedSourceForMapping] = useState("");
 
-  // New: Get all connected sources for this target node
   const connectedSourceNodes = useMemo(() => {
     if (!window.allNodes || !window.allEdges) return [];
-    // Find transformation node(s) connected to this target
     const incomingEdges = window.allEdges.filter(e => e.target === id);
     const transformationNodeIds = incomingEdges
       .map(e => e.source)
@@ -336,7 +321,6 @@ export const TargetNode = ({ id, data }) => {
         return n && n.type === "transformation";
       });
 
-    // For each transformation node, find its connected sources
     let sources = [];
     transformationNodeIds.forEach(transId => {
       const transIncoming = window.allEdges.filter(e => e.target === transId);
@@ -347,7 +331,7 @@ export const TargetNode = ({ id, data }) => {
         }
       });
     });
-    // Remove duplicates by id
+
     const uniqueSources = [];
     const seen = new Set();
     for (const s of sources) {
@@ -359,7 +343,6 @@ export const TargetNode = ({ id, data }) => {
     return uniqueSources;
   }, [id, window.allNodes, window.allEdges]);
 
-  // New: Get columns for selected source for mapping
   const selectedSourceNode = useMemo(() => {
     if (!selectedSourceForMapping) return null;
     return connectedSourceNodes.find(n => n.id === selectedSourceForMapping);
@@ -381,8 +364,86 @@ export const TargetNode = ({ id, data }) => {
     if (window.openTargetMappingDrawer) {
       window.openTargetMappingDrawer(id, {
         getAllTargetColumns,
-        targetMapping, // Current mapping state
-        setTargetMapping: handleSetTargetMapping, // Stabilized setter
+        targetMapping,
+        setTargetMapping: handleSetTargetMapping,
+        sourceColumnOptions: sourceColumnOptionsForMapping,
+      });
+    }
+  };
+
+  const [mappingConfirmedForSource, setMappingConfirmedForSource] = useState({});
+
+  useEffect(() => {
+    setMappingConfirmedForSource({});
+  }, [selectedTable]);
+
+  useEffect(() => {
+    setMappingConfirmedForSource(prev => {
+      if (selectedSourceForMapping && !(selectedSourceForMapping in prev)) {
+        return { ...prev, [selectedSourceForMapping]: false };
+      }
+      return prev;
+    });
+  }, [selectedSourceForMapping]);
+
+  const handlePrefillAndOpenMappingDrawer = () => {
+    if (!selectedSourceForMapping) return;
+
+    let shouldPrefill = true;
+    if (mappingConfirmedForSource[selectedSourceForMapping] !== undefined) {
+      shouldPrefill = !mappingConfirmedForSource[selectedSourceForMapping];
+    }
+
+    let mappingToSend = targetMapping;
+    if (shouldPrefill) {
+      const cols = Array.isArray(selectedSourceNode?.data?.columns)
+        ? selectedSourceNode.data.columns
+        : [];
+
+      const sourceColMap = {};
+      cols.forEach(col => {
+        const colName = typeof col === "object" ? col.name : col;
+        if (colName) {
+          sourceColMap[colName.toLowerCase()] = colName;
+        }
+      });
+
+      const lowerSourceColNames = Object.keys(sourceColMap);
+
+      const targetCols = getAllTargetColumns();
+
+      const prefilledMapping = {};
+      targetCols.forEach(targetCol => {
+        if (lowerSourceColNames.includes(targetCol.toLowerCase())) {
+          prefilledMapping[targetCol] = sourceColMap[targetCol.toLowerCase()];
+        } else {
+          prefilledMapping[targetCol] = "";
+        }
+      });
+
+      console.log("Prefilled mapping:", prefilledMapping);
+
+      setTargetMapping(prefilledMapping);
+      if (typeof data.onDataChange === "function") {
+        data.onDataChange({ targetMapping: prefilledMapping });
+      }
+      mappingToSend = prefilledMapping;
+    }
+
+    if (window.openTargetMappingDrawer) {
+      window.openTargetMappingDrawer(id, {
+        getAllTargetColumns,
+        targetMapping: mappingToSend,
+        setTargetMapping: (mapping) => {
+          setTargetMapping(mapping);
+          if (typeof data.onDataChange === "function") {
+            data.onDataChange({ targetMapping: mapping });
+          }
+          setMappingConfirmedForSource(prev => ({
+            ...prev,
+            [selectedSourceForMapping]: true
+          }));
+        },
         sourceColumnOptions: sourceColumnOptionsForMapping,
       });
     }
@@ -714,7 +775,7 @@ export const TargetNode = ({ id, data }) => {
             </div>
             <button
               className={`mt-2 w-full ${mappingConfirmed ? 'bg-green-600' : 'bg-[#8E77BB]'} text-white text-xs font-semibold py-1 px-2 rounded hover:bg-${mappingConfirmed ? 'green-700' : '[#7a6bb0]'} transition-colors`}
-              onClick={handleSlideClick}
+              onClick={handlePrefillAndOpenMappingDrawer}
               disabled={!selectedSourceForMapping}
             >
               {mappingConfirmed ? 'Target Mapping (Confirmed)' : 'Target Mapping'}
