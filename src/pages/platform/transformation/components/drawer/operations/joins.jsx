@@ -101,17 +101,14 @@ export const JoinsOperationFields = ({
         }]);
         updateJoinsParam(transformation.id, "join_condition", "");
 
-        // Only append if right table is different from source
         if (
             appendColumnsFromRightToLeft &&
             transformation.source_dataframe &&
             newRightDf &&
             transformation.source_dataframe !== newRightDf
         ) {
-            // Call appendColumnsFromRightToLeft and force dataframe update
             appendColumnsFromRightToLeft(transformation.source_dataframe, newRightDf, true);
 
-            // Force update UI after a brief delay to ensure columns are synced
             setTimeout(() => {
                 window.dispatchEvent(new CustomEvent('tantor-columns-updated', {
                     detail: {
@@ -219,6 +216,40 @@ export const JoinsOperationFields = ({
                 key: col
             };
         });
+    };
+
+    const getLeftColumnOptions = (leftDfId) => {
+        if (!leftDfId || !dataframeColumns[leftDfId] ||
+            !transformation.params.right_dataframe ||
+            !dataframeColumns[transformation.params.right_dataframe]) {
+            return getColumnOptions(leftDfId);
+        }
+
+        const rightColumnNames = new Set(
+            dataframeColumns[transformation.params.right_dataframe].map(col =>
+                typeof col === "object" && col !== null ? col.name : col
+            )
+        );
+
+        return dataframeColumns[leftDfId]
+            .filter(col => {
+                const colName = typeof col === "object" && col !== null ? col.name : col;
+                return !rightColumnNames.has(colName);
+            })
+            .map(col => {
+                if (typeof col === "object" && col !== null) {
+                    return {
+                        value: col.name,
+                        label: col.name,
+                        key: col.name
+                    };
+                }
+                return {
+                    value: col,
+                    label: col,
+                    key: col
+                };
+            });
     };
 
     useEffect(() => {
@@ -353,7 +384,7 @@ export const JoinsOperationFields = ({
                                     disabled={!condition.leftDataframe}
                                 >
                                     <option value="">Select column</option>
-                                    {getColumnOptions(condition.leftDataframe).map(opt => (
+                                    {getLeftColumnOptions(condition.leftDataframe).map(opt => (
                                         <option key={opt.key} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>
