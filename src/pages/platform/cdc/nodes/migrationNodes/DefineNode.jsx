@@ -6,7 +6,7 @@ import { Handle } from "../../components/CustomHandle";
 import { useWorkflow } from "../../context/WorkflowContext";
 import { useArchivalData } from "../../../../../hooks/platform/archival";
 export function DefineNode({ id, data, selected }) {
-const { data: MigrationData=[], isLoading: isMigrationLoading, error: MigrationError } = useArchivalData();
+const { data: MigrationData=[], isLoading: isMigrationLoading, error: MigrationError } = useMigrationData();
   const [nodeData, setNodeData] = useState({
     name: data.define?.name || "",
     description: data.define?.description || "",
