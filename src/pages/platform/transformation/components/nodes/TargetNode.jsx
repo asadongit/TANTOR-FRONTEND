@@ -38,10 +38,10 @@ export const TargetNode = ({ id, data }) => {
   const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
 
   const [alias, setAlias] = useState(data.alias || "");
-
   const [columnMapping, setColumnMapping] = useState(data.columnMapping || {});
   const [targetMapping, setTargetMapping] = useState(data.targetMapping || {});
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
+  const [selectedSourceForMapping, setSelectedSourceForMapping] = useState("");
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -49,7 +49,7 @@ export const TargetNode = ({ id, data }) => {
 
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
-  const { getAllSelectedSourceColumns } = useTransformation();
+  const { getAllSelectedSourceColumns, dispatch, ACTION_TYPES } = useTransformation();
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -175,10 +175,11 @@ export const TargetNode = ({ id, data }) => {
       alias: alias,
       columnMapping,
       targetMapping,
+      selectedSourceId: selectedSourceForMapping, // This reference is now safe
     });
   }, [
     selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
-    tables, alias, columnMapping, targetMapping
+    tables, alias, columnMapping, targetMapping, selectedSourceForMapping
   ]);
 
   const getNextAlias = useCallback(() => {
@@ -308,8 +309,6 @@ export const TargetNode = ({ id, data }) => {
       }
     }
   }, [data.onDataChange, targetMapping]);
-
-  const [selectedSourceForMapping, setSelectedSourceForMapping] = useState("");
 
   const connectedSourceNodes = useMemo(() => {
     if (!window.allNodes || !window.allEdges) return [];
@@ -447,6 +446,28 @@ export const TargetNode = ({ id, data }) => {
         sourceColumnOptions: sourceColumnOptionsForMapping,
       });
     }
+  };
+
+  // Find the onChange handler for selectedSourceForMapping
+  const handleSourceSelectionChange = e => {
+    const sourceId = e.target.value;
+    setSelectedSourceForMapping(sourceId);
+
+    // More explicit logging and data update for debugging
+    console.log(`Target ${id} selected source: ${sourceId}`);
+
+    // Save the selected source ID in the node data
+    if (typeof data.onDataChange === "function") {
+      data.onDataChange({
+        selectedSourceId: sourceId,
+      });
+    }
+
+    // Dispatch to context for global mapping
+    dispatch({
+      type: ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE,
+      payload: { targetNodeId: id, sourceNodeId: sourceId }
+    });
   };
 
   return (
@@ -755,7 +776,7 @@ export const TargetNode = ({ id, data }) => {
 
         {selectedTable && data.connectedSources > 0 && (
           <div className="mt-4">
-            {/* New: Source selection dropdown */}
+            {/* Source selection dropdown */}
             <div className="mb-2">
               <label className="text-xs font-semibold text-black mb-1 block">
                 Select Source for Mapping
@@ -763,7 +784,7 @@ export const TargetNode = ({ id, data }) => {
               <select
                 className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
                 value={selectedSourceForMapping}
-                onChange={e => setSelectedSourceForMapping(e.target.value)}
+                onChange={handleSourceSelectionChange} // <-- Use the new handler here
               >
                 <option value="">Select source</option>
                 {connectedSourceNodes.map(src => (
