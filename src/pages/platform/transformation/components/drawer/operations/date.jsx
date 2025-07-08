@@ -38,7 +38,6 @@ const TimezoneCategorySelect = ({ value, onChange, label }) => {
           </div>
         )}
       </div>
-
       <div className="relative">
         <input
           type="text"
@@ -53,7 +52,6 @@ const TimezoneCategorySelect = ({ value, onChange, label }) => {
           <ChevronDown className="w-4 h-4 text-gray-500" />
         </div>
       </div>
-
       {showSearchResults && (
         <div className="absolute z-20 text-black mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
           <div className="sticky top-0 bg-white p-2 border-b border-gray-200">
@@ -69,7 +67,6 @@ const TimezoneCategorySelect = ({ value, onChange, label }) => {
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             </div>
           </div>
-
           <div className="py-1">
             {Object.entries(filteredTimezones).map(([region, zones]) => (
               <div key={region}>
@@ -100,7 +97,6 @@ const TimezoneCategorySelect = ({ value, onChange, label }) => {
           </div>
         </div>
       )}
-
       {showSearchResults && (
         <div
           className="fixed inset-0 z-10"
@@ -134,7 +130,6 @@ const DateFormatSelect = ({ value, onChange, label }) => {
           </div>
         )}
       </div>
-
       <div className="relative">
         <input
           type="text"
@@ -148,7 +143,6 @@ const DateFormatSelect = ({ value, onChange, label }) => {
           <ChevronDown className="w-4 h-4 text-gray-500" />
         </div>
       </div>
-
       {showDropdown && (
         <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
           {formats.map((format, idx) => (
@@ -166,14 +160,12 @@ const DateFormatSelect = ({ value, onChange, label }) => {
           ))}
         </div>
       )}
-
       {value && (
         <div className="mt-1 text-xs text-gray-500">
           Example: {getFormatExample(value)}
         </div>
       )}
 
-      {/* Close dropdown when clicking outside */}
       {showDropdown && (
         <div
           className="fixed inset-0 z-10"
@@ -225,14 +217,17 @@ export const DateOperationFields = ({
   handleColumnSelection,
   dropdownRefs,
   updateDateParam,
-  onAddNewTargetColumn // <-- expect this prop from parent
+  onAddNewTargetColumn,
+  updateTransformation
 }) => {
-  const sourceDropdownKey = `${transformation.id}-source`;
-  const targetDropdownKey = `${transformation.id}-target`;
-  const isSourceDropdownOpen = openDropdowns[sourceDropdownKey] || false;
-  const isTargetDropdownOpen = openDropdowns[targetDropdownKey] || false;
 
-  // Only allow date type columns for source/target
+  const [isAddingNewColumn, setIsAddingNewColumn] = useState(false);
+  const [newColumnName, setNewColumnName] = useState("");
+  const inputRef = useRef(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [modalInput, setModalInput] = useState("");
+  const modalInputRef = useRef(null);
+
   const isDateType = (col) => {
     if (typeof col === "object" && col.datatype) {
       const t = col.datatype.toLowerCase();
@@ -249,138 +244,162 @@ export const DateOperationFields = ({
     ? targetCols.filter(isDateType)
     : [];
 
-  const sourceColumnOptions = useMemo(() => (
-    dateSourceCols.map(col => {
-      const colName = typeof col === "object" && col !== null ? col.name : col;
-      const datatype = typeof col === "object" && col !== null && col.datatype ? col.datatype : "";
-      return {
-        value: colName,
-        label: datatype ? `${colName} (${datatype})` : colName
-      };
-    })
-  ), [dateSourceCols]);
+  const allColumns = [
+    ...dateSourceCols.map((col) => ({
+      value: typeof col === "object" ? col.name : col,
+      label: typeof col === "object" ? col.name : col,
+    })),
+    ...(transformation.target_column && transformation.target_column.length > 0
+      ? transformation.target_column
+          .filter(
+            (col) =>
+              !dateSourceCols.some(
+                (src) =>
+                  (typeof src === "object" ? src.name : src) === col
+              )
+          )
+          .map((col) => ({
+            value: col,
+            label: col,
+          }))
+      : []),
+  ];
 
-  const targetColumnOptions = useMemo(() => (
-    dateTargetCols.map(col => {
-      const colName = typeof col === "object" && col !== null ? col.name : col;
-      const datatype = typeof col === "object" && col !== null && col.datatype ? col.datatype : "";
-      return {
-        value: colName,
-        label: datatype ? `${colName} (${datatype})` : colName
-      };
-    })
-  ), [dateTargetCols]);
+  const selectedTargetOption =
+    transformation.target_column && transformation.target_column.length > 0
+      ? {
+          value: transformation.target_column[0],
+          label: transformation.target_column[0],
+        }
+      : null;
 
-  const selectedSourceOption = transformation.source_column && transformation.source_column.length > 0
-    ? sourceColumnOptions.find(opt => opt.value === transformation.source_column[0]) || null
-    : null;
+  const selectedSourceOption =
+    transformation.source_column && transformation.source_column.length > 0
+      ? dateSourceCols
+          .map((col) => (typeof col === "object" ? col.name : col))
+          .includes(transformation.source_column[0])
+        ? {
+            value: transformation.source_column[0],
+            label: transformation.source_column[0],
+          }
+        : null
+      : null;
 
-  const selectedTargetOption = transformation.target_column && transformation.target_column.length > 0
-    ? targetColumnOptions.find(opt => opt.value === transformation.target_column[0]) || null
-    : null;
-
-  // Styles for Select
   const customStyles = {
     control: (provided) => ({
       ...provided,
-      minHeight: '38px',
-      border: '1px solid #e2e8f0',
-      fontSize: '0.875rem',
-      backgroundColor: 'white',
-      boxShadow: 'none'
-    }),
-    valueContainer: (provided) => ({
-      ...provided,
-      padding: '0 6px'
-    }),
-    input: (provided) => ({
-      ...provided,
-      margin: '0px',
-      color: '#111827'
-    }),
-    indicatorSeparator: () => ({
-      display: 'none'
-    }),
-    indicatorsContainer: (provided) => ({
-      ...provided,
-      height: '38px'
-    }),
-    placeholder: (provided) => ({
-      ...provided,
-      color: '#9ca3af',
-      fontSize: '0.875rem'
+      minHeight: "38px",
+      border: "1px solid #e2e8f0",
+      fontSize: "0.875rem",
+      backgroundColor: "white",
+      boxShadow: "none",
     }),
     menu: (provided) => ({
       ...provided,
       zIndex: 9999,
-      backgroundColor: 'white',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+      backgroundColor: "white",
+      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
     }),
     option: (provided, state) => ({
       ...provided,
       backgroundColor: state.isSelected
-        ? '#8E77BB'
+        ? "#8E77BB"
         : state.isFocused
-          ? '#f3f4f6'
-          : 'white',
-      color: state.isSelected ? 'white' : '#111827',
-      fontSize: '0.875rem',
-      cursor: 'pointer',
-      ':active': {
-        backgroundColor: state.isSelected ? '#8E77BB' : '#f3f4f6',
-      }
+        ? "#f3f4f6"
+        : "white",
+      color: state.isSelected ? "white" : "#111827",
+      fontSize: "0.875rem",
+      cursor: "pointer",
+      ":active": {
+        backgroundColor: state.isSelected ? "#8E77BB" : "#f3f4f6",
+      },
     }),
     noOptionsMessage: (provided) => ({
       ...provided,
-      color: '#4b5563',
-      fontSize: '0.875rem'
+      color: "#4b5563",
+      fontSize: "0.875rem",
     }),
     singleValue: (provided) => ({
       ...provided,
-      color: '#111827'
+      color: "#111827",
     }),
   };
 
-  // Add New Target Column Modal logic
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [modalInput, setModalInput] = useState("");
-  const modalInputRef = useRef(null);
+  const CustomMenuList = (props) => (
+    <components.MenuList {...props}>
+      <div
+        style={{
+          padding: "8px 12px",
+          borderBottom: "1px solid #e5e7eb",
+          background: "white",
+          cursor: "pointer",
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setShowAddModal(true);
+          setModalInput("");
+        }}
+      >
+        <span style={{ color: "#8E77BB", fontWeight: 500 }}>Add New +</span>
+      </div>
+      {props.children}
+    </components.MenuList>
+  );
 
-  useEffect(() => {
-    if (showAddModal && modalInputRef.current) {
-      modalInputRef.current.focus();
+  const handleTargetChange = (selected, { action }) => {
+    if (action === "clear") {
+      if (typeof transformation.updateTargetColumns === "function") {
+        transformation.updateTargetColumns(transformation.id, []);
+      }
+      return;
     }
-  }, [showAddModal]);
+    if (selected) {
+      if (typeof transformation.updateTargetColumns === "function") {
+        transformation.updateTargetColumns(transformation.id, [selected.value]);
+      }
+
+      if (
+        onAddNewTargetColumn &&
+        typeof onAddNewTargetColumn === "function" &&
+        !dateSourceCols.some(col => (typeof col === "object" ? col.name : col) === selected.value) &&
+        !dateTargetCols.some(col => (typeof col === "object" ? col.name : col) === selected.value)
+      ) {
+        onAddNewTargetColumn(selected.value, transformation.source_dataframe, "date", "date");
+      }
+    }
+  };
 
   const handleModalOk = () => {
     const name = modalInput.trim();
     if (name) {
       setShowAddModal(false);
-      setModalInput("");
-      handleSelectAllColumns(transformation.id, 'target', [name], true);
+
+      // Simply update the target column with the new name
+      if (typeof transformation.updateTargetColumns === "function") {
+        transformation.updateTargetColumns(transformation.id, [name]);
+      }
+
+      // Call onAddNewTargetColumn to add the new column to the dataframe
       if (onAddNewTargetColumn && typeof onAddNewTargetColumn === "function") {
-        onAddNewTargetColumn(name, transformation.source_dataframe, "date");
+        onAddNewTargetColumn(name, transformation.source_dataframe, "date", "date");
       }
     }
   };
 
-  const handleModalInputKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleModalOk();
-    }
-  };
-
+  // Modal for adding new column
   const AddColumnModal = (
     <div
       style={{
         position: "fixed",
-        top: 0, left: 0, right: 0, bottom: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         background: "rgba(0,0,0,0.2)",
         zIndex: 10000,
         display: "flex",
         alignItems: "center",
-        justifyContent: "center"
+        justifyContent: "center",
       }}
       onClick={() => setShowAddModal(false)}
     >
@@ -390,9 +409,9 @@ export const DateOperationFields = ({
           padding: 24,
           borderRadius: 8,
           minWidth: 320,
-          boxShadow: "0 2px 16px rgba(0,0,0,0.15)"
+          boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
         }}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 text-base font-medium text-gray-700">Add New Target Column</div>
         <input
@@ -401,8 +420,13 @@ export const DateOperationFields = ({
           className="w-full p-2 mb-4 border border-gray-300 rounded text-gray-800"
           placeholder="Enter new column name"
           value={modalInput}
-          onChange={e => setModalInput(e.target.value)}
-          onKeyDown={handleModalInputKeyDown}
+          onChange={(e) => setModalInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleModalOk();
+            }
+          }}
         />
         <div className="flex justify-end gap-2">
           <button
@@ -423,42 +447,15 @@ export const DateOperationFields = ({
     </div>
   );
 
-  // Custom MenuList for target column select
-  const CustomMenuList = (props) => (
-    <components.MenuList {...props}>
-      <div
-        style={{
-          padding: '8px 12px',
-          borderBottom: '1px solid #e5e7eb',
-          background: 'white',
-          cursor: 'pointer'
-        }}
-        onMouseDown={e => {
-          e.preventDefault();
-          setShowAddModal(true);
-          setModalInput("");
-        }}
-      >
-        <span style={{ color: '#8E77BB', fontWeight: 500 }}>Add New +</span>
-      </div>
-      {props.children}
-    </components.MenuList>
-  );
+  useEffect(() => {
+    if (showAddModal && modalInputRef.current) {
+      modalInputRef.current.focus();
+    }
+  }, [showAddModal]);
 
-  // Handle Select change
   const handleSourceChange = (selected) => {
     const selectedColumn = selected ? [selected.value] : [];
-    handleSelectAllColumns(transformation.id, 'source', selectedColumn, true);
-  };
-
-  const handleTargetChange = (selected, { action }) => {
-    if (action === "clear") {
-      handleSelectAllColumns(transformation.id, 'target', [], true);
-      return;
-    }
-    if (selected) {
-      handleSelectAllColumns(transformation.id, 'target', [selected.value], true);
-    }
+    handleSelectAllColumns(transformation.id, "source", selectedColumn, true);
   };
 
   const handleParamChange = (paramName, value) => {
@@ -472,7 +469,7 @@ export const DateOperationFields = ({
           <label className="text-xs text-gray-600 block mb-1">Source Column</label>
           <Select
             isMulti={false}
-            options={sourceColumnOptions}
+            options={allColumns}
             value={selectedSourceOption}
             onChange={handleSourceChange}
             placeholder="Select date column"
@@ -495,7 +492,7 @@ export const DateOperationFields = ({
           <label className="text-xs text-gray-600 block mb-1">Target Column</label>
           <Select
             isMulti={false}
-            options={targetColumnOptions}
+            options={allColumns}
             value={selectedTargetOption}
             onChange={handleTargetChange}
             placeholder="Select target column"
@@ -515,10 +512,9 @@ export const DateOperationFields = ({
               },
             })}
           />
+          {showAddModal && AddColumnModal}
         </div>
       </div>
-
-      {showAddModal && AddColumnModal}
 
       {transformation.source_column.length > 0 && transformation.target_column.length > 0 &&
        transformation.source_column.length !== transformation.target_column.length && (
@@ -531,13 +527,10 @@ export const DateOperationFields = ({
         </div>
       )}
 
-      {/* Updated layout for date parameters */}
       <DateParameters
         params={transformation.params || {}}
         onChange={handleParamChange}
       />
-
-
     </div>
   );
 };
