@@ -39,7 +39,7 @@ export const LineItemsProvider = ({ children, reportData }) => {
 
       (async () => {
         try{
-          const response = await fetch(`${hostnameV1}/lineItems/reports/json?report_id=${reportId}`, {
+          const response = await fetch(`${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/reports/json?report_id=${reportId}`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
@@ -97,7 +97,7 @@ export const LineItemsProvider = ({ children, reportData }) => {
       try {
         const response = await fetch(
           `${
-            window._env_?.VITE_BIRT_BACKEND_API
+            window._env_?.VITE_REPORTING_BACKEND_API
           }/templates/parse?report-name=${reportName}`,
           { headers: { "Content-Type": "application/json" } }
         );
@@ -124,41 +124,41 @@ export const LineItemsProvider = ({ children, reportData }) => {
     fetchLineItems();
   }, [reportId, reportName, navigate]);
 
-  const addReportToDatabase = async () => {
-    const payload = {
-      report: {
-        report_id: reportId,
-        report_name: reportName,
-        report_desc: reportDesc,
-        report_type: reportType,
-        report_status: "DRAFT",
-      },
-    };
+  // const addReportToDatabase = async () => {
+  //   const payload = {
+  //     report: {
+  //       report_id: reportId,
+  //       report_name: reportName,
+  //       report_desc: reportDesc,
+  //       report_type: reportType,
+  //       report_status: "DRAFT",
+  //     },
+  //   };
 
-    const headers = {
-      "Content-Type": "application/json",
-      authorization: `Bearer ${token}`,
-    };
+  //   const headers = {
+  //     "Content-Type": "application/json",
+  //     authorization: `Bearer ${token}`,
+  //   };
 
-    try {
-      const response = await fetch(`${hostnameV1}/lineItems/reports`, {
-        headers: headers,
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+  //   try {
+  //     const response = await fetch(`${hostnameV1}/lineItems/reports`, {
+  //       headers: headers,
+  //       method: "POST",
+  //       body: JSON.stringify(payload),
+  //     });
 
-      if (!response.ok) {
-        toast.error("Error Saving Report Data.");
-        return;
-      }
+  //     if (!response.ok) {
+  //       toast.error("Error Saving Report Data.");
+  //       return;
+  //     }
 
-      const data = await response.json();
-      toast.success(data.message);
-    } catch (error) {
-      console.error("Error Saving Report Data:", error);
-      toast.error("Error Saving Report Data");
-    }
-  };
+  //     const data = await response.json();
+  //     toast.success(data.message);
+  //   } catch (error) {
+  //     console.error("Error Saving Report Data:", error);
+  //     toast.error("Error Saving Report Data");
+  //   }
+  // };
 
   const validateLineItemsJson = () => {
     // Basic validation
@@ -229,7 +229,7 @@ export const LineItemsProvider = ({ children, reportData }) => {
         getRulesForCurrentLineItem,
         closeAllModals,
         validateLineItemsJson,
-        addReportToDatabase,
+        // addReportToDatabase,
         getMode,
         isDataLoaded,
         setExistingLineItems,

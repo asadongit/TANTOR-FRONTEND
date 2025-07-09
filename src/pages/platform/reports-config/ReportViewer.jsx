@@ -13,12 +13,12 @@ const ReportViewer = () => {
       return;
     }
 
-    const url = `${window._env_?.VITE_BIRT_API}/frameset?__report=${
+    const url = `${window._env_?.VITE_REPORTING_API}/frameset?__report=${
       location.state.reportPath
     }&__format=html`;
 
     // TESTING AGILUS REPORT
-    // const url = `${window._env_?.VITE_BIRT_API}/run?__report=reports/Agilus/AgilusReport.rptdesign&__format=html`
+    // const url = `${window._env_?.VITE_REPORTING_API}/run?__report=reports/Agilus/AgilusReport.rptdesign&__format=html`
 
     setReportUrl(url);
   }, [location.state, navigate]);

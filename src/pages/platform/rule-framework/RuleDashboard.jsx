@@ -36,6 +36,7 @@ const RuleDashboard = () => {
   
   // Filter active rules. Filter rules by search
   useEffect(() => {
+    
     let updatedRuleList = ruleList.filter(row => row?.status?.toLowerCase() === "active").map((row, index) => ({...row, s_no: index + 1}));
     
     if (searchTerm) {
@@ -58,6 +59,7 @@ const RuleDashboard = () => {
     refetchCardData();
     refetchRules();
   };
+
 
   const handleCreate = () => {
     navigate("/config/rule/create-rule",{state: {mode: "CREATE"}}
@@ -99,7 +101,7 @@ const RuleDashboard = () => {
           (async () => {
             try{
               const headers = {"Content-Type": "application/json", "Authorization": `Bearer ${token}`};
-              const response = await fetch(`${hostnameV1}/ruleJson?rule_id=${ruleId}`, {headers});
+              const response = await fetch(`${window._env_?.VITE_REPORTING_BACKEND_API}/ruleJson?rule_id=${ruleId}`, {headers});
             
             if(!response.ok){
               const errorData = await response.json().catch(() => null);
@@ -161,8 +163,8 @@ const RuleDashboard = () => {
     { key: "id", label: "ID" },
     { key: "name", label: "Name" },
     { key: "description", label: "Desc" },
-    { key: "created", label: "Created" },
-    { key: "updated", label: "Updated" },
+    { key: "created", label: "Created", render: (row) => <span className="text-sm text-gray-700">{row.created}</span>},
+    { key: "updated", label: "Updated", render: (row) => <span className="text-sm text-gray-700">{row.updated}</span>},
     // { key: "reports", label: "Reports" },
     { label: "Action", sortable: false },
   ];
@@ -347,13 +349,13 @@ const RuleDashboard = () => {
           >
             <Download className="h-5 w-5" />
           </button>
-          {/* <button
+          <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
             onClick={handleRefresh}
           >
             <RefreshCcw className={`h-5 w-5 ${isRuleLoading ? 'animate-spin' : ''}`} />
-          </button> */}
+          </button>
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"

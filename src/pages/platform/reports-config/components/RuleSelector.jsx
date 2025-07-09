@@ -4,6 +4,7 @@ import DimensionSelector from "./DimensionSelector";
 import TimeTransformationComponent from "./TimeTransformationComponent";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
+import SearchableSelect from "../components/SearchableSelect";
 
 function MetricSelector({ index, rule, metricData = [], updateRule }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -112,7 +113,7 @@ const RuleSelector = ({
   useEffect(() => {
     const fetchRules = async () => {
       try {
-        const response = await fetch(`${hostnameV1}/lineItems/selectRule`, {
+        const response = await fetch(`${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectRule`, {
           headers: {
             "Content-Type": "application/json",
             authorization: `Bearer ${token}`,
@@ -149,7 +150,7 @@ const RuleSelector = ({
 
       try {
         const response = await fetch(
-          `${hostnameV1}/lineItems/selectMatric?rule_id=${currentSelectedRuleId}`,
+          `${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectMatric?rule_id=${currentSelectedRuleId}`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -181,7 +182,7 @@ const RuleSelector = ({
 
       try {
         const response = await fetch(
-          `${hostnameV1}/lineItems/selectDimension?rule_id=${currentSelectedRuleId}`,
+          `${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectDimension?rule_id=${currentSelectedRuleId}`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -206,8 +207,8 @@ const RuleSelector = ({
     fetchDimensionNames();
   }, [currentSelectedRuleId, hostnameV1, token]);
 
-  const handleRuleChange = (e) => {
-    const selectedRuleId = e.target.value;
+  const handleRuleChange = (option) => {
+    const selectedRuleId = option.id;
 
     if (!selectedRuleId) {
       updateRule(index, null, {
@@ -224,15 +225,15 @@ const RuleSelector = ({
     }
 
     // Prevent clearing if same rule is reselected
-    if (selectedRuleId === rule.ruleId) return;
+    if (selectedRuleId.toString() === rule.ruleId.toString()) return;
 
     const selectedRule = ruleData.find(
-      (r) => r.rule_id.toString() === selectedRuleId
+      (r) => r.rule_id.toString() === selectedRuleId.toString()
     );
 
     if (selectedRule) {
       updateRule(index, null, {
-        ruleId: selectedRuleId,
+        ruleId: selectedRuleId.toString(),
         ruleName: selectedRule.rule_name,
         metrics: [],
         dimensions: [{ id: "", name: "", operator: "", value: [] }],
@@ -240,6 +241,7 @@ const RuleSelector = ({
       });
       setTimeout(() => setCurrentSelectedRuleId(selectedRuleId), 0);
     }
+
   };
 
   return (
@@ -271,7 +273,7 @@ const RuleSelector = ({
             >
               Rule Selector
             </label>
-            <select
+            {/* <select
               id={`rule-selector-${index}`}
               className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               name="ruleId"
@@ -284,7 +286,24 @@ const RuleSelector = ({
                   {ruleItem.rule_name}
                 </option>
               ))}
-            </select>
+            </select> */}
+            <SearchableSelect
+              options={
+                (() => ruleData?.map(item => (
+                  {label: item.rule_name,
+                    id: item.rule_id.toString()
+                  }
+                )))()
+              }
+              placeholder="Select Rule"
+              onChange={handleRuleChange}
+              value={(() => {
+                const selectedRule = ruleData?.find(item => item.rule_id.toString() === currentSelectedRuleId.toString()) || [];
+                if(selectedRule.length === 0)
+                  return null;
+                return {id: selectedRule.rule_id, label: selectedRule.rule_name}
+              })()}
+            />
           </div>
 
           <MetricSelector

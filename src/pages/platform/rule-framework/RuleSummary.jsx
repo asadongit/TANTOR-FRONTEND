@@ -96,8 +96,8 @@ const RuleSummary = ({
 
     const url =
       mode.toUpperCase() === "EDIT"
-        ? `${hostnameV1}/updateRule`
-        : `${hostnameV1}/saveRule`;
+        ? `${window._env_?.VITE_REPORTING_BACKEND_API}/updateRule`
+        : `${window._env_?.VITE_REPORTING_BACKEND_API}/saveRule`;
     const method = mode.toUpperCase() === "EDIT" ? "PUT" : "POST";
 
     try {

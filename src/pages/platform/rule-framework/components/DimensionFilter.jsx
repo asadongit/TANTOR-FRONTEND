@@ -47,7 +47,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
       };
 
       const response = await fetch(
-        `${hostnameV1}/selectDimension?fact_id=${factId}`,
+        `${window._env_?.VITE_REPORTING_BACKEND_API}/selectDimension?fact_id=${factId}`,
         { headers }
       );
       const data = await response.json();
@@ -71,7 +71,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
       Authorization: `Bearer ${token}`,
     };
     const response = await fetch(
-      `${hostnameV1}/selectDimensionValue?fact_id=${factId}&fct_column_name=${dimensionName}`,
+      `${window._env_?.VITE_REPORTING_BACKEND_API}/selectDimensionValue?fact_id=${factId}&fct_column_name=${dimensionName}`,
       { headers }
     );
     const data = await response.json();

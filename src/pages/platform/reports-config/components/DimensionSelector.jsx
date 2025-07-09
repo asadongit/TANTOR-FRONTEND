@@ -130,7 +130,7 @@ const DimensionSelector = ({
         };
         
         const response = await fetch(
-          `${hostnameV1}/lineItems/selectDimensionName?rule_id=${currentSelectedRuleId}&fct_column_name=${selectedDimensionName}`,
+          `${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectDimensionName?rule_id=${currentSelectedRuleId}&fct_column_name=${selectedDimensionName}`,
           { headers }
         );
 
