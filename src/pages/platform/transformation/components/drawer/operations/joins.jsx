@@ -219,6 +219,7 @@ export const JoinsOperationFields = ({
     };
 
     const getLeftColumnOptions = (leftDfId) => {
+        // Only filter columns if left and right tables are different AND their columns are not identical
         if (
             !leftDfId ||
             !dataframeColumns[leftDfId] ||
@@ -229,11 +230,18 @@ export const JoinsOperationFields = ({
             return getColumnOptions(leftDfId);
         }
 
-        const rightColumnNames = new Set(
-            dataframeColumns[transformation.params.right_dataframe].map(col =>
-                typeof col === "object" && col !== null ? col.name : col
-            )
-        );
+        // Check if columns are identical
+        const leftCols = dataframeColumns[leftDfId].map(col => typeof col === "object" && col !== null ? col.name : col);
+        const rightCols = dataframeColumns[transformation.params.right_dataframe].map(col => typeof col === "object" && col !== null ? col.name : col);
+
+        const areIdentical = leftCols.length === rightCols.length &&
+            leftCols.every(col => rightCols.includes(col));
+
+        if (areIdentical) {
+            return getColumnOptions(leftDfId);
+        }
+
+        const rightColumnNames = new Set(rightCols);
 
         return dataframeColumns[leftDfId]
             .filter(col => {
