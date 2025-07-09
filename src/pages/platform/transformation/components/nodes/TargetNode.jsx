@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Handle, Position } from "reactflow";
 import { X, Database, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
@@ -38,10 +38,10 @@ export const TargetNode = ({ id, data }) => {
   const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
 
   const [alias, setAlias] = useState(data.alias || "");
-
   const [columnMapping, setColumnMapping] = useState(data.columnMapping || {});
   const [targetMapping, setTargetMapping] = useState(data.targetMapping || {});
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
+  const [selectedSourceForMapping, setSelectedSourceForMapping] = useState("");
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -49,7 +49,7 @@ export const TargetNode = ({ id, data }) => {
 
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
-  const { getAllSelectedSourceColumns } = useTransformation();
+  const { getAllSelectedSourceColumns, dispatch, ACTION_TYPES } = useTransformation();
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -175,10 +175,11 @@ export const TargetNode = ({ id, data }) => {
       alias: alias,
       columnMapping,
       targetMapping,
+      selectedSourceId: selectedSourceForMapping, // This reference is now safe
     });
   }, [
     selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
-    tables, alias, columnMapping, targetMapping
+    tables, alias, columnMapping, targetMapping, selectedSourceForMapping
   ]);
 
   const getNextAlias = useCallback(() => {
@@ -243,28 +244,22 @@ export const TargetNode = ({ id, data }) => {
   }, []);
 
   const getAllSourceColumns = () => {
-    // 1. All selected columns from all source nodes (context)
     let allCols = getAllSelectedSourceColumns();
 
-    // 2. Add ALL columns from all transformation drawer operations (target_column and source_column)
     if (data && Array.isArray(data.transformations)) {
       data.transformations.forEach(tr => {
-        // Add target_column(s)
         if (Array.isArray(tr.target_column)) {
           allCols = allCols.concat(tr.target_column);
         }
-        // Add source_column(s)
         if (Array.isArray(tr.source_column)) {
           allCols = allCols.concat(tr.source_column);
         }
       });
     }
 
-    // Remove duplicates and falsy values
     return Array.from(new Set(allCols.filter(Boolean)));
   };
 
-  // Helper to get all valid target columns
   const getAllTargetColumns = () => {
     let targetCols = [];
     if (Array.isArray(columns) && columns.length > 0) {
@@ -278,7 +273,6 @@ export const TargetNode = ({ id, data }) => {
     return targetCols;
   };
 
-  // Always keep targetMapping in sync with valid columns
   useEffect(() => {
     const validCols = getAllTargetColumns();
     setTargetMapping(prev => {
@@ -288,18 +282,14 @@ export const TargetNode = ({ id, data }) => {
       });
       return updated;
     });
-    // eslint-disable-next-line
   }, [columns, tables, selectedTable, data.transformations]);
 
-  // When targetMapping changes, update node data
   useEffect(() => {
     if (typeof data.onDataChange === "function") {
       data.onDataChange({ targetMapping });
     }
-    // eslint-disable-next-line
   }, [targetMapping]);
 
-  // When data.targetMapping changes from outside, sync local state
   useEffect(() => {
     if (data.targetMapping && JSON.stringify(data.targetMapping) !== JSON.stringify(targetMapping)) {
       setTargetMapping(data.targetMapping);
@@ -311,7 +301,6 @@ export const TargetNode = ({ id, data }) => {
     label: col
   }));
 
-  // Setter for mapping, always updates both local state and node data
   const handleSetTargetMapping = useCallback((newMapping) => {
     if (JSON.stringify(newMapping) !== JSON.stringify(targetMapping)) {
       setTargetMapping(newMapping);
@@ -321,16 +310,164 @@ export const TargetNode = ({ id, data }) => {
     }
   }, [data.onDataChange, targetMapping]);
 
+  const connectedSourceNodes = useMemo(() => {
+    if (!window.allNodes || !window.allEdges) return [];
+    const incomingEdges = window.allEdges.filter(e => e.target === id);
+    const transformationNodeIds = incomingEdges
+      .map(e => e.source)
+      .filter(srcId => {
+        const n = window.allNodes.find(n => n.id === srcId);
+        return n && n.type === "transformation";
+      });
+
+    let sources = [];
+    transformationNodeIds.forEach(transId => {
+      const transIncoming = window.allEdges.filter(e => e.target === transId);
+      transIncoming.forEach(e => {
+        const srcNode = window.allNodes.find(n => n.id === e.source && n.type === "source");
+        if (srcNode) {
+          sources.push(srcNode);
+        }
+      });
+    });
+
+    const uniqueSources = [];
+    const seen = new Set();
+    for (const s of sources) {
+      if (!seen.has(s.id)) {
+        uniqueSources.push(s);
+        seen.add(s.id);
+      }
+    }
+    return uniqueSources;
+  }, [id, window.allNodes, window.allEdges]);
+
+  const selectedSourceNode = useMemo(() => {
+    if (!selectedSourceForMapping) return null;
+    return connectedSourceNodes.find(n => n.id === selectedSourceForMapping);
+  }, [selectedSourceForMapping, connectedSourceNodes]);
+
+  const sourceColumnOptionsForMapping = useMemo(() => {
+    if (!selectedSourceNode) return [];
+    const cols = Array.isArray(selectedSourceNode.data?.columns)
+      ? selectedSourceNode.data.columns
+      : [];
+    return cols.map(col =>
+      typeof col === "object"
+        ? { value: col.name, label: col.name }
+        : { value: col, label: col }
+    );
+  }, [selectedSourceNode]);
+
   const handleSlideClick = () => {
     if (window.openTargetMappingDrawer) {
-      // Pass the latest mapping and getter/setter functions to the drawer
       window.openTargetMappingDrawer(id, {
         getAllTargetColumns,
-        targetMapping, // Current mapping state
-        setTargetMapping: handleSetTargetMapping, // Stabilized setter
-        sourceColumnOptions,
+        targetMapping,
+        setTargetMapping: handleSetTargetMapping,
+        sourceColumnOptions: sourceColumnOptionsForMapping,
       });
     }
+  };
+
+  const [mappingConfirmedForSource, setMappingConfirmedForSource] = useState({});
+
+  useEffect(() => {
+    setMappingConfirmedForSource({});
+  }, [selectedTable]);
+
+  useEffect(() => {
+    setMappingConfirmedForSource(prev => {
+      if (selectedSourceForMapping && !(selectedSourceForMapping in prev)) {
+        return { ...prev, [selectedSourceForMapping]: false };
+      }
+      return prev;
+    });
+  }, [selectedSourceForMapping]);
+
+  const handlePrefillAndOpenMappingDrawer = () => {
+    if (!selectedSourceForMapping) return;
+
+    let shouldPrefill = true;
+    if (mappingConfirmedForSource[selectedSourceForMapping] !== undefined) {
+      shouldPrefill = !mappingConfirmedForSource[selectedSourceForMapping];
+    }
+
+    let mappingToSend = targetMapping;
+    if (shouldPrefill) {
+      const cols = Array.isArray(selectedSourceNode?.data?.columns)
+        ? selectedSourceNode.data.columns
+        : [];
+
+      const sourceColMap = {};
+      cols.forEach(col => {
+        const colName = typeof col === "object" ? col.name : col;
+        if (colName) {
+          sourceColMap[colName.toLowerCase()] = colName;
+        }
+      });
+
+      const lowerSourceColNames = Object.keys(sourceColMap);
+
+      const targetCols = getAllTargetColumns();
+
+      const prefilledMapping = {};
+      targetCols.forEach(targetCol => {
+        if (lowerSourceColNames.includes(targetCol.toLowerCase())) {
+          prefilledMapping[targetCol] = sourceColMap[targetCol.toLowerCase()];
+        } else {
+          prefilledMapping[targetCol] = "";
+        }
+      });
+
+      console.log("Prefilled mapping:", prefilledMapping);
+
+      setTargetMapping(prefilledMapping);
+      if (typeof data.onDataChange === "function") {
+        data.onDataChange({ targetMapping: prefilledMapping });
+      }
+      mappingToSend = prefilledMapping;
+    }
+
+    if (window.openTargetMappingDrawer) {
+      window.openTargetMappingDrawer(id, {
+        getAllTargetColumns,
+        targetMapping: mappingToSend,
+        setTargetMapping: (mapping) => {
+          setTargetMapping(mapping);
+          if (typeof data.onDataChange === "function") {
+            data.onDataChange({ targetMapping: mapping });
+          }
+          setMappingConfirmedForSource(prev => ({
+            ...prev,
+            [selectedSourceForMapping]: true
+          }));
+        },
+        sourceColumnOptions: sourceColumnOptionsForMapping,
+      });
+    }
+  };
+
+  // Find the onChange handler for selectedSourceForMapping
+  const handleSourceSelectionChange = e => {
+    const sourceId = e.target.value;
+    setSelectedSourceForMapping(sourceId);
+
+    // More explicit logging and data update for debugging
+    console.log(`Target ${id} selected source: ${sourceId}`);
+
+    // Save the selected source ID in the node data
+    if (typeof data.onDataChange === "function") {
+      data.onDataChange({
+        selectedSourceId: sourceId,
+      });
+    }
+
+    // Dispatch to context for global mapping
+    dispatch({
+      type: ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE,
+      payload: { targetNodeId: id, sourceNodeId: sourceId }
+    });
   };
 
   return (
@@ -612,9 +749,9 @@ export const TargetNode = ({ id, data }) => {
                   onChange={(e) => setLoadType(e.target.value)}
                 >
                   <option value="FullLoad">Full Load</option>
-                  <option value="Delta">Delta</option>
+                  {/* <option value="Delta">Delta</option>
                   <option value="SCD1">SCD Type 1</option>
-                  <option value="SCD2">SCD Type 2</option>
+                  <option value="SCD2">SCD Type 2</option> */}
                 </select>
               </div>
             </div>
@@ -639,15 +776,39 @@ export const TargetNode = ({ id, data }) => {
 
         {selectedTable && data.connectedSources > 0 && (
           <div className="mt-4">
+            {/* Source selection dropdown */}
+            <div className="mb-2">
+              <label className="text-xs font-semibold text-black mb-1 block">
+                Select Source for Mapping
+              </label>
+              <select
+                className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
+                value={selectedSourceForMapping}
+                onChange={handleSourceSelectionChange} // <-- Use the new handler here
+              >
+                <option value="">Select source</option>
+                {connectedSourceNodes.map(src => (
+                  <option key={src.id} value={src.id}>
+                    {src.data?.alias || src.data?.connection || src.id}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               className={`mt-2 w-full ${mappingConfirmed ? 'bg-green-600' : 'bg-[#8E77BB]'} text-white text-xs font-semibold py-1 px-2 rounded hover:bg-${mappingConfirmed ? 'green-700' : '[#7a6bb0]'} transition-colors`}
-              onClick={handleSlideClick}
+              onClick={handlePrefillAndOpenMappingDrawer}
+              disabled={!selectedSourceForMapping}
             >
               {mappingConfirmed ? 'Target Mapping (Confirmed)' : 'Target Mapping'}
             </button>
             {mappingConfirmed && (
               <div className="mt-1 text-[10px] text-green-600">
                 Target mapping has been confirmed
+              </div>
+            )}
+            {!selectedSourceForMapping && (
+              <div className="mt-1 text-[10px] text-red-500">
+                Please select a source to map columns.
               </div>
             )}
           </div>

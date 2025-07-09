@@ -6,9 +6,10 @@ import { isStringType, isNumericType } from "../../nodes/DataTypeMapping";
 export const FILTER_OPERATORS = [
   { id: ">=", name: "Greater Than or Equal (>=)", value: ">=" },
   { id: "<=", name: "Less Than or Equal (<=)", value: "<=" },
-  { id: "==", name: "Equal (==)", value: "==" },
   { id: ">", name: "Greater Than (>)", value: ">" },
   { id: "<", name: "Less Than (<)", value: "<" },
+  { id: "==", name: "Equal (==)", value: "==" },
+
 ];
 
 function getAvailableFilterColumns(sourceCols, allTransformations) {
@@ -179,12 +180,7 @@ export const FilterParameters = ({ params, onChange, selectedColType, filterType
               : undefined
           }
         />
-        {/* {selectedColType === "date" && (
-          <div className="text-xs text-gray-400 mt-1">Format: yyyy-mm-dd</div>
-        )}
-        {selectedColType === "timestamp" && (
-          <div className="text-xs text-gray-400 mt-1">Format: yyyy-mm-ddThh:mm</div>
-        )} */}
+
       </>
     )}
   </div>
@@ -206,7 +202,7 @@ export const FilterOperationFields = ({
 
   const columnOptions = availableColumns.map(col =>
     typeof col === "object"
-      ? { value: col.name, label: col.name, datatype: col.datatype }
+      ? { value: col.name, label: col.datatype ? `${col.name} (${col.datatype})` : col.name, datatype: col.datatype }
       : { value: col, label: col }
   );
 
@@ -262,10 +258,14 @@ export const FilterOperationFields = ({
 
   const selectedOperator = transformation_operator || transformation.transformation_operator || operatorOptions[0]?.id;
 
+  console.log(selectedOperator)
+
   let operatorOptionsFiltered = operatorOptions;
-  if (selectedColType && isStringType(selectedColType)) {
-    operatorOptionsFiltered = operatorOptions.filter(op => op.id === "==");
-  }
+if (selectedColType && isStringType(selectedColType)) {
+  operatorOptionsFiltered = operatorOptions.filter(op => op.id === "==");
+}
+
+console.log(operatorOptionsFiltered)
 
   const customStyles = {
     control: (provided) => ({

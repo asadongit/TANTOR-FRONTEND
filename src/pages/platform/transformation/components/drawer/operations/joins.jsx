@@ -25,22 +25,18 @@ export const JoinsOperationFields = ({
     dropdownRefs,
     openDropdowns,
     toggleDropdown,
-    updateJoinsParam
+    updateJoinsParam,
+    appendColumnsFromRightToLeft
 }) => {
     const [joinConditions, setJoinConditions] = useState([
         { leftDataframe: "", leftColumn: "", condition: "==", rightDataframe: "", rightColumn: "" }
     ]);
+    // Add state to track original source columns
+    const [originalSourceColumns, setOriginalSourceColumns] = useState({});
 
     useEffect(() => {
         if (!transformation.params.join_type) {
             updateJoinsParam(transformation.id, "join_type", "left");
-        }
-
-        if (!transformation.params.right_dataframe && allDataframes.length > 0) {
-            const availableDf = allDataframes.find(df => df.id !== transformation.source_dataframe);
-            if (availableDf) {
-                updateJoinsParam(transformation.id, "right_dataframe", availableDf.id);
-            }
         }
 
         if (!transformation.params.join_condition) {
@@ -96,6 +92,22 @@ export const JoinsOperationFields = ({
         updateJoinsParam(transformation.id, "join_condition", "");
     };
 
+    useEffect(() => {
+        if (transformation.source_dataframe && dataframeColumns[transformation.source_dataframe]) {
+            setOriginalSourceColumns(prev => {
+                if (!prev[transformation.source_dataframe]) {
+                    return {
+                        ...prev,
+                        [transformation.source_dataframe]: dataframeColumns[transformation.source_dataframe].map(col =>
+                            typeof col === "object" && col !== null ? col.name : col
+                        )
+                    };
+                }
+                return prev;
+            });
+        }
+    }, [transformation.source_dataframe, dataframeColumns]);
+
     const handleRightDataframeChange = (e) => {
         const newRightDf = e.target.value;
         updateJoinsParam(transformation.id, "right_dataframe", newRightDf);
@@ -106,6 +118,24 @@ export const JoinsOperationFields = ({
             rightColumn: "",
         }]);
         updateJoinsParam(transformation.id, "join_condition", "");
+
+        if (
+            appendColumnsFromRightToLeft &&
+            transformation.source_dataframe &&
+            newRightDf &&
+            transformation.source_dataframe !== newRightDf
+        ) {
+            appendColumnsFromRightToLeft(transformation.source_dataframe, newRightDf, true);
+
+            setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('tantor-columns-updated', {
+                    detail: {
+                        sourceId: transformation.source_dataframe,
+                        rightId: newRightDf
+                    }
+                }));
+            }, 100);
+        }
     };
 
     const customStyles = {
@@ -206,6 +236,39 @@ export const JoinsOperationFields = ({
         });
     };
 
+    const getLeftColumnOptions = (leftDfId) => {
+        if (
+            !leftDfId ||
+            !dataframeColumns[leftDfId]
+        ) {
+            return [];
+        }
+
+        // Use only original source columns for this transformation
+        const originalColumns = originalSourceColumns[leftDfId] || [];
+
+        // Filter columns to only include originals
+        return dataframeColumns[leftDfId]
+            .filter(col => {
+                const colName = typeof col === "object" && col !== null ? col.name : col;
+                return originalColumns.includes(colName);
+            })
+            .map(col => {
+                if (typeof col === "object" && col !== null) {
+                    return {
+                        value: col.name,
+                        label: col.name,
+                        key: col.name
+                    };
+                }
+                return {
+                    value: col,
+                    label: col,
+                    key: col
+                };
+            });
+    };
+
     useEffect(() => {
         if (
             transformation.source_dataframe &&
@@ -280,6 +343,16 @@ export const JoinsOperationFields = ({
         updateJoinsParam(transformation.id, "drop_right_dataframe_collist", columns);
     };
 
+    const getSourceDataframes = () => {
+        if (!window.allNodes) return allDataframes;
+        const sourceNodeIds = window.allNodes
+            .filter(n => n.type === "source")
+            .map(n => n.id);
+        return allDataframes.filter(df =>
+            sourceNodeIds.includes(df.nodeId)
+        );
+    };
+
     return (
         <div>
             <div className="space-y-4">
@@ -293,8 +366,7 @@ export const JoinsOperationFields = ({
                             onChange={handleRightDataframeChange}
                         >
                             <option value="">Select right dataframe</option>
-                            {allDataframes
-                                .filter(df => df.id !== transformation.source_dataframe)
+                            {getSourceDataframes()
                                 .map(df => (
                                     <option key={df.id} value={df.id}>{df.label}</option>
                                 ))}
@@ -329,7 +401,7 @@ export const JoinsOperationFields = ({
                                     disabled={!condition.leftDataframe}
                                 >
                                     <option value="">Select column</option>
-                                    {getColumnOptions(condition.leftDataframe).map(opt => (
+                                    {getLeftColumnOptions(condition.leftDataframe).map(opt => (
                                         <option key={opt.key} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>

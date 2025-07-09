@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import Select, { components } from 'react-select';
 import { isNumericType } from "../../../components/nodes/DataTypeMapping";
 
@@ -9,13 +9,15 @@ const ARITHMETIC_OPERATORS = [
   { id: "division", name: "Divide", symbol: "÷" },
 ];
 
-export const ArithmeticOperationFields = ({
+// Wrap with forwardRef to expose validation
+export const ArithmeticOperationFields = forwardRef(({
     transformation,
     sourceCols,
     handleSelectAllColumns,
     updateTransformation = () => {},
     onAddNewTargetColumn,
-}) => {
+    setIsValid // <-- new prop for validation callback
+}, ref) => {
     const [isAddingNewColumn, setIsAddingNewColumn] = useState(false);
     const [newColumnName, setNewColumnName] = useState("");
     const inputRef = useRef(null);
@@ -57,6 +59,27 @@ export const ArithmeticOperationFields = ({
             label: colName
         }))
         : [];
+
+    // Validation state
+    const [customValueError, setCustomValueError] = useState(false);
+
+    // Validation logic
+    useEffect(() => {
+        const isSingleSource = Array.isArray(transformation.source_column) && transformation.source_column.length === 1;
+        const customValue = transformation.params?.custom_value;
+        const isValid = !(isSingleSource && (!customValue || customValue === ""));
+        setCustomValueError(isSingleSource && (!customValue || customValue === ""));
+        if (typeof setIsValid === "function") setIsValid(isValid);
+    }, [transformation.source_column, transformation.params?.custom_value, setIsValid]);
+
+    // Expose validation for parent via ref
+    useImperativeHandle(ref, () => ({
+        isValid: () => {
+            const isSingleSource = Array.isArray(transformation.source_column) && transformation.source_column.length === 1;
+            const customValue = transformation.params?.custom_value;
+            return !(isSingleSource && (!customValue || customValue === ""));
+        }
+    }));
 
     useEffect(() => {
         if (!isAddingNewColumn && transformation.target_column[0]) {
@@ -337,13 +360,16 @@ export const ArithmeticOperationFields = ({
                 </div>
                 <div className="flex-1">
                     <label className="block text-xs text-gray-600 mb-1">
-                        Custom Value
+                        Custom Value{" "}
+                        {Array.isArray(transformation.source_column) && transformation.source_column.length === 1 && (
+                            <span className="text-red-500 font-normal">(required)</span>
+                        )}
                     </label>
                     <input
                         type="number"
                         step="1"
                         pattern="[0-9]*"
-                        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                        className={`w-full p-2 text-sm bg-white border ${customValueError ? "border-red-500" : "border-gray-300"} rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]`}
                         placeholder="Enter custom value"
                         value={transformation.params?.custom_value || ""}
                         onChange={e => {
@@ -354,6 +380,7 @@ export const ArithmeticOperationFields = ({
                         }}
                         inputMode="numeric"
                     />
+
                 </div>
             </div>
             <div className="flex mt-4">
@@ -386,7 +413,7 @@ export const ArithmeticOperationFields = ({
             {showAddModal && AddColumnModal}
         </div>
     );
-};
+});
 
 export default ArithmeticOperationFields;
 

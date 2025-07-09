@@ -11,6 +11,7 @@ const initialState = {
   targets: {},
   connections: [],
   selectedSourceColumnsSet: {}, // { [sourceNodeId]: Set<string> }
+  targetToSelectedSourceMap: {}, // { [targetNodeId]: sourceNodeId }
 };
 
 const ACTION_TYPES = {
@@ -29,6 +30,7 @@ const ACTION_TYPES = {
   REMOVE_CONNECTION: 'REMOVE_CONNECTION',
   RESET: 'RESET',
   UPDATE_SELECTED_SOURCE_COLUMNS: 'UPDATE_SELECTED_SOURCE_COLUMNS',
+  UPDATE_TARGET_SELECTED_SOURCE: 'UPDATE_TARGET_SELECTED_SOURCE', // <-- add this
 };
 
 function transformationReducer(state, action) {
@@ -165,6 +167,17 @@ function transformationReducer(state, action) {
         }
       };
     }
+    case ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE: {
+      // action.payload: { targetNodeId, sourceNodeId }
+      const { targetNodeId, sourceNodeId } = action.payload;
+      return {
+        ...state,
+        targetToSelectedSourceMap: {
+          ...state.targetToSelectedSourceMap,
+          [targetNodeId]: sourceNodeId
+        }
+      };
+    }
 
     case ACTION_TYPES.RESET:
       return initialState;
@@ -219,11 +232,32 @@ export function TransformationProvider({ children }) {
       };
 
       const transformationNodes = Object.keys(state.transformations);
+
+      // Track target columns created by transformations
       const transformationCreatedColumns = new Set();
+      // Track columns that are both source and target in date transformations
+      const dateInPlaceTransformColumns = new Set();
+
       Object.values(state.transformations).forEach(tr => {
         if (tr.transformationConfig && Array.isArray(tr.transformationConfig.operations)) {
           tr.transformationConfig.operations.forEach(op => {
-            if (Array.isArray(op.target_column)) {
+            // For date operations where source and target are the same column,
+            // add to special set instead of marking as created
+            if (op.transformation_operation === 'date' &&
+                Array.isArray(op.source_column) &&
+                Array.isArray(op.target_column)) {
+
+              // For each target column that's also a source column in the same date operation
+              op.target_column.forEach(targetCol => {
+                if (op.source_column.includes(targetCol)) {
+                  dateInPlaceTransformColumns.add(targetCol);
+                } else if (targetCol && typeof targetCol === "string") {
+                  transformationCreatedColumns.add(targetCol);
+                }
+              });
+            }
+            // For all other operations, handle normally
+            else if (Array.isArray(op.target_column)) {
               op.target_column.forEach(col => {
                 if (col && typeof col === "string") {
                   transformationCreatedColumns.add(col);
@@ -248,18 +282,25 @@ export function TransformationProvider({ children }) {
           if (sourceData) {
             const sourceKey = sourceData.alias || `source_${sourceId}`;
 
-            // PATCH: Only include columns not created by transformations
+            const selectedColumnsSet = state.selectedSourceColumnsSet[sourceId] || new Set();
+
             let columnArr = [];
             if (Array.isArray(sourceData.columns)) {
               columnArr = sourceData.columns
                 .filter(col => {
                   const colName = typeof col === "object" && col.name ? col.name : col;
-                  return colName && !transformationCreatedColumns.has(colName);
+                  // Keep column if it's:
+                  // 1. In the selectedColumnsSet, AND
+                  // 2. Either:
+                  //    a. Not in the transformationCreatedColumns set, OR
+                  //    b. In the dateInPlaceTransformColumns set (special case for date transformations)
+                  return colName &&
+                         selectedColumnsSet.has(colName) &&
+                         (!transformationCreatedColumns.has(colName) || dateInPlaceTransformColumns.has(colName));
                 })
                 .map(col => typeof col === "object" && col.name ? col.name : col)
                 .filter(Boolean);
             }
-            // END PATCH
 
             result.source[sourceKey] = {
               sourceType: sourceData.connectionType || "unknown",
@@ -285,6 +326,9 @@ export function TransformationProvider({ children }) {
           return transformationNodes.includes(conn.source) && targetIds.includes(conn.target);
         });
 
+        // Use the new map for target->selected source
+        const targetToSelectedSourceMap = state.targetToSelectedSourceMap || {};
+
         targetConnections.forEach((conn) => {
           const targetId = conn.target;
           const targetData = state.targets[targetId];
@@ -292,17 +336,19 @@ export function TransformationProvider({ children }) {
           if (targetData) {
             const targetKey = targetData.alias || `target_${targetId}`;
 
-            const transformationNodeId = conn.source;
-            const incomingSourceEdge = state.connections.find(
-              c => c.target === transformationNodeId && Object.keys(state.sources).includes(c.source)
-            );
+            // --- USE THE NEW MAP HERE ---
             let sourceDataframe = "";
-            let sourceConnId = "";
-            if (incomingSourceEdge) {
-              const srcId = incomingSourceEdge.source;
-              sourceDataframe = state.sources[srcId]?.alias || `source_${srcId}`;
-              sourceConnId = state.sources[srcId]?.connectionId || "";
+            const selectedSourceId = targetToSelectedSourceMap[targetId];
+            if (selectedSourceId) {
+              const selectedSource = state.sources[selectedSourceId];
+              if (selectedSource) {
+                sourceDataframe = selectedSource.alias || `source_${selectedSourceId}`;
+              } else {
+                // fallback: just use the selectedSourceId as is
+                sourceDataframe = selectedSourceId;
+              }
             }
+            // ---------------------------------------
 
             result.target[targetKey] = {
               targetType: targetData.connectionType || "unknown",
@@ -310,7 +356,6 @@ export function TransformationProvider({ children }) {
               targetConnId: targetData.connectionId || "",
               loadType: targetData.loadType || "",
               sourceDataframe: sourceDataframe,
-              // sourceConnId: sourceConnId,
               LoadingParams: {
                 targetschema: targetData.schema || "",
                 targetTable: targetData.table || "",
@@ -384,6 +429,7 @@ export function TransformationProvider({ children }) {
         ACTION_TYPES,
         generateTransformationJson,
         getAllSelectedSourceColumns,
+        targetToSelectedSourceMap: state.targetToSelectedSourceMap, // expose in context
       }}
     >
       {children}
