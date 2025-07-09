@@ -132,8 +132,18 @@ export const TypecastOperationFields = ({
   const handleSourceChange = (selected) => {
     const selectedColumn = selected ? selected.value : null;
     handleSelectAllColumns(transformation.id, "source", selectedColumn ? [selectedColumn] : [], true);
+
+    const sourceCol = filteredSourceCols.find(col =>
+      (typeof col === "object" ? col.name : col) === selectedColumn
+    );
+    const sourceDataType = sourceCol && typeof sourceCol === "object"
+      ? sourceCol.datatype
+      : "";
+
+    updateParam("source_datatype", sourceDataType);
+
     updateParam("target_datatype", "");
-    handleSelectAllColumns(transformation.id, "target", [], true); 
+    handleSelectAllColumns(transformation.id, "target", [], true);
   };
 
   const handleTargetChange = (selected, { action }) => {
@@ -163,23 +173,23 @@ export const TypecastOperationFields = ({
     }
   };
 
-  const selectedSourceColumn = filteredSourceCols.find(col => 
+  const selectedSourceColumn = filteredSourceCols.find(col =>
     (typeof col === "object" ? col.name : col) === transformation.source_column?.[0]
   );
-  const sourceDataType = selectedSourceColumn && typeof selectedSourceColumn === "object" 
-    ? selectedSourceColumn.datatype 
+  const sourceDataType = selectedSourceColumn && typeof selectedSourceColumn === "object"
+    ? selectedSourceColumn.datatype
     : "";
-  
-  const filteredDataTypes = DATA_TYPES.filter(type => {
-    if (!sourceDataType) return true; 
 
-    if (isNumericType(sourceDataType) && !isFloatType(sourceDataType)) { 
+  const filteredDataTypes = DATA_TYPES.filter(type => {
+    if (!sourceDataType) return true;
+
+    if (isNumericType(sourceDataType) && !isFloatType(sourceDataType)) {
       return ["string", "float"].includes(type.id);
     }
     if (isFloatType(sourceDataType)) {
       return type.id === "int";
     }
-    return ["string"].includes(type.id); 
+    return ["string"].includes(type.id);
   });
 
 
@@ -435,7 +445,8 @@ export const TypecastOperationFields = ({
 
 export const getTypecastParams = (transformation) => {
   return {
-    target_datatype: transformation.params.target_datatype || ""
+    target_datatype: transformation.params.target_datatype || "",
+    source_datatype: transformation.params.source_datatype || ""
   };
 };
 
