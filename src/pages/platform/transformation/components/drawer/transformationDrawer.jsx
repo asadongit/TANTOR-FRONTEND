@@ -723,7 +723,8 @@ export const TransformationDrawer = ({
 			break;
 		case "typecast":
 			params = {
-			target_datatype: "string",
+			target_datatype: "",
+			source_datatype: ""
 			};
 			transformation_operator = "";
 			break;
