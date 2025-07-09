@@ -219,9 +219,13 @@ export const JoinsOperationFields = ({
     };
 
     const getLeftColumnOptions = (leftDfId) => {
-        if (!leftDfId || !dataframeColumns[leftDfId] ||
+        if (
+            !leftDfId ||
+            !dataframeColumns[leftDfId] ||
             !transformation.params.right_dataframe ||
-            !dataframeColumns[transformation.params.right_dataframe]) {
+            !dataframeColumns[transformation.params.right_dataframe] ||
+            leftDfId === transformation.params.right_dataframe
+        ) {
             return getColumnOptions(leftDfId);
         }
 
