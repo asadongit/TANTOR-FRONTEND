@@ -26,11 +26,13 @@ export const JoinsOperationFields = ({
     openDropdowns,
     toggleDropdown,
     updateJoinsParam,
-    appendColumnsFromRightToLeft // <-- accept as prop
+    appendColumnsFromRightToLeft
 }) => {
     const [joinConditions, setJoinConditions] = useState([
         { leftDataframe: "", leftColumn: "", condition: "==", rightDataframe: "", rightColumn: "" }
     ]);
+    // Add state to track original source columns
+    const [originalSourceColumns, setOriginalSourceColumns] = useState({});
 
     useEffect(() => {
         if (!transformation.params.join_type) {
@@ -89,6 +91,22 @@ export const JoinsOperationFields = ({
         }]);
         updateJoinsParam(transformation.id, "join_condition", "");
     };
+
+    useEffect(() => {
+        if (transformation.source_dataframe && dataframeColumns[transformation.source_dataframe]) {
+            setOriginalSourceColumns(prev => {
+                if (!prev[transformation.source_dataframe]) {
+                    return {
+                        ...prev,
+                        [transformation.source_dataframe]: dataframeColumns[transformation.source_dataframe].map(col =>
+                            typeof col === "object" && col !== null ? col.name : col
+                        )
+                    };
+                }
+                return prev;
+            });
+        }
+    }, [transformation.source_dataframe, dataframeColumns]);
 
     const handleRightDataframeChange = (e) => {
         const newRightDf = e.target.value;
@@ -219,34 +237,21 @@ export const JoinsOperationFields = ({
     };
 
     const getLeftColumnOptions = (leftDfId) => {
-        // Only filter columns if left and right tables are different AND their columns are not identical
         if (
             !leftDfId ||
-            !dataframeColumns[leftDfId] ||
-            !transformation.params.right_dataframe ||
-            !dataframeColumns[transformation.params.right_dataframe] ||
-            leftDfId === transformation.params.right_dataframe
+            !dataframeColumns[leftDfId]
         ) {
-            return getColumnOptions(leftDfId);
+            return [];
         }
 
-        // Check if columns are identical
-        const leftCols = dataframeColumns[leftDfId].map(col => typeof col === "object" && col !== null ? col.name : col);
-        const rightCols = dataframeColumns[transformation.params.right_dataframe].map(col => typeof col === "object" && col !== null ? col.name : col);
+        // Use only original source columns for this transformation
+        const originalColumns = originalSourceColumns[leftDfId] || [];
 
-        const areIdentical = leftCols.length === rightCols.length &&
-            leftCols.every(col => rightCols.includes(col));
-
-        if (areIdentical) {
-            return getColumnOptions(leftDfId);
-        }
-
-        const rightColumnNames = new Set(rightCols);
-
+        // Filter columns to only include originals
         return dataframeColumns[leftDfId]
             .filter(col => {
                 const colName = typeof col === "object" && col !== null ? col.name : col;
-                return !rightColumnNames.has(colName);
+                return originalColumns.includes(colName);
             })
             .map(col => {
                 if (typeof col === "object" && col !== null) {
