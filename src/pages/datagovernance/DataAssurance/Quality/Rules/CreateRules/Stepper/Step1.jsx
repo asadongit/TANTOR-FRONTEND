@@ -370,6 +370,7 @@ function Step1({ onNext, onCancel, step1Data }) {
             category,
             type,
             group: selectedGroup,
+            owner: decodedToken?.preferred_username
           }),
         }
       );
