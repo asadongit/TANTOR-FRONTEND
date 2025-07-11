@@ -280,24 +280,26 @@ function Step1({ onNext, onCancel, step1Data }) {
   const [uiRules, setUiRules] = useState({});
   const [modalSelectedRules, setModalSelectedRules] = useState([]);
 
-  const fetchGroupNames = useCallback(() => {
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/listgroups`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+ const fetchGroupNames = useCallback(() => {
+  fetch(`${import.meta.env.VITE_FAST_API}/rules/listgroups`, {
+    method: 'POST', 
+    headers: {
+      'Content-Type': 'application/json',
+      'accept': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ owner: decodedToken?.preferred_username }),
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (Array.isArray(data.groups)) {
+        setGroupNames(data.groups);
+      }
     })
-      .then(response => response.json())
-      .then(data => {
-        if (Array.isArray(data.groups)) {
-          setGroupNames(data.groups);
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching group names:', error);
-      });
-  }, [token]);
+    .catch(error => {
+      console.error('Error fetching group names:', error);
+    });
+}, [token]);
 
   useEffect(() => {
     fetchGroupNames();

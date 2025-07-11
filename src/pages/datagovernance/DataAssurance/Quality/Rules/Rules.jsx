@@ -4,6 +4,7 @@ import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useNavigate } from 'react-router-dom';
 import RuleRunSummary from './RuleRunSummary';
+import { useAuth } from "../../../../../context/AuthContext";
 
 const Rules = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,6 +24,7 @@ const Rules = () => {
   const [tableData, setTableData] = useState([]);
   const selectAllRef = useRef(null);
   const [showSelectAllOptions, setShowSelectAllOptions] = useState(false);
+  const { decodedToken } = useAuth();
 
   useEffect(() => {
     if (toast.show) {
@@ -79,30 +81,42 @@ const Rules = () => {
   ];
 
   const fetchCounts = async () => {
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/counts`)
-      .then(response => response.json())
-      .then(data => {
-        console.log(data);
-        setMetricData(data);
-      })
-      .catch(error => {
-        console.error('Error fetching counts:', error);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/counts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({ owner: decodedToken?.preferred_username }),
       });
+      const data = await response.json();
+      console.log(data);
+      setMetricData(data);
+    } catch (error) {
+      console.error('Error fetching counts:', error);
+    }
   };
 
   const fetchTableData = async () => {
     setIsLoading(true);
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/table`)
-      .then(response => response.json())
-      .then(data => {
-        console.log(data.data_rules);
-        setTableData(data.data_rules || []);
-        setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching table data:', error);
-        setIsLoading(false);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/table`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({ owner: decodedToken?.preferred_username }),
       });
+      const data = await response.json();
+      console.log(data.data_rules);
+      setTableData(data.data_rules || []);
+    } catch (error) {
+      console.error('Error fetching table data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchRuleDetails = async (ids) => {
@@ -113,7 +127,7 @@ const Rules = () => {
           'Content-Type': 'application/json',
           'accept': 'application/json',
         },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({ ids, owner: decodedToken?.preferred_username }),
       });
       const data = await response.json();
       return data.rules || [];
@@ -136,7 +150,7 @@ const Rules = () => {
           'Content-Type': 'application/json',
           'accept': 'application/json',
         },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({ ids, owner: decodedToken?.preferred_username }),
       });
 
       if (!response.ok) {
@@ -340,7 +354,7 @@ const Rules = () => {
           'Content-Type': 'application/json',
           'accept': 'application/json',
         },
-        body: JSON.stringify({ ids: idsToDelete }),
+        body: JSON.stringify({ ids: idsToDelete, owner: decodedToken?.preferred_username }),
       });
 
       if (response.ok) {
@@ -374,7 +388,7 @@ const Rules = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ ids: [item.id] }),
+          body: JSON.stringify({ ids: [item.id], owner: decodedToken?.preferred_username }),
         });
         const data = await response.json();
         navigate('/datagovernance/data-assurance/rules/create', {
