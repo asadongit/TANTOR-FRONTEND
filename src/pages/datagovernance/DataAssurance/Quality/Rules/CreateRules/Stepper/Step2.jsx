@@ -4,11 +4,12 @@ import AceEditor from 'react-ace';
 import Select, { components } from 'react-select';
 import { useStepData } from './StepContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../../../../../context/AuthContext';
+import { secureQuery } from '../../../../../DataCatalogue/Components/function.js';
 
 import 'ace-builds/src-noconflict/mode-sql';
 import 'ace-builds/src-noconflict/theme-tomorrow';
 import 'ace-builds/src-noconflict/ext-language_tools';
-import { useAuth } from '../../../../../../../context/AuthContext';
 
 const CheckboxOption = props => {
   const { isSelected, label, innerProps, selectProps } = props;
@@ -21,7 +22,7 @@ const CheckboxOption = props => {
           <input
             type="checkbox"
             checked={isSelected}
-            onChange={() => {}}
+            onChange={() => { }}
             className="mr-2 form-checkbox text-[#8d77ba] h-4 w-4"
           />
         )}
@@ -31,7 +32,6 @@ const CheckboxOption = props => {
   );
 };
 
-//lable with tooltip
 const CustomMultiValueLabel = props => {
   return (
     <components.MultiValueLabel
@@ -44,7 +44,7 @@ const CustomMultiValueLabel = props => {
   );
 };
 
-function Step2({ data, onBack, onNext, step2Data, edit =false }) {
+function Step2({ data, onBack, onNext, step2Data, edit = false }) {
   const { stepData, setStepData } = useStepData();
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -55,7 +55,12 @@ function Step2({ data, onBack, onNext, step2Data, edit =false }) {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoaded, setSearchLoaded] = useState(false);
   const editorRef = useRef(null);
-  const [isCustomCreate,setIsCustomCreate] = useState(false)
+  const [isCustomCreate, setIsCustomCreate] = useState(false);
+  const [policyIds, setPolicyIds] = useState([]);
+  const [isLoadingConnections, setIsLoadingConnections] = useState(false);
+  const [isLoadingSchemas, setIsLoadingSchemas] = useState({});
+  const [isLoadingTables, setIsLoadingTables] = useState({});
+  const [isLoadingColumns, setIsLoadingColumns] = useState({});
 
   const [validationStatus, setValidationStatusState] = useState(() => stepData.validationStatus || {});
 
@@ -114,9 +119,9 @@ function Step2({ data, onBack, onNext, step2Data, edit =false }) {
           id: idx + 1,
           checked: true,
           connection: conn.connection || '',
-          schema: Array.isArray(conn.schema) ? conn.schema.map(s => (typeof s === 'string' ? s.split('.').pop() : s)) : (conn.schema ? [conn.schema] : []),
-          table: Array.isArray(conn.tables) ? conn.tables.map(t => (typeof t === 'string' ? t.split('.').pop() : t)) : (conn.tables ? [conn.tables] : []),
-          column: Array.isArray(conn.columns) ? conn.columns.map(c => (typeof c === 'string' ? c.split('.').pop() : c)) : (conn.columns ? [conn.columns] : []),
+          schema: Array.isArray(conn.schema) ? conn.schema.map(s => (typeof s === 'string' ? s.split('.').pop() : s)) : (conn.schema ? [conn.schema.split('.').pop()] : []),
+          table: Array.isArray(conn.tables) ? conn.tables.map(t => (typeof t === 'string' ? t.split('.').pop() : t)) : (conn.tables ? [conn.tables.split('.').pop()] : []),
+          column: Array.isArray(conn.columns) ? conn.columns.map(c => (typeof c === 'string' ? c.split('.').pop() : c)) : (conn.columns ? [conn.columns.split('.').pop()] : []),
         }));
       });
     } else {
@@ -310,29 +315,28 @@ function Step2({ data, onBack, onNext, step2Data, edit =false }) {
   };
 
   const getQueryById = (data, id) => {
-  if (!data?.rules) return '';
+    if (!data?.rules) return '';
 
-  for (const group of Object.values(data.rules)) {
-    const rule = group.find(rule => rule.id === id);
-    if (rule) {
-      return rule.query || '';
+    for (const group of Object.values(data.rules)) {
+      const rule = group.find(rule => rule.id === id);
+      if (rule) {
+        return rule.query || '';
+      }
     }
-  }
-  return '';
-};
+    return '';
+  };
 
-useEffect(() => {
-  const currentGroup = groupNames[activeGroupIndex];
-  const rule = queries[currentGroup]?.[activeRuleIndex];
-  if (rule && selectedRules[currentGroup]?.has(rule.id)) {
-    const givenQuery = getQueryById(data, rule.id);
-    const isQueryEmpty = givenQuery === '' || givenQuery == null;
-    setIsCustomCreate(!edit && data?.category.toLowerCase() === 'custom' && !isQueryEmpty);
-  } else {
-    setIsCustomCreate(false);
-  }
-}, [activeGroupIndex, activeRuleIndex, queries, selectedRules, data, edit]);
-
+  useEffect(() => {
+    const currentGroup = groupNames[activeGroupIndex];
+    const rule = queries[currentGroup]?.[activeRuleIndex];
+    if (rule && selectedRules[currentGroup]?.has(rule.id)) {
+      const givenQuery = getQueryById(data, rule.id);
+      const isQueryEmpty = givenQuery === '' || givenQuery == null;
+      setIsCustomCreate(!edit && data?.category.toLowerCase() === 'custom' && !isQueryEmpty);
+    } else {
+      setIsCustomCreate(false);
+    }
+  }, [activeGroupIndex, activeRuleIndex, queries, selectedRules, data, edit]);
 
   const getCurrentQuery = () => {
     const currentGroup = groupNames[activeGroupIndex];
@@ -347,87 +351,142 @@ useEffect(() => {
   const [columnsByTable, setColumnsByTable] = useState({});
 
   const fetchConnections = () => {
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/connections`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        }
-      }
-    )
+    setIsLoadingConnections(true);
+    fetch(`${import.meta.env.VITE_FAST_API}/connections/list`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        matched_policy_ids: policyIds,
+      }),
+    })
       .then(response => response.json())
       .then(data => {
-        const connectionsArr = Array.isArray(data.connections) ? data.connections : [];
+        const connectionsArr = Array.isArray(data) ? data : [];
         const formattedOptions = connectionsArr.map(conn => ({
-          value: conn,
-          label: conn
+          value: conn.connection_name,
+          label: conn.connection_name,
         }));
         setConnectionOptions(formattedOptions);
       })
       .catch(error => {
         console.error('Error fetching connections:', error);
+      })
+      .finally(() => {
+        setIsLoadingConnections(false);
       });
   };
 
   useEffect(() => {
-    fetchConnections();
-  }, []);
+    const fetchPolicyIds = async () => {
+      try {
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const ids = secureQueryResponse.matched_policy_ids || [];
+        setPolicyIds(ids);
+      } catch (error) {
+        console.error('Error fetching policy IDs:', error);
+      }
+    };
+    fetchPolicyIds();
+  }, [token]);
+
+  useEffect(() => {
+    if (policyIds.length > 0 && connectionOptions.length === 0) {
+      fetchConnections();
+    }
+  }, [policyIds]);
 
   const fetchSchemas = (connectionName) => {
-    if (!connectionName || schemasByConnection[connectionName]) return;
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/schema/${encodeURIComponent(connectionName)}`,
-  {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
-  })
+    if (!connectionName || schemasByConnection[connectionName] || !policyIds.length) return;
+    setIsLoadingSchemas(prev => ({ ...prev, [connectionName]: true }));
+    fetch(`${import.meta.env.VITE_FAST_API}/schemas/list`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        matched_policy_ids: policyIds,
+        connection_name: connectionName,
+      }),
+    })
       .then(response => response.json())
       .then(data => {
-        const schemasArr = Array.isArray(data.schemas) ? data.schemas : [];
+        const schemasArr = Array.isArray(data) && data[0] && data[0][connectionName]
+          ? data[0][connectionName]
+          : [];
         setSchemasByConnection(prev => ({ ...prev, [connectionName]: schemasArr }));
       })
       .catch(error => {
         console.error('Error fetching schemas:', error);
+      })
+      .finally(() => {
+        setIsLoadingSchemas(prev => ({ ...prev, [connectionName]: false }));
       });
   };
 
   const fetchTables = (connectionName, schemaName) => {
-    if (!connectionName || !schemaName || tablesBySchema[`${connectionName}__${schemaName}`]) return;
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/tables`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ connection_name: connectionName, table_schema: schemaName }),
-      }
-    )
+    if (!connectionName || !schemaName || tablesBySchema[`${connectionName}__${schemaName}`] || !policyIds.length) return;
+    setIsLoadingTables(prev => ({ ...prev, [`${connectionName}__${schemaName}`]: true }));
+    fetch(`${import.meta.env.VITE_FAST_API}/tables/list`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        matched_policy_ids: policyIds,
+        connection_name: connectionName,
+        schema_name: [schemaName],
+      }),
+    })
       .then(response => response.json())
       .then(data => {
-        const tablesArr = Array.isArray(data.tables) ? data.tables : [];
+        const schemas = Array.isArray(data.schemas) ? data.schemas : [];
+        const tablesArr = schemas.find(s => s.connection_name === connectionName && s.schema === schemaName)?.tables || [];
         setTablesBySchema(prev => ({ ...prev, [`${connectionName}__${schemaName}`]: tablesArr }));
       })
       .catch(error => {
         console.error('Error fetching tables:', error);
+      })
+      .finally(() => {
+        setIsLoadingTables(prev => ({ ...prev, [`${connectionName}__${schemaName}`]: false }));
       });
   };
 
   const fetchColumns = (connectionName, schemaName, tableName) => {
-    if (!connectionName || !schemaName || !tableName) return;
+    if (!connectionName || !schemaName || !tableName || !policyIds.length) return;
     const tableNameOnly = tableName.split('.').pop();
     const key = `${schemaName}__${tableNameOnly}`;
     if (columnsByTable[key]) return;
-
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/addrule/columns`, {
+    setIsLoadingColumns(prev => ({ ...prev, [key]: true }));
+    fetch(`${import.meta.env.VITE_FAST_API}/columns/list`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ connection_name: connectionName, table_schema: schemaName, table_name: tableNameOnly }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        matched_policy_ids: policyIds,
+        connection_name: connectionName,
+        schema_name: [schemaName],
+        table_name: [tableNameOnly],
+      }),
     })
       .then(response => response.json())
       .then(data => {
-        const columnsArr = Array.isArray(data.columns) ? data.columns : [];
+        const columnsArr = Array.isArray(data.columns)
+          ? data.columns.find(c => c.connection_name === connectionName && c.schema === schemaName && c.table_name === tableNameOnly)?.columns.map(col => col.column_name) || []
+          : [];
         setColumnsByTable(prev => ({ ...prev, [key]: columnsArr }));
       })
       .catch(error => {
         console.error('Error fetching columns:', error);
+      })
+      .finally(() => {
+        setIsLoadingColumns(prev => ({ ...prev, [key]: false }));
       });
   };
 
@@ -485,11 +544,9 @@ useEffect(() => {
       ),
       id
     );
-    if (value) fetchSchemas(value);
   };
 
   const handleSchemaChange = (id, selectedOptions) => {
-    const conn = connections.find(c => c.id === id);
     const values = selectedOptions ? selectedOptions.map(option => option.value) : [];
     setConnectionsForCurrent(
       connections.map(conn =>
@@ -499,13 +556,9 @@ useEffect(() => {
       ),
       id
     );
-    if (conn && conn.connection) {
-      values.forEach(schema => fetchTables(conn.connection, schema));
-    }
   };
 
   const handleTableChange = (id, selectedOptions) => {
-    const conn = connections.find(c => c.id === id);
     const values = selectedOptions ? selectedOptions.map(option => option.value) : [];
     setConnectionsForCurrent(
       connections.map(conn =>
@@ -515,11 +568,6 @@ useEffect(() => {
       ),
       id
     );
-    if (conn && conn.connection && conn.schema) {
-      (conn.schema || []).forEach(schema =>
-        values.forEach(table => fetchColumns(conn.connection, schema, table))
-      );
-    }
   };
 
   const handleColumnChange = (id, selectedOptions) => {
@@ -534,39 +582,45 @@ useEffect(() => {
     );
   };
 
+  const handleCheck = (id) => {
+    setConnectionsForCurrent(
+      connections.map(conn =>
+        conn.id === id ? { ...conn, checked: !conn.checked } : conn
+      )
+    );
+  };
+
   const handleDelete = (id) => {
     setConnectionsForCurrent(connections.filter(conn => conn.id !== id));
   };
 
-
   const handleDuplicateConnection = (conn) => {
-    setConnectionsForCurrent([
-      ...connections,
-      {
-        id: Date.now(),
-        checked: true,
-        connection: conn.connection,
-        schema: conn.schema,
-        table: conn.table,
-        column: conn.column
-      }
-    ], null, true);
-    if (conn.connection) fetchSchemas(conn.connection);
-    if (conn.connection && conn.schema) fetchTables(conn.connection, conn.schema);
-    if (conn.connection && conn.schema && conn.table) fetchColumns(conn.connection, conn.schema, conn.table);
+    setConnectionsForCurrent(
+      [
+        ...connections,
+        {
+          id: Date.now(),
+          checked: true,
+          connection: conn.connection,
+          schema: conn.schema,
+          table: conn.table,
+          column: conn.column
+        }
+      ],
+      null,
+      true
+    );
   };
 
   const handleRefresh = (conn) => {
     setConnectionsForCurrent(
       connections.map(c =>
         c.id === conn.id
-          ? { ...c, connection: '', schema: '', table: '', column: '' }
+          ? { ...c, connection: '', schema: [], table: [], column: [] }
           : c
       )
     );
   };
-
-
 
   const generateResultJson = () => {
     const result = [];
@@ -581,42 +635,19 @@ useEffect(() => {
           .map(conn => {
             const connection = conn.connection;
 
-            const schemas = (conn.schema || []).map(s => {
-              const schemaName = s.split('.').pop();
-              return `${connection}.${schemaName}`;
-            });
+            const schemas = (conn.schema || []).map(s => `${connection}.${s}`);
 
             const tables = (conn.table || []).map(t => {
               const tableName = t.split('.').pop();
-              let schema = '';
-              for (const s of conn.schema || []) {
-                const schemaName = s.split('.').pop();
-                const tableKey = `${connection}__${schemaName}`;
-                if (tablesBySchema[tableKey] && tablesBySchema[tableKey].includes(tableName)) {
-                  schema = schemaName;
-                  break;
-                }
-              }
+              const schema = (conn.schema || [])[0] || '';
               return schema ? `${connection}.${schema}.${tableName}` : `${connection}.${tableName}`;
             });
 
             const columns = (conn.column || []).map(c => {
               const columnName = c.split('.').pop();
-              let schema = '', table = '';
-              for (const s of conn.schema || []) {
-                const schemaName = s.split('.').pop();
-                for (const t of conn.table || []) {
-                  const tableNameOnly = t.split('.').pop();
-                  const colKey = `${schemaName}__${tableNameOnly}`;
-                  if (columnsByTable[colKey] && columnsByTable[colKey].includes(columnName)) {
-                    schema = schemaName;
-                    table = tableNameOnly;
-                    break;
-                  }
-                }
-                if (schema && table) break;
-              }
-              return (schema && table)
+              const schema = (conn.schema || [])[0] || '';
+              const table = (conn.table || [])[0] || '';
+              return schema && table
                 ? `${connection}.${schema}.${table}.${columnName}`
                 : `${connection}.${columnName}`;
             });
@@ -625,37 +656,37 @@ useEffect(() => {
               connection,
               schema: schemas.length === 1 ? schemas[0] : schemas.length > 1 ? schemas : '',
               tables: tables.length === 1 ? tables[0] : tables.length > 1 ? tables : '',
-              columns: columns.length === 1 ? columns[0] : columns.length > 1 ? columns : ''
+              columns: columns.length === 1 ? columns[0] : columns.length > 1 ? columns : '',
             };
           });
 
-      const originalRule =
-        (data.rules[groupName] || []).find(r => r.id === ruleObj.id) || {};
+        const originalRule =
+          (data.rules[groupName] || []).find(r => r.id === ruleObj.id) || {};
 
-      const ruleData = {
-        ...(ruleObj.id ? { id: ruleObj.id } : {}),
-        category,
-        type,
-        group: groupName,
-        rule: {
-          id: ruleObj.id,
-          name: ruleObj.name,
-          query: ruleObj.query,
-          description: originalRule.description ?? originalRule.desc ?? "",
-          severity: originalRule.severity ?? "High",
-          status: originalRule.status ?? "Active",
-          owner: originalRule.owner ?? "",
+        const ruleData = {
+          ...(ruleObj.id ? { id: ruleObj.id } : {}),
+          category,
+          type,
+          group: groupName,
+          rule: {
+            id: ruleObj.id,
+            name: ruleObj.name,
+            query: ruleObj.query,
+            description: originalRule.description ?? originalRule.desc ?? "",
+            severity: originalRule.severity ?? "High",
+            status: originalRule.status ?? "Active",
+            owner: originalRule.owner ?? "",
+          },
+        };
+
+        if (connections.length > 0) {
+          ruleData.connection_details = connections;
         }
-      };
 
-      if (connections.length > 0) {
-        ruleData.connection_details = connections;
-      }
-
-      result.push(ruleData);
+        result.push(ruleData);
+      });
     });
-  });
-  return result;
+    return result;
   };
 
   const handleNextClick = () => {
@@ -835,7 +866,6 @@ useEffect(() => {
     return true;
   };
 
-
   const searchAcrossQueries = useCallback(() => {
     if (!querySearchText.trim()) {
       setSearchResults([]);
@@ -938,7 +968,6 @@ useEffect(() => {
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div ref={containerRef} className="flex relative" style={{ minHeight: '600px' }}>
-
         {!isLeftPanelCollapsed && (
           <div
             className="border-r rounded-l-lg p-4 bg-gray-50 relative flex flex-col"
@@ -974,10 +1003,9 @@ useEffect(() => {
                     className={`border rounded-lg bg-white overflow-hidden`}
                   >
                     <div
-                      className={`p-3 flex justify-between items-center cursor-pointer ${
-                        isExpanded ? 'bg-[#8d77ba] bg-opacity-10 border-b' :
-                        isActive ? 'bg-[#8d77ba] bg-opacity-5' : ''
-                      }`}
+                      className={`p-3 flex justify-between items-center cursor-pointer ${isExpanded ? 'bg-[#8d77ba] bg-opacity-10 border-b' :
+                          isActive ? 'bg-[#8d77ba] bg-opacity-5' : ''
+                        }`}
                       onClick={() => toggleGroup(groupName)}
                     >
                       <div className="flex items-center gap-2">
@@ -985,7 +1013,7 @@ useEffect(() => {
                           className={`w-6 h-6 rounded-full flex items-center justify-center bg-[#8d77ba] text-white`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveGroup(index);
+                            setActiveGroupIndex(index);
                           }}
                         >
                           {groupName.charAt(0).toUpperCase()}
@@ -1007,7 +1035,6 @@ useEffect(() => {
                           <thead className="border-b">
                             <tr>
                               <th className="py-1 text-left font-medium w-8">
-
                                 <input
                                   type="checkbox"
                                   checked={allSelected}
@@ -1027,9 +1054,8 @@ useEffect(() => {
                             {data.rules[groupName].map((rule, rIndex) => (
                               <tr
                                 key={rule.id}
-                                className={`border-b last:border-b-0 cursor-pointer ${
-                                  isActive && rIndex === activeRuleIndex ? 'bg-[#8d77ba] bg-opacity-10' : ''
-                                }`}
+                                className={`border-b last:border-b-0 cursor-pointer ${isActive && rIndex === activeRuleIndex ? 'bg-[#8d77ba] bg-opacity-10' : ''
+                                  }`}
                                 onClick={() => handleRuleRowClick(index, rIndex)}
                               >
                                 <td className="py-2">
@@ -1045,19 +1071,17 @@ useEffect(() => {
                                 </td>
                                 <td className="py-2">{rule.name}</td>
                                 <td className="py-2">
-                                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                                    rule.status === 'Active' ? 'bg-green-100 text-green-700' :
-                                    'bg-gray-100 text-gray-700'
-                                  }`}>
+                                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${rule.status === 'Active' ? 'bg-green-100 text-green-700' :
+                                      'bg-gray-100 text-gray-700'
+                                    }`}>
                                     {rule.status}
                                   </span>
                                 </td>
                                 <td className="py-2">
-                                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                                    rule.severity === 'High' ? 'bg-red-100 text-red-700' :
-                                    rule.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-green-100 text-green-700'
-                                  }`}>
+                                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${rule.severity === 'High' ? 'bg-red-100 text-red-700' :
+                                      rule.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-green-100 text-green-700'
+                                    }`}>
                                     {rule.severity}
                                   </span>
                                 </td>
@@ -1138,8 +1162,7 @@ useEffect(() => {
                         <span className="text-xs text-gray-500">
                           {searchResults.length > 0 && searchLoaded ? (
                             `${searchResults[currentSearchIndex] ?
-                              `${searchResults[currentSearchIndex].matches}-${searchResults[currentSearchIndex].matchesTo}` : ""} of ${
-                              searchResults.reduce((total, result) => total + result.count, 0)
+                              `${searchResults[currentSearchIndex].matches}-${searchResults[currentSearchIndex].matchesTo}` : ""} of ${searchResults.reduce((total, result) => total + result.count, 0)
                             }`
                           ) : ""}
                         </span>
@@ -1194,7 +1217,6 @@ useEffect(() => {
             <div className="border rounded-lg p-4">
               <div className="space-y-4">
                 {connections.map((conn, idx) => {
-                  // Apply filters to connections
                   if (!shouldShowConnection(groupNames[activeGroupIndex], activeRuleIndex, idx)) {
                     return null;
                   }
@@ -1224,44 +1246,35 @@ useEffect(() => {
                     });
                   });
 
-
                   const schemaDropdownOpts = schemaOpts.map(opt => ({
                     value: opt,
-                    label: conn.connection ? `${conn.connection}.${opt}` : opt
+                    label: `${conn.connection}.${opt}`,
                   }));
 
                   const tableDropdownOpts = tableOpts.map(({ schema, table }) => ({
                     value: table,
-                    label: conn.connection ? `${conn.connection}.${schema}.${table}` : table
+                    label: `${conn.connection}.${schema}.${table}`,
                   }));
 
                   const columnDropdownOpts = columnOpts.map(({ schema, table, column }) => ({
                     value: column,
-                    label: conn.connection ? `${conn.connection}.${schema}.${table}.${column}` : column
+                    label: `${conn.connection}.${schema}.${table}.${column}`,
                   }));
-
 
                   const selectedSchema = (conn.schema || []).map(s => ({
                     value: s,
-                    label: conn.connection ? `${conn.connection}.${s}` : s
+                    label: `${conn.connection}.${s}`,
                   }));
 
-                  const selectedTables = (conn.table || []).map(t => {
-                    const schema = conn.schema && conn.schema.length > 0 ? conn.schema[0] : '';
-                    return {
-                      value: t,
-                      label: conn.connection && schema ? `${conn.connection}.${schema}.${t}` : t
-                    };
-                  });
+                  const selectedTables = (conn.table || []).map(t => ({
+                    value: t,
+                    label: `${conn.connection}.${conn.schema[0] || ''}.${t}`,
+                  }));
 
-                  const selectedColumns = (conn.column || []).map(c => {
-                    const schema = conn.schema && conn.schema.length > 0 ? conn.schema[0] : '';
-                    const table = conn.table && conn.table.length > 0 ? conn.table[0] : '';
-                    return {
-                      value: c,
-                      label: conn.connection && schema && table ? `${conn.connection}.${schema}.${table}.${c}` : c
-                    };
-                  });
+                  const selectedColumns = (conn.column || []).map(c => ({
+                    value: c,
+                    label: `${conn.connection}.${conn.schema[0] || ''}.${conn.table[0] || ''}.${c}`,
+                  }));
 
                   const connKey = `${groupNames[activeGroupIndex]}__${activeRuleIndex}__${idx}`;
                   let statusIcon = null;
@@ -1291,9 +1304,7 @@ useEffect(() => {
                           <span className="font-medium">Connection {idx + 1}</span>
                         </div>
                         <div className="flex gap-2 items-center">
-
                           {statusIcon}
-
                           <button
                             className="p-2 border rounded hover:bg-gray-100"
                             type="button"
@@ -1341,12 +1352,17 @@ useEffect(() => {
                             onChange={(selected) => handleConnectionChange(conn.id, selected)}
                             placeholder="Select Connection"
                             isDisabled={!conn.checked}
+                            isLoading={isLoadingConnections}
                             styles={selectStyles}
                             className="react-select-container"
                             classNamePrefix="react-select"
                             components={customComponents}
+                            onMenuOpen={() => {
+                              if (policyIds.length > 0 && connectionOptions.length === 0) {
+                                fetchConnections();
+                              }
+                            }}
                           />
-
                           <Select
                             isMulti
                             value={selectedSchema}
@@ -1354,16 +1370,20 @@ useEffect(() => {
                             onChange={(selected) => handleSchemaChange(conn.id, selected)}
                             placeholder="Select Schema"
                             isDisabled={!conn.connection || !conn.checked}
+                            isLoading={isLoadingSchemas[conn.connection] || false}
                             styles={selectStyles}
                             className="react-select-container"
                             classNamePrefix="react-select"
                             closeMenuOnSelect={false}
                             hideSelectedOptions={false}
                             components={customComponents}
+                            onMenuOpen={() => {
+                              if (conn.connection && !schemasByConnection[conn.connection]) {
+                                fetchSchemas(conn.connection);
+                              }
+                            }}
                           />
                         </div>
-
-
                         <div className="grid grid-cols-2 gap-3">
                           <Select
                             isMulti
@@ -1372,14 +1392,23 @@ useEffect(() => {
                             onChange={(selected) => handleTableChange(conn.id, selected)}
                             placeholder="Select Table"
                             isDisabled={!(conn.schema && conn.schema.length) || !conn.checked}
+                            isLoading={conn.schema?.some(schema => isLoadingTables[`${conn.connection}__${schema}`]) || false}
                             styles={selectStyles}
                             className="react-select-container"
                             classNamePrefix="react-select"
                             closeMenuOnSelect={false}
                             hideSelectedOptions={false}
                             components={customComponents}
+                            onMenuOpen={() => {
+                              if (conn.connection && conn.schema) {
+                                conn.schema.forEach(schema => {
+                                  if (!tablesBySchema[`${conn.connection}__${schema}`]) {
+                                    fetchTables(conn.connection, schema);
+                                  }
+                                });
+                              }
+                            }}
                           />
-
                           <Select
                             isMulti
                             value={selectedColumns}
@@ -1387,34 +1416,51 @@ useEffect(() => {
                             onChange={(selected) => handleColumnChange(conn.id, selected)}
                             placeholder="Select Column"
                             isDisabled={!(conn.table && conn.table.length) || !conn.checked}
+                            isLoading={conn.schema?.some(schema =>
+                              conn.table?.some(table => {
+                                const tableNameOnly = table.split('.').pop();
+                                return isLoadingColumns[`${schema}__${tableNameOnly}`];
+                              }) || false
+                            )}
                             styles={selectStyles}
                             className="react-select-container"
                             classNamePrefix="react-select"
                             closeMenuOnSelect={false}
                             hideSelectedOptions={false}
                             components={customComponents}
+                            onMenuOpen={() => {
+                              if (conn.connection && conn.schema && conn.table) {
+                                conn.schema.forEach(schema => {
+                                  conn.table.forEach(table => {
+                                    const tableNameOnly = table.split('.').pop();
+                                    const key = `${schema}__${tableNameOnly}`;
+                                    if (!columnsByTable[key]) {
+                                      fetchColumns(conn.connection, schema, table);
+                                    }
+                                  });
+                                });
+                              }
+                            }}
                           />
                         </div>
                       </div>
                     </div>
                   );
                 })}
-
-                {/* Show message when no connections match the filter */}
                 {connections.length > 0 && connections.every((_, idx) =>
                   !shouldShowConnection(groupNames[activeGroupIndex], activeRuleIndex, idx)
                 ) && (
-                  <div className="text-center p-4 text-gray-500 border border-dashed border-gray-300 rounded-md">
-                    {querySearchText ? (
-                      <div>
-                        <p className="font-medium mb-1">No SQL queries found containing "{querySearchText}"</p>
-                        <p className="text-sm">Try a different search term or clear the search</p>
-                      </div>
-                    ) : (
-                      <p>No connections match your filter criteria.</p>
-                    )}
-                  </div>
-                )}
+                    <div className="text-center p-4 text-gray-500 border border-dashed border-gray-300 rounded-md">
+                      {querySearchText ? (
+                        <div>
+                          <p className="font-medium mb-1">No SQL queries found containing "{querySearchText}"</p>
+                          <p className="text-sm">Try a different search term or clear the search</p>
+                        </div>
+                      ) : (
+                        <p>No connections match your filter criteria.</p>
+                      )}
+                    </div>
+                  )}
               </div>
             </div>
           </div>
@@ -1471,9 +1517,8 @@ useEffect(() => {
                 <button
                   onClick={goToPrevQuery}
                   disabled={getCurrentSelectedFlatIndex().idx <= 0}
-                  className={`p-2 rounded hover:bg-gray-200 ${
-                    getCurrentSelectedFlatIndex().idx <= 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
-                  }`}
+                  className={`p-2 rounded hover:bg-gray-200 ${getCurrentSelectedFlatIndex().idx <= 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
+                    }`}
                 >
                   <ArrowLeft size={16} />
                 </button>
@@ -1483,10 +1528,9 @@ useEffect(() => {
                 <button
                   onClick={goToNextQuery}
                   disabled={getCurrentSelectedFlatIndex().idx >= getCurrentSelectedFlatIndex().total - 1}
-                  className={`p-2 rounded hover:bg-gray-200 ${
-                    getCurrentSelectedFlatIndex().idx >= getCurrentSelectedFlatIndex().total - 1
+                  className={`p-2 rounded hover:bg-gray-200 ${getCurrentSelectedFlatIndex().idx >= getCurrentSelectedFlatIndex().total - 1
                       ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
-                  }`}
+                    }`}
                 >
                   <ArrowRight size={16} />
                 </button>
@@ -1514,7 +1558,6 @@ useEffect(() => {
               )}
             </div>
           </div>
-
         </div>
       </div>
 
@@ -1534,11 +1577,10 @@ useEffect(() => {
         </button>
         <button
           onClick={handleNextClick}
-          className={`px-6 py-2 rounded-lg transition-colors ${
-            allValidated
+          className={`px-6 py-2 rounded-lg transition-colors ${allValidated
               ? 'bg-[#8d77ba] text-white hover:bg-[#7a67a0]'
               : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-          }`}
+            }`}
           disabled={!allValidated}
         >
           Next
