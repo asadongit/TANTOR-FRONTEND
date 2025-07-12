@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash2, BookOpen, List } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useNavigate } from 'react-router-dom';
@@ -179,6 +179,10 @@ const Rules = () => {
 
   const handleCreateRule = () => {
     navigate('/datagovernance/data-assurance/rules/create');
+  };
+
+  const handleOpenRuleLibrary = () => {
+    navigate('/datagovernance/data-assurance/rule-library');
   };
 
   const handleSelectRow = (id) => {
@@ -540,18 +544,21 @@ const Rules = () => {
             />
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
-
           <button
-            className={`p-1 px-1.5 rounded-lg border ${viewMode === 'table' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
-            onClick={() => setViewMode(viewMode === 'both' ? 'table' : 'both')}
-            title={viewMode === 'both' ? "Hide Cards View" : "Show Both Views"}
+            type="button"
+            title={"Rule library"}
+            onClick={handleOpenRuleLibrary}
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            <Icon
-              icon="material-symbols-light:format-list-bulleted"
-              width="24"
-              height="24"
-              className="text-gray-600"
-            />
+            <BookOpen className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            title={viewMode === 'both' ? "Hide Cards View" : "Show Both Views"}
+            onClick={() => setViewMode(viewMode === 'both' ? 'table' : 'both')}
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+          >
+            <List className="h-5 w-5" />
           </button>
 
           <button

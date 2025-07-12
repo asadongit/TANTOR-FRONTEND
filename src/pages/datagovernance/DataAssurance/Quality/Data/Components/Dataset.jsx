@@ -173,13 +173,14 @@ function Dataset() {
         body: JSON.stringify({
           matched_policy_ids: policyIds,
           connection_name: connection,
-          schema_name: schema
-        })
+          schema_name: [schema], 
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to fetch tables');
       const data = await response.json();
-      const tableNames = data.tables || [];
+      const schemaData = data.schemas?.find(item => item.connection_name === connection && item.schema === schema);
+      const tableNames = schemaData?.tables || [];
 
       setTables(prev => ({
         ...prev,
@@ -212,18 +213,21 @@ function Dataset() {
         body: JSON.stringify({
           matched_policy_ids: policyIds,
           connection_name: connection,
-          schema_name: schema,
-          table_name: table
-        })
+          schema_name: [schema],
+          table_name: [table],
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to fetch columns');
       const data = await response.json();
-      const columnData = data.columns || [];
+      const tableData = data.columns?.find(
+        item => item.connection_name === connection && item.schema === schema && item.table_name === table
+      );
+      const columnData = tableData?.columns || [];
       const formattedColumns = columnData.map(item => ({
         column: item.column_name,
         datatype: item.metadata?.DATA_TYPE || 'unknown',
-        metadata: item.metadata
+        metadata: item.metadata,
       }));
 
       setColumns(prev => ({
@@ -297,7 +301,7 @@ function Dataset() {
       if (rows.length > 0) {
         setColumnDefs(Object.keys(rows[0]));
         setData(rows);
-        setHasMore(rows.length === 100); 
+        setHasMore(rows.length === 100);
       } else {
         setData([]);
         setHasMore(false);
@@ -692,7 +696,7 @@ function Dataset() {
                                 key={colIndex}
                                 className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 truncate"
                                 style={{ maxWidth: '200px' }}
-                                title={row[column]} 
+                                title={row[column]}
                               >
                                 {row[column]}
                               </td>
