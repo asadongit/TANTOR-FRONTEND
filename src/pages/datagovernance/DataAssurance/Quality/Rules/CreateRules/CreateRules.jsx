@@ -13,7 +13,7 @@ function CreateRulesInner() {
   const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const { stepData, setStepData, resetStepData } = useStepData();
-  const { token } = useAuth();
+  const { token,decodedToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -170,6 +170,7 @@ function CreateRulesInner() {
       payload = {
         prebuilt: (finalJson || []).map(rule => ({
           id: rule.id || rule.rule?.id,
+          owner: decodedToken?.preferred_username,
           connection_details: rule.connection_details || []
         }))
       };
