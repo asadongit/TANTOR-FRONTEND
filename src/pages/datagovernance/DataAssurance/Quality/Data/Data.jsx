@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'; // Import useCallback
+import React, { useState, useCallback } from 'react';
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import Dataset from './Components/Dataset';
 import Quality from './Components/Quality';
@@ -10,16 +10,26 @@ const MemoizedCleaning = React.memo(Cleaning);
 
 function Data() {
   const [activeStep, setActiveStep] = useState(0);
-  const [query, setQuery] = useState(''); 
+  const [query, setQuery] = useState('');
+  const [isQuerySuccess, setIsQuerySuccess] = useState(false);
 
   const handleSetQuery = useCallback((newQuery) => {
     setQuery(newQuery);
-  }, []); 
+  }, []);
+
+  const handleSetQuerySuccess = useCallback((success) => {
+    setIsQuerySuccess(success);
+  }, []);
+
   const steps = [
-    { label: 'Dataset', component: Dataset, props: { query: query,setQuery: handleSetQuery } },
-    { label: 'Quality', component: Quality, props: { query: query } }, 
-    { label: 'Profiling', component: MemoizedProfiling, props: {} }, 
-    { label: 'Cleaning', component: MemoizedCleaning, props: {} }
+    {
+      label: 'Dataset',
+      component: Dataset,
+      props: { query, setQuery: handleSetQuery, setQuerySuccess: handleSetQuerySuccess },
+    },
+    { label: 'Quality', component: Quality, props: { query } },
+    { label: 'Profiling', component: MemoizedProfiling, props: {} },
+    { label: 'Cleaning', component: MemoizedCleaning, props: {} },
   ];
 
   const handleNext = () => {
@@ -73,8 +83,13 @@ function Data() {
         )}
         {activeStep < steps.length - 1 && (
           <button
-            className="py-1.5 px-5 bg-[#8d77ba] text-white border border-[#8d77ba] rounded hover:bg-[#7d69a8] transition-all duration-200"
+            className={`py-1.5 px-7 border border-[#8d77ba] rounded transition-all duration-200 ${
+              activeStep === 0 && !isQuerySuccess
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-[#8d77ba] text-white hover:bg-[#7d69a8]'
+            }`}
             onClick={handleNext}
+            disabled={activeStep === 0 && !isQuerySuccess} 
           >
             Next
           </button>

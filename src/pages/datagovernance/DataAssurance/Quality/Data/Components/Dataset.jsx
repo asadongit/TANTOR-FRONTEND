@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search,
   RefreshCw,
@@ -24,7 +24,7 @@ import 'ace-builds/src-noconflict/mode-mysql';
 import 'ace-builds/src-noconflict/theme-github';
 import 'ace-builds/src-noconflict/ext-language_tools';
 
-function Dataset({query,setQuery}) {
+function Dataset({ query, setQuery, setQuerySuccess }) {
   const { token, hostnameV1, decodedToken } = useAuth();
   const [selectedTable, setSelectedTable] = useState('');
   const [isEditorMaximized, setIsEditorMaximized] = useState(false);
@@ -44,7 +44,24 @@ function Dataset({query,setQuery}) {
   const [columnDefs, setColumnDefs] = useState([]);
   const [pageNo, setPageNo] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const[selectedQuery,setSelectedQuery] = useState(query)
+  const [selectedQuery, setSelectedQuery] = useState(query);
+
+  const debounce = (func, delay) => {
+    let timeoutId;
+    return (...args) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(...args), delay);
+    };
+  };
+
+  const handleQueryChange = useCallback(
+    debounce((newValue) => {
+      if (newValue !== query) {
+        setQuerySuccess(false);
+      }
+    }, 500),
+    [setQuerySuccess, query]
+  );
 
   useEffect(() => {
     const fetchConnections = async () => {
@@ -80,7 +97,7 @@ function Dataset({query,setQuery}) {
     };
 
     fetchConnections();
-  }, []);
+  }, [token, hostnameV1]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -115,7 +132,7 @@ function Dataset({query,setQuery}) {
     if (connections.length > 0) {
       fetchHistory();
     }
-  }, [connections]);
+  }, [connections, token, hostnameV1, decodedToken]);
 
   const toggleExpand = async (itemName, connection, schema, table) => {
     if (connection && !schema && !table) {
@@ -270,11 +287,12 @@ function Dataset({query,setQuery}) {
   const handleSelectTable = (connection, schema, table) => {
     const fullTableName = `${connection}.${schema}.${table}`;
     setSelectedTable(fullTableName);
-    const query = `SELECT * FROM ${fullTableName}`;
-    setSelectedQuery(query);
+    const newQuery = `SELECT * FROM ${fullTableName}`;
+    setSelectedQuery(newQuery);
+    setQuery(newQuery);
     setData([]);
     setColumnDefs([]);
-    // setIsQueryRun(false);
+    setQuerySuccess(false); 
   };
 
   const executeQuery = async (query, page = 1) => {
@@ -331,16 +349,16 @@ function Dataset({query,setQuery}) {
         setColumnDefs(Object.keys(rows[0]));
         setData(rows);
         setHasMore(rows.length === 100);
-        // setIsQueryRun(true);
+        setQuerySuccess(true);
       } else {
         setData([]);
         setHasMore(false);
-        // setIsQueryRun(true);
+        setQuerySuccess(false);
       }
     } catch (error) {
       console.error('Error executing query:', error);
       toast.error(error.message || 'Failed to execute query');
-      // setIsQueryRun(false);
+      setQuerySuccess(false); 
     } finally {
       setLoading(false);
     }
@@ -348,7 +366,7 @@ function Dataset({query,setQuery}) {
 
   const handleRunQuery = () => {
     executeQuery(selectedQuery, 1);
-    setQuery(selectedQuery)
+    setQuery(selectedQuery);
   };
 
   const handleNextPage = () => {
@@ -413,9 +431,7 @@ function Dataset({query,setQuery}) {
           <ChevronRight size={14} className="mr-2 text-gray-400" />
         )}
         <TableIcon size={14} className="mr-2 text-gray-400" />
-        <span className="truncate" 
-        // onDoubleClick={() => handleSelectTable(connection, schema, table)}
-        >
+        <span className="truncate" onDoubleClick={() => handleSelectTable(connection, schema, table)}>
           {table}
         </span>
       </div>
@@ -684,7 +700,8 @@ function Dataset({query,setQuery}) {
                       setSelectedTable('');
                       setData([]);
                       setColumnDefs([]);
-                      // setIsQueryRun(false);
+                      setQuerySuccess(false);
+                      setQuery('');
                     }}
                   >
                     <RefreshCw size={16} />
@@ -701,7 +718,11 @@ function Dataset({query,setQuery}) {
                   width="100%"
                   height="100%"
                   value={selectedQuery}
-                  onChange={setSelectedQuery}
+                  onChange={(newValue) => {
+                    setSelectedQuery(newValue);
+                    setQuery(newValue);
+                    handleQueryChange(newValue); 
+                  }}
                   setOptions={{
                     enableBasicAutocompletion: true,
                     enableLiveAutocompletion: true,
