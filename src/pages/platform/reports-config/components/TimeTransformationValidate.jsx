@@ -4,44 +4,45 @@ import { Calendar, X } from "lucide-react";
 const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset, lowerUnit, upperUnit }) => {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [referenceDate, setReferenceDate] = useState(new Date());
   const [timeUnit, setTimeUnit] = useState(lowerUnit || "days");
   const [outputExpression, setOutputExpression] = useState("");
 
-  const calculateDateFromOffset = (offset, unit) => {
+  const calculateDateFromOffset = (offset, unit, refDate = referenceDate) => {
     if (offset === null || offset === undefined) return null;
     
     const offsetValue = parseFloat(offset);
     if (isNaN(offsetValue)) return null;
     
-    const today = new Date();
-    const newDate = new Date(today);
+    const baseDate = new Date(refDate);
+    const newDate = new Date(baseDate);
     
     if (unit === "days") {
-      newDate.setDate(today.getDate() + offsetValue);
+      newDate.setDate(baseDate.getDate() + offsetValue);
     } else if (unit === "months") {
-      newDate.setMonth(today.getMonth() + offsetValue);
+      newDate.setMonth(baseDate.getMonth() + offsetValue);
     } else if (unit === "years") {
-      newDate.setFullYear(today.getFullYear() + offsetValue);
+      newDate.setFullYear(baseDate.getFullYear() + offsetValue);
     }
     
     return newDate;
   };
   
-  const calculateOffsetFromDate = (date, unit) => {
-    if (!date) return null;
+  const calculateOffsetFromDate = (date, unit, refDate = referenceDate) => {
+    if (!date || !refDate) return null;
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const refDateCopy = new Date(refDate);
+    refDateCopy.setHours(0, 0, 0, 0);
     const compareDate = new Date(date);
     compareDate.setHours(0, 0, 0, 0);
     
-    const diffMs = compareDate - today;
+    const diffMs = compareDate - refDateCopy;
     
     if (unit === "days") {
       return Math.round(diffMs / (1000 * 60 * 60 * 24));
     } else if (unit === "months") {
-      const months = (compareDate.getFullYear() - today.getFullYear()) * 12 + 
-                    compareDate.getMonth() - today.getMonth();
+      const months = (compareDate.getFullYear() - refDateCopy.getFullYear()) * 12 + 
+                    compareDate.getMonth() - refDateCopy.getMonth();
       return months;
     } else {
       return Math.round(diffMs / (1000 * 60 * 60 * 24 * 365.25));
@@ -53,37 +54,38 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
       const offset = parseFloat(lowerOffset);
       const calculatedDate = calculateDateFromOffset(
         offset > 0 ? -offset : offset, 
-        lowerUnit
+        lowerUnit,
+        referenceDate
       );
       setStartDate(calculatedDate);
       setTimeUnit(lowerUnit);
     } else if (dateType === "dateRange") {
       if (lowerOffset && lowerUnit) {
-        setStartDate(calculateDateFromOffset(lowerOffset, lowerUnit));
+        setStartDate(calculateDateFromOffset(lowerOffset, lowerUnit, referenceDate));
         setTimeUnit(lowerUnit);
       }
       if (upperOffset && upperUnit) {
-        setEndDate(calculateDateFromOffset(upperOffset, upperUnit));
+        setEndDate(calculateDateFromOffset(upperOffset, upperUnit, referenceDate));
       }
     }
-  }, [dateType, lowerOffset, upperOffset, lowerUnit, upperUnit]);
+  }, [dateType, lowerOffset, upperOffset, lowerUnit, upperUnit, referenceDate]);
 
   useEffect(() => {
-    if (!startDate) return;
+    if (!startDate || !referenceDate) return;
     
     if (dateType === "historicDate") {
-      const offset = calculateOffsetFromDate(startDate, timeUnit);
+      const offset = calculateOffsetFromDate(startDate, timeUnit, referenceDate);
       setOutputExpression(`${offset}, ${timeUnit}`);
     } else if (dateType === "dateRange" && endDate) {
-      const lowerOffset = calculateOffsetFromDate(startDate, timeUnit);
-      const upperOffset = calculateOffsetFromDate(endDate, timeUnit);
+      const lowerOffset = calculateOffsetFromDate(startDate, timeUnit, referenceDate);
+      const upperOffset = calculateOffsetFromDate(endDate, timeUnit, referenceDate);
       setOutputExpression(`${lowerOffset}, ${timeUnit}\n${upperOffset}, ${timeUnit}`);
     }
-  }, [startDate, endDate, timeUnit, dateType]);
+  }, [startDate, endDate, timeUnit, dateType, referenceDate]);
 
   const DatePicker = ({ label, value, onChange }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [currentMonth, setCurrentMonth] = useState(value || new Date());
     
     const monthNames = ["January", "February", "March", "April", "May", "June", 
                       "July", "August", "September", "October", "November", "December"];
@@ -124,7 +126,7 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
         >
           <Calendar className="h-4 w-4 text-gray-600" />
           <span className={value ? "text-gray-900" : "text-gray-600"}>
-            {value ? formatDate(value) : "Select date"}
+            {formatDate(value)}
           </span>
         </button>
         
@@ -189,6 +191,12 @@ const DateExpressionCalculator = ({ onClose, dateType, lowerOffset, upperOffset,
           </div>
           
           <div className="space-y-4">
+            <DatePicker 
+              label="Reference Date" 
+              value={referenceDate} 
+              onChange={setReferenceDate} 
+            />
+            
             <DatePicker 
               label={dateType === "historicDate" ? "Historic Date" : "Lower Offset Date"} 
               value={startDate} 

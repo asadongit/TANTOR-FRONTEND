@@ -8,7 +8,7 @@ const hostnameV1 = window._env_?.VITE_FAST_API;
   if (!token) throw new Error("Token is missing");
 
   try {
-    const response = await axios.get(`${hostnameV1}/ruleList`, {
+    const response = await axios.get(`${window._env_?.VITE_REPORTING_BACKEND_API}/ruleList`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

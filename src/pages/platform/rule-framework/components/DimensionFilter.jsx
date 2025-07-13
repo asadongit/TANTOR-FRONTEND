@@ -11,6 +11,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
   // Component state
   const [availableDimensions, setAvailableDimensions] = useState([]);
   const [dimensionValues, setDimensionValues] = useState({});
+  const [sortedDimensionValues, setSortedDimensionValues] = useState({});
   const [isLoadingDimensions, setIsLoadingDimensions] = useState(false);
   const [isLoadingValues, setIsLoadingValues] = useState(false);
   const [openValueDropdown, setOpenValueDropdown] = useState(null);
@@ -25,18 +26,18 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
   ]);
 
   useEffect(() => {
-  if (nodeData?.dimensionFilters && nodeData.dimensionFilters.length > 0) {
-    const cachedFilters = nodeData.dimensionFilters;
-    setFilters(cachedFilters);
+    if (nodeData?.dimensionFilters && nodeData.dimensionFilters.length > 0) {
+      const cachedFilters = nodeData.dimensionFilters;
+      setFilters(cachedFilters);
 
-    // Fetch values for each dimension in saved filters
-    cachedFilters.forEach((filter) => {
-      if (filter.dimension.id && filter.dimension.name) {
-        fetchValues(filter.dimension.id, filter.dimension.name);
-      }
-    });
-  }
-}, []);
+      // Fetch values for each dimension in saved filters
+      cachedFilters.forEach((filter) => {
+        if (filter.dimension.id && filter.dimension.name) {
+          fetchValues(filter.dimension.id, filter.dimension.name);
+        }
+      });
+    }
+  }, []);
 
   useEffect(() => {
     setIsLoadingDimensions(true);
@@ -47,7 +48,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
       };
 
       const response = await fetch(
-        `${hostnameV1}/selectDimension?fact_id=${factId}`,
+        `${window._env_?.VITE_REPORTING_BACKEND_API}/selectDimension?fact_id=${factId}`,
         { headers }
       );
       const data = await response.json();
@@ -62,6 +63,41 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
     })();
   }, []);
 
+  // Sort dimension values to show selected items first
+  useEffect(() => {
+    Object.keys(dimensionValues).forEach(dimensionId => {
+      const values = dimensionValues[dimensionId] || [];
+      if (values.length === 0) return;
+
+      // Get the filter for this dimension
+      const filter = filters.find(f => f.dimension.id === dimensionId);
+      const selectedIds = new Set(
+        (filter?.value || []).map(v => v.id)
+      );
+
+      const selectedItems = [];
+      const unselectedItems = [];
+
+      values.forEach(item => {
+        if (selectedIds.has(item.id)) {
+          selectedItems.push(item);
+        } else {
+          unselectedItems.push(item);
+        }
+      });
+
+      // Optional: Sort each group alphabetically
+      // selectedItems.sort((a, b) => a.name.localeCompare(b.name));
+      // unselectedItems.sort((a, b) => a.name.localeCompare(b.name));
+
+      const sorted = [...selectedItems, ...unselectedItems];
+      setSortedDimensionValues(prev => ({
+        ...prev,
+        [dimensionId]: sorted
+      }));
+    });
+  }, [openValueDropdown, dimensionValues]);
+
   const fetchValues = async (dimensionId, dimensionName) => {
     if (!dimensionId || !dimensionName) return;
     setIsLoadingValues(true);
@@ -71,7 +107,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
       Authorization: `Bearer ${token}`,
     };
     const response = await fetch(
-      `${hostnameV1}/selectDimensionValue?fact_id=${factId}&fct_column_name=${dimensionName}`,
+      `${window._env_?.VITE_REPORTING_BACKEND_API}/selectDimensionValue?fact_id=${factId}&fct_column_name=${dimensionName}`,
       { headers }
     );
     const data = await response.json();
@@ -114,7 +150,6 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
           : filter
       )
     );
-
 
     if (id && name) {
       fetchValues(id, name);
@@ -206,18 +241,18 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
     );
 
     updateNodeData({
-    dimensionQuery: getFilterQuery(validFilters),
-    dimensionFilters: validFilters
-  });
+      dimensionQuery: getFilterQuery(validFilters),
+      dimensionFilters: validFilters
+    });
     onApply();
   };
 
   const handleSkip = () => {
     clearAll();
     updateNodeData({
-    dimensionQuery: "",
-    dimensionFilters: []
-  });
+      dimensionQuery: "",
+      dimensionFilters: []
+    });
     onApply();
   };
 
@@ -255,7 +290,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
         <div className="p-8 flex-1 overflow-auto">
           <div className="space-y-6">
             {filters.map((filter, index) => {
-              const currentValues = dimensionValues[filter.dimension.id] || [];
+              const currentValues = sortedDimensionValues[filter.dimension.id] || [];
               const displayText = filter.value?.length
                 ? `${filter.value.length} selected`
                 : "Select values";
@@ -349,7 +384,9 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
                                 return (
                                   <label
                                     key={dimValue.id}
-                                    className="flex items-center space-x-3 p-3 hover:bg-gray-100 cursor-pointer text-base"
+                                    className={`flex items-center space-x-3 p-3 hover:bg-gray-100 cursor-pointer text-base ${
+                                      isChecked ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                                    }`}
                                   >
                                     <input
                                       type="checkbox"
