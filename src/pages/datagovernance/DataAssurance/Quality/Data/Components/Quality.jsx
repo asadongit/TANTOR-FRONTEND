@@ -99,7 +99,7 @@ function Quality({query}) {
           },
           body: JSON.stringify({
             query: selectedQuery,
-            owner: decodedToken?.preferred_username || 'sabhyata02',
+            owner: decodedToken?.preferred_username,
           }),
         });
         if (!response.ok) throw new Error('Failed to fetch dataset quality data');
