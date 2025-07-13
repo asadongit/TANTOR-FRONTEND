@@ -292,7 +292,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
     setQuery(newQuery);
     setData([]);
     setColumnDefs([]);
-    setQuerySuccess(false); 
+    setQuerySuccess(false);
   };
 
   const executeQuery = async (query, page = 1) => {
@@ -358,7 +358,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
     } catch (error) {
       console.error('Error executing query:', error);
       toast.error(error.message || 'Failed to execute query');
-      setQuerySuccess(false); 
+      setQuerySuccess(false);
     } finally {
       setLoading(false);
     }
@@ -674,7 +674,12 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
           </div>
         )}
 
-        <div className={`${isEditorMaximized || isOutputMaximized ? 'flex-1' : 'flex-1 flex flex-col gap-5'} h-full`}>
+        <div
+          className={`${isEditorMaximized || isOutputMaximized
+              ? 'flex-1' 
+              : 'flex-1 flex flex-col gap-5' 
+            } min-w-0 h-full`} 
+        >
           {!isOutputMaximized && (
             <div
               className={`bg-white rounded-lg shadow-sm overflow-hidden ${isEditorMaximized ? 'h-full' : 'flex-1'} flex flex-col`}
@@ -721,7 +726,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                   onChange={(newValue) => {
                     setSelectedQuery(newValue);
                     setQuery(newValue);
-                    handleQueryChange(newValue); 
+                    handleQueryChange(newValue);
                   }}
                   setOptions={{
                     enableBasicAutocompletion: true,
@@ -737,91 +742,104 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
             </div>
           )}
 
-          {(loading || data.length > 0 || columnDefs.length > 0) && !isEditorMaximized && (
-            <div
-              className={`bg-white rounded-lg shadow-sm overflow-hidden ${isOutputMaximized ? 'h-full' : 'flex-1'} flex flex-col`}
-            >
-              <div className="flex justify-between items-center px-3 py-2 border-b border-gray-100">
-                <div className="font-medium text-gray-800">Output</div>
-                <button className="text-gray-500 p-1 hover:bg-gray-50 rounded" onClick={toggleOutputMaximize}>
-                  {isOutputMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                </button>
-              </div>
+          {(loading || data.length > 0 || columnDefs.length > 0) &&
+            !isEditorMaximized && (
+              <div
+                className={`bg-white rounded-lg shadow-sm overflow-hidden ${isOutputMaximized ? 'h-full' : 'flex-1'
+                  } flex flex-col`}
+              >
+                <div className="flex justify-between items-center px-3 py-2 border-b border-gray-100">
+                  <div className="font-medium text-gray-800">Output</div>
+                  <button
+                    className="text-gray-500 p-1 hover:bg-gray-50 rounded"
+                    onClick={toggleOutputMaximize}
+                  >
+                    {isOutputMaximized ? (
+                      <Minimize2 size={16} />
+                    ) : (
+                      <Maximize2 size={16} />
+                    )}
+                  </button>
+                </div>
 
-              <div className="flex-1 overflow-auto max-w-full">
-                {loading ? (
-                  <div className="flex justify-center items-center h-full">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8d77ba]"></div>
-                  </div>
-                ) : data.length === 0 ? (
-                  <div className="flex justify-center items-center h-full text-gray-500">No data returned</div>
-                ) : (
-                  <div className="overflow-x-auto max-w-full">
-                    <table className="min-w-full divide-y divide-gray-200 table-fixed">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          {columnDefs.map((column, index) => (
-                            <th
-                              key={index}
-                              scope="col"
-                              className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider truncate"
-                              style={{ maxWidth: '200px' }}
-                            >
-                              {column}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {data.map((row, rowIndex) => (
-                          <tr key={rowIndex}>
-                            {columnDefs.map((column, colIndex) => (
-                              <td
-                                key={colIndex}
-                                className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 truncate"
-                                style={{ maxWidth: '200px' }}
-                                title={row[column]}
+                <div className="flex-1 overflow-auto">
+                  {loading ? (
+                    <div className="flex justify-center items-center h-full">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8d77ba]"></div>
+                    </div>
+                  ) : data.length === 0 ? (
+                    <div className="flex justify-center items-center h-full text-gray-500">
+                      No data returned
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 table-fixed">
+                        <thead className="sticky top-0 bg-[#29304a] text-white">
+                          <tr>
+                            {columnDefs.map((column, index) => (
+                              <th
+                                key={index}
+                                scope="col"
+                                className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider truncate"
+                                style={{ maxWidth: '200px' }} 
                               >
-                                {row[column]}
-                              </td>
+                                {column}
+                              </th>
                             ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {data.map((row, rowIndex) => (
+                            <tr key={rowIndex}>
+                              {columnDefs.map((column, colIndex) => (
+                                <td
+                                  key={colIndex}
+                                  className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 truncate"
+                                  style={{ maxWidth: '200px' }} 
+                                  title={row[column]}
+                                >
+                                  {row[column]}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {data.length > 0 && (
+                  <div className="flex justify-between items-center px-3 py-2 border-t border-gray-100">
+                    <div className="text-sm text-gray-500">Page {pageNo}</div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handlePreviousPage}
+                        disabled={pageNo === 1}
+                        className={`flex items-center gap-1 px-3 py-1 rounded text-sm ${pageNo === 1
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                      >
+                        <ChevronLeft size={16} />
+                        Previous
+                      </button>
+                      <button
+                        onClick={handleNextPage}
+                        disabled={!hasMore}
+                        className={`flex items-center gap-1 px-3 py-1 rounded text-sm ${!hasMore
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                      >
+                        Next
+                        <RightIcon size={16} />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
-
-              {data.length > 0 && (
-                <div className="flex justify-between items-center px-3 py-2 border-t border-gray-100">
-                  <div className="text-sm text-gray-500">Page {pageNo}</div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handlePreviousPage}
-                      disabled={pageNo === 1}
-                      className={`flex items-center gap-1 px-3 py-1 rounded text-sm ${
-                        pageNo === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <ChevronLeft size={16} />
-                      Previous
-                    </button>
-                    <button
-                      onClick={handleNextPage}
-                      disabled={!hasMore}
-                      className={`flex items-center gap-1 px-3 py-1 rounded text-sm ${
-                        !hasMore ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      Next
-                      <RightIcon size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            )}
         </div>
       </div>
       <ToastContainer />
