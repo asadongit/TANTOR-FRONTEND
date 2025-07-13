@@ -1,33 +1,41 @@
-import React, { useState } from 'react'
-import Breadcrumb from '../../../../../components/Breadcrumb'
-import Dataset from './Components/Dataset'
-import Quality from './Components/Quality'
-import Profiling from './Components/Profiling'
-import Cleaning from './Components/Cleaning'
+import React, { useState, useCallback } from 'react'; // Import useCallback
+import Breadcrumb from '../../../../../components/Breadcrumb';
+import Dataset from './Components/Dataset';
+import Quality from './Components/Quality';
+import Profiling from './Components/Profiling';
+import Cleaning from './Components/Cleaning';
+
+const MemoizedProfiling = React.memo(Profiling);
+const MemoizedCleaning = React.memo(Cleaning);
 
 function Data() {
-  const [activeStep, setActiveStep] = useState(0)
+  const [activeStep, setActiveStep] = useState(0);
+  const [query, setQuery] = useState(''); 
 
+  const handleSetQuery = useCallback((newQuery) => {
+    setQuery(newQuery);
+  }, []); 
   const steps = [
-    { label: 'Dataset', component: Dataset },
-    { label: 'Quality', component: Quality },
-    { label: 'Profiling', component: Profiling },
-    { label: 'Cleaning', component: Cleaning }
-  ]
+    { label: 'Dataset', component: Dataset, props: { query: query,setQuery: handleSetQuery } },
+    { label: 'Quality', component: Quality, props: { query: query } }, 
+    { label: 'Profiling', component: MemoizedProfiling, props: {} }, 
+    { label: 'Cleaning', component: MemoizedCleaning, props: {} }
+  ];
 
   const handleNext = () => {
     if (activeStep < steps.length - 1) {
-      setActiveStep(activeStep + 1)
+      setActiveStep(activeStep + 1);
     }
-  }
+  };
 
   const handlePrev = () => {
     if (activeStep > 0) {
-      setActiveStep(activeStep - 1)
+      setActiveStep(activeStep - 1);
     }
-  }
+  };
 
-  const CurrentComponent = steps[activeStep].component
+  const CurrentComponent = steps[activeStep].component;
+  const currentComponentProps = steps[activeStep].props;
 
   return (
     <div className="p-0 h-full bg-[#f9f9f9]">
@@ -42,7 +50,7 @@ function Data() {
               ${index === activeStep
                 ? 'border-[#8d77ba] text-[#8d77ba] font-medium shadow-sm'
                 : 'border-[#e0e0e0] text-[#666]'}`}
-              onClick={() => setActiveStep(index)}
+              // onClick={() => setActiveStep(index)}
             >
               {step.label}
             </div>
@@ -51,7 +59,7 @@ function Data() {
       </div>
 
       <div className="px-5">
-        <CurrentComponent />
+        <CurrentComponent {...currentComponentProps} />
       </div>
 
       <div className="flex justify-end gap-3 mt-2">
@@ -73,7 +81,7 @@ function Data() {
         )}
       </div>
     </div>
-  )
+  );
 }
 
-export default Data
+export default Data;

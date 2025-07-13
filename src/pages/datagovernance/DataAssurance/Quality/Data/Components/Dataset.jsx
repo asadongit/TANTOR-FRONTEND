@@ -15,25 +15,23 @@ import {
   X,
   ChevronLeft,
   ChevronRight as RightIcon,
-  Download
 } from 'lucide-react';
 import { useAuth } from '../../../../../../context/AuthContext.jsx';
 import { secureQuery } from '../../../../DataCatalogue/Components/function.js';
-import { toast } from 'react-toastify';
-import AceEditor from "react-ace";
-import "ace-builds/src-noconflict/mode-mysql";
-import "ace-builds/src-noconflict/theme-github";
-import "ace-builds/src-noconflict/ext-language_tools";
+import { ToastContainer, toast } from 'react-toastify';
+import AceEditor from 'react-ace';
+import 'ace-builds/src-noconflict/mode-mysql';
+import 'ace-builds/src-noconflict/theme-github';
+import 'ace-builds/src-noconflict/ext-language_tools';
 
-function Dataset() {
-  const { token, hostnameV1 } = useAuth();
+function Dataset({query,setQuery}) {
+  const { token, hostnameV1, decodedToken } = useAuth();
   const [selectedTable, setSelectedTable] = useState('');
-  const [editorContent, setEditorContent] = useState('');
-  const [expandedItems, setExpandedItems] = useState({});
-  const [activeTab, setActiveTab] = useState('explorer');
   const [isEditorMaximized, setIsEditorMaximized] = useState(false);
   const [isOutputMaximized, setIsOutputMaximized] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('explorer');
+  const [expandedItems, setExpandedItems] = useState({});
   const [connections, setConnections] = useState([]);
   const [schemas, setSchemas] = useState({});
   const [tables, setTables] = useState({});
@@ -46,6 +44,7 @@ function Dataset() {
   const [columnDefs, setColumnDefs] = useState([]);
   const [pageNo, setPageNo] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const[selectedQuery,setSelectedQuery] = useState(query)
 
   useEffect(() => {
     const fetchConnections = async () => {
@@ -66,7 +65,7 @@ function Dataset() {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ matched_policy_ids: policyIds })
+          body: JSON.stringify({ matched_policy_ids: policyIds }),
         });
 
         if (!response.ok) throw new Error('Failed to fetch connections');
@@ -81,17 +80,42 @@ function Dataset() {
     };
 
     fetchConnections();
-  }, [token, hostnameV1]);
+  }, []);
 
   useEffect(() => {
-    if (searchTerm.trim() === '') {
-      return;
-    }
+    const fetchHistory = async () => {
+      try {
+        setHistoryLoading(true);
+        const response = await fetch(`${hostnameV1}/scores/data/history`, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ owner: decodedToken?.preferred_username }),
+        });
 
-    const filteredConnections = connections.filter(connection =>
-      connection.connection_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm, connections]);
+        if (!response.ok) throw new Error('Failed to fetch history');
+        const historyData = await response.json();
+        const historyConnections = historyData.connections || [];
+
+        const connectionNames = connections.map((conn) => conn.connection_name);
+        const filteredHistory = historyConnections.filter((conn) => connectionNames.includes(conn));
+
+        setHistoryItems(filteredHistory);
+      } catch (error) {
+        console.error('Error fetching history:', error);
+        toast.error('Failed to load history');
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+
+    if (connections.length > 0) {
+      fetchHistory();
+    }
+  }, [connections]);
 
   const toggleExpand = async (itemName, connection, schema, table) => {
     if (connection && !schema && !table) {
@@ -108,20 +132,20 @@ function Dataset() {
       }
     }
 
-    setExpandedItems(prev => ({
+    setExpandedItems((prev) => ({
       ...prev,
-      [itemName]: !prev[itemName]
+      [itemName]: !prev[itemName],
     }));
   };
 
   const fetchSchemas = async (connection) => {
     try {
-      setSchemas(prev => ({ ...prev, [connection]: 'loading' }));
+      setSchemas((prev) => ({ ...prev, [connection]: 'loading' }));
       const secureQueryResponse = await secureQuery({ user_query: '' }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
 
       if (policyIds.length === 0) {
-        setSchemas(prev => ({ ...prev, [connection]: [] }));
+        setSchemas((prev) => ({ ...prev, [connection]: [] }));
         return;
       }
 
@@ -133,34 +157,34 @@ function Dataset() {
         },
         body: JSON.stringify({
           matched_policy_ids: policyIds,
-          connection_name: connection
-        })
+          connection_name: connection,
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to fetch schemas');
       const data = await response.json();
-      const connectionData = data.find(item => item[connection]);
+      const connectionData = data.find((item) => item[connection]);
       const schemaNames = connectionData ? connectionData[connection] : [];
 
-      setSchemas(prev => ({
+      setSchemas((prev) => ({
         ...prev,
         [connection]: schemaNames.length > 0 ? schemaNames : [],
       }));
     } catch (error) {
       console.error('Error fetching schema data:', error);
-      setSchemas(prev => ({ ...prev, [connection]: 'error' }));
+      setSchemas((prev) => ({ ...prev, [connection]: 'error' }));
       toast.error('Failed to load schemas');
     }
   };
 
   const fetchTables = async (connection, schema) => {
     try {
-      setTables(prev => ({ ...prev, [`${connection}-${schema}`]: 'loading' }));
+      setTables((prev) => ({ ...prev, [`${connection}-${schema}`]: 'loading' }));
       const secureQueryResponse = await secureQuery({ user_query: '' }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
 
       if (policyIds.length === 0) {
-        setTables(prev => ({ ...prev, [`${connection}-${schema}`]: [] }));
+        setTables((prev) => ({ ...prev, [`${connection}-${schema}`]: [] }));
         return;
       }
 
@@ -173,34 +197,36 @@ function Dataset() {
         body: JSON.stringify({
           matched_policy_ids: policyIds,
           connection_name: connection,
-          schema_name: [schema], 
+          schema_name: [schema],
         }),
       });
 
       if (!response.ok) throw new Error('Failed to fetch tables');
       const data = await response.json();
-      const schemaData = data.schemas?.find(item => item.connection_name === connection && item.schema === schema);
+      const schemaData = data.schemas?.find(
+        (item) => item.connection_name === connection && item.schema === schema
+      );
       const tableNames = schemaData?.tables || [];
 
-      setTables(prev => ({
+      setTables((prev) => ({
         ...prev,
         [`${connection}-${schema}`]: tableNames.length > 0 ? tableNames : [],
       }));
     } catch (error) {
       console.error('Error fetching table data:', error);
-      setTables(prev => ({ ...prev, [`${connection}-${schema}`]: 'error' }));
+      setTables((prev) => ({ ...prev, [`${connection}-${schema}`]: 'error' }));
       toast.error('Failed to load tables');
     }
   };
 
   const fetchColumns = async (connection, schema, table) => {
     try {
-      setColumns(prev => ({ ...prev, [`${connection}-${schema}-${table}`]: 'loading' }));
+      setColumns((prev) => ({ ...prev, [`${connection}-${schema}-${table}`]: 'loading' }));
       const secureQueryResponse = await secureQuery({ user_query: '' }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
 
       if (policyIds.length === 0) {
-        setColumns(prev => ({ ...prev, [`${connection}-${schema}-${table}`]: [] }));
+        setColumns((prev) => ({ ...prev, [`${connection}-${schema}-${table}`]: [] }));
         return;
       }
 
@@ -221,22 +247,22 @@ function Dataset() {
       if (!response.ok) throw new Error('Failed to fetch columns');
       const data = await response.json();
       const tableData = data.columns?.find(
-        item => item.connection_name === connection && item.schema === schema && item.table_name === table
+        (item) => item.connection_name === connection && item.schema === schema && item.table_name === table
       );
       const columnData = tableData?.columns || [];
-      const formattedColumns = columnData.map(item => ({
+      const formattedColumns = columnData.map((item) => ({
         column: item.column_name,
         datatype: item.metadata?.DATA_TYPE || 'unknown',
         metadata: item.metadata,
       }));
 
-      setColumns(prev => ({
+      setColumns((prev) => ({
         ...prev,
         [`${connection}-${schema}-${table}`]: formattedColumns.length > 0 ? formattedColumns : [],
       }));
     } catch (error) {
       console.error('Error fetching column data:', error);
-      setColumns(prev => ({ ...prev, [`${connection}-${schema}-${table}`]: 'error' }));
+      setColumns((prev) => ({ ...prev, [`${connection}-${schema}-${table}`]: 'error' }));
       toast.error('Failed to load columns');
     }
   };
@@ -244,9 +270,11 @@ function Dataset() {
   const handleSelectTable = (connection, schema, table) => {
     const fullTableName = `${connection}.${schema}.${table}`;
     setSelectedTable(fullTableName);
-    setEditorContent(`SELECT * FROM ${fullTableName}`);
+    const query = `SELECT * FROM ${fullTableName}`;
+    setSelectedQuery(query);
     setData([]);
     setColumnDefs([]);
+    // setIsQueryRun(false);
   };
 
   const executeQuery = async (query, page = 1) => {
@@ -265,14 +293,15 @@ function Dataset() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ user_query: query })
+        body: JSON.stringify({ user_query: query }),
       });
 
       if (!secureQueryResponse.ok) {
-        const errorData = await secureQueryResponse.json();
-        throw new Error(errorData.detail || 'Query validation failed');
+        const errData = await secureQueryResponse.json();
+        toast.error(errData.detail || 'Error in query validation');
+        throw new Error(errData.detail || 'Query validation failed');
       }
 
       const secureData = await secureQueryResponse.json();
@@ -282,12 +311,12 @@ function Dataset() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           query: secureQuery,
-          page: page
-        })
+          page: page,
+        }),
       });
 
       if (!executeResponse.ok) {
@@ -296,35 +325,39 @@ function Dataset() {
       }
 
       const responseText = await executeResponse.text();
-      const rows = responseText.trim().split('\n').map(row => JSON.parse(row));
+      const rows = responseText.trim().split('\n').map((row) => JSON.parse(row));
 
       if (rows.length > 0) {
         setColumnDefs(Object.keys(rows[0]));
         setData(rows);
         setHasMore(rows.length === 100);
+        // setIsQueryRun(true);
       } else {
         setData([]);
         setHasMore(false);
+        // setIsQueryRun(true);
       }
     } catch (error) {
       console.error('Error executing query:', error);
       toast.error(error.message || 'Failed to execute query');
+      // setIsQueryRun(false);
     } finally {
       setLoading(false);
     }
   };
 
   const handleRunQuery = () => {
-    executeQuery(editorContent, 1);
+    executeQuery(selectedQuery, 1);
+    setQuery(selectedQuery)
   };
 
   const handleNextPage = () => {
-    executeQuery(editorContent, pageNo + 1);
+    executeQuery(selectedQuery, pageNo + 1);
   };
 
   const handlePreviousPage = () => {
     if (pageNo > 1) {
-      executeQuery(editorContent, pageNo - 1);
+      executeQuery(selectedQuery, pageNo - 1);
     }
   };
 
@@ -332,8 +365,10 @@ function Dataset() {
     const connectionId = `conn-${connection.connection_name}`;
     const isExpanded = expandedItems[connectionId];
     return (
-      <div className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
-        onClick={() => toggleExpand(connectionId, connection.connection_name)}>
+      <div
+        className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
+        onClick={() => toggleExpand(connectionId, connection.connection_name)}
+      >
         {isExpanded ? (
           <ChevronDown size={14} className="mr-2 text-gray-400" />
         ) : (
@@ -349,8 +384,10 @@ function Dataset() {
     const schemaId = `schema-${connection}-${schema}`;
     const isExpanded = expandedItems[schemaId];
     return (
-      <div className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
-        onClick={() => toggleExpand(schemaId, connection, schema)}>
+      <div
+        className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
+        onClick={() => toggleExpand(schemaId, connection, schema)}
+      >
         {isExpanded ? (
           <ChevronDown size={14} className="mr-2 text-gray-400" />
         ) : (
@@ -366,17 +403,18 @@ function Dataset() {
     const tableId = `table-${connection}-${schema}-${table}`;
     const isExpanded = expandedItems[tableId];
     return (
-      <div className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
-        onClick={() => toggleExpand(tableId, connection, schema, table)}>
+      <div
+        className="flex items-center px-4 py-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
+        onClick={() => toggleExpand(tableId, connection, schema, table)}
+      >
         {isExpanded ? (
           <ChevronDown size={14} className="mr-2 text-gray-400" />
         ) : (
           <ChevronRight size={14} className="mr-2 text-gray-400" />
         )}
         <TableIcon size={14} className="mr-2 text-gray-400" />
-        <span
-          className="truncate"
-          onDoubleClick={() => handleSelectTable(connection, schema, table)}
+        <span className="truncate" 
+        // onDoubleClick={() => handleSelectTable(connection, schema, table)}
         >
           {table}
         </span>
@@ -385,7 +423,8 @@ function Dataset() {
   };
 
   const renderColumnLabel = (column) => {
-    const isNumber = column.datatype.split('(')[0] === 'int' ||
+    const isNumber =
+      column.datatype.split('(')[0] === 'int' ||
       column.datatype.split('(')[0] === 'integer' ||
       column.datatype.split('(')[0] === 'decimal' ||
       column.datatype.split('(')[0] === 'double';
@@ -440,17 +479,13 @@ function Dataset() {
               <Search size={14} className="text-gray-500" />
               <input
                 type="text"
-                placeholder={activeTab === 'explorer' ? "Search databases..." : "Search history..."}
+                placeholder={activeTab === 'explorer' ? 'Search databases...' : 'Search history...'}
                 className="w-full border-none bg-transparent px-2 text-xs outline-none"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               {searchTerm && (
-                <X
-                  size={14}
-                  className="text-gray-500 cursor-pointer"
-                  onClick={() => setSearchTerm('')}
-                />
+                <X size={14} className="text-gray-500 cursor-pointer" onClick={() => setSearchTerm('')} />
               )}
             </div>
 
@@ -464,92 +499,121 @@ function Dataset() {
                   ) : connections.length === 0 ? (
                     <div className="text-gray-500 text-sm p-4">No connections available</div>
                   ) : (
-                    connections.map((connection) => {
-                      const connectionId = `conn-${connection.connection_name}`;
-                      const connectionSchemas = schemas[connection.connection_name];
-                      const isExpanded = expandedItems[connectionId];
+                    connections
+                      .filter((connection) =>
+                        connection.connection_name.toLowerCase().includes(searchTerm.toLowerCase())
+                      )
+                      .map((connection) => {
+                        const connectionId = `conn-${connection.connection_name}`;
+                        const connectionSchemas = schemas[connection.connection_name];
+                        const isExpanded = expandedItems[connectionId];
 
-                      return (
-                        <div key={connection.connection_name} className="mb-0.5">
-                          {renderDatabaseLabel(connection)}
+                        return (
+                          <div key={connection.connection_name} className="mb-0.5">
+                            {renderDatabaseLabel(connection)}
 
-                          {isExpanded && (
-                            <div className="pl-6">
-                              {connectionSchemas === 'loading' && (
-                                <div className="px-4 py-1 text-sm text-gray-500">Loading schemas...</div>
-                              )}
-                              {connectionSchemas === 'error' && (
-                                <div className="px-4 py-1 text-sm text-red-500">Error loading schemas</div>
-                              )}
-                              {Array.isArray(connectionSchemas) && connectionSchemas.length === 0 && (
-                                <div className="px-4 py-1 text-sm text-gray-500">No schemas available</div>
-                              )}
-                              {Array.isArray(connectionSchemas) && connectionSchemas.length > 0 && (
-                                connectionSchemas.map((schema, schemaIndex) => {
-                                  const schemaId = `schema-${connection.connection_name}-${schema}`;
-                                  const tableData = tables[`${connection.connection_name}-${schema}`];
-                                  const isSchemaExpanded = expandedItems[schemaId];
+                            {isExpanded && (
+                              <div className="pl-6">
+                                {connectionSchemas === 'loading' && (
+                                  <div className="px-4 py-1 text-sm text-gray-500">Loading schemas...</div>
+                                )}
+                                {connectionSchemas === 'error' && (
+                                  <div className="px-4 py-1 text-sm text-red-500">Error loading schemas</div>
+                                )}
+                                {Array.isArray(connectionSchemas) && connectionSchemas.length === 0 && (
+                                  <div className="px-4 py-1 text-sm text-gray-500">No schemas available</div>
+                                )}
+                                {Array.isArray(connectionSchemas) &&
+                                  connectionSchemas.length > 0 &&
+                                  connectionSchemas
+                                    .filter((schema) => schema.toLowerCase().includes(searchTerm.toLowerCase()))
+                                    .map((schema, schemaIndex) => {
+                                      const schemaId = `schema-${connection.connection_name}-${schema}`;
+                                      const tableData = tables[`${connection.connection_name}-${schema}`];
+                                      const isSchemaExpanded = expandedItems[schemaId];
 
-                                  return (
-                                    <div key={`${schema}-${schemaIndex}`}>
-                                      {renderSchemaLabel(connection.connection_name, schema)}
+                                      return (
+                                        <div key={`${schema}-${schemaIndex}`}>
+                                          {renderSchemaLabel(connection.connection_name, schema)}
 
-                                      {isSchemaExpanded && (
-                                        <div className="pl-6">
-                                          {tableData === 'loading' && (
-                                            <div className="px-4 py-1 text-sm text-gray-500">Loading tables...</div>
-                                          )}
-                                          {tableData === 'error' && (
-                                            <div className="px-4 py-1 text-sm text-red-500">Error loading tables</div>
-                                          )}
-                                          {Array.isArray(tableData) && tableData.length === 0 && (
-                                            <div className="px-4 py-1 text-sm text-gray-500">No tables available</div>
-                                          )}
-                                          {Array.isArray(tableData) && tableData.length > 0 && (
-                                            tableData.map((table, tableIndex) => {
-                                              const tableId = `table-${connection.connection_name}-${schema}-${table}`;
-                                              const columnData = columns[`${connection.connection_name}-${schema}-${table}`];
-                                              const isTableExpanded = expandedItems[tableId];
-
-                                              return (
-                                                <div key={`${table}-${tableIndex}`}>
-                                                  {renderTableLabel(connection.connection_name, schema, table)}
-
-                                                  {isTableExpanded && (
-                                                    <div className="pl-6">
-                                                      {columnData === 'loading' && (
-                                                        <div className="px-4 py-1 text-sm text-gray-500">Loading columns...</div>
-                                                      )}
-                                                      {columnData === 'error' && (
-                                                        <div className="px-4 py-1 text-sm text-red-500">Error loading columns</div>
-                                                      )}
-                                                      {Array.isArray(columnData) && columnData.length === 0 && (
-                                                        <div className="px-4 py-1 text-sm text-gray-500">No columns available</div>
-                                                      )}
-                                                      {Array.isArray(columnData) && columnData.length > 0 && (
-                                                        columnData.map((column, columnIndex) => (
-                                                          <div key={`${column.column}-${columnIndex}`}>
-                                                            {renderColumnLabel(column)}
-                                                          </div>
-                                                        ))
-                                                      )}
-                                                    </div>
-                                                  )}
+                                          {isSchemaExpanded && (
+                                            <div className="pl-6">
+                                              {tableData === 'loading' && (
+                                                <div className="px-4 py-1 text-sm text-gray-500">
+                                                  Loading tables...
                                                 </div>
-                                              );
-                                            })
+                                              )}
+                                              {tableData === 'error' && (
+                                                <div className="px-4 py-1 text-sm text-red-500">
+                                                  Error loading tables
+                                                </div>
+                                              )}
+                                              {Array.isArray(tableData) && tableData.length === 0 && (
+                                                <div className="px-4 py-1 text-sm text-gray-500">
+                                                  No tables available
+                                                </div>
+                                              )}
+                                              {Array.isArray(tableData) &&
+                                                tableData.length > 0 &&
+                                                tableData
+                                                  .filter((table) =>
+                                                    table.toLowerCase().includes(searchTerm.toLowerCase())
+                                                  )
+                                                  .map((table, tableIndex) => {
+                                                    const tableId = `table-${connection.connection_name}-${schema}-${table}`;
+                                                    const columnData =
+                                                      columns[`${connection.connection_name}-${schema}-${table}`];
+                                                    const isTableExpanded = expandedItems[tableId];
+
+                                                    return (
+                                                      <div key={`${table}-${tableIndex}`}>
+                                                        {renderTableLabel(connection.connection_name, schema, table)}
+
+                                                        {isTableExpanded && (
+                                                          <div className="pl-6">
+                                                            {columnData === 'loading' && (
+                                                              <div className="px-4 py-1 text-sm text-gray-500">
+                                                                Loading columns...
+                                                              </div>
+                                                            )}
+                                                            {columnData === 'error' && (
+                                                              <div className="px-4 py-1 text-sm text-red-500">
+                                                                Error loading columns
+                                                              </div>
+                                                            )}
+                                                            {Array.isArray(columnData) && columnData.length === 0 && (
+                                                              <div className="px-4 py-1 text-sm text-gray-500">
+                                                                No columns available
+                                                              </div>
+                                                            )}
+                                                            {Array.isArray(columnData) &&
+                                                              columnData.length > 0 &&
+                                                              columnData
+                                                                .filter((column) =>
+                                                                  column.column
+                                                                    .toLowerCase()
+                                                                    .includes(searchTerm.toLowerCase())
+                                                                )
+                                                                .map((column, columnIndex) => (
+                                                                  <div key={`${column.column}-${columnIndex}`}>
+                                                                    {renderColumnLabel(column)}
+                                                                  </div>
+                                                                ))}
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                    );
+                                                  })}
+                                            </div>
                                           )}
                                         </div>
-                                      )}
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
+                                      );
+                                    })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
                   )}
                 </div>
               ) : (
@@ -561,30 +625,32 @@ function Dataset() {
                   ) : historyItems.length === 0 ? (
                     <div className="text-gray-500 text-sm pl-4">No history available</div>
                   ) : (
-                    historyItems.map((item, index) => (
-                      <div
-                        key={index}
-                        className={`px-4 py-2 text-sm cursor-pointer rounded
-                        ${selectedTable.includes(item) ? 'text-[#8d77ba] bg-[#8d77ba10]' : 'text-gray-700 hover:bg-gray-50'}`}
-                        onClick={() => {
-                          let found = false;
-                          for (const connection of connections) {
-                            const schemasList = schemas[connection.connection_name] || [];
-                            for (const schema of schemasList) {
-                              const tablesList = tables[`${connection.connection_name}-${schema}`] || [];
-                              if (tablesList.includes(item)) {
-                                handleSelectTable(connection.connection_name, schema, item);
-                                found = true;
-                                break;
+                    historyItems
+                      .filter((item) => item.toLowerCase().includes(searchTerm.toLowerCase()))
+                      .map((item, index) => (
+                        <div
+                          key={index}
+                          className={`px-4 py-2 text-sm cursor-pointer rounded
+                          ${selectedTable.includes(item) ? 'text-[#8d77ba] bg-[#8d77ba10]' : 'text-gray-700 hover:bg-gray-50'}`}
+                          onClick={() => {
+                            let found = false;
+                            for (const connection of connections) {
+                              const schemasList = schemas[connection.connection_name] || [];
+                              for (const schema of schemasList) {
+                                const tablesList = tables[`${connection.connection_name}-${schema}`] || [];
+                                if (tablesList.includes(item)) {
+                                  handleSelectTable(connection.connection_name, schema, item);
+                                  found = true;
+                                  break;
+                                }
                               }
+                              if (found) break;
                             }
-                            if (found) break;
-                          }
-                        }}
-                      >
-                        {item}
-                      </div>
-                    ))
+                          }}
+                        >
+                          {item}
+                        </div>
+                      ))
                   )}
                 </div>
               )}
@@ -594,7 +660,9 @@ function Dataset() {
 
         <div className={`${isEditorMaximized || isOutputMaximized ? 'flex-1' : 'flex-1 flex flex-col gap-5'} h-full`}>
           {!isOutputMaximized && (
-            <div className={`bg-white rounded-lg shadow-sm overflow-hidden ${isEditorMaximized ? 'h-full' : 'flex-1'} flex flex-col`}>
+            <div
+              className={`bg-white rounded-lg shadow-sm overflow-hidden ${isEditorMaximized ? 'h-full' : 'flex-1'} flex flex-col`}
+            >
               <div className="flex justify-between items-center p-3 border-b border-gray-100">
                 <div className="font-medium text-gray-800">Editor</div>
                 <div className="flex gap-2">
@@ -606,19 +674,17 @@ function Dataset() {
                     {loading ? 'Running...' : 'Run query'}
                     <Play size={14} />
                   </button>
-                  <button
-                    className="text-gray-500 p-1 hover:bg-gray-50 rounded"
-                    onClick={toggleEditorMaximize}
-                  >
+                  <button className="text-gray-500 p-1 hover:bg-gray-50 rounded" onClick={toggleEditorMaximize}>
                     {isEditorMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                   </button>
                   <button
                     className="text-gray-500 p-1 hover:bg-gray-50 rounded"
                     onClick={() => {
-                      setEditorContent('');
+                      setSelectedQuery('');
                       setSelectedTable('');
                       setData([]);
                       setColumnDefs([]);
+                      // setIsQueryRun(false);
                     }}
                   >
                     <RefreshCw size={16} />
@@ -634,8 +700,8 @@ function Dataset() {
                   fontSize={14}
                   width="100%"
                   height="100%"
-                  value={editorContent}
-                  onChange={setEditorContent}
+                  value={selectedQuery}
+                  onChange={setSelectedQuery}
                   setOptions={{
                     enableBasicAutocompletion: true,
                     enableLiveAutocompletion: true,
@@ -651,13 +717,12 @@ function Dataset() {
           )}
 
           {(loading || data.length > 0 || columnDefs.length > 0) && !isEditorMaximized && (
-            <div className={`bg-white rounded-lg shadow-sm overflow-hidden ${isOutputMaximized ? 'h-full' : 'flex-1'} flex flex-col`}>
+            <div
+              className={`bg-white rounded-lg shadow-sm overflow-hidden ${isOutputMaximized ? 'h-full' : 'flex-1'} flex flex-col`}
+            >
               <div className="flex justify-between items-center px-3 py-2 border-b border-gray-100">
                 <div className="font-medium text-gray-800">Output</div>
-                <button
-                  className="text-gray-500 p-1 hover:bg-gray-50 rounded"
-                  onClick={toggleOutputMaximize}
-                >
+                <button className="text-gray-500 p-1 hover:bg-gray-50 rounded" onClick={toggleOutputMaximize}>
                   {isOutputMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
               </div>
@@ -668,9 +733,7 @@ function Dataset() {
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8d77ba]"></div>
                   </div>
                 ) : data.length === 0 ? (
-                  <div className="flex justify-center items-center h-full text-gray-500">
-                    No data returned
-                  </div>
+                  <div className="flex justify-center items-center h-full text-gray-500">No data returned</div>
                 ) : (
                   <div className="overflow-x-auto max-w-full">
                     <table className="min-w-full divide-y divide-gray-200 table-fixed">
@@ -711,14 +774,14 @@ function Dataset() {
 
               {data.length > 0 && (
                 <div className="flex justify-between items-center px-3 py-2 border-t border-gray-100">
-                  <div className="text-sm text-gray-500">
-                    Page {pageNo}
-                  </div>
+                  <div className="text-sm text-gray-500">Page {pageNo}</div>
                   <div className="flex gap-2">
                     <button
                       onClick={handlePreviousPage}
                       disabled={pageNo === 1}
-                      className={`flex items-center gap-1 px-3 py-1 rounded text-sm ${pageNo === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                      className={`flex items-center gap-1 px-3 py-1 rounded text-sm ${
+                        pageNo === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                     >
                       <ChevronLeft size={16} />
                       Previous
@@ -726,7 +789,9 @@ function Dataset() {
                     <button
                       onClick={handleNextPage}
                       disabled={!hasMore}
-                      className={`flex items-center gap-1 px-3 py-1 rounded text-sm ${!hasMore ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                      className={`flex items-center gap-1 px-3 py-1 rounded text-sm ${
+                        !hasMore ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                     >
                       Next
                       <RightIcon size={16} />
@@ -738,6 +803,7 @@ function Dataset() {
           )}
         </div>
       </div>
+      <ToastContainer />
     </div>
   );
 }
