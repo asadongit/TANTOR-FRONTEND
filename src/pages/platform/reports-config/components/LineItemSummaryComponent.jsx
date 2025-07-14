@@ -95,7 +95,7 @@ const LineItemSummary = () => {
   };
 
   try {
-    const response = await fetch(`${hostnameV1}/lineItems`, {
+    const response = await fetch(`${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems`, {
       method,
       headers,
       body: JSON.stringify(payload),

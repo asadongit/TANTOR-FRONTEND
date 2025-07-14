@@ -24,7 +24,7 @@ const RulesReportsLinks = () => {
     //     // If report type is LIST, navigate to report viewer page
 
     //     if ((reportType || "").toUpperCase() === "LIST") {
-    //       const reportFolder = window._env_?.VITE_BIRT_REPORT_FOLDER;
+    //       const reportFolder = window._env_?.VITE_REPORTING_REPORT_FOLDER;
     //       const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
     //       navigate("/reports/viewer", {
@@ -40,12 +40,12 @@ const RulesReportsLinks = () => {
 
     //     /*
     //             if ((reportType || "").toUpperCase() === "LIST") {
-    //                 const reportFolder = window._env_?.VITE_BIRT_REPORT_FOLDER; 
+    //                 const reportFolder = window._env_?.VITE_REPORTING_REPORT_FOLDER; 
     //                 const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
                   
     //                 window.open(
-    //                   `${window._env_?.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-    //                     window._env_?.VITE_BIRT_EXPORT_FORMAT
+    //                   `${window._env_?.VITE_REPORTING_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+    //                     window._env_?.VITE_REPORTING_EXPORT_FORMAT
     //                   }`,
     //                   "_blank"
     //                 );
@@ -83,7 +83,7 @@ const RulesReportsLinks = () => {
 
     //     try {
     //       const redirectResponse = await fetch(
-    //         `${window._env_?.VITE_BIRT_BACKEND_API
+    //         `${window._env_?.VITE_REPORTING_BACKEND_API
     //         }/templates/generate?report-id=${reportId}&report-name=${reportFileName}&report-type=${reportType}`
     //       );
     //       if (!redirectResponse.ok)
@@ -92,8 +92,8 @@ const RulesReportsLinks = () => {
     //       console.log("Redirect Response: ", redirectResponse);
     //       const redirectPath = await redirectResponse.text();
     //       window.open(
-    //         `${window._env_?.VITE_BIRT_API
-    //         }/frameset?__report=${redirectPath}&__format=${window._env_?.VITE_BIRT_EXPORT_FORMAT
+    //         `${window._env_?.VITE_REPORTING_API
+    //         }/frameset?__report=${redirectPath}&__format=${window._env_?.VITE_REPORTING_EXPORT_FORMAT
     //         }`,
     //         "_blank"
     //       );

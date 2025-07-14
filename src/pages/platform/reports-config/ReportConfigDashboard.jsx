@@ -5,6 +5,7 @@ import {
   List,
   Play,
   Download,
+  RefreshCcw,
   Plus,
   MoveUpRight,
   Search,
@@ -128,12 +129,12 @@ const ReportConfigDashboard = () => {
         }
          else if ((reportType || "").toUpperCase() === "GRID" || (reportType || "").toUpperCase() === "HYBRID") {
           console.log("REPORT TYPE ==> ", reportType);
-            const reportFolder = window._env_?.VITE_BIRT_REPORT_FOLDER;
+            const reportFolder = window._env_?.VITE_REPORTING_REPORT_FOLDER;
             const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
             window.open(
-              `${window._env_?.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-                window._env_?.VITE_BIRT_EXPORT_FORMAT
+              `${window._env_?.VITE_REPORTING_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+                window._env_?.VITE_REPORTING_EXPORT_FORMAT
               }`,
               "_blank"
             );
@@ -147,24 +148,24 @@ const ReportConfigDashboard = () => {
 
         // ------------- BIRT CODE START -----------------
         // if ((reportType || "").toUpperCase() === "LIST") {
-        //     const reportFolder = window._env_?.VITE_BIRT_REPORT_FOLDER;
+        //     const reportFolder = window._env_?.VITE_REPORTING_REPORT_FOLDER;
         //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
         //     window.open(
-        //       `${window._env_?.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-        //         window._env_?.VITE_BIRT_EXPORT_FORMAT
+        //       `${window._env_?.VITE_REPORTING_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+        //         window._env_?.VITE_REPORTING_EXPORT_FORMAT
         //       }`,
         //       "_blank"
         //     );
         //     return;
         //   }
         //   else if ((reportType || "").toUpperCase() === "GRID") {
-        //     const reportFolder = window._env_?.VITE_BIRT_REPORT_FOLDER;
+        //     const reportFolder = window._env_?.VITE_REPORTING_REPORT_FOLDER;
         //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
         //     window.open(
-        //       `${window._env_?.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-        //         window._env_?.VITE_BIRT_EXPORT_FORMAT
+        //       `${window._env_?.VITE_REPORTING_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+        //         window._env_?.VITE_REPORTING_EXPORT_FORMAT
         //       }`,
         //       "_blank"
         //     );
@@ -206,7 +207,7 @@ const ReportConfigDashboard = () => {
 
         // try {
         //   const redirectResponse = await fetch(
-        //     `${window._env_?.VITE_BIRT_BACKEND_API
+        //     `${window._env_?.VITE_REPORTING_BACKEND_API
         //     }/templates/generate?report-id=${reportId}&report-name=${reportFileName}&report-type=${reportType}`
         //   );
         //   if (!redirectResponse.ok)
@@ -215,8 +216,8 @@ const ReportConfigDashboard = () => {
         //   console.log("Redirect Response: ", redirectResponse);
         //   const redirectPath = await redirectResponse.text();
         //   window.open(
-        //     `${window._env_?.VITE_BIRT_API
-        //     }/frameset?__report=${redirectPath}&__format=${window._env_?.VITE_BIRT_EXPORT_FORMAT
+        //     `${window._env_?.VITE_REPORTING_API
+        //     }/frameset?__report=${redirectPath}&__format=${window._env_?.VITE_REPORTING_EXPORT_FORMAT
         //     }`,
         //     "_blank"
         //   );
@@ -501,6 +502,13 @@ const ReportConfigDashboard = () => {
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
           >
             <Download className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
+            onClick={handleRefresh}
+          >
+            <RefreshCcw className={`h-5 w-5 ${isReportsLoading ? 'animate-spin' : ''}`} />
           </button>
           <button
             type="button"
