@@ -13,7 +13,7 @@ function CreateRulesInner() {
   const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const { stepData, setStepData, resetStepData } = useStepData();
-  const { token } = useAuth();
+  const { token,decodedToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -108,6 +108,8 @@ function CreateRulesInner() {
   };
 
   const handleStep3Create = async (finalJson, step1Data) => {
+    console.log("finaljson is ========>",finalJson)
+    console.log("step1 data is ====>",step1Data)
     const category = (step1Data || stepData?.step1)?.category;
     let payload;
 
@@ -162,17 +164,20 @@ function CreateRulesInner() {
       }
       return;
     }
+    console.log("final jsonnn is =====>",finalJson)
 
     if (category === "Pre-built") {
       payload = {
         prebuilt: (finalJson || []).map(rule => ({
           id: rule.id || rule.rule?.id,
+          owner: decodedToken?.preferred_username,
           connection_details: rule.connection_details || []
         }))
       };
     } else if (category === "Custom") {
       payload = {
         custom: (finalJson || []).map(rule => ({
+          id: isNaN(rule.id) ? 0 : parseInt(rule.id),
           type: rule.type,
           category: rule.category,
           group_name: rule.group,

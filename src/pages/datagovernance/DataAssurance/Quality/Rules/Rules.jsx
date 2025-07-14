@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash2, BookOpen, List } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useNavigate } from 'react-router-dom';
 import RuleRunSummary from './RuleRunSummary';
+import { useAuth } from "../../../../../context/AuthContext";
 
 const Rules = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,10 +20,11 @@ const Rules = () => {
   const [isPopupLoading, setIsPopupLoading] = useState(false);
   const rowsPerPage = 5;
   const navigate = useNavigate();
-  const [metricData, setMetricData] = useState([]);
+  const [metricData, setMetricData] = useState({});
   const [tableData, setTableData] = useState([]);
   const selectAllRef = useRef(null);
   const [showSelectAllOptions, setShowSelectAllOptions] = useState(false);
+  const { decodedToken } = useAuth();
 
   useEffect(() => {
     if (toast.show) {
@@ -33,76 +35,55 @@ const Rules = () => {
     }
   }, [toast.show]);
 
-  const metricsData = [
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Overall",
-      count: metricData?.Overall || "-"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Accuracy",
-      count: metricData?.Accuracy || "-"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Consistency",
-      count: metricData?.Consistency || "-"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Completeness",
-      count: metricData?.Completeness || "-"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Validity",
-      count: metricData?.Validity || "-"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Uniqueness",
-      count: metricData?.Uniqueness || "-"
-    }
-  ];
+  // Dynamically generate metricsData from metricData state
+  const metricsData = Object.keys(metricData).map((key) => ({
+    icon: "material-symbols:tab-group-outline",
+    bgcolor: "bg-[#8d77ba] bg-opacity-25",
+    iconcolor: "text-[#8d77ba]",
+    title: key,
+    count: metricData[key] || "-"
+  }));
 
   const fetchCounts = async () => {
-    fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/counts`)
-      .then(response => response.json())
-      .then(data => {
-        console.log(data);
-        setMetricData(data);
-      })
-      .catch(error => {
-        console.error('Error fetching counts:', error);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/counts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({ owner: decodedToken?.preferred_username }),
       });
+      const data = await response.json();
+      console.log(data);
+      setMetricData(data);
+    } catch (error) {
+      console.error('Error fetching counts:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchTableData = async () => {
     setIsLoading(true);
-    fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/table`)
-      .then(response => response.json())
-      .then(data => {
-        console.log(data.data_rules);
-        setTableData(data.data_rules || []);
-        setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching table data:', error);
-        setIsLoading(false);
+    try {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/table`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({ owner: decodedToken?.preferred_username }),
       });
+      const data = await response.json();
+      console.log(data.data_rules);
+      setTableData(data.data_rules || []);
+    } catch (error) {
+      console.error('Error fetching table data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchRuleDetails = async (ids) => {
@@ -113,7 +94,7 @@ const Rules = () => {
           'Content-Type': 'application/json',
           'accept': 'application/json',
         },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({ ids, owner: decodedToken?.preferred_username }),
       });
       const data = await response.json();
       return data.rules || [];
@@ -136,7 +117,7 @@ const Rules = () => {
           'Content-Type': 'application/json',
           'accept': 'application/json',
         },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({ ids, owner: decodedToken?.preferred_username }),
       });
 
       if (!response.ok) {
@@ -165,6 +146,10 @@ const Rules = () => {
 
   const handleCreateRule = () => {
     navigate('/datagovernance/data-assurance/rules/create');
+  };
+
+  const handleOpenRuleLibrary = () => {
+    navigate('/datagovernance/data-assurance/rule-library');
   };
 
   const handleSelectRow = (id) => {
@@ -196,7 +181,6 @@ const Rules = () => {
       fetchRuleDetails(idsToRun),
       fetchRuleRunResults(idsToRun)
     ]);
-
 
     const enrichedRulesData = detailedRulesData.map((rule) => {
       const tableItem = tableData.find((item) => item.id === rule.id);
@@ -247,6 +231,7 @@ const Rules = () => {
       setCurrentPage(currentPage + 1);
     }
   };
+
   const handleRefreshSelected = async (item, isRefreshForId = false) => {
     let idsToRefresh = [];
 
@@ -330,7 +315,6 @@ const Rules = () => {
     setShowSelectAllOptions(false);
   };
 
-
   const performDelete = async (idsToDelete) => {
     setIsLoading(true);
     try {
@@ -340,7 +324,7 @@ const Rules = () => {
           'Content-Type': 'application/json',
           'accept': 'application/json',
         },
-        body: JSON.stringify({ ids: idsToDelete }),
+        body: JSON.stringify({ ids: idsToDelete, owner: decodedToken?.preferred_username }),
       });
 
       if (response.ok) {
@@ -366,6 +350,7 @@ const Rules = () => {
       setIsLoading(false);
     }
   };
+
   const handleActionClick = async (action, item, index) => {
     if (action === 'Edit') {
       try {
@@ -374,7 +359,7 @@ const Rules = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ ids: [item.id] }),
+          body: JSON.stringify({ ids: [item.id], owner: decodedToken?.preferred_username }),
         });
         const data = await response.json();
         navigate('/datagovernance/data-assurance/rules/create', {
@@ -458,7 +443,6 @@ const Rules = () => {
   const isIndeterminate = currentItems.some(item => selectedRows.includes(item.id)) &&
     !areAllCurrentItemsSelected;
 
-
   const handleRunAllSelected = async () => {
     if (selectedRows.length === 0) return;
 
@@ -489,6 +473,69 @@ const Rules = () => {
     setShowSelectAllOptions(false);
   };
 
+  // Skeleton loading for metrics cards
+  const renderMetricsSkeleton = () => {
+    return Array(6).fill().map((_, index) => (
+      <div
+        key={index}
+        className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 animate-pulse"
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+          <div className="h-4 w-20 bg-gray-200 rounded"></div>
+        </div>
+        <div className="h-8 w-16 bg-gray-200 rounded"></div>
+      </div>
+    ));
+  };
+
+  const renderTableSkeleton = () => {
+    return Array(rowsPerPage).fill().map((_, index) => (
+      <tr key={index} className="border-b">
+        <td className="p-4">
+          <div className="h-4 w-4 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+          </div>
+        </td>
+      </tr>
+    ));
+  };
 
   return (
     <div className="p-6">
@@ -526,18 +573,21 @@ const Rules = () => {
             />
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
-
           <button
-            className={`p-1 px-1.5 rounded-lg border ${viewMode === 'table' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
-            onClick={() => setViewMode(viewMode === 'both' ? 'table' : 'both')}
-            title={viewMode === 'both' ? "Hide Cards View" : "Show Both Views"}
+            type="button"
+            title={"Rule library"}
+            onClick={handleOpenRuleLibrary}
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            <Icon
-              icon="material-symbols-light:format-list-bulleted"
-              width="24"
-              height="24"
-              className="text-gray-600"
-            />
+            <BookOpen className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            title={viewMode === 'both' ? "Hide Cards View" : "Show Both Views"}
+            onClick={() => setViewMode(viewMode === 'both' ? 'table' : 'both')}
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+          >
+            <List className="h-5 w-5" />
           </button>
 
           <button
@@ -550,25 +600,26 @@ const Rules = () => {
         </div>
       </div>
 
-      {/* Only show cards if viewMode is 'both' */}
       {viewMode === 'both' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-          {metricsData.map((metric, index) => (
-            <div
-              key={index}
-              className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-            >
-              <div className="flex items-center gap-3 mb-3">
+          {isLoading || Object.keys(metricData).length === 0
+            ? renderMetricsSkeleton()
+            : metricsData.map((metric, index) => (
                 <div
-                  className={`flex items-center justify-center w-10 h-10 ${metric.bgcolor} rounded-full ${metric.iconcolor}`}
+                  key={index}
+                  className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
                 >
-                  <Icon icon={metric.icon} className="w-5 h-5" />
+                  <div className="flex items-center gap-3 mb-3">
+                    <div
+                      className={`flex items-center justify-center w-10 h-10 ${metric.bgcolor} rounded-full ${metric.iconcolor}`}
+                    >
+                      <Icon icon={metric.icon} className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-sm font-medium text-gray-700 leading-tight">{metric.title}</h3>
+                  </div>
+                  <p className="text-gray-900 text-3xl font-bold">{metric.count}</p>
                 </div>
-                <h3 className="text-sm font-medium text-gray-700 leading-tight">{metric.title}</h3>
-              </div>
-              <p className="text-gray-900 text-3xl font-bold">{metric.count}</p>
-            </div>
-          ))}
+              ))}
         </div>
       )}
 
@@ -628,126 +679,129 @@ const Rules = () => {
                 </tr>
               </thead>
               <tbody>
-                {currentItems.map((item, index) => (
-                  <tr key={item.id} className="border-b hover:bg-gray-50"> {/* Use item.id as key for better performance */}
-                    <td className="p-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedRows.includes(item.id)}
-                        onChange={() => handleSelectRow(item.id)}
-                        className="h-4 w-4 text-[#8e78b7] rounded"
-                      />
-                    </td>
-                    <td className="p-4 font-medium">{item.id}</td>
-                    <td className="p-4 text-gray-600">{item.category}</td>
-                    <td className="p-4 text-gray-600">{item.type}</td>
-                    <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
-                    <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
-                        item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
-                        {item.severity}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active' ? 'bg-green-100 text-green-700' :
-                        'bg-gray-100 text-gray-700'
-                        }`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-600">{item.created_date}</td>
-                    <td className="p-4 text-gray-600">{item.updated_date}</td>
-                    <td className="p-4 text-gray-600">{item.last_run_date}</td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="relative group">
-                          <button
-                            onClick={() => handleRunSelected(item, true)}
-                            className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
-                            title="Run"
-                          >
-                            <Play className="h-4 w-4 text-[#8e78b7]" />
-                          </button>
-                          {selectedRows.length > 0 && (
-                            <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                {isLoading || tableData.length === 0
+                  ? renderTableSkeleton()
+                  : currentItems.map((item, index) => (
+                      <tr key={item.id} className="border-b hover:bg-gray-50">
+                        <td className="p-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(item.id)}
+                            onChange={() => handleSelectRow(item.id)}
+                            className="h-4 w-4 text-[#8e78b7] rounded"
+                          />
+                        </td>
+                        <td className="p-4 font-medium">{item.id}</td>
+                        <td className="p-4 text-gray-600">{item.category}</td>
+                        <td className="p-4 text-gray-600">{item.type}</td>
+                        <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
+                        <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
+                            item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                            {item.severity}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active' ? 'bg-green-100 text-green-700' :
+                            'bg-gray-100 text-gray-700'
+                            }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-600">{item.created_date}</td>
+                        <td className="p-4 text-gray-600">{item.updated_date}</td>
+                        <td className="p-4 text-gray-600">{item.last_run_date}</td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <div className="relative group">
                               <button
                                 onClick={() => handleRunSelected(item, true)}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
+                                title="Run"
                               >
-                                Run ID {item.id}
+                                <Play className="h-4 w-4 text-[#8e78b7]" />
                               </button>
-                              <button
-                                onClick={handleRunAllSelected}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                              >
-                                Run Selected IDs
-                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleRunSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Run ID {item.id}
+                                  </button>
+                                  <button
+                                    onClick={handleRunAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Run Selected IDs
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleActionClick('Edit', item, index)}
-                          className="p-1.5 hover:bg-blue-100 rounded-full"
-                          title="Edit Rule"
-                        >
-                          <Pencil className="h-4 w-4 text-[#8e78b7]" />
-                        </button><div className="relative group">
-                          <button
-                            onClick={() => handleRefreshSelected(item, true)}
-                            className="p-1.5 hover:bg-green-100 rounded-full"
-                            title="Refresh Rule"
-                          >
-                            <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
-                          </button>
-                          {selectedRows.length > 0 && (
-                            <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                            <button
+                              onClick={() => handleActionClick('Edit', item, index)}
+                              className="p-1.5 hover:bg-blue-100 rounded-full"
+                              title="Edit Rule"
+                            >
+                              <Pencil className="h-4 w-4 text-[#8e78b7]" />
+                            </button>
+                            <div className="relative group">
                               <button
                                 onClick={() => handleRefreshSelected(item, true)}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                className="p-1.5 hover:bg-green-100 rounded-full"
+                                title="Refresh Rule"
                               >
-                                Refresh ID {item.id}
+                                <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
                               </button>
-                              <button
-                                onClick={handleRefreshAllSelected}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                              >
-                                Refresh Selected IDs
-                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleRefreshSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Refresh ID {item.id}
+                                  </button>
+                                  <button
+                                    onClick={handleRefreshAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Refresh Selected IDs
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <div className="relative group">
-                          <button
-                            onClick={() => handleDeleteSelected(item, true)}
-                            className="p-1.5 hover:bg-red-100 rounded-full"
-                            title="Delete Rule"
-                          >
-                            <Trash2 className="h-4 w-4 text-[#8e78b7]" />
-                          </button>
-                          {selectedRows.length > 0 && (
-                            <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                            <div className="relative group">
                               <button
                                 onClick={() => handleDeleteSelected(item, true)}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                className="p-1.5 hover:bg-red-100 rounded-full"
+                                title="Delete Rule"
                               >
-                                Delete ID {item.id}
+                                <Trash2 className="h-4 w-4 text-[#8e78b7]" />
                               </button>
-                              <button
-                                onClick={handleDeleteAllSelected}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                              >
-                                Delete Selected IDs
-                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleDeleteSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Delete ID {item.id}
+                                  </button>
+                                  <button
+                                    onClick={handleDeleteAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Delete Selected IDs
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
               </tbody>
             </table>
           </div>
