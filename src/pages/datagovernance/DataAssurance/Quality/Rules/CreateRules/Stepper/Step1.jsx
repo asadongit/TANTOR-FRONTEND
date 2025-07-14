@@ -262,6 +262,7 @@ function Step1({ onNext, onCancel, step1Data }) {
   const [group, setGroup] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGroupLoading, setIsGroupLoading] = useState(false);
   const [groupData, setGroupData] = useState([]);
   const [selectedRules, setSelectedRules] = useState(() => {
     if (step1Data?.rules) {
@@ -280,30 +281,48 @@ function Step1({ onNext, onCancel, step1Data }) {
   const [uiRules, setUiRules] = useState({});
   const [modalSelectedRules, setModalSelectedRules] = useState([]);
 
- const fetchGroupNames = useCallback(() => {
-  fetch(`${window._env_?.VITE_FAST_API}/rules/listgroups`, {
-    method: 'POST', 
-    headers: {
-      'Content-Type': 'application/json',
-      'accept': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ owner: decodedToken?.preferred_username }),
-  })
-    .then(response => response.json())
-    .then(data => {
-      if (Array.isArray(data.groups)) {
-        setGroupNames(data.groups);
-      }
+  const fetchGroupNames = useCallback(() => {
+    if (!category || !type) {
+      setGroupNames([
+    'Accuracy', 'Consistency', 'Completeness', 'Validity', 'Uniqueness'
+  ]);
+      return;
+    }
+
+    setIsGroupLoading(true); // Set loading state
+    fetch(`${window._env_?.VITE_FAST_API}/rules/listgroups`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        owner: decodedToken?.preferred_username,
+        type,
+        category,
+      }),
     })
-    .catch(error => {
-      console.error('Error fetching group names:', error);
-    });
-}, [token]);
+      .then(response => response.json())
+      .then(data => {
+        if (Array.isArray(data.groups)) {
+          setGroupNames(data.groups);
+        } else {
+          setGroupNames([]);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching group names:', error);
+        setGroupNames([]);
+      })
+      .finally(() => {
+        setIsGroupLoading(false); // Clear loading state
+      });
+  }, [token, category, type]);
 
   useEffect(() => {
     fetchGroupNames();
-  }, [fetchGroupNames]);
+  }, [fetchGroupNames, category, type]);
 
   useEffect(() => {
     if (step1Data) {
@@ -588,53 +607,63 @@ function Step1({ onNext, onCancel, step1Data }) {
               Add Group
             </button>
           )}
-          <div
-            className="grid grid-cols-1 md:grid-cols-2 gap-6"
-            style={{
-              maxHeight: '430px',
-              overflowY: 'auto',
-              paddingRight: '4px'
-            }}
-          >
-            {[...new Set([...groupNames, ...uiGroups])]
-              .filter(groupName =>
-                groupName.toLowerCase().includes(groupSearch.trim().toLowerCase())
-              )
-              .map((groupName) => {
-                const selectedCount = getSelectedCountForGroup(groupName);
-                const isSelected = group === groupName;
+          {isGroupLoading ? (
+            <div className="flex justify-center items-center h-40">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#8d77ba]"></div>
+            </div>
+          ) : [...new Set([...groupNames, ...uiGroups])].length === 0 ? (
+            <div className="text-center p-8 text-gray-500 border border-dashed border-gray-300 rounded-lg">
+              No groups found for this category and type.
+            </div>
+          ) : (
+            <div
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+              style={{
+                maxHeight: '430px',
+                overflowY: 'auto',
+                paddingRight: '4px'
+              }}
+            >
+              {[...new Set([...groupNames, ...uiGroups])]
+                .filter(groupName =>
+                  groupName.toLowerCase().includes(groupSearch.trim().toLowerCase())
+                )
+                .map((groupName) => {
+                  const selectedCount = getSelectedCountForGroup(groupName);
+                  const isSelected = group === groupName;
 
-                return (
-                  <button
-                    key={groupName}
-                    onClick={() => handleGroupClick(groupName)}
-                    className={`border-2 rounded-lg cursor-pointer transition-all transform hover:-translate-y-1 hover:shadow-md ${
-                      isSelected
-                        ? 'border-[#8d77ba] bg-[#8d77ba] bg-opacity-10'
-                        : 'border-[#8d77ba] border-opacity-30 hover:border-opacity-70'
-                    }`}
-                  >
-                    <div className="p-6 flex justify-between items-center">
-                      <div className="flex items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3
-                          ${isSelected ? 'bg-[#8d77ba] text-white' : 'border-2 border-[#8d77ba] border-opacity-40 text-[#8d77ba]'}`}>
-                          {groupName.charAt(0).toUpperCase()}
-                        </div>
-                        <span className={`text-lg ${isSelected ? 'font-medium text-[#8d77ba]' : ''}`}>
-                          {groupName}
-                        </span>
-                        {selectedCount > 0 && (
-                          <span className="ml-2 px-2 py-1 bg-[#8d77ba] text-xs text-white rounded-full">
-                            {selectedCount}
+                  return (
+                    <button
+                      key={groupName}
+                      onClick={() => handleGroupClick(groupName)}
+                      className={`border-2 rounded-lg cursor-pointer transition-all transform hover:-translate-y-1 hover:shadow-md ${
+                        isSelected
+                          ? 'border-[#8d77ba] bg-[#8d77ba] bg-opacity-10'
+                          : 'border-[#8d77ba] border-opacity-30 hover:border-opacity-70'
+                      }`}
+                    >
+                      <div className="p-6 flex justify-between items-center">
+                        <div className="flex items-center">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3
+                            ${isSelected ? 'bg-[#8d77ba] text-white' : 'border-2 border-[#8d77ba] border-opacity-40 text-[#8d77ba]'}`}>
+                            {groupName.charAt(0).toUpperCase()}
+                          </div>
+                          <span className={`text-lg ${isSelected ? 'font-medium text-[#8d77ba]' : ''}`}>
+                            {groupName}
                           </span>
-                        )}
+                          {selectedCount > 0 && (
+                            <span className="ml-2 px-2 py-1 bg-[#8d77ba] text-xs text-white rounded-full">
+                              {selectedCount}
+                            </span>
+                          )}
+                        </div>
+                        <ChevronRight className={`h-5 w-5 ${isSelected ? 'text-[#8d77ba]' : 'text-gray-400'}`} />
                       </div>
-                      <ChevronRight className={`h-5 w-5 ${isSelected ? 'text-[#8d77ba]' : 'text-gray-400'}`} />
-                    </div>
-                  </button>
-                );
-              })}
-          </div>
+                    </button>
+                  );
+                })}
+            </div>
+          )}
         </div>
       </div>
       <div className="flex justify-between mt-10">
