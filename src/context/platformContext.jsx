@@ -21,6 +21,8 @@ export function PlatformProvider({ children }) {
   const [reportData, setReportData] = useState([]);
   const [connectionData, setConnectionData] = useState([]);
   const [federationData, setFederationData] = useState([]);
+  const [projectCounts, setProjectCounts] = useState([]);
+  const [connectionTypes, setConnectionTypes] = useState([]);
 
   const requestHandler = useCallback(
     async ({ endpoint, method = "GET", setState = null, body = null }) => {
@@ -61,7 +63,7 @@ export function PlatformProvider({ children }) {
     migration: {
       data: migrationData,
       setData: setMigrationData,
-      endpoint: "/metadata-archivals",
+      endpoint: "/migrations",
     },
     purge: { data: purgeData, setData: setPurgeData, endpoint: "/purges" },
     project: {
@@ -77,7 +79,7 @@ export function PlatformProvider({ children }) {
     transformation: {
       data: archivalData,
       setData: setArchivalData,
-      endpoint: "/migrations",
+      endpoint: "/metadata-archivals",
     },
     report: { data: reportData, setData: setReportData, endpoint: "/reports" },
     federation: {
