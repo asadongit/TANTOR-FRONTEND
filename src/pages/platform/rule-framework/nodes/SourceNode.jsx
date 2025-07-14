@@ -276,7 +276,7 @@ export function SourceNode({ id, data }) {
     order: "",
     sort: "",
     aggregate: [],
-    groupBy: false,
+    groupBy: table?.dimType?.toLowerCase() === "dimension",
     isVisible: true,
   }));
   
@@ -566,17 +566,28 @@ export function SourceNode({ id, data }) {
                         {`${table.name} (${table.dimType})`}
                       </label>
                     </div>
-                    <button
+                    {table.dimType.toLowerCase() === "metric" && (<button
                       onClick={() => {
+                        updateNodeData({ currentSelectedTable: table?.name });
+
+                        let newSelectedItems = selectedItems;
+
+                        if (!selectedItems.includes(table.name)) {
+                          newSelectedItems = [...selectedItems, table.name];
+                          setSelectedItems(newSelectedItems);
+                        }
+
                         const selectedTables = filteredTables.filter((t) =>
-                          selectedItems.includes(t.name)
+                          newSelectedItems.includes(t.name)
                         );
+
                         openDrawer(id, selectedTables);
+
                       }}
                       className="text-purple-600 hover:text-purple-700"
                     >
                       <Pencil className="w-4 h-4" />
-                    </button>
+                    </button>)}
                   </div>
                 ))}
               </>

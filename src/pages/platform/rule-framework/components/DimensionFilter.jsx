@@ -1,4 +1,3 @@
-// STATE 1
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
@@ -85,10 +84,6 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
           unselectedItems.push(item);
         }
       });
-
-      // Optional: Sort each group alphabetically
-      // selectedItems.sort((a, b) => a.name.localeCompare(b.name));
-      // unselectedItems.sort((a, b) => a.name.localeCompare(b.name));
 
       const sorted = [...selectedItems, ...unselectedItems];
       setSortedDimensionValues(prev => ({
@@ -272,23 +267,23 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
-      <div className="bg-white rounded-lg w-[98vw] max-w-[1800px] h-[90vh] flex flex-col">
+      <div className="bg-white rounded-lg w-[70vw] max-w-[1200px] h-[55vh] flex flex-col">
         {/* Header */}
-        <div className="p-4 pl-6 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
-          <h2 className="text-xl font-semibold">Dimension Filters</h2>
+        <div className="p-3 border-b flex justify-between items-center bg-[#282F49] text-white rounded-t-lg">
+          <h2 className="text-lg font-semibold">Dimension Filters</h2>
           <button
             onClick={() => {
               setIsOpen(false);
             }}
             className="p-1"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-8 flex-1 overflow-auto">
-          <div className="space-y-6">
+        <div className="p-4 flex-1 overflow-auto">
+          <div className="space-y-3">
             {filters.map((filter, index) => {
               const currentValues = sortedDimensionValues[filter.dimension.id] || [];
               const displayText = filter.value?.length
@@ -298,14 +293,14 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
               return (
                 <div
                   key={index}
-                  className="flex items-center gap-5 mb-3 w-full"
+                  className="flex items-center gap-3 mb-2 w-full"
                 >
-                  {/* Dimension Selector - Wider (30%) */}
-                  <div className="flex-[3] min-w-[200px] relative">
+                  {/* Dimension Selector */}
+                  <div className="flex-[3] min-w-[180px] relative">
                     <select
                       value={filter.dimension.id}
                       onChange={(e) => handleDimensionChange(index, e)}
-                      className="w-full h-14 border border-gray-300 rounded-md shadow-sm py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                      className="w-full h-10 border border-gray-300 rounded shadow-sm py-1 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                       disabled={isLoadingDimensions}
                     >
                       <option value="">Select Dimension</option>
@@ -320,23 +315,23 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
                       ))}
                     </select>
                     {isLoadingDimensions && (
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <span className="text-gray-500 text-sm">
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+                        <span className="text-gray-500 text-xs">
                           Loading...
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Operator Selector - Fixed width */}
-                  <div className="w-[180px]">
+                  {/* Operator Selector */}
+                  <div className="w-[120px]">
                     <select
                       value={filter.operator}
                       onChange={(e) => handleOperatorChange(index, e)}
                       disabled={!filter.dimension.id}
-                      className="w-full h-14 border border-gray-300 rounded-md shadow-sm py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                      className="w-full h-10 border border-gray-300 rounded shadow-sm py-1 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     >
-                      <option value="">Select Operator</option>
+                      <option value="">Operator</option>
                       <option value="in">IN</option>
                       <option value="not in">NOT IN</option>
                     </select>
@@ -344,12 +339,12 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
 
                   {/* Value Selector */}
                   <div
-                    className="flex-[5] min-w-[300px] relative"
+                    className="flex-[4] min-w-[200px] relative"
                     ref={dropdownRef}
                   >
                     <button
                       type="button"
-                      className={`h-14 flex justify-between items-center w-full px-4 text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      className={`h-10 flex justify-between items-center w-full px-3 text-sm border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         !filter.operator
                           ? "bg-gray-100 text-gray-400"
                           : "bg-white"
@@ -369,14 +364,14 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
                     </button>
 
                     {openValueDropdown === index && (
-                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80">
-                        <div className="p-3 text-base max-h-[320px] overflow-y-auto">
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48">
+                        <div className="p-2 text-sm max-h-48 overflow-y-auto">
                           {isLoadingValues ? (
                             <div className="p-2 text-gray-500 text-center">
                               Loading values...
                             </div>
                           ) : currentValues.length > 0 ? (
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                               {currentValues.map((dimValue) => {
                                 const isChecked = filter.value?.some(
                                   (v) => v.id === dimValue.id
@@ -384,13 +379,13 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
                                 return (
                                   <label
                                     key={dimValue.id}
-                                    className={`flex items-center space-x-3 p-3 hover:bg-gray-100 cursor-pointer text-base ${
-                                      isChecked ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                                    className={`flex items-center space-x-2 p-2 hover:bg-gray-100 cursor-pointer text-sm ${
+                                      isChecked ? 'bg-blue-50 border-l-2 border-blue-500' : ''
                                     }`}
                                   >
                                     <input
                                       type="checkbox"
-                                      className="form-checkbox text-blue-600 h-4 w-4"
+                                      className="form-checkbox text-blue-600 h-3 w-3"
                                       checked={isChecked}
                                       onChange={(e) =>
                                         handleValueChange(
@@ -421,20 +416,20 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
                   <button
                     type="button"
                     onClick={() => removeFilter(index)}
-                    className="h-14 w-14 p-1 flex items-center justify-center border border-gray-300 rounded-md shadow-sm text-black bg-gray-50 hover:bg-gray-200"
+                    className="h-10 w-10 p-1 flex items-center justify-center border border-gray-300 rounded shadow-sm text-black bg-gray-50 hover:bg-gray-200"
                   >
-                    <Trash className="h-5 w-5" />
+                    <Trash className="h-4 w-4" />
                   </button>
                 </div>
               );
             })}
 
-            <div className="mt-6">
+            <div className="mt-4">
               <button
                 onClick={addFilter}
-                className="flex items-center gap-2 px-5 py-3 bg-[#8E77BB] text-white rounded hover:bg-opacity-90 text-base font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-[#8E77BB] text-white rounded hover:bg-opacity-90 text-sm font-medium"
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-4 w-4" />
                 <span>Add Filter</span>
               </button>
             </div>
@@ -442,23 +437,23 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t flex justify-end gap-4">
+        <div className="p-3 border-t flex justify-end gap-3">
           <button
             onClick={handleSkip}
-            className="px-5 py-2.5 bg-[#8E77BB] text-white rounded hover:bg-opacity-90 text-base font-medium"
+            className="px-4 py-2 bg-[#8E77BB] text-white rounded hover:bg-opacity-90 text-sm font-medium"
           >
             Skip
           </button>
           <button
             onClick={clearAll}
-            className="px-5 py-2.5 border border-gray-300 rounded hover:bg-gray-50 text-base text-black font-medium"
+            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm text-black font-medium"
           >
             Clear All
           </button>
           <button
             onClick={handleApply}
             disabled={!validateFilters()}
-            className={`px-5 py-2.5 text-white rounded text-base font-medium ${
+            className={`px-4 py-2 text-white rounded text-sm font-medium ${
               !validateFilters()
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-[#8E77BB] hover:bg-opacity-90"
