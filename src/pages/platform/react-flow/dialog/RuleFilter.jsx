@@ -238,7 +238,7 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
             </div>
 
             {/* Alias and Output */}
-            <div className="flex space-x-4">
+            {/* <div className="flex space-x-4">
               <div className="flex-1 space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Alias</label>
                 <input
@@ -261,10 +261,10 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
                   <span className="ml-2 text-sm text-gray-700">Include in output</span>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Order and Sort */}
-            <div className="flex space-x-4">
+            {/* <div className="flex space-x-4">
               <div className="flex-1 space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Order</label>
                 <input
@@ -287,7 +287,7 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
                   <option value="DESC">Descending</option>
                 </select>
               </div>
-            </div>
+            </div> */}
 
             {/* Aggregate and Group By */}
             <div className="flex space-x-4">
