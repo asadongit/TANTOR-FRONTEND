@@ -1,20 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify-icon/react';
-import { Search, RefreshCcw, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Search, RefreshCcw, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react';
 import { useAuth } from '../../../../../../context/AuthContext.jsx';
 
-function Quality({query}) {
+const GroupScoresModal = ({ groups, onClose }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 max-w-md w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Group Scores</h2>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      <div className="max-h-64 overflow-y-auto mt -4">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="text-left p-3">Group Name</th>
+              <th className="text-left p-3">Average Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group, index) => (
+              <tr key={index} className="border-b">
+                <td className="p-3">{group.group_name}</td>
+                <td className="p-3">{group.average_score}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+);
+
+function Quality({ query }) {
   const selectedQuery = query;
   const { token, decodedToken } = useAuth();
-  const [overallQualityData, setOverallQualityData] = useState({
-    Overall: 0,
-    Accuracy: 0,
-    Consistency: 0,
-    Completeness: 0,
-    Validity: 0,
-    Uniqueness: 0,
-  });
-
+  const [overallQualityData, setOverallQualityData] = useState({});
   const [datasetQualityData, setDatasetQualityData] = useState({
     group_scores: {
       Overall: 'N/A',
@@ -31,19 +54,20 @@ function Quality({query}) {
       table: 'N/A',
     },
   });
-
+  const [tableData, setTableData] = useState([]);
   const [viewMode, setViewMode] = useState('dataset');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const [selectedGroups, setSelectedGroups] = useState(null);
   const rowsPerPage = 5;
 
   useEffect(() => {
     const fetchOverallQualityData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/scores/data/scorecards`, {
+        const scoreResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/scorecards`, {
           method: 'POST',
           headers: {
             accept: 'application/json',
@@ -52,9 +76,35 @@ function Quality({query}) {
           },
           body: JSON.stringify({ owner: decodedToken?.preferred_username }),
         });
-        if (!response.ok) throw new Error('Failed to fetch overall quality data');
-        const data = await response.json();
-        setOverallQualityData(data);
+        if (!scoreResponse.ok) throw new Error('Failed to fetch overall quality data');
+        const scoreData = await scoreResponse.json();
+        setOverallQualityData(scoreData);
+
+        const tableResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/dashboard/table`, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ owner: decodedToken?.preferred_username }),
+        });
+        if (!tableResponse.ok) throw new Error('Failed to fetch table data');
+        const tableData = await tableResponse.json();
+        const mappedTableData = tableData.map((item, index) => {
+          const tableParts = item.table.split('.');
+          return {
+            id: `#${(index + 1).toString().padStart(2, '0')}`,
+            connection: item.connection_type,
+            database: tableParts[0],
+            schema: tableParts[1],
+            dataset: tableParts[2],
+            overall: `${item.overall_score}%`,
+            groups: item.groups,
+            lastRun: item.last_run_date ? new Date(item.last_run_date).toLocaleDateString('en-GB') : 'N/A',
+          };
+        });
+        setTableData(mappedTableData);
       } catch (error) {
         console.error('Error fetching overall quality data:', error);
         setToast({
@@ -90,7 +140,7 @@ function Quality({query}) {
 
       setIsLoading(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/scores/data/overview`, {
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/overview`, {
           method: 'POST',
           headers: {
             accept: 'application/json',
@@ -124,76 +174,99 @@ function Quality({query}) {
     }
   }, [viewMode, selectedQuery, token, decodedToken]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     if (viewMode === 'overall') {
       setIsLoading(true);
-      fetch(`${import.meta.env.VITE_FAST_API}/scores/data/scorecards`, {
-        method: 'GET',
-        headers: {
-          accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((response) => {
-          if (!response.ok) throw new Error('Failed to refresh overall quality data');
-          return response.json();
-        })
-        .then((data) => {
-          setOverallQualityData(data);
-          setIsLoading(false);
-          setToast({
-            show: true,
-            message: 'Overall quality data refreshed',
-            type: 'success',
-          });
-        })
-        .catch((error) => {
-          console.error('Error:', error);
-          setIsLoading(false);
-          setToast({
-            show: true,
-            message: 'Failed to refresh overall quality data',
-            type: 'error',
-          });
+      try {
+        const scoreResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/scorecards`, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ owner: decodedToken?.preferred_username }),
         });
+        if (!scoreResponse.ok) throw new Error('Failed to refresh overall quality data');
+        const scoreData = await scoreResponse.json();
+        setOverallQualityData(scoreData);
+
+        const tableResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/dashboard/table`, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ owner: decodedToken?.preferred_username }),
+        });
+        if (!tableResponse.ok) throw new Error('Failed to refresh table data');
+        const tableData = await tableResponse.json();
+        const mappedTableData = tableData.map((item, index) => {
+          const tableParts = item.table.split('.');
+          return {
+            id: `#${(index + 1).toString().padStart(2, '0')}`,
+            connection: item.connection_type,
+            database: tableParts[0],
+            schema: tableParts[1],
+            dataset: tableParts[2],
+            overall: `${item.overall_score}%`,
+            groups: item.groups,
+            lastRun: item.last_run_date ? new Date(item.last_run_date).toLocaleDateString('en-GB') : 'N/A',
+          };
+        });
+        setTableData(mappedTableData);
+
+        setToast({
+          show: true,
+          message: 'Overall quality data refreshed',
+          type: 'success',
+        });
+      } catch (error) {
+        console.error('Error:', error);
+        setToast({
+          show: true,
+          message: 'Failed to refresh overall quality data',
+          type: 'error',
+        });
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       setIsLoading(true);
-      fetch(`${import.meta.env.VITE_FAST_API}/scores/data/overview`, {
-        method: 'POST',
-        headers: {
-          accept: 'application/json',
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          query: selectedQuery,
-          owner: decodedToken?.preferred_username || 'sabhyata02',
-        }),
-      })
-        .then((response) => {
-          if (!response.ok) throw new Error('Failed to refresh dataset quality data');
-          return response.json();
-        })
-        .then((data) => {
-          setDatasetQualityData(data);
-          setIsLoading(false);
-          setToast({
-            show: true,
-            message: 'Dataset quality data refreshed',
-            type: 'success',
-          });
-        })
-        .catch((error) => {
-          console.error('Error:', error);
-          setIsLoading(false);
-          setToast({
-            show: true,
-            message: 'Failed to refresh dataset quality data',
-            type: 'error',
-          });
+      try {
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/overview`, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            query: selectedQuery,
+            owner: decodedToken?.preferred_username,
+          }),
         });
+        if (!response.ok) throw new Error('Failed to refresh dataset quality data');
+        const data = await response.json();
+        setDatasetQualityData(data);
+        setToast({
+          show: true,
+          message: 'Dataset quality data refreshed',
+          type: 'success',
+        });
+      } catch (error) {
+        console.error('Error:', error);
+        setToast({
+          show: true,
+          message: 'Failed to refresh dataset quality data',
+          type: 'error',
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setTimeout(() => setToast({ show: false }), 3000);
+    setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
   };
 
   const handleSearchChange = (e) => {
@@ -205,133 +278,28 @@ function Quality({query}) {
     setViewMode((prev) => (prev === 'dataset' ? 'overall' : 'dataset'));
   };
 
-  const metricsData = [
-    {
-      title: 'Overall',
-      count:
-        viewMode === 'dataset'
-          ? datasetQualityData.group_scores.Overall
-          : typeof overallQualityData.Overall === 'number'
-            ? `${overallQualityData.Overall.toFixed(1)}%`
-            : overallQualityData.Overall,
-    },
-    {
-      title: 'Accuracy',
-      count:
-        viewMode === 'dataset'
-          ? datasetQualityData.group_scores.Accuracy
-          : typeof overallQualityData.Accuracy === 'number'
-            ? `${overallQualityData.Accuracy.toFixed(1)}%`
-            : overallQualityData.Accuracy,
-    },
-    {
-      title: 'Consistency',
-      count:
-        viewMode === 'dataset'
-          ? datasetQualityData.group_scores.Consistency
-          : typeof overallQualityData.Consistency === 'number'
-            ? `${overallQualityData.Consistency.toFixed(1)}%`
-            : overallQualityData.Consistency,
-    },
-    {
-      title: 'Completeness',
-      count:
-        viewMode === 'dataset'
-          ? datasetQualityData.group_scores.Completeness
-          : typeof overallQualityData.Completeness === 'number'
-            ? `${overallQualityData.Completeness.toFixed(1)}%`
-            : overallQualityData.Completeness,
-    },
-    {
-      title: 'Validity',
-      count:
-        viewMode === 'dataset'
-          ? datasetQualityData.group_scores.Validity
-          : typeof overallQualityData.Validity === 'number'
-            ? `${overallQualityData.Validity.toFixed(1)}%`
-            : overallQualityData.Validity,
-    },
-    {
-      title: 'Uniqueness',
-      count:
-        viewMode === 'dataset'
-          ? datasetQualityData.group_scores.Uniqueness
-          : typeof overallQualityData.Uniqueness === 'number'
-            ? `${overallQualityData.Uniqueness.toFixed(1)}%`
-            : overallQualityData.Uniqueness,
-    },
-  ];
+  const metricsData = viewMode === 'dataset'
+    ? Object.keys(datasetQualityData.group_scores).map((key) => ({
+      title: key,
+      count: datasetQualityData.group_scores[key],
+    }))
+    : Object.keys(overallQualityData).map((key) => ({
+      title: key,
+      count: typeof overallQualityData[key] === 'number'
+        ? `${overallQualityData[key].toFixed(1)}`
+        : overallQualityData[key],
+    }));
 
-  const sampleAssuranceData = [
-    {
-      id: '#01',
-      connection: 'Oracle',
-      database: 'Oracle',
-      schema: 'Oracle_1',
-      overall: '97%',
-      accuracy: '99%',
-      validity: '99%',
-      uniqueness: '99%',
-      completeness: '98%',
-      lastRun: '24/10/2024',
-    },
-    {
-      id: '#02',
-      connection: 'Oracle',
-      database: 'Oracle',
-      schema: 'Oracle_1',
-      overall: '97%',
-      accuracy: '99%',
-      validity: '99%',
-      uniqueness: '99%',
-      completeness: '98%',
-      lastRun: '24/10/2024',
-    },
-    {
-      id: '#03',
-      connection: 'Oracle',
-      database: 'Oracle',
-      schema: 'Oracle_1',
-      overall: '97%',
-      accuracy: '99%',
-      validity: '99%',
-      uniqueness: '99%',
-      completeness: '98%',
-      lastRun: '24/10/2024',
-    },
-    {
-      id: '#04',
-      connection: 'Oracle',
-      database: 'Oracle',
-      schema: 'Oracle_1',
-      overall: '97%',
-      accuracy: '99%',
-      validity: '99%',
-      uniqueness: '99%',
-      completeness: '98%',
-      lastRun: '24/10/2024',
-    },
-    {
-      id: '#05',
-      connection: 'Oracle',
-      database: 'Oracle',
-      schema: 'Oracle_1',
-      overall: '97%',
-      accuracy: '99%',
-      validity: '99%',
-      uniqueness: '99%',
-      completeness: '98%',
-      lastRun: '24/10/2024',
-    },
-  ].filter(
+  const filteredData = tableData.filter(
     (item) =>
       item.connection.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.database.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.schema.toLowerCase().includes(searchTerm.toLowerCase())
+      item.schema.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.dataset.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalPages = Math.ceil(sampleAssuranceData.length / rowsPerPage);
-  const currentItems = sampleAssuranceData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+  const currentItems = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   const SkeletonCard = () => (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 animate-pulse">
@@ -349,11 +317,9 @@ function Quality({query}) {
       <td className="p-4"><div className="h-4 w-24 bg-gray-200 rounded"></div></td>
       <td className="p-4"><div className="h-4 w-24 bg-gray-200 rounded"></div></td>
       <td className="p-4"><div className="h-4 w-24 bg-gray-200 rounded"></div></td>
+      <td className="p-4"><div className="h-4 w-24 bg-gray-200 rounded"></div></td>
       <td className="p-4"><div className="h-4 w-16 bg-gray-200 rounded"></div></td>
-      <td className="p-4"><div className="h-4 w-16 bg-gray-200 rounded"></div></td>
-      <td className="p-4"><div className="h-4 w-16 bg-gray-200 rounded"></div></td>
-      <td className="p-4"><div className="h-4 w-16 bg-gray-200 rounded"></div></td>
-      <td className="p-4"><div className="h-4 w-16 bg-gray-200 rounded"></div></td>
+      <td className="p-4"><div className="h-4 w-24 bg-gray-200 rounded"></div></td>
       <td className="p-4"><div className="h-4 w-24 bg-gray-200 rounded"></div></td>
     </tr>
   );
@@ -380,10 +346,17 @@ function Quality({query}) {
             className="h-5 w-5"
           />
           <p>{toast.message}</p>
-          <button onClick={() => setToast({ show: false })} className="ml-2">
+          <button onClick={() => setToast({ show: false, message: '', type: '' })} className="ml-2">
             <X className="h-4 w-4" />
           </button>
         </div>
+      )}
+
+      {selectedGroups && (
+        <GroupScoresModal
+          groups={selectedGroups}
+          onClose={() => setSelectedGroups(null)}
+        />
       )}
 
       <div className="mb-6 flex justify-between items-center">
@@ -396,7 +369,7 @@ function Quality({query}) {
                 <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search connections..."
+                  placeholder="Search data..."
                   className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8d77ba] transition-all"
                   value={searchTerm}
                   onChange={handleSearchChange}
@@ -438,7 +411,7 @@ function Quality({query}) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         {isLoading
-          ? Array(6)
+          ? Array(Object.keys(viewMode === 'dataset' ? datasetQualityData.group_scores : overallQualityData).length)
             .fill()
             .map((_, index) => <SkeletonCard key={index} />)
           : metricsData.map((metric, index) => (
@@ -452,7 +425,9 @@ function Quality({query}) {
                 </div>
                 <h3 className="text-sm font-medium text-gray-700">{metric.title}</h3>
               </div>
-              <p className="text-gray-900 text-2xl font-bold">{metric.count}</p>
+              <p className="text-gray-900 text-2xl font-bold">
+                {typeof metric.count === 'string' && metric.count.toLowerCase() === 'n/a' ? metric.count : `${metric.count}%`}
+              </p>
             </div>
           ))}
       </div>
@@ -536,11 +511,9 @@ function Quality({query}) {
                 <th className="text-left p-4">Connection</th>
                 <th className="text-left p-4">Database</th>
                 <th className="text-left p-4">Schema</th>
+                <th className="text-left p-4">Dataset</th>
                 <th className="text-left p-4">Overall</th>
-                <th className="text-left p-4">Accuracy</th>
-                <th className="text-left p-4">Validity</th>
-                <th className="text-left p-4">Uniqueness</th>
-                <th className="text-left p-4">Completeness</th>
+                <th className="text-left p-4 flex justify-center items-center">Group Scores</th>
                 <th className="text-left p-4">Last Run</th>
               </tr>
             </thead>
@@ -555,11 +528,16 @@ function Quality({query}) {
                     <td className="p-4 text-[#8e78b7] font-medium">{item.connection}</td>
                     <td className="p-4 text-[#8e78b7] font-medium">{item.database}</td>
                     <td className="p-4 text-gray-600">{item.schema}</td>
+                    <td className="p-4 text-gray-600">{item.dataset}</td>
                     <td className="p-4">{item.overall}</td>
-                    <td className="p-4">{item.accuracy}</td>
-                    <td className="p-4">{item.validity}</td>
-                    <td className="p-4">{item.uniqueness}</td>
-                    <td className="p-4">{item.completeness}</td>
+                    <td className="p-4 text-center">
+                      <button
+                        onClick={() => setSelectedGroups(item.groups)}
+                        className="text-[#8e78b7] hover:text-[#6b5b8d]"
+                      >
+                        <Eye className="h-5 w-5" />
+                      </button>
+                    </td>
                     <td className="p-4">{item.lastRun}</td>
                   </tr>
                 ))}
@@ -568,9 +546,9 @@ function Quality({query}) {
 
           <div className="flex justify-between items-center px-4 py-3 border-t">
             <div className="text-sm text-gray-600">
-              Showing {Math.min((currentPage - 1) * rowsPerPage + 1, sampleAssuranceData.length)} to{' '}
-              {Math.min(currentPage * rowsPerPage, sampleAssuranceData.length)} of{' '}
-              {sampleAssuranceData.length} entries
+              Showing {Math.min((currentPage - 1) * rowsPerPage + 1, filteredData.length)} to{' '}
+              {Math.min(currentPage * rowsPerPage, filteredData.length)} of{' '}
+              {filteredData.length} entries
             </div>
             <div className="flex items-center gap-1">
               <button

@@ -228,7 +228,7 @@ export default function Editor() {
     setLoading(true);
 
     try {
-      const secureQueryResponse = await fetch(`${import.meta.env.VITE_FAST_API}/secure-query`, {
+      const secureQueryResponse = await fetch(`${window._env_?.VITE_FAST_API}/secure-query`, {
         method: "POST",
         headers: {
           accept: "application/json",

@@ -97,7 +97,7 @@ export const LineItemsProvider = ({ children, reportData }) => {
       try {
         const response = await fetch(
           `${
-            import.meta.env.VITE_BIRT_BACKEND_API
+            window._env_?.VITE_BIRT_BACKEND_API
           }/templates/parse?report-name=${reportName}`,
           { headers: { "Content-Type": "application/json" } }
         );

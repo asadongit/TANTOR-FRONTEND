@@ -1,6 +1,6 @@
 export const secureQuery = async (queryParams, token) => {
   try {
-    const response = await fetch(`${import.meta.env.VITE_FAST_API}/secure-query`, {
+    const response = await fetch(`${window._env_?.VITE_FAST_API}/secure-query`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,7 +22,7 @@ export const secureQuery = async (queryParams, token) => {
 
 export const fetchConnectionDetails = async (policyIds, token) => {
   try {
-    const response = await fetch(`${import.meta.env.VITE_FAST_API}/connection_details`, {
+    const response = await fetch(`${window._env_?.VITE_FAST_API}/connection_details`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

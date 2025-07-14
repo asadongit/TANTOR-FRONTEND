@@ -65,7 +65,7 @@ const Step2 = ({ onDataChange, initialData }) => {
 
     const fetchData = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/datapolicy`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/datapolicy`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -92,7 +92,7 @@ const Step2 = ({ onDataChange, initialData }) => {
     const fetchSubgroupsForGroup = async (group) => {
         setLoadingSubgroups(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/datapolicy/subgroup/${group}`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/datapolicy/subgroup/${group}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,

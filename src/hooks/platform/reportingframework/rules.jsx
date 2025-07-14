@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
 
-const hostnameV1 = import.meta.env.VITE_FAST_API;
+const hostnameV1 = window._env_?.VITE_FAST_API;
 
   const fetchRuleData = async (token) => {
   if (!token) throw new Error("Token is missing");

@@ -67,7 +67,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
       if (!token) return;
       setLoadingConnections(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/datapolicy/connection`, {
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/datapolicy/connection`, {
           method: 'GET',
           headers: {
             'accept': 'application/json',
@@ -112,7 +112,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
     }
     setLoadingSchemas(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/datapolicy/schemas`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/datapolicy/schemas`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -139,7 +139,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
     }
     setLoadingTables(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/datapolicy/tables`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/datapolicy/tables`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -166,7 +166,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
     }
     setLoadingColumns(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/datapolicy/columns`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/datapolicy/columns`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',

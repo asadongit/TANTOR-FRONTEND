@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAuth } from "../../../../context/AuthContext";
-const hostnameV1= import.meta.env.VITE_FAST_API;
-const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
+const hostnameV1= window._env_?.VITE_FAST_API;
+const hostnamev2 = window._env_?.VITE_FAST_API_V2;
 
 const fetchConnections = async (token,decodedToken,project , poolType='both') => {
   if (!token) throw new Error("Token is missing");

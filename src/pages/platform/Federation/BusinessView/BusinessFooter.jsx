@@ -15,7 +15,7 @@ export function BusinessFooter() {
   const navigate = useNavigate();
   const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings } = useStateContext("");
   const [preview, setPreview] = useState(false);
-  // const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  // const encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();

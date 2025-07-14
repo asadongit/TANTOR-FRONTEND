@@ -20,19 +20,19 @@ const RulesLibrary = () => {
     const { decodedToken } = useAuth();
     const navigate = useNavigate();
 
-    const metricsData = [
-        { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba] bg-opacity-25", iconcolor: "text-[#8d77ba]", title: "Consistency", count: groupCounts.Consistency || "-" },
-        { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba] bg-opacity-25", iconcolor: "text-[#8d77ba]", title: "Completeness", count: groupCounts.Completeness || "-" },
-        { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba] bg-opacity-25", iconcolor: "text-[#8d77ba]", title: "Validity", count: groupCounts.Validity || "-" },
-        { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba] bg-opacity-25", iconcolor: "text-[#8d77ba]", title: "Uniqueness", count: groupCounts.Uniqueness || "-" },
-        { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba] bg-opacity-25", iconcolor: "text-[#8d77ba]", title: "Accuracy", count: groupCounts.Accuracy || "-" },
-        { icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba] bg-opacity-25", iconcolor: "text-[#8d77ba]", title: "Test", count: groupCounts.Test || "-" },
-    ];
+    // Dynamically generate metricsData from groupCounts
+    const metricsData = Object.keys(groupCounts).map((group) => ({
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#8d77ba] bg-opacity-25",
+        iconcolor: "text-[#8d77ba]",
+        title: group,
+        count: groupCounts[group] || "-",
+    }));
 
     const fetchLibraryData = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/library`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/library`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

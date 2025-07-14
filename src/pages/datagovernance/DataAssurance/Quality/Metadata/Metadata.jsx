@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useAuth } from '../../../../../context/AuthContext.jsx';
@@ -36,12 +36,40 @@ const SkeletonTableRow = () => (
     <td className="p-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
     <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
     <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
     <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+    <td className="p-4"><div className="h-4 w-24 bg-gray-200 rounded"></div></td>
   </tr>
+);
+
+const GroupScoresModal = ({ groups, onClose }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 max-w-md w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Group Scores</h2>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      <div className="max-h-[50%] overflow-y-auto mt-4">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="text-left p-3">Group Name</th>
+              <th className="text-left p-3">Average Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group, index) => (
+              <tr key={index} className="border-b">
+                <td className="p-3">{group.group_name}</td>
+                <td className="p-3">{group.average_score}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 );
 
 const Metadata = () => {
@@ -51,53 +79,16 @@ const Metadata = () => {
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [viewMode, setViewMode] = useState('both');
   const [metricsData, setMetricsData] = useState([]);
+  const [tableData, setTableData] = useState([]);
+  const [selectedGroups, setSelectedGroups] = useState(null);
   const rowsPerPage = 5;
   const { token, decodedToken } = useAuth();
 
-  const assuranceData = [
-    {
-      id: '1',
-      connection: 'Oracle',
-      database: 'Oracle',
-      schema: 'Oracle_1',
-      overall: '97%',
-      accuracy: '99%',
-      validity: '99%',
-      uniqueness: '99%',
-      completeness: '98%',
-      lastRun: '24/10/2024'
-    },
-    {
-      id: '2',
-      connection: 'postgres',
-      database: 'post1',
-      schema: 'post_schma_1',
-      overall: '97%',
-      accuracy: '99%',
-      validity: '99%',
-      uniqueness: '99%',
-      completeness: '98%',
-      lastRun: '24/10/2024'
-    },
-    {
-      id: '3',
-      connection: 'mysql',
-      database: 'connmy-sql',
-      schema: '_schema_m_1',
-      overall: '97%',
-      accuracy: '99%',
-      validity: '99%',
-      uniqueness: '99%',
-      completeness: '98%',
-      lastRun: '24/10/2024'
-    },
-  ];
-
   useEffect(() => {
-    const fetchMetadataScores = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/scores/metadata/scorecards`, {
+        const scoreResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/metadata/scorecards`, {
           method: 'POST',
           headers: {
             'accept': 'application/json',
@@ -107,58 +98,46 @@ const Metadata = () => {
           body: JSON.stringify({ owner: decodedToken?.preferred_username }),
         });
 
-        if (!response.ok) {
+        if (!scoreResponse.ok) {
           throw new Error('Failed to fetch metadata scores');
         }
 
-        const data = await response.json();
+        const scoreData = await scoreResponse.json();
+        const mappedMetrics = Object.keys(scoreData).map((key) => ({
+          icon: "material-symbols:tab-group-outline",
+          bgcolor: "bg-[#8d77ba] bg-opacity-25",
+          iconcolor: "text-[#8d77ba]",
+          title: key,
+          count: scoreData[key] === 'N/A' ? 'N/A' : `${scoreData[key]}`
+        }));
+        setMetricsData(mappedMetrics);
 
-        const mappedData = [
-          {
-            icon: "material-symbols:tab-group-outline",
-            bgcolor: "bg-[#8d77ba] bg-opacity-25",
-            iconcolor: "text-[#8d77ba]",
-            title: "Overall",
-            count: data.Overall === 'N/A' ? 'N/A' : `${data.Overall}`,
+        // Fetch table data
+        const tableResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/metadata/dashboard/table`, {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
           },
-          {
-            icon: "material-symbols:tab-group-outline",
-            bgcolor: "bg-[#8d77ba] bg-opacity-25",
-            iconcolor: "text-[#8d77ba]",
-            title: "Accuracy",
-            count: data.Accuracy === 'N/A' ? 'N/A' : `${data.Accuracy}`,
-          },
-          {
-            icon: "material-symbols:tab-group-outline",
-            bgcolor: "bg-[#8d77ba] bg-opacity-25",
-            iconcolor: "text-[#8d77ba]",
-            title: "Consistency",
-            count: data.Consistency === 'N/A' ? 'N/A' : `${data.Consistency}`,
-          },
-          {
-            icon: "material-symbols:tab-group-outline",
-            bgcolor: "bg-[#8d77ba] bg-opacity-25",
-            iconcolor: "text-[#8d77ba]",
-            title: "Completeness",
-            count: data.Completeness === 'N/A' ? 'N/A' : `${data.Completeness}`,
-          },
-          {
-            icon: "material-symbols:tab-group-outline",
-            bgcolor: "bg-[#8d77ba] bg-opacity-25",
-            iconcolor: "text-[#8d77ba]",
-            title: "Validity",
-            count: data.Validity === 'N/A' ? 'N/A' : `${data.Validity}`,
-          },
-          {
-            icon: "material-symbols:tab-group-outline",
-            bgcolor: "bg-[#8d77ba] bg-opacity-25",
-            iconcolor: "text-[#8d77ba]",
-            title: "Uniqueness",
-            count: data.Uniqueness === 'N/A' ? 'N/A' : `${data.Uniqueness}`,
-          },
-        ];
+          body: JSON.stringify({ owner: decodedToken?.preferred_username }),
+        });
 
-        setMetricsData(mappedData);
+        if (!tableResponse.ok) {
+          throw new Error('Failed to fetch table data');
+        }
+
+        const tableData = await tableResponse.json();
+        const mappedTableData = tableData.map((item, index) => ({
+          id: (index + 1).toString(),
+          connection: item.connection_type,
+          database: item.schema.split('.')[0],
+          schema: item.schema.split('.')[1] || item.schema,
+          overall: `${item.overall_score}%`,
+          groups: item.groups,
+          lastRun: new Date(item.last_run_date).toLocaleDateString('en-GB')
+        }));
+        setTableData(mappedTableData);
 
       } catch (error) {
         setToast({
@@ -175,20 +154,16 @@ const Metadata = () => {
       }, 3000);
     };
 
-    fetchMetadataScores();
-  }, []);
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(1);
-  };
+    fetchData();
+  }, [token, decodedToken]);
 
   const handleRefresh = async () => {
     setSearchTerm('');
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/scores/metadata/scorecards`, {
+      // Refresh metadata scores
+      const scoreResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/metadata/scorecards`, {
         method: 'POST',
         headers: {
           'accept': 'application/json',
@@ -198,58 +173,46 @@ const Metadata = () => {
         body: JSON.stringify({ owner: decodedToken?.preferred_username }),
       });
 
-      if (!response.ok) {
+      if (!scoreResponse.ok) {
         throw new Error('Failed to refresh metadata scores');
       }
 
-      const data = await response.json();
+      const scoreData = await scoreResponse.json();
+      const mappedMetrics = Object.keys(scoreData).map((key) => ({
+        icon: "material-symbols:tab-group-outline",
+        bgcolor: "bg-[#8d77ba] bg-opacity-25",
+        iconcolor: "text-[#8d77ba]",
+        title: key,
+        count: scoreData[key] === 'N/A' ? 'N/A' : `${scoreData[key]}`
+      }));
+      setMetricsData(mappedMetrics);
 
-      const mappedData = [
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#8d77ba] bg-opacity-25",
-          iconcolor: "text-[#8d77ba]",
-          title: "Overall",
-          count: data.Overall === 'N/A' ? 'N/A' : `${data.Overall}`,
+      // Refresh table data
+      const tableResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/metadata/dashboard/table`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#8d77ba] bg-opacity-25",
-          iconcolor: "text-[#8d77ba]",
-          title: "Accuracy",
-          count: data.Accuracy === 'N/A' ? 'N/A' : `${data.Accuracy}`,
-        },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#8d77ba] bg-opacity-25",
-          iconcolor: "text-[#8d77ba]",
-          title: "Consistency",
-          count: data.Consistency === 'N/A' ? 'N/A' : `${data.Consistency}`,
-        },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#8d77ba] bg-opacity-25",
-          iconcolor: "text-[#8d77ba]",
-          title: "Completeness",
-          count: data.Completeness === 'N/A' ? 'N/A' : `${data.Completeness}`,
-        },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#8d77ba] bg-opacity-25",
-          iconcolor: "text-[#8d77ba]",
-          title: "Validity",
-          count: data.Validity === 'N/A' ? 'N/A' : `${data.Validity}`,
-        },
-        {
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#8d77ba] bg-opacity-25",
-          iconcolor: "text-[#8d77ba]",
-          title: "Uniqueness",
-          count: data.Uniqueness === 'N/A' ? 'N/A' : `${data.Uniqueness}`,
-        },
-      ];
+        body: JSON.stringify({ owner: decodedToken?.preferred_username }),
+      });
 
-      setMetricsData(mappedData);
+      if (!tableResponse.ok) {
+        throw new Error('Failed to refresh table data');
+      }
+
+      const tableData = await tableResponse.json();
+      const mappedTableData = tableData.map((item, index) => ({
+        id: (index + 1).toString(),
+        connection: item.connection_type,
+        database: item.schema.split('.')[0],
+        schema: item.schema.split('.')[1] || item.schema,
+        overall: `${item.overall_score}%`,
+        groups: item.groups,
+        lastRun: new Date(item.last_run_date).toLocaleDateString('en-GB')
+      }));
+      setTableData(mappedTableData);
 
       setToast({
         show: true,
@@ -271,7 +234,12 @@ const Metadata = () => {
     }, 3000);
   };
 
-  const filteredData = assuranceData.filter(item =>
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const filteredData = tableData.filter(item =>
     item.connection.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.database.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.schema.toLowerCase().includes(searchTerm.toLowerCase())
@@ -321,6 +289,13 @@ const Metadata = () => {
         </div>
       )}
 
+      {selectedGroups && (
+        <GroupScoresModal
+          groups={selectedGroups}
+          onClose={() => setSelectedGroups(null)}
+        />
+      )}
+
       <Breadcrumb />
 
       <div className="flex gap-4 mb-6 items-center justify-between">
@@ -367,9 +342,9 @@ const Metadata = () => {
       </div>
 
       {viewMode !== 'list' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
           {isLoading ? (
-            Array(6).fill().map((_, index) => (
+            Array(metricsData.length || 6).fill().map((_, index) => (
               <SkeletonCard key={index} />
             ))
           ) : (
@@ -402,10 +377,7 @@ const Metadata = () => {
               <th className="text-left p-4">Database</th>
               <th className="text-left p-4">Schema</th>
               <th className="text-left p-4">Overall</th>
-              <th className="text-left p-4">Accuracy</th>
-              <th className="text-left p-4">Validity</th>
-              <th className="text-left p-4">Uniqueness</th>
-              <th className="text-left p-4">Completeness</th>
+              <th className="text-left p-4 last:rounded-tr-lg flex justify-center items-center">Group Scores</th>
               <th className="text-left p-4 last:rounded-tr-lg">Last run</th>
             </tr>
           </thead>
@@ -426,10 +398,14 @@ const Metadata = () => {
                   </td>
                   <td className="p-4 text-gray-600">{item.schema}</td>
                   <td className="p-4">{item.overall}</td>
-                  <td className="p-4">{item.accuracy}</td>
-                  <td className="p-4">{item.validity}</td>
-                  <td className="p-4">{item.uniqueness}</td>
-                  <td className="p-4">{item.completeness}</td>
+                  <td className="p-4 text-center">
+                    <button
+                      onClick={() => setSelectedGroups(item.groups)}
+                      className="text-[#8e78b7] hover:text-[#6b5b8d]"
+                    >
+                      <Eye className="h-5 w-5" />
+                    </button>
+                  </td>
                   <td className="p-4">{item.lastRun}</td>
                 </tr>
               ))

@@ -10,8 +10,8 @@ import { useAuth } from "./AuthContext";
 const PlatformContext = createContext(null);
 
 export function PlatformProvider({ children }) {
-  const hostname = import.meta.env.VITE_FAST_API;
-  const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
+  const hostname = window._env_?.VITE_FAST_API;
+  const hostnamev2 = window._env_?.VITE_FAST_API_V2;
   const { token, decodedToken } = useAuth();
   const [CDCData, setCDCData] = useState([]);
   const [projectData, setProjectData] = useState([]);

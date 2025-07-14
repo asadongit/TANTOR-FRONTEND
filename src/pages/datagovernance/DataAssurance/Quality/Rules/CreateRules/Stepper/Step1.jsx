@@ -281,7 +281,7 @@ function Step1({ onNext, onCancel, step1Data }) {
   const [modalSelectedRules, setModalSelectedRules] = useState([]);
 
  const fetchGroupNames = useCallback(() => {
-  fetch(`${import.meta.env.VITE_FAST_API}/rules/listgroups`, {
+  fetch(`${window._env_?.VITE_FAST_API}/rules/listgroups`, {
     method: 'POST', 
     headers: {
       'Content-Type': 'application/json',
@@ -359,7 +359,7 @@ function Step1({ onNext, onCancel, step1Data }) {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API}/rules/addrule/list`,
+        `${window._env_?.VITE_FAST_API}/rules/addrule/list`,
         {
           method: 'POST',
           headers: {
@@ -591,7 +591,7 @@ function Step1({ onNext, onCancel, step1Data }) {
           <div
             className="grid grid-cols-1 md:grid-cols-2 gap-6"
             style={{
-              maxHeight: '340px',
+              maxHeight: '430px',
               overflowY: 'auto',
               paddingRight: '4px'
             }}

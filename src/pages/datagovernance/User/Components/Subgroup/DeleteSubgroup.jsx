@@ -30,7 +30,7 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
     setError("");
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/deletesubgroup/${subgroupName}`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletesubgroup/${subgroupName}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

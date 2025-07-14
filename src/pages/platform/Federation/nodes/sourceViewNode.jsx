@@ -75,7 +75,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 };
 
 export function SourceViewNode({ id, onSave }) {
-  const encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+  const encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
   const { viewPayload, handleViewPayload, setColumnSettings, columnSettings, finalPayload, handleFinalPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedView, setSelectedView] = useState("");

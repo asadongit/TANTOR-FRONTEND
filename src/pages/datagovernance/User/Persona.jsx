@@ -73,7 +73,7 @@ function Persona() {
     setLoading(true);
     setError(null);
 
-    fetch(`${import.meta.env.VITE_FAST_API}/auth/personahomepage`)
+    fetch(`${window._env_?.VITE_FAST_API}/auth/personahomepage`)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);

@@ -352,7 +352,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
 
   const fetchConnections = () => {
     setIsLoadingConnections(true);
-    fetch(`${import.meta.env.VITE_FAST_API}/connections/list`, {
+    fetch(`${window._env_?.VITE_FAST_API}/connections/list`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -401,7 +401,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
   const fetchSchemas = (connectionName) => {
     if (!connectionName || schemasByConnection[connectionName] || !policyIds.length) return;
     setIsLoadingSchemas(prev => ({ ...prev, [connectionName]: true }));
-    fetch(`${import.meta.env.VITE_FAST_API}/schemas/list`, {
+    fetch(`${window._env_?.VITE_FAST_API}/schemas/list`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -430,7 +430,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
   const fetchTables = (connectionName, schemaName) => {
     if (!connectionName || !schemaName || tablesBySchema[`${connectionName}__${schemaName}`] || !policyIds.length) return;
     setIsLoadingTables(prev => ({ ...prev, [`${connectionName}__${schemaName}`]: true }));
-    fetch(`${import.meta.env.VITE_FAST_API}/tables/list`, {
+    fetch(`${window._env_?.VITE_FAST_API}/tables/list`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -462,7 +462,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
     const key = `${schemaName}__${tableNameOnly}`;
     if (columnsByTable[key]) return;
     setIsLoadingColumns(prev => ({ ...prev, [key]: true }));
-    fetch(`${import.meta.env.VITE_FAST_API}/columns/list`, {
+    fetch(`${window._env_?.VITE_FAST_API}/columns/list`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -802,7 +802,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
       setValidationStatus(prev => ({ ...prev, [connKey]: 'pending' }));
 
       try {
-        const res = await fetch(`${import.meta.env.VITE_FAST_API}/rules/executerule`, {
+        const res = await fetch(`${window._env_?.VITE_FAST_API}/rules/executerule`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
