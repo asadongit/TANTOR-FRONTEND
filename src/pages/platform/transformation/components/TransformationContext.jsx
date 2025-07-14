@@ -224,8 +224,8 @@ export function TransformationProvider({ children }) {
         source: {},
         target: {},
         logging:{
-          isLoggingEnabled :true,
-          isLoggingEnabledForEachDataset: true
+          isLoggingEnabled :false,
+          isLoggingEnabledForEachDataset: false
         },
         procedureExecution:{},
         transformation: {}
@@ -315,7 +315,7 @@ export function TransformationProvider({ children }) {
                 watermarkColumn: "",
                 watermarkColumnDataType: ""
               },
-              EnableCountLogging: true
+              EnableCountLogging: false
             };
           }
         });
@@ -361,7 +361,7 @@ export function TransformationProvider({ children }) {
                 targetTable: targetData.table || "",
                 loadStrategy: targetData.loadStrategy || ""
               },
-              EnableCountLogging: true,
+              EnableCountLogging: false,
               targetMapping: targetData.targetMapping || {}
             };
           }

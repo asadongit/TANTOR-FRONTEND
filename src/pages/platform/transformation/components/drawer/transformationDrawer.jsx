@@ -26,14 +26,14 @@ const transformationOperations = [
 	// 	id: "colcopy",
 	// 	name: "Column Copy"
 	// },
-	// {
-	// 	id: "constantcopy",
-	// 	name: "Constant Copy"
-	// },
 	{
-		id: "rename",
-		name: "Rename"
+		id: "constantcopy",
+		name: "Constant Copy"
 	},
+	// {
+	// 	id: "rename",
+	// 	name: "Rename"
+	// },
 	{
 		id: "join",
 		name: "Join"
@@ -46,10 +46,10 @@ const transformationOperations = [
 		id: "date",
 		name: "Date"
 	},
-	{
-		id: "restrictcolumns",
-		name: "Restrict Columns"
-	},
+	// {
+	// 	id: "restrictcolumns",
+	// 	name: "Restrict Columns"
+	// },
 	{
 		id: "typecast",
 		name: "Typecast"
@@ -192,7 +192,12 @@ const TransformationItem = memo(({
       case 'colcopy':
         return <ColCopyOperationFields {...commonProps} />;
       case 'constantcopy':
-        return <ConstantCopyOperationFields {...commonProps} />;
+        return <ConstantCopyOperationFields
+          {...commonProps}
+          onAddNewTargetColumn={(colName) =>
+            onAddNewTargetColumn(colName, transformation.source_dataframe, "constantcopy", transformation.params.datatype || "string")
+          }
+        />;
       case 'rename':
         return <RenameOperationFields
           {...commonProps}
@@ -204,7 +209,7 @@ const TransformationItem = memo(({
           allDataframes={allDataframes}
           dataframeColumns={dataframeColumns}
           updateJoinsParam={(id, name, value) => updateFilterParam(id, name, value)}
-          appendColumnsFromRightToLeft={appendColumnsFromRightToLeft} // <-- pass here
+          appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
         />;
       case 'filter':
         let operatorOptions = FILTER_OPERATORS;
@@ -215,8 +220,9 @@ const TransformationItem = memo(({
           );
           if (colObj && colObj.datatype) {
             const t = colObj.datatype.toLowerCase();
-            if (t.includes("char") || t.includes("string")) {
-              operatorOptions = FILTER_OPERATORS.filter(op => op.id === "==");
+			// console.log(t)
+            if (t.includes("char") || t.includes("varchar2") || t.includes("string")) {
+              operatorOptions = FILTER_OPERATORS.filter(op => (op.id === "==" || op.id === "!="));
               selectedColType = "string";
             } else if (t.includes("int") || t.includes("float") || t.includes("double") || t.includes("number")) {
               operatorOptions = FILTER_OPERATORS
@@ -1014,123 +1020,162 @@ export const TransformationDrawer = ({
 		}
 	}, []);
 
-	const appendColumnToDataframe = useCallback((dataframeId, columnName,datatype) => {
+	const appendColumnToDataframe = useCallback((dataframeId, columnName, datatype) => {
 		setDataframeColumns(prev => {
 			const prevCols = prev[dataframeId] || [];
-			const columnExists = prevCols.some(col =>
+			const existingColIndex = prevCols.findIndex(col =>
 				(typeof col === "object" ? col.name : col) === columnName
-				);
-			if (!columnExists) {
-				return {
-					...prev,
-					[dataframeId]: [...prevCols, { name: columnName, datatype }]
-				};
+			);
+
+			let newCols;
+			if (existingColIndex !== -1) {
+				newCols = [...prevCols];
+				if (typeof newCols[existingColIndex] === "object") {
+					newCols[existingColIndex] = { ...newCols[existingColIndex], datatype };
+				} else {
+					newCols[existingColIndex] = { name: columnName, datatype };
+				}
+			} else {
+				newCols = [...prevCols, { name: columnName, datatype }];
 			}
-			return prev;
+
+			return {
+				...prev,
+				[dataframeId]: newCols
+			};
 		});
 	}, []);
 
 	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic", givendatatype = "NUMBER") => {
-	console.log("operation type is ====>", operationType)
-	console.log("given datatype is  =====>", givendatatype)
-	const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
-	let datatype = "NUMBER";
-	if (operationType === "typecast") {
-		datatype = givendatatype;
-	} else if (operationType === "string") {
-		datatype = "VARCHAR";
-	} else if (operationType === "date") {
-		datatype = "date"; // <-- Always use "date" for date operation
-	}
-	console.log("column name is ======>", columnName)
-	if (window.allNodes && Array.isArray(window.allNodes)) {
-		const reactNode = window.allNodes.find(n =>
-			(n.data?.alias === actualDfId) || (n.id === actualDfId)
-		);
-		if (reactNode && typeof reactNode.data.onDataChange === "function") {
-			const newCols = Array.isArray(reactNode.data.columns)
-				? [...reactNode.data.columns]
-				: [];
-			const columnExists = newCols.some(col =>
+		console.log("operation type is ====>", operationType)
+		console.log("given datatype is  =====>", givendatatype)
+		const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
+		let datatype = "NUMBER";
+		if (operationType === "typecast") {
+			datatype = givendatatype;
+		} else if (operationType === "string") {
+			datatype = "VARCHAR";
+		} else if (operationType === "date") {
+			datatype = "date";
+		} else if (operationType === "constantcopy") {
+			datatype = givendatatype;
+		}
+		console.log("column name is ======>", columnName)
+
+		// Update local state first for immediate UI update
+		appendColumnToDataframe(actualDfId, columnName, datatype);
+
+		if (window.allNodes && Array.isArray(window.allNodes)) {
+			const reactNode = window.allNodes.find(n =>
+				(n.data?.alias === actualDfId) || (n.id === actualDfId)
+			);
+			if (reactNode && typeof reactNode.data.onDataChange === "function") {
+				const newCols = Array.isArray(reactNode.data.columns)
+					? [...reactNode.data.columns]
+					: [];
+
+				const existingColIndex = newCols.findIndex(col =>
 					(typeof col === "object" ? col.name : col) === columnName
 				);
-				if (!columnExists) {
-				newCols.push({ name: columnName, datatype });
+
+				if (existingColIndex !== -1) {
+					if (typeof newCols[existingColIndex] === "object") {
+						newCols[existingColIndex] = { ...newCols[existingColIndex], datatype };
+					} else {
+						newCols[existingColIndex] = { name: columnName, datatype };
+					}
+				} else {
+					newCols.push({ name: columnName, datatype });
+				}
+
 				reactNode.data.onDataChange({ columns: newCols });
-				window.dispatchEvent(new Event("tantor-columns-updated"));
+				console.log("$$$$$$ new cols are e=====>", newCols)
 			}
-			console.log("$$$$$$ new cols are e=====>", newCols)
 		}
-	}
-	appendColumnToDataframe(actualDfId, columnName, datatype);
-}, [appendColumnToDataframe]);
+
+		// Trigger event for any other components that need to update
+		setTimeout(() => {
+			window.dispatchEvent(new Event("tantor-columns-updated"));
+		}, 10);
+	}, [appendColumnToDataframe]);
 
 
 	// Improved version with forceUpdate parameter and better dataframe column state sync
-	const appendColumnsFromRightToLeft = useCallback((leftDfId, rightDfId, forceUpdate = false) => {
-		if (!leftDfId || !rightDfId || leftDfId === rightDfId) return;
+	const appendColumnsFromRightToLeft = useCallback((leftDfId, rightDfId, forceUpdate = false, droppedColumns = []) => {
+	if (!leftDfId || !rightDfId || leftDfId === rightDfId) return;
 
-		if (window.allNodes) {
-			const leftNode = window.allNodes.find(
-				n => (n.data?.alias === leftDfId) || (n.id === leftDfId)
+	if (window.allNodes) {
+		const leftNode = window.allNodes.find(
+			n => (n.data?.alias === leftDfId) || (n.id === leftDfId)
+		);
+		const rightNode = window.allNodes.find(
+			n => (n.data?.alias === rightDfId) || (n.id === rightDfId)
+		);
+
+		if (leftNode && rightNode) {
+			const leftCols = Array.isArray(leftNode.data.columns) ? [...leftNode.data.columns] : [];
+			const rightCols = Array.isArray(rightNode.data.columns) ? [...rightNode.data.columns] : [];
+			const leftColNames = new Set(
+				leftCols.map(col => typeof col === "object" && col.name ? col.name : col)
 			);
-			const rightNode = window.allNodes.find(
-				n => (n.data?.alias === rightDfId) || (n.id === rightDfId)
-			);
 
-			if (leftNode && rightNode) {
-				const leftCols = Array.isArray(leftNode.data.columns) ? [...leftNode.data.columns] : [];
-				const rightCols = Array.isArray(rightNode.data.columns) ? [...rightNode.data.columns] : [];
-				const leftColNames = new Set(
-					leftCols.map(col => typeof col === "object" && col.name ? col.name : col)
-				);
+			// Create a set of dropped columns for faster lookup
+			const droppedColumnsSet = new Set(droppedColumns);
 
-				let appended = false;
-				const newColumns = [];
+			let appended = false;
+			const newColumns = [];
 
-				rightCols.forEach(col => {
-					const colName = typeof col === "object" && col.name ? col.name : col;
-					if (colName && !leftColNames.has(colName)) {
-						if (typeof col === "object" && col.name) {
-							leftCols.push({ ...col });
-							newColumns.push({ ...col });
-						} else {
-							leftCols.push(colName);
-							newColumns.push(colName);
-						}
-						appended = true;
+			rightCols.forEach(col => {
+				const colName = typeof col === "object" && col.name ? col.name : col;
+				// Only add columns that are not in the left table and not in the dropped columns list
+				if (colName && !leftColNames.has(colName) && !droppedColumnsSet.has(colName)) {
+					if (typeof col === "object" && col.name) {
+						leftCols.push({ ...col });
+						newColumns.push({ ...col });
+					} else {
+						leftCols.push(colName);
+						newColumns.push(colName);
 					}
-				});
-
-				if (appended && typeof leftNode.data.onDataChange === "function") {
-					// Update the node data
-					leftNode.data.onDataChange({ columns: leftCols });
-
-					// Also update our local dataframe columns state
-					setDataframeColumns(prev => ({
-						...prev,
-						[leftDfId]: leftCols
-					}));
-
-					// If force update flag is true, refresh all transformations
-					if (forceUpdate) {
-						// Force refresh dataframe columns in the next render cycle
-						setTimeout(() => {
-							syncDataframeColumnsFromNodes();
-						}, 50);
-					}
-
-					// Dispatch column update event
-					window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
-						detail: {
-							sourceId: leftDfId,
-							addedColumns: newColumns
-						}
-					}));
+					appended = true;
 				}
+			});
+
+			// Also filter out any existing columns that are in the dropped list
+			const filteredLeftCols = leftCols.filter(col => {
+				const colName = typeof col === "object" && col.name ? col.name : col;
+				return !droppedColumnsSet.has(colName);
+			});
+
+			if ((appended || filteredLeftCols.length !== leftCols.length) && typeof leftNode.data.onDataChange === "function") {
+				// Update the node data with filtered columns
+				leftNode.data.onDataChange({ columns: filteredLeftCols });
+
+				// Also update our local dataframe columns state
+				setDataframeColumns(prev => ({
+					...prev,
+					[leftDfId]: filteredLeftCols
+				}));
+
+				// If force update flag is true, refresh all transformations
+				if (forceUpdate) {
+					// Force refresh dataframe columns in the next render cycle
+					setTimeout(() => {
+						syncDataframeColumnsFromNodes();
+					}, 50);
+				}
+
+				// Dispatch column update event
+				window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
+					detail: {
+						sourceId: leftDfId,
+						addedColumns: newColumns,
+						droppedColumns: droppedColumns
+					}
+				}));
 			}
 		}
-	}, [setDataframeColumns, syncDataframeColumnsFromNodes]);
+	}
+}, [setDataframeColumns, syncDataframeColumnsFromNodes]);
 
 	// Add an event listener for tantor-columns-updated events with details
 	useEffect(() => {
