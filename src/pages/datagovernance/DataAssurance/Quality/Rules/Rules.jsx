@@ -62,9 +62,13 @@ const Rules = () => {
         },
         body: JSON.stringify({ owner: decodedToken?.preferred_username }),
       });
-      const data = await response.json();
-      console.log(data);
-      setMetricData(data);
+      if (response.status === 200) {
+        const data = await response.json();
+        console.log(data);
+        setMetricData(data);
+      } else {
+        console.error('Non-200 response:', response.status);
+      }
     } catch (error) {
       console.error('Error fetching counts:', error);
     } finally {
@@ -230,7 +234,7 @@ const Rules = () => {
   };
 
   const handleScheduleSubmit = async () => {
-    console.log("schedular data is ====>",schedulerData)
+    console.log("schedular data is ====>", schedulerData)
     setIsLoading(true);
     try {
       const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/scheduler`, {
