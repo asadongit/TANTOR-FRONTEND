@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Handle, Position } from "reactflow";
-import { X, Database, Loader } from "lucide-react";
+import { X, Database, Loader, Plus } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
 import { useTransformation } from "../TransformationContext";
+import { isNumericType, isStringType, isFloatType } from "./DataTypeMapping";
 
 export const SourceNode = ({ id, data }) => {
   const [connections, setConnections] = useState([]);
@@ -22,8 +23,8 @@ export const SourceNode = ({ id, data }) => {
   const [selectedSchema, setSelectedSchema] = useState("");
   const [selectedTable, setSelectedTable] = useState("");
   const [selectedColumns, setSelectedColumns] = useState([]);
-  const [selectedObjectType, setSelectedObjectType] = useState(""); // "tables" or "procedures"
-  // Add state to preserve table and procedure selections
+  const [selectedObjectType, setSelectedObjectType] = useState("");
+
   const [tableSelections, setTableSelections] = useState({
     selectedTable: "",
     selectedColumns: []
@@ -46,6 +47,18 @@ export const SourceNode = ({ id, data }) => {
   const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
   const [alias, setAlias] = useState(data.alias || "");
 
+  const [procedures, setProcedures] = useState([]);
+  const [selectedPreProcedures, setSelectedPreProcedures] = useState([{ id: 1, procedure: null }]);
+  const [selectedPostProcedures, setSelectedPostProcedures] = useState([{ id: 1, procedure: null }]);
+  const [preProcedureDropdownOpen, setPreProcedureDropdownOpen] = useState({});
+  const [postProcedureDropdownOpen, setPostProcedureDropdownOpen] = useState({});
+  const [parametersModalOpen, setParametersModalOpen] = useState(false);
+  const [selectedProcedureForModal, setSelectedProcedureForModal] = useState(null);
+  const [parameterColumnMapping, setParameterColumnMapping] = useState({});
+  const [modalProcedureType, setModalProcedureType] = useState(null);
+  const [modalProcedureItemId, setModalProcedureItemId] = useState(null);
+  const [storedParameterMappings, setStoredParameterMappings] = useState({});
+
   const hostnamev1 = import.meta.env.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
   const { dispatch, ACTION_TYPES } = useTransformation();
@@ -53,6 +66,8 @@ export const SourceNode = ({ id, data }) => {
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
   const tableDropdownRef = useRef(null);
+  const preProcedureDropdownRef = useRef(null);
+  const postProcedureDropdownRef = useRef(null);
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -143,7 +158,7 @@ export const SourceNode = ({ id, data }) => {
 
       const tableData = await response.json();
       setTables(tableData);
-      setDataFetchStatus(prev => ({ ...prev, tables: "success" }));
+      setDataFetchStatus(prev => ({ ...prev, tables: "ssuccess" }));
     } catch (error) {
       console.error("Error fetching tables:", error);
       setDataFetchStatus(prev => ({ ...prev, tables: "error" }));
@@ -151,6 +166,211 @@ export const SourceNode = ({ id, data }) => {
       setLoading(prev => ({ ...prev, tables: false }));
     }
   }, [hostnamev1, token]);
+
+  const fetchProcedures = useCallback(async (connectionName, tableName) => {
+    if (!connectionName || !tableName) return;
+
+    try {
+      setLoading(prev => ({ ...prev, procedures: true }));
+
+      const response = await fetch(`${hostnamev1}/connection-saves/stored-procs/${connectionName}/${tableName}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const proceduresData = await response.json();
+      setProcedures(proceduresData);
+    } catch (error) {
+      console.error("Error fetching procedures:", error);
+      setProcedures([]); // Set empty array on error
+    } finally {
+      setLoading(prev => ({ ...prev, procedures: false }));
+    }
+  }, [hostnamev1, token]);
+
+
+  const addPreProcedureDropdown = () => {
+    const newId = Math.max(...selectedPreProcedures.map(p => p.id), 0) + 1;
+    setSelectedPreProcedures(prev => [...prev, { id: newId, procedure: null }]);
+  };
+
+  const addPostProcedureDropdown = () => {
+    const newId = Math.max(...selectedPostProcedures.map(p => p.id), 0) + 1;
+    setSelectedPostProcedures(prev => [...prev, { id: newId, procedure: null }]);
+  };
+
+  const removePreProcedureDropdown = (id) => {
+    if (selectedPreProcedures.length > 1) {
+      setSelectedPreProcedures(prev => prev.filter(p => p.id !== id));
+      setPreProcedureDropdownOpen(prev => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
+    }
+  };
+
+  const removePostProcedureDropdown = (id) => {
+    if (selectedPostProcedures.length > 1) {
+      setSelectedPostProcedures(prev => prev.filter(p => p.id !== id));
+      setPostProcedureDropdownOpen(prev => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
+    }
+  };
+
+  const handlePreProcedureSelect = (procedureItem, procedure) => {
+    setSelectedPreProcedures(prev =>
+      prev.map(p => p.id === procedureItem.id ? { ...p, procedure } : p)
+    );
+    setPreProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: false }));
+  };
+
+  const handlePostProcedureSelect = (procedureItem, procedure) => {
+    setSelectedPostProcedures(prev =>
+      prev.map(p => p.id === procedureItem.id ? { ...p, procedure } : p)
+    );
+    setPostProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: false }));
+  };
+
+  const openParametersModal = (procedure, procedureType = null, procedureItemId = null) => {
+    setSelectedProcedureForModal(procedure);
+    setModalProcedureType(procedureType);
+    setModalProcedureItemId(procedureItemId);
+    setParametersModalOpen(true);
+
+    const mappingKey = `${procedureType}_${procedureItemId}_${procedure.procedure_name}`;
+    const storedMapping = storedParameterMappings[mappingKey] || {};
+
+    const initialMapping = {};
+    if (procedure.procedure_parameters) {
+      procedure.procedure_parameters.forEach(param => {
+        initialMapping[param.name] = storedMapping[param.name] || "";
+      });
+    }
+    setParameterColumnMapping(initialMapping);
+  };
+
+  const closeParametersModal = () => {
+    setParametersModalOpen(false);
+    setSelectedProcedureForModal(null);
+    setParameterColumnMapping({});
+    setModalProcedureType(null);
+    setModalProcedureItemId(null);
+  };
+
+  const handleParameterMapping = (parameterName, columnName) => {
+    setParameterColumnMapping(prev => ({
+      ...prev,
+      [parameterName]: columnName
+    }));
+  };
+
+  const applyProcedureMapping = () => {
+    if (!selectedProcedureForModal || !modalProcedureItemId || !modalProcedureType) return;
+
+    const mappedParams = Object.entries(parameterColumnMapping)
+      .filter(([param, column]) => column !== "")
+      .map(([param, column]) => column);
+
+    const mappingKey = `${modalProcedureType}_${modalProcedureItemId}_${selectedProcedureForModal.procedure_name}`;
+    setStoredParameterMappings(prev => ({
+      ...prev,
+      [mappingKey]: parameterColumnMapping
+    }));
+
+    let eventType = "";
+    let procedureOrder = 1;
+
+    if (modalProcedureType === "pre") {
+      eventType = "BeforeSourceRead";
+      const procedureIndex = selectedPreProcedures.findIndex(p => p.id === modalProcedureItemId);
+      procedureOrder = procedureIndex + 1;
+    } else if (modalProcedureType === "post") {
+      eventType = "AfterSourceRead";
+      const procedureIndex = selectedPostProcedures.findIndex(p => p.id === modalProcedureItemId);
+      procedureOrder = procedureIndex + 1;
+    }
+
+    const procedureJSON = {
+      "EventType": eventType,
+      "Dataset": alias || "unnamed_source",
+      "ProcName": selectedProcedureForModal.procedure_name,
+      "ProcParams": mappedParams,
+      "ProcOrder": procedureOrder,
+      "parameterMapping": parameterColumnMapping,
+      "procedureId": `${selectedProcedureForModal.procedure_name}_${eventType}_${procedureOrder}`,
+      "procedureItemId": modalProcedureItemId,
+      "procedureType": modalProcedureType,
+      "timestamp": Date.now()
+    };
+
+    dispatch({
+      type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+      payload: {
+        sourceNodeId: id,
+        procedureMapping: procedureJSON
+      }
+    });
+
+    console.log("Applied Procedure Mapping:", procedureJSON);
+    closeParametersModal();
+  };
+
+  const getAvailableColumns = () => {
+    if (selectedObjectType === "tables" && selectedColumns.length > 0) {
+      return selectedColumns.map(col => col.name);
+    } else if (selectedObjectType === "procedures" && tableSelections.selectedColumns.length > 0) {
+      return tableSelections.selectedColumns.map(col => col.name);
+    }
+    return [];
+  };
+
+  const getFilteredColumnsForParameter = (parameterDataType) => {
+    let availableColumns = [];
+
+    if (selectedObjectType === "tables" && selectedColumns.length > 0) {
+      availableColumns = selectedColumns;
+    } else if (selectedObjectType === "procedures" && tableSelections.selectedColumns.length > 0) {
+      availableColumns = tableSelections.selectedColumns;
+    }
+
+    if (!parameterDataType || availableColumns.length === 0) {
+      return availableColumns.map(col => col.name);
+    }
+
+    const compatibleColumns = availableColumns.filter(col => {
+      const columnDataType = col.datatype;
+
+      if (isNumericType(parameterDataType)) {
+        return isNumericType(columnDataType) || isFloatType(columnDataType);
+      } else if (isFloatType(parameterDataType)) {
+        return isFloatType(columnDataType) || isNumericType(columnDataType);
+      } else if (isStringType(parameterDataType)) {
+        return isStringType(columnDataType);
+      } else {
+        return columnDataType?.toLowerCase().includes(parameterDataType?.toLowerCase()) ||
+               isStringType(columnDataType);
+      }
+    });
+
+    return compatibleColumns.map(col => col.name);
+  };
+
+  const areAllParametersMapped = () => {
+    if (!selectedProcedureForModal?.procedure_parameters) return false;
+
+    return selectedProcedureForModal.procedure_parameters.every(param =>
+      parameterColumnMapping[param.name] && parameterColumnMapping[param.name].trim() !== ""
+    );
+  };
 
   useEffect(() => {
     fetchConnections();
@@ -177,6 +397,8 @@ export const SourceNode = ({ id, data }) => {
       })),
       alias: alias,
       objectType: selectedObjectType,
+      preProcedures: selectedPreProcedures.filter(p => p.procedure).map(p => p.procedure),
+      postProcedures: selectedPostProcedures.filter(p => p.procedure).map(p => p.procedure),
     });
 
     dispatch({
@@ -186,7 +408,7 @@ export const SourceNode = ({ id, data }) => {
         columns: currentColumns.map(col => col.name)
       }
     });
-  }, [selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections]);
+  }, [selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures]);
 
   const getColumnsForTable = (tableName) => {
     const tableObj = tables.find(t => t.table_name === tableName);
@@ -221,10 +443,28 @@ export const SourceNode = ({ id, data }) => {
         tableDropdownRef.current &&
         !tableDropdownRef.current.contains(event.target)
       ) setTableDropdownOpen(false);
+
+      const clickedInProcedureDropdown = Object.keys(preProcedureDropdownOpen).some(id => {
+        const ref = document.querySelector(`[data-pre-procedure-ref="${id}"]`);
+        return ref && ref.contains(event.target);
+      });
+
+      const clickedInPostProcedureDropdown = Object.keys(postProcedureDropdownOpen).some(id => {
+        const ref = document.querySelector(`[data-post-procedure-ref="${id}"]`);
+        return ref && ref.contains(event.target);
+      });
+
+      if (!clickedInProcedureDropdown) {
+        setPreProcedureDropdownOpen({});
+      }
+
+      if (!clickedInPostProcedureDropdown) {
+        setPostProcedureDropdownOpen({});
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [preProcedureDropdownOpen, postProcedureDropdownOpen]);
 
   const getNextAlias = useCallback(() => {
     const sourceNodesFromWindow = window.allNodes ?
@@ -471,6 +711,11 @@ export const SourceNode = ({ id, data }) => {
 
                     setSelectedObjectType("procedures");
 
+
+                    if (selectedConnection.name && tableSelections.selectedTable) {
+                      fetchProcedures(selectedConnection.name, tableSelections.selectedTable);
+                    }
+
                     setSelectedTable(procedureSelections.selectedProcedure);
                     setSelectedColumns(procedureSelections.selectedParameters);
                   }}
@@ -559,7 +804,7 @@ export const SourceNode = ({ id, data }) => {
               </div>
             )}
 
-{(selectedTable || selectedObjectType === "procedures") && (
+            {(selectedTable || selectedObjectType === "procedures") && (
               <div className="mt-2">
                 <label className="text-xs font-semibold text-black mb-0.5 block">
                   Alias Name
@@ -574,19 +819,160 @@ export const SourceNode = ({ id, data }) => {
               </div>
             )}
             {selectedObjectType === "procedures" && (
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-black mb-0.5 block">
-                    Procedure
-                  </label>
-                </div>
-                <div className="p-3 text-center text-[11px] text-gray-500 border border-gray-300 rounded-sm bg-gray-50">
-                  Procedures functionality coming soon
+              <div className="space-y-3">
+                <div className="space-y-3">
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-black">
+                        Pre Procedure
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addPreProcedureDropdown}
+                        className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
+                        title="Add pre procedure"
+                      >
+                        <Plus size={10} />
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedPreProcedures.map((procedureItem, index) => (
+                        <div key={procedureItem.id} className="flex gap-1 items-center">
+                          <div className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`} data-pre-procedure-ref={procedureItem.id}>
+                            <button
+                              type="button"
+                              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-black text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                              onClick={() => setPreProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))
+                              }
+                            >
+                              {procedureItem.procedure
+                                ? procedureItem.procedure.procedure_name
+                                : 'Select pre procedure'}
+                              <span className="ml-auto pl-2">&#9662;</span>
+                            </button>
+                            {preProcedureDropdownOpen[procedureItem.id] && (
+                              <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-20 overflow-y-auto">
+                                {procedures.length === 0 ? (
+                                  <div className="p-2 text-[11px] text-gray-500">No procedures available</div>
+                                ) : (
+                                  procedures.map((procedure, idx) => (
+                                    <div
+                                      key={idx}
+                                      className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${procedureItem.procedure && procedureItem.procedure.procedure_name === procedure.procedure_name ? "bg-gray-100" : ""}`}
+                                      onClick={() => handlePreProcedureSelect(procedureItem, procedure)}
+                                    >
+                                      {procedure.procedure_name}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {procedureItem.procedure && (
+                            <button
+                              type="button"
+                              onClick={() => openParametersModal(procedureItem.procedure, "pre", procedureItem.id)}
+                              className="px-2 py-1.5 text-[11px] bg-[#8E77BB] text-white rounded-sm border border-[#8E77BB] hover:bg-[#7A6BA3] focus:outline-none focus:ring-1 focus:ring-gray-400 whitespace-nowrap"
+                              title="View parameters"
+                            >
+                              Parameters
+                            </button>
+                          )}
+
+                          {selectedPreProcedures.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removePreProcedureDropdown(procedureItem.id)}
+                              className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
+                              title="Remove pre procedure"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Post Procedure Section */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-black">
+                        Post Procedure
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addPostProcedureDropdown}
+                        className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
+                        title="Add post procedure"
+                      >
+                        <Plus size={10} />
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedPostProcedures.map((procedureItem, index) => (
+                        <div key={procedureItem.id} className="flex gap-1 items-center">
+                          <div className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`} data-post-procedure-ref={procedureItem.id}>
+                            <button
+                              type="button"
+                              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-black text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                              onClick={() => setPostProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))
+                              }
+                            >
+                              {procedureItem.procedure
+                                ? procedureItem.procedure.procedure_name
+                                : 'Select post procedure'}
+                              <span className="ml-auto pl-2">&#9662;</span>
+                            </button>
+                            {postProcedureDropdownOpen[procedureItem.id] && (
+                              <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-20 overflow-y-auto">
+                                {procedures.length === 0 ? (
+                                  <div className="p-2 text-[11px] text-gray-500">No procedures available</div>
+                                ) : (
+                                  procedures.map((procedure, idx) => (
+                                    <div
+                                      key={idx}
+                                      className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${procedureItem.procedure && procedureItem.procedure.procedure_name === procedure.procedure_name ? "bg-gray-100" : ""}`}
+                                      onClick={() => handlePostProcedureSelect(procedureItem, procedure)}
+                                    >
+                                      {procedure.procedure_name}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {procedureItem.procedure && (
+                            <button
+                              type="button"
+                              onClick={() => openParametersModal(procedureItem.procedure, "post", procedureItem.id)}
+                              className="px-2 py-1.5 text-[11px] bg-[#8E77BB] text-white rounded-sm border border-[#8E77BB] hover:bg-[#7A6BA3] focus:outline-none focus:ring-1 focus:ring-gray-400 whitespace-nowrap"
+                              title="View parameters"
+                            >
+                              Parameters
+                            </button>
+                          )}
+
+                          {selectedPostProcedures.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removePostProcedureDropdown(procedureItem.id)}
+                              className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
+                              title="Remove post procedure"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
-
-
 
             {selectedObjectType === "tables" && selectedTable && columns.length > 0 ? (
               <div>
@@ -689,7 +1075,99 @@ export const SourceNode = ({ id, data }) => {
         </div>
       )}
 
+      {parametersModalOpen && selectedProcedureForModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg p-4 w-[500px] max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-semibold text-black">
+                  Parameter Mapping
+                </h3>
+                <p className="text-xs text-gray-600 mt-1">
+                  {selectedProcedureForModal.procedure_name}
+                </p>
+              </div>
+              <button
+                onClick={closeParametersModal}
+                className="text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
+            {selectedProcedureForModal.procedure_parameters && selectedProcedureForModal.procedure_parameters.length > 0 ? (
+              <div className="space-y-2">
+                {selectedProcedureForModal.procedure_parameters.map((param, index) => {
+                  const filteredColumns = getFilteredColumnsForParameter(param.data_type);
+
+                  return (
+                    <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded border">
+                      <div className="w-1/3">
+                        <p className="text-sm font-medium text-black">{param.name}</p>
+                        <p className="text-xs text-gray-500">{param.data_type}</p>
+                      </div>
+
+                      <div className="flex-1">
+                        {filteredColumns.length > 0 ? (
+                          <select
+                            value={parameterColumnMapping[param.name] || ""}
+                            onChange={(e) => handleParameterMapping(param.name, e.target.value)}
+                            className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                          >
+                            <option value="">Select Column</option>
+                            {filteredColumns.map((column, colIdx) => (
+                              <option key={colIdx} value={column}>
+                                {column}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
+                            No compatible columns ({param.data_type})
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {getAvailableColumns().length === 0 && (
+                  <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200 text-center">
+                    <p className="text-sm text-yellow-800">
+                      No table columns available for mapping.<br />
+                      Please select a table and columns first.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-500">No parameters found for this procedure.</p>
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={closeParametersModal}
+                className="px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={applyProcedureMapping}
+                className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
+                  areAllParametersMapped() && getAvailableColumns().length > 0
+                    ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+                disabled={!areAllParametersMapped() || getAvailableColumns().length === 0 || !selectedProcedureForModal.procedure_parameters || selectedProcedureForModal.procedure_parameters.length === 0}
+              >
+                Apply Mapping
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
