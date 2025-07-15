@@ -86,7 +86,7 @@ const Rules = () => {
           'accept': 'application/json',
         },
         body: JSON.stringify({ owner: decodedToken?.preferred_username }),
-      });
+      }); 
       const data = await response.json();
       console.log(data.data_rules);
       setTableData(data.data_rules || []);
