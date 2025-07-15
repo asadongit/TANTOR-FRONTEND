@@ -37,6 +37,7 @@ export default function Editor() {
   const [expanded, setExpanded] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
   const [originalConnections, setOriginalConnections] = useState([]);
+  const [policyIds, setPolicyIds] = useState([]); 
   const [checked, setChecked] = useState(true);
   const [shownViews, setShownViews] = useState([]);
   const [queryHistory, setQueryHistory] = useState([]);
@@ -45,20 +46,21 @@ export default function Editor() {
   const [queryLoading, setQueryLoading] = useState(false);
   const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
   const [viewsDetails, setViewsDetails] = useState(null);
-
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
   const [apiDetails, setApiDetails] = useState({ viewName: "", curl: "" });
-
   const [connectionsLoading, setConnectionsLoading] = useState(true);
-  const [historyLoading, setHistoryLoading] = useState(true)
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
     const fetchConnections = async () => {
       try {
         setConnectionsLoading(true);
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-        const policyIds = secureQueryResponse.matched_policy_ids || [];
-        if (policyIds.length === 0) {
+        const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
+        console.log("secureQuery policyIds (initial):", fetchedPolicyIds);
+        setPolicyIds(fetchedPolicyIds); 
+
+        if (fetchedPolicyIds.length === 0) {
           setOriginalConnections([]);
           setDisplayedConnections([]);
           setConnectionsLoading(false);
@@ -70,7 +72,7 @@ export default function Editor() {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ matched_policy_ids: policyIds })
+          body: JSON.stringify({ matched_policy_ids: fetchedPolicyIds })
         });
         if (!response.ok) throw new Error('Failed to fetch connections');
         const connectionsData = await response.json();
@@ -87,7 +89,7 @@ export default function Editor() {
       }
     };
     fetchConnections();
-  }, []);
+  }, [token, hostnameV1]);
 
   useEffect(() => {
     if (searchTerm.trim() === "") {
@@ -115,11 +117,11 @@ export default function Editor() {
       }
     };
     fetchViews();
-  }, []);
+  }, [hostnameV1]);
 
   useEffect(() => {
     fetchQueryHistory();
-  }, []);
+  }, [decodedToken, project, token, hostnameV1]);
 
   const fetchQueryHistory = async () => {
     try {
@@ -317,8 +319,8 @@ export default function Editor() {
       if (updatedHistory) setQueryHistory(updatedHistory);
     } catch (error) {
       if (error.message !== "secure-query failed" &&
-        error.message !== "runQuery failed" &&
-        error.message !== "Invalid response from secure-query") {
+          error.message !== "runQuery failed" &&
+          error.message !== "Invalid response from secure-query") {
         console.error("Unexpected error in query execution:", error);
         toast.error("Unexpected error occurred");
       }
@@ -348,9 +350,8 @@ export default function Editor() {
     if (!expandedItems[connectionId] && !schemas[connection]) {
       try {
         setSchemas((prevSchemas) => ({ ...prevSchemas, [connection]: "loading" }));
-        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-        const policyIds = secureQueryResponse.matched_policy_ids || [];
         if (policyIds.length === 0) {
+          console.warn("No policy IDs available, setting empty schemas");
           setSchemas((prevSchemas) => ({ ...prevSchemas, [connection]: [] }));
           return;
         }
@@ -365,8 +366,13 @@ export default function Editor() {
             connection_name: connection
           })
         });
-        if (!response.ok) throw new Error("Failed to fetch schemas");
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Fetch error:", errorText);
+          throw new Error(`Failed to fetch schemas: ${errorText}`);
+        }
         const data = await response.json();
+        console.log("Schemas API response data:", data);
         const connectionData = data.find(item => item[connection]);
         const schemaNames = connectionData ? connectionData[connection] : [];
         setSchemas((prevSchemas) => ({
@@ -376,7 +382,7 @@ export default function Editor() {
       } catch (error) {
         console.error("Error fetching schema data:", error);
         setSchemas((prevSchemas) => ({ ...prevSchemas, [connection]: "error" }));
-        toast.error("Failed to load schemas");
+        toast.error(`Failed to load schemas: ${error.message}`);
       }
     }
   };
@@ -387,35 +393,49 @@ export default function Editor() {
     if (!expandedItems[schemaId] && !tables[`${connection}-${schema}`]) {
       try {
         setTables((prevTables) => ({ ...prevTables, [`${connection}-${schema}`]: "loading" }));
-        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-        const policyIds = secureQueryResponse.matched_policy_ids || [];
         if (policyIds.length === 0) {
           setTables((prevTables) => ({ ...prevTables, [`${connection}-${schema}`]: [] }));
           return;
         }
+
         const response = await fetch(`${hostnameV1}/tables/list`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             matched_policy_ids: policyIds,
             connection_name: connection,
-            schema_name: schema
-          })
+            schema_name: [schema],
+          }),
         });
-        if (!response.ok) throw new Error("Failed to fetch tables");
+
+        console.log("Tables response status:", response.status);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Fetch error:", errorText);
+          throw new Error(`Failed to fetch tables: ${errorText}`);
+        }
+
         const data = await response.json();
-        const tableNames = data.tables || [];
+        console.log("Tables API response data:", data);
+
+
+        const tableData = data.schemas.find(
+          (item) => item.connection_name.toLowerCase() === connection.toLowerCase() && item.schema.toLowerCase() === schema.toLowerCase()
+        );
+        console.log("Filtered tableData:", tableData);
+
+        const tableNames = tableData && tableData.tables ? tableData.tables : [];
         setTables((prevTables) => ({
           ...prevTables,
           [`${connection}-${schema}`]: tableNames.length > 0 ? tableNames : [],
         }));
       } catch (error) {
-        console.error("Error fetching table data:", error);
+        console.error("Error in handleTables:", error.message);
         setTables((prevTables) => ({ ...prevTables, [`${connection}-${schema}`]: "error" }));
-        toast.error("Failed to load tables");
+        toast.error(`Failed to load tables: ${error.message}`);
       }
     }
   };
@@ -426,41 +446,65 @@ export default function Editor() {
     if (!expandedItems[tableId] && !columns[`${connection}-${schema}-${table}`]) {
       try {
         setColumns((prevColumns) => ({ ...prevColumns, [`${connection}-${schema}-${table}`]: "loading" }));
-        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-        const policyIds = secureQueryResponse.matched_policy_ids || [];
         if (policyIds.length === 0) {
           setColumns((prevColumns) => ({ ...prevColumns, [`${connection}-${schema}-${table}`]: [] }));
           return;
         }
+
         const response = await fetch(`${hostnameV1}/columns/list`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             matched_policy_ids: policyIds,
             connection_name: connection,
-            schema_name: schema,
-            table_name: table
-          })
+            schema_name: [schema],
+            table_name: [table],
+          }),
         });
-        if (!response.ok) throw new Error("Failed to fetch columns");
+
+        console.log("Columns response status:", response.status);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Fetch error:", errorText);
+          throw new Error(`Failed to fetch columns: ${errorText}`);
+        }
+
         const data = await response.json();
-        const columnData = data.columns || [];
-        const formattedColumns = columnData.map(item => ({
-          column: item.column_name,
-          datatype: item.metadata?.DATA_TYPE || 'unknown',
-          metadata: item.metadata
-        }));
+        console.log("Columns API response data:", data);
+
+        if (!data || !data.columns || !Array.isArray(data.columns)) {
+          console.error("Invalid response structure:", data);
+          throw new Error("Invalid response structure from /columns/list");
+        }
+
+        const columnData = data.columns.find(
+          (item) =>
+            item.connection_name.toLowerCase() === connection.toLowerCase() &&
+            item.schema.toLowerCase() === schema.toLowerCase() &&
+            item.table_name.toLowerCase() === table.toLowerCase()
+        );
+        console.log("Filtered columnData:", columnData);
+
+        const formattedColumns = columnData && columnData.columns
+          ? columnData.columns.map((item) => ({
+              column: item.column_name,
+              datatype: item.metadata?.DATA_TYPE || "unknown",
+              metadata: item.metadata,
+            }))
+          : [];
+        console.log("Formatted columns:", formattedColumns);
+
         setColumns((prevColumns) => ({
           ...prevColumns,
           [`${connection}-${schema}-${table}`]: formattedColumns.length > 0 ? formattedColumns : [],
         }));
       } catch (error) {
-        console.error("Error fetching column data:", error);
+        console.error("Error in handleColumns:", error.message);
         setColumns((prevColumns) => ({ ...prevColumns, [`${connection}-${schema}-${table}`]: "error" }));
-        toast.error("Failed to load columns");
+        toast.error(`Failed to load columns: ${error.message}`);
       }
     }
   };
@@ -531,8 +575,7 @@ export default function Editor() {
         </div>
         <span
           onDoubleClick={() => { if (!loading) handleTableClick(connection, schema, table); }}
-          style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-          title={table}
+          style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={table}
         >
           {table}
         </span>
@@ -549,10 +592,10 @@ export default function Editor() {
   };
 
   const renderColumnLabel = (column) => {
-    const isNumber = column.datatype.split("(")[0] === "int" ||
-      column.datatype.split("(")[0] === "integer" ||
-      column.datatype.split("(")[0] === "decimal" ||
-      column.datatype.split("(")[0] === "double";
+    const isNumber = column.datatype.split("(")[0].toLowerCase() === "int" ||
+      column.datatype.split("(")[0].toLowerCase() === "integer" ||
+      column.datatype.split("(")[0].toLowerCase() === "decimal" ||
+      column.datatype.split("(")[0].toLowerCase() === "double";
     return (
       <div style={{ display: "flex", alignItems: "center", paddingLeft: "20px", width: "100%", overflow: "hidden" }}>
         <div style={{ minWidth: "24px", width: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>

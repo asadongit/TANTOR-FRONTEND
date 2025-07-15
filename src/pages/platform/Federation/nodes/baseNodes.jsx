@@ -15,10 +15,6 @@ import { defaultSetting } from "../BaseView/ColumnSettings";
 import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 
-// const AUTH_TOKEN = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
-// const FAST_BACKEND = window._env_?.VITE_FAST_API;
-// const FAST_BACKEND_v2 = window._env_?.VITE_FAST_API_V2;
-
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -198,8 +194,8 @@ export function BaseNode({ id, data }) {
     const isColumnChecked = userCheckedColumns.includes(columnName);
 
     const updatedCheckedColumns = isColumnChecked
-      ? userCheckedColumns.filter((name) => name !== columnName) // Uncheck the column
-      : [...userCheckedColumns, columnName]; // Check the column
+      ? userCheckedColumns.filter((name) => name !== columnName) 
+      : [...userCheckedColumns, columnName]; 
 
     setSettingsList((prev) => {
       const updatedSettingsList = prev.map((item) => {
@@ -409,7 +405,7 @@ export function ConnectionNode({ id, data }) {
   const [apiSchemas, setApiSchemas] = useState([]);
   const [apiTables, setApiTables] = useState([]);
   const [apiColumns, setApiColumns] = useState([]);
-  const [allowedColumns, setAllowedColumns] = useState([]); // New state for columns allowed by policy
+  const [allowedColumns, setAllowedColumns] = useState([]); 
   const [isAllSelected, setIsAllSelected] = useState(false);
   const {
     settingsList,
@@ -423,7 +419,6 @@ export function ConnectionNode({ id, data }) {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
 
   const getFilterModalColumns = () => {
-    // Filter apiColumns based on what's allowed by policy
     if (apiColumns.length > 0 && allowedColumns.length > 0) {
       const filtered = apiColumns.filter((column) =>
         allowedColumns.some((allowedCol) => allowedCol.column_name === column.column)
@@ -436,7 +431,6 @@ export function ConnectionNode({ id, data }) {
     return [];
   };
 
-  // Effect to fetch connections
   useEffect(() => {
     const fetchConnections = async () => {
       try {
@@ -445,7 +439,6 @@ export function ConnectionNode({ id, data }) {
 
         if (policyIds.length === 0) {
           setApiConnections([]);
-          // toast.error("No policies matched for connections.");
           return;
         }
 
@@ -474,7 +467,6 @@ export function ConnectionNode({ id, data }) {
     fetchConnections();
   }, [token, hostnameV1]);
 
-  // Effect to fetch schemas
   useEffect(() => {
     if (selectedConnection) {
       const fetchSchemas = async () => {
@@ -521,7 +513,6 @@ export function ConnectionNode({ id, data }) {
     }
   }, [selectedConnection, token, hostnameV1]);
 
-  // Effect to fetch tables
   useEffect(() => {
     if (selectedSchema) {
       const fetchTables = async () => {
@@ -544,7 +535,7 @@ export function ConnectionNode({ id, data }) {
             body: JSON.stringify({
               matched_policy_ids: policyIds,
               connection_name: selectedConnection,
-              schema_name: selectedSchema,
+              schema_name: [selectedSchema], 
             }),
           });
 
@@ -553,8 +544,11 @@ export function ConnectionNode({ id, data }) {
           }
 
           const data = await response.json();
-          if (data && data.tables) {
-            setApiTables(data.tables);
+          const schemaData = data.schemas?.find(
+            (item) => item.connection_name === selectedConnection && item.schema === selectedSchema
+          );
+          if (schemaData && schemaData.tables) {
+            setApiTables(schemaData.tables);
           } else {
             setApiTables([]);
           }
@@ -568,12 +562,10 @@ export function ConnectionNode({ id, data }) {
     }
   }, [selectedSchema, selectedConnection, token, hostnameV1]);
 
-  // Effect to fetch columns (both detailed and policy-allowed)
   useEffect(() => {
     if (selectedTable) {
       const fetchColumns = async () => {
         try {
-          // Fetch all columns with metadata
           const detailedColumnsResponse = await fetch(
             `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
             {
@@ -589,9 +581,8 @@ export function ConnectionNode({ id, data }) {
             throw new Error("Failed to fetch detailed columns");
           }
           const detailedColumnsData = await detailedColumnsResponse.json();
-          setApiColumns(detailedColumnsData); // Store all columns with their types
+          setApiColumns(detailedColumnsData);
 
-          // Fetch columns allowed by policy
           const secureQueryResponse = await secureQuery({ user_query: "" }, token);
           const policyIds = secureQueryResponse.matched_policy_ids || [];
 
@@ -610,8 +601,8 @@ export function ConnectionNode({ id, data }) {
             body: JSON.stringify({
               matched_policy_ids: policyIds,
               connection_name: selectedConnection,
-              schema_name: selectedSchema,
-              table_name: selectedTable,
+              schema_name: [selectedSchema], 
+              table_name: [selectedTable],
             }),
           });
 
@@ -620,7 +611,18 @@ export function ConnectionNode({ id, data }) {
           }
           const allowedColumnsData = await allowedColumnsResponse.json();
           if (allowedColumnsData && allowedColumnsData.columns) {
-            setAllowedColumns(allowedColumnsData.columns);
+            const columns = allowedColumnsData.columns
+              .find(
+                (item) =>
+                  item.connection_name === selectedConnection &&
+                  item.schema === selectedSchema &&
+                  item.table_name === selectedTable
+              )
+              ?.columns.map((col) => ({
+                column_name: col.column_name,
+                datatype: col.metadata.DATA_TYPE,
+              })) || [];
+            setAllowedColumns(columns);
           } else {
             setAllowedColumns([]);
           }
@@ -664,7 +666,6 @@ export function ConnectionNode({ id, data }) {
       return updatedSettingsList;
     });
     setUserCheckedColumns(updatedCheckedColumns);
-    // Only consider allowed columns for select all logic
     const currentApiColumnsConsidered = apiColumns.filter((col) =>
       allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === col.column.toLowerCase())
     );
@@ -735,7 +736,7 @@ export function ConnectionNode({ id, data }) {
     setApiSchemas([]);
     setApiTables([]);
     setApiColumns([]);
-    setAllowedColumns([]); // Reset allowed columns too
+    setAllowedColumns([]); 
     setSelectedSchema("");
     setSelectedTable("");
     setUserCheckedColumns([]);
@@ -747,9 +748,9 @@ export function ConnectionNode({ id, data }) {
     setSelectedConnection(event.target.value);
     resetSelections();
     setUserSelections((prev) => {
-      const updatedSelections = new Map(prev); // Keep existing selections
+      const updatedSelections = new Map(prev); 
       updatedSelections.set("connection", event.target.value);
-      updatedSelections.delete("schema"); // Reset downstream selections
+      updatedSelections.delete("schema"); 
       updatedSelections.delete("table");
       return updatedSelections;
     });
@@ -759,7 +760,7 @@ export function ConnectionNode({ id, data }) {
     setSelectedSchema(event.target.value);
     setApiTables([]);
     setApiColumns([]);
-    setAllowedColumns([]); // Reset allowed columns too
+    setAllowedColumns([]); 
     setSelectedTable("");
     setUserCheckedColumns([]);
     setSettingsList([]);
@@ -767,7 +768,7 @@ export function ConnectionNode({ id, data }) {
     setUserSelections((prev) => {
       const updatedSelections = new Map(prev);
       updatedSelections.set("schema", event.target.value);
-      updatedSelections.delete("table"); // Reset downstream selections
+      updatedSelections.delete("table"); 
       return updatedSelections;
     });
   };
@@ -775,7 +776,7 @@ export function ConnectionNode({ id, data }) {
   const handleTableChange = (event) => {
     setSelectedTable(event.target.value);
     setApiColumns([]);
-    setAllowedColumns([]); // Reset allowed columns too
+    setAllowedColumns([]); 
     setUserCheckedColumns([]);
     setIsAllSelected(false);
     setSettingsList([]);
