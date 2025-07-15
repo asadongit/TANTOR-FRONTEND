@@ -257,7 +257,6 @@ function Step1({ onNext, onCancel, step1Data }) {
   const { setStepData } = useStepData();
   const { decodedToken, token } = useAuth();
 
-
   const [category, setCategory] = useState(step1Data?.category || null);
   const [type, setType] = useState(step1Data?.type || null);
   const [group, setGroup] = useState(null);
@@ -281,33 +280,32 @@ function Step1({ onNext, onCancel, step1Data }) {
   const [uiRules, setUiRules] = useState({});
   const [modalSelectedRules, setModalSelectedRules] = useState([]);
 
-  const fetchGroupNames = useCallback(() => {
-    fetch(`${window._env_?.VITE_FAST_API}/rules/listgroups`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+ const fetchGroupNames = useCallback(() => {
+  fetch(`${window._env_?.VITE_FAST_API}/rules/listgroups`, {
+    method: 'POST', 
+    headers: {
+      'Content-Type': 'application/json',
+      'accept': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ owner: decodedToken?.preferred_username }),
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (Array.isArray(data.groups)) {
+        setGroupNames(data.groups);
       }
-    )
-      .then(response => response.json())
-      .then(data => {
-        if (Array.isArray(data.groups)) {
-          setGroupNames(data.groups);
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching group names:', error);
-      });
-  }, [token]);
+    })
+    .catch(error => {
+      console.error('Error fetching group names:', error);
+    });
+}, [token]);
 
   useEffect(() => {
     fetchGroupNames();
   }, [fetchGroupNames]);
 
   useEffect(() => {
-
     if (step1Data) {
       setCategory(step1Data.category || null);
       setType(step1Data.type || null);
@@ -372,6 +370,7 @@ function Step1({ onNext, onCancel, step1Data }) {
             category,
             type,
             group: selectedGroup,
+            owner: decodedToken?.preferred_username
           }),
         }
       );
@@ -392,13 +391,11 @@ function Step1({ onNext, onCancel, step1Data }) {
     setGroup(selectedGroup);
     setShowModal(true);
     fetchGroupRules(selectedGroup);
-    // Set modal selection to current selected rules for this group
     setModalSelectedRules(
       selectedRules.filter(rule => rule.group_name === selectedGroup)
     );
   };
 
-  // Helper for modal selection
   const isModalRuleSelected = (ruleId) => {
     return modalSelectedRules.some(rule => rule.id === ruleId);
   };
@@ -438,7 +435,6 @@ function Step1({ onNext, onCancel, step1Data }) {
   const handleAddRuleSave = (rule) => {
     setUiRules(prev => {
       const groupRules = prev[group] || [];
-      // Assign a temp id for UI uniqueness
       const tempId = `ui_${Date.now()}`;
       return {
         ...prev,
@@ -503,6 +499,7 @@ function Step1({ onNext, onCancel, step1Data }) {
               <button
                 onClick={() => {
                   setCategory('Pre-built');
+                  setGroup(null);
                   setSelectedRules([]);
                   setModalSelectedRules([]);
                 }}
@@ -514,10 +511,10 @@ function Step1({ onNext, onCancel, step1Data }) {
               >
                 Pre-built
               </button>
-
               <button
                 onClick={() => {
                   setCategory('Custom');
+                  setGroup(null);
                   setSelectedRules([]);
                   setModalSelectedRules([]);
                 }}
@@ -531,12 +528,16 @@ function Step1({ onNext, onCancel, step1Data }) {
               </button>
             </div>
           </div>
-
           <div>
             <h3 className="text-lg font-medium mb-4 border-b pb-2">Type</h3>
             <div className="flex gap-4">
               <button
-                onClick={() => setType('Metadata')}
+                onClick={() => {
+                  setType('Metadata');
+                  setGroup(null);
+                  setSelectedRules([]);
+                  setModalSelectedRules([]);
+                }}
                 className={`flex-1 py-3 px-4 rounded-md border-2 transition-all ${
                   type === 'Metadata'
                     ? 'border-[#8d77ba] bg-[#8d77ba] bg-opacity-10 text-[#8d77ba] font-medium'
@@ -545,9 +546,13 @@ function Step1({ onNext, onCancel, step1Data }) {
               >
                 Metadata
               </button>
-
               <button
-                onClick={() => setType('Data')}
+                onClick={() => {
+                  setType('Data');
+                  setGroup(null);
+                  setSelectedRules([]);
+                  setModalSelectedRules([]);
+                }}
                 className={`flex-1 py-3 px-4 rounded-md border-2 transition-all ${
                   type === 'Data'
                     ? 'border-[#8d77ba] bg-[#8d77ba] bg-opacity-10 text-[#8d77ba] font-medium'
@@ -559,7 +564,6 @@ function Step1({ onNext, onCancel, step1Data }) {
             </div>
           </div>
         </div>
-
         <div className="w-full md:w-2/3">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium border-b pb-2 mb-0">Group</h3>
@@ -587,7 +591,7 @@ function Step1({ onNext, onCancel, step1Data }) {
           <div
             className="grid grid-cols-1 md:grid-cols-2 gap-6"
             style={{
-              maxHeight: '340px',
+              maxHeight: '430px',
               overflowY: 'auto',
               paddingRight: '4px'
             }}
@@ -633,7 +637,6 @@ function Step1({ onNext, onCancel, step1Data }) {
           </div>
         </div>
       </div>
-
       <div className="flex justify-between mt-10">
         <div className="text-sm text-gray-600">
           {selectedRules.length > 0 && (
@@ -662,14 +665,12 @@ function Step1({ onNext, onCancel, step1Data }) {
           </button>
         </div>
       </div>
-
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-11/12 md:w-4/5 lg:w-3/4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold text-[#8d77ba]">{group} Rules</h3>
               <div className="flex items-center gap-2">
-                {/* Add Rule button for custom category */}
                 {category === 'Custom' && (
                   <button
                     className="flex items-center gap-1 px-3 py-1.5 border-2 border-[#8d77ba] text-[#8d77ba] rounded-lg hover:bg-[#f3f0f9] transition"
@@ -687,7 +688,6 @@ function Step1({ onNext, onCancel, step1Data }) {
                 </button>
               </div>
             </div>
-
             <div className="border-t pt-4">
               {isLoading ? (
                 <div className="flex justify-center items-center h-40">
@@ -705,10 +705,8 @@ function Step1({ onNext, onCancel, step1Data }) {
                         <span className="font-medium text-gray-600 mr-2">Type:</span>
                         <span className="px-3 py-1 rounded-full bg-[#8d77ba] text-white text-sm">{type}</span>
                       </div>
-
                     </div>
                   </div>
-
                   {getAllRulesForGroup(group).length > 0 ? (
                     <div className="overflow-x-auto border border-gray-200 rounded-lg">
                       <table className="w-full border-collapse">
@@ -795,7 +793,6 @@ function Step1({ onNext, onCancel, step1Data }) {
                 </div>
               )}
             </div>
-
             <div className="flex justify-end mt-6 border-t pt-4">
               <div className="flex gap-3">
                 <button
@@ -809,7 +806,6 @@ function Step1({ onNext, onCancel, step1Data }) {
                 </button>
                 <button
                   onClick={() => {
-                    // Remove all selectedRules for this group, then add modalSelectedRules
                     setSelectedRules(prev => [
                       ...prev.filter(rule => rule.group_name !== group),
                       ...modalSelectedRules
@@ -824,7 +820,6 @@ function Step1({ onNext, onCancel, step1Data }) {
               </div>
             </div>
           </div>
-
           <AddRuleModal
             open={addRuleModalOpen}
             onClose={() => setAddRuleModalOpen(false)}
@@ -832,7 +827,6 @@ function Step1({ onNext, onCancel, step1Data }) {
           />
         </div>
       )}
-
       <AddGroupModal
         open={addGroupModalOpen}
         onClose={() => setAddGroupModalOpen(false)}
