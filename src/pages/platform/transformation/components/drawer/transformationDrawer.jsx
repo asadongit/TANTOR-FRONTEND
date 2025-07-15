@@ -30,10 +30,10 @@ const transformationOperations = [
 		id: "constantcopy",
 		name: "Constant Copy"
 	},
-	// {
-	// 	id: "rename",
-	// 	name: "Rename"
-	// },
+	{
+		id: "rename",
+		name: "Rename"
+	},
 	{
 		id: "join",
 		name: "Join"
@@ -46,10 +46,10 @@ const transformationOperations = [
 		id: "date",
 		name: "Date"
 	},
-	// {
-	// 	id: "restrictcolumns",
-	// 	name: "Restrict Columns"
-	// },
+	{
+		id: "restrictcolumns",
+		name: "Restrict Columns"
+	},
 	{
 		id: "typecast",
 		name: "Typecast"
