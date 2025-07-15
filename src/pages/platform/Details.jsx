@@ -120,7 +120,77 @@ const processedData = useMemo(() => {
 
   return (
     <div className="flex flex-col h-full p-4">
-      {/* ... UI code unchanged ... */}
+      <nav className="flex mb-4" aria-label="Breadcrumb">
+        <ol className="inline-flex items-center space-x-2">
+          {[
+            { label: "Platform", path: "/" },
+            {
+              label:
+                componentType?.charAt(0).toUpperCase() + componentType.slice(1),
+              path: `/${componentType}`,
+            },
+            { label: "Details", path: null },
+          ].map((item, index) => (
+            <li key={item.label} className="inline-flex items-center">
+              {index > 0 && (
+                <svg
+                  className="w-3 h-3 text-gray-400 mx-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 6 10"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m1 9 4-4-4-4"
+                  />
+                </svg>
+              )}
+              {item.path ? (
+                <span
+                  onClick={() => navigate(item.path)}
+                  className="text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700"
+                >
+                  {item.label}
+                </span>
+              ) : (
+                <span className="text-sm font-medium text-[#8e78b7]">
+                  {item.label}
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+      </nav>
+
+      <div className="flex flex-col md:flex-row gap-4 mb-4 items-center justify-between">
+        <h4 className="text-2xl font-medium">{heading?.toUpperCase()}</h4>
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+            />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={20}
+            />
+          </div>
+          <button
+            type="button"
+            className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
+            onClick={()=>{refetch()
+              toast.success('Refreshed sucessfully!')
+            }}
+          >
+            <RefreshCcw className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
 
       <DataTable
         columns={columns}
