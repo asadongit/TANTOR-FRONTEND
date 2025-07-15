@@ -44,7 +44,7 @@ const CustomMultiValueLabel = props => {
   );
 };
 
-function Step2({ data, onBack, onNext, step2Data, edit = false }) {
+function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSummary = false, selectedRuleIds = [] }) {
   const { stepData, setStepData } = useStepData();
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -965,6 +965,20 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
 
   const isPrebuiltEdit = data?.category.toLowerCase() === 'pre-built';
 
+  const handleBackClick = () => {
+    if (fromRuleRunSummary && selectedRuleIds.length > 0) {
+      navigate('/datagovernance/data-assurance/rules', {
+        state: { fromRuleRunSummary: true, selectedRuleIds: selectedRuleIds }
+      })
+    } else {
+      if (edit) {
+        navigate('/datagovernance/data-assurance/rules');
+      } else {
+        onBack();
+      }
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div ref={containerRef} className="flex relative" style={{ minHeight: '600px' }}>
@@ -1004,7 +1018,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
                   >
                     <div
                       className={`p-3 flex justify-between items-center cursor-pointer ${isExpanded ? 'bg-[#8d77ba] bg-opacity-10 border-b' :
-                          isActive ? 'bg-[#8d77ba] bg-opacity-5' : ''
+                        isActive ? 'bg-[#8d77ba] bg-opacity-5' : ''
                         }`}
                       onClick={() => toggleGroup(groupName)}
                     >
@@ -1072,15 +1086,15 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
                                 <td className="py-2">{rule.name}</td>
                                 <td className="py-2">
                                   <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${rule.status === 'Active' ? 'bg-green-100 text-green-700' :
-                                      'bg-gray-100 text-gray-700'
+                                    'bg-gray-100 text-gray-700'
                                     }`}>
                                     {rule.status}
                                   </span>
                                 </td>
                                 <td className="py-2">
                                   <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${rule.severity === 'High' ? 'bg-red-100 text-red-700' :
-                                      rule.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-green-100 text-green-700'
+                                    rule.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                      'bg-green-100 text-green-700'
                                     }`}>
                                     {rule.severity}
                                   </span>
@@ -1529,7 +1543,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
                   onClick={goToNextQuery}
                   disabled={getCurrentSelectedFlatIndex().idx >= getCurrentSelectedFlatIndex().total - 1}
                   className={`p-2 rounded hover:bg-gray-200 ${getCurrentSelectedFlatIndex().idx >= getCurrentSelectedFlatIndex().total - 1
-                      ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
+                    ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
                     }`}
                 >
                   <ArrowRight size={16} />
@@ -1563,13 +1577,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
 
       <div className="flex justify-end mt-6 p-4 border-t gap-3">
         <button
-          onClick={() => {
-            if (edit) {
-              navigate('/datagovernance/data-assurance/rules');
-            } else {
-              onBack();
-            }
-          }}
+          onClick={handleBackClick}
           className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           disabled={false}
         >
@@ -1578,8 +1586,8 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
         <button
           onClick={handleNextClick}
           className={`px-6 py-2 rounded-lg transition-colors ${allValidated
-              ? 'bg-[#8d77ba] text-white hover:bg-[#7a67a0]'
-              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+            ? 'bg-[#8d77ba] text-white hover:bg-[#7a67a0]'
+            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
             }`}
           disabled={!allValidated}
         >

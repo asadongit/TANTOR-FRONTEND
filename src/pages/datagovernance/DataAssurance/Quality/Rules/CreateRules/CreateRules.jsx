@@ -13,7 +13,7 @@ function CreateRulesInner() {
   const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const { stepData, setStepData, resetStepData } = useStepData();
-  const { token,decodedToken } = useAuth();
+  const { token, decodedToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -108,8 +108,6 @@ function CreateRulesInner() {
   };
 
   const handleStep3Create = async (finalJson, step1Data) => {
-    console.log("finaljson is ========>",finalJson)
-    console.log("step1 data is ====>",step1Data)
     const category = (step1Data || stepData?.step1)?.category;
     let payload;
 
@@ -164,7 +162,6 @@ function CreateRulesInner() {
       }
       return;
     }
-    console.log("final jsonnn is =====>",finalJson)
 
     if (category === "Pre-built") {
       payload = {
@@ -248,6 +245,8 @@ function CreateRulesInner() {
             onNext={handleStep2Next}
             step2Data={stepData.step2}
             edit={isEdit}
+            fromRuleRunSummary={location.state?.fromRuleRunSummary}
+            selectedRuleIds={location.state?.selectedRuleIds}
           />
         )}
 
