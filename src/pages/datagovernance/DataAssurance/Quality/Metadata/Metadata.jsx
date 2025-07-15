@@ -42,31 +42,46 @@ const SkeletonTableRow = () => (
 );
 
 const GroupScoresModal = ({ groups, onClose }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg p-6 max-w-md w-full">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Group Scores</h2>
-        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-          <X className="h-5 w-5" />
+  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl p-8 max-w-2xl w-full md:w-3/4 lg:w-1/2 transform transition-all duration-300">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Group Scores</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
+          aria-label="Close modal"
+        >
+          <X className="h-6 w-6" />
         </button>
       </div>
-      <div className="max-h-[50%] overflow-y-auto mt-4">
-        <table className="w-full">
+      <div className="max-h-[60vh] overflow-y-auto rounded-lg border border-gray-200">
+        <table className="w-full text-left">
           <thead>
-            <tr className="bg-gray-100">
-              <th className="text-left p-3">Group Name</th>
-              <th className="text-left p-3">Average Score</th>
+            <tr className="bg-[#8e78b7] text-white">
+              <th className="p-4 font-semibold text-sm uppercase tracking-wide">Group Name</th>
+              <th className="p-4 font-semibold text-sm uppercase tracking-wide">Average Score</th>
             </tr>
           </thead>
           <tbody>
             {groups.map((group, index) => (
-              <tr key={index} className="border-b">
-                <td className="p-3">{group.group_name}</td>
-                <td className="p-3">{group.average_score}%</td>
+              <tr
+                key={index}
+                className="border-b border-gray-200 hover:bg-[#8e78b7]/10 transition-colors duration-150"
+              >
+                <td className="p-4 text-gray-800">{group.group_name}</td>
+                <td className="p-4 text-gray-800 font-medium">{group.average_score}%</td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-6 flex justify-end">
+        <button
+          onClick={onClose}
+          className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d669e] transition-colors duration-200"
+        >
+          Close
+        </button>
       </div>
     </div>
   </div>
