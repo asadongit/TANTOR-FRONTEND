@@ -15,7 +15,7 @@ import { useAuth } from "../../../../context/AuthContext";
 
 export default function Builder({ handleSwitch, checked }) {
     const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
-    // var encodedToken = import.meta.env.VITE_FEDERATION_ACCESS_TOKEN;
+    // var encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
     const [columnDefs, setColumnDefs] = useState([]);

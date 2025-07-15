@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAuth } from "../../../../context/AuthContext";
 
-const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
+const hostnamev2 = window._env_?.VITE_FAST_API_V2;
 
 const fetchCDCConfigs = async (token, cdcId) => {
   if (!token || !cdcId) return null;

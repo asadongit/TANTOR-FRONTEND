@@ -29,7 +29,7 @@ useEffect(() => {
     const fetchColumnDataTypes = async () => {
       try {
         const tables = policyData.data_connection.flatMap((conn) => conn.tables);
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/datapolicy/columns`, {
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/datapolicy/columns`, {
           method: 'POST',
           headers: {
             'accept': 'application/json',

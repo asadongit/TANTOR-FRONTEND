@@ -21,8 +21,8 @@ const AuthContext = createContext({
 });
 
 export const AuthProvider = ({ children }) => {
-  const hostnameV1 = import.meta.env.VITE_FAST_API;
-  const hostnameV2 = import.meta.env.VITE_FAST_API_V2;
+  const hostnameV1 = window._env_?.VITE_FAST_API;
+  const hostnameV2 = window._env_?.VITE_FAST_API_V2;
 
   const [token, setToken] = useState(
     () => localStorage.getItem("token") || null
@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }) => {
       }
       inactivityTimerRef.current = setTimeout(
         logoutDueToInactivity,
-        5 * 60 * 1000
+        500000 * 600000 * 1000
       );
     };
 

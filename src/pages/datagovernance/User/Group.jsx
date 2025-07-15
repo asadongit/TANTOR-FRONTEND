@@ -95,7 +95,7 @@ function Group() {
     setTogglingStatus(index);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/groupstatus`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/groupstatus`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -139,7 +139,7 @@ function Group() {
     if (!groupToDelete) return;
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/deletegroup/${groupToDelete.name}`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletegroup/${groupToDelete.name}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -175,7 +175,7 @@ function Group() {
 
   const FetchRoleDashboardData = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/groupshomepage`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/groupshomepage`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -210,7 +210,7 @@ function Group() {
 
   const fetchGroupList = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/grouplist`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/grouplist`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -103,7 +103,7 @@ function Subgroup() {
 
   const fetchSubgroupsData = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/subgroupshomepage`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/subgroupshomepage`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -138,7 +138,7 @@ function Subgroup() {
 
   const fetchSubgroupListData = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/subgrouplist`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/subgrouplist`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -238,7 +238,7 @@ function Subgroup() {
 
   const updateSubgroupStatus = async (subgroupName, newStatus) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/subgroupstatus`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/subgroupstatus`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

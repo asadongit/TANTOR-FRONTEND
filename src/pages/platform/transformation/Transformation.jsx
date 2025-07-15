@@ -38,7 +38,7 @@ function Transformation() {
   });
   const {project, decodedToken, token} = useAuth()
 
-  const hostname = import.meta.env.VITE_FAST_API;
+  const hostname = window._env_?.VITE_FAST_API;
 
   const metricsData = [
     {

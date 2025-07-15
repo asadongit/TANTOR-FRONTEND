@@ -67,7 +67,7 @@ export const TargetNode = ({ id, data }) => {
   const schemaDropdownRef = useRef(null);
   const tableDropdownRef = useRef(null);
 
-  const hostnamev1 = import.meta.env.VITE_FAST_API;
+  const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
   const { getAllSelectedSourceColumns, dispatch, ACTION_TYPES } = useTransformation();
 

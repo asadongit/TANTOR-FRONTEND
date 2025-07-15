@@ -6,7 +6,7 @@ import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";
 
 const GenerateReport = () => {
-  const hostname = import.meta.env.VITE_FAST_API;
+  const hostname = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
 
   const [reportType, setReportType] = useState("");

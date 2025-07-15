@@ -10,8 +10,8 @@ import { useAuth } from "./AuthContext";
 const PlatformContext = createContext(null);
 
 export function PlatformProvider({ children }) {
-  const hostname = import.meta.env.VITE_FAST_API;
-  const hostnamev2 = import.meta.env.VITE_FAST_API_V2;
+  const hostname = window._env_?.VITE_FAST_API;
+  const hostnamev2 = window._env_?.VITE_FAST_API_V2;
   const { token, decodedToken } = useAuth();
   const [CDCData, setCDCData] = useState([]);
   const [projectData, setProjectData] = useState([]);
@@ -21,6 +21,8 @@ export function PlatformProvider({ children }) {
   const [reportData, setReportData] = useState([]);
   const [connectionData, setConnectionData] = useState([]);
   const [federationData, setFederationData] = useState([]);
+  const [projectCounts, setProjectCounts] = useState([]);
+  const [connectionTypes, setConnectionTypes] = useState([]);
 
   const requestHandler = useCallback(
     async ({ endpoint, method = "GET", setState = null, body = null }) => {
@@ -61,7 +63,7 @@ export function PlatformProvider({ children }) {
     migration: {
       data: migrationData,
       setData: setMigrationData,
-      endpoint: "/metadata-archivals",
+      endpoint: "/migrations",
     },
     purge: { data: purgeData, setData: setPurgeData, endpoint: "/purges" },
     project: {
@@ -77,7 +79,7 @@ export function PlatformProvider({ children }) {
     transformation: {
       data: archivalData,
       setData: setArchivalData,
-      endpoint: "/migrations",
+      endpoint: "/metadata-archivals",
     },
     report: { data: reportData, setData: setReportData, endpoint: "/reports" },
     federation: {

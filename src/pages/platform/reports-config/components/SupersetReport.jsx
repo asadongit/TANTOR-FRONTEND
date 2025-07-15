@@ -6,11 +6,11 @@ import { X } from "lucide-react";
 const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  const SUPERSET_URL = import.meta.env.VITE_SUPERSET_URL;
+  const SUPERSET_URL = window._env_?.VITE_REPORTING_DASHBOARD_URL;
   
-  const USERNAME = import.meta.env.VITE_SUPERSET_USERNAME;
-  const PASSWORD = import.meta.env.VITE_SUPERSET_PASSWORD;
-  const ROLE_NAME = import.meta.env.VITE_SUPERSET_ROLE_NAME;
+  const USERNAME = window._env_?.VITE_REPORTING_DASHBOARD_USERNAME;
+  const PASSWORD = window._env_?.VITE_REPORTING_DASHBOARD_PASSWORD;
+  const ROLE_NAME = window._env_?.VITE_REPORTING_DASHBOARD_ROLE_NAME;
 
   async function loginToSuperset() {
     const loginResponse = await axios.post(

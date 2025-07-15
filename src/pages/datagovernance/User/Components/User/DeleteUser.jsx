@@ -26,7 +26,7 @@ const DeleteUser = ({ isOpen, onClose, userData, onConfirmDelete }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/users/${userData.id}`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users/${userData.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

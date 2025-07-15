@@ -15,6 +15,7 @@ import {
 import toast from "react-hot-toast";
 import { decrypt } from "../../utils/Crypto";
 import { useConnectionData } from "../../hooks/platform/connection";
+import { useAllConnectionData } from "../../hooks/platform/connection";
 import { usePurgeData } from "../../hooks/platform/purge";
 import { useReportData } from "../../hooks/platform/report";
 import { useCDCData } from "../../hooks/platform/cdc";
@@ -27,6 +28,7 @@ import { getActionConfigurations } from "../../components/actionsConfig";
 import columnConfigurations from "../../components/columnsConfig";
 import { useAuth } from "../../context/AuthContext";
 
+
 const useDynamicData = (componentType) => {
   
   const hookMap = {
@@ -38,7 +40,7 @@ const useDynamicData = (componentType) => {
     transformation: useArchivalData,
     report: useReportData,
     rules: useRuleData,
-    //   federation: useFederationData,
+    metadata: useArchivalData,
   };
 
   return hookMap[componentType] ? hookMap[componentType]() : [];
@@ -47,27 +49,21 @@ const useDynamicData = (componentType) => {
 const Details = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const {token, project, hostnameV2, hostnameV1}= useAuth()
+  const { token, project, hostnameV2, hostnameV1 } = useAuth();
   const encryptedQuery = location.search.slice(1);
   const decryptedQuery = decrypt(decodeURIComponent(encryptedQuery));
-  const queryString = decryptedQuery.startsWith("/")
-    ? decryptedQuery.slice(1)
-    : decryptedQuery;
-
+  const queryString = decryptedQuery.startsWith("/") ? decryptedQuery.slice(1) : decryptedQuery;
   const params = new URLSearchParams(queryString);
+
   const componentType = params.get("componentType");
   const cardType = params.get("cardType")?.toLowerCase();
   const dataScope = params.get("dataScope");
   const heading = params.get("heading");
   
-  const columnAliases = {
-    migration: "migration",
-    cdc: "cdc",
-    purge: "purge",
-    transformation: "transformation",
-    "metadata-archivals": "migration",
-  };
   const selectedType = cardType || componentType;
+
+  const { connectionData, requestHandler, setMigrationData } = usePlatform();
+  const [filteredData, setFilteredData] = useState([]);
   
   const { data = [], isLoading, isError, refetch } = useDynamicData(selectedType);
 
@@ -77,56 +73,49 @@ const Details = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [activeMenu, setActiveMenu] = useState(null);
 
-
-
   const getColumnConfiguration = useCallback((type) => {
-    const resolvedType = columnAliases[type] || type;
     return [
       ...columnConfigurations.common,
-      ...(columnConfigurations[resolvedType] || []),
+      ...(columnConfigurations[type] || []),
     ];
   }, []);
 
-  const columns = useMemo(
-    () => getColumnConfiguration(cardType || componentType),
-    [getColumnConfiguration, cardType, componentType]
-  );
+  const columns = useMemo(() => {
+    return [
+      ...columnConfigurations.common,
+      ...(columnConfigurations["migration"] || [])
+    ];
+  }, []);
 
-  const processedData = useMemo(() => {
-    let result = [...data];
-    if (dataScope) {
-      result = result?.filter((row) => {
-        const filterMap = {
-          connections:
-            row?.status?.toLowerCase() === dataScope?.toLowerCase() ||
-            row.pool_type?.toLowerCase() === dataScope?.toLowerCase(),
-          cdc: row.source_conn_type === dataScope,
-          migration: row.source_conn_type === dataScope,
-          purge: row.source_conn_type === dataScope,
-          transformation: row.source_conn_type === dataScope,
-          rules: row.status?.toLowerCase() === dataScope?.toLocaleLowerCase(),
-        };
+  useEffect(() => {
+  if (componentType === "migration" && dataScope) {
+    const filtered = data.filter(
+      (row) =>
+        row?.source_conn_type?.toLowerCase() === dataScope.toLowerCase()
+    );
+    setFilteredData(filtered);
+  } else {
+    setFilteredData(data);
+  }
+}, [data, dataScope, componentType]);
 
-        return filterMap[selectedType] ?? true;
-      });
-    }
+const processedData = useMemo(() => {
+  let result = [...filteredData];
 
-    if (searchTerm) {
-      const lowerSearch = searchTerm.toLowerCase();
-      result = result.filter(row =>
-        Object.values(row)
-          .filter(val => typeof val === "string" || typeof val === "number")
-          .some(val =>
-            String(val).toLowerCase().includes(lowerSearch)
-          )
-      );
-    }
+  if (searchTerm) {
+    const lowerSearch = searchTerm.toLowerCase();
+    result = result.filter((row) =>
+      Object.values(row)
+        .filter((val) => typeof val === "string" || typeof val === "number")
+        .some((val) => String(val).toLowerCase().includes(lowerSearch))
+    );
+  }
 
-    return result;
-  }, [data, dataScope, componentType, searchTerm]);
+  return result;
+}, [filteredData, searchTerm]);
 
   const actions = useMemo(() => {
-    return getActionConfigurations({ token, project, hostnameV2,navigate  })[selectedType];;
+    return getActionConfigurations({ token, project, hostnameV2, navigate })[selectedType];
   }, [selectedType]);
 
   return (
@@ -210,8 +199,6 @@ const Details = () => {
         isLoading={isLoading}
         isError={isError}
         refetch={refetch}
-
-
       />
     </div>
   );

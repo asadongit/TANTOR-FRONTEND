@@ -80,7 +80,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
           Authorization: `Bearer ${token}`,
         };
         const response = await fetch(
-          `${hostnameV1}/selectTransformationColumn?fact_id=${factId}`,
+          `${window._env_?.VITE_REPORTING_BACKEND_API}/selectTransformationColumn?fact_id=${factId}`,
           { headers }
         );
 
@@ -326,7 +326,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
                   </h3>
                   <div className="flex items-center gap-2">
                     {/* Validate Button - only show for historicDate and dateRange */}
-                    {(trans.dateType === "historicDate" || trans.dateType === "dateRange") && (
+                    {((trans.dateType === "historicDate" && trans.lowerUnit.toLowerCase() !== "pfy")|| trans.dateType === "dateRange") && (
                       <button
                         onClick={() => handleValidate(index)}
                         className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md border border-blue-300 hover:border-blue-400 transition-colors"

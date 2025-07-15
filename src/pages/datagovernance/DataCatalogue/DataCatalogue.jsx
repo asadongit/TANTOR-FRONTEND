@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { MoreVertical } from "lucide-react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
@@ -90,48 +90,50 @@ const DataCatalogue = () => {
     setCards(newCards);
   };
 
-  const fetchPolicyCatalogs = useCallback(
-    async (policyId) => {
-      if (fetchedPoliciesRef.current.has(policyId)) {
-        console.log(`Skipping duplicate fetch for policy ${policyId}`);
-        return null;
+  const fetchConnectionDetails = async (policyIds) => {
+    if (policyIds.length === 0) {
+      console.log("No policy IDs to fetch");
+      return null;
+    }
+
+    try {
+      console.log(`Fetching connection details for policies: ${policyIds.join(", ")}`);
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/connection_details`, {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          policy_id: policyIds,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch connection details: ${response.status}`);
       }
 
-      try {
-        console.log(`Fetching catalog for policy ${policyId}`);
-        const response = await fetch(
-          `${import.meta.env.VITE_FAST_API}/catalog/${policyId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        fetchedPoliciesRef.current.add(policyId);
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch catalog for policy ${policyId}`);
-        }
-        return await response.json();
-      } catch (error) {
-        console.error(`Error fetching catalog for policy ${policyId}:`, error);
-        return null;
-      }
-    },
-    [token]
-  );
+      const data = await response.json();
+      policyIds.forEach((id) => fetchedPoliciesRef.current.add(id));
+      return data;
+    } catch (error) {
+      console.error("Error fetching connection details:", error);
+      return null;
+    }
+  };
 
   const fetchRecentAccess = async (policyIds) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/recentaccess`, {
-        method: 'POST',
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/recentaccess`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
-          id: policyIds
-        })
+          id: policyIds,
+        }),
       });
 
       if (!response.ok) {
@@ -142,7 +144,7 @@ const DataCatalogue = () => {
       setRecentAccess(data.connections || []);
       return data;
     } catch (error) {
-      console.error('Error fetching recent access:', error);
+      console.error("Error fetching recent access:", error);
       setRecentAccess([]);
       return [];
     }
@@ -179,22 +181,19 @@ const DataCatalogue = () => {
           return;
         }
 
-        console.log(`Fetching catalogs for ${unfetchedPolicyIds.length} policies`);
-        const catalogPromises = unfetchedPolicyIds.map(fetchPolicyCatalogs);
-        const catalogResults = await Promise.all(catalogPromises);
+        console.log(`Fetching connection details for ${unfetchedPolicyIds.length} policies`);
+        const connectionDetails = await fetchConnectionDetails(unfetchedPolicyIds);
 
         if (!isMounted) return;
 
-        const validCatalogs = catalogResults.filter(
-          (catalog) => catalog !== null
-        );
-
-        setCatalogData((prevCatalogs) => {
-          const newCatalogs = [...prevCatalogs, ...validCatalogs];
-          updateCatalogCounts(newCatalogs);
-          updateTableData(newCatalogs);
-          return newCatalogs;
-        });
+        if (connectionDetails) {
+          setCatalogData((prevCatalogs) => {
+            const newCatalogs = [...prevCatalogs, ...connectionDetails];
+            updateCatalogCounts(newCatalogs);
+            updateTableData(newCatalogs);
+            return newCatalogs;
+          });
+        }
 
         // Fetch recent access data
         await fetchRecentAccess(policyIds);
@@ -208,54 +207,59 @@ const DataCatalogue = () => {
     };
 
     const updateCatalogCounts = (catalogs) => {
-      let totalDatabases = 0;
-      let totalSchemas = 0;
-      let totalTables = 0;
+      const uniqueConnections = new Set();
+      const uniqueSchemas = new Set();
+      const uniqueTables = new Set();
       let totalColumns = 0;
 
-      catalogs.forEach((catalog) => {
-        if (catalog && catalog.counts) {
-          totalDatabases += catalog.counts.databases || 0;
-          totalSchemas += catalog.counts.schemas || 0;
-          totalTables += catalog.counts.tables || 0;
-          totalColumns += catalog.counts.columns || 0;
-        }
+      catalogs.forEach((item) => {
+        if (item.connection_name) uniqueConnections.add(item.connection_name);
+        if (item.table_schema) uniqueSchemas.add(`${item.connection_name}.${item.table_schema}`);
+        if (item.table_name) uniqueTables.add(`${item.connection_name}.${item.table_schema}.${item.table_name}`);
+        if (item.column_name) totalColumns += 1;
       });
 
       setCards((prevCards) => {
         const updatedCards = [...prevCards];
-        updatedCards[0].count = totalDatabases;
-        updatedCards[1].count = totalSchemas;
-        updatedCards[2].count = totalTables;
+        updatedCards[0].count = uniqueConnections.size;
+        updatedCards[1].count = uniqueSchemas.size;
+        updatedCards[2].count = uniqueTables.size;
         updatedCards[3].count = totalColumns;
         return updatedCards;
       });
     };
 
     const updateTableData = (catalogs) => {
-      const newTableData = [];
+      const connectionSchemaMap = new Map();
 
-      catalogs.forEach((catalog, catalogIndex) => {
-        if (catalog && catalog.data_connection) {
-          catalog.data_connection.forEach((conn, index) => {
-            const connectionName = conn.connection;
-            const schema = conn.schema.split('.')[1];
-            const tableCount = conn.tables ? conn.tables.length : 0;
-            const columnCount = conn.columns ? conn.columns.length : 0;
-
-            newTableData.push({
-              id: `${catalogIndex + 1}.${index + 1}`,
-              connectionName: connectionName,
-              Database: connectionName,
-              Schema: schema,
-              Tables: tableCount.toString(),
-              Columns: columnCount.toString(),
-              CreatedDate: new Date().toLocaleDateString(),
-              updatedDate: new Date().toLocaleDateString(),
-            });
+      catalogs.forEach((item) => {
+        const key = `${item.connection_name}.${item.table_schema}`;
+        if (!connectionSchemaMap.has(key)) {
+          connectionSchemaMap.set(key, {
+            connectionName: item.connection_name,
+            Database: item.connection_name,
+            Schema: item.table_schema,
+            Tables: new Set(),
+            Columns: [],
+            CreatedDate: item.created_at,
+            updatedDate: item.updated_at,
           });
         }
+        const conn = connectionSchemaMap.get(key);
+        if (item.table_name) conn.Tables.add(item.table_name);
+        if (item.column_name) conn.Columns.push(item.column_name);
       });
+
+      const newTableData = Array.from(connectionSchemaMap.entries()).map(([key, data], index) => ({
+        id: `${index + 1}`,
+        connectionName: data.connectionName,
+        Database: data.Database,
+        Schema: data.Schema,
+        Tables: data.Tables.size.toString(),
+        Columns: data.Columns.length.toString(),
+        CreatedDate: new Date(data.CreatedDate).toLocaleDateString(),
+        updatedDate: new Date(data.updatedDate).toLocaleDateString(),
+      }));
 
       setTableData(newTableData);
     };
@@ -265,11 +269,11 @@ const DataCatalogue = () => {
     return () => {
       isMounted = false;
     };
-  }, [token, fetchPolicyCatalogs]);
+  }, [token]);
 
   return (
     <div>
-      <Breadcrumb/>
+      <Breadcrumb />
       <h1 className="text-2xl font-semibold">Data Catalogue</h1>
       <div className="mt-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -288,9 +292,6 @@ const DataCatalogue = () => {
                     </div>
                     <h3 className="text-lg font-semibold">{card.title}</h3>
                   </div>
-                  {/* <button className="p-1 rounded-lg hover:bg-gray-100">
-                    <MoreVertical className="h-4 w-4" />
-                  </button> */}
                 </div>
                 <div className="text-6xl font-semibold text-gray-800 mt-6">
                   {card.count.toString().padStart(2, "0")}
@@ -333,16 +334,18 @@ const DataCatalogue = () => {
             </div>
           </div>
           <div className="space-y-4">
-            {recentAccess.length > 0 ? recentAccess.map((item, index) => (
-              <div
-                key={index}
-                className="pb-4 border-b border-gray-100 last:border-0"
-              >
-                <span className="text-gray-600">
-                  {index + 1}. {item}
-                </span>
-              </div>
-            )) : (
+            {recentAccess.length > 0 ? (
+              recentAccess.map((item, index) => (
+                <div
+                  key={index}
+                  className="pb-4 border-b border-gray-100 last:border-0"
+                >
+                  <span className="text-gray-600">
+                    {index + 1}. {item}
+                  </span>
+                </div>
+              ))
+            ) : (
               <div className="pb-4 border-b border-gray-100">
                 <span className="text-gray-500">No recent access data available</span>
               </div>
@@ -376,9 +379,9 @@ const DataCatalogue = () => {
                   <td className="p-4">{item.id}</td>
                   <td className="p-4">{item.connectionName}</td>
                   <td className="p-4">{item.Database}</td>
-                  <td className="p-4 text-gray-500 underline">{item.Schema}</td>
-                  <td className="p-4 text-gray-500 underline">{item.Tables}</td>
-                  <td className="p-4 text-gray-500 underline">{item.Columns}</td>
+                  <td className="p-4 text-gray-500">{item.Schema}</td>
+                  <td className="p-4 text-gray-500">{item.Tables}</td>
+                  <td className="p-4 text-gray-500">{item.Columns}</td>
                   <td className="p-4">{item.CreatedDate}</td>
                   <td className="p-4">{item.updatedDate}</td>
                 </tr>

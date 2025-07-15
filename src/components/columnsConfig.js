@@ -1,3 +1,5 @@
+import Metadata from "../pages/datagovernance/DataAssurance/Quality/Metadata/Metadata";
+
 const columnConfigurations = {
     common: [],
   
@@ -39,6 +41,18 @@ const columnConfigurations = {
     ],
   
     migration: [
+      { key: "workflow_name", label: "Name", sortable: true },
+      { key: "project", label: "Project", sortable: true },
+      { key: "created_by", label: "Created By", sortable: true },
+      { key: "source_conn_name", label: "Source Connection", sortable: true },
+      { key: "target_conn_name", label: "Target Connection", sortable: true },
+      { key: "source_table", label: "Source Table", sortable: true },
+      { key: "target_table", label: "Target Table", sortable: true },
+      { key: "status", label: "Status", sortable: true },
+      { label: "Action", sortable: false },
+    ],
+
+    metadata: [
       { key: "metadata_name", label: "Name", sortable: true },
       { key: "project", label: "Project", sortable: true },
       { key: "created_by", label: "Created By", sortable: true },

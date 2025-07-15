@@ -180,7 +180,7 @@ const Project = () => {
       icon: "material-symbols-light:two-pager-store-outline",
       bgcolor: "bg-[#FFC93F] bg-opacity-25",
       iconcolor: "text-orange-700",
-      title: "Migration",
+      title: "Metadata",
       count: cardData?.metadata || 0,
     },
     {
@@ -201,7 +201,7 @@ const Project = () => {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
-      title: "Transformation",
+      title: "Migration",
       count: cardData?.migration || 0,
     },
   ];
