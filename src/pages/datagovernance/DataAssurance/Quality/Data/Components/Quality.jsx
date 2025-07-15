@@ -106,7 +106,7 @@ function Quality({ query }) {
         });
         if (!tableResponse.ok) throw new Error('Failed to fetch table data');
         const tableData = await tableResponse.json();
-        const mappedTableData = tableData.map((item, index) => {
+        const mappedTableData = tableData && Array.isArray(tableData) ? tableData.map((item, index) => {
           const tableParts = item.table.split('.');
           return {
             id: `#${(index + 1).toString().padStart(2, '0')}`,
@@ -118,7 +118,7 @@ function Quality({ query }) {
             groups: item.groups,
             lastRun: item.last_run_date ? new Date(item.last_run_date).toLocaleDateString('en-GB') : 'N/A',
           };
-        });
+        }) : [];
         setTableData(mappedTableData);
       } catch (error) {
         console.error('Error fetching overall quality data:', error);

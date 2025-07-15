@@ -143,7 +143,7 @@ const Metadata = () => {
         }
 
         const tableData = await tableResponse.json();
-        const mappedTableData = tableData.map((item, index) => ({
+        const mappedTableData = tableData && Array.isArray(tableData) ? tableData.map((item, index) => ({
           id: (index + 1).toString(),
           connection: item.connection_type,
           database: item.schema.split('.')[0],
@@ -151,7 +151,7 @@ const Metadata = () => {
           overall: `${item.overall_score}%`,
           groups: item.groups,
           lastRun: new Date(item.last_run_date).toLocaleDateString('en-GB')
-        }));
+        })) : [];
         setTableData(mappedTableData);
 
       } catch (error) {
@@ -286,10 +286,9 @@ const Metadata = () => {
       <style>{rotateAnimation}</style>
 
       {toast.show && (
-        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
-          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
-          'bg-red-100 text-red-800 border-l-4 border-red-500'
-        }`}>
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+            'bg-red-100 text-red-800 border-l-4 border-red-500'
+          }`}>
           <Icon
             icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
             className="h-5 w-5"
@@ -444,13 +443,12 @@ const Metadata = () => {
                   key={index}
                   onClick={() => goToPage(index + 1)}
                   disabled={isLoading}
-                  className={`px-3 py-1 mx-1 rounded-md ${
-                    currentPage === index + 1
+                  className={`px-3 py-1 mx-1 rounded-md ${currentPage === index + 1
                       ? 'bg-[#8e78b7] text-white'
                       : isLoading
-                      ? 'text-gray-300 cursor-not-allowed'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
                 >
                   {index + 1}
                 </button>
