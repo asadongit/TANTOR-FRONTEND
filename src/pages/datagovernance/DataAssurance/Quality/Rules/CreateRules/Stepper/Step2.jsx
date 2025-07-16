@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Trash2, PlayCircle, RefreshCw, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Trash2, PlayCircle, RefreshCw, X, Info } from 'lucide-react';
 import AceEditor from 'react-ace';
 import Select, { components } from 'react-select';
 import { useStepData } from './StepContext';
@@ -1320,13 +1320,18 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                         <div className="flex gap-2 items-center">
                           {statusIcon}
                           <button
-                            className="p-2 border rounded hover:bg-gray-100"
+                            className="p-2 border rounded hover:bg-gray-100 relative group"
                             type="button"
-                            title="Run SQL"
+                            title="Run SQL (required)"
                             onClick={() => handleRunSQL(groupNames[activeGroupIndex], activeRuleIndex, idx)}
                             disabled={!conn.checked}
                           >
-                            <PlayCircle size={18} />
+                            <div className="relative">
+                              <PlayCircle size={18} />
+                              <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 text-red-500 text-xs font-bold">
+                                *
+                              </span>
+                            </div>
                           </button>
                           <button
                             className="p-2 border rounded hover:bg-gray-100"
@@ -1480,8 +1485,18 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           </div>
 
           <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center">
-              <h3 className="text-md font-medium">Query Editor</h3>
+            <div className="flex items-center w-full"> {/* Added w-full to ensure full width */}
+              <div className="flex justify-between w-full pr-4"> {/* Ensure justify-between applies to full width */}
+                <h3 className="text-md font-medium">Query</h3>
+                {isCustomCreate && (
+                  <div
+                    className="p-1 rounded-full text-gray-600 hover:bg-gray-200 cursor-pointer"
+                    title="Custom Rule Information"
+                  >
+                    <Info size={20} />
+                  </div>
+                )}
+              </div>
               {searchResults.length > 0 && currentSearchIndex >= 0 && searchResults[currentSearchIndex] && (
                 <span className="ml-3 text-xs text-gray-500 italic">
                   Showing results from: {searchResults[currentSearchIndex].ruleName} ({searchResults[currentSearchIndex].groupName})
