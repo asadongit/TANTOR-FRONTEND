@@ -22,9 +22,9 @@ const Rules = () => {
   const [isPopupLoading, setIsPopupLoading] = useState(false);
   const [showScheduler, setShowScheduler] = useState(false);
   const [schedulerData, setSchedulerData] = useState({
-    freq: 'Daily',
-    date: '2016-02-10',
-    time: '18:00',
+    freq: '',
+    date: '',
+    time: '',
     rule_ids: []
   });
   const rowsPerPage = 5;
@@ -1035,6 +1035,7 @@ useEffect(() => {
                 onChange={(e) => setSchedulerData(prev => ({ ...prev, freq: e.target.value }))}
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
               >
+                <option value="Daily">Once</option>
                 <option value="Daily">Daily</option>
                 <option value="Weekly">Weekly</option>
                 <option value="Monthly">Monthly</option>
