@@ -150,8 +150,31 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
   const [isLoadingSchemas, setIsLoadingSchemas] = useState({});
   const [isLoadingTables, setIsLoadingTables] = useState({});
   const [isLoadingColumns, setIsLoadingColumns] = useState({});
+  const initialStep2Data = stepData.step2 || step2Data;
 
-  const [validationStatus, setValidationStatusState] = useState(() => stepData.validationStatus || {});
+  const [validationStatus, setValidationStatusState] = useState(() => {
+    const initialStatus = stepData.validationStatus || {};
+    const newStatus = {};
+    if (Array.isArray(initialStep2Data)) {
+      initialStep2Data.forEach(ruleObj => {
+        const groupName = ruleObj.group;
+        const ruleId = ruleObj.rule?.id || ruleObj.id || ruleObj.ruleId;
+        const ruleIdx = data.rules[groupName]?.findIndex(r => r.id === ruleId);
+
+        if (ruleIdx !== -1) {
+          const queryKey = `${groupName}__${ruleIdx}`;
+          (ruleObj.connection_details || []).forEach((conn, connIdx) => {
+            const connKey = `${queryKey}__${connIdx}`;
+            newStatus[connKey] = {
+              ruleQueryStatus: initialStatus[connKey]?.ruleQueryStatus || 'validate_again', 
+              scoreQueryStatus: initialStatus[connKey]?.scoreQueryStatus || (data?.category.toLowerCase() === 'custom' ? 'validate_again' : null), 
+            };
+          });
+        }
+      });
+    }
+    return newStatus;
+  });
 
   useEffect(() => {
     setStepData(prev => ({ ...prev, validationStatus }));
@@ -166,11 +189,19 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
   const setValidationStatus = useCallback((updater) => {
     setValidationStatusState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      return { ...prev, ...next };
+      const updated = { ...prev };
+      for (const key in next) {
+        if (updated[key]) {
+          updated[key] = { ...updated[key], ...next[key] };
+        } else {
+          updated[key] = next[key];
+        }
+      }
+      return updated;
     });
   }, []);
 
-  const initialStep2Data = stepData.step2 || step2Data;
+
 
   const [expandedGroups, setExpandedGroups] = useState({});
   const [leftPanelWidth, setLeftPanelWidth] = useState(30);
@@ -316,6 +347,8 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
 
   const handleQueryChange = (value, isScoreQuery = false) => {
     const currentGroup = groupNames[activeGroupIndex];
+    const queryKey = `${currentGroup}__${activeRuleIndex}`; 
+
     if (isScoreQuery) {
       const updatedScoreQueries = { ...scoreQueries };
       if (updatedScoreQueries[currentGroup] && updatedScoreQueries[currentGroup][activeRuleIndex]) {
@@ -330,13 +363,16 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
       }
     }
 
-    const queryKey = `${currentGroup}__${activeRuleIndex}`;
     const conns = connectionsByQuery[queryKey] || [];
     setValidationStatus(prev => {
       const updated = { ...prev };
       conns.forEach((_, idx) => {
         const connKey = `${queryKey}__${idx}`;
-        delete updated[connKey];
+        if (isScoreQuery) {
+          updated[connKey] = { ...(updated[connKey] || {}), scoreQueryStatus: 'validate_again' };
+        } else {
+          updated[connKey] = { ...(updated[connKey] || {}), ruleQueryStatus: 'validate_again' };
+        }
       });
       return updated;
     });
@@ -628,25 +664,27 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
         const idx = newConnections.findIndex(conn => conn.id === changedId);
         if (idx !== -1) {
           const connKey = `${queryKey}__${idx}`;
-          if (
-            prev[connKey] === 'success' ||
-            prev[connKey] === 'error' ||
-            prev[connKey] === 'pending' ||
-            prev[connKey] === 'validate_again'
-          ) {
-            updated[connKey] = "validate_again";
-          } else {
-            delete updated[connKey];
-          }
+          updated[connKey] = {
+            ruleQueryStatus: 'validate_again',
+            scoreQueryStatus: data?.category.toLowerCase() === 'custom' ? 'validate_again' : null,
+          };
         }
       }
       if (isDuplicate) {
         newConnections.forEach((conn, idx) => {
           const connKey = `${queryKey}__${idx}`;
-          if (!(connKey in prev)) {
-            delete updated[connKey];
+          if (!prev[connKey]) { 
+            updated[connKey] = {
+              ruleQueryStatus: 'validate_again',
+              scoreQueryStatus: 'validate_again',
+            };
           }
         });
+        for (const key in updated) {
+          if (key.startsWith(queryKey + '__') && !newConnections.some((c, i) => `${queryKey}__${i}` === key)) {
+            delete updated[key];
+          }
+        }
       }
       return updated;
     });
@@ -913,6 +951,8 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
       if (!rule || !conn) continue;
 
       const queryField = isScoreQuery ? 'score_query' : 'query';
+      const statusField = isScoreQuery ? 'scoreQueryStatus' : 'ruleQueryStatus'; 
+
       const replacedQuery = replacePlaceholders(
         rule[queryField],
         conn.connection,
@@ -921,7 +961,10 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
         conn.column
       );
 
-      setValidationStatus(prev => ({ ...prev, [connKey]: 'pending' }));
+      setValidationStatus(prev => ({
+        ...prev,
+        [connKey]: { ...(prev[connKey] || {}), [statusField]: 'pending' }
+      }));
 
       try {
         const res = await fetch(`${window._env_?.VITE_FAST_API}/rules/executerule`, {
@@ -933,12 +976,21 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           body: JSON.stringify({ query: replacedQuery }),
         });
         if (res.ok) {
-          setValidationStatus(prev => ({ ...prev, [connKey]: 'success' }));
+          setValidationStatus(prev => ({
+            ...prev,
+            [connKey]: { ...(prev[connKey] || {}), [statusField]: 'success' }
+          }));
         } else {
-          setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
+          setValidationStatus(prev => ({
+            ...prev,
+            [connKey]: { ...(prev[connKey] || {}), [statusField]: 'error' }
+          }));
         }
       } catch {
-        setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
+        setValidationStatus(prev => ({
+          ...prev,
+          [connKey]: { ...(prev[connKey] || {}), [statusField]: 'error' }
+        }));
       }
     }
   };
@@ -947,25 +999,43 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     let all = true;
     groupNames.forEach((groupName) => {
       (queries[groupName] || []).forEach((ruleObj, ruleIdx) => {
-        if (!selectedRules[groupName]?.has(ruleObj.id)) return;
+        if (!selectedRules[groupName]?.has(ruleObj.id)) return; 
+
         const queryKey = `${groupName}__${ruleIdx}`;
         const conns = connectionsByQuery[queryKey] || [];
+
         conns.forEach((conn, connIdx) => {
-          if (!conn.checked) return;
+          if (!conn.checked) return; 
+
           const connKey = `${queryKey}__${connIdx}`;
-          if (validationStatus[connKey] !== 'success') {
-            all = false;
+          const currentValidation = validationStatus[connKey];
+
+          if (data?.category.toLowerCase() === 'pre-built') {
+            if (currentValidation?.ruleQueryStatus !== 'success') {
+              all = false;
+              return; 
+            }
+          } else { 
+            if (currentValidation?.ruleQueryStatus !== 'success' || currentValidation?.scoreQueryStatus !== 'success') {
+              all = false;
+              return; 
+            }
           }
         });
+        if (!all) return; 
       });
+      if (!all) return; 
     });
     return all;
   })();
 
   const getUniqueValidationStatuses = () => {
     const statuses = new Set(['all']);
-    Object.values(validationStatus).forEach(status => {
-      if (status) statuses.add(status);
+    Object.values(validationStatus).forEach(connStatus => {
+      if (connStatus.ruleQueryStatus) statuses.add(connStatus.ruleQueryStatus);
+      if (connStatus.scoreQueryStatus && data?.category.toLowerCase() === 'custom') {
+        statuses.add(connStatus.scoreQueryStatus);
+      }
     });
     return Array.from(statuses);
   };
@@ -975,16 +1045,27 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     const connKey = `${queryKey}__${connIdx}`;
     const rule = queries[groupName]?.[ruleIdx];
     const scoreRule = scoreQueries[groupName]?.[ruleIdx];
+    const currentValidation = validationStatus[connKey] || {};
 
-    if (validationFilter !== 'all') {
-      if (validationStatus[connKey] !== validationFilter) {
-        return false;
+    const meetsValidationFilter = () => {
+      if (validationFilter === 'all') return true;
+      if (data?.category.toLowerCase() === 'pre-built') {
+        return currentValidation.ruleQueryStatus === validationFilter;
+      } else { 
+        if (validationFilter === 'success') {
+          return currentValidation.ruleQueryStatus === 'success' && currentValidation.scoreQueryStatus === 'success';
+        }
+        return currentValidation.ruleQueryStatus === validationFilter || currentValidation.scoreQueryStatus === validationFilter;
       }
+    };
+
+    if (!meetsValidationFilter()) {
+      return false;
     }
 
     if (querySearchText && rule && scoreRule) {
-      const queryMatch = rule.query.toLowerCase().includes(querySearchText.toLowerCase());
-      const scoreQueryMatch = scoreRule.score_query.toLowerCase().includes(querySearchText.toLowerCase());
+      const queryMatch = (rule.query || '').toLowerCase().includes(querySearchText.toLowerCase());
+      const scoreQueryMatch = (scoreRule.score_query || '').toLowerCase().includes(querySearchText.toLowerCase());
       return queryMatch || scoreQueryMatch;
     }
 
@@ -1459,16 +1540,33 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                     label: `${conn.connection}.${conn.schema[0] || ''}.${conn.table[0] || ''}.${c}`,
                   }));
 
-                  const connKey = `${groupNames[activeGroupIndex]}__${activeRuleIndex}__${idx}`;
                   let statusIcon = null;
-                  if (validationStatus[connKey] === 'success') {
-                    statusIcon = <span className="text-green-600 text-xs font-semibold mr-2">Valid Query</span>;
-                  } else if (validationStatus[connKey] === 'error') {
-                    statusIcon = <span className="text-red-600 text-xs font-semibold mr-2">Invalid Query</span>;
-                  } else if (validationStatus[connKey] === 'pending') {
-                    statusIcon = <span className="text-yellow-600 text-xs font-semibold mr-2">Validating...</span>;
-                  } else if (validationStatus[connKey] === 'validate_again') {
-                    statusIcon = <span className="text-orange-600 text-xs font-semibold mr-2">Validate Again</span>;
+                  const connKey = `${groupNames[activeGroupIndex]}__${activeRuleIndex}__${idx}`;
+                  const currentConnValidation = validationStatus[connKey];
+
+                  const ruleStatus = currentConnValidation?.ruleQueryStatus;
+                  const scoreStatus = currentConnValidation?.scoreQueryStatus;
+
+                  if (data?.category.toLowerCase() === 'pre-built') {
+                    if (ruleStatus === 'success') {
+                      statusIcon = <span className="text-green-600 text-xs font-semibold mr-2">Valid Query</span>;
+                    } else if (ruleStatus === 'error') {
+                      statusIcon = <span className="text-red-600 text-xs font-semibold mr-2">Invalid Query</span>;
+                    } else if (ruleStatus === 'pending') {
+                      statusIcon = <span className="text-yellow-600 text-xs font-semibold mr-2">Validating Rule...</span>;
+                    } else if (ruleStatus === 'validate_again') {
+                      statusIcon = <span className="text-orange-600 text-xs font-semibold mr-2">Validate Rule</span>;
+                    }
+                  } else { 
+                    if (ruleStatus === 'success' && scoreStatus === 'success') {
+                      statusIcon = <span className="text-green-600 text-xs font-semibold mr-2">Valid Queries</span>;
+                    } else if (ruleStatus === 'error' || scoreStatus === 'error') {
+                      statusIcon = <span className="text-red-600 text-xs font-semibold mr-2">Invalid Queries</span>;
+                    } else if (ruleStatus === 'pending' || scoreStatus === 'pending') {
+                      statusIcon = <span className="text-yellow-600 text-xs font-semibold mr-2">Validating...</span>;
+                    } else if (ruleStatus === 'validate_again' || scoreStatus === 'validate_again' || !ruleStatus || !scoreStatus) {
+                      statusIcon = <span className="text-orange-600 text-xs font-semibold mr-2">Validate Queries</span>;
+                    }
                   }
 
                   return (
@@ -1487,7 +1585,37 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                           <span className="font-medium">Connection {idx + 1}</span>
                         </div>
                         <div className="flex gap-2 items-center">
-                          {statusIcon}
+                          {/* Rule Query Status */}
+                          {currentConnValidation?.ruleQueryStatus === 'success' && (
+                            <span className="text-green-600 text-xs font-semibold">Rule Query: Valid</span>
+                          )}
+                          {currentConnValidation?.ruleQueryStatus === 'error' && (
+                            <span className="text-red-600 text-xs font-semibold">Rule Query: Invalid</span>
+                          )}
+                          {currentConnValidation?.ruleQueryStatus === 'pending' && (
+                            <span className="text-yellow-600 text-xs font-semibold">Rule Query: Validating...</span>
+                          )}
+                          {(currentConnValidation?.ruleQueryStatus === 'validate_again' || !currentConnValidation?.ruleQueryStatus) && (
+                            <span className="text-orange-600 text-xs font-semibold">Rule Query: Validate</span>
+                          )}
+
+                          {/* Score Query Status (Only for custom categories) */}
+                          {data?.category.toLowerCase() === 'custom' && (
+                            <>
+                              {currentConnValidation?.scoreQueryStatus === 'success' && (
+                                <span className="text-green-600 text-xs font-semibold">Score Query: Valid</span>
+                              )}
+                              {currentConnValidation?.scoreQueryStatus === 'error' && (
+                                <span className="text-red-600 text-xs font-semibold">Score Query: Invalid</span>
+                              )}
+                              {currentConnValidation?.scoreQueryStatus === 'pending' && (
+                                <span className="text-yellow-600 text-xs font-semibold">Score Query: Validating...</span>
+                              )}
+                              {(currentConnValidation?.scoreQueryStatus === 'validate_again' || !currentConnValidation?.scoreQueryStatus) && (
+                                <span className="text-orange-600 text-xs font-semibold">Score Query: Validate</span>
+                              )}
+                            </>
+                          )}
                           <button
                             className="p-2 border rounded hover:bg-gray-100 relative group"
                             type="button"
