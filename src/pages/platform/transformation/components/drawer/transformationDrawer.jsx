@@ -1299,10 +1299,14 @@ export const TransformationDrawer = ({
 				}
 			});
 
-			// Also filter out any existing columns that are in the dropped list
+			// Filter out dropped LEFT table columns only (not right table columns with same name)
 			const filteredLeftCols = leftCols.filter(col => {
 				const colName = typeof col === "object" && col.name ? col.name : col;
-				return !droppedColumnsSet.has(colName);
+				// Only remove if it's a dropped column AND it's from the original left table
+				const originalLeftColNames = Array.isArray(leftNode.data.columns)
+					? leftNode.data.columns.map(c => typeof c === "object" && c.name ? c.name : c)
+					: [];
+				return !(droppedColumnsSet.has(colName) && originalLeftColNames.includes(colName));
 			});
 
 			if ((appended || filteredLeftCols.length !== leftCols.length) && typeof leftNode.data.onDataChange === "function") {

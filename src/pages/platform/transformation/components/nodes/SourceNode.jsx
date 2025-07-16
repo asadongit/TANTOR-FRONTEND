@@ -410,6 +410,15 @@ export const SourceNode = ({ id, data }) => {
         columns: currentColumns.map(col => col.name)
       }
     });
+
+    // Store original column selections for JSON generation
+    dispatch({
+      type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: currentColumns.map(col => col.name)
+      }
+    });
   }, [selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures]);
 
   const getColumnsForTable = (tableName) => {
