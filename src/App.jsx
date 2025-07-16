@@ -36,7 +36,6 @@ import {
 import TantorLogin from "./pages/login";
 import { BusinessHeader } from "./pages/platform/Federation/BusinessView/BusinessHeader";
 import TransformationCanvas from "./pages/platform/transformation/components/TransformationCanvas";
-import { PlatformProvider } from "./context/platformContext";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -50,7 +49,6 @@ function App() {
     <Router>
       <AuthProvider>
         <Toaster />
-        <PlatformProvider>
         <ModalProvider>
           <Routes>
             <Route
@@ -301,7 +299,6 @@ function App() {
             
           </Routes>
         </ModalProvider>
-        </PlatformProvider>
       </AuthProvider>
     </Router>
   );

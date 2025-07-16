@@ -31,7 +31,6 @@ import PurgeCanvas from '../pages/platform/purge/PurgeCanvas';
 import Details from '../pages/platform/Details';
 import EditCDC from '../pages/platform/cdc/components/Edit';
 import ViewCDC from '../pages/platform/cdc/components/viewCDC/View'
-import Migration from '../pages/platform/metadata/Metadata';
 
 
 export function PlatformRoutes() {
@@ -44,9 +43,9 @@ export function PlatformRoutes() {
         <Route path="/report" element={<Reports />} />
         <Route path="/generateReport" element={<GenerateReport />} />
         <Route path="/reports/viewer" element={<ReportViewer />} />
-        <Route path="/migration" element={<Metadata />} />
+        <Route path="/migration" element={<Archival />} />
         <Route path="/dataview" element={<DataView />} />
-        <Route path="/metadata" element={<Archival/>} />
+        <Route path="/metadata" element={<Metadata />} />
         <Route path="/purge" element={<Purge />} />
         <Route path="/cdc" element={<CDC />} />
         <Route path="/cdc/editcdc/:cdcId" element={<EditCDC />} />

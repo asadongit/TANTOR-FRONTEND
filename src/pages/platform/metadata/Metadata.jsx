@@ -12,10 +12,10 @@ const Migration = () => {
   return (
       <div>
         {isLoggedIn ? (
-          <MigrationList/>
+          <MetadataList/>
         ) : (
           <>
-            <MigrationEmpty/>
+            <MetadataEmpty/>
           </>
         )}
       </div>
