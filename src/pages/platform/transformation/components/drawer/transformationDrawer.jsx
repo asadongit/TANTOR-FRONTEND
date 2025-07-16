@@ -92,6 +92,8 @@ const TransformationItem = memo(({
   handleOperatorChange,
   setTransformationValidity,
   appendColumnsFromRightToLeft,
+  updateJoinsSourceColumns,
+  updateJoinsParam,
 }) => {
   const renderSourceAndOperationRow = () => (
     <div className="flex gap-2 mb-3">
@@ -209,8 +211,9 @@ const TransformationItem = memo(({
           {...commonProps}
           allDataframes={allDataframes}
           dataframeColumns={dataframeColumns}
-          updateJoinsParam={(id, name, value) => updateFilterParam(id, name, value)}
+          updateJoinsParam={updateJoinsParam}
           appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
+          updateJoinsSourceColumns={updateJoinsSourceColumns}
         />;
       case 'filter':
         let operatorOptions = FILTER_OPERATORS;
@@ -586,6 +589,26 @@ export const TransformationDrawer = ({
 		setTransformations(ts => ts.map(t =>
 			t.id === id ? { ...t, params: { ...t.params, [paramName]: value } } : t
 		));
+	}, []);
+
+	// Add new function to handle joins column updates
+	const updateJoinsSourceColumns = useCallback((sourceId, combinedColumns) => {
+		// Update local dataframe columns state
+		setDataframeColumns(prev => ({
+			...prev,
+			[sourceId]: combinedColumns
+		}));
+
+		// Update the actual node data
+		if (window.allNodes && Array.isArray(window.allNodes)) {
+			const sourceNode = window.allNodes.find(n =>
+				(n.data?.alias === sourceId) || (n.id === sourceId)
+			);
+
+			if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
+				sourceNode.data.onDataChange({ columns: combinedColumns });
+			}
+		}
 	}, []);
 
 	const updateFilterParam = useCallback((id, paramName, value) => {
@@ -1299,24 +1322,17 @@ export const TransformationDrawer = ({
 				}
 			});
 
-			// Filter out dropped LEFT table columns only (not right table columns with same name)
-			const filteredLeftCols = leftCols.filter(col => {
-				const colName = typeof col === "object" && col.name ? col.name : col;
-				// Only remove if it's a dropped column AND it's from the original left table
-				const originalLeftColNames = Array.isArray(leftNode.data.columns)
-					? leftNode.data.columns.map(c => typeof c === "object" && c.name ? c.name : c)
-					: [];
-				return !(droppedColumnsSet.has(colName) && originalLeftColNames.includes(colName));
-			});
+			// For joins, don't filter out columns here - let the joins component handle it
+			const finalCols = leftCols;
 
-			if ((appended || filteredLeftCols.length !== leftCols.length) && typeof leftNode.data.onDataChange === "function") {
-				// Update the node data with filtered columns
-				leftNode.data.onDataChange({ columns: filteredLeftCols });
+			if (appended && typeof leftNode.data.onDataChange === "function") {
+				// Update the node data
+				leftNode.data.onDataChange({ columns: finalCols });
 
 				// Also update our local dataframe columns state
 				setDataframeColumns(prev => ({
 					...prev,
-					[leftDfId]: filteredLeftCols
+					[leftDfId]: finalCols
 				}));
 
 				// If force update flag is true, refresh all transformations
@@ -1450,6 +1466,8 @@ export const TransformationDrawer = ({
 								 appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
 								 handleOperatorChange={handleOperatorChange}
 								 setTransformationValidity={setTransformationValidity}
+								 updateJoinsSourceColumns={updateJoinsSourceColumns}
+								 updateJoinsParam={updateJoinsParam}
 								/>
 							</div>
 						))}
