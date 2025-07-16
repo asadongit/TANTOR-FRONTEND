@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify-icon/react';
 import { Search, RefreshCcw, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react';
 import { useAuth } from '../../../../../../context/AuthContext.jsx';
+import { secureQuery } from '../../../../DataCatalogue/Components/function.js';
 
 const GroupScoresModal = ({ groups, onClose }) => (
   <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
@@ -155,6 +156,8 @@ function Quality({ query }) {
 
       setIsLoading(true);
       try {
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const ids = secureQueryResponse.matched_policy_ids || [];
         const response = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/overview`, {
           method: 'POST',
           headers: {
@@ -165,6 +168,7 @@ function Quality({ query }) {
           body: JSON.stringify({
             query: selectedQuery,
             owner: decodedToken?.preferred_username,
+            policy_ids:ids
           }),
         });
         if (!response.ok) throw new Error('Failed to fetch dataset quality data');
