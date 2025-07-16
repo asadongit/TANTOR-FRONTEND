@@ -43,8 +43,9 @@ export const JoinsOperationFields = ({
             logicalOperator: "&" // For conditions after the first one
         }
     ]);
-    // Add state to track original source columns
-    const [originalSourceColumns, setOriginalSourceColumns] = useState({});
+    // Add state to track original source columns - captured once when source is selected
+    const [originalSourceColumnsForDropdown, setOriginalSourceColumnsForDropdown] = useState({});
+    const [originalRightColumnsForDropdown, setOriginalRightColumnsForDropdown] = useState({});
     // Add state to track dropped columns
     const [droppedLeftColumns, setDroppedLeftColumns] = useState([]);
     const [droppedRightColumns, setDroppedRightColumns] = useState([]);
@@ -150,9 +151,11 @@ export const JoinsOperationFields = ({
         updateJoinsParam(transformation.id, "join_condition", "");
     };
 
+    // Capture original source columns when source dataframe is selected
     useEffect(() => {
         if (transformation.source_dataframe && dataframeColumns[transformation.source_dataframe]) {
-            setOriginalSourceColumns(prev => {
+            // Only set if not already captured for this dataframe
+            setOriginalSourceColumnsForDropdown(prev => {
                 if (!prev[transformation.source_dataframe]) {
                     return {
                         ...prev,
@@ -164,7 +167,25 @@ export const JoinsOperationFields = ({
                 return prev;
             });
         }
-    }, [transformation.source_dataframe, dataframeColumns]);
+    }, [transformation.source_dataframe]);
+
+    // Capture original right columns when right dataframe is selected
+    useEffect(() => {
+        if (transformation.params.right_dataframe && dataframeColumns[transformation.params.right_dataframe]) {
+            // Only set if not already captured for this dataframe
+            setOriginalRightColumnsForDropdown(prev => {
+                if (!prev[transformation.params.right_dataframe]) {
+                    return {
+                        ...prev,
+                        [transformation.params.right_dataframe]: dataframeColumns[transformation.params.right_dataframe].map(col =>
+                            typeof col === "object" && col !== null ? col.name : col
+                        )
+                    };
+                }
+                return prev;
+            });
+        }
+    }, [transformation.params.right_dataframe]);
 
     const handleRightDataframeChange = (e) => {
         const newRightDf = e.target.value;
@@ -180,22 +201,20 @@ export const JoinsOperationFields = ({
         setDroppedRightColumns([]);
         updateJoinsParam(transformation.id, "drop_right_dataframe_collist", []);
 
+        // When right dataframe changes, append ALL columns first
         if (
             appendColumnsFromRightToLeft &&
             transformation.source_dataframe &&
             newRightDf &&
             transformation.source_dataframe !== newRightDf
         ) {
-            const droppedColumns = [
-                ...(transformation.params.drop_left_dataframe_collist || []),
-                ...(transformation.params.drop_right_dataframe_collist || [])
-            ];
-
+            // Include any existing dropped left columns when appending
+            const existingDroppedLeft = transformation.params.drop_left_dataframe_collist || [];
             appendColumnsFromRightToLeft(
                 transformation.source_dataframe,
                 newRightDf,
                 true,
-                droppedColumns
+                existingDroppedLeft // Only consider dropped left columns initially
             );
 
             setTimeout(() => {
@@ -203,7 +222,7 @@ export const JoinsOperationFields = ({
                     detail: {
                         sourceId: transformation.source_dataframe,
                         rightId: newRightDf,
-                        droppedColumns: droppedColumns
+                        droppedColumns: existingDroppedLeft
                     }
                 }));
             }, 100);
@@ -308,35 +327,45 @@ export const JoinsOperationFields = ({
         });
     };
 
+    // New function to get original column options for dropdowns
+    const getOriginalColumnOptions = (dfId, isRight = false) => {
+        const originalColumns = isRight ? originalRightColumns[dfId] : originalSourceColumns[dfId];
+        if (!originalColumns) return [];
+
+        return originalColumns.map(colName => ({
+            value: colName,
+            label: colName,
+            key: colName
+        }));
+    };
+
+    // Function to get static original column options for drop dropdowns
+    const getStaticOriginalColumnOptions = (dfId, isRight = false) => {
+        const originalColumns = isRight
+            ? originalRightColumnsForDropdown[dfId]
+            : originalSourceColumnsForDropdown[dfId];
+
+        if (!originalColumns) return [];
+
+        return originalColumns.map(colName => ({
+            value: colName,
+            label: colName,
+            key: colName
+        }));
+    };
+
     const getLeftColumnOptions = (leftDfId) => {
-        if (
-            !leftDfId ||
-            !dataframeColumns[leftDfId]
-        ) {
+        const originalColumns = originalSourceColumnsForDropdown[leftDfId] || [];
+
+        if (!originalColumns || originalColumns.length === 0) {
             return [];
         }
 
-        const originalColumns = originalSourceColumns[leftDfId] || [];
-
-        return dataframeColumns[leftDfId]
-            .filter(col => {
-                const colName = typeof col === "object" && col !== null ? col.name : col;
-                return originalColumns.includes(colName);
-            })
-            .map(col => {
-                if (typeof col === "object" && col !== null) {
-                    return {
-                        value: col.name,
-                        label: col.name,
-                        key: col.name
-                    };
-                }
-                return {
-                    value: col,
-                    label: col,
-                    key: col
-                };
-            });
+        return originalColumns.map(colName => ({
+            value: colName,
+            label: colName,
+            key: colName
+        }));
     };
 
     useEffect(() => {
@@ -464,6 +493,7 @@ export const JoinsOperationFields = ({
         updateJoinsParam(transformation.id, "drop_left_dataframe_collist", columns);
         setDroppedLeftColumns(columns);
 
+        // Update the datasource to show the effect of dropping columns
         if (transformation.params.right_dataframe && transformation.source_dataframe) {
             const allDroppedColumns = [...columns, ...droppedRightColumns];
             appendColumnsFromRightToLeft(
@@ -474,11 +504,13 @@ export const JoinsOperationFields = ({
             );
         }
     };
+
     const handleDropRightColumnsChange = (selected) => {
         const columns = selected ? selected.map(opt => opt.value) : [];
         updateJoinsParam(transformation.id, "drop_right_dataframe_collist", columns);
         setDroppedRightColumns(columns);
 
+        // Update the datasource to show the effect of dropping columns
         if (transformation.params.right_dataframe && transformation.source_dataframe) {
             const allDroppedColumns = [...droppedLeftColumns, ...columns];
             appendColumnsFromRightToLeft(
@@ -643,7 +675,7 @@ export const JoinsOperationFields = ({
                         <label className="block text-xs text-gray-700 mb-1">Drop Left Table Columns</label>
                         <Select
                             isMulti
-                            options={getColumnOptions(transformation.source_dataframe)}
+                            options={getStaticOriginalColumnOptions(transformation.source_dataframe, false)}
                             value={
                                 (transformation.params.drop_left_dataframe_collist || []).map(col => ({
                                     value: col,
@@ -672,7 +704,7 @@ export const JoinsOperationFields = ({
                         <label className="block text-xs text-gray-700 mb-1">Drop Right Table Columns</label>
                         <Select
                             isMulti
-                            options={getColumnOptions(transformation.params.right_dataframe)}
+                            options={getStaticOriginalColumnOptions(transformation.params.right_dataframe, true)}
                             value={
                                 (transformation.params.drop_right_dataframe_collist || []).map(col => ({
                                     value: col,
