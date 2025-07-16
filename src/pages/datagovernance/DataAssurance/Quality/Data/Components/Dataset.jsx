@@ -15,6 +15,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight as RightIcon,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { useAuth } from '../../../../../../context/AuthContext.jsx';
 import { secureQuery } from '../../../../DataCatalogue/Components/function.js';
@@ -45,6 +47,8 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
   const [pageNo, setPageNo] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [selectedQuery, setSelectedQuery] = useState(query);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isRefreshingConnections, setIsRefreshingConnections] = useState(false);
 
   const debounce = (func, delay) => {
     let timeoutId;
@@ -63,39 +67,43 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
     [setQuerySuccess, query]
   );
 
-  useEffect(() => {
-    const fetchConnections = async () => {
-      try {
-        setConnectionsLoading(true);
-        const secureQueryResponse = await secureQuery({ user_query: '' }, token);
-        const policyIds = secureQueryResponse.matched_policy_ids || [];
+  const fetchConnections = async () => {
+    try {
+      setConnectionsLoading(true);
+      setIsRefreshingConnections(true);
+      const secureQueryResponse = await secureQuery({ user_query: '' }, token);
+      const policyIds = secureQueryResponse.matched_policy_ids || [];
 
-        if (policyIds.length === 0) {
-          setConnections([]);
-          setConnectionsLoading(false);
-          return;
-        }
-
-        const response = await fetch(`${hostnameV1}/connections/list`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ matched_policy_ids: policyIds }),
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch connections');
-        const connectionsData = await response.json();
-        setConnections(connectionsData);
-      } catch (error) {
-        console.error('Error fetching connections:', error);
-        toast.error('Failed to load connections');
-      } finally {
+      if (policyIds.length === 0) {
+        setConnections([]);
         setConnectionsLoading(false);
+        setIsRefreshingConnections(false);
+        return;
       }
-    };
 
+      const response = await fetch(`${hostnameV1}/connections/list`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ matched_policy_ids: policyIds }),
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch connections');
+      const connectionsData = await response.json();
+      setConnections(connectionsData);
+      setExpandedItems({});
+    } catch (error) {
+      console.error('Error fetching connections:', error);
+      toast.error('Failed to load connections');
+    } finally {
+      setConnectionsLoading(false);
+      setIsRefreshingConnections(false);
+    }
+  };
+
+  useEffect(() => {
     fetchConnections();
   }, [token, hostnameV1]);
 
@@ -467,210 +475,276 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
     setIsEditorMaximized(false);
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
+  const refreshConnections = async () => {
+    await fetchConnections();
+    toast.success('Connections refreshed');
+  };
+
   return (
     <div className="w-full h-[calc(100vh-190px)]">
       <div className="flex gap-5 h-full">
         {!(isEditorMaximized || isOutputMaximized) && (
-          <div className="w-[280px] bg-white rounded-lg shadow-sm overflow-hidden flex flex-col">
-            <div className="flex border-b border-gray-200">
-              <button
-                className={`flex-1 py-3 font-medium flex items-center justify-center gap-2
-                  ${activeTab === 'explorer' ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]' : 'text-gray-600'}`}
-                onClick={() => setActiveTab('explorer')}
-              >
-                <Database size={16} />
-                Explorer
-              </button>
-              <button
-                className={`flex-1 py-3 font-medium flex items-center justify-center gap-2
-                  ${activeTab === 'history' ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]' : 'text-gray-600'}`}
-                onClick={() => setActiveTab('history')}
-              >
-                <Clock size={16} />
-                History
-              </button>
-            </div>
+          <div 
+            className={`bg-white rounded-lg shadow-sm overflow-hidden flex flex-col relative 
+              ${isSidebarCollapsed ? 'w-[40px]' : 'w-[280px]'} transition-all duration-200`}
+          >
+            {isSidebarCollapsed ? (
+              <div className="flex flex-col items-center py-4 gap-5">
+                <button
+                  onClick={() => {
+                    setIsSidebarCollapsed(false);
+                    setActiveTab('explorer');
+                  }}
+                  className="text-gray-500 hover:text-[#8d77ba] p-1 transition-colors"
+                  title="Open Explorer"
+                >
+                  <Database size={20} />
+                </button>
+                <button
+                  onClick={() => {
+                    setIsSidebarCollapsed(false);
+                    setActiveTab('history');
+                  }}
+                  className="text-gray-500 hover:text-[#8d77ba] p-1 transition-colors"
+                  title="Open History"
+                >
+                  <Clock size={20} />
+                </button>
+                <button
+                  onClick={toggleSidebar}
+                  className="absolute bottom-2 p-1 text-gray-500 hover:text-[#8d77ba] hover:bg-gray-100 rounded transition-colors"
+                  title="Expand sidebar"
+                >
+                  <ChevronsRight size={22} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex border-b border-gray-200">
+                  <button
+                    className={`flex-1 py-3 font-medium flex items-center justify-center gap-2
+                      ${activeTab === 'explorer' ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]' : 'text-gray-600'}`}
+                    onClick={() => setActiveTab('explorer')}
+                  >
+                    <Database size={16} />
+                    Explorer
+                  </button>
+                  <button
+                    className={`flex-1 py-3 font-medium flex items-center justify-center gap-2
+                      ${activeTab === 'history' ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]' : 'text-gray-600'}`}
+                    onClick={() => setActiveTab('history')}
+                  >
+                    <Clock size={16} />
+                    History
+                  </button>
+                </div>
 
-            <div className="flex items-center mx-4 my-3 px-2.5 py-1.5 border border-gray-200 rounded bg-gray-50">
-              <Search size={14} className="text-gray-500" />
-              <input
-                type="text"
-                placeholder={activeTab === 'explorer' ? 'Search databases...' : 'Search history...'}
-                className="w-full border-none bg-transparent px-2 text-xs outline-none"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <X size={14} className="text-gray-500 cursor-pointer" onClick={() => setSearchTerm('')} />
-              )}
-            </div>
-
-            <div className="flex-1 overflow-y-auto">
-              {activeTab === 'explorer' ? (
-                <div>
-                  {connectionsLoading ? (
-                    <div className="flex justify-center items-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#8d77ba]"></div>
-                    </div>
-                  ) : connections.length === 0 ? (
-                    <div className="text-gray-500 text-sm p-4">No connections available</div>
-                  ) : (
-                    connections
-                      .filter((connection) =>
-                        connection.connection_name.toLowerCase().includes(searchTerm.toLowerCase())
-                      )
-                      .map((connection) => {
-                        const connectionId = `conn-${connection.connection_name}`;
-                        const connectionSchemas = schemas[connection.connection_name];
-                        const isExpanded = expandedItems[connectionId];
-
-                        return (
-                          <div key={connection.connection_name} className="mb-0.5">
-                            {renderDatabaseLabel(connection)}
-
-                            {isExpanded && (
-                              <div className="pl-6">
-                                {connectionSchemas === 'loading' && (
-                                  <div className="px-4 py-1 text-sm text-gray-500">Loading schemas...</div>
-                                )}
-                                {connectionSchemas === 'error' && (
-                                  <div className="px-4 py-1 text-sm text-red-500">Error loading schemas</div>
-                                )}
-                                {Array.isArray(connectionSchemas) && connectionSchemas.length === 0 && (
-                                  <div className="px-4 py-1 text-sm text-gray-500">No schemas available</div>
-                                )}
-                                {Array.isArray(connectionSchemas) &&
-                                  connectionSchemas.length > 0 &&
-                                  connectionSchemas
-                                    .filter((schema) => schema.toLowerCase().includes(searchTerm.toLowerCase()))
-                                    .map((schema, schemaIndex) => {
-                                      const schemaId = `schema-${connection.connection_name}-${schema}`;
-                                      const tableData = tables[`${connection.connection_name}-${schema}`];
-                                      const isSchemaExpanded = expandedItems[schemaId];
-
-                                      return (
-                                        <div key={`${schema}-${schemaIndex}`}>
-                                          {renderSchemaLabel(connection.connection_name, schema)}
-
-                                          {isSchemaExpanded && (
-                                            <div className="pl-6">
-                                              {tableData === 'loading' && (
-                                                <div className="px-4 py-1 text-sm text-gray-500">
-                                                  Loading tables...
-                                                </div>
-                                              )}
-                                              {tableData === 'error' && (
-                                                <div className="px-4 py-1 text-sm text-red-500">
-                                                  Error loading tables
-                                                </div>
-                                              )}
-                                              {Array.isArray(tableData) && tableData.length === 0 && (
-                                                <div className="px-4 py-1 text-sm text-gray-500">
-                                                  No tables available
-                                                </div>
-                                              )}
-                                              {Array.isArray(tableData) &&
-                                                tableData.length > 0 &&
-                                                tableData
-                                                  .filter((table) =>
-                                                    table.toLowerCase().includes(searchTerm.toLowerCase())
-                                                  )
-                                                  .map((table, tableIndex) => {
-                                                    const tableId = `table-${connection.connection_name}-${schema}-${table}`;
-                                                    const columnData =
-                                                      columns[`${connection.connection_name}-${schema}-${table}`];
-                                                    const isTableExpanded = expandedItems[tableId];
-
-                                                    return (
-                                                      <div key={`${table}-${tableIndex}`}>
-                                                        {renderTableLabel(connection.connection_name, schema, table)}
-
-                                                        {isTableExpanded && (
-                                                          <div className="pl-6">
-                                                            {columnData === 'loading' && (
-                                                              <div className="px-4 py-1 text-sm text-gray-500">
-                                                                Loading columns...
-                                                              </div>
-                                                            )}
-                                                            {columnData === 'error' && (
-                                                              <div className="px-4 py-1 text-sm text-red-500">
-                                                                Error loading columns
-                                                              </div>
-                                                            )}
-                                                            {Array.isArray(columnData) && columnData.length === 0 && (
-                                                              <div className="px-4 py-1 text-sm text-gray-500">
-                                                                No columns available
-                                                              </div>
-                                                            )}
-                                                            {Array.isArray(columnData) &&
-                                                              columnData.length > 0 &&
-                                                              columnData
-                                                                .filter((column) =>
-                                                                  column.column
-                                                                    .toLowerCase()
-                                                                    .includes(searchTerm.toLowerCase())
-                                                                )
-                                                                .map((column, columnIndex) => (
-                                                                  <div key={`${column.column}-${columnIndex}`}>
-                                                                    {renderColumnLabel(column)}
-                                                                  </div>
-                                                                ))}
-                                                          </div>
-                                                        )}
-                                                      </div>
-                                                    );
-                                                  })}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
+                <div className="flex items-center mx-4 my-3 px-2.5 py-1.5 border border-gray-200 rounded bg-gray-50">
+                  <Search size={14} className="text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder={activeTab === 'explorer' ? 'Search connections...' : 'Search history...'}
+                    className="w-full border-none bg-transparent px-2 text-xs outline-none"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  {searchTerm && (
+                    <X size={14} className="text-gray-500 cursor-pointer" onClick={() => setSearchTerm('')} />
                   )}
                 </div>
-              ) : (
-                <div>
-                  {historyLoading ? (
-                    <div className="flex justify-center items-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#8d77ba]"></div>
-                    </div>
-                  ) : historyItems.length === 0 ? (
-                    <div className="text-gray-500 text-sm pl-4">No history available</div>
-                  ) : (
-                    historyItems
-                      .filter((item) => item.toLowerCase().includes(searchTerm.toLowerCase()))
-                      .map((item, index) => (
-                        <div
-                          key={index}
-                          className={`px-4 py-2 text-sm cursor-pointer rounded
-                          ${selectedTable.includes(item) ? 'text-[#8d77ba] bg-[#8d77ba10]' : 'text-gray-700 hover:bg-gray-50'}`}
-                          onClick={() => {
-                            let found = false;
-                            for (const connection of connections) {
-                              const schemasList = schemas[connection.connection_name] || [];
-                              for (const schema of schemasList) {
-                                const tablesList = tables[`${connection.connection_name}-${schema}`] || [];
-                                if (tablesList.includes(item)) {
-                                  handleSelectTable(connection.connection_name, schema, item);
-                                  found = true;
-                                  break;
-                                }
-                              }
-                              if (found) break;
-                            }
-                          }}
+
+                <div className="flex-1 overflow-y-auto">
+                  {activeTab === 'explorer' ? (
+                    <div>
+                      <div className="flex justify-between items-center px-4 pb-1 border-b border-gray-100">
+                        <span className="text-sm font-medium text-gray-600">Connections</span>
+                        <button 
+                          onClick={refreshConnections}
+                          disabled={isRefreshingConnections}
+                          className="text-gray-500 hover:text-[#8d77ba] p-1 transition-colors"
+                          title="Refresh connections"
                         >
-                          {item}
+                          <RefreshCw 
+                            size={14} 
+                            className={isRefreshingConnections ? 'animate-spin' : ''} 
+                          />
+                        </button>
+                      </div>
+                      {connectionsLoading ? (
+                        <div className="flex justify-center items-center py-4">
+                          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#8d77ba]"></div>
                         </div>
-                      ))
+                      ) : connections.length === 0 ? (
+                        <div className="text-gray-500 text-sm p-4">No connections available</div>
+                      ) : (
+                        connections
+                          .filter((connection) =>
+                            connection.connection_name.toLowerCase().includes(searchTerm.toLowerCase())
+                          )
+                          .map((connection) => {
+                            const connectionId = `conn-${connection.connection_name}`;
+                            const connectionSchemas = schemas[connection.connection_name];
+                            const isExpanded = expandedItems[connectionId];
+
+                            return (
+                              <div key={connection.connection_name} className="mb-0.5">
+                                {renderDatabaseLabel(connection)}
+                                {isExpanded && (
+                                  <div className="pl-6">
+                                    {connectionSchemas === 'loading' && (
+                                      <div className="px-4 py-1 text-sm text-gray-500">Loading schemas...</div>
+                                    )}
+                                    {connectionSchemas === 'error' && (
+                                      <div className="px-4 py-1 text-sm text-red-500">Error loading schemas</div>
+                                    )}
+                                    {Array.isArray(connectionSchemas) && connectionSchemas.length === 0 && (
+                                      <div className="px-4 py-1 text-sm text-gray-500">No schemas available</div>
+                                    )}
+                                    {Array.isArray(connectionSchemas) &&
+                                      connectionSchemas.length > 0 &&
+                                      connectionSchemas
+                                        .filter((schema) => schema.toLowerCase().includes(searchTerm.toLowerCase()))
+                                        .map((schema, schemaIndex) => {
+                                          const schemaId = `schema-${connection.connection_name}-${schema}`;
+                                          const tableData = tables[`${connection.connection_name}-${schema}`];
+                                          const isSchemaExpanded = expandedItems[schemaId];
+
+                                          return (
+                                            <div key={`${schema}-${schemaIndex}`}>
+                                              {renderSchemaLabel(connection.connection_name, schema)}
+                                              {isSchemaExpanded && (
+                                                <div className="pl-6">
+                                                  {tableData === 'loading' && (
+                                                    <div className="px-4 py-1 text-sm text-gray-500">
+                                                      Loading tables...
+                                                    </div>
+                                                  )}
+                                                  {tableData === 'error' && (
+                                                    <div className="px-4 py-1 text-sm text-red-500">
+                                                      Error loading tables
+                                                    </div>
+                                                  )}
+                                                  {Array.isArray(tableData) && tableData.length === 0 && (
+                                                    <div className="px-4 py-1 text-sm text-gray-500">
+                                                      No tables available
+                                                    </div>
+                                                  )}
+                                                  {Array.isArray(tableData) &&
+                                                    tableData.length > 0 &&
+                                                    tableData
+                                                      .filter((table) =>
+                                                        table.toLowerCase().includes(searchTerm.toLowerCase())
+                                                      )
+                                                      .map((table, tableIndex) => {
+                                                        const tableId = `table-${connection.connection_name}-${schema}-${table}`;
+                                                        const columnData =
+                                                          columns[`${connection.connection_name}-${schema}-${table}`];
+                                                        const isTableExpanded = expandedItems[tableId];
+
+                                                        return (
+                                                          <div key={`${table}-${tableIndex}`}>
+                                                            {renderTableLabel(connection.connection_name, schema, table)}
+                                                            {isTableExpanded && (
+                                                              <div className="pl-6">
+                                                                {columnData === 'loading' && (
+                                                                  <div className="px-4 py-1 text-sm text-gray-500">
+                                                                    Loading columns...
+                                                                  </div>
+                                                                )}
+                                                                {columnData === 'error' && (
+                                                                  <div className="px-4 py-1 text-sm text-red-500">
+                                                                    Error loading columns
+                                                                  </div>
+                                                                )}
+                                                                {Array.isArray(columnData) && columnData.length === 0 && (
+                                                                  <div className="px-4 py-1 text-sm text-gray-500">
+                                                                    No columns available
+                                                                  </div>
+                                                                )}
+                                                                {Array.isArray(columnData) &&
+                                                                  columnData.length > 0 &&
+                                                                  columnData
+                                                                    .filter((column) =>
+                                                                      column.column
+                                                                        .toLowerCase()
+                                                                        .includes(searchTerm.toLowerCase())
+                                                                    )
+                                                                    .map((column, columnIndex) => (
+                                                                      <div key={`${column.column}-${columnIndex}`}>
+                                                                        {renderColumnLabel(column)}
+                                                                      </div>
+                                                                    ))}
+                                                              </div>
+                                                            )}
+                                                          </div>
+                                                        );
+                                                      })}
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      {historyLoading ? (
+                        <div className="flex justify-center items-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#8d77ba]"></div>
+                        </div>
+                      ) : historyItems.length === 0 ? (
+                        <div className="text-gray-500 text-sm pl-4">No history available</div>
+                      ) : (
+                        historyItems
+                          .filter((item) => item.toLowerCase().includes(searchTerm.toLowerCase()))
+                          .map((item, index) => (
+                            <div
+                              key={index}
+                              className={`px-4 py-2 text-sm cursor-pointer rounded
+                              ${selectedTable.includes(item) ? 'text-[#8d77ba] bg-[#8d77ba10]' : 'text-gray-700 hover:bg-gray-50'}`}
+                              onClick={() => {
+                                let found = false;
+                                for (const connection of connections) {
+                                  const schemasList = schemas[connection.connection_name] || [];
+                                  for (const schema of schemasList) {
+                                    const tablesList = tables[`${connection.connection_name}-${schema}`] || [];
+                                    if (tablesList.includes(item)) {
+                                      handleSelectTable(connection.connection_name, schema, item);
+                                      found = true;
+                                      break;
+                                    }
+                                  }
+                                  if (found) break;
+                                }
+                              }}
+                            >
+                              {item}
+                            </div>
+                          ))
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
+            {!isSidebarCollapsed && (
+              <button
+                onClick={toggleSidebar}
+                className="absolute bottom-2 right-2 p-1 text-gray-500 hover:text-[#8d77ba] hover:bg-gray-100 rounded transition-colors"
+                title="Collapse sidebar"
+              >
+                <ChevronsLeft size={22} />
+              </button>
+            )}
           </div>
         )}
 

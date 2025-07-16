@@ -15,7 +15,6 @@ import {
 import toast from "react-hot-toast";
 import { decrypt } from "../../utils/Crypto";
 import { useConnectionData } from "../../hooks/platform/connection";
-import { useAllConnectionData } from "../../hooks/platform/connection";
 import { usePurgeData } from "../../hooks/platform/purge";
 import { useReportData } from "../../hooks/platform/report";
 import { useCDCData } from "../../hooks/platform/cdc";
@@ -28,7 +27,6 @@ import { getActionConfigurations } from "../../components/actionsConfig";
 import columnConfigurations from "../../components/columnsConfig";
 import { useAuth } from "../../context/AuthContext";
 
-
 const useDynamicData = (componentType) => {
   
   const hookMap = {
@@ -40,7 +38,7 @@ const useDynamicData = (componentType) => {
     transformation: useArchivalData,
     report: useReportData,
     rules: useRuleData,
-    metadata: useArchivalData,
+    //   federation: useFederationData,
   };
 
   return hookMap[componentType] ? hookMap[componentType]() : [];
@@ -59,11 +57,17 @@ const Details = () => {
   const cardType = params.get("cardType")?.toLowerCase();
   const dataScope = params.get("dataScope");
   const heading = params.get("heading");
+
+  const columnAliases = {
+    migration: "migration",
+    cdc: "cdc",
+    purge: "purge",
+    transformation: "transformation",
+    "metadata-archivals": "migration",
+  };
+
   
   const selectedType = cardType || componentType;
-
-  const { connectionData, requestHandler, setMigrationData } = usePlatform();
-  const [filteredData, setFilteredData] = useState([]);
   
   const { data = [], isLoading, isError, refetch } = useDynamicData(selectedType);
 
@@ -74,45 +78,50 @@ const Details = () => {
   const [activeMenu, setActiveMenu] = useState(null);
 
   const getColumnConfiguration = useCallback((type) => {
+    const resolvedType = columnAliases[type] || type;
     return [
       ...columnConfigurations.common,
-      ...(columnConfigurations[type] || []),
+      ...(columnConfigurations[resolvedType] || []),
     ];
   }, []);
 
-  const columns = useMemo(() => {
-    return [
-      ...columnConfigurations.common,
-      ...(columnConfigurations["migration"] || [])
-    ];
-  }, []);
+  const columns = useMemo(
+    () => getColumnConfiguration(cardType || componentType),
+    [getColumnConfiguration, cardType, componentType]
+  );
 
-  useEffect(() => {
-  if (componentType === "migration" && dataScope) {
-    const filtered = data.filter(
-      (row) =>
-        row?.source_conn_type?.toLowerCase() === dataScope.toLowerCase()
-    );
-    setFilteredData(filtered);
-  } else {
-    setFilteredData(data);
-  }
-}, [data, dataScope, componentType]);
 
 const processedData = useMemo(() => {
-  let result = [...filteredData];
+    let result = [...data];
+    if (dataScope) {
+      result = result?.filter((row) => {
+        const filterMap = {
+          connections:
+            row?.status?.toLowerCase() === dataScope?.toLowerCase() ||
+            row.pool_type?.toLowerCase() === dataScope?.toLowerCase(),
+          cdc: row.source_conn_type === dataScope,
+          migration: row.source_conn_type === dataScope,
+          purge: row.source_conn_type === dataScope,
+          transformation: row.source_conn_type === dataScope,
+        };
+        return filterMap[selectedType] ?? true;
+      });
+    }
 
-  if (searchTerm) {
-    const lowerSearch = searchTerm.toLowerCase();
-    result = result.filter((row) =>
-      Object.values(row)
-        .filter((val) => typeof val === "string" || typeof val === "number")
-        .some((val) => String(val).toLowerCase().includes(lowerSearch))
-    );
-  }
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      result = result.filter(row =>
+        Object.values(row)
+          .filter(val => typeof val === "string" || typeof val === "number")
+          .some(val =>
+            String(val).toLowerCase().includes(lowerSearch)
+          )
+      );
+    }
 
-  return result;
-}, [filteredData, searchTerm]);
+    return result;
+  }, [data, dataScope, componentType, searchTerm]);
+
 
   const actions = useMemo(() => {
     return getActionConfigurations({ token, project, hostnameV2, navigate })[selectedType];

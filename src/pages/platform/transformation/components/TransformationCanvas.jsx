@@ -346,6 +346,69 @@ function TransformationCanvasContent() {
         return;
       }
 
+      const consolidatedProcedureExecution = {};
+      let globalProcCounter = 1;
+
+      Object.entries(transformationData.procedureExecution).forEach(([nodeId, procedureArray]) => {
+        const node = nodes.find(n => n.id === nodeId);
+        if (node && node.type === 'source' && node.data.alias && Array.isArray(procedureArray)) {
+          const beforeSourceReadProcs = [];
+          const afterSourceReadProcs = [];
+          procedureArray.forEach(procedureData => {
+            const procData = {
+              EventType: procedureData.EventType,
+              Dataset: node.data.alias,
+              ProcName: procedureData.ProcName,
+              ProcParams: procedureData.ProcParams,
+              ProcOrder: procedureData.ProcOrder
+            };
+            if (procedureData.EventType === "BeforeSourceRead") {
+              beforeSourceReadProcs.push(procData);
+            } else if (procedureData.EventType === "AfterSourceRead") {
+              afterSourceReadProcs.push(procData);
+            }
+          });
+          beforeSourceReadProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
+          afterSourceReadProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
+          [...beforeSourceReadProcs, ...afterSourceReadProcs].forEach(procData => {
+            const uniqueKey = `Proc${globalProcCounter}`;
+            consolidatedProcedureExecution[uniqueKey] = procData;
+            globalProcCounter++;
+          });
+        }
+      });
+
+      Object.entries(transformationData.procedureExecution).forEach(([nodeId, procedureArray]) => {
+        const node = nodes.find(n => n.id === nodeId);
+        if (node && node.type === 'target' && node.data.alias && Array.isArray(procedureArray)) {
+          const beforeTargetWriteProcs = [];
+          const afterTargetWriteProcs = [];
+          procedureArray.forEach(procedureData => {
+            const procData = {
+              EventType: procedureData.EventType,
+              Dataset: node.data.alias,
+              ProcName: procedureData.ProcName,
+              ProcParams: procedureData.ProcParams,
+              ProcOrder: procedureData.ProcOrder
+            };
+            if (procedureData.EventType === "BeforeTargetWrite") {
+              beforeTargetWriteProcs.push(procData);
+            } else if (procedureData.EventType === "AfterTargetWrite") {
+              afterTargetWriteProcs.push(procData);
+            }
+          });
+          beforeTargetWriteProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
+          afterTargetWriteProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
+          [...beforeTargetWriteProcs, ...afterTargetWriteProcs].forEach(procData => {
+            const uniqueKey = `Proc${globalProcCounter}`;
+            consolidatedProcedureExecution[uniqueKey] = procData;
+            globalProcCounter++;
+          });
+        }
+      });
+
+      transformationData.procedureExecution = consolidatedProcedureExecution;
+
       const targetNodes = nodes.filter(n => n.type === 'target');
       for (const targetNode of targetNodes) {
         if (!targetNode.data?.connectedSources) continue;
@@ -486,7 +549,6 @@ const handleCancel = useCallback(() => {
   useEffect(() => {
     window.openTargetMappingDrawer = (nodeId, props = {}) => {
       setArthDrawerNodeId(nodeId);
-      // Always use the latest props passed from the target node
       setArthDrawerProps({...props});
       setArthDrawerOpen(true);
     };
@@ -512,7 +574,6 @@ const handleCancel = useCallback(() => {
 
   const updateTransformationNodesData = useCallback(() => {
     setNodes(prevNodes => {
-      // Build id->alias map for sources and targets
       const sourceIdToAlias = {};
       const targetIdToAlias = {};
       prevNodes.forEach(node => {

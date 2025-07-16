@@ -7,7 +7,7 @@ const fetchArchivalData = async (token,project,hostnameV1) => {
   if (!token) throw new Error("Token is missing");
 
   try {
-    const response = await axios.get(`${hostnameV1}/metadata-archivals`, {
+    const response = await axios.get(`${hostnameV1}/migrations`, {
       headers: {
         Authorization: `Bearer ${token}`,
         "x-project": project,

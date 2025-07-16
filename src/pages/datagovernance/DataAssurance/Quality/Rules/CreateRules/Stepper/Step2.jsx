@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Trash2, PlayCircle, RefreshCw, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Minus, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Trash2, PlayCircle, RefreshCw, X, Info } from 'lucide-react';
 import AceEditor from 'react-ace';
 import Select, { components } from 'react-select';
 import { useStepData } from './StepContext';
@@ -44,7 +44,7 @@ const CustomMultiValueLabel = props => {
   );
 };
 
-function Step2({ data, onBack, onNext, step2Data, edit = false }) {
+function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSummary = false, selectedRuleIds = [] }) {
   const { stepData, setStepData } = useStepData();
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -965,6 +965,20 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
 
   const isPrebuiltEdit = data?.category.toLowerCase() === 'pre-built';
 
+  const handleBackClick = () => {
+    if (fromRuleRunSummary && selectedRuleIds.length > 0) {
+      navigate('/datagovernance/data-assurance/rules', {
+        state: { fromRuleRunSummary: true, selectedRuleIds: selectedRuleIds }
+      })
+    } else {
+      if (edit) {
+        navigate('/datagovernance/data-assurance/rules');
+      } else {
+        onBack();
+      }
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div ref={containerRef} className="flex relative" style={{ minHeight: '600px' }}>
@@ -1004,7 +1018,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
                   >
                     <div
                       className={`p-3 flex justify-between items-center cursor-pointer ${isExpanded ? 'bg-[#8d77ba] bg-opacity-10 border-b' :
-                          isActive ? 'bg-[#8d77ba] bg-opacity-5' : ''
+                        isActive ? 'bg-[#8d77ba] bg-opacity-5' : ''
                         }`}
                       onClick={() => toggleGroup(groupName)}
                     >
@@ -1072,15 +1086,15 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
                                 <td className="py-2">{rule.name}</td>
                                 <td className="py-2">
                                   <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${rule.status === 'Active' ? 'bg-green-100 text-green-700' :
-                                      'bg-gray-100 text-gray-700'
+                                    'bg-gray-100 text-gray-700'
                                     }`}>
                                     {rule.status}
                                   </span>
                                 </td>
                                 <td className="py-2">
                                   <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${rule.severity === 'High' ? 'bg-red-100 text-red-700' :
-                                      rule.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-green-100 text-green-700'
+                                    rule.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                      'bg-green-100 text-green-700'
                                     }`}>
                                     {rule.severity}
                                   </span>
@@ -1306,13 +1320,18 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
                         <div className="flex gap-2 items-center">
                           {statusIcon}
                           <button
-                            className="p-2 border rounded hover:bg-gray-100"
+                            className="p-2 border rounded hover:bg-gray-100 relative group"
                             type="button"
-                            title="Run SQL"
+                            title="Run SQL (required)"
                             onClick={() => handleRunSQL(groupNames[activeGroupIndex], activeRuleIndex, idx)}
                             disabled={!conn.checked}
                           >
-                            <PlayCircle size={18} />
+                            <div className="relative">
+                              <PlayCircle size={18} />
+                              <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 text-red-500 text-xs font-bold">
+                                *
+                              </span>
+                            </div>
                           </button>
                           <button
                             className="p-2 border rounded hover:bg-gray-100"
@@ -1466,8 +1485,18 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
           </div>
 
           <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center">
-              <h3 className="text-md font-medium">Query Editor</h3>
+            <div className="flex items-center w-full"> {/* Added w-full to ensure full width */}
+              <div className="flex justify-between w-full pr-4"> {/* Ensure justify-between applies to full width */}
+                <h3 className="text-md font-medium">Query</h3>
+                {isCustomCreate && (
+                  <div
+                    className="p-1 rounded-full text-gray-600 hover:bg-gray-200 cursor-pointer"
+                    title="Custom Rule Information"
+                  >
+                    <Info size={20} />
+                  </div>
+                )}
+              </div>
               {searchResults.length > 0 && currentSearchIndex >= 0 && searchResults[currentSearchIndex] && (
                 <span className="ml-3 text-xs text-gray-500 italic">
                   Showing results from: {searchResults[currentSearchIndex].ruleName} ({searchResults[currentSearchIndex].groupName})
@@ -1529,7 +1558,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
                   onClick={goToNextQuery}
                   disabled={getCurrentSelectedFlatIndex().idx >= getCurrentSelectedFlatIndex().total - 1}
                   className={`p-2 rounded hover:bg-gray-200 ${getCurrentSelectedFlatIndex().idx >= getCurrentSelectedFlatIndex().total - 1
-                      ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
+                    ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
                     }`}
                 >
                   <ArrowRight size={16} />
@@ -1563,13 +1592,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
 
       <div className="flex justify-end mt-6 p-4 border-t gap-3">
         <button
-          onClick={() => {
-            if (edit) {
-              navigate('/datagovernance/data-assurance/rules');
-            } else {
-              onBack();
-            }
-          }}
+          onClick={handleBackClick}
           className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           disabled={false}
         >
@@ -1578,8 +1601,8 @@ function Step2({ data, onBack, onNext, step2Data, edit = false }) {
         <button
           onClick={handleNextClick}
           className={`px-6 py-2 rounded-lg transition-colors ${allValidated
-              ? 'bg-[#8d77ba] text-white hover:bg-[#7a67a0]'
-              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+            ? 'bg-[#8d77ba] text-white hover:bg-[#7a67a0]'
+            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
             }`}
           disabled={!allValidated}
         >

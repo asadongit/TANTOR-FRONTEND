@@ -5,8 +5,10 @@ import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useNavigate } from 'react-router-dom';
 import RuleRunSummary from './RuleRunSummary';
 import { useAuth } from "../../../../../context/AuthContext";
+import { useLocation } from 'react-router-dom';
 
 const Rules = () => {
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,9 +22,9 @@ const Rules = () => {
   const [isPopupLoading, setIsPopupLoading] = useState(false);
   const [showScheduler, setShowScheduler] = useState(false);
   const [schedulerData, setSchedulerData] = useState({
-    freq: 'Daily',
-    date: '2016-02-10',
-    time: '18:00',
+    freq: '',
+    date: '',
+    time: '',
     rule_ids: []
   });
   const rowsPerPage = 5;
@@ -42,7 +44,6 @@ const Rules = () => {
     }
   }, [toast.show]);
 
-  // Dynamically generate metricsData from metricData state
   const metricsData = Object.keys(metricData).map((key) => ({
     icon: "material-symbols:tab-group-outline",
     bgcolor: "bg-[#8d77ba] bg-opacity-25",
@@ -86,7 +87,7 @@ const Rules = () => {
           'accept': 'application/json',
         },
         body: JSON.stringify({ owner: decodedToken?.preferred_username }),
-      });
+      }); 
       const data = await response.json();
       console.log(data.data_rules);
       setTableData(data.data_rules || []);
@@ -612,6 +613,49 @@ const Rules = () => {
     ));
   };
 
+const [autoOpenRuleRunSummary, setAutoOpenRuleRunSummary] = useState(false);
+const [autoSelectedRuleIds, setAutoSelectedRuleIds] = useState([]);
+
+useEffect(() => {
+  if (autoOpenRuleRunSummary && autoSelectedRuleIds.length > 0) {
+    const handleAutoOpen = async () => {
+      setIsPopupLoading(true);
+      setShowRunSummary(true);
+      
+      const [detailedRulesData, results] = await Promise.all([
+        fetchRuleDetails(autoSelectedRuleIds),
+        fetchRuleRunResults(autoSelectedRuleIds)
+      ]);
+
+      const enrichedRulesData = detailedRulesData.map((rule) => {
+        const tableItem = tableData.find((item) => item.id === rule.id);
+        return {
+          ...rule,
+          type: tableItem ? tableItem.type : rule.type,
+        };
+      });
+
+      setDetailedRules(enrichedRulesData);
+      setRuleRunResults(results);
+      setIsPopupLoading(false);
+      setAutoOpenRuleRunSummary(false);
+    };
+
+    handleAutoOpen();
+  }
+}, [autoOpenRuleRunSummary, autoSelectedRuleIds]);
+
+
+  useEffect(() => {
+  const locationState = location.state;
+  if (locationState?.fromRuleRunSummary && locationState?.selectedRuleIds) {
+    setAutoSelectedRuleIds(locationState.selectedRuleIds);
+    setAutoOpenRuleRunSummary(true);
+    navigate(location.pathname, { replace: true, state: {} });
+  }
+}, [location.state]);
+
+
   return (
     <div className="p-6">
       {toast.show && (
@@ -991,6 +1035,7 @@ const Rules = () => {
                 onChange={(e) => setSchedulerData(prev => ({ ...prev, freq: e.target.value }))}
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
               >
+                <option value="Daily">Once</option>
                 <option value="Daily">Daily</option>
                 <option value="Weekly">Weekly</option>
                 <option value="Monthly">Monthly</option>

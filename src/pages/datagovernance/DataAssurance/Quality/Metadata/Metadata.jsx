@@ -123,7 +123,7 @@ const Metadata = () => {
           bgcolor: "bg-[#8d77ba] bg-opacity-25",
           iconcolor: "text-[#8d77ba]",
           title: key,
-          count: scoreData[key] === 'N/A' ? 'N/A' : `${scoreData[key]}`
+          count: scoreData[key] === 'N/A' ? 'N/A' : `${scoreData[key]}%`
         }));
         setMetricsData(mappedMetrics);
 
@@ -198,7 +198,7 @@ const Metadata = () => {
         bgcolor: "bg-[#8d77ba] bg-opacity-25",
         iconcolor: "text-[#8d77ba]",
         title: key,
-        count: scoreData[key] === 'N/A' ? 'N/A' : `${scoreData[key]}`
+        count: scoreData[key] === 'N/A' ? 'N/A' : `${scoreData[key]}%`
       }));
       setMetricsData(mappedMetrics);
 

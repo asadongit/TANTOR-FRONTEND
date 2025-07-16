@@ -10,8 +10,9 @@ const initialState = {
   transformations: {},
   targets: {},
   connections: [],
-  selectedSourceColumnsSet: {}, // { [sourceNodeId]: Set<string> }
-  targetToSelectedSourceMap: {}, // { [targetNodeId]: sourceNodeId }
+  selectedSourceColumnsSet: {},
+  targetToSelectedSourceMap: {},
+  procedureExecution: {},
 };
 
 const ACTION_TYPES = {
@@ -30,7 +31,8 @@ const ACTION_TYPES = {
   REMOVE_CONNECTION: 'REMOVE_CONNECTION',
   RESET: 'RESET',
   UPDATE_SELECTED_SOURCE_COLUMNS: 'UPDATE_SELECTED_SOURCE_COLUMNS',
-  UPDATE_TARGET_SELECTED_SOURCE: 'UPDATE_TARGET_SELECTED_SOURCE', // <-- add this
+  UPDATE_TARGET_SELECTED_SOURCE: 'UPDATE_TARGET_SELECTED_SOURCE',
+  UPDATE_PROCEDURE_EXECUTION: 'UPDATE_PROCEDURE_EXECUTION',
 };
 
 function transformationReducer(state, action) {
@@ -51,7 +53,7 @@ function transformationReducer(state, action) {
           ...state.sources,
           [action.payload.id]: {
             ...action.payload.data,
-            alias: action.payload.data.alias // ensure alias is stored
+            alias: action.payload.data.alias
           }
         }
       };
@@ -157,7 +159,7 @@ function transformationReducer(state, action) {
       };
 
     case ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS: {
-      // action.payload: { sourceNodeId, columns: array of column names }
+
       const { sourceNodeId, columns } = action.payload;
       return {
         ...state,
@@ -168,13 +170,43 @@ function transformationReducer(state, action) {
       };
     }
     case ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE: {
-      // action.payload: { targetNodeId, sourceNodeId }
+
       const { targetNodeId, sourceNodeId } = action.payload;
       return {
         ...state,
         targetToSelectedSourceMap: {
           ...state.targetToSelectedSourceMap,
           [targetNodeId]: sourceNodeId
+        }
+      };
+    }
+
+    case ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION: {
+
+      const { sourceNodeId, procedureMapping } = action.payload;
+      const currentProcedures = state.procedureExecution[sourceNodeId] || [];
+
+
+      const existingIndex = currentProcedures.findIndex(p =>
+        p.procedureItemId === procedureMapping.procedureItemId &&
+        p.procedureType === procedureMapping.procedureType
+      );
+
+      let updatedProcedures;
+      if (existingIndex !== -1) {
+
+        updatedProcedures = [...currentProcedures];
+        updatedProcedures[existingIndex] = procedureMapping;
+      } else {
+
+        updatedProcedures = [...currentProcedures, procedureMapping];
+      }
+
+      return {
+        ...state,
+        procedureExecution: {
+          ...state.procedureExecution,
+          [sourceNodeId]: updatedProcedures
         }
       };
     }
@@ -224,31 +256,30 @@ export function TransformationProvider({ children }) {
         source: {},
         target: {},
         logging:{
-          isLoggingEnabled :true,
-          isLoggingEnabledForEachDataset: true
+          isLoggingEnabled :false,
+          isLoggingEnabledForEachDataset: false
         },
-        procedureExecution:{},
+        procedureExecution: state.procedureExecution,
         transformation: {}
       };
 
       const transformationNodes = Object.keys(state.transformations);
 
-      // Track target columns created by transformations
+
       const transformationCreatedColumns = new Set();
-      // Track columns that are both source and target in date transformations
+
       const dateInPlaceTransformColumns = new Set();
 
       Object.values(state.transformations).forEach(tr => {
         if (tr.transformationConfig && Array.isArray(tr.transformationConfig.operations)) {
           tr.transformationConfig.operations.forEach(op => {
-            // For date operations where source and target are the same column,
-            // add to special set instead of marking as created
+
             if (op.transformation_operation === 'date' &&
                 Array.isArray(op.source_column) &&
                 Array.isArray(op.target_column)) {
 
-              // For each target column that's also a source column in the same date operation
-              op.target_column.forEach(targetCol => {
+
+                  op.target_column.forEach(targetCol => {
                 if (op.source_column.includes(targetCol)) {
                   dateInPlaceTransformColumns.add(targetCol);
                 } else if (targetCol && typeof targetCol === "string") {
@@ -256,7 +287,7 @@ export function TransformationProvider({ children }) {
                 }
               });
             }
-            // For all other operations, handle normally
+
             else if (Array.isArray(op.target_column)) {
               op.target_column.forEach(col => {
                 if (col && typeof col === "string") {
@@ -289,11 +320,7 @@ export function TransformationProvider({ children }) {
               columnArr = sourceData.columns
                 .filter(col => {
                   const colName = typeof col === "object" && col.name ? col.name : col;
-                  // Keep column if it's:
-                  // 1. In the selectedColumnsSet, AND
-                  // 2. Either:
-                  //    a. Not in the transformationCreatedColumns set, OR
-                  //    b. In the dateInPlaceTransformColumns set (special case for date transformations)
+
                   return colName &&
                          selectedColumnsSet.has(colName) &&
                          (!transformationCreatedColumns.has(colName) || dateInPlaceTransformColumns.has(colName));
@@ -315,7 +342,7 @@ export function TransformationProvider({ children }) {
                 watermarkColumn: "",
                 watermarkColumnDataType: ""
               },
-              EnableCountLogging: true
+              EnableCountLogging: false
             };
           }
         });
@@ -326,7 +353,7 @@ export function TransformationProvider({ children }) {
           return transformationNodes.includes(conn.source) && targetIds.includes(conn.target);
         });
 
-        // Use the new map for target->selected source
+
         const targetToSelectedSourceMap = state.targetToSelectedSourceMap || {};
 
         targetConnections.forEach((conn) => {
@@ -336,7 +363,7 @@ export function TransformationProvider({ children }) {
           if (targetData) {
             const targetKey = targetData.alias || `target_${targetId}`;
 
-            // --- USE THE NEW MAP HERE ---
+
             let sourceDataframe = "";
             const selectedSourceId = targetToSelectedSourceMap[targetId];
             if (selectedSourceId) {
@@ -344,7 +371,7 @@ export function TransformationProvider({ children }) {
               if (selectedSource) {
                 sourceDataframe = selectedSource.alias || `source_${selectedSourceId}`;
               } else {
-                // fallback: just use the selectedSourceId as is
+
                 sourceDataframe = selectedSourceId;
               }
             }
@@ -361,7 +388,7 @@ export function TransformationProvider({ children }) {
                 targetTable: targetData.table || "",
                 loadStrategy: targetData.loadStrategy || ""
               },
-              EnableCountLogging: true,
+              EnableCountLogging: false,
               targetMapping: targetData.targetMapping || {}
             };
           }
@@ -412,8 +439,8 @@ export function TransformationProvider({ children }) {
       return result;
     };
 
-  // Helper: get all unique selected source columns across all source nodes
-  const getAllSelectedSourceColumns = () => {
+
+    const getAllSelectedSourceColumns = () => {
     const allCols = [];
     Object.values(state.selectedSourceColumnsSet).forEach(set => {
       set.forEach(col => allCols.push(col));
@@ -429,7 +456,8 @@ export function TransformationProvider({ children }) {
         ACTION_TYPES,
         generateTransformationJson,
         getAllSelectedSourceColumns,
-        targetToSelectedSourceMap: state.targetToSelectedSourceMap, // expose in context
+        targetToSelectedSourceMap: state.targetToSelectedSourceMap,
+        procedureExecution: state.procedureExecution,
       }}
     >
       {children}
