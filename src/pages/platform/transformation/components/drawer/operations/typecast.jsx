@@ -169,7 +169,7 @@ export const TypecastOperationFields = ({
     }
 
     if (isNumericType(sourceDataType) && !isFloatType(sourceDataType)) {
-      return ["string", "float"].includes(type.id);
+      return ["string", "float","int"].includes(type.id);
     }
 
     if (isFloatType(sourceDataType)) {

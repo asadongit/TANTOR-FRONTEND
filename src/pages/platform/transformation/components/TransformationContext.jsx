@@ -13,6 +13,7 @@ const initialState = {
   selectedSourceColumnsSet: {},
   targetToSelectedSourceMap: {},
   procedureExecution: {},
+  originalSourceColumns: {}, // New property to store original selections
 };
 
 const ACTION_TYPES = {
@@ -33,6 +34,7 @@ const ACTION_TYPES = {
   UPDATE_SELECTED_SOURCE_COLUMNS: 'UPDATE_SELECTED_SOURCE_COLUMNS',
   UPDATE_TARGET_SELECTED_SOURCE: 'UPDATE_TARGET_SELECTED_SOURCE',
   UPDATE_PROCEDURE_EXECUTION: 'UPDATE_PROCEDURE_EXECUTION',
+  SET_ORIGINAL_SOURCE_COLUMNS: 'SET_ORIGINAL_SOURCE_COLUMNS', // New action type
 };
 
 function transformationReducer(state, action) {
@@ -211,6 +213,17 @@ function transformationReducer(state, action) {
       };
     }
 
+    case ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS: {
+      const { sourceNodeId, columns } = action.payload;
+      return {
+        ...state,
+        originalSourceColumns: {
+          ...state.originalSourceColumns,
+          [sourceNodeId]: columns
+        }
+      };
+    }
+
     case ACTION_TYPES.RESET:
       return initialState;
 
@@ -226,218 +239,167 @@ export function TransformationProvider({ children }) {
   const { decodedToken, project } = useAuth();
 
   const generateTransformationJson = () => {
-      const timestamp = new Date().toISOString();
+    const timestamp = new Date().toISOString();
 
-      const sourceIdToAlias = {};
-      Object.entries(state.sources).forEach(([id, src]) => {
-        sourceIdToAlias[id] = src.alias || `source_${id}`;
+    const sourceIdToAlias = {};
+    Object.entries(state.sources).forEach(([id, src]) => {
+      sourceIdToAlias[id] = src.alias || `source_${id}`;
+    });
+    const targetIdToAlias = {};
+    Object.entries(state.targets).forEach(([id, tgt]) => {
+      targetIdToAlias[id] = tgt.alias || `target_${id}`;
+    });
+
+    const sourceIdToDfId = {};
+    Object.entries(state.sources).forEach(([id, src]) => {
+      sourceIdToDfId[id] = src.dfId || `s_df_${id}`;
+    });
+    const targetIdToDfId = {};
+    Object.entries(state.targets).forEach(([id, tgt]) => {
+      targetIdToDfId[id] = tgt.dfId || `t_df_${id}`;
+    });
+
+    const result = {
+      created_at: timestamp,
+      created_by: decodedToken.preferred_username,
+      project: project || "default",
+      workflow_name: state.define.name,
+      workflow_type : "manual",
+      description: state.define.description || "",
+      source: {},
+      target: {},
+      logging:{
+        isLoggingEnabled :false,
+        isLoggingEnabledForEachDataset: false
+      },
+      procedureExecution: state.procedureExecution,
+      transformation: {}
+    };
+
+    const transformationNodes = Object.keys(state.transformations);
+
+    if (transformationNodes.length > 0) {
+      // source
+      const sourceConnections = state.connections.filter(conn => {
+        const sourceIds = Object.keys(state.sources);
+        return sourceIds.includes(conn.source) && transformationNodes.includes(conn.target);
       });
-      const targetIdToAlias = {};
-      Object.entries(state.targets).forEach(([id, tgt]) => {
-        targetIdToAlias[id] = tgt.alias || `target_${id}`;
-      });
 
-      const sourceIdToDfId = {};
-      Object.entries(state.sources).forEach(([id, src]) => {
-        sourceIdToDfId[id] = src.dfId || `s_df_${id}`;
-      });
-      const targetIdToDfId = {};
-      Object.entries(state.targets).forEach(([id, tgt]) => {
-        targetIdToDfId[id] = tgt.dfId || `t_df_${id}`;
-      });
+      sourceConnections.forEach((conn) => {
+        const sourceId = conn.source;
+        const sourceData = state.sources[sourceId];
 
-      const result = {
-        created_at: timestamp,
-        created_by: decodedToken.preferred_username,
-        project: project || "default",
-        workflow_name: state.define.name,
-        workflow_type : "manual",
-        description: state.define.description || "",
-        source: {},
-        target: {},
-        logging:{
-          isLoggingEnabled :false,
-          isLoggingEnabledForEachDataset: false
-        },
-        procedureExecution: state.procedureExecution,
-        transformation: {}
-      };
+        if (sourceData) {
+          const sourceKey = sourceData.alias || `source_${sourceId}`;
 
-      const transformationNodes = Object.keys(state.transformations);
+          // Use originally selected columns stored in context
+          const originalColumns = state.originalSourceColumns[sourceId] || [];
 
-
-      const transformationCreatedColumns = new Set();
-
-      const dateInPlaceTransformColumns = new Set();
-
-      Object.values(state.transformations).forEach(tr => {
-        if (tr.transformationConfig && Array.isArray(tr.transformationConfig.operations)) {
-          tr.transformationConfig.operations.forEach(op => {
-
-            if (op.transformation_operation === 'date' &&
-                Array.isArray(op.source_column) &&
-                Array.isArray(op.target_column)) {
-
-
-                  op.target_column.forEach(targetCol => {
-                if (op.source_column.includes(targetCol)) {
-                  dateInPlaceTransformColumns.add(targetCol);
-                } else if (targetCol && typeof targetCol === "string") {
-                  transformationCreatedColumns.add(targetCol);
-                }
-              });
-            }
-
-            else if (Array.isArray(op.target_column)) {
-              op.target_column.forEach(col => {
-                if (col && typeof col === "string") {
-                  transformationCreatedColumns.add(col);
-                }
-              });
-            }
-          });
+          result.source[sourceKey] = {
+            sourceType: sourceData.connectionType || "unknown",
+            sourceConnName: sourceData.connection || "unknown",
+            sourceConnId: sourceData.connectionId || "",
+            column: originalColumns,
+            ConnectionParameters: {
+              sourceSchema: sourceData.schema || "",
+              sourceTable: sourceData.table || ""
+            },
+            readParameters: {
+              watermarkColumn: "",
+              watermarkColumnDataType: ""
+            },
+            EnableCountLogging: false
+          };
         }
       });
 
-      if (transformationNodes.length > 0) {
-        // source
-        const sourceConnections = state.connections.filter(conn => {
-          const sourceIds = Object.keys(state.sources);
-          return sourceIds.includes(conn.source) && transformationNodes.includes(conn.target);
-        });
+      // target
+      const targetConnections = state.connections.filter(conn => {
+        const targetIds = Object.keys(state.targets);
+        return transformationNodes.includes(conn.source) && targetIds.includes(conn.target);
+      });
 
-        sourceConnections.forEach((conn) => {
-          const sourceId = conn.source;
-          const sourceData = state.sources[sourceId];
+      const targetToSelectedSourceMap = state.targetToSelectedSourceMap || {};
 
-          if (sourceData) {
-            const sourceKey = sourceData.alias || `source_${sourceId}`;
+      targetConnections.forEach((conn) => {
+        const targetId = conn.target;
+        const targetData = state.targets[targetId];
 
-            const selectedColumnsSet = state.selectedSourceColumnsSet[sourceId] || new Set();
+        if (targetData) {
+          const targetKey = targetData.alias || `target_${targetId}`;
 
-            let columnArr = [];
-            if (Array.isArray(sourceData.columns)) {
-              columnArr = sourceData.columns
-                .filter(col => {
-                  const colName = typeof col === "object" && col.name ? col.name : col;
-
-                  return colName &&
-                         selectedColumnsSet.has(colName) &&
-                         (!transformationCreatedColumns.has(colName) || dateInPlaceTransformColumns.has(colName));
-                })
-                .map(col => typeof col === "object" && col.name ? col.name : col)
-                .filter(Boolean);
+          let sourceDataframe = "";
+          const selectedSourceId = targetToSelectedSourceMap[targetId];
+          if (selectedSourceId) {
+            const selectedSource = state.sources[selectedSourceId];
+            if (selectedSource) {
+              sourceDataframe = selectedSource.alias || `source_${selectedSourceId}`;
+            } else {
+              sourceDataframe = selectedSourceId;
             }
-
-            result.source[sourceKey] = {
-              sourceType: sourceData.connectionType || "unknown",
-              sourceConnName: sourceData.connection || "unknown",
-              sourceConnId: sourceData.connectionId || "",
-              column: columnArr,
-              ConnectionParameters: {
-                sourceSchema: sourceData.schema || "",
-                sourceTable: sourceData.table || ""
-              },
-              readParameters: {
-                watermarkColumn: "",
-                watermarkColumnDataType: ""
-              },
-              EnableCountLogging: false
-            };
           }
-        });
 
-        // target
-        const targetConnections = state.connections.filter(conn => {
-          const targetIds = Object.keys(state.targets);
-          return transformationNodes.includes(conn.source) && targetIds.includes(conn.target);
-        });
+          result.target[targetKey] = {
+            targetType: targetData.connectionType || "unknown",
+            targetConnName: targetData.connection || "unknown",
+            targetConnId: targetData.connectionId || "",
+            loadType: targetData.loadType || "",
+            sourceDataframe: sourceDataframe,
+            LoadingParams: {
+              targetschema: targetData.schema || "",
+              targetTable: targetData.table || "",
+              loadStrategy: targetData.loadStrategy || ""
+            },
+            EnableCountLogging: false,
+            targetMapping: targetData.targetMapping || {}
+          };
+        }
+      });
 
-
-        const targetToSelectedSourceMap = state.targetToSelectedSourceMap || {};
-
-        targetConnections.forEach((conn) => {
-          const targetId = conn.target;
-          const targetData = state.targets[targetId];
-
-          if (targetData) {
-            const targetKey = targetData.alias || `target_${targetId}`;
-
-
-            let sourceDataframe = "";
-            const selectedSourceId = targetToSelectedSourceMap[targetId];
-            if (selectedSourceId) {
-              const selectedSource = state.sources[selectedSourceId];
-              if (selectedSource) {
-                sourceDataframe = selectedSource.alias || `source_${selectedSourceId}`;
+      transformationNodes.forEach(nodeId => {
+        const transformationData = state.transformations[nodeId];
+        if (transformationData && transformationData.transformationConfig) {
+          const patchedOps = (transformationData.transformationConfig.operations || []).map(op => {
+            const patchedOp = { ...op };
+            if (patchedOp.source_dataframe) {
+              let alias = null;
+              if (sourceIdToAlias[patchedOp.source_dataframe]) {
+                alias = sourceIdToAlias[patchedOp.source_dataframe];
+              } else if (targetIdToAlias[patchedOp.source_dataframe]) {
+                alias = targetIdToAlias[patchedOp.source_dataframe];
               } else {
-
-                sourceDataframe = selectedSourceId;
+                alias = patchedOp.source_dataframe;
               }
+              patchedOp.source_dataframe = alias;
+              patchedOp.target_dataframe = alias;
             }
-            // ---------------------------------------
+            if (patchedOp.input) {
+              patchedOp.input = patchedOp.input.map(dfId => {
+                if (Object.values(sourceIdToAlias).includes(dfId)) return dfId;
+                if (Object.values(targetIdToAlias).includes(dfId)) return dfId;
+                if (sourceIdToAlias[dfId]) return sourceIdToAlias[dfId];
+                if (targetIdToAlias[dfId]) return targetIdToAlias[dfId];
+                return dfId;
+              });
+            }
+            if (patchedOp.output) {
+              patchedOp.output = patchedOp.output.map(dfId => {
+                if (Object.values(sourceIdToAlias).includes(dfId)) return dfId;
+                if (Object.values(targetIdToAlias).includes(dfId)) return dfId;
+                if (sourceIdToAlias[dfId]) return sourceIdToAlias[dfId];
+                if (targetIdToAlias[dfId]) return targetIdToAlias[dfId];
+                return dfId;
+              });
+            }
+            return patchedOp;
+          });
+          result.transformation = patchedOps;
+        }
+      });
+    }
 
-            result.target[targetKey] = {
-              targetType: targetData.connectionType || "unknown",
-              targetConnName: targetData.connection || "unknown",
-              targetConnId: targetData.connectionId || "",
-              loadType: targetData.loadType || "",
-              sourceDataframe: sourceDataframe,
-              LoadingParams: {
-                targetschema: targetData.schema || "",
-                targetTable: targetData.table || "",
-                loadStrategy: targetData.loadStrategy || ""
-              },
-              EnableCountLogging: false,
-              targetMapping: targetData.targetMapping || {}
-            };
-          }
-        });
-
-        transformationNodes.forEach(nodeId => {
-          const transformationData = state.transformations[nodeId];
-          if (transformationData && transformationData.transformationConfig) {
-            const patchedOps = (transformationData.transformationConfig.operations || []).map(op => {
-              const patchedOp = { ...op };
-              if (patchedOp.source_dataframe) {
-                let alias = null;
-                if (sourceIdToAlias[patchedOp.source_dataframe]) {
-                  alias = sourceIdToAlias[patchedOp.source_dataframe];
-                } else if (targetIdToAlias[patchedOp.source_dataframe]) {
-                  alias = targetIdToAlias[patchedOp.source_dataframe];
-                } else {
-                  alias = patchedOp.source_dataframe;
-                }
-                patchedOp.source_dataframe = alias;
-                patchedOp.target_dataframe = alias;
-              }
-              if (patchedOp.input) {
-                patchedOp.input = patchedOp.input.map(dfId => {
-                  if (Object.values(sourceIdToAlias).includes(dfId)) return dfId;
-                  if (Object.values(targetIdToAlias).includes(dfId)) return dfId;
-                  if (sourceIdToAlias[dfId]) return sourceIdToAlias[dfId];
-                  if (targetIdToAlias[dfId]) return targetIdToAlias[dfId];
-                  return dfId;
-                });
-              }
-              if (patchedOp.output) {
-                patchedOp.output = patchedOp.output.map(dfId => {
-                  if (Object.values(sourceIdToAlias).includes(dfId)) return dfId;
-                  if (Object.values(targetIdToAlias).includes(dfId)) return dfId;
-                  if (sourceIdToAlias[dfId]) return sourceIdToAlias[dfId];
-                  if (targetIdToAlias[dfId]) return targetIdToAlias[dfId];
-                  return dfId;
-                });
-              }
-              return patchedOp;
-            });
-            result.transformation = patchedOps;
-          }
-        });
-      }
-
-      return result;
-    };
+    return result;
+  };
 
 
     const getAllSelectedSourceColumns = () => {

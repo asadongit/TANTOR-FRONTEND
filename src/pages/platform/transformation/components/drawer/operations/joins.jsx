@@ -495,12 +495,12 @@ export const JoinsOperationFields = ({
 
         // Update the datasource to show the effect of dropping columns
         if (transformation.params.right_dataframe && transformation.source_dataframe) {
-            const allDroppedColumns = [...columns, ...droppedRightColumns];
+            // Only pass dropped LEFT columns when updating from left dropdown
             appendColumnsFromRightToLeft(
                 transformation.source_dataframe,
                 transformation.params.right_dataframe,
                 true,
-                allDroppedColumns
+                columns // Only left dropped columns
             );
         }
     };
@@ -512,6 +512,7 @@ export const JoinsOperationFields = ({
 
         // Update the datasource to show the effect of dropping columns
         if (transformation.params.right_dataframe && transformation.source_dataframe) {
+            // Pass both left and right dropped columns, but the function should handle them properly
             const allDroppedColumns = [...droppedLeftColumns, ...columns];
             appendColumnsFromRightToLeft(
                 transformation.source_dataframe,
