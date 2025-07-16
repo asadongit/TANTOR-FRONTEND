@@ -1002,35 +1002,9 @@ export const TransformationDrawer = ({
 						drop_right_dataframe_collist: joinParams.drop_right_dataframe_collist
 					};
 
-					// If there are columns to drop, add a separate restrict columns transformation after this join
-					const allDroppedColumns = [
-						...joinParams.drop_left_dataframe_collist,
-						...joinParams.drop_right_dataframe_collist
-					];
-
-					if (allDroppedColumns.length > 0) {
-						// Add the join transformation first
-						result.push(transformationData);
-
-						// Then add a restrict columns transformation to drop the specified columns
-						result.push({
-							source_dataframe: t.source_dataframe,
-							target_dataframe: t.source_dataframe,
-							source_column: allDroppedColumns,
-							target_column: [],
-							transformation_operation: "restrictcolumns",
-							transformation_operator: "drop",
-							transformation_order: t.transformation_order + 0.5, // Insert between transformations
-							params: {}
-						});
-
-						// Update the order of subsequent transformations
-						transformations.slice(index + 1).forEach(nextT => {
-							nextT.transformation_order += 1;
-						});
-					} else {
-						result.push(transformationData);
-					}
+					// Remove the automatic restrict columns transformation creation
+					// The joins component handles column dropping internally
+					result.push(transformationData);
 					return; // Skip the default result.push at the end
 				case 'filter':
 					transformationData.params = getFilterParams(t);
