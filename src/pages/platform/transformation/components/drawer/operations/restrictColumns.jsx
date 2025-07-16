@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import Select from "react-select";
 import { ChevronDown } from "lucide-react";
 
@@ -15,7 +15,8 @@ export const RestrictColumnsOperationFields = ({
   handleSelectAllColumns,
   handleColumnSelection,
   dropdownRefs,
-  handleOperatorChange
+  handleOperatorChange,
+  onAddNewTargetColumn
 }) => {
   const sourceDropdownKey = `${transformation.id}-source`;
   const operatorDescription = OPERATORS.find(op => op.id === transformation.transformation_operator)?.description || "";
@@ -120,10 +121,37 @@ export const RestrictColumnsOperationFields = ({
     }),
   };
 
+  const debounceTimer = useRef(null);
+  const [pendingRestriction, setPendingRestriction] = useState(false);
+
   const handleSourceChange = (selected) => {
     const selectedColumns = selected ? selected.map(option => option.value) : [];
     handleSelectAllColumns(transformation.id, 'source', selectedColumns, true);
+    setPendingRestriction(selectedColumns.length > 0);
   };
+
+  const applyRestriction = () => {
+    if (onAddNewTargetColumn && typeof onAddNewTargetColumn === "function") {
+      const operationType = transformation.transformation_operator;
+      const selectedColumns = transformation.source_column || [];
+
+      if (operationType === "select") {
+        onAddNewTargetColumn(null, transformation.source_dataframe, "restrictcolumns", null, null, selectedColumns, "select");
+      } else if (operationType === "drop") {
+        onAddNewTargetColumn(null, transformation.source_dataframe, "restrictcolumns", null, null, selectedColumns, "drop");
+      }
+      setPendingRestriction(false);
+    }
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   return (
     <div>
@@ -172,6 +200,15 @@ export const RestrictColumnsOperationFields = ({
             },
           })}
         />
+
+        {pendingRestriction && transformation.transformation_operator && (
+          <button
+            onClick={applyRestriction}
+            className="mt-2 px-3 py-1 bg-[#8E77BB] text-white text-xs rounded hover:bg-[#7d68a5] transition-colors"
+          >
+            Apply {transformation.transformation_operator === "select" ? "Selection" : "Restriction"}
+          </button>
+        )}
       </div>
     </div>
   );

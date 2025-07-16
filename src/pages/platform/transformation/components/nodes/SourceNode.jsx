@@ -58,6 +58,8 @@ export const SourceNode = ({ id, data }) => {
   const [modalProcedureType, setModalProcedureType] = useState(null);
   const [modalProcedureItemId, setModalProcedureItemId] = useState(null);
   const [storedParameterMappings, setStoredParameterMappings] = useState({});
+  const [preProcedureSearch, setPreProcedureSearch] = useState("");
+  const [postProcedureSearch, setPostProcedureSearch] = useState("");
 
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
@@ -167,13 +169,13 @@ export const SourceNode = ({ id, data }) => {
     }
   }, [hostnamev1, token]);
 
-  const fetchProcedures = useCallback(async (connectionName, tableName) => {
-    if (!connectionName || !tableName) return;
+  const fetchProcedures = useCallback(async (connectionName) => {
+    if (!connectionName) return;
 
     try {
       setLoading(prev => ({ ...prev, procedures: true }));
 
-      const response = await fetch(`${hostnamev1}/connection-saves/stored-procs/${connectionName}/${tableName}`, {
+      const response = await fetch(`${hostnamev1}/connection-saves/stored-procs/${connectionName}/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -266,10 +268,10 @@ export const SourceNode = ({ id, data }) => {
     setModalProcedureItemId(null);
   };
 
-  const handleParameterMapping = (parameterName, columnName) => {
+  const handleParameterMapping = (parameterName, value) => {
     setParameterColumnMapping(prev => ({
       ...prev,
-      [parameterName]: columnName
+      [parameterName]: value
     }));
   };
 
@@ -365,7 +367,7 @@ export const SourceNode = ({ id, data }) => {
   };
 
   const areAllParametersMapped = () => {
-    if (!selectedProcedureForModal?.procedure_parameters) return false;
+    if (!selectedProcedureForModal?.procedure_parameters) return true; // Allow apply if no parameters
 
     return selectedProcedureForModal.procedure_parameters.every(param =>
       parameterColumnMapping[param.name] && parameterColumnMapping[param.name].trim() !== ""
@@ -427,6 +429,15 @@ export const SourceNode = ({ id, data }) => {
 
   const filteredColumns = columns.filter(col =>
     col.column_name?.toLowerCase().includes(columnSearch.toLowerCase())
+  );
+
+  // Add filtered procedures based on search
+  const filteredPreProcedures = procedures.filter(procedure =>
+    procedure.procedure_name?.toLowerCase().includes(preProcedureSearch.toLowerCase())
+  );
+
+  const filteredPostProcedures = procedures.filter(procedure =>
+    procedure.procedure_name?.toLowerCase().includes(postProcedureSearch.toLowerCase())
   );
 
   useEffect(() => {
@@ -713,7 +724,7 @@ export const SourceNode = ({ id, data }) => {
 
 
                     if (selectedConnection.name && tableSelections.selectedTable) {
-                      fetchProcedures(selectedConnection.name, tableSelections.selectedTable);
+                      fetchProcedures(selectedConnection.name);
                     }
 
                     setSelectedTable(procedureSelections.selectedProcedure);
@@ -853,10 +864,18 @@ export const SourceNode = ({ id, data }) => {
                             </button>
                             {preProcedureDropdownOpen[procedureItem.id] && (
                               <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-20 overflow-y-auto">
-                                {procedures.length === 0 ? (
+                                <input
+                                  type="search"
+                                  placeholder="Search procedures..."
+                                  className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                                  value={preProcedureSearch}
+                                  onChange={e => setPreProcedureSearch(e.target.value)}
+                                  autoFocus
+                                />
+                                {filteredPreProcedures.length === 0 ? (
                                   <div className="p-2 text-[11px] text-gray-500">No procedures available</div>
                                 ) : (
-                                  procedures.map((procedure, idx) => (
+                                  filteredPreProcedures.map((procedure, idx) => (
                                     <div
                                       key={idx}
                                       className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${procedureItem.procedure && procedureItem.procedure.procedure_name === procedure.procedure_name ? "bg-gray-100" : ""}`}
@@ -928,10 +947,18 @@ export const SourceNode = ({ id, data }) => {
                             </button>
                             {postProcedureDropdownOpen[procedureItem.id] && (
                               <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-20 overflow-y-auto">
-                                {procedures.length === 0 ? (
+                                <input
+                                  type="search"
+                                  placeholder="Search procedures..."
+                                  className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                                  value={postProcedureSearch}
+                                  onChange={e => setPostProcedureSearch(e.target.value)}
+                                  autoFocus
+                                />
+                                {filteredPostProcedures.length === 0 ? (
                                   <div className="p-2 text-[11px] text-gray-500">No procedures available</div>
                                 ) : (
-                                  procedures.map((procedure, idx) => (
+                                  filteredPostProcedures.map((procedure, idx) => (
                                     <div
                                       key={idx}
                                       className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${procedureItem.procedure && procedureItem.procedure.procedure_name === procedure.procedure_name ? "bg-gray-100" : ""}`}
@@ -1098,7 +1125,8 @@ export const SourceNode = ({ id, data }) => {
             {selectedProcedureForModal.procedure_parameters && selectedProcedureForModal.procedure_parameters.length > 0 ? (
               <div className="space-y-2">
                 {selectedProcedureForModal.procedure_parameters.map((param, index) => {
-                  const filteredColumns = getFilteredColumnsForParameter(param.data_type);
+                  const isNumericParam = isNumericType(param.data_type);
+                  const isStringParam = isStringType(param.data_type);
 
                   return (
                     <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded border">
@@ -1108,41 +1136,40 @@ export const SourceNode = ({ id, data }) => {
                       </div>
 
                       <div className="flex-1">
-                        {filteredColumns.length > 0 ? (
-                          <select
+                        {isNumericParam ? (
+                          <input
+                            type="number"
                             value={parameterColumnMapping[param.name] || ""}
                             onChange={(e) => handleParameterMapping(param.name, e.target.value)}
+                            placeholder="Enter numeric value"
                             className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                          >
-                            <option value="">Select Column</option>
-                            {filteredColumns.map((column, colIdx) => (
-                              <option key={colIdx} value={column}>
-                                {column}
-                              </option>
-                            ))}
-                          </select>
+                          />
+                        ) : isStringParam ? (
+                          <input
+                            type="text"
+                            value={parameterColumnMapping[param.name] || ""}
+                            onChange={(e) => handleParameterMapping(param.name, e.target.value)}
+                            placeholder="Enter text value"
+                            className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                          />
                         ) : (
-                          <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
-                            No compatible columns ({param.data_type})
-                          </div>
+                          <input
+                            type="text"
+                            value={parameterColumnMapping[param.name] || ""}
+                            onChange={(e) => handleParameterMapping(param.name, e.target.value)}
+                            placeholder="Enter value"
+                            className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                          />
                         )}
                       </div>
                     </div>
                   );
                 })}
-
-                {getAvailableColumns().length === 0 && (
-                  <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200 text-center">
-                    <p className="text-sm text-yellow-800">
-                      No table columns available for mapping.<br />
-                      Please select a table and columns first.
-                    </p>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="text-center py-6">
                 <p className="text-sm text-gray-500">No parameters found for this procedure.</p>
+                <p className="text-xs text-gray-400 mt-2">You can still apply the mapping to execute the procedure without parameters.</p>
               </div>
             )}
 
@@ -1156,13 +1183,13 @@ export const SourceNode = ({ id, data }) => {
               <button
                 onClick={applyProcedureMapping}
                 className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
-                  areAllParametersMapped() && getAvailableColumns().length > 0
+                  areAllParametersMapped()
                     ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
-                disabled={!areAllParametersMapped() || getAvailableColumns().length === 0 || !selectedProcedureForModal.procedure_parameters || selectedProcedureForModal.procedure_parameters.length === 0}
+                disabled={!areAllParametersMapped()}
               >
-                Apply Mapping
+                Confirm
               </button>
             </div>
           </div>

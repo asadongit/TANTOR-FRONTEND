@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Select, { components } from 'react-select';
 import { ChevronDown } from "lucide-react";
+import { isNumericType, isStringType, isFloatType, DataTypeGroups } from "../../nodes/DataTypeMapping";
 
 const DATA_TYPES = [
   { id: "string", name: "String" },
@@ -15,43 +16,6 @@ const VALUE_TYPES = [
   { id: "c", name: "Constant" },
   { id: "v", name: "Variable/Function" }
 ];
-
-export const ConstantCopyParameters = ({ params, onChange }) => {
-  return (
-    <div className="space-y-3 mt-3">
-      <div>
-        <label className="block text-xs text-gray-700 mb-1">Value Type</label>
-        <select
-          className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-          value={params.value_type || "c"}
-          onChange={(e) => onChange("value_type", e.target.value)}
-        >
-          {VALUE_TYPES.map(type => (
-            <option key={type.id} value={type.id}>
-              {type.name}
-            </option>
-          ))}
-        </select>
-        <p className="text-xs text-gray-500 mt-1">
-          {params.value_type === "v"
-            ? "Enter a variable or function expression (e.g., current_timestamp())"
-            : "Enter a literal constant value"}
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-xs text-gray-700 mb-1">Value</label>
-        <input
-          type="text"
-          className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-          placeholder={params.value_type === "v" ? "current_timestamp()" : "Enter value"}
-          value={params.value || ""}
-          onChange={(e) => onChange("value", e.target.value)}
-        />
-      </div>
-    </div>
-  );
-};
 
 export const ConstantCopyOperationFields = ({
   transformation,
@@ -74,17 +38,43 @@ export const ConstantCopyOperationFields = ({
   }, [targetCols, transformation.params.datatype, transformation.target_column]);
 
   const columnOptions = React.useMemo(() => {
-    return Array.isArray(targetCols)
-      ? targetCols.map(col => {
-          const colName = typeof col === "string" ? col : col.name;
-          const datatype = typeof col === "object" && col.datatype ? col.datatype : "";
-          return {
-            value: colName,
-            label: datatype ? `${colName} (${datatype})` : colName,
-          };
-        })
-      : [];
-  }, [targetCols, refreshKey]);
+    if (!Array.isArray(targetCols)) return [];
+
+    const selectedDataType = transformation.params.datatype || "string";
+
+    // Filter columns based on selected datatype
+    const filteredCols = targetCols.filter(col => {
+      const colDatatype = typeof col === "object" && col.datatype ? col.datatype : "";
+
+      if (!colDatatype) return true; // Include columns without datatype info
+
+      // Check if column datatype matches selected datatype
+      switch (selectedDataType) {
+        case "string":
+          return isStringType(colDatatype);
+        case "int":
+          return isNumericType(colDatatype);
+        case "float":
+          return isFloatType(colDatatype) || isNumericType(colDatatype);
+        case "boolean":
+          return colDatatype.toLowerCase().includes("bool");
+        case "date":
+        case "timestamp":
+          return DataTypeGroups.date.some(dt => colDatatype.toLowerCase().includes(dt));
+        default:
+          return true;
+      }
+    });
+
+    return filteredCols.map(col => {
+      const colName = typeof col === "string" ? col : col.name;
+      const datatype = typeof col === "object" && col.datatype ? col.datatype : "";
+      return {
+        value: colName,
+        label: datatype ? `${colName} (${datatype})` : colName,
+      };
+    });
+  }, [targetCols, transformation.params.datatype, refreshKey]);
 
   const selectedTargetOption = React.useMemo(() => {
     if (transformation.target_column && transformation.target_column.length > 0) {
@@ -293,6 +283,9 @@ export const ConstantCopyOperationFields = ({
   const handleDatatypeChange = (newDatatype) => {
     updateParam("datatype", newDatatype);
 
+    // Clear target column selection when datatype changes to avoid mismatch
+    handleSelectAllColumns(transformation.id, "target", [], true);
+
     // If a target column is selected, update it immediately
     if (transformation.target_column && transformation.target_column.length > 0 && onAddNewTargetColumn) {
       const selectedColumn = transformation.target_column[0];
@@ -302,6 +295,7 @@ export const ConstantCopyOperationFields = ({
 
   return (
     <div className="constant-copy-operation-fields space-y-4">
+      {/* Top row: Data Type and Value Type */}
       <div className="flex gap-4">
         <div className="w-1/2">
           <label className="block text-xs text-gray-700 mb-1">Data Type</label>
@@ -309,6 +303,7 @@ export const ConstantCopyOperationFields = ({
             className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
             value={transformation.params.datatype || "string"}
             onChange={(e) => handleDatatypeChange(e.target.value)}
+            disabled={transformation.params.value_type === "v"}
           >
             {DATA_TYPES.map(type => (
               <option key={type.id} value={type.id}>
@@ -316,6 +311,42 @@ export const ConstantCopyOperationFields = ({
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="w-1/2">
+          <label className="block text-xs text-gray-700 mb-1">Value Type</label>
+          <select
+            className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+            value={transformation.params.value_type || "c"}
+            onChange={(e) => updateParam("value_type", e.target.value)}
+          >
+            {VALUE_TYPES.map(type => (
+              <option key={type.id} value={type.id}>
+                {type.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Helper text for Value Type */}
+      <div className="text-xs text-gray-500">
+        {transformation.params.value_type === "v"
+          ? "Enter a variable or function expression (e.g., current_timestamp(), business_date)"
+          : "Enter a literal constant value"}
+      </div>
+
+      {/* Bottom row: Value input and Target Column */}
+      <div className="flex gap-4">
+        <div className="w-1/2">
+          <label className="block text-xs text-gray-700 mb-1">Value</label>
+          <input
+            type="text"
+            className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+            placeholder={"Enter value"}
+            value={transformation.params.value || ""}
+            onChange={(e) => updateParam("value", e.target.value)}
+          />
         </div>
 
         <div className="w-1/2">
@@ -345,11 +376,6 @@ export const ConstantCopyOperationFields = ({
         </div>
       </div>
 
-      <ConstantCopyParameters
-        params={transformation.params}
-        onChange={updateParam}
-      />
-
       {showAddModal && AddColumnModal}
     </div>
   );
@@ -359,7 +385,7 @@ export const getConstantCopyParams = (transformation) => {
   return {
     value: transformation.params.value || "",
     value_type: transformation.params.value_type || "c",
-    datatype: transformation.params.datatype || "string"
+    datatype: transformation.params.value_type === "v" ? "" : (transformation.params.datatype || "string")
   };
 };
 
