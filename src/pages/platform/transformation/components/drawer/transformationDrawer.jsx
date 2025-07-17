@@ -92,6 +92,8 @@ const TransformationItem = memo(({
   handleOperatorChange,
   setTransformationValidity,
   appendColumnsFromRightToLeft,
+  updateJoinsSourceColumns,
+  updateJoinsParam,
 }) => {
   const renderSourceAndOperationRow = () => (
     <div className="flex gap-2 mb-3">
@@ -209,8 +211,9 @@ const TransformationItem = memo(({
           {...commonProps}
           allDataframes={allDataframes}
           dataframeColumns={dataframeColumns}
-          updateJoinsParam={(id, name, value) => updateFilterParam(id, name, value)}
+          updateJoinsParam={updateJoinsParam}
           appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
+          updateJoinsSourceColumns={updateJoinsSourceColumns}
         />;
       case 'filter':
         let operatorOptions = FILTER_OPERATORS;
@@ -586,6 +589,26 @@ export const TransformationDrawer = ({
 		setTransformations(ts => ts.map(t =>
 			t.id === id ? { ...t, params: { ...t.params, [paramName]: value } } : t
 		));
+	}, []);
+
+	// Add new function to handle joins column updates
+	const updateJoinsSourceColumns = useCallback((sourceId, combinedColumns) => {
+		// Update local dataframe columns state
+		setDataframeColumns(prev => ({
+			...prev,
+			[sourceId]: combinedColumns
+		}));
+
+		// Update the actual node data
+		if (window.allNodes && Array.isArray(window.allNodes)) {
+			const sourceNode = window.allNodes.find(n =>
+				(n.data?.alias === sourceId) || (n.id === sourceId)
+			);
+
+			if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
+				sourceNode.data.onDataChange({ columns: combinedColumns });
+			}
+		}
 	}, []);
 
 	const updateFilterParam = useCallback((id, paramName, value) => {
@@ -979,35 +1002,9 @@ export const TransformationDrawer = ({
 						drop_right_dataframe_collist: joinParams.drop_right_dataframe_collist
 					};
 
-					// If there are columns to drop, add a separate restrict columns transformation after this join
-					const allDroppedColumns = [
-						...joinParams.drop_left_dataframe_collist,
-						...joinParams.drop_right_dataframe_collist
-					];
-
-					if (allDroppedColumns.length > 0) {
-						// Add the join transformation first
-						result.push(transformationData);
-
-						// Then add a restrict columns transformation to drop the specified columns
-						result.push({
-							source_dataframe: t.source_dataframe,
-							target_dataframe: t.source_dataframe,
-							source_column: allDroppedColumns,
-							target_column: [],
-							transformation_operation: "restrictcolumns",
-							transformation_operator: "drop",
-							transformation_order: t.transformation_order + 0.5, // Insert between transformations
-							params: {}
-						});
-
-						// Update the order of subsequent transformations
-						transformations.slice(index + 1).forEach(nextT => {
-							nextT.transformation_order += 1;
-						});
-					} else {
-						result.push(transformationData);
-					}
+					// Remove the automatic restrict columns transformation creation
+					// The joins component handles column dropping internally
+					result.push(transformationData);
 					return; // Skip the default result.push at the end
 				case 'filter':
 					transformationData.params = getFilterParams(t);
@@ -1299,20 +1296,17 @@ export const TransformationDrawer = ({
 				}
 			});
 
-			// Also filter out any existing columns that are in the dropped list
-			const filteredLeftCols = leftCols.filter(col => {
-				const colName = typeof col === "object" && col.name ? col.name : col;
-				return !droppedColumnsSet.has(colName);
-			});
+			// For joins, don't filter out columns here - let the joins component handle it
+			const finalCols = leftCols;
 
-			if ((appended || filteredLeftCols.length !== leftCols.length) && typeof leftNode.data.onDataChange === "function") {
-				// Update the node data with filtered columns
-				leftNode.data.onDataChange({ columns: filteredLeftCols });
+			if (appended && typeof leftNode.data.onDataChange === "function") {
+				// Update the node data
+				leftNode.data.onDataChange({ columns: finalCols });
 
 				// Also update our local dataframe columns state
 				setDataframeColumns(prev => ({
 					...prev,
-					[leftDfId]: filteredLeftCols
+					[leftDfId]: finalCols
 				}));
 
 				// If force update flag is true, refresh all transformations
@@ -1446,6 +1440,8 @@ export const TransformationDrawer = ({
 								 appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
 								 handleOperatorChange={handleOperatorChange}
 								 setTransformationValidity={setTransformationValidity}
+								 updateJoinsSourceColumns={updateJoinsSourceColumns}
+								 updateJoinsParam={updateJoinsParam}
 								/>
 							</div>
 						))}

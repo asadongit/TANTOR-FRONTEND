@@ -50,6 +50,12 @@ export const JoinsOperationFields = ({
     const [droppedLeftColumns, setDroppedLeftColumns] = useState([]);
     const [droppedRightColumns, setDroppedRightColumns] = useState([]);
 
+    // Add new state variables for tracking original columns for joins transformation
+    const [originalLeftColumns, setOriginalLeftColumns] = useState([]);
+    const [originalRightColumns, setOriginalRightColumns] = useState([]);
+    const [filteredLeftColumns, setFilteredLeftColumns] = useState([]);
+    const [filteredRightColumns, setFilteredRightColumns] = useState([]);
+
     useEffect(() => {
         if (!transformation.params.join_type) {
             updateJoinsParam(transformation.id, "join_type", "left");
@@ -151,41 +157,51 @@ export const JoinsOperationFields = ({
         updateJoinsParam(transformation.id, "join_condition", "");
     };
 
-    // Capture original source columns when source dataframe is selected
+    // Capture original left columns when source dataframe is selected
     useEffect(() => {
         if (transformation.source_dataframe && dataframeColumns[transformation.source_dataframe]) {
+            const sourceColumns = dataframeColumns[transformation.source_dataframe].map(col =>
+                typeof col === "object" && col !== null ? col : { name: col, datatype: "string" }
+            );
+
+            setOriginalLeftColumns(sourceColumns);
+            setFilteredLeftColumns(sourceColumns);
+
             // Only set if not already captured for this dataframe
             setOriginalSourceColumnsForDropdown(prev => {
                 if (!prev[transformation.source_dataframe]) {
                     return {
                         ...prev,
-                        [transformation.source_dataframe]: dataframeColumns[transformation.source_dataframe].map(col =>
-                            typeof col === "object" && col !== null ? col.name : col
-                        )
+                        [transformation.source_dataframe]: sourceColumns.map(col => col.name)
                     };
                 }
                 return prev;
             });
         }
-    }, [transformation.source_dataframe]);
+    }, [transformation.source_dataframe, dataframeColumns]);
 
     // Capture original right columns when right dataframe is selected
     useEffect(() => {
         if (transformation.params.right_dataframe && dataframeColumns[transformation.params.right_dataframe]) {
+            const rightColumns = dataframeColumns[transformation.params.right_dataframe].map(col =>
+                typeof col === "object" && col !== null ? col : { name: col, datatype: "string" }
+            );
+
+            setOriginalRightColumns(rightColumns);
+            setFilteredRightColumns(rightColumns);
+
             // Only set if not already captured for this dataframe
             setOriginalRightColumnsForDropdown(prev => {
                 if (!prev[transformation.params.right_dataframe]) {
                     return {
                         ...prev,
-                        [transformation.params.right_dataframe]: dataframeColumns[transformation.params.right_dataframe].map(col =>
-                            typeof col === "object" && col !== null ? col.name : col
-                        )
+                        [transformation.params.right_dataframe]: rightColumns.map(col => col.name)
                     };
                 }
                 return prev;
             });
         }
-    }, [transformation.params.right_dataframe]);
+    }, [transformation.params.right_dataframe, dataframeColumns]);
 
     const handleRightDataframeChange = (e) => {
         const newRightDf = e.target.value;
@@ -201,31 +217,16 @@ export const JoinsOperationFields = ({
         setDroppedRightColumns([]);
         updateJoinsParam(transformation.id, "drop_right_dataframe_collist", []);
 
-        // When right dataframe changes, append ALL columns first
-        if (
-            appendColumnsFromRightToLeft &&
-            transformation.source_dataframe &&
-            newRightDf &&
-            transformation.source_dataframe !== newRightDf
-        ) {
-            // Include any existing dropped left columns when appending
-            const existingDroppedLeft = transformation.params.drop_left_dataframe_collist || [];
-            appendColumnsFromRightToLeft(
-                transformation.source_dataframe,
-                newRightDf,
-                true,
-                existingDroppedLeft // Only consider dropped left columns initially
+        // Reset filtered right columns when right dataframe changes
+        if (newRightDf && dataframeColumns[newRightDf]) {
+            const rightColumns = dataframeColumns[newRightDf].map(col =>
+                typeof col === "object" && col !== null ? col : { name: col, datatype: "string" }
             );
-
-            setTimeout(() => {
-                window.dispatchEvent(new CustomEvent('tantor-columns-updated', {
-                    detail: {
-                        sourceId: transformation.source_dataframe,
-                        rightId: newRightDf,
-                        droppedColumns: existingDroppedLeft
-                    }
-                }));
-            }, 100);
+            setOriginalRightColumns(rightColumns);
+            setFilteredRightColumns(rightColumns);
+        } else {
+            setOriginalRightColumns([]);
+            setFilteredRightColumns([]);
         }
     };
 
@@ -368,6 +369,20 @@ export const JoinsOperationFields = ({
         }));
     };
 
+    const getRightColumnOptions = (rightDfId) => {
+        const originalColumns = originalRightColumnsForDropdown[rightDfId] || [];
+
+        if (!originalColumns || originalColumns.length === 0) {
+            return [];
+        }
+
+        return originalColumns.map(colName => ({
+            value: colName,
+            label: colName,
+            key: colName
+        }));
+    };
+
     useEffect(() => {
         if (
             transformation.source_dataframe &&
@@ -493,16 +508,12 @@ export const JoinsOperationFields = ({
         updateJoinsParam(transformation.id, "drop_left_dataframe_collist", columns);
         setDroppedLeftColumns(columns);
 
-        // Update the datasource to show the effect of dropping columns
-        if (transformation.params.right_dataframe && transformation.source_dataframe) {
-            const allDroppedColumns = [...columns, ...droppedRightColumns];
-            appendColumnsFromRightToLeft(
-                transformation.source_dataframe,
-                transformation.params.right_dataframe,
-                true,
-                allDroppedColumns
-            );
-        }
+        // Update filtered left columns
+        const filtered = originalLeftColumns.filter(col => !columns.includes(col.name));
+        setFilteredLeftColumns(filtered);
+
+        // Update the combined columns in source dataframe
+        updateCombinedSourceColumns(filtered, filteredRightColumns);
     };
 
     const handleDropRightColumnsChange = (selected) => {
@@ -510,26 +521,68 @@ export const JoinsOperationFields = ({
         updateJoinsParam(transformation.id, "drop_right_dataframe_collist", columns);
         setDroppedRightColumns(columns);
 
-        // Update the datasource to show the effect of dropping columns
-        if (transformation.params.right_dataframe && transformation.source_dataframe) {
-            const allDroppedColumns = [...droppedLeftColumns, ...columns];
-            appendColumnsFromRightToLeft(
-                transformation.source_dataframe,
-                transformation.params.right_dataframe,
-                true,
-                allDroppedColumns
+        // Update filtered right columns
+        const filtered = originalRightColumns.filter(col => !columns.includes(col.name));
+        setFilteredRightColumns(filtered);
+
+        // Update the combined columns in source dataframe
+        updateCombinedSourceColumns(filteredLeftColumns, filtered);
+    };
+
+    // New function to update the combined source columns
+    const updateCombinedSourceColumns = (leftCols, rightCols) => {
+        if (!transformation.source_dataframe || !transformation.params.right_dataframe) return;
+
+        // Combine left and right columns, handling duplicates
+        const leftColNames = new Set(leftCols.map(col => col.name));
+        const combinedColumns = [...leftCols];
+
+        // Add right columns that don't exist in left columns
+        rightCols.forEach(rightCol => {
+            if (!leftColNames.has(rightCol.name)) {
+                combinedColumns.push(rightCol);
+            }
+        });
+
+        // Update the source dataframe columns
+        if (window.allNodes && Array.isArray(window.allNodes)) {
+            const sourceNode = window.allNodes.find(n =>
+                (n.data?.alias === transformation.source_dataframe) || (n.id === transformation.source_dataframe)
             );
+
+            if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
+                sourceNode.data.onDataChange({ columns: combinedColumns });
+
+                // Dispatch event for other components
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('tantor-columns-updated', {
+                        detail: {
+                            sourceId: transformation.source_dataframe,
+                            rightId: transformation.params.right_dataframe,
+                            combinedColumns: combinedColumns
+                        }
+                    }));
+                }, 100);
+            }
         }
     };
 
     useEffect(() => {
         if (transformation.params.drop_left_dataframe_collist) {
             setDroppedLeftColumns(transformation.params.drop_left_dataframe_collist);
+            const filtered = originalLeftColumns.filter(col =>
+                !transformation.params.drop_left_dataframe_collist.includes(col.name)
+            );
+            setFilteredLeftColumns(filtered);
         }
         if (transformation.params.drop_right_dataframe_collist) {
             setDroppedRightColumns(transformation.params.drop_right_dataframe_collist);
+            const filtered = originalRightColumns.filter(col =>
+                !transformation.params.drop_right_dataframe_collist.includes(col.name)
+            );
+            setFilteredRightColumns(filtered);
         }
-    }, [transformation.params.drop_left_dataframe_collist, transformation.params.drop_right_dataframe_collist]);
+    }, [transformation.params.drop_left_dataframe_collist, transformation.params.drop_right_dataframe_collist, originalLeftColumns, originalRightColumns]);
 
     const getSourceDataframes = () => {
         if (!window.allNodes) return allDataframes;
@@ -639,7 +692,7 @@ export const JoinsOperationFields = ({
                                         disabled={!condition.rightDataframe}
                                     >
                                         <option value="">Select column</option>
-                                        {getColumnOptions(condition.rightDataframe).map(opt => (
+                                        {getRightColumnOptions(condition.rightDataframe).map(opt => (
                                             <option key={opt.key} value={opt.value}>{opt.label}</option>
                                         ))}
                                     </select>

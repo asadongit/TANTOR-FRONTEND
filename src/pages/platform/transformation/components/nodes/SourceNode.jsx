@@ -175,7 +175,7 @@ export const SourceNode = ({ id, data }) => {
     try {
       setLoading(prev => ({ ...prev, procedures: true }));
 
-      const response = await fetch(`${hostnamev1}/connection-saves/stored-procs/${connectionName}/`, {
+      const response = await fetch(`${hostnamev1}/connection-saves/stored-procs/${connectionName}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -405,6 +405,15 @@ export const SourceNode = ({ id, data }) => {
 
     dispatch({
       type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: currentColumns.map(col => col.name)
+      }
+    });
+
+    // Store original column selections for JSON generation
+    dispatch({
+      type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
       payload: {
         sourceNodeId: id,
         columns: currentColumns.map(col => col.name)
