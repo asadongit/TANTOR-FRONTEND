@@ -432,7 +432,7 @@ export const TypecastOperationFields = ({
 
         {(selectedDataType === "date" || selectedDataType === "timestamp") && (
           <div className="w-1/2">
-            <label className="text-xs text-gray-600 block mb-1">Format</label>
+            <label className="text-xs text-gray-600 block mb-1">Source Format</label>
             <input
               type="text"
               className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
