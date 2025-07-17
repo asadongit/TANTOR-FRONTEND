@@ -88,7 +88,9 @@ export const JoinsOperationFields = ({
                     const conditionPart = parts[i].trim();
                     const logicalOp = parts[i + 1] ? parts[i + 1].trim() : "&";
 
-                    const condParts = conditionPart.replace(/[()]/g, '').split(/\s*(==|!=|<|<=|>|>=)\s*/);
+                    const condParts = conditionPart.replace(/[()]/g, '').split(/\s*(<=|>=|==|!=|<|>)\s*/);
+                    // const condParts = conditionPart.replace(/[()]/g, '').split(/\s*(==|!=|<|<=|>|>=)\s*/);
+
                     if (condParts.length >= 3) {
                         const leftPart = condParts[0].trim();
                         const operator = condParts[1].trim();
