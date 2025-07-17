@@ -252,8 +252,8 @@ export const SourceNode = ({ id, data }) => {
     const storedMapping = storedParameterMappings[mappingKey] || {};
 
     const initialMapping = {};
-    if (procedure.procedure_parameters) {
-      procedure.procedure_parameters.forEach(param => {
+    if (procedure.procedure_parameter) {
+      procedure.procedure_parameter.forEach(param => {
         initialMapping[param.name] = storedMapping[param.name] || "";
       });
     }
@@ -367,9 +367,9 @@ export const SourceNode = ({ id, data }) => {
   };
 
   const areAllParametersMapped = () => {
-    if (!selectedProcedureForModal?.procedure_parameters) return true; // Allow apply if no parameters
+    if (!selectedProcedureForModal?.procedure_parameter) return true; // Allow apply if no parameters
 
-    return selectedProcedureForModal.procedure_parameters.every(param =>
+    return selectedProcedureForModal.procedure_parameter.every(param =>
       parameterColumnMapping[param.name] && parameterColumnMapping[param.name].trim() !== ""
     );
   };
@@ -1131,9 +1131,9 @@ export const SourceNode = ({ id, data }) => {
               </button>
             </div>
 
-            {selectedProcedureForModal.procedure_parameters && selectedProcedureForModal.procedure_parameters.length > 0 ? (
+            {selectedProcedureForModal.procedure_parameter && selectedProcedureForModal.procedure_parameter.length > 0 ? (
               <div className="space-y-2">
-                {selectedProcedureForModal.procedure_parameters.map((param, index) => {
+                {selectedProcedureForModal.procedure_parameter.map((param, index) => {
                   const isNumericParam = isNumericType(param.data_type);
                   const isStringParam = isStringType(param.data_type);
 
