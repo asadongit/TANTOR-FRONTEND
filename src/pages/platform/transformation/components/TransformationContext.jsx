@@ -34,6 +34,7 @@ const ACTION_TYPES = {
   UPDATE_SELECTED_SOURCE_COLUMNS: 'UPDATE_SELECTED_SOURCE_COLUMNS',
   UPDATE_TARGET_SELECTED_SOURCE: 'UPDATE_TARGET_SELECTED_SOURCE',
   UPDATE_PROCEDURE_EXECUTION: 'UPDATE_PROCEDURE_EXECUTION',
+  REMOVE_PROCEDURE_EXECUTION: 'REMOVE_PROCEDURE_EXECUTION', // New action type
   SET_ORIGINAL_SOURCE_COLUMNS: 'SET_ORIGINAL_SOURCE_COLUMNS', // New action type
 };
 
@@ -209,6 +210,42 @@ function transformationReducer(state, action) {
         procedureExecution: {
           ...state.procedureExecution,
           [sourceNodeId]: updatedProcedures
+        }
+      };
+    }
+
+    case ACTION_TYPES.REMOVE_PROCEDURE_EXECUTION: {
+      const { sourceNodeId, procedureItemId, procedureType } = action.payload;
+      const currentProcedures = state.procedureExecution[sourceNodeId] || [];
+
+      // Remove the specific procedure
+      const updatedProcedures = currentProcedures.filter(p =>
+        !(p.procedureItemId === procedureItemId && p.procedureType === procedureType)
+      );
+
+      // Update procedure orders for remaining procedures of the same type
+      const reorderedProcedures = updatedProcedures.map(proc => {
+        if (proc.procedureType === procedureType) {
+          const sameTypeProcedures = updatedProcedures.filter(p =>
+            p.procedureType === procedureType &&
+            p.EventType === proc.EventType
+          );
+          const sortedProcedures = sameTypeProcedures.sort((a, b) => a.timestamp - b.timestamp);
+          const newOrder = sortedProcedures.findIndex(p => p.procedureId === proc.procedureId) + 1;
+
+          return {
+            ...proc,
+            ProcOrder: newOrder
+          };
+        }
+        return proc;
+      });
+
+      return {
+        ...state,
+        procedureExecution: {
+          ...state.procedureExecution,
+          [sourceNodeId]: reorderedProcedures
         }
       };
     }
