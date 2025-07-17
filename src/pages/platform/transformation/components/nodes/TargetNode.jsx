@@ -531,26 +531,142 @@ export const TargetNode = ({ id, data }) => {
     const newId = Math.max(...selectedPostProcedures.map(p => p.id), 0) + 1;
     setSelectedPostProcedures(prev => [...prev, { id: newId, procedure: null }]);
   };
-  const removePreProcedureDropdown = (id) => {
+  const removePreProcedureDropdown = (procedureItemId) => {
     if (selectedPreProcedures.length > 1) {
-      setSelectedPreProcedures(prev => prev.filter(p => p.id !== id));
+      // Find the procedure being removed
+      const procedureToRemove = selectedPreProcedures.find(p => p.id === procedureItemId);
+
+      if (procedureToRemove && procedureToRemove.procedure) {
+        // Remove from context/JSON
+        dispatch({
+          type: ACTION_TYPES.REMOVE_PROCEDURE_EXECUTION,
+          payload: {
+            sourceNodeId: id, // Using id for target node
+            procedureItemId: procedureItemId,
+            procedureType: "pre"
+          }
+        });
+
+        // Clean up stored parameter mappings
+        const mappingKey = `pre_${procedureItemId}_${procedureToRemove.procedure.procedure_name}`;
+        setStoredParameterMappings(prev => {
+          const updated = { ...prev };
+          delete updated[mappingKey];
+          return updated;
+        });
+      }
+
+      // Remove from local state
+      setSelectedPreProcedures(prev => prev.filter(p => p.id !== procedureItemId));
       setPreProcedureDropdownOpen(prev => {
         const updated = { ...prev };
-        delete updated[id];
+        delete updated[procedureItemId];
         return updated;
       });
+
+      // Update procedure orders for remaining procedures
+      setTimeout(() => {
+        setSelectedPreProcedures(prev => {
+          const updatedProcedures = prev.map((proc, index) => {
+            if (proc.procedure) {
+              const procedureOrder = index + 1;
+              const procedureJSON = {
+                "EventType": "BeforeTargetWrite",
+                "Dataset": alias || "unnamed_target",
+                "ProcName": proc.procedure.procedure_name,
+                "ProcParams": [],
+                "ProcOrder": procedureOrder,
+                "parameterMapping": storedParameterMappings[`pre_${proc.id}_${proc.procedure.procedure_name}`] || {},
+                "procedureId": `${proc.procedure.procedure_name}_BeforeTargetWrite_${procedureOrder}`,
+                "procedureItemId": proc.id,
+                "procedureType": "pre",
+                "timestamp": Date.now()
+              };
+
+              dispatch({
+                type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+                payload: {
+                  sourceNodeId: id,
+                  procedureMapping: procedureJSON
+                }
+              });
+            }
+            return proc;
+          });
+          return updatedProcedures;
+        });
+      }, 0);
     }
   };
-  const removePostProcedureDropdown = (id) => {
+
+  const removePostProcedureDropdown = (procedureItemId) => {
     if (selectedPostProcedures.length > 1) {
-      setSelectedPostProcedures(prev => prev.filter(p => p.id !== id));
+      // Find the procedure being removed
+      const procedureToRemove = selectedPostProcedures.find(p => p.id === procedureItemId);
+
+      if (procedureToRemove && procedureToRemove.procedure) {
+        // Remove from context/JSON
+        dispatch({
+          type: ACTION_TYPES.REMOVE_PROCEDURE_EXECUTION,
+          payload: {
+            sourceNodeId: id, // Using id for target node
+            procedureItemId: procedureItemId,
+            procedureType: "post"
+          }
+        });
+
+        // Clean up stored parameter mappings
+        const mappingKey = `post_${procedureItemId}_${procedureToRemove.procedure.procedure_name}`;
+        setStoredParameterMappings(prev => {
+          const updated = { ...prev };
+          delete updated[mappingKey];
+          return updated;
+        });
+      }
+
+      // Remove from local state
+      setSelectedPostProcedures(prev => prev.filter(p => p.id !== procedureItemId));
       setPostProcedureDropdownOpen(prev => {
         const updated = { ...prev };
-        delete updated[id];
+        delete updated[procedureItemId];
         return updated;
       });
+
+      // Update procedure orders for remaining procedures
+      setTimeout(() => {
+        setSelectedPostProcedures(prev => {
+          const updatedProcedures = prev.map((proc, index) => {
+            if (proc.procedure) {
+              const procedureOrder = index + 1;
+              const procedureJSON = {
+                "EventType": "AfterTargetWrite",
+                "Dataset": alias || "unnamed_target",
+                "ProcName": proc.procedure.procedure_name,
+                "ProcParams": [],
+                "ProcOrder": procedureOrder,
+                "parameterMapping": storedParameterMappings[`post_${proc.id}_${proc.procedure.procedure_name}`] || {},
+                "procedureId": `${proc.procedure.procedure_name}_AfterTargetWrite_${procedureOrder}`,
+                "procedureItemId": proc.id,
+                "procedureType": "post",
+                "timestamp": Date.now()
+              };
+
+              dispatch({
+                type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+                payload: {
+                  sourceNodeId: id,
+                  procedureMapping: procedureJSON
+                }
+              });
+            }
+            return proc;
+          });
+          return updatedProcedures;
+        });
+      }, 0);
     }
   };
+
   const handlePreProcedureSelect = (procedureItem, procedure) => {
     setSelectedPreProcedures(prev =>
       prev.map(p => p.id === procedureItem.id ? { ...p, procedure } : p)
@@ -575,8 +691,8 @@ export const TargetNode = ({ id, data }) => {
     const storedMapping = storedParameterMappings[mappingKey] || {};
 
     const initialMapping = {};
-    if (procedure.procedure_parameters) {
-      procedure.procedure_parameters.forEach(param => {
+    if (procedure.procedure_parameter) {
+      procedure.procedure_parameter.forEach(param => {
         initialMapping[param.name] = storedMapping[param.name] || "";
       });
     }
@@ -668,8 +784,8 @@ export const TargetNode = ({ id, data }) => {
   };
 
   const areAllParametersMapped = () => {
-    if (!selectedProcedureForModal?.procedure_parameters) return true;
-    return selectedProcedureForModal.procedure_parameters.every(param =>
+    if (!selectedProcedureForModal?.procedure_parameter) return true;
+    return selectedProcedureForModal.procedure_parameter.every(param =>
       parameterColumnMapping[param.name] && parameterColumnMapping[param.name].trim() !== ""
     );
   };
@@ -1075,15 +1191,33 @@ export const TargetNode = ({ id, data }) => {
                   <div className="space-y-2">
                     {selectedPreProcedures.map((procedureItem, index) => (
                       <div key={procedureItem.id} className="flex gap-1 items-center">
-                        <div className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`}>
+                        <div
+                          className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`}
+                          style={{ minWidth: 0, maxWidth: '180px', width: '180px' }}
+                        >
                           <button
                             type="button"
                             className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-black text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                            style={{
+                              minWidth: 0,
+                              maxWidth: '180px',
+                              width: '180px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
                             onClick={() => setPreProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))}
+                            title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select pre procedure'}
                           >
-                            {procedureItem.procedure
-                              ? procedureItem.procedure.procedure_name
-                              : 'Select pre procedure'}
+                            <span
+                              className="truncate block"
+                              style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                              title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select pre procedure'}
+                            >
+                              {procedureItem.procedure
+                                ? procedureItem.procedure.procedure_name
+                                : 'Select pre procedure'}
+                            </span>
                             <span className="ml-auto pl-2">&#9662;</span>
                           </button>
                           {preProcedureDropdownOpen[procedureItem.id] && (
@@ -1131,7 +1265,7 @@ export const TargetNode = ({ id, data }) => {
                         {selectedPreProcedures.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => setSelectedPreProcedures(prev => prev.filter(p => p.id !== procedureItem.id))}
+                            onClick={() => removePreProcedureDropdown(procedureItem.id)}
                             className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
                             title="Remove pre procedure"
                           >
@@ -1160,15 +1294,33 @@ export const TargetNode = ({ id, data }) => {
                   <div className="space-y-2">
                     {selectedPostProcedures.map((procedureItem, index) => (
                       <div key={procedureItem.id} className="flex gap-1 items-center">
-                        <div className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`}>
+                        <div
+                          className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`}
+                          style={{ minWidth: 0, maxWidth: '180px', width: '180px' }}
+                        >
                           <button
                             type="button"
                             className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-black text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                            style={{
+                              minWidth: 0,
+                              maxWidth: '180px',
+                              width: '180px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
                             onClick={() => setPostProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))}
+                            title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select post procedure'}
                           >
-                            {procedureItem.procedure
-                              ? procedureItem.procedure.procedure_name
-                              : 'Select post procedure'}
+                            <span
+                              className="truncate block"
+                              style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                              title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select post procedure'}
+                            >
+                              {procedureItem.procedure
+                                ? procedureItem.procedure.procedure_name
+                                : 'Select post procedure'}
+                            </span>
                             <span className="ml-auto pl-2">&#9662;</span>
                           </button>
                           {postProcedureDropdownOpen[procedureItem.id] && (
@@ -1216,7 +1368,7 @@ export const TargetNode = ({ id, data }) => {
                         {selectedPostProcedures.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => setSelectedPostProcedures(prev => prev.filter(p => p.id !== procedureItem.id))}
+                            onClick={() => removePostProcedureDropdown(procedureItem.id)}
                             className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
                             title="Remove post procedure"
                           >
@@ -1252,9 +1404,9 @@ export const TargetNode = ({ id, data }) => {
                   <X size={18} />
                 </button>
               </div>
-              {selectedProcedureForModal.procedure_parameters && selectedProcedureForModal.procedure_parameters.length > 0 ? (
+              {selectedProcedureForModal.procedure_parameter && selectedProcedureForModal.procedure_parameter.length > 0 ? (
                 <div className="space-y-2">
-                  {selectedProcedureForModal.procedure_parameters.map((param, index) => {
+                  {selectedProcedureForModal.procedure_parameter.map((param, index) => {
                     const isNumericParam = isNumericType(param.data_type);
                     const isStringParam = isStringType(param.data_type);
 

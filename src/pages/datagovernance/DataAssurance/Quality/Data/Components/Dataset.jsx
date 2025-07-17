@@ -326,7 +326,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
 
       if (!secureQueryResponse.ok) {
         const errData = await secureQueryResponse.json();
-        toast.error(errData.detail || 'Error in query validation');
+        // toast.error(errData.detail || 'Error in query validation');
         throw new Error(errData.detail || 'Query validation failed');
       }
 

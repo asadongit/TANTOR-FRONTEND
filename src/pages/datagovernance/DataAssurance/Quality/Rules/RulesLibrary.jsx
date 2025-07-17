@@ -89,7 +89,9 @@ const RulesLibrary = () => {
     const handleViewDetails = (rule) => {
         setSelectedRule({
             ...rule,
-            last_run: rule.mappings.length > 0 ? rule.mappings[0].last_run_date : '-',
+            last_run: rule.mappings.length > 0 ? rule.mappings[0].last_run_date : 'N/A',
+            frequency: rule.mappings.length > 0 ? rule.mappings[0].frequency : 'N/A',
+            scheduled_date_time: rule.mappings.length > 0 ? rule.mappings[0].scheduled_date_time : '-',
         });
         setShowDetailsModal(true);
         setModalPage(1);
@@ -229,8 +231,8 @@ const RulesLibrary = () => {
                                             <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
                                             <td className="p-4">
                                                 <span className={`px-2 pt-1 pb-2 text-center rounded-full text-sm font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
-                                                        item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                            'bg-green-100 text-green-700'
+                                                    item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-green-100 text-green-700'
                                                     }`}>
                                                     {item.severity}
                                                 </span>
@@ -267,8 +269,8 @@ const RulesLibrary = () => {
                                             key={index}
                                             onClick={() => goToPage(index + 1)}
                                             className={`px-3 py-1 mx-1 rounded-md ${currentPage === index + 1
-                                                    ? 'bg-[#8e78b7] text-white'
-                                                    : 'text-gray-600 hover:bg-gray-100'
+                                                ? 'bg-[#8e78b7] text-white'
+                                                : 'text-gray-600 hover:bg-gray-100'
                                                 }`}
                                         >
                                             {index + 1}
@@ -318,8 +320,8 @@ const RulesLibrary = () => {
                             <div>
                                 <span className="font-semibold text-gray-700">Severity:</span>
                                 <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${selectedRule.severity === 'High' ? 'bg-red-100 text-red-700' :
-                                        selectedRule.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                            'bg-green-100 text-green-700'
+                                    selectedRule.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-green-100 text-green-700'
                                     }`}>
                                     {selectedRule.severity}
                                 </span>
@@ -350,7 +352,15 @@ const RulesLibrary = () => {
                             </div>
                             <div>
                                 <span className="font-semibold text-gray-700">Last Run Date:</span>
-                                <span className="ml-2 text-gray-800">{selectedRule.last_run || '-'}</span>
+                                <span className="ml-2 text-gray-800">{selectedRule.last_run || 'N/A'}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold text-gray-700">Frequency:</span>
+                                <span className="ml-2 text-gray-800">{selectedRule.frequency || 'N/A'}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold text-gray-700">Scheduled Date & Time:</span>
+                                <span className="ml-2 text-gray-800">{selectedRule.scheduled_date_time || '-'}</span>
                             </div>
                         </div>
                         {parseConnectionDetails(selectedRule.mappings).length === 0 ? (
@@ -397,8 +407,8 @@ const RulesLibrary = () => {
                                                         key={index}
                                                         onClick={() => setModalPage(index + 1)}
                                                         className={`px-2 py-1 mx-0.5 rounded ${modalPage === index + 1
-                                                                ? 'bg-[#8e78b7] text-white'
-                                                                : 'text-gray-600 hover:bg-gray-100'
+                                                            ? 'bg-[#8e78b7] text-white'
+                                                            : 'text-gray-600 hover:bg-gray-100'
                                                             }`}
                                                     >
                                                         {index + 1}
