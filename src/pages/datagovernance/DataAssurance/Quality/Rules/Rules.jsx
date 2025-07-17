@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash2, BookOpen, List, Clock } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash2, BookOpen, List, Clock, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +27,7 @@ const Rules = () => {
     time: '',
     rule_ids: []
   });
+  const [sortConfig, setSortConfig] = useState({ key: 'last_run_date', direction: 'desc' })
   const rowsPerPage = 5;
   const navigate = useNavigate();
   const [metricData, setMetricData] = useState({});
@@ -44,13 +45,22 @@ const Rules = () => {
     }
   }, [toast.show]);
 
-  const metricsData = Object.keys(metricData).map((key) => ({
-    icon: "material-symbols:tab-group-outline",
-    bgcolor: "bg-[#8d77ba] bg-opacity-25",
-    iconcolor: "text-[#8d77ba]",
-    title: key,
-    count: metricData[key] || "-"
-  }));
+  const metricsData = () => {
+    const keys = Object.keys(metricData);
+    const sortedKeys = keys.sort((a, b) => {
+      if (a.toLowerCase() === 'overall') return -1;
+      if (b.toLowerCase() === 'overall') return 1;
+      return a.localeCompare(b);
+    });
+
+    return sortedKeys.map((key) => ({
+      icon: "material-symbols:tab-group-outline",
+      bgcolor: "bg-[#8d77ba] bg-opacity-25",
+      iconcolor: "text-[#8d77ba]",
+      title: key,
+      count: metricData[key] || "-"
+    }));
+  };
 
   const fetchCounts = async () => {
     setIsLoading(true);
@@ -65,7 +75,6 @@ const Rules = () => {
       });
       if (response.status === 200) {
         const data = await response.json();
-        console.log(data);
         setMetricData(data);
       } else {
         console.error('Non-200 response:', response.status);
@@ -87,9 +96,8 @@ const Rules = () => {
           'accept': 'application/json',
         },
         body: JSON.stringify({ owner: decodedToken?.preferred_username }),
-      }); 
+      });
       const data = await response.json();
-      console.log(data.data_rules);
       setTableData(data.data_rules || []);
     } catch (error) {
       console.error('Error fetching table data:', error);
@@ -235,7 +243,6 @@ const Rules = () => {
   };
 
   const handleScheduleSubmit = async () => {
-    console.log("schedular data is ====>", schedulerData)
     setIsLoading(true);
     try {
       const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/scheduler`, {
@@ -280,11 +287,61 @@ const Rules = () => {
     setShowSelectAllOptions(false);
   };
 
-  const filteredData = tableData.filter(item =>
-    Object.values(item).some(val =>
-      val && val.toString().toLowerCase().includes(searchTerm.toLowerCase())
+  const handleSort = (key) => {
+    setSortConfig(prev => {
+      const newDirection = prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc';
+      return { key, direction: newDirection };
+    });
+    setCurrentPage(1); // Reset to first page on sort
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'asc' ? (
+        <ArrowUp className="h-4 w-4 inline-block ml-1" />
+      ) : (
+        <ArrowDown className="h-4 w-4 inline-block ml-1" />
+      );
+    }
+    return <ArrowUpDown className="h-4 w-4 inline-block ml-1 opacity-50" />;
+  };
+
+  const filteredData = tableData
+    .filter(item =>
+      Object.values(item).some(val =>
+        val && val.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      )
     )
-  );
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+
+      const aLastRun = a.last_run_date || '';
+      const bLastRun = b.last_run_date || '';
+      const lastRunComparison =
+        sortConfig.direction === 'asc'
+          ? aLastRun.localeCompare(bLastRun)
+          : bLastRun.localeCompare(aLastRun);
+
+      if (sortConfig.key === 'last_run_date' && lastRunComparison === 0) {
+        const aUpdated = a.updated_date || '';
+        const bUpdated = b.updated_date || '';
+        return sortConfig.direction === 'asc'
+          ? aUpdated.localeCompare(bUpdated)
+          : bUpdated.localeCompare(aUpdated);
+      }
+
+      if (sortConfig.key === 'id') {
+        const aValue = parseInt(a.id, 10);
+        const bValue = parseInt(b.id, 10);
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      const aValue = a[sortConfig.key] || '';
+      const bValue = b[sortConfig.key] || '';
+      return sortConfig.direction === 'asc'
+        ? aValue.toString().localeCompare(bValue.toString())
+        : bValue.toString().localeCompare(bValue.toString());
+    });
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
   const indexOfLastItem = currentPage * rowsPerPage;
@@ -548,7 +605,6 @@ const Rules = () => {
     setShowSelectAllOptions(false);
   };
 
-  // Skeleton loading for metrics cards
   const renderMetricsSkeleton = () => {
     return Array(6).fill().map((_, index) => (
       <div
@@ -613,48 +669,46 @@ const Rules = () => {
     ));
   };
 
-const [autoOpenRuleRunSummary, setAutoOpenRuleRunSummary] = useState(false);
-const [autoSelectedRuleIds, setAutoSelectedRuleIds] = useState([]);
-
-useEffect(() => {
-  if (autoOpenRuleRunSummary && autoSelectedRuleIds.length > 0) {
-    const handleAutoOpen = async () => {
-      setIsPopupLoading(true);
-      setShowRunSummary(true);
-      
-      const [detailedRulesData, results] = await Promise.all([
-        fetchRuleDetails(autoSelectedRuleIds),
-        fetchRuleRunResults(autoSelectedRuleIds)
-      ]);
-
-      const enrichedRulesData = detailedRulesData.map((rule) => {
-        const tableItem = tableData.find((item) => item.id === rule.id);
-        return {
-          ...rule,
-          type: tableItem ? tableItem.type : rule.type,
-        };
-      });
-
-      setDetailedRules(enrichedRulesData);
-      setRuleRunResults(results);
-      setIsPopupLoading(false);
-      setAutoOpenRuleRunSummary(false);
-    };
-
-    handleAutoOpen();
-  }
-}, [autoOpenRuleRunSummary, autoSelectedRuleIds]);
-
+  const [autoOpenRuleRunSummary, setAutoOpenRuleRunSummary] = useState(false);
+  const [autoSelectedRuleIds, setAutoSelectedRuleIds] = useState([]);
 
   useEffect(() => {
-  const locationState = location.state;
-  if (locationState?.fromRuleRunSummary && locationState?.selectedRuleIds) {
-    setAutoSelectedRuleIds(locationState.selectedRuleIds);
-    setAutoOpenRuleRunSummary(true);
-    navigate(location.pathname, { replace: true, state: {} });
-  }
-}, [location.state]);
+    if (autoOpenRuleRunSummary && autoSelectedRuleIds.length > 0) {
+      const handleAutoOpen = async () => {
+        setIsPopupLoading(true);
+        setShowRunSummary(true);
 
+        const [detailedRulesData, results] = await Promise.all([
+          fetchRuleDetails(autoSelectedRuleIds),
+          fetchRuleRunResults(autoSelectedRuleIds)
+        ]);
+
+        const enrichedRulesData = detailedRulesData.map((rule) => {
+          const tableItem = tableData.find((item) => item.id === rule.id);
+          return {
+            ...rule,
+            type: tableItem ? tableItem.type : rule.type,
+          };
+        });
+
+        setDetailedRules(enrichedRulesData);
+        setRuleRunResults(results);
+        setIsPopupLoading(false);
+        setAutoOpenRuleRunSummary(false);
+      };
+
+      handleAutoOpen();
+    }
+  }, [autoOpenRuleRunSummary, autoSelectedRuleIds]);
+
+  useEffect(() => {
+    const locationState = location.state;
+    if (locationState?.fromRuleRunSummary && locationState?.selectedRuleIds) {
+      setAutoSelectedRuleIds(locationState.selectedRuleIds);
+      setAutoOpenRuleRunSummary(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
 
   return (
     <div className="p-6">
@@ -723,7 +777,7 @@ useEffect(() => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
           {isLoading || Object.keys(metricData).length === 0
             ? renderMetricsSkeleton()
-            : metricsData.map((metric, index) => (
+            : metricsData().map((metric, index) => (
               <div
                 key={index}
                 className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
@@ -791,16 +845,36 @@ useEffect(() => {
                       )}
                     </div>
                   </th>
-                  <th className="text-left p-4">ID</th>
-                  <th className="text-left p-4">Category</th>
-                  <th className="text-left p-4">Type</th>
-                  <th className="text-left p-4">Group</th>
-                  <th className="text-left p-4">Name</th>
-                  <th className="text-left p-4">Severity</th>
-                  <th className="text-left p-4">Status</th>
-                  <th className="text-left p-4">Created Date</th>
-                  <th className="text-left p-4">Updated Date</th>
-                  <th className="text-left p-4">Last Run</th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('id')}>
+                    <span className="inline-flex items-center">ID {getSortIcon('id')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('category')}>
+                    <span className="inline-flex items-center">Category {getSortIcon('category')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('type')}>
+                    <span className="inline-flex items-center">Type {getSortIcon('type')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('group_name')}>
+                    <span className="inline-flex items-center">Group {getSortIcon('group_name')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('name')}>
+                    <span className="inline-flex items-center">Name {getSortIcon('name')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('severity')}>
+                    <span className="inline-flex items-center">Severity {getSortIcon('severity')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('status')}>
+                    <span className="inline-flex items-center">Status {getSortIcon('status')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('created_date')}>
+                    <span className="inline-flex items-center">Created Date {getSortIcon('created_date')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('updated_date')}>
+                    <span className="inline-flex items-center">Updated Date {getSortIcon('updated_date')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('last_run_date')}>
+                    <span className="inline-flex items-center">Last Run {getSortIcon('last_run_date')}</span>
+                  </th>
                   <th className="text-center p-4 last:rounded-tr-lg">Actions</th>
                 </tr>
               </thead>
