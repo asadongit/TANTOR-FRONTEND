@@ -175,7 +175,7 @@ export const SourceNode = ({ id, data }) => {
     try {
       setLoading(prev => ({ ...prev, procedures: true }));
 
-      const response = await fetch(`${hostnamev1}/connection-saves/stored-procs/${connectionName}/`, {
+      const response = await fetch(`${hostnamev1}/connection-saves/stored-procs/${connectionName}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
