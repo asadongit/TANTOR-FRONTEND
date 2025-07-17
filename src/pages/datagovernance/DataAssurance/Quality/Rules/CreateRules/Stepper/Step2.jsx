@@ -153,7 +153,9 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
   const initialStep2Data = stepData.step2 || step2Data;
 
   const [validationStatus, setValidationStatusState] = useState(() => {
-    const initialStatus = stepData.validationStatus || {};
+    if (stepData.validationStatus && Object.keys(stepData.validationStatus).length > 0) {
+      return stepData.validationStatus;
+    }
     const newStatus = {};
     if (Array.isArray(initialStep2Data)) {
       initialStep2Data.forEach(ruleObj => {
@@ -166,8 +168,8 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           (ruleObj.connection_details || []).forEach((conn, connIdx) => {
             const connKey = `${queryKey}__${connIdx}`;
             newStatus[connKey] = {
-              ruleQueryStatus: initialStatus[connKey]?.ruleQueryStatus || 'validate_again', 
-              scoreQueryStatus: initialStatus[connKey]?.scoreQueryStatus || (data?.category.toLowerCase() === 'custom' ? 'validate_again' : null), 
+              ruleQueryStatus: 'validate_again',
+              scoreQueryStatus: data?.category.toLowerCase() === 'custom' ? 'validate_again' : null,
             };
           });
         }
@@ -180,11 +182,11 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     setStepData(prev => ({ ...prev, validationStatus }));
   }, [validationStatus]);
 
-  useEffect(() => {
-    if (stepData.validationStatus) {
-      setValidationStatusState(stepData.validationStatus);
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (stepData.validationStatus) {
+  //     setValidationStatusState(stepData.validationStatus);
+  //   }
+  // }, []);
 
   const setValidationStatus = useCallback((updater) => {
     setValidationStatusState(prev => {
@@ -297,6 +299,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     }
   }, [initialStep2Data]);
 
+
   const toggleGroup = (groupName) => {
     setExpandedGroups(prev => ({
       ...prev,
@@ -347,7 +350,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
 
   const handleQueryChange = (value, isScoreQuery = false) => {
     const currentGroup = groupNames[activeGroupIndex];
-    const queryKey = `${currentGroup}__${activeRuleIndex}`; 
+    const queryKey = `${currentGroup}__${activeRuleIndex}`;
 
     if (isScoreQuery) {
       const updatedScoreQueries = { ...scoreQueries };
@@ -435,6 +438,9 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     );
     return { idx, total: selected.length };
   };
+
+  const { idx: currentFlatIndex } = getCurrentSelectedFlatIndex();
+  const editorKey = `${activeGroupIndex}-${activeRuleIndex}-${currentFlatIndex}`;
 
   const goToNextQuery = () => {
     const selected = getAllSelectedRules();
@@ -673,7 +679,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
       if (isDuplicate) {
         newConnections.forEach((conn, idx) => {
           const connKey = `${queryKey}__${idx}`;
-          if (!prev[connKey]) { 
+          if (!prev[connKey]) {
             updated[connKey] = {
               ruleQueryStatus: 'validate_again',
               scoreQueryStatus: 'validate_again',
@@ -769,6 +775,9 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
   };
 
   const handleRefresh = (conn) => {
+    const connIdx = connections.findIndex(c => c.id === conn.id);
+    if (connIdx === -1) return; 
+
     setConnectionsForCurrent(
       connections.map(c =>
         c.id === conn.id
@@ -776,6 +785,17 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           : c
       )
     );
+
+    const queryKey = getCurrentQueryKey();
+    const connKey = `${queryKey}__${connIdx}`;
+
+    setValidationStatus(prev => ({
+      ...prev,
+      [connKey]: {
+        ruleQueryStatus: 'validate_again',
+        scoreQueryStatus: data?.category.toLowerCase() === 'custom' ? 'validate_again' : null,
+      }
+    }));
   };
 
   const generateResultJson = () => {
@@ -951,7 +971,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
       if (!rule || !conn) continue;
 
       const queryField = isScoreQuery ? 'score_query' : 'query';
-      const statusField = isScoreQuery ? 'scoreQueryStatus' : 'ruleQueryStatus'; 
+      const statusField = isScoreQuery ? 'scoreQueryStatus' : 'ruleQueryStatus';
 
       const replacedQuery = replacePlaceholders(
         rule[queryField],
@@ -999,13 +1019,13 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     let all = true;
     groupNames.forEach((groupName) => {
       (queries[groupName] || []).forEach((ruleObj, ruleIdx) => {
-        if (!selectedRules[groupName]?.has(ruleObj.id)) return; 
+        if (!selectedRules[groupName]?.has(ruleObj.id)) return;
 
         const queryKey = `${groupName}__${ruleIdx}`;
         const conns = connectionsByQuery[queryKey] || [];
 
         conns.forEach((conn, connIdx) => {
-          if (!conn.checked) return; 
+          if (!conn.checked) return;
 
           const connKey = `${queryKey}__${connIdx}`;
           const currentValidation = validationStatus[connKey];
@@ -1013,18 +1033,18 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           if (data?.category.toLowerCase() === 'pre-built') {
             if (currentValidation?.ruleQueryStatus !== 'success') {
               all = false;
-              return; 
+              return;
             }
-          } else { 
+          } else {
             if (currentValidation?.ruleQueryStatus !== 'success' || currentValidation?.scoreQueryStatus !== 'success') {
               all = false;
-              return; 
+              return;
             }
           }
         });
-        if (!all) return; 
+        if (!all) return;
       });
-      if (!all) return; 
+      if (!all) return;
     });
     return all;
   })();
@@ -1051,7 +1071,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
       if (validationFilter === 'all') return true;
       if (data?.category.toLowerCase() === 'pre-built') {
         return currentValidation.ruleQueryStatus === validationFilter;
-      } else { 
+      } else {
         if (validationFilter === 'success') {
           return currentValidation.ruleQueryStatus === 'success' && currentValidation.scoreQueryStatus === 'success';
         }
@@ -1211,7 +1231,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     if (activeTab === 'score' && scoreEditorRef.current?.editor) {
       const editor = scoreEditorRef.current.editor;
       const currentScoreQuery = getCurrentQuery(true);
-      editor.setValue(currentScoreQuery || '');
+      // editor.setValue(currentScoreQuery || '');
       if (querySearchText) {
         setTimeout(() => {
           editor.findAll(querySearchText, {
@@ -1227,7 +1247,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
         setSearchLoaded(true);
       }
     }
-  }, [activeGroupIndex, activeRuleIndex, activeTab, querySearchText]);
+  }, [activeTab, querySearchText]);
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -1557,7 +1577,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                     } else if (ruleStatus === 'validate_again') {
                       statusIcon = <span className="text-orange-600 text-xs font-semibold mr-2">Validate Rule</span>;
                     }
-                  } else { 
+                  } else {
                     if (ruleStatus === 'success' && scoreStatus === 'success') {
                       statusIcon = <span className="text-green-600 text-xs font-semibold mr-2">Valid Queries</span>;
                     } else if (ruleStatus === 'error' || scoreStatus === 'error') {
@@ -1828,6 +1848,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                 <div style={{ display: activeTab === 'rule' ? 'block' : 'none' }}>
                   <AceEditor
                     ref={ruleEditorRef}
+                    key={editorKey}
                     mode="sql"
                     theme="tomorrow"
                     name="rule-query-editor"
@@ -1866,6 +1887,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                 <div style={{ display: activeTab === 'score' ? 'block' : 'none' }}>
                   <AceEditor
                     ref={scoreEditorRef}
+                    key={editorKey}
                     mode="sql"
                     theme="tomorrow"
                     name="score-query-editor"
@@ -1905,6 +1927,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
             ) : (
               <AceEditor
                 ref={ruleEditorRef}
+                key={editorKey}
                 mode="sql"
                 theme="tomorrow"
                 name="query-editor"
