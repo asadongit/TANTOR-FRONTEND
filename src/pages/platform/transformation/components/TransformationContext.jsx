@@ -275,6 +275,14 @@ export function TransformationProvider({ children }) {
   const [state, dispatch] = useReducer(transformationReducer, initialState);
   const { decodedToken, project } = useAuth();
 
+  // Make context available globally for restrict columns operations
+  useEffect(() => {
+    window.transformationContext = { state, dispatch, ACTION_TYPES };
+    return () => {
+      delete window.transformationContext;
+    };
+  }, [state, dispatch, ACTION_TYPES]);
+
   const generateTransformationJson = () => {
     const timestamp = new Date().toISOString();
 
