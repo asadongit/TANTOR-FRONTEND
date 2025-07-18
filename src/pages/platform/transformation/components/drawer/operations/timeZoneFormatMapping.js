@@ -47,22 +47,23 @@ export const TIMEZONES = {
  * Common date/time formats with examples
  */
 export const DATE_FORMATS = [
-  { format: "yyyy-MM-dd", example: "2023-06-15" },
-  { format: "yyyy/MM/dd", example: "2023/06/15" },
-  { format: "MM-dd-yyyy", example: "06-15-2023" },
-  { format: "MM/dd/yyyy", example: "06/15/2023" },
-  { format: "dd-MM-yyyy", example: "15-06-2023" },
-  { format: "dd/MM/yyyy", example: "15/06/2023" },
-  { format: "yyyy-MM-dd HH:mm:ss", example: "2023-06-15 14:30:45" },
+  { format: "yyyy-MM-dd", example: "2025-06-15" },
+  { format: "yyyy/MM/dd", example: "2025/06/15" },
+  { format: "MM-dd-yyyy", example: "06-15-2025" },
+  { format: "MM/dd/yyyy", example: "06/15/2025" },
+  { format: "dd-MM-yyyy", example: "15-06-2025" },
+  { format: "dd/MM/yyyy", example: "15/06/2025" },
+  { format: "yyyy-MM-dd HH:mm:ss", example: "2025-06-15 14:30:45" },
+  { format: "yyyy-MM-dd HH:mm:ss.SSS", example: "2025-07-01 00:00:00.000" },
   { format: "yyyy-MM-dd'T'HH:mm:ss", example: "2023-06-15T14:30:45" },
-  { format: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", example: "2023-06-15T14:30:45.123Z" },
-  { format: "dd-MM-yyyy HH:mm:ss", example: "15-06-2023 14:30:45" },
-  { format: "MM-dd-yyyy HH:mm:ss", example: "06-15-2023 14:30:45" },
+  { format: "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", example: "2025-06-15T14:30:45.123Z" },
+  { format: "dd-MM-yyyy HH:mm:ss", example: "15-06-2025 14:30:45" },
+  { format: "MM-dd-yyyy HH:mm:ss", example: "06-15-2025 14:30:45" },
   { format: "HH:mm:ss", example: "14:30:45" },
   { format: "hh:mm:ss a", example: "02:30:45 PM" },
-  { format: "MMMM d, yyyy", example: "June 15, 2023" },
-  { format: "EEE, MMM d, yyyy", example: "Thu, Jun 15, 2023" },
-  { format: "EEEE, MMMM d, yyyy", example: "Thursday, June 15, 2023" }
+  { format: "MMMM d, yyyy", example: "June 15, 2025" },
+  { format: "EEE, MMM d, yyyy", example: "Thu, Jun 15, 2025" },
+  { format: "EEEE, MMMM d, yyyy", example: "Thursday, June 15, 2025" }
 ];
 
 

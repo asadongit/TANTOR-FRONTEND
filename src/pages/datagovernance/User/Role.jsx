@@ -64,7 +64,7 @@ const Role = () => {
     setTogglingStatus(index);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/rolestatus`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/rolestatus`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -122,7 +122,7 @@ const Role = () => {
 
   const FetchRoleDashboardData = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/roleshomepage`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/roleshomepage`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -155,7 +155,7 @@ const Role = () => {
 
   const fetchRoleListData = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/roleslist`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/roleslist`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

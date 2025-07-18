@@ -33,7 +33,7 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/addgroup`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/addgroup`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

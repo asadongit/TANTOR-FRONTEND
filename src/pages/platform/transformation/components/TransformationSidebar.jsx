@@ -17,7 +17,15 @@ const components = [
 export const TransformationSidebar = () => {
   const [expanded, setExpanded] = useState(true);
 
+  const transformationExists =
+    Array.isArray(window.allNodes) &&
+    window.allNodes.some((n) => n.type === "transformation");
+
   const onDragStart = (event, nodeType) => {
+    if (nodeType === "transformation" && transformationExists) {
+      event.preventDefault();
+      return;
+    }
     event.dataTransfer.setData("application/reactflow", nodeType);
     event.dataTransfer.effectAllowed = "move";
   };
@@ -49,31 +57,43 @@ export const TransformationSidebar = () => {
           </button>
 
           <div className="grid grid-cols-1 gap-2 p-2 bg-gray-850 border-gray-700">
-            {components.map((item) => (
-              <button
-                key={item.id}
-                id={item.id}
-                className="flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-move hover:bg-gray-50 group border-solid border-2"
-                draggable
-                onDragStart={(e) => onDragStart(e, item.id)}
-              >
-                <div className="flex items-center justify-center">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-lg">
-                    <item.icon className="w-4 h-4 text-[#8E77BB] transition-colors" />
-                  </div>
-                  {expanded && (
-                    <span className="text-black text-sm ml-1">{item.name}</span>
-                  )}
-                </div>
-                <span
-                  className={`rounded-md hover:bg-gray-200 ${
-                    expanded && "ml-3"
+            {components.map((item) => {
+              const isTransformation = item.id === "transformation";
+              const disabled = isTransformation && transformationExists;
+              return (
+                <button
+                  key={item.id}
+                  id={item.id}
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg transition-all cursor-move hover:bg-gray-50 group border-solid border-2 ${
+                    disabled ? "opacity-50 cursor-not-allowed" : ""
                   }`}
+                  draggable={!disabled}
+                  onDragStart={(e) => onDragStart(e, item.id)}
+                  disabled={disabled}
+                  title={
+                    disabled
+                      ? "Only one Transformation node is allowed"
+                      : undefined
+                  }
                 >
-                  <Plus className="h-4 text-gray-500" />
-                </span>
-              </button>
-            ))}
+                  <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-lg">
+                      <item.icon className="w-4 h-4 text-[#8E77BB] transition-colors" />
+                    </div>
+                    {expanded && (
+                      <span className="text-black text-sm ml-1">{item.name}</span>
+                    )}
+                  </div>
+                  <span
+                    className={`rounded-md hover:bg-gray-200 ${
+                      expanded && "ml-3"
+                    }`}
+                  >
+                    <Plus className="h-4 text-gray-500" />
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

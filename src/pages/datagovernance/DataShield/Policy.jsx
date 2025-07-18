@@ -134,7 +134,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
 
     const fetchPolicyListData = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policylist`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/policylist`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -166,8 +166,8 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
 
     const deletePolicy = async (policyId) => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/deletepolicy/${policyId}`, {
-                method: 'DELETE',
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/deletepolicy/${policyId}`, {
+                method: 'PATCH',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -178,9 +178,19 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
             }
             const data = await response.json();
             console.log(data.message);
+            setToast({
+                show: true,
+                message: 'Policy deleted successfully',
+                type: 'success'
+            });
             fetchPolicyListData();
         } catch (error) {
             console.error('Error deleting policy:', error);
+        }
+        finally {
+            setTimeout(() => {
+                setToast({ show: false, message: '', type: '' });
+            }, 3000);
         }
     };
 
@@ -606,7 +616,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
         setActiveMenu(null);
         const policy = sampleData.find(p => p.id === policyId);
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policydetails`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/policydetails`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -668,7 +678,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
     const FetchPolicyDashboardData = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policycards`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/policycards`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -701,7 +711,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
     const updatePolicyStatus = async (policyIds, newStatus, index) => {
         setTogglingStatus(index);
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policystatus`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/policystatus`, {
                 method: 'PATCH',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -802,11 +812,12 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
             }, 3000);
         }
     };
+     const [refreshing, setRefreshing] = useState(false);
 
     const refreshPolicy = async (policyId) => {
         setActiveMenu(null);
         try {
-            const response = await fetch(`${import.meta.env.VITE_FAST_API}/policylist`, {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/policylist`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,

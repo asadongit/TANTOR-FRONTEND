@@ -38,8 +38,8 @@ let id = 0;
 const getId = () => `node_${id++}`;
 
 const ArchivalCanvas = () => {
-  const hostnameV1 = import.meta.env.VITE_FAST_API;
-  const hostnameV2 = import.meta.env.VITE_FAST_API_V2;
+  const hostnameV1 = window._env_?.VITE_FAST_API;
+  const hostnameV2 = window._env_?.VITE_FAST_API_V2;
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [payload, setPayload] = useState({});

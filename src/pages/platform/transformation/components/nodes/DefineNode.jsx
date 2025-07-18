@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Handle, Position } from "reactflow";
 import { FilePlus, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
 
-const hostname = import.meta.env.VITE_FAST_API;
+const hostname = window._env_?.VITE_FAST_API;
 
+// Use a module-level cache for transformation names
 const transformationNamesCache = {
   names: [],
   timestamp: 0,
   expiryTime: 60000,
+  lastProject: null,
+  lastUser: null,
 };
 
 export const DefineNode = ({ id, data }) => {
@@ -20,41 +23,59 @@ export const DefineNode = ({ id, data }) => {
   const nameCheckTimeout = useRef(null);
   const { project, decodedToken, token } = useAuth();
 
-  const getExistingTransformationNames = async () => {
-
+  // Memoized fetch function to avoid repeated calls
+  const getExistingTransformationNames = useCallback(async () => {
     const now = Date.now();
-    if (now - transformationNamesCache.timestamp < transformationNamesCache.expiryTime) {
+    const currentUser = decodedToken?.preferred_username;
+    // Only fetch if cache is expired or project/user changed
+    if (
+      now - transformationNamesCache.timestamp < transformationNamesCache.expiryTime &&
+      transformationNamesCache.lastProject === project &&
+      transformationNamesCache.lastUser === currentUser
+    ) {
       return transformationNamesCache.names;
     }
 
-    try {
-      const response = await fetch(
-        `${hostname}/etl/transformation/tableview?project=${project}&created_by=${decodedToken.preferred_username}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch transformation names");
-      }
-
-      const data = await response.json();
-      const names = data.map((item) => item.transformation_name.toLowerCase());
-
-      transformationNamesCache.names = names;
-      transformationNamesCache.timestamp = now;
-
-      return names;
-    } catch (error) {
-      console.error("Error fetching transformation names:", error);
-      return [];
+    // Prevent concurrent fetches
+    if (transformationNamesCache._fetchPromise) {
+      return transformationNamesCache._fetchPromise;
     }
-  };
 
-  const generateUniqueName = async (baseName) => {
+    transformationNamesCache._fetchPromise = (async () => {
+      try {
+        const response = await fetch(
+          `${hostname}/etl/transformation/tableview?project=${project}&created_by=${currentUser}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch transformation names");
+        }
+
+        const data = await response.json();
+        const names = data.map((item) => item.transformation_name.toLowerCase());
+
+        transformationNamesCache.names = names;
+        transformationNamesCache.timestamp = now;
+        transformationNamesCache.lastProject = project;
+        transformationNamesCache.lastUser = currentUser;
+        return names;
+      } catch (error) {
+        console.error("Error fetching transformation names:", error);
+        return [];
+      } finally {
+        delete transformationNamesCache._fetchPromise;
+      }
+    })();
+
+    return transformationNamesCache._fetchPromise;
+  }, [project, decodedToken, token]);
+
+  const generateUniqueName = useCallback(async (baseName) => {
     const existingNames = await getExistingTransformationNames();
     let uniqueName = baseName;
     let suffix = 1;
@@ -65,9 +86,9 @@ export const DefineNode = ({ id, data }) => {
     }
 
     return uniqueName;
-  };
+  }, [getExistingTransformationNames]);
 
-  const validateName = async (name) => {
+  const validateName = useCallback(async (name) => {
     if (!name) {
       setNameError("Name is required");
       return;
@@ -110,7 +131,7 @@ export const DefineNode = ({ id, data }) => {
     } finally {
       setIsChecking(false);
     }
-  };
+  }, [getExistingTransformationNames]);
 
   const handleNameChange = (e) => {
     const value = e.target.value;
@@ -146,14 +167,12 @@ export const DefineNode = ({ id, data }) => {
   };
 
   useEffect(() => {
-    if (data.name && data.name.trim() !== "") {
-      if (!nameError && !nameExists) {
-        validateName(data.name);
-      }
+    // Only validate if name is present and not already checked
+    if (data.name && data.name.trim() !== "" && !nameError && !nameExists) {
+      validateName(data.name);
     }
-
-    getExistingTransformationNames();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   useEffect(() => {
     if (data.onSave) {
@@ -188,11 +207,11 @@ export const DefineNode = ({ id, data }) => {
     if (data.onDataChange) {
       data.generateUniqueName = generateUniqueName;
     }
-  }, [data.onDataChange]);
+  }, [data.onDataChange, generateUniqueName]);
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Right} style={{ width: 10, height: 10 }} />
 
       <div className="flex items-center space-x-3 mb-3">
         <FilePlus className="w-5 h-5 text-[#96CF7B]" />

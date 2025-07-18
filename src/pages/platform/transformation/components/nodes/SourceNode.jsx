@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Handle, Position } from "reactflow";
 import { X, Database, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
+import { useTransformation } from "../TransformationContext";
 
 export const SourceNode = ({ id, data }) => {
   const [connections, setConnections] = useState([]);
@@ -33,9 +34,11 @@ export const SourceNode = ({ id, data }) => {
   const [connectionDropdownOpen, setConnectionDropdownOpen] = useState(false);
   const [schemaDropdownOpen, setSchemaDropdownOpen] = useState(false);
   const [tableDropdownOpen, setTableDropdownOpen] = useState(false);
+  const [alias, setAlias] = useState(data.alias || "");
 
-  const hostnamev1 = import.meta.env.VITE_FAST_API;
+  const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
+  const { dispatch, ACTION_TYPES } = useTransformation();
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -150,9 +153,21 @@ export const SourceNode = ({ id, data }) => {
       connectionType: selectedConnection.type,
       schema: selectedSchema,
       table: selectedTable,
-      columns: selectedColumns,
+      columns: selectedColumns.map(col => ({
+        name: col.name,
+        datatype: col.datatype
+      })),
+      alias: alias,
     });
-  }, [selectedConnection, selectedSchema, selectedTable, selectedColumns]);
+
+    dispatch({
+      type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: selectedColumns.map(col => col.name)
+      }
+    });
+  }, [selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES]);
 
   const getColumnsForTable = (tableName) => {
     const tableObj = tables.find(t => t.table_name === tableName);
@@ -192,6 +207,33 @@ export const SourceNode = ({ id, data }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const getNextAlias = useCallback(() => {
+    const sourceNodesFromWindow = window.allNodes ?
+      window.allNodes.filter(n => n.type === "source") : [];
+
+    let maxNumber = 0;
+
+    sourceNodesFromWindow.forEach(node => {
+      if (node.id !== id) {
+        const aliasMatch = (node.data?.alias || "").match(/^unnamed_source_(\d+)$/);
+        if (aliasMatch && aliasMatch[1]) {
+          const num = parseInt(aliasMatch[1], 10);
+          if (!isNaN(num) && num > maxNumber) {
+            maxNumber = num;
+          }
+        }
+      }
+    });
+
+    return `unnamed_source_${maxNumber + 1}`;
+  }, [id]);
+
+  useEffect(() => {
+    if (selectedTable && !alias) {
+      setAlias(getNextAlias());
+    }
+  }, [selectedTable, alias, getNextAlias]);
+
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[280px] max-w-[320px] relative group">
       <button
@@ -201,8 +243,8 @@ export const SourceNode = ({ id, data }) => {
         <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
       </button>
 
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="target" position={Position.Left} style={{ width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Right} style={{ width: 10, height: 10 }} />
 
       <div className="flex items-center space-x-3 mb-3">
         <Database className="w-5 h-5 text-[#96CF7B]" />
@@ -434,6 +476,21 @@ export const SourceNode = ({ id, data }) => {
               )}
             </div>
 
+             {selectedTable && (
+        <div className="mt-2">
+          <label className="text-xs font-semibold text-black mb-0.5 block">
+            Alias Name
+          </label>
+          <input
+            type="text"
+            className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
+            value={alias}
+            onChange={e => setAlias(e.target.value)}
+            placeholder="Enter alias name"
+          />
+        </div>
+      )}
+
             {selectedTable && columns.length > 0 ? (
               <div>
                 <div className="flex items-center justify-between">
@@ -458,7 +515,12 @@ export const SourceNode = ({ id, data }) => {
                         checked={selectedColumns.length === columns.length && columns.length > 0}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedColumns(columns.map(col => col.column_name));
+                            setSelectedColumns(
+                              columns.map(col => ({
+                                name: col.column_name,
+                                datatype: col.DATA_TYPE
+                              }))
+                            );
                           } else {
                             setSelectedColumns([]);
                           }
@@ -468,27 +530,38 @@ export const SourceNode = ({ id, data }) => {
                     </label>
                   </div>
 
-                  {/* Use filteredColumns instead of columns */}
-                  {filteredColumns.map((column, idx) => (
-                    <div key={idx} className="mb-1.5">
-                      <label className="flex items-center text-[11px]">
-                        <input
-                          type="checkbox"
-                          className="mr-1.5 h-3.5 w-3.5"
-                          checked={selectedColumns.includes(column.column_name)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedColumns([...selectedColumns, column.column_name]);
-                            } else {
-                              setSelectedColumns(selectedColumns.filter(c => c !== column.column_name));
-                            }
-                          }}
-                        />
-                        <span>{column.column_name}</span>
-                        <span className="text-[9px] text-gray-500 ml-1.5">({column.DATA_TYPE})</span>
-                      </label>
-                    </div>
-                  ))}
+                  {filteredColumns.map((column, idx) => {
+                    const isChecked = selectedColumns.some(
+                      c => c.name === column.column_name && c.datatype === column.DATA_TYPE
+                    );
+                    return (
+                      <div key={idx} className="mb-1.5">
+                        <label className="flex items-center text-[11px]">
+                          <input
+                            type="checkbox"
+                            className="mr-1.5 h-3.5 w-3.5"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedColumns([
+                                  ...selectedColumns,
+                                  { name: column.column_name, datatype: column.DATA_TYPE }
+                                ]);
+                              } else {
+                                setSelectedColumns(
+                                  selectedColumns.filter(
+                                    c => !(c.name === column.column_name && c.datatype === column.DATA_TYPE)
+                                  )
+                                );
+                              }
+                            }}
+                          />
+                          <span>{column.column_name}</span>
+                          <span className="text-[9px] text-gray-500 ml-1.5">({column.DATA_TYPE})</span>
+                        </label>
+                      </div>
+                    );
+                  })}
                   {filteredColumns.length === 0 && (
                     <div className="text-center py-2 text-[11px] text-gray-500">
                       No columns match your search
@@ -512,6 +585,8 @@ export const SourceNode = ({ id, data }) => {
           </span>
         </div>
       )}
+
+
     </div>
   );
 };

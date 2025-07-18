@@ -27,7 +27,7 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API}/auth/deleterole/${encodeURIComponent(roleName)}`,
+        `${window._env_?.VITE_FAST_API}/auth/deleterole/${encodeURIComponent(roleName)}`,
         {
           method: "PATCH",
           headers: {
@@ -42,11 +42,11 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
         throw new Error(errorData?.detail || "Failed to delete role");
       }
       setIsDeleted(true);
-      toast.success(`Role "${roleName}" deleted successfully`);
+      // toast.success(`Role "${roleName}" deleted successfully`);
       if (onConfirm) onConfirm();
     } catch (error) {
       console.error("Error deleting role:", error);
-      toast.error(error.message || "Failed to delete role");
+      // toast.error(error.message || "Failed to delete role");
     } finally {
       setIsLoading(false);
     }

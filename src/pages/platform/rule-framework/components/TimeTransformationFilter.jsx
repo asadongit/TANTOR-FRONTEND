@@ -465,6 +465,7 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
                               <option value="days">Days</option>
                               <option value="months">Months</option>
                               <option value="years">Years</option>
+                              {trans?.dateType === "historicDate" && (<option value = "pfy">Previous Financial Year</option>) }
                             </select>
                           </div>
                         </div>

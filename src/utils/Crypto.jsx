@@ -1,6 +1,6 @@
 import CryptoJS from 'crypto-js';
 
-const secretKey = import.meta.env.VITE_SECRET_KEY;
+const secretKey = window._env_?.VITE_SECRET_KEY;
 
 export const encrypt = (value) => {
   return CryptoJS.AES.encrypt(value, secretKey).toString();

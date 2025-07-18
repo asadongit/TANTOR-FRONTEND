@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 
-const hostnamev2 = import.meta.env.VITE_FAST_API_V2; 
-const hostnamev1 = import.meta.env.VITE_FAST_API;
+const hostnamev2 = window._env_?.VITE_FAST_API_V2; 
+const hostnamev1 = window._env_?.VITE_FAST_API;
 
 const fetchSourceTypeCounts = async (token, modelType, project) => {
   if (!token) throw new Error("Token is missing");

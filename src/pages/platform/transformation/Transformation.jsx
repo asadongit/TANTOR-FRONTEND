@@ -38,7 +38,7 @@ function Transformation() {
   });
   const {project, decodedToken, token} = useAuth()
 
-  const hostname = import.meta.env.VITE_FAST_API;
+  const hostname = window._env_?.VITE_FAST_API;
 
   const metricsData = [
     {
@@ -408,11 +408,6 @@ function Transformation() {
       label: "Edit",
       icon: <Icon icon="material-symbols:edit-outline" className="w-5 h-5" />,
       onClick: (row) => console.log("Edit:", row)
-    },
-    {
-      label: "Copy",
-      icon: <Icon icon="material-symbols:content-copy-outline" className="w-5 h-5" />,
-      onClick: (row) => console.log("Copy:", row)
     },
     {
       label: "Info",

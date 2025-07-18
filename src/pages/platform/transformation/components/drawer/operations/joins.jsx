@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { ChevronDown, X, Plus } from "lucide-react";
+import Select from "react-select";
 
 const JOIN_TYPES = [
     { id: "left", name: "Left Join" },
     { id: "right", name: "Right Join" },
     { id: "inner", name: "Inner Join" },
-    { id: "full", name: "Full Join" },
+    // { id: "full", name: "Full Join" },
 ];
 
 const JOIN_CONDITIONS = [
@@ -24,7 +25,8 @@ export const JoinsOperationFields = ({
     dropdownRefs,
     openDropdowns,
     toggleDropdown,
-    updateJoinsParam
+    updateJoinsParam,
+    appendColumnsFromRightToLeft // <-- accept as prop
 }) => {
     const [joinConditions, setJoinConditions] = useState([
         { leftDataframe: "", leftColumn: "", condition: "==", rightDataframe: "", rightColumn: "" }
@@ -33,13 +35,6 @@ export const JoinsOperationFields = ({
     useEffect(() => {
         if (!transformation.params.join_type) {
             updateJoinsParam(transformation.id, "join_type", "left");
-        }
-
-        if (!transformation.params.right_dataframe && allDataframes.length > 0) {
-            const availableDf = allDataframes.find(df => df.id !== transformation.source_dataframe);
-            if (availableDf) {
-                updateJoinsParam(transformation.id, "right_dataframe", availableDf.id);
-            }
         }
 
         if (!transformation.params.join_condition) {
@@ -83,14 +78,205 @@ export const JoinsOperationFields = ({
         }
     }, [transformation.params.join_condition]);
 
-    useEffect(() => {
-        if (transformation.source_dataframe && transformation.params.right_dataframe &&
-            (!joinConditions[0].leftDataframe || !joinConditions[0].rightDataframe)) {
+    const handleSourceDataframeChange = (e) => {
+        const newSourceDf = e.target.value;
+        updateJoinsParam(transformation.id, "source_dataframe", newSourceDf);
 
+        setJoinConditions([{
+            ...joinConditions[0],
+            leftDataframe: newSourceDf,
+            leftColumn: "",
+        }]);
+        updateJoinsParam(transformation.id, "join_condition", "");
+    };
+
+    const handleRightDataframeChange = (e) => {
+        const newRightDf = e.target.value;
+        updateJoinsParam(transformation.id, "right_dataframe", newRightDf);
+
+        setJoinConditions([{
+            ...joinConditions[0],
+            rightDataframe: newRightDf,
+            rightColumn: "",
+        }]);
+        updateJoinsParam(transformation.id, "join_condition", "");
+
+        if (
+            appendColumnsFromRightToLeft &&
+            transformation.source_dataframe &&
+            newRightDf &&
+            transformation.source_dataframe !== newRightDf
+        ) {
+            appendColumnsFromRightToLeft(transformation.source_dataframe, newRightDf, true);
+
+            setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('tantor-columns-updated', {
+                    detail: {
+                        sourceId: transformation.source_dataframe,
+                        rightId: newRightDf
+                    }
+                }));
+            }, 100);
+        }
+    };
+
+    const customStyles = {
+        control: (provided) => ({
+            ...provided,
+            minHeight: '38px',
+            border: '1px solid #e2e8f0',
+            fontSize: '0.875rem',
+            backgroundColor: 'white',
+            boxShadow: 'none'
+        }),
+        multiValue: (provided) => ({
+            ...provided,
+            backgroundColor: '#f3f4f6',
+            color: '#111827'
+        }),
+        multiValueLabel: (provided) => ({
+            ...provided,
+            color: '#111827',
+            fontSize: '0.75rem',
+        }),
+        multiValueRemove: (provided) => ({
+            ...provided,
+            color: '#4b5563',
+            ':hover': {
+                backgroundColor: '#ef4444',
+                color: 'white',
+            },
+            opacity: 1,
+        }),
+        valueContainer: (provided) => ({
+            ...provided,
+            padding: '0 6px'
+        }),
+        input: (provided) => ({
+            ...provided,
+            margin: '0px',
+            color: '#111827'
+        }),
+        indicatorSeparator: () => ({
+            display: 'none'
+        }),
+        indicatorsContainer: (provided) => ({
+            ...provided,
+            height: '38px'
+        }),
+        placeholder: (provided) => ({
+            ...provided,
+            color: '#9ca3af',
+            fontSize: '0.875rem'
+        }),
+        menu: (provided) => ({
+            ...provided,
+            zIndex: 9999,
+            backgroundColor: 'white',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+        }),
+        option: (provided, state) => ({
+            ...provided,
+            backgroundColor: state.isSelected
+                ? '#8E77BB'
+                : state.isFocused
+                    ? '#f3f4f6'
+                    : 'white',
+            color: state.isSelected ? 'white' : '#111827',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            ':active': {
+                backgroundColor: state.isSelected ? '#8E77BB' : '#f3f4f6',
+            }
+        }),
+        noOptionsMessage: (provided) => ({
+            ...provided,
+            color: '#4b5563',
+            fontSize: '0.875rem'
+        }),
+        singleValue: (provided) => ({
+            ...provided,
+            color: '#111827'
+        }),
+    };
+
+    const getColumnOptions = (dfId) => {
+        if (!dfId || !dataframeColumns[dfId]) return [];
+        return dataframeColumns[dfId].map(col => {
+            if (typeof col === "object" && col !== null) {
+                return {
+                    value: col.name,
+                    label: col.name,
+                    key: col.name
+                };
+            }
+            return {
+                value: col,
+                label: col,
+                key: col
+            };
+        });
+    };
+
+    const getLeftColumnOptions = (leftDfId) => {
+        // Only filter columns if left and right tables are different AND their columns are not identical
+        if (
+            !leftDfId ||
+            !dataframeColumns[leftDfId] ||
+            !transformation.params.right_dataframe ||
+            !dataframeColumns[transformation.params.right_dataframe] ||
+            leftDfId === transformation.params.right_dataframe
+        ) {
+            return getColumnOptions(leftDfId);
+        }
+
+        // Check if columns are identical
+        const leftCols = dataframeColumns[leftDfId].map(col => typeof col === "object" && col !== null ? col.name : col);
+        const rightCols = dataframeColumns[transformation.params.right_dataframe].map(col => typeof col === "object" && col !== null ? col.name : col);
+
+        const areIdentical = leftCols.length === rightCols.length &&
+            leftCols.every(col => rightCols.includes(col));
+
+        if (areIdentical) {
+            return getColumnOptions(leftDfId);
+        }
+
+        const rightColumnNames = new Set(rightCols);
+
+        return dataframeColumns[leftDfId]
+            .filter(col => {
+                const colName = typeof col === "object" && col !== null ? col.name : col;
+                return !rightColumnNames.has(colName);
+            })
+            .map(col => {
+                if (typeof col === "object" && col !== null) {
+                    return {
+                        value: col.name,
+                        label: col.name,
+                        key: col.name
+                    };
+                }
+                return {
+                    value: col,
+                    label: col,
+                    key: col
+                };
+            });
+    };
+
+    useEffect(() => {
+        if (
+            transformation.source_dataframe &&
+            transformation.params.right_dataframe &&
+            (
+                joinConditions[0].leftDataframe !== transformation.source_dataframe ||
+                joinConditions[0].rightDataframe !== transformation.params.right_dataframe
+            )
+        ) {
             setJoinConditions([{
                 ...joinConditions[0],
-                leftDataframe: joinConditions[0].leftDataframe || transformation.source_dataframe,
-                rightDataframe: joinConditions[0].rightDataframe || transformation.params.right_dataframe
+                leftDataframe: transformation.source_dataframe,
+                rightDataframe: transformation.params.right_dataframe
             }]);
         }
     }, [transformation.source_dataframe, transformation.params.right_dataframe]);
@@ -143,54 +329,66 @@ export const JoinsOperationFields = ({
         updateJoinsParam(transformation.id, paramName, updatedList);
     };
 
+    const handleDropLeftColumnsChange = (selected) => {
+        const columns = selected ? selected.map(opt => opt.value) : [];
+        updateJoinsParam(transformation.id, "drop_left_dataframe_collist", columns);
+    };
+    const handleDropRightColumnsChange = (selected) => {
+        const columns = selected ? selected.map(opt => opt.value) : [];
+        updateJoinsParam(transformation.id, "drop_right_dataframe_collist", columns);
+    };
+
+    const getSourceDataframes = () => {
+        if (!window.allNodes) return allDataframes;
+        const sourceNodeIds = window.allNodes
+            .filter(n => n.type === "source")
+            .map(n => n.id);
+        return allDataframes.filter(df =>
+            sourceNodeIds.includes(df.nodeId)
+        );
+    };
+
     return (
         <div>
             <div className="space-y-4">
-                <div>
-                    <label className="block text-xs text-gray-700 mb-1">Right Dataframe</label>
-                    <select
-                        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                        value={transformation.params.right_dataframe || ""}
-                        onChange={(e) => updateJoinsParam(transformation.id, "right_dataframe", e.target.value)}
-                    >
-                        <option value="">Select right dataframe</option>
-                        {allDataframes.map(df => (
-                            <option key={df.id} value={df.id}>{df.label}</option>
-                        ))}
-                    </select>
-                </div>
 
-                <div>
-                    <label className="block text-xs text-gray-700 mb-1">Join Type</label>
-                    <select
-                        className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                        value={transformation.params.join_type || "left"}
-                        onChange={(e) => updateJoinsParam(transformation.id, "join_type", e.target.value)}
-                    >
-                        {JOIN_TYPES.map(type => (
-                            <option key={type.id} value={type.id}>{type.name}</option>
-                        ))}
-                    </select>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs text-gray-700 mb-1">Right Table</label>
+                        <select
+                            className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                            value={transformation.params.right_dataframe || ""}
+                            onChange={handleRightDataframeChange}
+                        >
+                            <option value="">Select right dataframe</option>
+                            {getSourceDataframes()
+                                .map(df => (
+                                    <option key={df.id} value={df.id}>{df.label}</option>
+                                ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs text-gray-700 mb-1">Join Type</label>
+                        <select
+                            className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                            value={transformation.params.join_type || "left"}
+                            onChange={(e) => updateJoinsParam(transformation.id, "join_type", e.target.value)}
+                        >
+                            {JOIN_TYPES.map(type => (
+                                <option key={type.id} value={type.id}>{type.name}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 <div>
                     <label className="block text-xs text-gray-700 mb-2">Join Condition</label>
                     {joinConditions.map((condition, index) => (
-                        <div key={index} className="grid grid-cols-5 gap-2 items-center mb-2">
+                        <div key={index} className="grid grid-cols-3 gap-2 mb-2">
                             <div>
-                                <select
-                                    className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                                    value={condition.leftDataframe}
-                                    onChange={(e) => updateJoinCondition(index, "leftDataframe", e.target.value)}
-                                >
-                                    <option value="">Select dataframe</option>
-                                    {allDataframes.map(df => (
-                                        <option key={df.id} value={df.id}>{df.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
+                                <div className="text-[10px] text-gray-500 mb-1">
+                                    {allDataframes.find(df => df.id === condition.leftDataframe)?.label || "Source"}
+                                </div>
                                 <select
                                     className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
                                     value={condition.leftColumn}
@@ -198,13 +396,13 @@ export const JoinsOperationFields = ({
                                     disabled={!condition.leftDataframe}
                                 >
                                     <option value="">Select column</option>
-                                    {condition.leftDataframe && dataframeColumns[condition.leftDataframe]?.map(col => (
-                                        <option key={col} value={col}>{col}</option>
+                                    {getLeftColumnOptions(condition.leftDataframe).map(opt => (
+                                        <option key={opt.key} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>
                             </div>
 
-                            <div>
+                            <div className="flex items-end">
                                 <select
                                     className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
                                     value={condition.condition}
@@ -217,19 +415,9 @@ export const JoinsOperationFields = ({
                             </div>
 
                             <div>
-                                <select
-                                    className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                                    value={condition.rightDataframe}
-                                    onChange={(e) => updateJoinCondition(index, "rightDataframe", e.target.value)}
-                                >
-                                    <option value="">Select dataframe</option>
-                                    {allDataframes.map(df => (
-                                        <option key={df.id} value={df.id}>{df.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
+                                <div className="text-[10px] text-gray-500 mb-1">
+                                    {allDataframes.find(df => df.id === condition.rightDataframe)?.label || "Target"}
+                                </div>
                                 <select
                                     className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
                                     value={condition.rightColumn}
@@ -237,113 +425,79 @@ export const JoinsOperationFields = ({
                                     disabled={!condition.rightDataframe}
                                 >
                                     <option value="">Select column</option>
-                                    {condition.rightDataframe && dataframeColumns[condition.rightDataframe]?.map(col => (
-                                        <option key={col} value={col}>{col}</option>
+                                    {getColumnOptions(condition.rightDataframe).map(opt => (
+                                        <option key={opt.key} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>
                             </div>
+
+
                         </div>
                     ))}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs text-gray-700 mb-1">Drop Left Dataframe Columns</label>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {(transformation.params.drop_left_dataframe_collist || []).map((column, idx) => (
-                                <div key={idx} className="bg-gray-100 border border-gray-300 rounded-full px-2 py-1 text-xs text-gray-800 flex items-center">
-                                    {column}
-                                    <button
-                                        className="ml-1 text-gray-500 hover:text-red-500"
-                                        onClick={() => handleRemoveDropColumn("left", column)}
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex items-center">
-                            <input
-                                type="text"
-                                className="flex-1 p-2 text-sm bg-white border border-gray-300 rounded-l text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                                placeholder="Enter comma-separated column names"
-                                id={`left-drop-columns-${transformation.id}`}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && e.target.value) {
-                                        const columns = e.target.value.split(',').map(col => col.trim()).filter(Boolean);
-                                        handleAddDropColumns("left", columns);
-                                        e.target.value = '';
-                                    }
-                                }}
-                            />
-                            <button
-                                className="p-2 bg-[#8E77BB] text-white rounded-r border border-[#8E77BB] hover:bg-[#7d68a5]"
-                                onClick={() => {
-                                    const input = document.getElementById(`left-drop-columns-${transformation.id}`);
-                                    if (input && input.value) {
-                                        const columns = input.value.split(',').map(col => col.trim()).filter(Boolean);
-                                        handleAddDropColumns("left", columns);
-                                        input.value = '';
-                                    }
-                                }}
-                            >
-                                <Plus className="w-4 h-4" />
-                            </button>
-                        </div>
+                        <label className="block text-xs text-gray-700 mb-1">Drop Left Table Columns</label>
+                        <Select
+                            isMulti
+                            options={getColumnOptions(transformation.source_dataframe)}
+                            value={
+                                (transformation.params.drop_left_dataframe_collist || []).map(col => ({
+                                    value: col,
+                                    label: col
+                                }))
+                            }
+                            onChange={handleDropLeftColumnsChange}
+                            placeholder="Select columns to drop"
+                            className="text-sm"
+                            styles={customStyles}
+                            closeMenuOnSelect={false}
+                            noOptionsMessage={() => "No columns available"}
+                            theme={theme => ({
+                                ...theme,
+                                colors: {
+                                    ...theme.colors,
+                                    primary: '#8E77BB',
+                                    primary25: '#f3f4f6',
+                                    neutral0: 'white',
+                                    neutral80: '#111827',
+                                },
+                            })}
+                        />
                     </div>
-
                     <div>
-                        <label className="block text-xs text-gray-700 mb-1">Drop Right Dataframe Columns</label>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {(transformation.params.drop_right_dataframe_collist || []).map((column, idx) => (
-                                <div key={idx} className="bg-gray-100 border border-gray-300 rounded-full px-2 py-1 text-xs text-gray-800 flex items-center">
-                                    {column}
-                                    <button
-                                        className="ml-1 text-gray-500 hover:text-red-500"
-                                        onClick={() => handleRemoveDropColumn("right", column)}
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex items-center">
-                            <input
-                                type="text"
-                                className="flex-1 p-2 text-sm bg-white border border-gray-300 rounded-l text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                                placeholder="Enter comma-separated column names"
-                                id={`right-drop-columns-${transformation.id}`}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && e.target.value) {
-                                        const columns = e.target.value.split(',').map(col => col.trim()).filter(Boolean);
-                                        handleAddDropColumns("right", columns);
-                                        e.target.value = '';
-                                    }
-                                }}
-                            />
-                            <button
-                                className="p-2 bg-[#8E77BB] text-white rounded-r border border-[#8E77BB] hover:bg-[#7d68a5]"
-                                onClick={() => {
-                                    const input = document.getElementById(`right-drop-columns-${transformation.id}`);
-                                    if (input && input.value) {
-                                        const columns = input.value.split(',').map(col => col.trim()).filter(Boolean);
-                                        handleAddDropColumns("right", columns);
-                                        input.value = '';
-                                    }
-                                }}
-                            >
-                                <Plus className="w-4 h-4" />
-                            </button>
-                        </div>
+                        <label className="block text-xs text-gray-700 mb-1">Drop Right Table Columns</label>
+                        <Select
+                            isMulti
+                            options={getColumnOptions(transformation.params.right_dataframe)}
+                            value={
+                                (transformation.params.drop_right_dataframe_collist || []).map(col => ({
+                                    value: col,
+                                    label: col
+                                }))
+                            }
+                            onChange={handleDropRightColumnsChange}
+                            placeholder="Select columns to drop"
+                            className="text-sm"
+                            styles={customStyles}
+                            closeMenuOnSelect={false}
+                            noOptionsMessage={() => "No columns available"}
+                            theme={theme => ({
+                                ...theme,
+                                colors: {
+                                    ...theme.colors,
+                                    primary: '#8E77BB',
+                                    primary25: '#f3f4f6',
+                                    neutral0: 'white',
+                                    neutral80: '#111827',
+                                },
+                            })}
+                        />
                     </div>
                 </div>
 
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-md">
-                    <p className="text-xs text-blue-800">
-                        This operation will join the selected dataframes based on the specified join condition.
-                        The join type will determine which rows are kept in the result.
-                    </p>
-                </div>
+
             </div>
         </div>
     );
@@ -360,7 +514,7 @@ export const getJoinsParams = (transformation) => {
 
     return {
         right_dataframe: transformation.params.right_dataframe || "",
-        join_type: transformation.params.join_type || "left",
+        join_type: transformation.params.join_type || "",
         join_condition: transformation.params.join_condition || "",
         drop_left_dataframe_collist,
         drop_right_dataframe_collist

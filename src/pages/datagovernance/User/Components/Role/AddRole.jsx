@@ -36,7 +36,7 @@ const AddRole = ({ show, onClose, onSave }) => {
     try {
       setLoading(true);
 
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/createrole`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/createrole`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

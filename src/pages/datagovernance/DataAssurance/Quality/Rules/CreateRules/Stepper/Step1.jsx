@@ -279,9 +279,10 @@ function Step1({ onNext, onCancel, step1Data }) {
   const [groupSearch, setGroupSearch] = useState('');
   const [addRuleModalOpen, setAddRuleModalOpen] = useState(false);
   const [uiRules, setUiRules] = useState({});
+  const [modalSelectedRules, setModalSelectedRules] = useState([]);
 
   const fetchGroupNames = useCallback(() => {
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/listgroups`,
+    fetch(`${window._env_?.VITE_FAST_API}/rules/listgroups`,
       {
         method: 'GET',
         headers: {
@@ -360,7 +361,7 @@ function Step1({ onNext, onCancel, step1Data }) {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_FAST_API}/rules/addrule/list`,
+        `${window._env_?.VITE_FAST_API}/rules/addrule/list`,
         {
           method: 'POST',
           headers: {
@@ -391,35 +392,38 @@ function Step1({ onNext, onCancel, step1Data }) {
     setGroup(selectedGroup);
     setShowModal(true);
     fetchGroupRules(selectedGroup);
+    // Set modal selection to current selected rules for this group
+    setModalSelectedRules(
+      selectedRules.filter(rule => rule.group_name === selectedGroup)
+    );
   };
 
-  const handleRuleSelection = (rule, e) => {
-    if (e && e.target.type === 'checkbox') {
-      return;
-    }
+  // Helper for modal selection
+  const isModalRuleSelected = (ruleId) => {
+    return modalSelectedRules.some(rule => rule.id === ruleId);
+  };
 
-    const isSelected = selectedRules.some(selectedRule => selectedRule.id === rule.id);
-
+  const handleModalRuleSelection = (rule, e) => {
+    if (e && e.target.type === 'checkbox') return;
+    const isSelected = isModalRuleSelected(rule.id);
     if (isSelected) {
-      setSelectedRules(prevSelected =>
-        prevSelected.filter(selectedRule => selectedRule.id !== rule.id)
+      setModalSelectedRules(prev =>
+        prev.filter(selectedRule => selectedRule.id !== rule.id)
       );
     } else {
-      setSelectedRules(prevSelected => [...prevSelected, rule]);
+      setModalSelectedRules(prev => [...prev, rule]);
     }
   };
 
-  const toggleCheckbox = (rule, e) => {
+  const toggleModalCheckbox = (rule, e) => {
     e.stopPropagation();
-
-    const isSelected = isRuleSelected(rule.id);
-
+    const isSelected = isModalRuleSelected(rule.id);
     if (isSelected) {
-      setSelectedRules(prevSelected =>
-        prevSelected.filter(selectedRule => selectedRule.id !== rule.id)
+      setModalSelectedRules(prev =>
+        prev.filter(selectedRule => selectedRule.id !== rule.id)
       );
     } else {
-      setSelectedRules(prevSelected => [...prevSelected, rule]);
+      setModalSelectedRules(prev => [...prev, rule]);
     }
   };
 
@@ -497,7 +501,11 @@ function Step1({ onNext, onCancel, step1Data }) {
             <h3 className="text-lg font-medium mb-4 border-b pb-2">Category</h3>
             <div className="flex gap-4">
               <button
-                onClick={() => setCategory('Pre-built')}
+                onClick={() => {
+                  setCategory('Pre-built');
+                  setSelectedRules([]);
+                  setModalSelectedRules([]);
+                }}
                 className={`flex-1 py-3 px-4 rounded-md border-2 transition-all ${
                   category === 'Pre-built'
                     ? 'border-[#8d77ba] bg-[#8d77ba] bg-opacity-10 text-[#8d77ba] font-medium'
@@ -508,7 +516,11 @@ function Step1({ onNext, onCancel, step1Data }) {
               </button>
 
               <button
-                onClick={() => setCategory('Custom')}
+                onClick={() => {
+                  setCategory('Custom');
+                  setSelectedRules([]);
+                  setModalSelectedRules([]);
+                }}
                 className={`flex-1 py-3 px-4 rounded-md border-2 transition-all ${
                   category === 'Custom'
                     ? 'border-[#8d77ba] bg-[#8d77ba] bg-opacity-10 text-[#8d77ba] font-medium'
@@ -708,20 +720,22 @@ function Step1({ onNext, onCancel, step1Data }) {
                                 className="form-checkbox h-5 w-5 text-[#8d77ba] rounded"
                                 onChange={(e) => {
                                   if (e.target.checked) {
-                                    const newSelectedRules = [...selectedRules];
+                                    const newSelected = [...modalSelectedRules];
                                     getAllRulesForGroup(group).forEach(rule => {
-                                      if (!isRuleSelected(rule.id)) {
-                                        newSelectedRules.push(rule);
+                                      if (!isModalRuleSelected(rule.id)) {
+                                        newSelected.push(rule);
                                       }
                                     });
-                                    setSelectedRules(newSelectedRules);
+                                    setModalSelectedRules(newSelected);
                                   } else {
-                                    setSelectedRules(selectedRules.filter(
-                                      rule => rule.group_name !== group
-                                    ));
+                                    setModalSelectedRules(
+                                      modalSelectedRules.filter(
+                                        rule => rule.group_name !== group
+                                      )
+                                    );
                                   }
                                 }}
-                                checked={getAllRulesForGroup(group).length > 0 && getAllRulesForGroup(group).every(rule => isRuleSelected(rule.id))}
+                                checked={getAllRulesForGroup(group).length > 0 && getAllRulesForGroup(group).every(rule => isModalRuleSelected(rule.id))}
                               />
                             </th>
                             <th className="p-3 text-left">Name</th>
@@ -735,15 +749,15 @@ function Step1({ onNext, onCancel, step1Data }) {
                           {getAllRulesForGroup(group).map(rule => (
                             <tr
                               key={rule.id}
-                              className={`border-b hover:bg-gray-50 ${isRuleSelected(rule.id) ? 'bg-[#8d77ba] bg-opacity-5' : ''}`}
-                              onClick={(e) => handleRuleSelection(rule, e)}
+                              className={`border-b hover:bg-gray-50 ${isModalRuleSelected(rule.id) ? 'bg-[#8d77ba] bg-opacity-5' : ''}`}
+                              onClick={(e) => handleModalRuleSelection(rule, e)}
                             >
                               <td className="p-3" onClick={(e) => e.stopPropagation()}>
                                 <input
                                   type="checkbox"
                                   className="form-checkbox h-5 w-5 text-[#8d77ba] rounded cursor-pointer"
-                                  checked={isRuleSelected(rule.id)}
-                                  onChange={(e) => toggleCheckbox(rule, e)}
+                                  checked={isModalRuleSelected(rule.id)}
+                                  onChange={(e) => toggleModalCheckbox(rule, e)}
                                 />
                               </td>
                               <td className="p-3 font-medium text-[#8d77ba]">{rule.name}</td>
@@ -785,14 +799,23 @@ function Step1({ onNext, onCancel, step1Data }) {
             <div className="flex justify-end mt-6 border-t pt-4">
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setModalSelectedRules([]);
+                  }}
                   className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
                 >
                   Close
                 </button>
                 <button
                   onClick={() => {
+                    // Remove all selectedRules for this group, then add modalSelectedRules
+                    setSelectedRules(prev => [
+                      ...prev.filter(rule => rule.group_name !== group),
+                      ...modalSelectedRules
+                    ]);
                     setShowModal(false);
+                    setModalSelectedRules([]);
                   }}
                   className="px-4 py-2 bg-[#8d77ba] text-white rounded hover:bg-[#7a67a0]"
                 >

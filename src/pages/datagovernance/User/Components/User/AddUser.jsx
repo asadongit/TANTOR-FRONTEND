@@ -238,7 +238,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     };
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/auth/signup`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/signup`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

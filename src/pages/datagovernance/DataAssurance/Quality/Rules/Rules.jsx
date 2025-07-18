@@ -21,7 +21,7 @@ const Rules = () => {
   const navigate = useNavigate();
   const [metricData, setMetricData] = useState([]);
   const [tableData, setTableData] = useState([]);
-  const selectAllRef = useRef(null); 
+  const selectAllRef = useRef(null);
   const [showSelectAllOptions, setShowSelectAllOptions] = useState(false);
 
   useEffect(() => {
@@ -79,7 +79,7 @@ const Rules = () => {
   ];
 
   const fetchCounts = async () => {
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/counts`)
+    fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/counts`)
       .then(response => response.json())
       .then(data => {
         console.log(data);
@@ -92,7 +92,7 @@ const Rules = () => {
 
   const fetchTableData = async () => {
     setIsLoading(true);
-    fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/table`)
+    fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/table`)
       .then(response => response.json())
       .then(data => {
         console.log(data.data_rules);
@@ -107,7 +107,7 @@ const Rules = () => {
 
   const fetchRuleDetails = async (ids) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/details`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/details`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +130,7 @@ const Rules = () => {
 
   const fetchRuleRunResults = async (ids) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/rulerun`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/rulerun`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -260,7 +260,7 @@ const Rules = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/dashboard/refresh`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -276,8 +276,8 @@ const Rules = () => {
           message: `Successfully refreshed ${idsToRefresh.length} rule(s)`,
           type: 'success',
         });
-        fetchTableData(); 
-        fetchCounts(); 
+        fetchTableData();
+        fetchCounts();
       } else {
         throw new Error('Failed to refresh rules');
       }
@@ -334,7 +334,7 @@ const Rules = () => {
   const performDelete = async (idsToDelete) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/deleterule`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/deleterule`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -369,7 +369,7 @@ const Rules = () => {
   const handleActionClick = async (action, item, index) => {
     if (action === 'Edit') {
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/details`, {
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/details`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -390,7 +390,7 @@ const Rules = () => {
       }
     } else if (action === 'Delete') {
       try {
-        const response = await fetch(`${import.meta.env.VITE_FAST_API}/rules/deleterule`, {
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/deleterule`, {
           method: 'PATCH',
           headers: {
             'accept': 'application/json',
@@ -528,9 +528,9 @@ const Rules = () => {
           </div>
 
           <button
-            className={`p-1 px-1.5 rounded-lg border ${viewMode === 'cards' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
-            onClick={() => setViewMode(viewMode === 'both' ? 'cards' : 'both')}
-            title={viewMode === 'both' ? "Hide Table View" : "Show Both Views"}
+            className={`p-1 px-1.5 rounded-lg border ${viewMode === 'table' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
+            onClick={() => setViewMode(viewMode === 'both' ? 'table' : 'both')}
+            title={viewMode === 'both' ? "Hide Cards View" : "Show Both Views"}
           >
             <Icon
               icon="material-symbols-light:format-list-bulleted"
@@ -550,26 +550,29 @@ const Rules = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-        {metricsData.map((metric, index) => (
-          <div
-            key={index}
-            className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className={`flex items-center justify-center w-10 h-10 ${metric.bgcolor} rounded-full ${metric.iconcolor}`}
-              >
-                <Icon icon={metric.icon} className="w-5 h-5" />
+      {/* Only show cards if viewMode is 'both' */}
+      {viewMode === 'both' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+          {metricsData.map((metric, index) => (
+            <div
+              key={index}
+              className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div
+                  className={`flex items-center justify-center w-10 h-10 ${metric.bgcolor} rounded-full ${metric.iconcolor}`}
+                >
+                  <Icon icon={metric.icon} className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-medium text-gray-700 leading-tight">{metric.title}</h3>
               </div>
-              <h3 className="text-sm font-medium text-gray-700 leading-tight">{metric.title}</h3>
+              <p className="text-gray-900 text-3xl font-bold">{metric.count}</p>
             </div>
-            <p className="text-gray-900 text-3xl font-bold">{metric.count}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {(viewMode === 'list' || viewMode === 'both') && (
+      {(viewMode === 'both' || viewMode === 'table') && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1200px]">

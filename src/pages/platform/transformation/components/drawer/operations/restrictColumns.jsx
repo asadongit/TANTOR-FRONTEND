@@ -1,5 +1,6 @@
-import React from "react";
-import { ChevronDown, Info } from "lucide-react";
+import React, { useMemo } from "react";
+import Select from "react-select";
+import { ChevronDown } from "lucide-react";
 
 const OPERATORS = [
   { id: "select", name: "Select", description: "Keep only selected columns" },
@@ -17,95 +18,166 @@ export const RestrictColumnsOperationFields = ({
   handleOperatorChange
 }) => {
   const sourceDropdownKey = `${transformation.id}-source`;
-  const isSourceDropdownOpen = openDropdowns[sourceDropdownKey] || false;
   const operatorDescription = OPERATORS.find(op => op.id === transformation.transformation_operator)?.description || "";
+
+  const columnOptions = useMemo(() => (
+    Array.isArray(sourceCols)
+      ? sourceCols.map(col => {
+          const colName = typeof col === "object" && col !== null ? col.name : col;
+          const datatype = typeof col === "object" && col !== null && col.datatype ? col.datatype : "";
+          return {
+            value: colName,
+            label: datatype ? `${colName} (${datatype})` : colName
+          };
+        })
+      : []
+  ), [sourceCols]);
+
+  const selectedSourceOptions = Array.isArray(transformation.source_column)
+    ? transformation.source_column.map(colName => ({
+        value: colName,
+        label: colName
+      }))
+    : [];
+
+  const customStyles = {
+    control: (provided) => ({
+      ...provided,
+      minHeight: '38px',
+      border: '1px solid #e2e8f0',
+      fontSize: '0.875rem',
+      backgroundColor: 'white',
+      boxShadow: 'none'
+    }),
+    multiValue: (provided) => ({
+      ...provided,
+      backgroundColor: '#f3f4f6',
+      color: '#111827'
+    }),
+    multiValueLabel: (provided) => ({
+      ...provided,
+      color: '#111827',
+      fontSize: '0.75rem',
+    }),
+    multiValueRemove: (provided) => ({
+      ...provided,
+      color: '#4b5563',
+      ':hover': {
+        backgroundColor: '#ef4444',
+        color: 'white',
+      },
+      opacity: 1,
+    }),
+    valueContainer: (provided) => ({
+      ...provided,
+      padding: '0 6px'
+    }),
+    input: (provided) => ({
+      ...provided,
+      margin: '0px',
+      color: '#111827'
+    }),
+    indicatorSeparator: () => ({
+      display: 'none'
+    }),
+    indicatorsContainer: (provided) => ({
+      ...provided,
+      height: '38px'
+    }),
+    placeholder: (provided) => ({
+      ...provided,
+      color: '#9ca3af',
+      fontSize: '0.875rem'
+    }),
+    menu: (provided) => ({
+      ...provided,
+      zIndex: 9999,
+      backgroundColor: 'white',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+    }),
+    option: (provided, state) => ({
+      ...provided,
+      backgroundColor: state.isSelected
+        ? '#8E77BB'
+        : state.isFocused
+          ? '#f3f4f6'
+          : 'white',
+      color: state.isSelected ? 'white' : '#111827',
+      fontSize: '0.875rem',
+      cursor: 'pointer',
+      ':active': {
+        backgroundColor: state.isSelected ? '#8E77BB' : '#f3f4f6',
+      }
+    }),
+    noOptionsMessage: (provided) => ({
+      ...provided,
+      color: '#4b5563',
+      fontSize: '0.875rem'
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      color: '#111827'
+    }),
+  };
+
+  const handleSourceChange = (selected) => {
+    const selectedColumns = selected ? selected.map(option => option.value) : [];
+    handleSelectAllColumns(transformation.id, 'source', selectedColumns, true);
+  };
 
   return (
     <div>
-      {/* <div className="mb-4">
+      <div className="mb-4">
         <label className="block text-xs text-gray-700 mb-1">Restriction Type</label>
         <select
           className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-          value={transformation.transformation_operator || "select"}
-          onChange={(e) => handleOperatorChange(transformation.id, e.target.value)}
+          value={transformation.transformation_operator || ""}
+          onChange={e => handleOperatorChange(transformation.id, e.target.value)}
+          disabled={OPERATORS.length === 0}
         >
+          <option value="" disabled>Select restriction type</option>
           {OPERATORS.map(op => (
             <option key={op.id} value={op.id}>{op.name}</option>
           ))}
         </select>
         <p className="text-xs text-gray-500 mt-1">{operatorDescription}</p>
-      </div> */}
-
-      <div className="mb-4">
-        <div className="relative" ref={el => dropdownRefs.current[sourceDropdownKey] = el}>
-          <label className="text-xs text-gray-600 block mb-1">
-            {transformation.transformation_operator === "select" ? "Columns to Keep" : "Columns to Remove"}
-          </label>
-          <button
-            className="w-full p-2 text-black text-sm border border-gray-300 rounded bg-white flex justify-between items-center"
-            onClick={() => toggleDropdown(transformation.id, 'source')}
-          >
-            {transformation.source_column.length === 0 ? (
-              <span className="text-gray-400">
-                {transformation.transformation_operator === "select"
-                  ? "Select columns to keep"
-                  : "Select columns to remove"}
-              </span>
-            ) : (
-              <span className="truncate">
-                {transformation.source_column.length} column(s) selected
-              </span>
-            )}
-            <ChevronDown className={`w-4 h-4 transition-transform ${isSourceDropdownOpen ? 'transform rotate-180' : ''}`} />
-          </button>
-
-          {isSourceDropdownOpen && (
-            <div className="absolute z-10 mt-1 w-full text-black bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-              <div className="p-2 border-b border-gray-200">
-                <label className="flex items-center text-sm">
-                  <input
-                    type="checkbox"
-                    className="mr-2"
-                    checked={transformation.source_column.length === sourceCols.length && sourceCols.length > 0}
-                    onChange={(e) => handleSelectAllColumns(transformation.id, 'source', sourceCols, e.target.checked)}
-                  />
-                  Select All
-                </label>
-              </div>
-              <div className="py-1">
-                {sourceCols.map((column, idx) => (
-                  <label key={idx} className="flex items-center px-3 py-2 hover:bg-gray-100">
-                    <input
-                      type="checkbox"
-                      className="mr-2"
-                      checked={transformation.source_column.includes(column)}
-                      onChange={(e) => handleColumnSelection(transformation.id, 'source', column, e.target.checked)}
-                    />
-                    <span className="text-sm">{column}</span>
-                  </label>
-                ))}
-                {sourceCols.length === 0 && (
-                  <div className="px-3 py-2 text-gray-500 text-sm">No columns available</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-md">
-        <p className="text-xs text-blue-800">
-          {transformation.transformation_operator === "select"
-            ? "This operation will keep only the selected columns in the resulting dataframe."
-            : "This operation will remove the selected columns from the resulting dataframe."}
-        </p>
+      <div className="mb-4">
+        <label className="text-xs text-gray-600 block mb-1">
+          {transformation.transformation_operator === "select" ? "Columns to Keep" : "Columns to Remove"}
+        </label>
+        <Select
+          isMulti
+          options={columnOptions}
+          value={selectedSourceOptions}
+          onChange={handleSourceChange}
+          placeholder={
+            transformation.transformation_operator === "select"
+              ? "Select columns to keep"
+              : "Select columns to remove"
+          }
+          className="text-sm"
+          styles={customStyles}
+          noOptionsMessage={() => "No columns available"}
+          closeMenuOnSelect={false}
+          theme={theme => ({
+            ...theme,
+            colors: {
+              ...theme.colors,
+              primary: '#8E77BB',
+              primary25: '#f3f4f6',
+              neutral0: 'white',
+              neutral80: '#111827',
+            },
+          })}
+        />
       </div>
     </div>
   );
 };
 
 export const getRestrictColumnsParams = () => {
-  // No parameters needed for restrict columns operation
   return {};
 };
 

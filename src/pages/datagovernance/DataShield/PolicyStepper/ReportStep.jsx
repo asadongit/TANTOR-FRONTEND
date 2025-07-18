@@ -92,7 +92,7 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
             }
             setLoading(prev => ({ ...prev, reportGroups: true }));
             try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-group`, {
+                const response = await fetch(`${window._env_?.VITE_FAST_API}/report-group`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -127,7 +127,7 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
             }
             setLoading(prev => ({ ...prev, reportTypes: true }));
             try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-type`, {
+                const response = await fetch(`${window._env_?.VITE_FAST_API}/report-type`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -180,7 +180,7 @@ const ReportStep = ({ policyData, isEditMode, initialData, onDataChange, setActi
             }
 
             try {
-                const response = await fetch(`${import.meta.env.VITE_FAST_API}/report-names`, {
+                const response = await fetch(`${window._env_?.VITE_FAST_API}/report-names`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,

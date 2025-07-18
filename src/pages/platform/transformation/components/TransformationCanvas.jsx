@@ -19,7 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { TransformationProvider, useTransformation, useTrackConnections } from "./TransformationContext";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
-
+import  TargetMappingDrawer  from "./TargetDrawer/TargetMappingDrawer"
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
@@ -27,7 +27,7 @@ const nodeTypes = {
   target: TargetNode,
 };
 
-const hostname = import.meta.env.VITE_FAST_API;
+const hostname = window._env_?.VITE_FAST_API;
 
 let id = 0;
 const getId = () => `node_${id++}`;
@@ -53,11 +53,13 @@ function TransformationCanvasContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const nodeIdRef = useRef(1);
-  const { generateTransformationJson } = useTransformation();
+  const { generateTransformationJson, dispatch, ACTION_TYPES } = useTransformation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeTransformationNodeId, setActiveTransformationNodeId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const { token, decodedToken, project } = useAuth();
+  const [arthDrawerOpen, setArthDrawerOpen] = useState(false);
+  const [arthDrawerNodeId, setArthDrawerNodeId] = useState(null);
 
   useTrackConnections(nodes, edges);
 
@@ -261,6 +263,19 @@ function TransformationCanvasContent() {
   );
 
   const handleSave = useCallback(async () => {
+    const targetNodes = nodes.filter(n => n.type === 'target');
+    for (const targetNode of targetNodes) {
+      if (!targetNode.data?.connectedSources) continue;
+      const confirmed = window.localStorage.getItem(`targetMappingConfirmed_${targetNode.id}`) === "true";
+      if (!confirmed) {
+        toast.error(`Please confirm target mapping for '${targetNode.data.alias || 'target node'}' before saving.`, {
+          duration: 3000,
+          position: "top-center",
+        });
+        return;
+      }
+    }
+
     try {
       const disconnectedNodes = nodes.filter(node => {
         const hasIncomingEdge = edges.some(edge => edge.target === node.id);
@@ -294,7 +309,6 @@ function TransformationCanvasContent() {
         });
         return;
       }
-
 
       setIsSaving(true);
       const nameCheckResponse = await fetch(`${hostname}/etl/check-transformation-name?name=${encodeURIComponent(defineNode.data.name)}`, {
@@ -330,6 +344,21 @@ function TransformationCanvasContent() {
         toast.error("Target data is empty. Make sure your target nodes are properly connected.");
         setIsSaving(false);
         return;
+      }
+
+      const targetNodes = nodes.filter(n => n.type === 'target');
+      for (const targetNode of targetNodes) {
+        if (!targetNode.data?.connectedSources) continue;
+
+        const confirmed = window.localStorage.getItem(`targetMappingConfirmed_${targetNode.id}`) === "true";
+        if (!confirmed) {
+          toast.error(`Please confirm target mapping for '${targetNode.data.alias || 'target node'}' before saving.`, {
+            duration: 3000,
+            position: "top-center",
+          });
+          setIsSaving(false);
+          return;
+        }
       }
 
       const sourceConnectionIds = [];
@@ -376,6 +405,7 @@ function TransformationCanvasContent() {
         extra_info: {}
       };
 
+      console.log(payload);
       const response = await fetch(`${hostname}/etl/transformation`, {
         method: "POST",
         headers: {
@@ -412,9 +442,18 @@ function TransformationCanvasContent() {
     }
   }, [generateTransformationJson, nodes, edges, navigate, hostname, token, decodedToken, project]);
 
-  const handleCancel = useCallback(() => {
-    navigate("/transformation");
-  }, [navigate]);
+ const handleNewFlow = useCallback(() => {
+  dispatch({ type: ACTION_TYPES.RESET });
+  setNodes(initialNodes);
+  setEdges(initialEdges);
+  nodeIdRef.current = 1;
+}, [dispatch, setNodes, setEdges]);
+
+const handleCancel = useCallback(() => {
+  handleNewFlow();
+  navigate("/transformation");
+}, [navigate, handleNewFlow]);
+
 
   const openTransformationDrawer = useCallback((nodeId) => {
     setActiveTransformationNodeId(nodeId);
@@ -431,6 +470,8 @@ function TransformationCanvasContent() {
   useEffect(() => {
     window.deleteNode = onNodeDelete;
     window.openTransformationDrawer = openTransformationDrawer;
+    window.allNodes = nodes;
+    window.allEdges = edges;
 
     return () => {
       window.deleteNode = undefined;
@@ -438,7 +479,29 @@ function TransformationCanvasContent() {
       window.allNodes = undefined;
       window.allEdges = undefined;
     };
-  }, [onNodeDelete, openTransformationDrawer]);
+  }, [onNodeDelete, openTransformationDrawer, nodes, edges]);
+
+  const [arthDrawerProps, setArthDrawerProps] = useState({});
+
+  useEffect(() => {
+    window.openTargetMappingDrawer = (nodeId, props = {}) => {
+      setArthDrawerNodeId(nodeId);
+      // Always use the latest props passed from the target node
+      setArthDrawerProps({...props});
+      setArthDrawerOpen(true);
+    };
+
+    window.closeTargetMappingDrawer = () => {
+      setArthDrawerOpen(false);
+      setArthDrawerNodeId(null);
+      setArthDrawerProps({});
+    };
+
+    return () => {
+      window.openTargetMappingDrawer = null;
+      window.closeTargetMappingDrawer = null;
+    };
+  }, []);
 
   const getActiveTransformationNode = useCallback(() => {
     if (!activeTransformationNodeId) return null;
@@ -449,6 +512,18 @@ function TransformationCanvasContent() {
 
   const updateTransformationNodesData = useCallback(() => {
     setNodes(prevNodes => {
+      // Build id->alias map for sources and targets
+      const sourceIdToAlias = {};
+      const targetIdToAlias = {};
+      prevNodes.forEach(node => {
+        if (node.type === 'source') {
+          sourceIdToAlias[node.id] = node.data.alias || `unnamed_source_${node.id}`;
+        }
+        if (node.type === 'target') {
+          targetIdToAlias[node.id] = node.data.alias || `unnamed_target_${node.id}`;
+        }
+      });
+
       return prevNodes.map(node => {
         if (node.type === 'transformation') {
           const incomingEdges = edges.filter(edge => edge.target === node.id);
@@ -457,17 +532,17 @@ function TransformationCanvasContent() {
           const sourceNodes = incomingEdges
             .map(edge => prevNodes.find(n => n.id === edge.source))
             .filter(Boolean)
-            .map((srcNode, index) => ({
+            .map((srcNode) => ({
               ...srcNode,
-              dfId: `s_df_${index + 1}`
+              dfId: sourceIdToAlias[srcNode.id] || srcNode.id
             }));
 
           const targetNodes = outgoingEdges
             .map(edge => prevNodes.find(n => n.id === edge.target))
             .filter(Boolean)
-            .map((tgtNode, index) => ({
+            .map((tgtNode) => ({
               ...tgtNode,
-              dfId: `t_df_${index + 1}`
+              dfId: targetIdToAlias[tgtNode.id] || tgtNode.id
             }));
 
           const nodeToDataframeMap = {};
@@ -493,6 +568,23 @@ function TransformationCanvasContent() {
             }
           };
         }
+
+        if (node.type === 'target') {
+          const incomingEdges = edges.filter(edge => edge.target === node.id);
+          const connectedSources = incomingEdges
+            .map(edge => prevNodes.find(n => n.id === edge.source && n.type === 'transformation'))
+            .filter(Boolean).length;
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              connectedSources,
+              onDataChange: node.data.onDataChange
+            }
+          };
+        }
+
         return node;
       });
     });
@@ -593,6 +685,88 @@ function TransformationCanvasContent() {
     }
   }, [nodes, edges, setNodes]);
 
+  const handleAddNewTargetColumn = useCallback((columnName) => {
+    setNodes(prevNodes => {
+      if (!activeTransformationNodeId) return prevNodes;
+      const outgoingEdges = edges.filter(edge => edge.source === activeTransformationNodeId);
+      const targetNodeIds = outgoingEdges
+        .map(edge => {
+          const tgtNode = prevNodes.find(n => n.id === edge.target && n.type === 'target');
+          return tgtNode ? tgtNode.id : null;
+        })
+        .filter(Boolean);
+
+      return prevNodes.map(node => {
+        if (targetNodeIds.includes(node.id)) {
+          let columns = Array.isArray(node.data.columns) ? [...node.data.columns] : [];
+          if (!columns.includes(columnName)) {
+            columns.push(columnName);
+          }
+          let columnMapping = { ...(node.data.columnMapping || {}) };
+          if (!(columnName in columnMapping)) {
+            columnMapping[columnName] = "";
+          }
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              columns,
+              columnMapping,
+            }
+          };
+        }
+        return node;
+      });
+    });
+  }, [edges, activeTransformationNodeId, setNodes]);
+
+  const handleTransformationApply = useCallback((transformationNodeId, transformations) => {
+    setNodes(prevNodes => {
+      const outgoingEdges = edges.filter(edge => edge.source === transformationNodeId);
+      const targetNodeIds = outgoingEdges
+        .map(edge => {
+          const tgtNode = prevNodes.find(n => n.id === edge.target && n.type === 'target');
+          return tgtNode ? tgtNode.id : null;
+        })
+        .filter(Boolean);
+
+      const processedTransformations = transformations.map(t => {
+        if (t.transformation_operation === 'filter' && !t.transformation_operator) {
+          return { ...t, transformation_operator: "==" };
+        }
+        return t;
+      });
+
+      return prevNodes.map(node => {
+        if (node.id === transformationNodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              transformations: processedTransformations,
+              transformationConfig: {
+                ...node.data.transformationConfig,
+                operations: processedTransformations
+              }
+            }
+          };
+        }
+        if (targetNodeIds.includes(node.id)) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              transformations: processedTransformations,
+            }
+          };
+        }
+        return node;
+      });
+    });
+  }, [edges, setNodes]);
+
+
+
   return (
     <div style={{ width: "100%", height: "100vh" }} className="relative">
       <ReactFlow
@@ -620,6 +794,12 @@ function TransformationCanvasContent() {
       </ReactFlow>
 
       <div className="fixed bottom-8 right-8 flex space-x-4">
+        {/* <button
+          onClick={handleNewFlow}
+          className="bg-white rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+        >
+          New Flow
+        </button> */}
         <button
           onClick={handleCancel}
           className="bg-white rounded-md border-2 border-[#8E77BB] shadow-md px-6 py-2 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
@@ -649,7 +829,16 @@ function TransformationCanvasContent() {
         onClose={closeTransformationDrawer}
         activeNode={activeNode}
         activeNodeId={activeTransformationNodeId}
+        onAddNewTargetColumn={handleAddNewTargetColumn}
+        onApplyTransformations={handleTransformationApply}
       />
+      {arthDrawerOpen && (
+        <TargetMappingDrawer
+          nodeId={arthDrawerNodeId}
+          onClose={() => setArthDrawerOpen(false)}
+          {...arthDrawerProps}
+        />
+      )}
     </div>
   );
 }
