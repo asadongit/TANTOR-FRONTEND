@@ -15,11 +15,11 @@ import {
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-mysql";
 import CircularProgress from "@mui/material/CircularProgress";
-import { ToastContainer, toast } from "react-toastify";
 import Switch from "@mui/material/Switch";
 import Builder from "./Builder";
 import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
+import { Icon } from "@iconify/react"; // Added for toast icons
 
 export default function Editor() {
   const { token, project, decodedToken, setSelectedProject, hostnameV1 } = useAuth();
@@ -37,7 +37,7 @@ export default function Editor() {
   const [expanded, setExpanded] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
   const [originalConnections, setOriginalConnections] = useState([]);
-  const [policyIds, setPolicyIds] = useState([]); 
+  const [policyIds, setPolicyIds] = useState([]);
   const [checked, setChecked] = useState(true);
   const [shownViews, setShownViews] = useState([]);
   const [queryHistory, setQueryHistory] = useState([]);
@@ -50,6 +50,7 @@ export default function Editor() {
   const [apiDetails, setApiDetails] = useState({ viewName: "", curl: "" });
   const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [toast, setToast] = useState({ show: false, message: '', type: '' }); // Added toast state
 
   useEffect(() => {
     const fetchConnections = async () => {
@@ -58,7 +59,7 @@ export default function Editor() {
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
         console.log("secureQuery policyIds (initial):", fetchedPolicyIds);
-        setPolicyIds(fetchedPolicyIds); 
+        setPolicyIds(fetchedPolicyIds);
 
         if (fetchedPolicyIds.length === 0) {
           setOriginalConnections([]);
@@ -83,7 +84,14 @@ export default function Editor() {
         setDisplayedConnections(formattedConnections);
       } catch (error) {
         console.error("Error fetching connections:", error);
-        toast.error("Failed to load connections");
+        setToast({
+          show: true,
+          message: "Failed to load connections",
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
       } finally {
         setConnectionsLoading(false);
       }
@@ -139,7 +147,14 @@ export default function Editor() {
       return filteredHistory;
     } catch (error) {
       console.error("Error fetching query history:", error);
-      toast.error("Failed to load query history");
+      setToast({
+        show: true,
+        message: "Failed to load query history",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
     } finally {
       setHistoryLoading(false);
     }
@@ -213,7 +228,14 @@ export default function Editor() {
 
     const newQuery = removeComments(query);
     if (newQuery.trim() === "") {
-      toast.error("Enter query first");
+      setToast({
+        show: true,
+        message: "Enter query first",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
       return;
     }
 
@@ -222,7 +244,14 @@ export default function Editor() {
     if (isCreateView) {
       viewName = extractViewName(newQuery);
       if (!viewName) {
-        toast.error("Invalid view name in CREATE VIEW query");
+        setToast({
+          show: true,
+          message: "Invalid view name in CREATE VIEW query",
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return;
       }
     }
@@ -242,7 +271,14 @@ export default function Editor() {
 
       if (!secureQueryResponse.ok) {
         const errData = await secureQueryResponse.json();
-        toast.error(errData.detail || "Error in query validation");
+        setToast({
+          show: true,
+          message: errData.detail || "Error in query validation",
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         throw new Error("secure-query failed");
       }
 
@@ -275,9 +311,23 @@ export default function Editor() {
         const text = await runQueryResponse.text();
         try {
           const errData = JSON.parse(text);
-          toast.error(errData.detail || "Error in query execution");
+          setToast({
+            show: true,
+            message: errData.detail || "Error in query execution",
+            type: "error",
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: "", type: "" });
+          }, 3000);
         } catch {
-          toast.error(text || "Error in query execution");
+          setToast({
+            show: true,
+            message: text || "Error in query execution",
+            type: "error",
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: "", type: "" });
+          }, 3000);
         }
         throw new Error("runQuery failed");
       }
@@ -286,7 +336,14 @@ export default function Editor() {
         const curl = await generateCurl(viewName);
         setApiDetails({ viewName, curl });
         setIsApiModalOpen(true);
-        toast.success(`View ${viewName} created successfully`);
+        setToast({
+          show: true,
+          message: `View ${viewName} created successfully`,
+          type: "success",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
       } else {
         const dataText = await runQueryResponse.text();
         const rows = dataText
@@ -319,10 +376,17 @@ export default function Editor() {
       if (updatedHistory) setQueryHistory(updatedHistory);
     } catch (error) {
       if (error.message !== "secure-query failed" &&
-          error.message !== "runQuery failed" &&
-          error.message !== "Invalid response from secure-query") {
+        error.message !== "runQuery failed" &&
+        error.message !== "Invalid response from secure-query") {
         console.error("Unexpected error in query execution:", error);
-        toast.error("Unexpected error occurred");
+        setToast({
+          show: true,
+          message: "Unexpected error occurred",
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
       }
     } finally {
       setLoading(false);
@@ -382,7 +446,14 @@ export default function Editor() {
       } catch (error) {
         console.error("Error fetching schema data:", error);
         setSchemas((prevSchemas) => ({ ...prevSchemas, [connection]: "error" }));
-        toast.error(`Failed to load schemas: ${error.message}`);
+        setToast({
+          show: true,
+          message: `Failed to load schemas: ${error.message}`,
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
       }
     }
   };
@@ -421,7 +492,6 @@ export default function Editor() {
         const data = await response.json();
         console.log("Tables API response data:", data);
 
-
         const tableData = data.schemas.find(
           (item) => item.connection_name.toLowerCase() === connection.toLowerCase() && item.schema.toLowerCase() === schema.toLowerCase()
         );
@@ -435,7 +505,14 @@ export default function Editor() {
       } catch (error) {
         console.error("Error in handleTables:", error.message);
         setTables((prevTables) => ({ ...prevTables, [`${connection}-${schema}`]: "error" }));
-        toast.error(`Failed to load tables: ${error.message}`);
+        setToast({
+          show: true,
+          message: `Failed to load tables: ${error.message}`,
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
       }
     }
   };
@@ -490,10 +567,10 @@ export default function Editor() {
 
         const formattedColumns = columnData && columnData.columns
           ? columnData.columns.map((item) => ({
-              column: item.column_name,
-              datatype: item.metadata?.DATA_TYPE || "unknown",
-              metadata: item.metadata,
-            }))
+            column: item.column_name,
+            datatype: item.metadata?.DATA_TYPE || "unknown",
+            metadata: item.metadata,
+          }))
           : [];
         console.log("Formatted columns:", formattedColumns);
 
@@ -504,7 +581,14 @@ export default function Editor() {
       } catch (error) {
         console.error("Error in handleColumns:", error.message);
         setColumns((prevColumns) => ({ ...prevColumns, [`${connection}-${schema}-${table}`]: "error" }));
-        toast.error(`Failed to load columns: ${error.message}`);
+        setToast({
+          show: true,
+          message: `Failed to load columns: ${error.message}`,
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
       }
     }
   };
@@ -1008,12 +1092,31 @@ export default function Editor() {
                 </div>
               )}
             </main>
+            {toast.show && (
+              <div
+                className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === "success"
+                    ? "bg-green-100 text-green-800 border-l-4 border-green-500"
+                    : "bg-red-100 text-red-800 border-l-4 border-red-500"
+                  }`}
+              >
+                <Icon
+                  icon={toast.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"}
+                  className="h-5 w-5"
+                />
+                <p>{toast.message}</p>
+                <button
+                  onClick={() => setToast({ show: false, message: "", type: "" })}
+                  className="ml-2 text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <Builder handleSwitch={handleSwitch} checked={checked} />
         )}
       </div>
-      <ToastContainer />
       {isQueryModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg min-w-[32vw] min-h-[50vh] flex flex-col justify-between">

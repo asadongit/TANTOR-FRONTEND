@@ -14,6 +14,7 @@ import { useStateContext } from "../context/contextViewProvider";
 import { defaultSetting } from "../BaseView/ColumnSettings";
 import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
+import { useToast } from "../context/ToastContext";
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -84,6 +85,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 };
 
 export function BaseNode({ id, data }) {
+   const { showToast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isAllSelected, setIsAllSelected] = useState(false);
   const [apiViews, setApiViews] = useState([]);
@@ -130,11 +132,11 @@ export function BaseNode({ id, data }) {
         if (response.ok) {
           setApiViews(data.result.sort((a, b) => a.localeCompare(b)));
         } else {
-          toast.error("Error fetching views");
+          showToast('Error fetching views', 'error');
         }
       } catch (error) {
         console.error("Fetch error", error);
-        toast.error("Error fetching views");
+        showToast('Error fetching views', 'error');
       }
     })();
   }, []);
@@ -163,11 +165,11 @@ export function BaseNode({ id, data }) {
               `Fetch Columns error. : \nStatus Code: ${response.status} \nData: `,
               data
             );
-            data.toast.error("Error occurred while trying to fetch columns");
+            showToast('Error occurred while trying to fetch columns', 'error');
           }
         } catch (error) {
           console.log(error);
-          data.toast.error("Error occurred while trying to fetch Columns");
+          showToast('Error occurred while trying to fetch columns', 'error');
         }
       })();
     }
@@ -397,6 +399,7 @@ export function BaseNode({ id, data }) {
 }
 
 export function ConnectionNode({ id, data }) {
+   const { showToast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
@@ -419,9 +422,10 @@ export function ConnectionNode({ id, data }) {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
 
   const getFilterModalColumns = () => {
+    console.log("apicolumn are ,",apiColumns)
     if (apiColumns.length > 0 && allowedColumns.length > 0) {
       const filtered = apiColumns.filter((column) =>
-        allowedColumns.some((allowedCol) => allowedCol.column_name === column.column)
+        allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === column.column.toLowerCase())
       );
       return filtered.map((column) => ({
         name: column.column,
@@ -460,7 +464,7 @@ export function ConnectionNode({ id, data }) {
         setApiConnections(names);
       } catch (error) {
         console.error("Error fetching connections:", error);
-        toast.error("Failed to load connections");
+        showToast('Failed to load connections', 'error');
         setApiConnections([]);
       }
     };
@@ -476,7 +480,6 @@ export function ConnectionNode({ id, data }) {
 
           if (policyIds.length === 0) {
             setApiSchemas([]);
-            toast.error("No policies matched for schemas.");
             return;
           }
 
@@ -505,7 +508,7 @@ export function ConnectionNode({ id, data }) {
           }
         } catch (error) {
           console.error("Error fetching schema data:", error);
-          toast.error("Failed to load schemas");
+          showToast('Failed to load schemas', 'error');
           setApiSchemas([]);
         }
       };
@@ -522,7 +525,6 @@ export function ConnectionNode({ id, data }) {
 
           if (policyIds.length === 0) {
             setApiTables([]);
-            toast.error("No policies matched for tables.");
             return;
           }
 
@@ -554,7 +556,7 @@ export function ConnectionNode({ id, data }) {
           }
         } catch (error) {
           console.error("Error fetching table data:", error);
-          toast.error("Failed to load tables");
+          showToast('Failed to load tables', 'error');
           setApiTables([]);
         }
       };
@@ -588,7 +590,6 @@ export function ConnectionNode({ id, data }) {
 
           if (policyIds.length === 0) {
             setAllowedColumns([]);
-            toast.error("No policies matched for columns.");
             return;
           }
 
@@ -628,7 +629,7 @@ export function ConnectionNode({ id, data }) {
           }
         } catch (error) {
           console.error("Error fetching columns:", error);
-          toast.error("Failed to load columns");
+          showToast('Failed to load columns', 'error');
           setApiColumns([]);
           setAllowedColumns([]);
         }

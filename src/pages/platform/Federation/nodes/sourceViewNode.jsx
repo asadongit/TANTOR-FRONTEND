@@ -6,10 +6,10 @@ import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode } fro
 import { useStateContext } from "../context/contextViewProvider";
 import { Modal } from "@mui/material";
 import { Columns } from "../BusinessView/Columns";
-import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext";
+import { useToast } from '../context/ToastContext';
 
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
@@ -87,6 +87,7 @@ export function SourceViewNode({ id, onSave }) {
   const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [previousView, setPreviousView] = useState("");
   const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
+    const { showToast } = useToast();
 
   const modalState = useLocation().state || {
     queryType: "Regular",
@@ -116,6 +117,7 @@ export function SourceViewNode({ id, onSave }) {
           setViews(data.result);
         } else {
           console.error("Invalid response from the API");
+          showToast('Failed to fetch views', 'error');
         }
       } catch (error) {
         console.error("Error fetching views:", error);
@@ -344,7 +346,7 @@ export function SourceViewNode({ id, onSave }) {
       handleViewPayload(updatedPayloads);
       onSave?.(newPayload);
     }
-    toast.success("Data Saved Successfully");
+    showToast('Data Saved Successfully', 'success');
     setPreviousView(selectedView)
 
   };
