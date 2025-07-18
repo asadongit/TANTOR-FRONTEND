@@ -233,8 +233,8 @@ const RulesLibrary = () => {
                         <table className="w-full min-w-[1200px]">
                             <thead>
                                 <tr className="bg-[#29304a] text-white">
-                                    <th className="text-left p-4 cursor-pointer hover:bg-[#3a4363]" onClick={() => handleSort('id')}>
-                                        ID {renderSortIcon('id')}
+                                    <th className="text-left p-4 cursor-pointer hover:bg-[#3a4363]">
+                                        ID
                                     </th>
                                     <th className="text-left p-4 cursor-pointer hover:bg-[#3a4363]" onClick={() => handleSort('type')}>
                                         Type {renderSortIcon('type')}
@@ -282,32 +282,41 @@ const RulesLibrary = () => {
                                         </tr>
                                     ))
                                 ) : (
-                                    currentItems.map((item) => (
-                                        <tr key={item.id} className="border-b hover:bg-gray-50">
-                                            <td className="p-4 font-medium">{item.id}</td>
-                                            <td className="p-4 text-gray-600">{item.type}</td>
-                                            <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
-                                            <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
-                                            <td className="p-4">
-                                                <span className={`px-2 pt-1 pb-2 text-center rounded-full text-sm font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
-                                                    item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-green-100 text-green-700'
-                                                    }`}>
-                                                    {item.severity}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 text-gray-600">{item.owner}</td>
-                                            <td className="p-4">
-                                                <button
-                                                    onClick={() => handleViewDetails(item)}
-                                                    className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
-                                                    title="View Details"
-                                                >
-                                                    <ArrowUpRight className="h-5 w-5 text-[#8e78b7]" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    currentItems.map((item, index) => {
+                                        // Calculate serial number based on sort direction for 'id'
+                                        const serialNumber =
+                                            sortColumn === 'id' && sortDirection === 'desc'
+                                                ? filteredData.length - indexOfFirstItem - index
+                                                : indexOfFirstItem + index + 1;
+
+                                        return (
+                                            <tr key={item.id} className="border-b hover:bg-gray-50">
+                                                {/* Use the new serialNumber variable here */}
+                                                <td className="p-4 font-medium">{serialNumber}</td>
+                                                <td className="p-4 text-gray-600">{item.type}</td>
+                                                <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
+                                                <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
+                                                <td className="p-4">
+                                                    <span className={`px-2 pt-1 pb-2 text-center rounded-full text-sm font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
+                                                        item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-green-100 text-green-700'
+                                                        }`}>
+                                                        {item.severity}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-gray-600">{item.owner}</td>
+                                                <td className="p-4">
+                                                    <button
+                                                        onClick={() => handleViewDetails(item)}
+                                                        className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
+                                                        title="View Details"
+                                                    >
+                                                        <ArrowUpRight className="h-5 w-5 text-[#8e78b7]" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })
                                 )}
                             </tbody>
                         </table>

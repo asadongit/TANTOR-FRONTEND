@@ -315,32 +315,26 @@ const Rules = () => {
     .sort((a, b) => {
       if (!sortConfig.key) return 0;
 
-      const aLastRun = a.last_run_date || '';
-      const bLastRun = b.last_run_date || '';
-      const lastRunComparison =
-        sortConfig.direction === 'asc'
-          ? aLastRun.localeCompare(bLastRun)
-          : bLastRun.localeCompare(aLastRun);
-
-      if (sortConfig.key === 'last_run_date' && lastRunComparison === 0) {
-        const aUpdated = a.updated_date || '';
-        const bUpdated = b.updated_date || '';
-        return sortConfig.direction === 'asc'
-          ? aUpdated.localeCompare(bUpdated)
-          : bUpdated.localeCompare(aUpdated);
-      }
-
-      if (sortConfig.key === 'id') {
-        const aValue = parseInt(a.id, 10);
-        const bValue = parseInt(b.id, 10);
-        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-      }
+      const direction = sortConfig.direction === 'asc' ? 1 : -1;
 
       const aValue = a[sortConfig.key] || '';
       const bValue = b[sortConfig.key] || '';
-      return sortConfig.direction === 'asc'
-        ? aValue.toString().localeCompare(bValue.toString())
-        : bValue.toString().localeCompare(bValue.toString());
+
+      let comparison = 0;
+
+      if (sortConfig.key === 'id') {
+        comparison = (parseInt(aValue, 10) || 0) - (parseInt(bValue, 10) || 0);
+      } else {
+        comparison = aValue.toString().localeCompare(bValue.toString());
+      }
+
+      if (comparison === 0 && sortConfig.key === 'last_run_date') {
+        const aUpdated = a.updated_date || '';
+        const bUpdated = b.updated_date || '';
+        return bUpdated.localeCompare(aUpdated) * direction;
+      }
+
+      return comparison * direction;
     });
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
@@ -845,8 +839,8 @@ const Rules = () => {
                       )}
                     </div>
                   </th>
-                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('id')}>
-                    <span className="inline-flex items-center">ID {getSortIcon('id')}</span>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" >
+                    <span className="inline-flex items-center">ID</span>
                   </th>
                   <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('category')}>
                     <span className="inline-flex items-center">Category {getSortIcon('category')}</span>
@@ -881,152 +875,161 @@ const Rules = () => {
               <tbody>
                 {isLoading || tableData.length === 0
                   ? renderTableSkeleton()
-                  : currentItems.map((item, index) => (
-                    <tr key={item.id} className="border-b hover:bg-gray-50">
-                      <td className="p-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedRows.includes(item.id)}
-                          onChange={() => handleSelectRow(item.id)}
-                          className="h-4 w-4 text-[#8e78b7] rounded"
-                        />
-                      </td>
-                      <td className="p-4 font-medium">{item.id}</td>
-                      <td className="p-4 text-gray-600">{item.category}</td>
-                      <td className="p-4 text-gray-600">{item.type}</td>
-                      <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
-                      <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
-                          item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-green-100 text-green-700'
-                          }`}>
-                          {item.severity}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active' ? 'bg-green-100 text-green-700' :
-                          'bg-gray-100 text-gray-700'
-                          }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-gray-600">{item.created_date}</td>
-                      <td className="p-4 text-gray-600">{item.updated_date}</td>
-                      <td className="p-4 text-gray-600">{item.last_run_date}</td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <div className="relative group">
+                  : currentItems.map((item, index) => {
+                    // Calculate serial number based on sort direction for 'id'
+                    const serialNumber =
+                      sortConfig.key === 'id' && sortConfig.direction === 'desc'
+                        ? filteredData.length - indexOfFirstItem - index
+                        : indexOfFirstItem + index + 1;
+
+                    return (
+                      <tr key={item.id} className="border-b hover:bg-gray-50">
+                        <td className="p-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(item.id)}
+                            onChange={() => handleSelectRow(item.id)}
+                            className="h-4 w-4 text-[#8e78b7] rounded"
+                          />
+                        </td>
+                        {/* Use the new serialNumber variable here */}
+                        <td className="p-4 font-medium">{serialNumber}</td>
+                        <td className="p-4 text-gray-600">{item.category}</td>
+                        <td className="p-4 text-gray-600">{item.type}</td>
+                        <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
+                        <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
+                            item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                            {item.severity}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active' ? 'bg-green-100 text-green-700' :
+                            'bg-gray-100 text-gray-700'
+                            }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-600">{item.created_date}</td>
+                        <td className="p-4 text-gray-600">{item.updated_date}</td>
+                        <td className="p-4 text-gray-600">{item.last_run_date}</td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <div className="relative group">
+                              <button
+                                onClick={() => handleRunSelected(item, true)}
+                                className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
+                                title="Run"
+                              >
+                                <Play className="h-4 w-4 text-[#8e78b7]" />
+                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleRunSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Run ID {item.id}
+                                  </button>
+                                  <button
+                                    onClick={handleRunAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Run Selected IDs
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                             <button
-                              onClick={() => handleRunSelected(item, true)}
-                              className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
-                              title="Run"
+                              onClick={() => handleActionClick('Edit', item, index)}
+                              className="p-1.5 hover:bg-blue-100 rounded-full"
+                              title="Edit Rule"
                             >
-                              <Play className="h-4 w-4 text-[#8e78b7]" />
+                              <Pencil className="h-4 w-4 text-[#8e78b7]" />
                             </button>
-                            {selectedRows.length > 0 && (
-                              <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
-                                <button
-                                  onClick={() => handleRunSelected(item, true)}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                                >
-                                  Run ID {item.id}
-                                </button>
-                                <button
-                                  onClick={handleRunAllSelected}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                                >
-                                  Run Selected IDs
-                                </button>
-                              </div>
-                            )}
+                            <div className="relative group">
+                              <button
+                                onClick={() => handleRefreshSelected(item, true)}
+                                className="p-1.5 hover:bg-green-100 rounded-full"
+                                title="Refresh Rule"
+                              >
+                                <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
+                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleRefreshSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Refresh ID {item.id}
+                                  </button>
+                                  <button
+                                    onClick={handleRefreshAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Refresh Selected IDs
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="relative group">
+                              <button
+                                onClick={() => handleScheduleSelected(item, true)}
+                                className="p-1.5 hover:bg-purple-100 rounded-full"
+                                title="Schedule Rule"
+                              >
+                                <Clock className="h-4 w-4 text-[#8e78b7]" />
+                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleScheduleSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Schedule ID {item.id}
+                                  </button>
+                                  <button
+                                    onClick={handleScheduleAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Schedule Selected IDs
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="relative group">
+                              <button
+                                onClick={() => handleDeleteSelected(item, true)}
+                                className="p-1.5 hover:bg-red-100 rounded-full"
+                                title="Delete Rule"
+                              >
+                                <Trash2 className="h-4 w-4 text-[#8e78b7]" />
+                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleDeleteSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Delete ID {item.id}
+                                  </button>
+                                  <button
+                                    onClick={handleDeleteAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Delete Selected IDs
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <button
-                            onClick={() => handleActionClick('Edit', item, index)}
-                            className="p-1.5 hover:bg-blue-100 rounded-full"
-                            title="Edit Rule"
-                          >
-                            <Pencil className="h-4 w-4 text-[#8e78b7]" />
-                          </button>
-                          <div className="relative group">
-                            <button
-                              onClick={() => handleRefreshSelected(item, true)}
-                              className="p-1.5 hover:bg-green-100 rounded-full"
-                              title="Refresh Rule"
-                            >
-                              <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
-                            </button>
-                            {selectedRows.length > 0 && (
-                              <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
-                                <button
-                                  onClick={() => handleRefreshSelected(item, true)}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                                >
-                                  Refresh ID {item.id}
-                                </button>
-                                <button
-                                  onClick={handleRefreshAllSelected}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                                >
-                                  Refresh Selected IDs
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          <div className="relative group">
-                            <button
-                              onClick={() => handleScheduleSelected(item, true)}
-                              className="p-1.5 hover:bg-purple-100 rounded-full"
-                              title="Schedule Rule"
-                            >
-                              <Clock className="h-4 w-4 text-[#8e78b7]" />
-                            </button>
-                            {selectedRows.length > 0 && (
-                              <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
-                                <button
-                                  onClick={() => handleScheduleSelected(item, true)}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                                >
-                                  Schedule ID {item.id}
-                                </button>
-                                <button
-                                  onClick={handleScheduleAllSelected}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                                >
-                                  Schedule Selected IDs
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          <div className="relative group">
-                            <button
-                              onClick={() => handleDeleteSelected(item, true)}
-                              className="p-1.5 hover:bg-red-100 rounded-full"
-                              title="Delete Rule"
-                            >
-                              <Trash2 className="h-4 w-4 text-[#8e78b7]" />
-                            </button>
-                            {selectedRows.length > 0 && (
-                              <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
-                                <button
-                                  onClick={() => handleDeleteSelected(item, true)}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                                >
-                                  Delete ID {item.id}
-                                </button>
-                                <button
-                                  onClick={handleDeleteAllSelected}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                                >
-                                  Delete Selected IDs
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    )
+                  })}
               </tbody>
             </table>
           </div>
