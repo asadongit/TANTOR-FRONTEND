@@ -102,6 +102,8 @@ function Quality({ query }) {
     const fetchOverallQualityData = async () => {
       setIsLoading(true);
       try {
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const ids = secureQueryResponse.matched_policy_ids || [];
         const scoreResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/scorecards`, {
           method: 'POST',
           headers: {
@@ -109,7 +111,7 @@ function Quality({ query }) {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ owner: decodedToken?.preferred_username }),
+          body: JSON.stringify({ owner: decodedToken?.preferred_username,policy_ids: ids, }),
         });
         if (!scoreResponse.ok) throw new Error('Failed to fetch overall quality data');
         const scoreData = await scoreResponse.json();
@@ -216,6 +218,8 @@ function Quality({ query }) {
     if (viewMode === 'overall') {
       setIsLoading(true);
       try {
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const ids = secureQueryResponse.matched_policy_ids || [];
         const scoreResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/scorecards`, {
           method: 'POST',
           headers: {
@@ -223,7 +227,7 @@ function Quality({ query }) {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ owner: decodedToken?.preferred_username }),
+          body: JSON.stringify({ owner: decodedToken?.preferred_username,policy_ids: ids, }),
         });
         if (!scoreResponse.ok) throw new Error('Failed to refresh overall quality data');
         const scoreData = await scoreResponse.json();
@@ -273,6 +277,8 @@ function Quality({ query }) {
     } else {
       setIsLoading(true);
       try {
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const ids = secureQueryResponse.matched_policy_ids || [];
         const response = await fetch(`${window._env_?.VITE_FAST_API}/scores/data/overview`, {
           method: 'POST',
           headers: {
@@ -283,6 +289,7 @@ function Quality({ query }) {
           body: JSON.stringify({
             query: selectedQuery,
             owner: decodedToken?.preferred_username,
+            policy_ids: ids,
           }),
         });
         if (!response.ok) throw new Error('Failed to refresh dataset quality data');
