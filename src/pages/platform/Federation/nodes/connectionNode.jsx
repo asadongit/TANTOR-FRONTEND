@@ -23,6 +23,7 @@ export function ConnectionNode({ id, onSave }) {
   const [tables, setTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState("");
   const [columns, setColumns] = useState([]);
+  const [allowedColumns, setAllowedColumns] = useState([]);
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [selectedColumn, setSelectedColumn] = useState("");
   const [columnData, setColumnData] = useState([]);
@@ -81,7 +82,6 @@ export function ConnectionNode({ id, onSave }) {
       console.error("Error fetching connections:", error);
       toast.error(`Failed to load connections: ${error.message}`);
       setConnections([]);
-    } finally {
     }
   };
 
@@ -95,6 +95,7 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedSchema("");
     setSelectedTable("");
     setColumns([]);
+    setAllowedColumns([]);
     setSelectedColumns([]);
     setColumnData([]);
     setColId("");
@@ -144,6 +145,7 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedSchema(schema);
     setSelectedTable("");
     setColumns([]);
+    setAllowedColumns([]);
     setSelectedColumns([]);
     setColumnData([]);
     setColId("");
@@ -184,14 +186,14 @@ export function ConnectionNode({ id, onSave }) {
         throw new Error("Invalid response structure from /tables/list");
       }
 
-      const tableData = data.schemas.find(
-        (item) => item.connection_name.toLowerCase() === selectedConnection.toLowerCase() && item.schema.toLowerCase() === schema.toLowerCase()
+      const schemaData = data.schemas.find(
+        (item) => item.connection_name === selectedConnection && item.schema === schema
       );
-      console.log("Filtered tableData:", tableData);
-
-      const tableNames = tableData && tableData.tables ? tableData.tables : [];
-      console.log("Formatted tables:", tableNames);
-      setTables(tableNames);
+      if (schemaData && schemaData.tables) {
+        setTables(schemaData.tables);
+      } else {
+        setTables([]);
+      }
     } catch (error) {
       console.error("Error fetching table data:", error);
       setTables([]);
@@ -205,48 +207,73 @@ export function ConnectionNode({ id, onSave }) {
     setColId(unique);
     setSelectedTable(table);
     setColumns([]);
+    setAllowedColumns([]);
     setSelectedColumns([]);
     setColumnData([]);
 
     try {
-      if (policyIds.length === 0) {
+      const detailedColumnsResponse = await fetch(
+        `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${table}/columns`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!detailedColumnsResponse.ok) {
+        const errorText = await detailedColumnsResponse.text();
+        console.error("Fetch error:", errorText);
+        throw new Error(`Failed to fetch detailed columns: ${errorText}`);
+      }
+      const detailedColumnsData = await detailedColumnsResponse.json();
+      setColumns(detailedColumnsData);
+
+      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+      const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
+
+      if (fetchedPolicyIds.length === 0) {
         console.warn("No policy IDs available, setting empty columns");
         toast.error("No policies matched for fetching columns");
-        setColumns([]);
+        setAllowedColumns([]);
         setColumnData([]);
         return;
       }
 
-      const response = await fetch(`${hostnameV1}/columns/list`, {
+      const allowedColumnsResponse = await fetch(`${hostnameV1}/columns/list`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          matched_policy_ids: policyIds,
+          matched_policy_ids: fetchedPolicyIds,
           connection_name: selectedConnection,
           schema_name: [selectedSchema],
           table_name: [table],
         }),
       });
 
-      console.log("Columns response status:", response.status);
-      if (!response.ok) {
-        const errorText = await response.text();
+      console.log("Columns response status:", allowedColumnsResponse.status);
+      if (!allowedColumnsResponse.ok) {
+        const errorText = await allowedColumnsResponse.text();
         console.error("Fetch error:", errorText);
-        throw new Error(`Failed to fetch columns: ${errorText}`);
+        throw new Error(`Failed to fetch allowed columns: ${errorText}`);
       }
 
-      const data = await response.json();
-      console.log("Columns API response data:", data);
+      const allowedColumnsData = await allowedColumnsResponse.json();
+      console.log("Columns API response data:", allowedColumnsData);
 
-      if (!data || !data.columns || !Array.isArray(data.columns)) {
-        console.error("Invalid response structure:", data);
-        throw new Error("Invalid response structure from /columns/list");
+      if (!allowedColumnsData || !allowedColumnsData.columns) {
+        console.error("Invalid response structure:", allowedColumnsData);
+        setAllowedColumns([]);
+        setColumnData([]);
+        return;
       }
 
-      const columnData = data.columns.find(
+      const columnData = allowedColumnsData.columns.find(
         (item) =>
           item.connection_name.toLowerCase() === selectedConnection.toLowerCase() &&
           item.schema.toLowerCase() === selectedSchema.toLowerCase() &&
@@ -262,12 +289,13 @@ export function ConnectionNode({ id, onSave }) {
         : [];
       console.log("Formatted columns:", formattedColumns);
 
-      setColumns(formattedColumns);
+      setAllowedColumns(formattedColumns);
       setColumnData(formattedColumns);
       updateNodeInternals(id);
     } catch (error) {
-      console.error("Error fetching column data:", error);
+      console.error("Error fetching columns:", error);
       setColumns([]);
+      setAllowedColumns([]);
       setColumnData([]);
       toast.error(`Failed to load columns: ${error.message}`);
     }
@@ -312,7 +340,7 @@ export function ConnectionNode({ id, onSave }) {
 
   const handleSelectAllChange = (isChecked) => {
     if (isChecked) {
-      const columnNames = columns.map((col) => col.column);
+      const columnNames = allowedColumns.map((col) => col.column);
       setSelectedColumns(columnNames);
       setSelectedColumnsOrder(columnNames);
       setColumnSettings((prevSettings) => {
@@ -333,7 +361,7 @@ export function ConnectionNode({ id, onSave }) {
       setSelectedColumnsOrder([]);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
-        columns.forEach((column) => {
+        allowedColumns.forEach((column) => {
           updatedSettings[colId] = {
             ...updatedSettings[colId],
             [column.column]: {
@@ -347,7 +375,7 @@ export function ConnectionNode({ id, onSave }) {
     }
   };
 
-  const isAllSelected = selectedColumns.length === columns.length && columns.length > 0;
+  const isAllSelected = selectedColumns.length === allowedColumns.length && allowedColumns.length > 0;
 
   useEffect(() => {
     if (colId && columnSettings[colId]) {
@@ -379,6 +407,13 @@ export function ConnectionNode({ id, onSave }) {
       setColumnSettings(updatedSettings);
     }
 
+    const filteredColumns = allowedColumns
+      .filter((col) => columns.some((c) => c.column.toLowerCase() === col.column.toLowerCase()))
+      .map((col) => ({
+        column: col.column,
+        datatype: columns.find((c) => c.column.toLowerCase() === col.column.toLowerCase())?.datatype || "unknown",
+      }));
+
     const newPayload = {
       id,
       type: "Connection",
@@ -388,7 +423,7 @@ export function ConnectionNode({ id, onSave }) {
       selectedTable,
       selectedColumns,
       def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
-      Columns: columnData,
+      Columns: filteredColumns,
     };
 
     const currentPayloads = connectionPayload || [];
@@ -619,7 +654,7 @@ export function ConnectionNode({ id, onSave }) {
                   placeholder="Select a table"
                 />
               </div>
-              {columns?.length > 0 && (
+              {allowedColumns?.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-black mb-1">Select Columns</label>
                   <div className="p-3 space-y-2">
@@ -636,28 +671,32 @@ export function ConnectionNode({ id, onSave }) {
                       </label>
                     </div>
                     <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
-                      {columns.map((col) => (
-                        <div className="flex justify-between" key={col.column}>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id={col.column}
-                              value={col.column}
-                              checked={selectedColumns.includes(col.column)}
-                              onChange={() => handleColumnChange(col.column)}
-                              className="text-purple-600 focus:ring-purple-500"
+                      {allowedColumns
+                        .filter((col) =>
+                          columns.some((c) => c.column.toLowerCase() === col.column.toLowerCase())
+                        )
+                        .map((col) => (
+                          <div className="flex justify-between" key={col.column}>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={col.column}
+                                value={col.column}
+                                checked={selectedColumns.includes(col.column)}
+                                onChange={() => handleColumnChange(col.column)}
+                                className="text-purple-600 focus:ring-purple-500"
+                              />
+                              <label htmlFor={col.column} className="text-sm text-gray-700">
+                                {col.column}
+                              </label>
+                            </div>
+                            <Pencil
+                              name="edit"
+                              onClick={() => handleChange(col.column)}
+                              className="mr-3 h-4 w-4 text-[#8E77BB]"
                             />
-                            <label htmlFor={col.column} className="text-sm text-gray-700">
-                              {col.column}
-                            </label>
                           </div>
-                          <Pencil
-                            name="edit"
-                            onClick={() => handleChange(col.column)}
-                            className="mr-3 h-4 w-4 text-[#8E77BB]"
-                          />
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </div>
                 </div>
@@ -695,7 +734,7 @@ export function ConnectionNode({ id, onSave }) {
           <Columns
             id={colId}
             columnName={selectedColumn}
-            dataType={columnData.find((col) => col.column === selectedColumn)?.datatype}
+            dataType={columns.find((col) => col.column.toLowerCase() === selectedColumn.toLowerCase())?.datatype || "unknown"}
             toggleModal={toggleModal}
           />
         </div>

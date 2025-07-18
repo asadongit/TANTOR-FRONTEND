@@ -419,9 +419,10 @@ export function ConnectionNode({ id, data }) {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
 
   const getFilterModalColumns = () => {
+    console.log("apicolumn are ,",apiColumns)
     if (apiColumns.length > 0 && allowedColumns.length > 0) {
       const filtered = apiColumns.filter((column) =>
-        allowedColumns.some((allowedCol) => allowedCol.column_name === column.column)
+        allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === column.column.toLowerCase())
       );
       return filtered.map((column) => ({
         name: column.column,
