@@ -10,6 +10,7 @@ import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
@@ -87,6 +88,7 @@ export function SourceViewNode({ id, onSave }) {
   const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [previousView, setPreviousView] = useState("");
   const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
+    const { showToast } = useToast();
 
   const modalState = useLocation().state || {
     queryType: "Regular",
@@ -109,13 +111,14 @@ export function SourceViewNode({ id, onSave }) {
           created_by: decodedToken?.preferred_username,
         });
 
-        const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`);
+        const response = await fetch(`${hostnameV2}/get-allws_v2?${params}`);
         const data = await response.json();
 
         if (data && data.result) {
           setViews(data.result);
         } else {
           console.error("Invalid response from the API");
+          showToast('Failed to fetch views', 'error');
         }
       } catch (error) {
         console.error("Error fetching views:", error);
