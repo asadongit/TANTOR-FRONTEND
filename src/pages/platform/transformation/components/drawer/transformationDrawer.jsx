@@ -1085,91 +1085,100 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic", givendatatype = "NUMBER", oldColumnName = null, restrictedColumns = null, restrictType = null) => {
-		console.log("operation type is ====>", operationType)
-		console.log("given datatype is  =====>", givendatatype)
-		const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
-		let datatype = "NUMBER";
-		if (operationType === "typecast") {
-			datatype = givendatatype;
-		} else if (operationType === "string") {
-			datatype = "VARCHAR";
-		} else if (operationType === "date") {
-			datatype = "date";
-		} else if (operationType === "constantcopy") {
-			datatype = givendatatype;
-		} else if (operationType === "rename") {
-			// For rename, preserve the original datatype
-			datatype = givendatatype;
-		}
+  console.log("operation type is ====>", operationType)
+  console.log("given datatype is  =====>", givendatatype)
+  const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
+  let datatype = "NUMBER";
+  if (operationType === "typecast") {
+    datatype = givendatatype;
+  } else if (operationType === "string") {
+    datatype = "VARCHAR";
+  } else if (operationType === "date") {
+    datatype = "date";
+  } else if (operationType === "constantcopy") {
+    datatype = givendatatype;
+  } else if (operationType === "rename") {
+    // For rename, preserve the original datatype
+    datatype = givendatatype;
+  }
 
-		// Handle restrict columns operation
-		if (operationType === "restrictcolumns" && restrictedColumns !== null && restrictType) {
-			setDataframeColumns(prev => {
-				const prevCols = prev[actualDfId] || [];
-				let newCols;
+  // Handle restrict columns operation
+  if (operationType === "restrictcolumns" && restrictedColumns !== null && (restrictType === "select" || restrictType === "drop" || restrictType === "restore")) {
+    setDataframeColumns(prev => {
+      const prevCols = prev[actualDfId] || [];
+      let newCols;
 
-				if (restrictType === "select") {
-					// Keep only selected columns
-					newCols = prevCols.filter(col => {
-						const colName = typeof col === "object" ? col.name : col;
-						return restrictedColumns.includes(colName);
-					});
-				} else if (restrictType === "drop") {
-					// Remove selected columns (keep all others)
-					newCols = prevCols.filter(col => {
-						const colName = typeof col === "object" ? col.name : col;
-						return !restrictedColumns.includes(colName);
-					});
-				} else {
-					newCols = prevCols;
-				}
+      if (restrictType === "restore") {
+        // Restore original columns from context
+        const { state } = window.transformationContext || {};
+        const originalColumns = state?.originalSourceColumns?.[actualDfId];
+        newCols = originalColumns ? [...originalColumns] : prevCols;
+      } else if (restrictType === "select") {
+        // Keep only selected columns
+        newCols = prevCols.filter(col => {
+          const colName = typeof col === "object" ? col.name : col;
+          return restrictedColumns.includes(colName);
+        });
+      } else if (restrictType === "drop") {
+        // Remove selected columns (keep all others)
+        newCols = prevCols.filter(col => {
+          const colName = typeof col === "object" ? col.name : col;
+          return !restrictedColumns.includes(colName);
+        });
+      } else {
+        newCols = prevCols;
+      }
 
-				return {
-					...prev,
-					[actualDfId]: newCols
-				};
-			});
+      return {
+        ...prev,
+        [actualDfId]: newCols
+      };
+    });
 
-			// Update the actual node data
-			if (window.allNodes && Array.isArray(window.allNodes)) {
-				const reactNode = window.allNodes.find(n =>
-					(n.data?.alias === actualDfId) || (n.id === actualDfId)
-				);
-				if (reactNode && typeof reactNode.data.onDataChange === "function") {
-					const currentCols = Array.isArray(reactNode.data.columns)
-						? [...reactNode.data.columns]
-						: [];
+    // Update the actual node data
+    if (window.allNodes && Array.isArray(window.allNodes)) {
+      const reactNode = window.allNodes.find(n =>
+        (n.data?.alias === actualDfId) || (n.id === actualDfId)
+      );
+      if (reactNode && typeof reactNode.data.onDataChange === "function") {
+        let updatedCols;
 
-					let updatedCols;
-					if (restrictType === "select") {
-						// Keep only selected columns
-						updatedCols = currentCols.filter(col => {
-							const colName = typeof col === "object" ? col.name : col;
-							return restrictedColumns.includes(colName);
-						});
-					} else if (restrictType === "drop") {
-						// Remove selected columns (keep all others)
-						updatedCols = currentCols.filter(col => {
-							const colName = typeof col === "object" ? col.name : col;
-							return !restrictedColumns.includes(colName);
-						});
-					} else {
-						updatedCols = currentCols;
-					}
+        if (restrictType === "restore") {
+          // Get original columns from transformation context
+          const { state } = window.transformationContext || {};
+          const originalColumns = state?.originalSourceColumns?.[actualDfId];
+          updatedCols = originalColumns ? [...originalColumns] : (Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : []);
+        } else {
+          const currentCols = Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : [];
 
-					reactNode.data.onDataChange({ columns: updatedCols });
-					console.log("$$$$$$ restricted columns:", restrictType, restrictedColumns, "remaining cols:", updatedCols);
-				}
-			}
+          if (restrictType === "select") {
+            // Keep only selected columns
+            updatedCols = currentCols.filter(col => {
+              const colName = typeof col === "object" ? col.name : col;
+              return restrictedColumns.includes(colName);
+            });
+          } else if (restrictType === "drop") {
+            // Remove selected columns (keep all others)
+            updatedCols = currentCols.filter(col => {
+              const colName = typeof col === "object" ? col.name : col;
+              return !restrictedColumns.includes(colName);
+            });
+          } else {
+            updatedCols = currentCols;
+          }
+        }
 
-			// Trigger event for any other components that need to update
-			setTimeout(() => {
-				window.dispatchEvent(new Event("tantor-columns-updated"));
-			}, 10);
-			return;
-		}
+        reactNode.data.onDataChange({ columns: updatedCols });
+        console.log("$$$$$$ restricted columns:", restrictType, restrictedColumns, "remaining cols:", updatedCols);
+      }
+    }
 
-		console.log("column name is ======>", columnName)
+    // Trigger event for any other components that need to update
+    setTimeout(() => {
+      window.dispatchEvent(new Event("tantor-columns-updated"));
+    }, 10);
+    return;
+  }
 
 		// For rename operations, we need to replace the old column with the new one
 		if (operationType === "rename" && oldColumnName) {

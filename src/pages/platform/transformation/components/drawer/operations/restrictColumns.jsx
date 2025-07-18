@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useRef, useState } from "react";
 import Select from "react-select";
 import { ChevronDown } from "lucide-react";
+import { useTransformation } from "../../TransformationContext";
 
 const OPERATORS = [
   { id: "select", name: "Select", description: "Keep only selected columns" },
@@ -18,6 +19,7 @@ export const RestrictColumnsOperationFields = ({
   handleOperatorChange,
   onAddNewTargetColumn
 }) => {
+  const { dispatch, ACTION_TYPES, state } = useTransformation();
   const sourceDropdownKey = `${transformation.id}-source`;
   const operatorDescription = OPERATORS.find(op => op.id === transformation.transformation_operator)?.description || "";
 
@@ -127,6 +129,20 @@ export const RestrictColumnsOperationFields = ({
   const handleSourceChange = (selected) => {
     const selectedColumns = selected ? selected.map(option => option.value) : [];
     handleSelectAllColumns(transformation.id, 'source', selectedColumns, true);
+
+    // If no columns are selected and we have original columns, restore them
+    if (selectedColumns.length === 0 && transformation.transformation_operator) {
+      const sourceNodeId = transformation.source_dataframe;
+      const originalColumns = state.originalSourceColumns[sourceNodeId];
+
+      if (originalColumns && originalColumns.length > 0) {
+        // Restore original columns
+        onAddNewTargetColumn(null, transformation.source_dataframe, "restrictcolumns", null, null, originalColumns, "restore");
+        setPendingRestriction(false);
+        return;
+      }
+    }
+
     setPendingRestriction(selectedColumns.length > 0);
   };
 
@@ -134,6 +150,18 @@ export const RestrictColumnsOperationFields = ({
     if (onAddNewTargetColumn && typeof onAddNewTargetColumn === "function") {
       const operationType = transformation.transformation_operator;
       const selectedColumns = transformation.source_column || [];
+
+      // Store original columns before applying restriction for the first time
+      const sourceNodeId = transformation.source_dataframe;
+      if (!state.originalSourceColumns[sourceNodeId]) {
+        dispatch({
+          type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
+          payload: {
+            sourceNodeId,
+            columns: [...sourceCols]
+          }
+        });
+      }
 
       if (operationType === "select") {
         onAddNewTargetColumn(null, transformation.source_dataframe, "restrictcolumns", null, null, selectedColumns, "select");
