@@ -22,6 +22,7 @@ export function PlatformProvider({ children }) {
   const [connectionData, setConnectionData] = useState([]);
   const [federationData, setFederationData] = useState([]);
 
+
   const requestHandler = useCallback(
     async ({ endpoint, method = "GET", setState = null, body = null }) => {
       try {
@@ -61,13 +62,13 @@ export function PlatformProvider({ children }) {
     migration: {
       data: migrationData,
       setData: setMigrationData,
-      endpoint: "/metadata-archivals",
+      endpoint: "/migrations",
     },
     purge: { data: purgeData, setData: setPurgeData, endpoint: "/purges" },
     project: {
       data: projectData,
       setData: setProjectData,
-      endpoint: "/projects",
+      endpoint: "/metadata-archivals",
     },
     connection: {
       data: connectionData,

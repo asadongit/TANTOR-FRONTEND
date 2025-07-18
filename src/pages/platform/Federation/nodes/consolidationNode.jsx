@@ -5,7 +5,7 @@ import { Handle, Position } from "reactflow";
 import { SquareKanban, X, Network, ChevronDown, ChevronUp, Pencil, MoveHorizontal } from "lucide-react";
 import { useStateContext } from "../context/contextViewProvider";
 import { Modal, Box, IconButton, Autocomplete, TextField } from "@mui/material";
-import { ToastContainer, toast } from "react-toastify";
+import { useToast } from '../context/ToastContext';
 import { Circle } from 'lucide-react';
 import { Columns } from "../BusinessView/Columns";
  
@@ -13,6 +13,7 @@ export function ConsolidationNode({ id }) {
   const { handleConnectionPayload, handleViewPayload, consolidationPayload, connectionPayload, viewPayload, handleFinalPayload, finalPayload, columnSettings, setColumnSettings } = useStateContext("");
   const [type, setType] = useState("Join");
   const [unionType, setUnionType] = useState("");
+  const { showToast } = useToast();
  
   const [leftColumns, setLeftColumns] = useState([]);
   const [rightColumns, setRightColumns] = useState([]);
@@ -220,7 +221,7 @@ export function ConsolidationNode({ id }) {
     if (type === "Join") {
  
       if (!(joinType && selectedLeft && selectedRight && operator)) {
-        toast.error("Select input first")
+        showToast('Select input first', 'error');
         return;
       }
  
@@ -308,7 +309,7 @@ export function ConsolidationNode({ id }) {
  
       handleFinalPayload({ ...finalPayload, ...newPayload });
     }
-    toast.success("Data Saved Successfully");
+    showToast('Data Saved Successfully', 'success');
  
     setIsConsolidationModalOpen(!isConsolidationModalOpen);
   };
@@ -318,15 +319,15 @@ export function ConsolidationNode({ id }) {
     console.log("inner type is =====>", unionType)
     if (type === "Union" || type === "Intersect" || type === "Union All" || type === "Intersect All") {
       if (type === "Union" && unionType == "" ) {
-        toast.error("Select type first");
+        showToast('Select type first', 'error');
         return;
       }
       if(type === "Intersect" && unionType == ""){
-        toast.error("Select type first")
+        showToast('Select type first', 'error');
         return;
       }
       if (selectedUnionColumns.length === 0) {
-        toast.error("Select atleast one column");
+        showToast('Select atleast one column', 'error');
         return;
       }
  
@@ -359,7 +360,7 @@ export function ConsolidationNode({ id }) {
 
         if (unionData[firstView]?.length !== unionData[secondView]?.length) {
           console.error(`Column count mismatch: ${firstView} (${unionData[firstView]?.length}) vs ${secondView} (${unionData[secondView]?.length})`);
-          toast.error(`Column count mismatch: ${firstView} (${unionData[firstView]?.length}) and ${secondView} (${unionData[secondView]?.length})`);
+          showToast(`Column count mismatch: ${firstView} (${unionData[firstView]?.length}) and ${secondView} (${unionData[secondView]?.length})`,"error");
           return;
       }
 
@@ -516,7 +517,7 @@ export function ConsolidationNode({ id }) {
     );
   
     if (duplicates.length > 0) {
-      toast.error("Duplicate column mappings found. Please select unique mappings.");
+      showToast("Duplicate column mappings found. Please select unique mappings.","error");
       return;
     }
   

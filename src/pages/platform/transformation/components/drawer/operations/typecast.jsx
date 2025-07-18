@@ -76,12 +76,8 @@ export const TypecastOperationFields = ({
     }
   };
 
-  const filteredSourceCols = sourceCols.filter(col => {
-    const datatype = typeof col === "object" && col.datatype ? col.datatype : "";
-    return isNumericType(datatype) || isFloatType(datatype);
-  });
-
-  const columnOptions = filteredSourceCols.map(col => {
+  // Show all columns, no filtering by datatype
+  const columnOptions = sourceCols.map(col => {
     const colName = typeof col === "object" ? col.name : col;
     const datatype = typeof col === "object" && col.datatype ? col.datatype : "";
     return {
@@ -94,28 +90,7 @@ export const TypecastOperationFields = ({
   const selectedDataType = transformation.params.target_datatype || "";
   console.log("selected datat===>",selectedDataType)
   const targetColumnOptions = [
-    ...(selectedDataType
-      ? sourceCols
-          .filter(col => {
-            const datatype = typeof col === "object" && col.datatype ? col.datatype : "";
-            return selectedDataType === "string"
-              ? isStringType(datatype)
-              : selectedDataType === "int"
-              ? isNumericType(datatype)
-              : selectedDataType === "float"
-              ? isFloatType(datatype)
-              : datatype === selectedDataType;
-          })
-          .map(col => {
-            const colName = typeof col === "object" ? col.name : col;
-            const datatype = typeof col === "object" && col.datatype ? col.datatype : "";
-            return {
-              value: colName,
-              label: datatype ? `${colName} (${datatype})` : colName,
-              datatype: datatype
-            };
-          })
-      : columnOptions),
+    ...columnOptions,
     ...(isAddingNewColumn && newColumnName ? [{ value: newColumnName, label: newColumnName }] : []),
   ];
 
@@ -132,8 +107,18 @@ export const TypecastOperationFields = ({
   const handleSourceChange = (selected) => {
     const selectedColumn = selected ? selected.value : null;
     handleSelectAllColumns(transformation.id, "source", selectedColumn ? [selectedColumn] : [], true);
+
+    const sourceCol = sourceCols.find(col =>
+      (typeof col === "object" ? col.name : col) === selectedColumn
+    );
+    const sourceDataType = sourceCol && typeof sourceCol === "object"
+      ? sourceCol.datatype
+      : "";
+
+    updateParam("source_datatype", sourceDataType);
+
     updateParam("target_datatype", "");
-    handleSelectAllColumns(transformation.id, "target", [], true); 
+    handleSelectAllColumns(transformation.id, "target", [], true);
   };
 
   const handleTargetChange = (selected, { action }) => {
@@ -163,23 +148,39 @@ export const TypecastOperationFields = ({
     }
   };
 
-  const selectedSourceColumn = filteredSourceCols.find(col => 
+  const selectedSourceColumn = sourceCols.find(col =>
     (typeof col === "object" ? col.name : col) === transformation.source_column?.[0]
   );
-  const sourceDataType = selectedSourceColumn && typeof selectedSourceColumn === "object" 
-    ? selectedSourceColumn.datatype 
+  const sourceDataType = selectedSourceColumn && typeof selectedSourceColumn === "object"
+    ? selectedSourceColumn.datatype
     : "";
-  
-  const filteredDataTypes = DATA_TYPES.filter(type => {
-    if (!sourceDataType) return true; 
 
-    if (isNumericType(sourceDataType) && !isFloatType(sourceDataType)) { 
-      return ["string", "float"].includes(type.id);
+  const filteredDataTypes = DATA_TYPES.filter(type => {
+    if (!sourceDataType) return true;
+
+    const sourceLower = sourceDataType.toLowerCase();
+
+    if (sourceLower.includes('date') && !sourceLower.includes('timestamp')) {
+      return ["string", "timestamp"].includes(type.id);
     }
+
+    if (isStringType(sourceDataType)) {
+      return ["int", "date", "timestamp", "float"].includes(type.id);
+    }
+
+    if (isNumericType(sourceDataType) && !isFloatType(sourceDataType)) {
+      return ["string", "float","int"].includes(type.id);
+    }
+
     if (isFloatType(sourceDataType)) {
-      return type.id === "int";
+      return ["int", "string"].includes(type.id);
     }
-    return ["string"].includes(type.id); 
+
+    if (sourceLower.includes('timestamp')) {
+      return ["string", "date"].includes(type.id);
+    }
+
+    return ["string"].includes(type.id);
   });
 
 
@@ -403,29 +404,47 @@ export const TypecastOperationFields = ({
         </div>
       </div>
 
-      <div className="w-1/2">
-        <label className="text-xs text-gray-600 block mb-1">Target Column</label>
-        <Select
-          options={targetColumnOptions}
-          value={selectedTargetOption}
-          onChange={handleTargetChange}
-          placeholder="Select target column"
-          className="text-sm"
-          styles={customStyles}
-          noOptionsMessage={() => "No columns available"}
-          isClearable
-          components={{ MenuList: CustomMenuList }}
-          theme={(theme) => ({
-            ...theme,
-            colors: {
-              ...theme.colors,
-              primary: "#8E77BB",
-              primary25: "#f3f4f6",
-              neutral0: "white",
-              neutral80: "#111827",
-            },
-          })}
-        />
+      <div className="flex gap-4">
+        <div className="w-1/2">
+          <label className="text-xs text-gray-600 block mb-1">Target Column</label>
+          <Select
+            options={targetColumnOptions}
+            value={selectedTargetOption}
+            onChange={handleTargetChange}
+            placeholder="Select target column"
+            className="text-sm"
+            styles={customStyles}
+            noOptionsMessage={() => "No columns available"}
+            isClearable
+            components={{ MenuList: CustomMenuList }}
+            theme={(theme) => ({
+              ...theme,
+              colors: {
+                ...theme.colors,
+                primary: "#8E77BB",
+                primary25: "#f3f4f6",
+                neutral0: "white",
+                neutral80: "#111827",
+              },
+            })}
+          />
+        </div>
+
+        {(selectedDataType === "date" || selectedDataType === "timestamp") && (
+          <div className="w-1/2">
+            <label className="text-xs text-gray-600 block mb-1">Source Format</label>
+            <input
+              type="text"
+              className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+              placeholder="e.g., yyyy-MM-dd HH:mm:ss"
+              value={transformation.params.format || ""}
+              onChange={(e) => updateParam("format", e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Enter the format pattern for {selectedDataType} conversion
+            </p>
+          </div>
+        )}
       </div>
 
       {showAddModal && AddColumnModal}
@@ -434,9 +453,18 @@ export const TypecastOperationFields = ({
 };
 
 export const getTypecastParams = (transformation) => {
-  return {
-    target_datatype: transformation.params.target_datatype || ""
+  const params = {
+    target_datatype: transformation.params.target_datatype || "",
+    source_datatype: transformation.params.source_datatype || ""
   };
+
+  // Include format parameter only if target datatype is date or timestamp and format is provided
+  if ((transformation.params.target_datatype === "date" || transformation.params.target_datatype === "timestamp")
+      && transformation.params.format) {
+    params.format = transformation.params.format;
+  }
+
+  return params;
 };
 
 export default TypecastOperationFields;

@@ -12,6 +12,7 @@ function DimensionValueSelector({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [sortedDimensionValuesData, setSortedDimensionValuesData] = useState([]);
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -28,6 +29,35 @@ function DimensionValueSelector({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
+
+  // Sort Values
+  useEffect(() => {
+    if (dimensionValuesData.length === 0) {
+      return;
+    }
+    
+    const selectedIds = new Set(
+      (dimension.value || []).map(v => v.id)
+    );
+    
+    const selectedItems = [];
+    const unselectedItems = [];
+    
+    dimensionValuesData.forEach(item => {
+      if (selectedIds.has(item.id)) {
+        selectedItems.push(item);
+      } else {
+        unselectedItems.push(item);
+      }
+    });
+    
+    // // Sort each group alphabetically
+    // selectedItems.sort((a, b) => a.fct_col_value.localeCompare(b.fct_col_value));
+    // unselectedItems.sort((a, b) => a.fct_col_value.localeCompare(b.fct_col_value));
+    
+    const sorted = [...selectedItems, ...unselectedItems];
+    setSortedDimensionValuesData(sorted);
+  }, [isOpen, setIsOpen, dimensionValuesData]);
   
   // Simple display text
   const displayText = dimension.value && dimension.value.length > 0 
@@ -50,8 +80,8 @@ function DimensionValueSelector({
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
           <div className="max-h-60 overflow-y-auto p-2 text-sm">
-            {dimensionValuesData.length > 0 ? (
-              dimensionValuesData.map((dimValue) => {
+            {sortedDimensionValuesData.length > 0 ? (
+              sortedDimensionValuesData.map((dimValue) => {
                 const isChecked = dimension.value && dimension.value.some(
                   (v) => v.id === dimValue.id
                 );
@@ -59,7 +89,8 @@ function DimensionValueSelector({
                 return (
                   <label
                     key={dimValue.id}
-                    className="flex items-center space-x-2 p-2 hover:bg-gray-100 cursor-pointer"
+                    className={`flex items-center space-x-2 p-2 hover:bg-gray-100 cursor-pointer
+                    ${isChecked ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
                   >
                     <input
                       type="checkbox"
@@ -130,7 +161,7 @@ const DimensionSelector = ({
         };
         
         const response = await fetch(
-          `${hostnameV1}/lineItems/selectDimensionName?rule_id=${currentSelectedRuleId}&fct_column_name=${selectedDimensionName}`,
+          `${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectDimensionName?rule_id=${currentSelectedRuleId}&fct_column_name=${selectedDimensionName}`,
           { headers }
         );
 

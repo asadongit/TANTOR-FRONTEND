@@ -10,7 +10,8 @@ export const RenameOperationFields = ({
     handleSelectAllColumns,
     handleColumnSelection,
     dropdownRefs,
-    updateTargetColumn
+    updateTargetColumn,
+    onAddNewTargetColumn, // <-- add this prop
 }) => {
     const sourceDropdownKey = `${transformation.id}-source`;
     const isSourceDropdownOpen = openDropdowns[sourceDropdownKey] || false;
@@ -18,6 +19,9 @@ export const RenameOperationFields = ({
     const newColumnNamesRef = useRef({});
     const [newColumnNames, setNewColumnNames] = useState({});
     const [selectedSourceCol, setSelectedSourceCol] = useState("");
+
+    // Local state for editing the target name
+    const [editingTargetName, setEditingTargetName] = useState("");
 
     const sourceColOptions = Array.isArray(sourceCols)
         ? sourceCols.map(col => {
@@ -33,6 +37,8 @@ export const RenameOperationFields = ({
             namesMap[col] = targetName;
         });
         setNewColumnNames(namesMap);
+        // Reset editingTargetName when source changes
+        setEditingTargetName("");
     }, [transformation.source_column, transformation.target_column]);
 
     useEffect(() => {
@@ -40,23 +46,60 @@ export const RenameOperationFields = ({
             transformation.source_column.length === 0
         ) {
             setSelectedSourceCol("");
+            setEditingTargetName("");
         } else if (!transformation.source_column.includes(selectedSourceCol)) {
             setSelectedSourceCol(transformation.source_column[0]);
+            setEditingTargetName("");
         }
     }, [transformation.source_column]);
 
-    const handleNameChange = (sourceCol, newName) => {
-        setNewColumnNames(prev => {
-            const updated = { ...prev, [sourceCol]: newName };
+    // When selecting a source column, set the editing value
+    useEffect(() => {
+        if (selectedSourceCol) {
+            setEditingTargetName(newColumnNames[selectedSourceCol] || "");
+        }
+    }, [selectedSourceCol, newColumnNames]);
 
-            const targetCols = transformation.source_column.map(col =>
-                updated[col] && updated[col].trim() !== "" ? updated[col].trim() : col
+    const handleTargetNameChange = (e) => {
+        setEditingTargetName(e.target.value);
+    };
+
+    const commitTargetNameChange = () => {
+        if (!selectedSourceCol) return;
+        const newName = editingTargetName.trim();
+        if (!newName) return;
+
+        let targetCols = transformation.target_column.slice();
+        const idx = transformation.source_column.indexOf(selectedSourceCol);
+
+        if (idx !== -1) {
+            targetCols = targetCols.map((col, i) =>
+                i === idx ? newName : col === newName ? selectedSourceCol : col
             );
+            targetCols[idx] = newName;
 
+            if (onAddNewTargetColumn && typeof onAddNewTargetColumn === "function") {
+                let datatype = "string";
+                const colObj = sourceCols.find(c => (typeof c === "object" ? c.name : c) === selectedSourceCol);
+                if (colObj && typeof colObj === "object" && colObj.datatype) {
+                    datatype = colObj.datatype;
+                }
+                onAddNewTargetColumn(newName, transformation.source_dataframe, "rename", datatype, selectedSourceCol);
+            }
             updateTargetColumn(transformation.id, targetCols);
+        }
 
-            return updated;
-        });
+        setNewColumnNames(prev => ({
+            ...prev,
+            [selectedSourceCol]: newName
+        }));
+    };
+
+    const handleTargetInputKeyDown = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            commitTargetNameChange();
+        }
     };
 
     const handleRemoveColumn = (sourceCol) => {
@@ -77,7 +120,6 @@ export const RenameOperationFields = ({
         if (selectedSourceCol === sourceCol) setSelectedSourceCol("");
     };
 
-    // When dropdown changes, update selectedSourceCol and source_column
     const handleDropdownSelect = (selected) => {
         if (selected && selected.value) {
             if (!transformation.source_column.includes(selected.value)) {
@@ -90,17 +132,14 @@ export const RenameOperationFields = ({
         }
     };
 
-    // Remove selected source column
     const handleRemoveSelected = () => {
         handleRemoveColumn(selectedSourceCol);
     };
 
-    // For react-select value
     const selectedOption = selectedSourceCol
         ? { value: selectedSourceCol, label: selectedSourceCol }
         : null;
 
-    // Custom styles (from arithmatic)
     const customStyles = {
         control: (provided) => ({
             ...provided,
@@ -186,17 +225,14 @@ export const RenameOperationFields = ({
                             <input
                                 type="text"
                                 className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                                value={newColumnNames[selectedSourceCol] || ""}
+                                value={editingTargetName}
                                 placeholder={selectedSourceCol}
-                                onChange={(e) => handleNameChange(selectedSourceCol, e.target.value)}
-                                onBlur={() => {
-                                    if (!newColumnNames[selectedSourceCol]) {
-                                        handleNameChange(selectedSourceCol, selectedSourceCol);
-                                    }
-                                }}
+                                onChange={handleTargetNameChange}
+                                onBlur={commitTargetNameChange}
+                                onKeyDown={handleTargetInputKeyDown}
                             />
                             <button
-                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
+                                className="absolute right-2 mt-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
                                 type="button"
                                 onClick={handleRemoveSelected}
                             >

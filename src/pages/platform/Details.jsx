@@ -47,19 +47,17 @@ const useDynamicData = (componentType) => {
 const Details = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const {token, project, hostnameV2, hostnameV1}= useAuth()
+  const { token, project, hostnameV2, hostnameV1 } = useAuth();
   const encryptedQuery = location.search.slice(1);
   const decryptedQuery = decrypt(decodeURIComponent(encryptedQuery));
-  const queryString = decryptedQuery.startsWith("/")
-    ? decryptedQuery.slice(1)
-    : decryptedQuery;
-
+  const queryString = decryptedQuery.startsWith("/") ? decryptedQuery.slice(1) : decryptedQuery;
   const params = new URLSearchParams(queryString);
+
   const componentType = params.get("componentType");
   const cardType = params.get("cardType")?.toLowerCase();
   const dataScope = params.get("dataScope");
   const heading = params.get("heading");
-  
+
   const columnAliases = {
     migration: "migration",
     cdc: "cdc",
@@ -67,6 +65,8 @@ const Details = () => {
     transformation: "transformation",
     "metadata-archivals": "migration",
   };
+
+  
   const selectedType = cardType || componentType;
   
   const { data = [], isLoading, isError, refetch } = useDynamicData(selectedType);
@@ -76,8 +76,6 @@ const Details = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [activeMenu, setActiveMenu] = useState(null);
-
-
 
   const getColumnConfiguration = useCallback((type) => {
     const resolvedType = columnAliases[type] || type;
@@ -92,7 +90,8 @@ const Details = () => {
     [getColumnConfiguration, cardType, componentType]
   );
 
-  const processedData = useMemo(() => {
+
+const processedData = useMemo(() => {
     let result = [...data];
     if (dataScope) {
       result = result?.filter((row) => {
@@ -104,9 +103,7 @@ const Details = () => {
           migration: row.source_conn_type === dataScope,
           purge: row.source_conn_type === dataScope,
           transformation: row.source_conn_type === dataScope,
-          rules: row.status?.toLowerCase() === dataScope?.toLocaleLowerCase(),
         };
-
         return filterMap[selectedType] ?? true;
       });
     }
@@ -125,8 +122,9 @@ const Details = () => {
     return result;
   }, [data, dataScope, componentType, searchTerm]);
 
+
   const actions = useMemo(() => {
-    return getActionConfigurations({ token, project, hostnameV2,navigate  })[selectedType];;
+    return getActionConfigurations({ token, project, hostnameV2, navigate })[selectedType];
   }, [selectedType]);
 
   return (
@@ -210,8 +208,6 @@ const Details = () => {
         isLoading={isLoading}
         isError={isError}
         refetch={refetch}
-
-
       />
     </div>
   );

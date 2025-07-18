@@ -96,8 +96,8 @@ const RuleSummary = ({
 
     const url =
       mode.toUpperCase() === "EDIT"
-        ? `${hostnameV1}/updateRule`
-        : `${hostnameV1}/saveRule`;
+        ? `${window._env_?.VITE_REPORTING_BACKEND_API}/updateRule`
+        : `${window._env_?.VITE_REPORTING_BACKEND_API}/saveRule`;
     const method = mode.toUpperCase() === "EDIT" ? "PUT" : "POST";
 
     try {
@@ -313,14 +313,14 @@ const RuleSummary = ({
                 {/* Other Properties in Grid */}
                 <div className="grid grid-cols-2 gap-4">
                   {/* Type */}
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-[#8e78b7] mb-1">
                       Type
                     </label>
                     <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
                       {currentColumn.type}
                     </div>
-                  </div>
+                  </div> */}
                   
                   {/* Dimension Type */}
                   <div>
@@ -333,44 +333,44 @@ const RuleSummary = ({
                   </div>
                   
                   {/* Alias */}
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-[#8e78b7] mb-1">
                       Alias
                     </label>
                     <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
                       {currentColumn.alias || "-"}
                     </div>
-                  </div>
+                  </div> */}
                   
                   {/* Output */}
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-[#8e78b7] mb-1">
                       Output
                     </label>
                     <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
                       {currentColumn.output ? "Yes" : "No"}
                     </div>
-                  </div>
+                  </div> */}
                   
                   {/* Order */}
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-[#8e78b7] mb-1">
                       Order
                     </label>
                     <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
                       {currentColumn.order || "-"}
                     </div>
-                  </div>
+                  </div> */}
                   
                   {/* Sort */}
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-[#8e78b7] mb-1">
                       Sort
                     </label>
                     <div className="border border-gray-200 rounded-md p-2.5 bg-white text-base h-10 flex items-center">
                       {currentColumn.sort || "-"}
                     </div>
-                  </div>
+                  </div> */}
                   
                   {/* Aggregate */}
                   <div>

@@ -13,7 +13,7 @@ function CreateRulesInner() {
   const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const { stepData, setStepData, resetStepData } = useStepData();
-  const { token } = useAuth();
+  const { token, decodedToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -41,14 +41,9 @@ function CreateRulesInner() {
           status: rule.status,
           owner: rule.owner,
           query: rule.query,
+          score_query: rule.score_query || '',
         });
       });
-      const step1 = {
-        category,
-        type,
-        rules: rulesByGroup
-      };
-
       const step2 = [];
       editRuleData.rules.forEach(r => {
         if (Array.isArray(r.mappings)) {
@@ -69,6 +64,7 @@ function CreateRulesInner() {
               id: r.id,
               name: r.name,
               query: r.query,
+              score_query: r.score_query || '',
               description: r.description,
               severity: r.severity,
               status: r.status,
@@ -78,7 +74,7 @@ function CreateRulesInner() {
           });
         }
       });
-      setStepData({ step1, step2 });
+      setStepData({ step1: { category, type, rules: rulesByGroup }, step2 });
       setCurrentStep(2);
     }
   }, [isEdit, editRuleData]);
@@ -136,6 +132,7 @@ function CreateRulesInner() {
         status: rule.rule?.status ?? "",
         owner: rule.rule?.owner ?? "",
         query: rule.rule?.query,
+        score_query: rule.rule?.score_query || "",
         id_mappings
       };
 
@@ -167,12 +164,14 @@ function CreateRulesInner() {
       payload = {
         prebuilt: (finalJson || []).map(rule => ({
           id: rule.id || rule.rule?.id,
+          owner: decodedToken?.preferred_username,
           connection_details: rule.connection_details || []
         }))
       };
     } else if (category === "Custom") {
       payload = {
         custom: (finalJson || []).map(rule => ({
+          id: isNaN(rule.id) ? 0 : parseInt(rule.id),
           type: rule.type,
           category: rule.category,
           group_name: rule.group,
@@ -182,6 +181,7 @@ function CreateRulesInner() {
           status: rule.rule?.status ?? "",
           owner: rule.rule?.owner ?? "",
           query: rule.rule?.query,
+          score_query: rule.rule?.score_query || "",
           id_mappings: [
             {
               connection_details: rule.connection_details || []
@@ -243,6 +243,8 @@ function CreateRulesInner() {
             onNext={handleStep2Next}
             step2Data={stepData.step2}
             edit={isEdit}
+            fromRuleRunSummary={location.state?.fromRuleRunSummary}
+            selectedRuleIds={location.state?.selectedRuleIds}
           />
         )}
 

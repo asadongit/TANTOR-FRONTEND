@@ -9,18 +9,18 @@ import {
   Panel,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, X } from "lucide-react";
+import { Icon } from "@iconify/react";
 import { ConnectionNode, BaseNode } from "../nodes/baseNodes";
 import SourceSidebar from "../nodes/ViewFromSourceSidebar";
 import ColumnSettings from "./ColumnSettings";
 import SaveViewModal from "../components/SaveViewModal";
 import SourcePreview from "./SourcePreview";
 import { useStateContext } from "../context/contextViewProvider";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import FilterComponent from "../components/FilterComponent";
 import { useAuth } from "../../../../context/AuthContext";
+import { ToastProvider } from "../context/ToastContext";
 
 const nodeTypes = {
   baseNode: BaseNode,
@@ -31,35 +31,41 @@ let id = 0;
 const getId = () => `node_${id++}`;
 
 export default function Source() {
-  const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
-
+  const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const modalState = useLocation().state || {
     queryType: "Regular",
     viewType: "Source",
   };
   const { userSelections, setUserSelections } = useStateContext();
-
   const navigate = useNavigate();
-
   const [userSelection, setUserSelection] = useState({});
   const [columnSetting, setColumnSetting] = useState(null);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const toggleModal = () => {
-    setIsModalOpen((prev) => !prev);
-  };
   const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState([]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filterModalColumns, setFilterModalColumns] = useState([]);
+  const [toast, setToast] = useState({ show: false, message: '', type: '' }); // Added toast state
+
+  const toggleModal = () => {
+    setIsModalOpen((prev) => !prev);
+  };
 
   const handleColumnSetting = (params) => {
     setColumnSetting(params);
   };
+
   const validateColumns = (userCheckedColumns, settings) => {
     if (userCheckedColumns.length === 0) {
-      toast.error("Please select at least one column");
+      setToast({
+        show: true,
+        message: "Please select at least one column",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
       return false;
     }
     return true;
@@ -86,7 +92,6 @@ export default function Source() {
     return {
       groupByColumns,
       aggregateColumns,
-
       orderByColumns: orderByColumns.sort((a, b) => a.order - b.order),
     };
   };
@@ -101,9 +106,14 @@ export default function Source() {
           !aggregateColumns.includes(column) && !groupByColumns.includes(column)
       );
       if (invalidColumns.length > 0) {
-        toast.error(
-          `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`
-        );
+        setToast({
+          show: true,
+          message: `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`,
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return false;
       }
     }
@@ -113,9 +123,14 @@ export default function Source() {
         (column) => !aggregateColumns.includes(column)
       );
       if (invalidColumns.length > 0) {
-        toast.error(
-          `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`
-        );
+        setToast({
+          show: true,
+          message: `Aggregate Error. Columns should either be Aggregate or Group By Columns. Invalid Columns= ${invalidColumns}`,
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return false;
       }
     }
@@ -125,9 +140,14 @@ export default function Source() {
         (column) => !groupByColumns.includes(column)
       );
       if (invalidColumns.length > 0) {
-        toast.error(
-          `Group By Error. Invalid Columns = ${invalidColumns.join(", ")}`
-        );
+        setToast({
+          show: true,
+          message: `Group By Error. Invalid Columns = ${invalidColumns.join(", ")}`,
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return false;
       }
     }
@@ -153,15 +173,12 @@ export default function Source() {
           group_by: [],
         };
 
-    // Add complex query if exists
     if (
       modalState.queryType === "Complex" &&
       userSelections.has("complex_query")
     ) {
       basePayload.complex_query = userSelections.get("complex_query");
     }
-
-    // Configure fields and group by
 
     settings.forEach((item) => {
       if (item.aggregate) {
@@ -184,7 +201,6 @@ export default function Source() {
       }
     });
 
-    // Add order by
     basePayload.order_by = orderByColumns.map(
       (item) => `${item.field} ${item.sortType}`
     );
@@ -222,13 +238,10 @@ export default function Source() {
     console.log("filterModalColumns ==>> ", filterModalColumns);
 
     await Promise.all([
-      // setSettingsList(updatedSettingsList),
       setUserSelections((prev) => {
         const newSelections = new Map(prev);
-
         const filterData = newSelections?.get("apiPayload")?.filter_data;
         if (filterData) apiPayload["filter_data"] = filterData;
-
         newSelections.set("viewType", viewType);
         newSelections.set("apiPayload", apiPayload);
         return newSelections;
@@ -244,15 +257,20 @@ export default function Source() {
   const fetchPreviewData = async (payload = null, filterData = null) => {
     setIsFilterModalOpen(false);
 
-    // Get or create API payload
     let apiPayload = payload || userSelections.get("apiPayload");
 
     if (!apiPayload) {
-      toast.error("No API payload available");
+      setToast({
+        show: true,
+        message: "No API payload available",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
       return;
     }
 
-    // Handle filter data
     if (filterData) {
       apiPayload = {
         ...apiPayload,
@@ -261,11 +279,9 @@ export default function Source() {
       setUserSelections((prev) => prev.set("apiPayload", apiPayload));
     }
 
-    // Handle skip condition
     const isSkipCondition = payload === null && filterData === null;
 
     if (isSkipCondition) {
-      // First update with skip_filter flag
       setUserSelections((prev) =>
         prev.set("apiPayload", {
           ...apiPayload,
@@ -273,7 +289,6 @@ export default function Source() {
         })
       );
 
-      // Then remove filter data for API call
       apiPayload = {
         ...apiPayload,
       };
@@ -287,7 +302,6 @@ export default function Source() {
       );
     }
 
-    // Clean up before sending
     const cleanApiPayload = { ...apiPayload };
     delete cleanApiPayload.skip_filter;
 
@@ -295,14 +309,12 @@ export default function Source() {
 
     try {
       const response = await fetch(
-        `${hostnameV2
-        }/generate-base-view?execute_query=true`,
+        `${hostnameV2}/generate-base-view?execute_query=true`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token
-              }`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(cleanApiPayload),
         }
@@ -326,27 +338,56 @@ export default function Source() {
         console.log("DATA ==> ", data);
         setPreviewData(data);
         setShowPreview(true);
-        toast.success("View Query Executed!");
-        return data; // Return data for potential further use
+        setToast({
+          show: true,
+          message: "View Query Executed!",
+          type: "success",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
+        return data;
       } else {
         const errorData = await response.json();
         let errorMessage = errorData.detail;
-        toast.error(errorMessage);
+        setToast({
+          show: true,
+          message: errorMessage,
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return null;
       }
     } catch (error) {
       console.log("Error executing query:", error);
-      toast.error("Failed to execute query");
+      setToast({
+        show: true,
+        message: "Failed to execute query",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
       return null;
     }
   };
+
   const handleSaveView = async (params) => {
     const { newViewName } = params;
 
     let apiPayload = { ...userSelections.get("apiPayload") };
 
     if (!apiPayload) {
-      toast.error("No API payload available");
+      setToast({
+        show: true,
+        message: "No API payload available",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
       return null;
     }
 
@@ -362,23 +403,26 @@ export default function Source() {
     console.log("SAVE VIEW API PAYLOAD ==> ", apiPayload);
 
     try {
-      // Check if view already exists
       const viewExistsResponse = await fetch(
-        `${hostnameV2}/view-exists/${encodeURIComponent(
-          newViewName
-        )}`,
+        `${hostnameV2}/view-exists/${encodeURIComponent(newViewName)}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token
-              }`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
 
       if (!viewExistsResponse.ok) {
-        toast.error("Error checking if view exists");
+        setToast({
+          show: true,
+          message: "Error checking if view exists",
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return null;
       }
 
@@ -386,12 +430,16 @@ export default function Source() {
       console.log("viewExists ===> ", viewExists);
 
       if (viewExists.result) {
-        toast.error("View already exists");
+        setToast({
+          show: true,
+          message: "View already exists",
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return null;
       }
-
-      // Save the view
-      console.log("Final apiPayload ===> ", apiPayload);
 
       const newPayload = {
         ...apiPayload,
@@ -399,45 +447,64 @@ export default function Source() {
         created_by: decodedToken?.preferred_username,
       };
 
-      const response = await fetch(
-        `${hostnameV2}/generate-base-view`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(newPayload),
-        }
-      );
+      const response = await fetch(`${hostnameV2}/generate-base-view`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(newPayload),
+      });
 
       if (!response.ok) {
-        toast.error("Error while saving view..");
+        setToast({
+          show: true,
+          message: "Error while saving view..",
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return null;
       }
-
 
       const data = await response.json();
       console.log("Save View Result ==> ", data);
 
       setShowPreview(false);
-      toast.success("VIEW SAVED SUCCESSFULLY.", { autoClose: 2900 });
-
-      setTimeout(() => navigate("/federation"), 3000);
+      setToast({
+        show: true,
+        message: "View saved successfully",
+        type: "success",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+        navigate("/federation");
+      }, 3000);
 
       return data;
     } catch (error) {
       console.error("Error saving view:", error);
-      toast.error("Failed to save view");
+      setToast({
+        show: true,
+        message: "Failed to save view",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
       return null;
     }
   };
+
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
   const onDragOver = useCallback((event) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
   }, []);
+
   const onDrop = useCallback(
     (event) => {
       event.preventDefault();
@@ -465,13 +532,14 @@ export default function Source() {
           handleColumnSetting,
           setShowQueryEditor,
           queryType: modalState.queryType,
-          toast,
+          setToast, // Updated to pass setToast instead of toast
         },
       };
       setNodes((nds) => nds.concat(newNode));
     },
-    [setNodes, setUserSelection, setColumnSetting, handleOk]
+    [setNodes, setUserSelection, setColumnSetting, handleOk, setToast] // Updated dependencies
   );
+
   useEffect(() => {
     setNodes((nds) =>
       nds.map((node) => ({
@@ -491,16 +559,14 @@ export default function Source() {
   return (
     <div className="w-full h-screen overflow-hidden bg-[rgba(243,245,247,1)]">
       <div className="flex items-center gap-6 px-4 pt-2">
-        {/* Dashboard Button */}
         <Link
           to="/dashboard"
-          className="flex items-center  border-solid border gap-2 px-4 py-2 bg-white text-[#8E77BB] font-semibold rounded-lg hover:bg-[#E8E4F1] transition-colors"
+          className="flex items-center border-solid border gap-2 px-4 py-2 bg-white text-[#8E77BB] font-semibold rounded-lg hover:bg-[#E8E4F1] transition-colors"
         >
           <LayoutDashboard size={20} />
           Dashboard
         </Link>
 
-        {/* Breadcrumb Navigation */}
         <div className="flex items-center">
           <Link to="/" className="text-gray-600 hover:text-gray-900">
             Platform
@@ -518,15 +584,15 @@ export default function Source() {
             View
           </Link>
           <span className="mx-2 text-gray-500">&gt;</span>
-          {<span className="text-[#8E77BB] font-medium">Source</span>}
+          <span className="text-[#8E77BB] font-medium">Source</span>
         </div>
       </div>
 
       <div
-        className={`${showPreview ? "h-[60vh]" : "h-[calc(100vh-6rem)]"
-          } transition-all duration-300`}
+        className={`${showPreview ? "h-[60vh]" : "h-[calc(100vh-6rem)]"} transition-all duration-300`}
       >
         <div className="w-full h-[calc(100%-2.5rem)]">
+          <ToastProvider>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -551,10 +617,10 @@ export default function Source() {
               <SourceSidebar setUserSelection={setUserSelection} />
             </Panel>
           </ReactFlow>
+          </ToastProvider>
         </div>
       </div>
 
-      {/* Rest of the components */}
       {showPreview && (
         <SourcePreview
           previewData={previewData}
@@ -585,7 +651,26 @@ export default function Source() {
         />
       )}
 
-      <ToastContainer position="top-right" />
+      {toast.show && (
+        <div
+          className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === "success"
+              ? "bg-green-100 text-green-800 border-l-4 border-green-500"
+              : "bg-red-100 text-red-800 border-l-4 border-red-500"
+            }`}
+        >
+          <Icon
+            icon={toast.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"}
+            className="h-5 w-5"
+          />
+          <p>{toast.message}</p>
+          <button
+            onClick={() => setToast({ show: false, message: "", type: "" })}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowUpRight, Pencil, ChevronLeft, ChevronRight, TriangleAlert, X, Check } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
+import { useNavigate } from 'react-router-dom';
 
 const RuleRunDetails = ({ show, onClose, runDetails, ruleSummary }) => {
     const [currentPage, setCurrentPage] = useState(1);
@@ -163,11 +164,12 @@ const RuleRunDetails = ({ show, onClose, runDetails, ruleSummary }) => {
     );
 };
 
-const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickAction, isLoading }) => {
+const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, isLoading }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [showRunDetailsPopup, setShowRunDetailsPopup] = useState(false);
     const [currentRuleRunDetails, setCurrentRuleRunDetails] = useState([]);
     const [currentRuleSummary, setCurrentRuleSummary] = useState(null);
+     const navigate = useNavigate();
 
     const rowsPerPage = 5;
 
@@ -220,7 +222,6 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
 
         if (ruleRunResults.length != 0) {
             const detailsForThisRule = ruleRunResults.filter(result => result.rule_id === rule.id);
-            console.log("details for the rule selected is ===>",detailsForThisRule)
             setCurrentRuleRunDetails(detailsForThisRule);
         } else {
             setCurrentRuleRunDetails([]);
@@ -228,6 +229,17 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
         setCurrentRuleSummary(rule);
         setShowRunDetailsPopup(true);
     };
+
+    const handleEdit = (rule) =>{
+        console.log("edit rule is ",rule)
+        const selectedIds = selectedRules.map(item => item.id);
+        const data = {
+        rules: [rule]
+        }
+        navigate('/datagovernance/data-assurance/rules/create', {
+          state: { edit: true, ruleData: data,fromRuleRunSummary: true,selectedRuleIds: selectedIds }
+        })
+    }
 
 
     return (
@@ -319,7 +331,8 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
                                                         <ArrowUpRight className="h-5 w-5 text-[#8e78b7]" />
                                                     </button>
                                                     <button
-                                                        onClick={() => onQuickAction('Edit', rule)}
+                                                        // onClick={() => onQuickAction('Edit', rule)}
+                                                        onClick={() => handleEdit(rule)}
                                                         className="p-2 hover:bg-blue-100 rounded-full"
                                                         title="Edit"
                                                     >
