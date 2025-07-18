@@ -6,11 +6,10 @@ import { SquareKanban, X, ChevronDown, ChevronUp, Pencil, Search, FileCode } fro
 import { useStateContext } from "../context/contextViewProvider";
 import { Modal } from "@mui/material";
 import { Columns } from "../BusinessView/Columns";
-import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext";
-import { useToast } from "../context/ToastContext";
+import { useToast } from '../context/ToastContext';
 
 
 const SearchableSelect = ({ options, value, onChange, placeholder }) => {
@@ -111,7 +110,7 @@ export function SourceViewNode({ id, onSave }) {
           created_by: decodedToken?.preferred_username,
         });
 
-        const response = await fetch(`${hostnameV2}/get-allws_v2?${params}`);
+        const response = await fetch(`${hostnameV2}/get-all-views_v2?${params}`);
         const data = await response.json();
 
         if (data && data.result) {
@@ -347,7 +346,7 @@ export function SourceViewNode({ id, onSave }) {
       handleViewPayload(updatedPayloads);
       onSave?.(newPayload);
     }
-    toast.success("Data Saved Successfully");
+    showToast('Data Saved Successfully', 'success');
     setPreviousView(selectedView)
 
   };

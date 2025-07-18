@@ -6,13 +6,91 @@ import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode, Search } from "luci
 import { useStateContext } from "../context/contextViewProvider";
 import { Columns } from "../BusinessView/Columns";
 import { Modal } from "@mui/material";
-import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
+import { useToast } from "../context/ToastContext";
+
+  const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+
+    const filteredOptions = options.filter((option) =>
+      option.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleSelectClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!disabled) {
+        setIsOpen((prev) => !prev);
+        console.log("Toggling isOpen to:", !isOpen);
+      }
+    };
+
+    const handleOptionClick = (option) => {
+      onChange({ target: { value: option } });
+      setIsOpen(false);
+      setSearchTerm("");
+      console.log("Selected option:", option);
+    };
+
+    return (
+      <div className="relative w-full text-black">
+        <div
+          className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+            disabled ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+          onClick={handleSelectClick}
+        >
+          <span>{value || placeholder}</span>
+          {disabled ? (
+            <span>Loading...</span>
+          ) : isOpen ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
+        </div>
+        {isOpen && !disabled && (
+          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+            <div className="p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  className="w-full p-2 pl-8 border rounded-md"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            </div>
+            <div className="max-h-60 overflow-y-auto">
+              {filteredOptions.length === 0 ? (
+                <div className="p-2 text-gray-500">No connections available</div>
+              ) : (
+                filteredOptions.map((option) => (
+                  <div
+                    key={option}
+                    className="p-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => handleOptionClick(option)}
+                  >
+                    {option}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
 export function ConnectionNode({ id, onSave }) {
+   const { showToast } = useToast();
   const { token, hostnameV1 } = useAuth();
   const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -52,7 +130,6 @@ export function ConnectionNode({ id, onSave }) {
       setPolicyIds(fetchedPolicyIds);
 
       if (fetchedPolicyIds.length === 0) {
-        toast.error("No policies matched for fetching connections");
         setConnections([]);
         return;
       }
@@ -80,8 +157,11 @@ export function ConnectionNode({ id, onSave }) {
       setConnections(names);
     } catch (error) {
       console.error("Error fetching connections:", error);
-      toast.error(`Failed to load connections: ${error.message}`);
+
+      showToast('Failed to load connections', 'error');
       setConnections([]);
+    }
+    finally {
     }
   };
 
@@ -102,8 +182,6 @@ export function ConnectionNode({ id, onSave }) {
 
     try {
       if (policyIds.length === 0) {
-        console.warn("No policy IDs available, setting empty schemas");
-        toast.error("No policies matched for fetching schemas");
         setSchemas([]);
         return;
       }
@@ -136,7 +214,7 @@ export function ConnectionNode({ id, onSave }) {
     } catch (error) {
       console.error("Error fetching schema data:", error);
       setSchemas([]);
-      toast.error(`Failed to load schemas: ${error.message}`);
+      showToast('Failed to load schemas', 'error');
     }
   };
 
@@ -152,8 +230,6 @@ export function ConnectionNode({ id, onSave }) {
 
     try {
       if (policyIds.length === 0) {
-        console.warn("No policy IDs available, setting empty tables");
-        toast.error("No policies matched for fetching tables");
         setTables([]);
         return;
       }
@@ -197,7 +273,7 @@ export function ConnectionNode({ id, onSave }) {
     } catch (error) {
       console.error("Error fetching table data:", error);
       setTables([]);
-      toast.error(`Failed to load tables: ${error.message}`);
+      showToast('Failed to load tables', 'error');
     }
   };
 
@@ -235,8 +311,6 @@ export function ConnectionNode({ id, onSave }) {
       const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
 
       if (fetchedPolicyIds.length === 0) {
-        console.warn("No policy IDs available, setting empty columns");
-        toast.error("No policies matched for fetching columns");
         setAllowedColumns([]);
         setColumnData([]);
         return;
@@ -297,7 +371,7 @@ export function ConnectionNode({ id, onSave }) {
       setColumns([]);
       setAllowedColumns([]);
       setColumnData([]);
-      toast.error(`Failed to load columns: ${error.message}`);
+      showToast('Failed to load columns', 'error');
     }
   };
 
@@ -389,7 +463,7 @@ export function ConnectionNode({ id, onSave }) {
 
   const handleSave = () => {
     if (!selectedConnection || !selectedSchema || !selectedTable) {
-      toast.error("Please select a connection, schema, and table");
+      showToast('Please select a connection, schema, and table', 'error');
       return;
     }
 
@@ -438,7 +512,7 @@ export function ConnectionNode({ id, onSave }) {
 
     handleConnectionPayload(updatedPayloads);
     onSave?.(newPayload);
-    toast.success("Data Saved Successfully");
+    showToast('Data Saved Successfully', 'success');
     setPreviousColId(colId);
   };
 
@@ -505,83 +579,6 @@ export function ConnectionNode({ id, onSave }) {
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const toggleEditorModal = (value) => {
     setIsEditorModalOpen(value);
-  };
-
-  const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-
-    const filteredOptions = options.filter((option) =>
-      option.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const handleSelectClick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!disabled) {
-        setIsOpen((prev) => !prev);
-        console.log("Toggling isOpen to:", !isOpen);
-      }
-    };
-
-    const handleOptionClick = (option) => {
-      onChange({ target: { value: option } });
-      setIsOpen(false);
-      setSearchTerm("");
-      console.log("Selected option:", option);
-    };
-
-    return (
-      <div className="relative w-full text-black">
-        <div
-          className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
-            disabled ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-          onClick={handleSelectClick}
-        >
-          <span>{value || placeholder}</span>
-          {disabled ? (
-            <span>Loading...</span>
-          ) : isOpen ? (
-            <ChevronUp className="w-4 h-4" />
-          ) : (
-            <ChevronDown className="w-4 h-4" />
-          )}
-        </div>
-        {isOpen && !disabled && (
-          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
-            <div className="p-2 border-b">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  className="w-full p-2 pl-8 border rounded-md"
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            </div>
-            <div className="max-h-60 overflow-y-auto">
-              {filteredOptions.length === 0 ? (
-                <div className="p-2 text-gray-500">No connections available</div>
-              ) : (
-                filteredOptions.map((option) => (
-                  <div
-                    key={option}
-                    className="p-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => handleOptionClick(option)}
-                  >
-                    {option}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    );
   };
 
   const updateNodeInternals = useUpdateNodeInternals();
@@ -752,7 +749,6 @@ export function ConnectionNode({ id, onSave }) {
           <ComplexQueryEditor setShowQueryEditor={toggleEditorModal} />
         </div>
       </Modal>
-      <ToastContainer />
     </>
   );
 }

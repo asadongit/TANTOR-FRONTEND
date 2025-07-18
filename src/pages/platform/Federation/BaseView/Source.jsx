@@ -20,6 +20,7 @@ import { useStateContext } from "../context/contextViewProvider";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import FilterComponent from "../components/FilterComponent";
 import { useAuth } from "../../../../context/AuthContext";
+import { ToastProvider } from "../context/ToastContext";
 
 const nodeTypes = {
   baseNode: BaseNode,
@@ -591,6 +592,7 @@ export default function Source() {
         className={`${showPreview ? "h-[60vh]" : "h-[calc(100vh-6rem)]"} transition-all duration-300`}
       >
         <div className="w-full h-[calc(100%-2.5rem)]">
+          <ToastProvider>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -615,6 +617,7 @@ export default function Source() {
               <SourceSidebar setUserSelection={setUserSelection} />
             </Panel>
           </ReactFlow>
+          </ToastProvider>
         </div>
       </div>
 
