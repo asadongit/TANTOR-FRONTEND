@@ -77,7 +77,7 @@ const InfoModal = ({ onClose }) => {
               <h3 className="text-lg font-semibold text-[#8d77ba] border-b pb-2 mb-3">Table Reference Format</h3>
               <p className="mb-2">Use fully qualified table names:</p>
               <div className="bg-gray-50 p-3 rounded-md font-mono text-sm mb-2">
-                connectionname.schemaname.tablename
+                connection.schema.table
               </div>
             </div>
 
@@ -86,7 +86,7 @@ const InfoModal = ({ onClose }) => {
               <p className="mb-2">Use either:</p>
               <div className="bg-gray-50 p-3 rounded-md font-mono text-sm mb-2">
                 Simple: columnname<br />
-                Fully qualified: connectionname.schemaname.tablename.columnname
+                Fully qualified: connection.schema.table.column
               </div>
             </div>
 
@@ -112,7 +112,7 @@ const InfoModal = ({ onClose }) => {
                 Score is calculated in backend as:
               </p>
               <div className="bg-gray-50 p-3 rounded-md font-mono text-sm mt-2">
-                score = 100 - (vio_count * 100.0 / total_count)
+                (1 - (vio_count / total_count)) * 100
               </div>
             </div>
           </div>

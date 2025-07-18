@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify-icon/react';
-import { Search, RefreshCcw, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react';
+import { Search, RefreshCcw, ChevronLeft, ChevronRight, X, Eye, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { useAuth } from '../../../../../../context/AuthContext.jsx';
 import { secureQuery } from '../../../../DataCatalogue/Components/function.js';
 
@@ -77,7 +77,26 @@ function Quality({ query }) {
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [selectedGroups, setSelectedGroups] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const rowsPerPage = 5;
+
+  // Function to map and sort metrics data
+  const mapMetricsData = (data) => {
+    const keys = Object.keys(data);
+    const sortedKeys = keys.sort((a, b) => {
+      if (a.toLowerCase() === 'overall') return -1;
+      if (b.toLowerCase() === 'overall') return 1;
+      return a.localeCompare(b);
+    });
+
+    return sortedKeys.map((key) => ({
+      title: key,
+      count: typeof data[key] === 'number' ? `${data[key].toFixed(1)}%` : data[key],
+      icon: "material-symbols:tab-group-outline",
+      bgcolor: "bg-[#8d77ba] bg-opacity-25",
+      iconcolor: "text-[#8d77ba]"
+    }));
+  };
 
   useEffect(() => {
     const fetchOverallQualityData = async () => {
@@ -88,7 +107,7 @@ function Quality({ query }) {
           headers: {
             accept: 'application/json',
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ owner: decodedToken?.preferred_username }),
         });
@@ -110,7 +129,7 @@ function Quality({ query }) {
         const mappedTableData = tableData && Array.isArray(tableData) ? tableData.map((item, index) => {
           const tableParts = item.table.split('.');
           return {
-            id: `#${(index + 1).toString().padStart(2, '0')}`,
+            id: `${(index + 1).toString()}`,
             connection: item.connection_type,
             database: tableParts[0],
             schema: tableParts[1],
@@ -168,7 +187,7 @@ function Quality({ query }) {
           body: JSON.stringify({
             query: selectedQuery,
             owner: decodedToken?.preferred_username,
-            policy_ids:ids
+            policy_ids: ids,
           }),
         });
         if (!response.ok) throw new Error('Failed to fetch dataset quality data');
@@ -297,28 +316,59 @@ function Quality({ query }) {
     setViewMode((prev) => (prev === 'dataset' ? 'overall' : 'dataset'));
   };
 
-  const metricsData = viewMode === 'dataset'
-    ? Object.keys(datasetQualityData.group_scores).map((key) => ({
-      title: key,
-      count: datasetQualityData.group_scores[key],
-    }))
-    : Object.keys(overallQualityData).map((key) => ({
-      title: key,
-      count: typeof overallQualityData[key] === 'number'
-        ? `${overallQualityData[key].toFixed(1)}`
-        : overallQualityData[key],
+  const handleSort = (key) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
     }));
+    setCurrentPage(1);
+  };
 
-  const filteredData = tableData.filter(
-    (item) =>
-      item.connection.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.database.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.schema.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.dataset.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getSortIcon = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'asc' ? (
+        <ArrowUp className="h-4 w-4 inline-block ml-1" />
+      ) : (
+        <ArrowDown className="h-4 w-4 inline-block ml-1" />
+      );
+    }
+    return <ArrowUpDown className="h-4 w-4 inline-block ml-1 opacity-50" />;
+  };
+
+  const filteredData = tableData
+    .filter(
+      (item) =>
+        item.connection.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.database.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.schema.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.dataset.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+      let aValue = a[sortConfig.key] || '';
+      let bValue = b[sortConfig.key] || '';
+      // Handle numeric sorting for 'id' and 'overall' columns
+      if (sortConfig.key === 'id') {
+        aValue = parseInt(aValue, 10) || 0;
+        bValue = parseInt(bValue, 10) || 0;
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      if (sortConfig.key === 'overall') {
+        aValue = parseFloat(aValue) || 0;
+        bValue = parseFloat(bValue) || 0;
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      return sortConfig.direction === 'asc'
+        ? aValue.toString().localeCompare(bValue.toString())
+        : bValue.toString().localeCompare(aValue.toString());
+    });
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
   const currentItems = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+  const metricsData = viewMode === 'dataset'
+    ? mapMetricsData(datasetQualityData.group_scores)
+    : mapMetricsData(overallQualityData);
 
   const SkeletonCard = () => (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 animate-pulse">
@@ -397,7 +447,7 @@ function Quality({ query }) {
               <button
                 onClick={handleRefresh}
                 disabled={isLoading}
-                className="p-2 rounded-lg bg-[#8d77ba] text-white hover:bg-[#7b66a6] transition-colors disabled:opacity-50"
+                className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
               >
                 <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
@@ -439,13 +489,13 @@ function Quality({ query }) {
               className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200"
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className="flex items-center justify-center w-10 h-10 bg-[#8d77ba] bg-opacity-25 rounded-full text-[#8d77ba]">
-                  <Icon icon="material-symbols:tab-group-outline" className="w-5 h-5" />
+                <div className={`flex items-center justify-center w-10 h-10 ${metric.bgcolor} rounded-full ${metric.iconcolor}`}>
+                  <Icon icon={metric.icon} className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-medium text-gray-700">{metric.title}</h3>
               </div>
               <p className="text-gray-900 text-2xl font-bold">
-                {typeof metric.count === 'string' && metric.count.toLowerCase() === 'n/a' ? metric.count : `${metric.count}%`}
+                {typeof metric.count === 'string' && metric.count.toLowerCase() === 'n/a' ? metric.count : `${metric.count}`}
               </p>
             </div>
           ))}
@@ -506,7 +556,8 @@ function Quality({ query }) {
                   <p className="text-gray-800 font-medium">Query</p>
                   <p className="text-gray-500 truncate max-w-sm"
                     title={selectedQuery || 'No query selected'}>
-                    {selectedQuery || 'No query selected'}</p>
+                    {selectedQuery || 'No query selected'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -526,14 +577,28 @@ function Quality({ query }) {
           <table className="w-full">
             <thead>
               <tr className="bg-[#29304a] text-white">
-                <th className="text-left p-4">ID</th>
-                <th className="text-left p-4">Connection</th>
-                <th className="text-left p-4">Database</th>
-                <th className="text-left p-4">Schema</th>
-                <th className="text-left p-4">Dataset</th>
-                <th className="text-left p-4">Overall</th>
-                <th className="text-left p-4 flex justify-center items-center">Group Scores</th>
-                <th className="text-left p-4">Last Run</th>
+                <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('id')}>
+                  <span className="inline-flex items-center">ID {getSortIcon('id')}</span>
+                </th>
+                <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('connection')}>
+                  <span className="inline-flex items-center">Connection {getSortIcon('connection')}</span>
+                </th>
+                <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('database')}>
+                  <span className="inline-flex items-center">Database {getSortIcon('database')}</span>
+                </th>
+                <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('schema')}>
+                  <span className="inline-flex items-center">Schema {getSortIcon('schema')}</span>
+                </th>
+                <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('dataset')}>
+                  <span className="inline-flex items-center">Dataset {getSortIcon('dataset')}</span>
+                </th>
+                <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('overall')}>
+                  <span className="inline-flex items-center">Overall {getSortIcon('overall')}</span>
+                </th>
+                <th className="text-center p-4">Group Scores</th>
+                <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('lastRun')}>
+                  <span className="inline-flex items-center">Last Run {getSortIcon('lastRun')}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
