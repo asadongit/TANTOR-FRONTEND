@@ -111,7 +111,7 @@ function Quality({ query }) {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ owner: decodedToken?.preferred_username,policy_ids: ids, }),
+          body: JSON.stringify({ owner: decodedToken?.preferred_username, policy_ids: ids }),
         });
         if (!scoreResponse.ok) throw new Error('Failed to fetch overall quality data');
         const scoreData = await scoreResponse.json();
@@ -128,19 +128,21 @@ function Quality({ query }) {
         });
         if (!tableResponse.ok) throw new Error('Failed to fetch table data');
         const tableData = await tableResponse.json();
-        const mappedTableData = tableData && Array.isArray(tableData) ? tableData.map((item, index) => {
-          const tableParts = item.table.split('.');
-          return {
-            id: `${(index + 1).toString()}`,
-            connection: item.connection_type,
-            database: tableParts[0],
-            schema: tableParts[1],
-            dataset: tableParts[2],
-            overall: `${item.overall_score}%`,
-            groups: item.groups,
-            lastRun: item.last_run_date ? new Date(item.last_run_date).toLocaleDateString('en-GB') : 'N/A',
-          };
-        }) : [];
+        const mappedTableData = tableData && Array.isArray(tableData) ? tableData
+          .filter((item) => item && item.table && typeof item.table === 'string' && item.connection_type)
+          .map((item, index) => {
+            const tableParts = item.table.split('.');
+            return {
+              id: `${(index + 1).toString()}`,
+              connection: item.connection_type || 'N/A',
+              database: tableParts[0] || 'N/A',
+              schema: tableParts[1] || 'N/A',
+              dataset: tableParts[2] || 'N/A',
+              overall: item.overall_score != null ? `${item.overall_score}%` : 'N/A',
+              groups: item.groups || [],
+              lastRun: item.last_run_date ? new Date(item.last_run_date).toLocaleDateString('en-GB') : 'N/A',
+            };
+          }) : [];
         setTableData(mappedTableData);
       } catch (error) {
         console.error('Error fetching overall quality data:', error);
@@ -149,6 +151,7 @@ function Quality({ query }) {
           message: 'Failed to fetch overall quality data',
           type: 'error',
         });
+        setTableData([]);
       } finally {
         setIsLoading(false);
       }
@@ -227,7 +230,7 @@ function Quality({ query }) {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ owner: decodedToken?.preferred_username,policy_ids: ids, }),
+          body: JSON.stringify({ owner: decodedToken?.preferred_username, policy_ids: ids, }),
         });
         if (!scoreResponse.ok) throw new Error('Failed to refresh overall quality data');
         const scoreData = await scoreResponse.json();
@@ -244,19 +247,21 @@ function Quality({ query }) {
         });
         if (!tableResponse.ok) throw new Error('Failed to refresh table data');
         const tableData = await tableResponse.json();
-        const mappedTableData = tableData.map((item, index) => {
-          const tableParts = item.table.split('.');
-          return {
-            id: `#${(index + 1).toString().padStart(2, '0')}`,
-            connection: item.connection_type,
-            database: tableParts[0],
-            schema: tableParts[1],
-            dataset: tableParts[2],
-            overall: `${item.overall_score}%`,
-            groups: item.groups,
-            lastRun: item.last_run_date ? new Date(item.last_run_date).toLocaleDateString('en-GB') : 'N/A',
-          };
-        });
+        const mappedTableData = tableData && Array.isArray(tableData) ? tableData
+          .filter((item) => item && item.table && typeof item.table === 'string' && item.connection_type)
+          .map((item, index) => {
+            const tableParts = item.table.split('.');
+            return {
+              id: `${(index + 1).toString()}`,
+              connection: item.connection_type || 'N/A',
+              database: tableParts[0] || 'N/A',
+              schema: tableParts[1] || 'N/A',
+              dataset: tableParts[2] || 'N/A',
+              overall: item.overall_score != null ? `${item.overall_score}%` : 'N/A',
+              groups: item.groups || [],
+              lastRun: item.last_run_date ? new Date(item.last_run_date).toLocaleDateString('en-GB') : 'N/A',
+            };
+          }) : [];
         setTableData(mappedTableData);
 
         setToast({
@@ -343,18 +348,23 @@ function Quality({ query }) {
   };
 
   const filteredData = tableData
-    .filter(
-      (item) =>
-        item.connection.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    .filter((item) =>
+      [
+        item.connection,
+        item.database,
+        item.schema,
+        item.dataset,
+      ].every((prop) => typeof prop === 'string')
+        ? item.connection.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.database.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.schema.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.dataset.toLowerCase().includes(searchTerm.toLowerCase())
+        : false
     )
     .sort((a, b) => {
       if (!sortConfig.key) return 0;
       let aValue = a[sortConfig.key] || '';
       let bValue = b[sortConfig.key] || '';
-      // Handle numeric sorting for 'id' and 'overall' columns
       if (sortConfig.key === 'id') {
         aValue = parseInt(aValue, 10) || 0;
         bValue = parseInt(bValue, 10) || 0;
