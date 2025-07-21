@@ -126,7 +126,8 @@ export default function Editor() {
   const fetchQueryHistory = async () => {
     try {
       setHistoryLoading(true);
-      const response = await fetch(`${hostnameV1}/queries/${decodedToken?.preferred_username}/${project}`, {
+      const type = 'df';
+      const response = await fetch(`${hostnameV1}/queries/${decodedToken?.preferred_username}/${project}/${type}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -303,6 +304,7 @@ export default function Editor() {
         query: query,
         owner: decodedToken?.preferred_username,
         project: (project === "default" || project === "none") ? "default" : project,
+        type: 'df'
       };
 
       await fetch(`${hostnameV1}/save_query`, {
