@@ -46,8 +46,34 @@ const TargetMappingDrawer = ({
     };
 
     const finalizeMappingAndClose = () => {
-        setTargetMapping(localMapping);
+        // Store the mapping in localStorage for confirmation status
         window.localStorage.setItem(`targetMappingConfirmed_${nodeId}`, "true");
+
+        // Save the actual mapping data to node
+        setTargetMapping(localMapping);
+
+        // Also ensure it's updated in the actual node data for edit flow serialization
+        const allNodes = window.allNodes || [];
+        const targetNode = allNodes.find(node => node.id === nodeId);
+        if (targetNode && targetNode.data && targetNode.data.onDataChange) {
+            console.log("TargetMappingDrawer - Directly updating target node mapping:", localMapping);
+            targetNode.data.onDataChange({ targetMapping: localMapping });
+
+            // Also store a copy in the transformation context if available
+            if (window.transformationContext) {
+                const { dispatch, ACTION_TYPES } = window.transformationContext;
+                if (dispatch && ACTION_TYPES) {
+                    dispatch({
+                        type: ACTION_TYPES.UPDATE_TARGET,
+                        payload: {
+                            id: nodeId,
+                            data: { targetMapping: localMapping }
+                        }
+                    });
+                }
+            }
+        }
+
         onClose();
     };
 

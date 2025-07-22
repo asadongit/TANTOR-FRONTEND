@@ -44,14 +44,11 @@ export const TargetNode = ({ id, data }) => {
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
   const [selectedSourceForMapping, setSelectedSourceForMapping] = useState("");
 
-  // Add state for object type selection
   const [selectedObjectType, setSelectedObjectType] = useState("tables");
-  // Table mode state
   const [tableSelections, setTableSelections] = useState({
     selectedTable: "",
     selectedColumns: []
   });
-  // Procedure mode state
   const [procedures, setProcedures] = useState([]);
   const [selectedPreProcedures, setSelectedPreProcedures] = useState([{ id: 1, procedure: null }]);
   const [selectedPostProcedures, setSelectedPostProcedures] = useState([{ id: 1, procedure: null }]);
@@ -206,34 +203,6 @@ export const TargetNode = ({ id, data }) => {
     fetchConnections();
   }, [fetchConnections]);
 
-  useEffect(() => {
-    data.onDataChange({
-      connection: selectedConnection.name,
-      connectionId: selectedConnection.id,
-      connectionType: selectedConnection.type,
-      schema: selectedSchema,
-      table: selectedTable,
-      loadType: loadType,
-      loadStrategy: loadStrategy,
-      columns:
-        tables.find(t => t.table_name === selectedTable)?.column_json?.map(col => ({
-          name: col.column_name,
-          datatype: col.DATA_TYPE
-        })) || [],
-      alias: alias,
-      columnMapping,
-      targetMapping,
-      selectedSourceId: selectedSourceForMapping, // This reference is now safe
-      objectType: selectedObjectType,
-      preProcedures: selectedPreProcedures.filter(p => p.procedure).map(p => p.procedure),
-      postProcedures: selectedPostProcedures.filter(p => p.procedure).map(p => p.procedure),
-    });
-  }, [
-    selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
-    tables, alias, columnMapping, targetMapping, selectedSourceForMapping,
-    selectedObjectType, selectedPreProcedures, selectedPostProcedures
-  ]);
-
   const getNextAlias = useCallback(() => {
     const targetNodesFromWindow = window.allNodes ?
       window.allNodes.filter(n => n.type === "target") : [];
@@ -355,6 +324,7 @@ export const TargetNode = ({ id, data }) => {
 
   const handleSetTargetMapping = useCallback((newMapping) => {
     if (JSON.stringify(newMapping) !== JSON.stringify(targetMapping)) {
+      console.log("Target Node - Setting new target mapping:", newMapping);
       setTargetMapping(newMapping);
       if (typeof data.onDataChange === "function") {
         data.onDataChange({ targetMapping: newMapping });
@@ -687,17 +657,42 @@ export const TargetNode = ({ id, data }) => {
     setModalProcedureItemId(procedureItemId);
     setParametersModalOpen(true);
 
+    // Enhanced parameter mapping restoration for target node
     const mappingKey = `${procedureType}_${procedureItemId}_${procedure.procedure_name}`;
     const storedMapping = storedParameterMappings[mappingKey] || {};
 
+    console.log("Target Node - Opening modal with:", {
+      mappingKey,
+      storedMapping,
+      allStoredMappings: storedParameterMappings,
+      procedureType,
+      procedureItemId,
+      procedureName: procedure.procedure_name
+    });
+
     const initialMapping = {};
-    if (procedure.procedure_parameter) {
+    if (procedure.procedure_parameter && procedure.procedure_parameter.length > 0) {
       procedure.procedure_parameter.forEach(param => {
-        initialMapping[param.name] = storedMapping[param.name] || "";
+        // Check multiple sources for parameter values
+        const paramValue = storedMapping[param.name] ||
+                          procedure.parameterMapping?.[param.name] ||
+                          procedure.originalParameterMapping?.[param.name] ||
+                          "";
+        initialMapping[param.name] = paramValue;
+
+        console.log(`Target Node - Parameter ${param.name}:`, {
+          fromStored: storedMapping[param.name],
+          fromProcedure: procedure.parameterMapping?.[param.name],
+          fromOriginal: procedure.originalParameterMapping?.[param.name],
+          finalValue: paramValue
+        });
       });
     }
+
+    console.log("Target Node - Final initial mapping:", initialMapping);
     setParameterColumnMapping(initialMapping);
   };
+
   const closeParametersModal = () => {
     setParametersModalOpen(false);
     setSelectedProcedureForModal(null);
@@ -744,16 +739,26 @@ export const TargetNode = ({ id, data }) => {
       "ProcParams": mappedParams,
       "ProcOrder": procedureOrder,
       "parameterMapping": parameterColumnMapping,
+      "originalParameterMapping": selectedProcedureForModal.originalParameterMapping || {},
       "procedureId": `${selectedProcedureForModal.procedure_name}_${eventType}_${procedureOrder}`,
       "procedureItemId": modalProcedureItemId,
       "procedureType": modalProcedureType,
-      "timestamp": Date.now()
+      "timestamp": Date.now(),
+      "isUpdated": true  // Explicitly mark as updated to ensure persistence
     };
+
+    // Log the procedure update for debugging
+    console.log("Target Node - Applying procedure mapping:", {
+      nodeId: id,
+      procedureJSON: procedureJSON,
+      mappingKey,
+      parameterMapping: parameterColumnMapping
+    });
 
     dispatch({
       type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
       payload: {
-        sourceNodeId: id, // Use id for target node
+        sourceNodeId: id, // Using target node's id
         procedureMapping: procedureJSON
       }
     });
@@ -790,6 +795,353 @@ export const TargetNode = ({ id, data }) => {
     );
   };
 
+  // Separate handler for object type changes - PREVENT AUTO SWITCHING
+  const handleObjectTypeChange = useCallback((newObjectType) => {
+    if (newObjectType === selectedObjectType) return;
+
+    if (newObjectType === "procedures" && selectedConnection.name && procedures.length === 0) {
+      fetchProcedures(selectedConnection.name);
+    }
+
+    setSelectedObjectType(newObjectType);
+  }, [selectedObjectType, selectedConnection.name, procedures.length, fetchProcedures]);
+
+  // Initialize state from restored data if available
+  useEffect(() => {
+    let hasUpdated = false;
+
+    if (data.connection && data.connectionId && data.connectionType && !selectedConnection.name) {
+      setSelectedConnection({
+        name: data.connection,
+        id: data.connectionId,
+        type: data.connectionType
+      });
+      hasUpdated = true;
+
+      // Fetch schemas when connection is restored - only if schemas are empty
+      if (schemas.length === 0) {
+        fetchSchemas(data.connection);
+      }
+    }
+
+    if (data.schema && !selectedSchema) {
+      setSelectedSchema(data.schema);
+      hasUpdated = true;
+
+      // Fetch tables when schema is restored - only if tables are empty
+      if (data.connection && tables.length === 0) {
+        fetchTablesAndColumns(data.connection, data.schema);
+      }
+    }
+
+    if (data.table && !selectedTable) {
+      setSelectedTable(data.table);
+      hasUpdated = true;
+    }
+
+    if (data.alias && !alias) {
+      setAlias(data.alias);
+      hasUpdated = true;
+    }
+
+    if (data.loadType && loadType !== data.loadType) {
+      setLoadType(data.loadType);
+      hasUpdated = true;
+    }
+
+    if (data.loadStrategy && loadStrategy !== data.loadStrategy) {
+      setLoadStrategy(data.loadStrategy);
+      hasUpdated = true;
+    }
+
+    if (data.targetMapping && Object.keys(data.targetMapping).length > 0) {
+      console.log("Target Node - Restoring target mapping:", data.targetMapping);
+      setTargetMapping(data.targetMapping);
+
+      // Mark this target mapping as confirmed if it was confirmed before
+      if (Object.keys(data.targetMapping).some(k => data.targetMapping[k])) {
+        window.localStorage.setItem(`targetMappingConfirmed_${id}`, "true");
+      }
+
+      hasUpdated = true;
+    }
+
+    if (data.selectedSourceId && !selectedSourceForMapping) {
+      setSelectedSourceForMapping(data.selectedSourceId);
+      hasUpdated = true;
+    }
+
+    // Handle object type restoration - PREVENT AUTOMATIC SWITCHING - but allow initial setting
+    if (data.objectType && (!selectedObjectType || selectedObjectType === "")) {
+      setSelectedObjectType(data.objectType);
+      hasUpdated = true;
+
+      // If procedures are selected, fetch procedures - only once
+      if (data.objectType === "procedures" && data.connection && procedures.length === 0) {
+        fetchProcedures(data.connection);
+      }
+    } else if (!selectedObjectType && !data.objectType) {
+      // Default to tables only if no object type is set and no data exists
+      if (data.table && !data.preProcedures && !data.postProcedures) {
+        setSelectedObjectType("tables");
+        hasUpdated = true;
+      } else if ((data.preProcedures && data.preProcedures.length > 0) || (data.postProcedures && data.postProcedures.length > 0)) {
+        setSelectedObjectType("procedures");
+        hasUpdated = true;
+      } else if (!selectedObjectType) {
+        // Default to tables for new nodes
+        setSelectedObjectType("tables");
+        hasUpdated = true;
+      }
+    }
+
+    // Handle pre-procedures restoration - only if not already set
+    if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0 && selectedPreProcedures.length === 1 && !selectedPreProcedures[0].procedure) {
+      const restoredPreProcedures = data.preProcedures.map((proc, index) => ({
+        id: index + 1,
+        procedure: proc
+      }));
+      setSelectedPreProcedures(restoredPreProcedures);
+      hasUpdated = true;
+    }
+
+    // Handle post-procedures restoration - only if not already set
+    if (data.postProcedures && Array.isArray(data.postProcedures) && data.postProcedures.length > 0 && selectedPostProcedures.length === 1 && !selectedPostProcedures[0].procedure) {
+      const restoredPostProcedures = data.postProcedures.map((proc, index) => ({
+        id: index + 1,
+        procedure: proc
+      }));
+      setSelectedPostProcedures(restoredPostProcedures);
+      hasUpdated = true;
+    }
+
+    // Log only if we actually updated something
+    if (hasUpdated) {
+      console.log("Target node data restored:", data);
+    }
+  }, [
+    // Remove problematic dependencies that cause infinite loops
+    data.connection,
+    data.connectionId,
+    data.connectionType,
+    data.schema,
+    data.table,
+    data.alias,
+    data.objectType,
+    data.loadType,
+    data.loadStrategy,
+    data.selectedSourceId
+    // Removed: schemas.length, tables.length, procedures.length, selectedConnection.name, etc.
+  ]);
+
+  // Enhanced useEffect to handle initial parameter mapping restoration from edit data with better logging
+  useEffect(() => {
+    console.log("Target Node - Processing parameter restoration:", {
+      preProcedures: data.preProcedures,
+      postProcedures: data.postProcedures
+    });
+
+    // Restore parameter mappings when procedures are first restored
+    if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0) {
+      console.log("Target Node - Restoring pre-procedures parameter mappings:", data.preProcedures);
+
+      const initialPreMappings = {};
+      data.preProcedures.forEach((procData, index) => {
+        const procedureItemId = procData.procedureItemId || (index + 1);
+        const mappingKey = `pre_${procedureItemId}_${procData.procedure_name}`;
+
+        // Check multiple sources for parameter mapping with clear priority
+        const parameterMapping = procData.parameterMapping || procData.originalParameterMapping || {};
+
+        if (Object.keys(parameterMapping).length > 0) {
+          initialPreMappings[mappingKey] = parameterMapping;
+
+          console.log("Target Node - Restored pre-procedure mapping:", {
+            mappingKey,
+            parameterMapping,
+            procedureName: procData.procedure_name
+          });
+
+          // Also ensure this is in the context
+          const procedureJSON = {
+            "EventType": "BeforeTargetWrite",
+            "Dataset": alias || "unnamed_target",
+            "ProcName": procData.procedure_name,
+            "ProcParams": Object.values(parameterMapping).filter(Boolean),
+            "ProcOrder": index + 1,
+            "parameterMapping": parameterMapping,
+            "originalParameterMapping": procData.originalParameterMapping || parameterMapping,
+            "procedureId": `${procData.procedure_name}_BeforeTargetWrite_${index + 1}`,
+            "procedureItemId": procedureItemId,
+            "procedureType": "pre",
+            "timestamp": Date.now(),
+            "isRestored": true
+          };
+
+          dispatch({
+            type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+            payload: {
+              sourceNodeId: id,
+              procedureMapping: procedureJSON
+            }
+          });
+        }
+      });
+
+      if (Object.keys(initialPreMappings).length > 0) {
+        setStoredParameterMappings(prev => ({
+          ...prev,
+          ...initialPreMappings
+        }));
+      }
+    }
+
+    if (data.postProcedures && Array.isArray(data.postProcedures) && data.postProcedures.length > 0) {
+      console.log("Target Node - Restoring post-procedures parameter mappings:", data.postProcedures);
+
+      const initialPostMappings = {};
+      data.postProcedures.forEach((procData, index) => {
+        const procedureItemId = procData.procedureItemId || (index + 1);
+        const mappingKey = `post_${procedureItemId}_${procData.procedure_name}`;
+
+        // Check multiple sources for parameter mapping with clear priority
+        const parameterMapping = procData.parameterMapping || procData.originalParameterMapping || {};
+
+        if (Object.keys(parameterMapping).length > 0) {
+          initialPostMappings[mappingKey] = parameterMapping;
+
+          console.log("Target Node - Restored post-procedure mapping:", {
+            mappingKey,
+            parameterMapping,
+            procedureName: procData.procedure_name
+          });
+
+          // Also ensure this is in the context
+          const procedureJSON = {
+            "EventType": "AfterTargetWrite",
+            "Dataset": alias || "unnamed_target",
+            "ProcName": procData.procedure_name,
+            "ProcParams": Object.values(parameterMapping).filter(Boolean),
+            "ProcOrder": index + 1,
+            "parameterMapping": parameterMapping,
+            "originalParameterMapping": procData.originalParameterMapping || parameterMapping,
+            "procedureId": `${procData.procedure_name}_AfterTargetWrite_${index + 1}`,
+            "procedureItemId": procedureItemId,
+            "procedureType": "post",
+            "timestamp": Date.now(),
+            "isRestored": true
+          };
+
+          dispatch({
+            type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+            payload: {
+              sourceNodeId: id,
+              procedureMapping: procedureJSON
+            }
+          });
+        }
+      });
+
+      if (Object.keys(initialPostMappings).length > 0) {
+        setStoredParameterMappings(prev => ({
+          ...prev,
+          ...initialPostMappings
+        }));
+      }
+    }
+  }, [data.preProcedures, data.postProcedures, dispatch, ACTION_TYPES, id, alias]);
+
+  // Enhanced useEffect for procedure selection
+  useEffect(() => {
+    // Updated: Always use the latest mapping from storedParameterMappings if available
+    const enrichedPreProcedures = selectedPreProcedures
+      .filter(p => p.procedure)
+      .map(p => {
+        const mappingKey = `pre_${p.id}_${p.procedure.procedure_name}`;
+        const parameterMapping =
+          storedParameterMappings[mappingKey] ||
+          p.procedure.parameterMapping ||
+          p.procedure.originalParameterMapping ||
+          {};
+        const originalParameterMapping =
+          p.procedure.originalParameterMapping ||
+          storedParameterMappings[mappingKey] ||
+          p.procedure.parameterMapping ||
+          {};
+
+        return {
+          ...p.procedure,
+          parameterMapping,
+          originalParameterMapping,
+          procedureItemId: p.id,
+          procedureType: "pre",
+          isUpdated: true // Mark explicitly as updated to ensure persistence
+        };
+      });
+
+    const enrichedPostProcedures = selectedPostProcedures
+      .filter(p => p.procedure)
+      .map(p => {
+        const mappingKey = `post_${p.id}_${p.procedure.procedure_name}`;
+        const parameterMapping =
+          storedParameterMappings[mappingKey] ||
+          p.procedure.parameterMapping ||
+          p.procedure.originalParameterMapping ||
+          {};
+        const originalParameterMapping =
+          p.procedure.originalParameterMapping ||
+          storedParameterMappings[mappingKey] ||
+          p.procedure.parameterMapping ||
+          {};
+
+        return {
+          ...p.procedure,
+          parameterMapping,
+          originalParameterMapping,
+          procedureItemId: p.id,
+          procedureType: "post",
+          isUpdated: true // Mark explicitly as updated to ensure persistence
+        };
+      });
+
+    // Log procedures with their parameter mappings when updating data
+    console.log("Target Node - Updating node data with procedures:", {
+      preProcedures: enrichedPreProcedures,
+      postProcedures: enrichedPostProcedures,
+      storedParameterMappings
+    });
+
+    data.onDataChange({
+      connection: selectedConnection.name,
+      connectionId: selectedConnection.id,
+      connectionType: selectedConnection.type,
+      schema: selectedSchema,
+      table: selectedTable,
+      loadType: loadType,
+      loadStrategy: loadStrategy,
+      columns:
+        tables.find(t => t.table_name === selectedTable)?.column_json?.map(col => ({
+          name: col.column_name,
+          datatype: col.DATA_TYPE
+        })) || [],
+      alias: alias,
+      columnMapping,
+      targetMapping,
+      selectedSourceId: selectedSourceForMapping,
+      objectType: selectedObjectType,
+      preProcedures: enrichedPreProcedures,
+      postProcedures: enrichedPostProcedures,
+    });
+  }, [
+    selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
+    tables, alias, columnMapping, targetMapping, selectedSourceForMapping,
+    selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings
+  ]);
+
+  const connectionDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";
+  const schemaDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";
+  const tableDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";
+
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[280px] max-w-[320px] relative group">
       <button
@@ -823,7 +1175,7 @@ export const TargetNode = ({ id, data }) => {
           <div className="relative" ref={connectionDropdownRef}>
             <button
               type="button"
-              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+              className={connectionDropdownClasses}
               onClick={() => setConnectionDropdownOpen(v => !v)}
               disabled={loading.connections}
             >
@@ -903,7 +1255,7 @@ export const TargetNode = ({ id, data }) => {
           <div className="relative" ref={schemaDropdownRef}>
             <button
               type="button"
-              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+              className={schemaDropdownClasses}
               onClick={() => setSchemaDropdownOpen(v => !v)}
               disabled={!selectedConnection.name || loading.schemas}
             >
@@ -975,7 +1327,7 @@ export const TargetNode = ({ id, data }) => {
                     ? "bg-[#8E77BB] text-white border-[#8E77BB]"
                     : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
                 }`}
-                onClick={() => setSelectedObjectType("tables")}
+                onClick={() => handleObjectTypeChange("tables")}
               >
                 Tables
               </button>
@@ -986,10 +1338,7 @@ export const TargetNode = ({ id, data }) => {
                     ? "bg-[#8E77BB] text-white border-[#8E77BB]"
                     : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
                 }`}
-                onClick={() => {
-                  setSelectedObjectType("procedures");
-                  fetchProcedures(selectedConnection.name);
-                }}
+                onClick={() => handleObjectTypeChange("procedures")}
               >
                 Procedures
               </button>
@@ -1013,7 +1362,7 @@ export const TargetNode = ({ id, data }) => {
                     <div className="relative">
                       <button
                         type="button"
-                        className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                        className={tableDropdownClasses}
                         onClick={() => setTableDropdownOpen(v => !v)}
                         disabled={loading.tables}
                       >

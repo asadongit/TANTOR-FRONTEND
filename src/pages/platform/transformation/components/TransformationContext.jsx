@@ -185,11 +185,10 @@ function transformationReducer(state, action) {
     }
 
     case ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION: {
-
       const { sourceNodeId, procedureMapping } = action.payload;
       const currentProcedures = state.procedureExecution[sourceNodeId] || [];
 
-
+      // Find existing procedure by procedureItemId and procedureType
       const existingIndex = currentProcedures.findIndex(p =>
         p.procedureItemId === procedureMapping.procedureItemId &&
         p.procedureType === procedureMapping.procedureType
@@ -197,12 +196,28 @@ function transformationReducer(state, action) {
 
       let updatedProcedures;
       if (existingIndex !== -1) {
-
+        // Update existing procedure, preserving original parameter mapping if not updated
         updatedProcedures = [...currentProcedures];
-        updatedProcedures[existingIndex] = procedureMapping;
-      } else {
+        const existingProcedure = updatedProcedures[existingIndex];
 
-        updatedProcedures = [...currentProcedures, procedureMapping];
+        // If the new mapping has isUpdated flag, use the new parameterMapping
+        // If it's restored, always use the restored parameterMapping
+        // Otherwise, preserve the original parameterMapping if it exists
+        const finalParameterMapping = procedureMapping.isUpdated || procedureMapping.isRestored
+          ? procedureMapping.parameterMapping
+          : existingProcedure.parameterMapping || procedureMapping.parameterMapping;
+
+        updatedProcedures[existingIndex] = {
+          ...procedureMapping,
+          parameterMapping: finalParameterMapping,
+          originalParameterMapping: existingProcedure.originalParameterMapping || existingProcedure.parameterMapping || procedureMapping.parameterMapping
+        };
+      } else {
+        // Add new procedure
+        updatedProcedures = [...currentProcedures, {
+          ...procedureMapping,
+          originalParameterMapping: procedureMapping.parameterMapping || {}
+        }];
       }
 
       return {
@@ -314,7 +329,7 @@ export function TransformationProvider({ children }) {
       source: {},
       target: {},
       logging:{
-        isLoggingEnabled :false,
+        isLoggingEnabled :true,
         isLoggingEnabledForEachDataset: false
       },
       procedureExecution: state.procedureExecution,
@@ -537,7 +552,10 @@ export function useTrackConnections(nodes, edges) {
                   table: data.table,
                   columns: data.columns,
                   dfId: `s_df_${sourceIndex}`,
-                  alias: data.alias
+                  alias: data.alias,
+                  objectType: data.objectType,
+                  preProcedures: data.preProcedures,
+                  postProcedures: data.postProcedures
                 }
               }
             });
@@ -576,7 +594,11 @@ export function useTrackConnections(nodes, edges) {
                   loadStrategy: data.loadStrategy,
                   dfId: `t_df_${targetIndex}`,
                   alias: data.alias,
-                  targetMapping: data.targetMapping || {}
+                  targetMapping: data.targetMapping || {},
+                  selectedSourceId: data.selectedSourceId,
+                  objectType: data.objectType,
+                  preProcedures: data.preProcedures,
+                  postProcedures: data.postProcedures
                 }
               }
             });

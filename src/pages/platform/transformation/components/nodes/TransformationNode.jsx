@@ -8,7 +8,27 @@ export const TransformationNode = ({ id, data }) => {
     hasTarget: false
   });
   const [buttonHovered, setButtonHovered] = useState(false);
+  const [isDataReady, setIsDataReady] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const edges = useEdges();
+
+  // Initialize transformation data if available from restored flow - OPTIMIZED
+  useEffect(() => {
+    const hasTransformationData = data.transformations?.length > 0 ||
+                                 data.transformationConfig?.operations?.length > 0;
+
+    if (hasTransformationData) {
+      console.log("Restored transformation data for node", id, ":", data.transformations || data.transformationConfig?.operations);
+      setIsEditMode(true);
+      // Reduced delay for faster loading
+      setTimeout(() => {
+        setIsDataReady(true);
+      }, 200); // Reduced from 1500ms to 200ms
+    } else {
+      setIsEditMode(false);
+      setIsDataReady(true); // For new nodes, data is ready immediately
+    }
+  }, [data, id]);
 
   useEffect(() => {
     if (data.connectedSources !== undefined && data.connectedTargets !== undefined) {
@@ -27,7 +47,7 @@ export const TransformationNode = ({ id, data }) => {
     }
   }, [edges, id, data]);
 
-  const isButtonEnabled = isConnected.hasSource && isConnected.hasTarget;
+  const isButtonEnabled = isConnected.hasSource && isConnected.hasTarget && isDataReady;
 
   const handleTransformClick = () => {
     if (isButtonEnabled && window.openTransformationDrawer) {
@@ -91,6 +111,10 @@ export const TransformationNode = ({ id, data }) => {
               <p className="text-[10px] text-gray-500">
                 Connect a target node to complete the setup.
               </p>
+            ) : !isDataReady && isEditMode ? (
+              <p className="text-[10px] text-blue-600">
+                Loading transformation data...
+              </p>
             ) : (
               <p className="text-[10px] text-green-600">
                 Ready to transform! Click the button below.
@@ -109,12 +133,16 @@ export const TransformationNode = ({ id, data }) => {
             onMouseEnter={() => setButtonHovered(true)}
             onMouseLeave={() => setButtonHovered(false)}
           >
-            <span className="mr-2">Transform</span>
-            <ArrowRight
-              className={`w-3.5 h-3.5 transition-transform duration-300 ${
-                buttonHovered && isButtonEnabled ? 'translate-x-1' : ''
-              }`}
-            />
+            <span className="mr-2">
+              {!isDataReady && isEditMode ? 'Loading...' : 'Transform'}
+            </span>
+            {isDataReady && (
+              <ArrowRight
+                className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                  buttonHovered && isButtonEnabled ? 'translate-x-1' : ''
+                }`}
+              />
+            )}
           </button>
         </div>
       </div>
