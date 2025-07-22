@@ -250,7 +250,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           connection: conn.connection || '',
           schema: Array.isArray(conn.schema) ? conn.schema.map(s => (typeof s === 'string' ? s.split('.').pop() : s)) : (conn.schema ? [conn.schema.split('.').pop()] : []),
           table: Array.isArray(conn.tables) ? conn.tables.map(t => (typeof t === 'string' ? t.split('.').pop() : t)) : (conn.tables ? [conn.tables.split('.').pop()] : []),
-          column: Array.isArray(conn.columns) ? conn.columns.map(c => (typeof c === 'string' ? c.split('.').pop() : c)) : (conn.columns ? [conn.columns.split('.').pop()] : []),
+          column: Array.isArray(conn.columns) ? conn.columns : (conn.columns ? [conn.columns] : []),
         }));
       });
     } else {
@@ -776,7 +776,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
 
   const handleRefresh = (conn) => {
     const connIdx = connections.findIndex(c => c.id === conn.id);
-    if (connIdx === -1) return; 
+    if (connIdx === -1) return;
 
     setConnectionsForCurrent(
       connections.map(c =>
@@ -819,14 +819,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
               return schema ? `${connection}.${schema}.${tableName}` : `${connection}.${tableName}`;
             });
 
-            const columns = (conn.column || []).map(c => {
-              const columnName = c.split('.').pop();
-              const schema = (conn.schema || [])[0] || '';
-              const table = (conn.table || [])[0] || '';
-              return schema && table
-                ? `${connection}.${schema}.${table}.${columnName}`
-                : `${connection}.${columnName}`;
-            });
+            const columns = conn.column || [];
 
             return {
               connection,
@@ -1540,10 +1533,10 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                     label: `${conn.connection}.${schema}.${table}`,
                   }));
 
-                  const columnDropdownOpts = columnOpts.map(({ schema, table, column }) => ({
-                    value: column,
-                    label: `${conn.connection}.${schema}.${table}.${column}`,
-                  }));
+                  const columnDropdownOpts = columnOpts.map(({ schema, table, column }) => {
+                    const fqn = `${conn.connection}.${schema}.${table}.${column}`;
+                    return { value: fqn, label: fqn };
+                  });
 
                   const selectedSchema = (conn.schema || []).map(s => ({
                     value: s,
@@ -1555,9 +1548,9 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                     label: `${conn.connection}.${conn.schema[0] || ''}.${t}`,
                   }));
 
-                  const selectedColumns = (conn.column || []).map(c => ({
-                    value: c,
-                    label: `${conn.connection}.${conn.schema[0] || ''}.${conn.table[0] || ''}.${c}`,
+                  const selectedColumns = (conn.column || []).map(fqn => ({
+                    value: fqn,
+                    label: fqn
                   }));
 
                   let statusIcon = null;
