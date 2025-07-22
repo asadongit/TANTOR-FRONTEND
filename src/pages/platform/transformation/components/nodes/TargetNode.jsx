@@ -470,29 +470,25 @@ export const TargetNode = ({ id, data }) => {
     }
   };
 
-  // Find the onChange handler for selectedSourceForMapping
+
   const handleSourceSelectionChange = e => {
     const sourceId = e.target.value;
     setSelectedSourceForMapping(sourceId);
 
-    // More explicit logging and data update for debugging
-    console.log(`Target ${id} selected source: ${sourceId}`);
 
-    // Save the selected source ID in the node data
+
     if (typeof data.onDataChange === "function") {
       data.onDataChange({
         selectedSourceId: sourceId,
       });
     }
 
-    // Dispatch to context for global mapping
     dispatch({
       type: ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE,
       payload: { targetNodeId: id, sourceNodeId: sourceId }
     });
   };
 
-  // Add/remove pre/post procedure dropdowns
   const addPreProcedureDropdown = () => {
     const newId = Math.max(...selectedPreProcedures.map(p => p.id), 0) + 1;
     setSelectedPreProcedures(prev => [...prev, { id: newId, procedure: null }]);
@@ -503,21 +499,18 @@ export const TargetNode = ({ id, data }) => {
   };
   const removePreProcedureDropdown = (procedureItemId) => {
     if (selectedPreProcedures.length > 1) {
-      // Find the procedure being removed
       const procedureToRemove = selectedPreProcedures.find(p => p.id === procedureItemId);
 
       if (procedureToRemove && procedureToRemove.procedure) {
-        // Remove from context/JSON
         dispatch({
           type: ACTION_TYPES.REMOVE_PROCEDURE_EXECUTION,
           payload: {
-            sourceNodeId: id, // Using id for target node
+            sourceNodeId: id,
             procedureItemId: procedureItemId,
             procedureType: "pre"
           }
         });
 
-        // Clean up stored parameter mappings
         const mappingKey = `pre_${procedureItemId}_${procedureToRemove.procedure.procedure_name}`;
         setStoredParameterMappings(prev => {
           const updated = { ...prev };
@@ -526,7 +519,6 @@ export const TargetNode = ({ id, data }) => {
         });
       }
 
-      // Remove from local state
       setSelectedPreProcedures(prev => prev.filter(p => p.id !== procedureItemId));
       setPreProcedureDropdownOpen(prev => {
         const updated = { ...prev };
@@ -534,7 +526,6 @@ export const TargetNode = ({ id, data }) => {
         return updated;
       });
 
-      // Update procedure orders for remaining procedures
       setTimeout(() => {
         setSelectedPreProcedures(prev => {
           const updatedProcedures = prev.map((proc, index) => {
@@ -571,21 +562,20 @@ export const TargetNode = ({ id, data }) => {
 
   const removePostProcedureDropdown = (procedureItemId) => {
     if (selectedPostProcedures.length > 1) {
-      // Find the procedure being removed
+
       const procedureToRemove = selectedPostProcedures.find(p => p.id === procedureItemId);
 
       if (procedureToRemove && procedureToRemove.procedure) {
-        // Remove from context/JSON
+
         dispatch({
           type: ACTION_TYPES.REMOVE_PROCEDURE_EXECUTION,
           payload: {
-            sourceNodeId: id, // Using id for target node
+            sourceNodeId: id,
             procedureItemId: procedureItemId,
             procedureType: "post"
           }
         });
 
-        // Clean up stored parameter mappings
         const mappingKey = `post_${procedureItemId}_${procedureToRemove.procedure.procedure_name}`;
         setStoredParameterMappings(prev => {
           const updated = { ...prev };
@@ -594,7 +584,6 @@ export const TargetNode = ({ id, data }) => {
         });
       }
 
-      // Remove from local state
       setSelectedPostProcedures(prev => prev.filter(p => p.id !== procedureItemId));
       setPostProcedureDropdownOpen(prev => {
         const updated = { ...prev };
@@ -602,7 +591,6 @@ export const TargetNode = ({ id, data }) => {
         return updated;
       });
 
-      // Update procedure orders for remaining procedures
       setTimeout(() => {
         setSelectedPostProcedures(prev => {
           const updatedProcedures = prev.map((proc, index) => {
@@ -650,25 +638,16 @@ export const TargetNode = ({ id, data }) => {
     setPostProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: false }));
   };
 
-  // Modal for parameter mapping
   const openParametersModal = (procedure, procedureType = null, procedureItemId = null) => {
     setSelectedProcedureForModal(procedure);
     setModalProcedureType(procedureType);
     setModalProcedureItemId(procedureItemId);
     setParametersModalOpen(true);
 
-    // Enhanced parameter mapping restoration for target node
     const mappingKey = `${procedureType}_${procedureItemId}_${procedure.procedure_name}`;
     const storedMapping = storedParameterMappings[mappingKey] || {};
 
-    console.log("Target Node - Opening modal with:", {
-      mappingKey,
-      storedMapping,
-      allStoredMappings: storedParameterMappings,
-      procedureType,
-      procedureItemId,
-      procedureName: procedure.procedure_name
-    });
+
 
     const initialMapping = {};
     if (procedure.procedure_parameter && procedure.procedure_parameter.length > 0) {
@@ -689,7 +668,6 @@ export const TargetNode = ({ id, data }) => {
       });
     }
 
-    console.log("Target Node - Final initial mapping:", initialMapping);
     setParameterColumnMapping(initialMapping);
   };
 
@@ -744,21 +722,15 @@ export const TargetNode = ({ id, data }) => {
       "procedureItemId": modalProcedureItemId,
       "procedureType": modalProcedureType,
       "timestamp": Date.now(),
-      "isUpdated": true  // Explicitly mark as updated to ensure persistence
+      "isUpdated": true
     };
 
-    // Log the procedure update for debugging
-    console.log("Target Node - Applying procedure mapping:", {
-      nodeId: id,
-      procedureJSON: procedureJSON,
-      mappingKey,
-      parameterMapping: parameterColumnMapping
-    });
+
 
     dispatch({
       type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
       payload: {
-        sourceNodeId: id, // Using target node's id
+        sourceNodeId: id,
         procedureMapping: procedureJSON
       }
     });
@@ -795,7 +767,6 @@ export const TargetNode = ({ id, data }) => {
     );
   };
 
-  // Separate handler for object type changes - PREVENT AUTO SWITCHING
   const handleObjectTypeChange = useCallback((newObjectType) => {
     if (newObjectType === selectedObjectType) return;
 
@@ -806,7 +777,6 @@ export const TargetNode = ({ id, data }) => {
     setSelectedObjectType(newObjectType);
   }, [selectedObjectType, selectedConnection.name, procedures.length, fetchProcedures]);
 
-  // Initialize state from restored data if available
   useEffect(() => {
     let hasUpdated = false;
 
@@ -818,7 +788,6 @@ export const TargetNode = ({ id, data }) => {
       });
       hasUpdated = true;
 
-      // Fetch schemas when connection is restored - only if schemas are empty
       if (schemas.length === 0) {
         fetchSchemas(data.connection);
       }
@@ -828,7 +797,6 @@ export const TargetNode = ({ id, data }) => {
       setSelectedSchema(data.schema);
       hasUpdated = true;
 
-      // Fetch tables when schema is restored - only if tables are empty
       if (data.connection && tables.length === 0) {
         fetchTablesAndColumns(data.connection, data.schema);
       }
@@ -855,10 +823,8 @@ export const TargetNode = ({ id, data }) => {
     }
 
     if (data.targetMapping && Object.keys(data.targetMapping).length > 0) {
-      console.log("Target Node - Restoring target mapping:", data.targetMapping);
       setTargetMapping(data.targetMapping);
 
-      // Mark this target mapping as confirmed if it was confirmed before
       if (Object.keys(data.targetMapping).some(k => data.targetMapping[k])) {
         window.localStorage.setItem(`targetMappingConfirmed_${id}`, "true");
       }
@@ -871,17 +837,14 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    // Handle object type restoration - PREVENT AUTOMATIC SWITCHING - but allow initial setting
     if (data.objectType && (!selectedObjectType || selectedObjectType === "")) {
       setSelectedObjectType(data.objectType);
       hasUpdated = true;
 
-      // If procedures are selected, fetch procedures - only once
       if (data.objectType === "procedures" && data.connection && procedures.length === 0) {
         fetchProcedures(data.connection);
       }
     } else if (!selectedObjectType && !data.objectType) {
-      // Default to tables only if no object type is set and no data exists
       if (data.table && !data.preProcedures && !data.postProcedures) {
         setSelectedObjectType("tables");
         hasUpdated = true;
@@ -889,13 +852,11 @@ export const TargetNode = ({ id, data }) => {
         setSelectedObjectType("procedures");
         hasUpdated = true;
       } else if (!selectedObjectType) {
-        // Default to tables for new nodes
         setSelectedObjectType("tables");
         hasUpdated = true;
       }
     }
 
-    // Handle pre-procedures restoration - only if not already set
     if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0 && selectedPreProcedures.length === 1 && !selectedPreProcedures[0].procedure) {
       const restoredPreProcedures = data.preProcedures.map((proc, index) => ({
         id: index + 1,
@@ -905,7 +866,6 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    // Handle post-procedures restoration - only if not already set
     if (data.postProcedures && Array.isArray(data.postProcedures) && data.postProcedures.length > 0 && selectedPostProcedures.length === 1 && !selectedPostProcedures[0].procedure) {
       const restoredPostProcedures = data.postProcedures.map((proc, index) => ({
         id: index + 1,
@@ -915,12 +875,10 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    // Log only if we actually updated something
     if (hasUpdated) {
       console.log("Target node data restored:", data);
     }
   }, [
-    // Remove problematic dependencies that cause infinite loops
     data.connection,
     data.connectionId,
     data.connectionType,
@@ -931,17 +889,11 @@ export const TargetNode = ({ id, data }) => {
     data.loadType,
     data.loadStrategy,
     data.selectedSourceId
-    // Removed: schemas.length, tables.length, procedures.length, selectedConnection.name, etc.
   ]);
 
-  // Enhanced useEffect to handle initial parameter mapping restoration from edit data with better logging
   useEffect(() => {
-    console.log("Target Node - Processing parameter restoration:", {
-      preProcedures: data.preProcedures,
-      postProcedures: data.postProcedures
-    });
 
-    // Restore parameter mappings when procedures are first restored
+
     if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0) {
       console.log("Target Node - Restoring pre-procedures parameter mappings:", data.preProcedures);
 
@@ -950,7 +902,6 @@ export const TargetNode = ({ id, data }) => {
         const procedureItemId = procData.procedureItemId || (index + 1);
         const mappingKey = `pre_${procedureItemId}_${procData.procedure_name}`;
 
-        // Check multiple sources for parameter mapping with clear priority
         const parameterMapping = procData.parameterMapping || procData.originalParameterMapping || {};
 
         if (Object.keys(parameterMapping).length > 0) {
@@ -962,7 +913,6 @@ export const TargetNode = ({ id, data }) => {
             procedureName: procData.procedure_name
           });
 
-          // Also ensure this is in the context
           const procedureJSON = {
             "EventType": "BeforeTargetWrite",
             "Dataset": alias || "unnamed_target",
@@ -1004,7 +954,6 @@ export const TargetNode = ({ id, data }) => {
         const procedureItemId = procData.procedureItemId || (index + 1);
         const mappingKey = `post_${procedureItemId}_${procData.procedure_name}`;
 
-        // Check multiple sources for parameter mapping with clear priority
         const parameterMapping = procData.parameterMapping || procData.originalParameterMapping || {};
 
         if (Object.keys(parameterMapping).length > 0) {
@@ -1016,7 +965,6 @@ export const TargetNode = ({ id, data }) => {
             procedureName: procData.procedure_name
           });
 
-          // Also ensure this is in the context
           const procedureJSON = {
             "EventType": "AfterTargetWrite",
             "Dataset": alias || "unnamed_target",
@@ -1051,9 +999,7 @@ export const TargetNode = ({ id, data }) => {
     }
   }, [data.preProcedures, data.postProcedures, dispatch, ACTION_TYPES, id, alias]);
 
-  // Enhanced useEffect for procedure selection
   useEffect(() => {
-    // Updated: Always use the latest mapping from storedParameterMappings if available
     const enrichedPreProcedures = selectedPreProcedures
       .filter(p => p.procedure)
       .map(p => {
@@ -1075,7 +1021,7 @@ export const TargetNode = ({ id, data }) => {
           originalParameterMapping,
           procedureItemId: p.id,
           procedureType: "pre",
-          isUpdated: true // Mark explicitly as updated to ensure persistence
+          isUpdated: true
         };
       });
 
@@ -1100,16 +1046,11 @@ export const TargetNode = ({ id, data }) => {
           originalParameterMapping,
           procedureItemId: p.id,
           procedureType: "post",
-          isUpdated: true // Mark explicitly as updated to ensure persistence
+          isUpdated: true
         };
       });
 
-    // Log procedures with their parameter mappings when updating data
-    console.log("Target Node - Updating node data with procedures:", {
-      preProcedures: enrichedPreProcedures,
-      postProcedures: enrichedPostProcedures,
-      storedParameterMappings
-    });
+
 
     data.onDataChange({
       connection: selectedConnection.name,

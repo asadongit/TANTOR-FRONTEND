@@ -26,3 +26,32 @@ export function immediate(func) {
     func(...args);
   };
 }
+
+/**
+ * Enhanced debounce for target mappings with immediate update for UI
+ * @param {Function} func - The function to debounce
+ * @param {number} wait - The delay in milliseconds
+ * @returns {Function} - The debounced function with immediate feedback
+ */
+export function debounceTargetMapping(func, wait = 300) {
+  let timeout;
+  let lastArgs = null;
+
+  return function executedFunction(...args) {
+    lastArgs = args;
+
+    // Provide immediate visual feedback
+    if (typeof func.immediate === 'function') {
+      func.immediate(...args);
+    }
+
+    // Still debounce the expensive operation
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      if (lastArgs) {
+        func(...lastArgs);
+        lastArgs = null;
+      }
+    }, wait);
+  };
+}

@@ -622,13 +622,41 @@ function TransformationCanvasContent() {
   }, [generateTransformationJson, nodes, edges, navigate, hostname, token, decodedToken, project, nodeIdRef, isEditMode, editTransformationId]);
 
  const handleNewFlow = useCallback(() => {
+  // Reset the context state
   dispatch({ type: ACTION_TYPES.RESET });
+
+  // Reset nodes and edges
   setNodes(initialNodes);
   setEdges(initialEdges);
   nodeIdRef.current = 1;
+
+  // Clear all localStorage mappings related to target mappings
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (
+        key.startsWith('targetMapping_') ||
+        key.startsWith('targetMappingConfirmed_') ||
+        key.startsWith('targetMapping_') ||
+        key.includes('_draft') ||
+        key.includes('_backup')
+      )) {
+      keysToRemove.push(key);
+    }
+  }
+
+  // Remove all identified keys
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+
+  console.log("Flow reset - cleared all target mapping data");
+
+  // Also clear debug variables if they exist
+  if (window.targetMappingsDebug) window.targetMappingsDebug = {};
+  if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
 }, [dispatch, setNodes, setEdges]);
 
 const handleCancel = useCallback(() => {
+  // Perform complete reset
   handleNewFlow();
   navigate("/transformation");
 }, [navigate, handleNewFlow]);

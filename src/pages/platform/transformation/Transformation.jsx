@@ -436,14 +436,13 @@ function Transformation() {
       if (response.status === 200) {
         const transformationData = response.data;
 
-        // Store the edit flow data in sessionStorage for the studio to use
         if (transformationData.extra_info?.edit_flow) {
           sessionStorage.setItem('editFlowData', JSON.stringify(transformationData.extra_info.edit_flow));
           sessionStorage.setItem('editTransformationId', transformation.transformation_id.toString());
           sessionStorage.setItem('editMode', 'true');
         }
 
-        // Navigate to studio
+
         navigate('/transformation/studio');
       }
     } catch (error) {

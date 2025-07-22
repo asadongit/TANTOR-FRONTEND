@@ -1,59 +1,89 @@
-import React, { useState, useEffect } from "react";
-import { Handle, Position, useEdges } from "reactflow";
+import React, { useState, useEffect, useCallback } from "react";
+import { Handle, Position } from "reactflow";
 import { X, Pencil, Code2, ArrowRight } from "lucide-react";
+import { useTransformation } from "../TransformationContext";
 
 export const TransformationNode = ({ id, data }) => {
+  const [buttonHovered, setButtonHovered] = useState(false);
+  const [isDataReady, setIsDataReady] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [sourceColumns, setSourceColumns] = useState([]);
+  const { state } = useTransformation();
+
   const [isConnected, setIsConnected] = useState({
     hasSource: false,
     hasTarget: false
   });
-  const [buttonHovered, setButtonHovered] = useState(false);
-  const [isDataReady, setIsDataReady] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const edges = useEdges();
-
-  // Initialize transformation data if available from restored flow - OPTIMIZED
-  useEffect(() => {
-    const hasTransformationData = data.transformations?.length > 0 ||
-                                 data.transformationConfig?.operations?.length > 0;
-
-    if (hasTransformationData) {
-      console.log("Restored transformation data for node", id, ":", data.transformations || data.transformationConfig?.operations);
-      setIsEditMode(true);
-      // Reduced delay for faster loading
-      setTimeout(() => {
-        setIsDataReady(true);
-      }, 200); // Reduced from 1500ms to 200ms
-    } else {
-      setIsEditMode(false);
-      setIsDataReady(true); // For new nodes, data is ready immediately
-    }
-  }, [data, id]);
 
   useEffect(() => {
-    if (data.connectedSources !== undefined && data.connectedTargets !== undefined) {
-      setIsConnected({
-        hasSource: data.connectedSources > 0,
-        hasTarget: data.connectedTargets > 0
-      });
-    } else {
-      const hasSourceConnection = edges.some(edge => edge.target === id);
-      const hasTargetConnection = edges.some(edge => edge.source === id);
+    setIsConnected({
+      hasSource: data && data.sourceNodes && data.sourceNodes.length > 0,
+      hasTarget: data && data.targetNodes && data.targetNodes.length > 0
+    });
 
-      setIsConnected({
-        hasSource: hasSourceConnection,
-        hasTarget: hasTargetConnection
+    const editMode = sessionStorage.getItem('editMode') === 'true';
+    setIsEditMode(editMode);
+  }, [data]);
+
+  useEffect(() => {
+    let columns = [];
+
+    if (data && data.sourceNodes && data.sourceNodes.length > 0) {
+      data.sourceNodes.forEach(sourceNode => {
+        if (sourceNode && sourceNode.data && sourceNode.data.columns) {
+          const nodeColumns = Array.isArray(sourceNode.data.columns)
+            ? sourceNode.data.columns.map(col => typeof col === 'object' ? col.name : col)
+            : [];
+          columns = [...columns, ...nodeColumns];
+        }
       });
     }
-  }, [edges, id, data]);
 
-  const isButtonEnabled = isConnected.hasSource && isConnected.hasTarget && isDataReady;
+    if (state && state.selectedSourceColumnsSet) {
+      Object.values(state.selectedSourceColumnsSet).forEach(columnSet => {
+        if (columnSet instanceof Set) {
+          columns = [...columns, ...Array.from(columnSet)];
+        }
+      });
+    }
 
-  const handleTransformClick = () => {
-    if (isButtonEnabled && window.openTransformationDrawer) {
+    columns = Array.from(new Set(columns.filter(Boolean)));
+    setSourceColumns(columns);
+
+    const hasColumns = columns.length > 0;
+    setIsDataReady(hasColumns && isConnected.hasSource && isConnected.hasTarget);
+
+  }, [data, state, id, isConnected]);
+
+  const isButtonEnabled = isConnected.hasSource &&
+                          isConnected.hasTarget &&
+                          isDataReady &&
+                          sourceColumns.length > 0;
+
+  const handleTransformClick = useCallback(() => {
+    if (!isButtonEnabled) return;
+
+
+    if (window.openTransformationDrawer) {
       window.openTransformationDrawer(id);
+
+      if (window.allNodes) {
+        window.allNodes = window.allNodes.map(node => {
+          if (node.id === id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                sourceColumns,
+                isDataReady
+              }
+            };
+          }
+          return node;
+        });
+      }
     }
-  };
+  }, [id, sourceColumns, isButtonEnabled, isDataReady]);
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
@@ -114,6 +144,10 @@ export const TransformationNode = ({ id, data }) => {
             ) : !isDataReady && isEditMode ? (
               <p className="text-[10px] text-blue-600">
                 Loading transformation data...
+              </p>
+            ) : !sourceColumns.length ? (
+              <p className="text-[10px] text-amber-600">
+                Waiting for source columns. Please select columns in your source node.
               </p>
             ) : (
               <p className="text-[10px] text-green-600">
