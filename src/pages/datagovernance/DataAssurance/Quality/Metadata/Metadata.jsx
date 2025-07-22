@@ -233,6 +233,7 @@ const Metadata = () => {
         lastRun: new Date(item.last_run_date).toLocaleDateString('en-GB')
       }));
       setTableData(mappedTableData);
+      setSortConfig({ key: null, direction: 'asc' })
 
       setToast({
         show: true,
