@@ -31,15 +31,29 @@ const useDynamicData = (componentType) => {
   
   const hookMap = {
     cdc: useCDCData,
-    migration: useMigrationData,
+    migration: useArchivalData,
     purge: usePurgeData,
     project: useProjectData,
     connections: useConnectionData,
-    transformation: useArchivalData,
+    metadata: useMigrationData,
     report: useReportData,
     rules: useRuleData,
     //   federation: useFederationData,
   };
+
+
+
+  //   const hookMap = {
+  //   cdc: useCDCData,
+  //   migration: useMigrationData,
+  //   purge: usePurgeData,
+  //   project: useProjectData,
+  //   connections: useConnectionData,
+  //   transformation: useArchivalData,
+  //   report: useReportData,
+  //   rules: useRuleData,
+  //   //   federation: useFederationData,
+  // };
 
   return hookMap[componentType] ? hookMap[componentType]() : [];
 };
@@ -79,6 +93,7 @@ const Details = () => {
 
   const getColumnConfiguration = useCallback((type) => {
     const resolvedType = columnAliases[type] || type;
+    console.log("Resolved Type",resolvedType)
     return [
       ...columnConfigurations.common,
       ...(columnConfigurations[resolvedType] || []),
@@ -103,6 +118,7 @@ const processedData = useMemo(() => {
           migration: row.source_conn_type === dataScope,
           purge: row.source_conn_type === dataScope,
           transformation: row.source_conn_type === dataScope,
+          metadata: row.source_conn_type === dataScope,
         };
         return filterMap[selectedType] ?? true;
       });
