@@ -299,13 +299,37 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
     }
   }, []);
 
+  function removeComments(sql) {
+    const lines = sql.split("\n");
+    let newQuery = "";
+    let inSingleLineComment = false;
+    let inMultiLineComment = false;
+    lines.forEach((line) => {
+      const trimmedLine = line.trim();
+      if (inMultiLineComment) {
+        if (trimmedLine.includes("*/")) {
+          inMultiLineComment = false;
+          return;
+        }
+        return;
+      }
+      if (trimmedLine.startsWith("/*")) {
+        inMultiLineComment = true;
+        return;
+      }
+      if (trimmedLine.startsWith("--")) return;
+      newQuery += line + "\n";
+    });
+    return newQuery.trim();
+  }
 
-  const executeQuery = async (query, page = 1) => {
-    if (!query.trim()) {
+  const executeQuery = async (newQuery, page = 1) => {
+    if (!newQuery.trim()) {
       toast.error('Please enter a query');
       return;
     }
 
+    const query = removeComments(newQuery);
     setLoading(true);
     setData([]);
     setColumnDefs([]);
