@@ -358,7 +358,7 @@ export default function Editor() {
       }
 
       const historyPayload = {
-        query: query,
+        query: newQuery,
         owner: decodedToken?.preferred_username,
         project: (project === "default" || project === "none") ? "default" : project,
         type: 'df'
