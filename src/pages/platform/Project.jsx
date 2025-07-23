@@ -181,7 +181,7 @@ const Project = () => {
       bgcolor: "bg-[#FFC93F] bg-opacity-25",
       iconcolor: "text-orange-700",
       title: "Migration",
-      count: cardData?.metadata || 0,
+      count: cardData?.migration || 0,
     },
     {
       icon: "material-symbols:cloud-sync-outline",
@@ -201,8 +201,8 @@ const Project = () => {
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#16ABC2] bg-opacity-25",
       iconcolor: "text-cyan-700",
-      title: "Transformation",
-      count: cardData?.migration || 0,
+      title: "Metadata",
+      count: cardData?.metadata || 0,
     },
   ];
 

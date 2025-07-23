@@ -39,7 +39,7 @@ function CreateRulesInner() {
           description: rule.description,
           severity: rule.severity,
           status: rule.status,
-          owner: rule.owner,
+          owner: decodedToken?.preferred_username,
           query: rule.query,
           score_query: rule.score_query || '',
         });
@@ -68,7 +68,7 @@ function CreateRulesInner() {
               description: r.description,
               severity: r.severity,
               status: r.status,
-              owner: r.owner,
+              owner: decodedToken?.preferred_username,
             },
             connection_details: allConnectionDetails,
           });
@@ -130,7 +130,7 @@ function CreateRulesInner() {
         description: rule.rule?.description ?? "",
         severity: rule.rule?.severity ?? "",
         status: rule.rule?.status ?? "",
-        owner: rule.rule?.owner ?? "",
+        owner: decodedToken?.preferred_username,
         query: rule.rule?.query,
         score_query: rule.rule?.score_query || "",
         id_mappings
@@ -179,7 +179,7 @@ function CreateRulesInner() {
           description: rule.rule?.description ?? "",
           severity: rule.rule?.severity ?? "",
           status: rule.rule?.status ?? "",
-          owner: rule.rule?.owner ?? "",
+          owner: decodedToken?.preferred_username,
           query: rule.rule?.query,
           score_query: rule.rule?.score_query || "",
           id_mappings: [

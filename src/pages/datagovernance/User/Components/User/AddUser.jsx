@@ -311,7 +311,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
 
         <div className="grid grid-cols-3 gap-8">
           <div className="space-y-3">
-            <h3 className="text-[#8e78b7] font-medium">User</h3>
+            <h3 className="text-[#8e78b7] font-medium">Login Credentials</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-black mb-1.5">User name <span className="text-red-500">*</span></label>
@@ -357,7 +357,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-[#8e78b7] font-medium">User information</h3>
+            <h3 className="text-[#8e78b7] font-medium">Personal Details</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-black mb-1.5">First name <span className="text-red-500">*</span></label>
@@ -398,7 +398,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
             </div>
           </div>
           <div className="space-y-6">
-            <h3 className="text-[#8e78b7] font-medium">Roles</h3>
+            <h3 className="text-[#8e78b7] font-medium">Access Policies</h3>
             <div className="space-y-3">
               <div className="space-y-4 mt-9">
                 <button
