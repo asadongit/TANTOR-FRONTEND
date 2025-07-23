@@ -346,3 +346,7 @@ const TargetMappingDrawer = ({
 };
 
 export default TargetMappingDrawer;
+
+// In the parent (TargetNode), make sure getAllTargetColumns always returns the latest columns from the source node
+// (No change needed here if the prop is already passed as a function that fetches from window.allNodes)
+// But if you want to ensure, you can add a note for the parent to always pass a function that fetches the latest columns

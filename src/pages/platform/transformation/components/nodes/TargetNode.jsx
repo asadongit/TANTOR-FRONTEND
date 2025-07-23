@@ -281,18 +281,28 @@ export const TargetNode = ({ id, data }) => {
     return Array.from(new Set(allCols.filter(Boolean)));
   };
 
-  const getAllTargetColumns = () => {
-    let targetCols = [];
-    if (Array.isArray(columns) && columns.length > 0) {
-      targetCols = columns.map(col => (typeof col === "string" ? col : col.name || col));
-    } else {
-      const tableObj = tables.find(t => t.table_name === selectedTable);
-      if (tableObj && Array.isArray(tableObj.column_json)) {
-        targetCols = tableObj.column_json.map(col => col.column_name);
+  const getAllTargetColumns = useCallback(() => {
+    // Try to get columns from the connected source node in window.allNodes
+    if (window.allNodes && selectedSourceForMapping) {
+      const srcNode = window.allNodes.find(n =>
+        n.id === selectedSourceForMapping || n.data?.alias === selectedSourceForMapping
+      );
+      if (srcNode && Array.isArray(srcNode.data?.columns)) {
+        return srcNode.data.columns.map(col =>
+          typeof col === "object" ? col.name : col
+        );
       }
     }
-    return targetCols;
-  };
+    // Fallback to local columns
+    if (Array.isArray(columns) && columns.length > 0) {
+      return columns.map(col => (typeof col === "string" ? col : col.name || col));
+    }
+    const tableObj = tables.find(t => t.table_name === selectedTable);
+    if (tableObj && Array.isArray(tableObj.column_json)) {
+      return tableObj.column_json.map(col => col.column_name);
+    }
+    return [];
+  }, [columns, tables, selectedTable, selectedSourceForMapping]);
 
   useEffect(() => {
     const validCols = getAllTargetColumns();

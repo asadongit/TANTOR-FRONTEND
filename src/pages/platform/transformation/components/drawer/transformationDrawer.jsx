@@ -488,14 +488,90 @@ export const TransformationDrawer = ({
 	const [isDataLoaded, setIsDataLoaded] = useState(false);
 	const [columnsLoaded, setColumnsLoaded] = useState(false);
 
+	// Add a ref to prevent infinite replay loop
+	const hasReplayedRef = useRef(false);
+
 	useEffect(() => {
 		transformationRefs.current = transformationRefs.current.slice(0, transformations.length);
 	}, [transformations.length]);
 
+	// --- BEGIN: Replay transformations for columns in edit mode ---
+	const replayTransformationsForColumns = useCallback((transformationsList, initialDfCols) => {
+		// Deep clone to avoid mutating original state
+		let dfCols = JSON.parse(JSON.stringify(initialDfCols));
+		const getColName = (col) => typeof col === "object" ? col.name : col;
+
+		transformationsList.forEach((t) => {
+			const dfId = t.source_dataframe;
+			if (!dfId) return;
+			let cols = Array.isArray(dfCols[dfId]) ? [...dfCols[dfId]] : [];
+
+			switch (t.transformation_operation) {
+				case "constantcopy":
+				case "arithmetic":
+				case "string":
+				case "typecast":
+				case "date":
+				case "ranking":
+					// Add all new target columns if not present
+					if (t.target_column && t.target_column.length > 0) {
+						t.target_column.forEach(targetCol => {
+							const colName = getColName(targetCol);
+							if (colName && !cols.some(c => getColName(c) === colName)) {
+								const datatype = t.params?.datatype || t.params?.target_datatype || "string";
+								cols.push({ name: colName, datatype });
+							}
+						});
+					}
+					break;
+				case "rename":
+					// Rename columns
+					if (t.source_column && t.target_column && t.source_column.length === t.target_column.length) {
+						t.source_column.forEach((src, idx) => {
+							const tgt = t.target_column[idx];
+							const srcIdx = cols.findIndex(c => getColName(c) === src);
+							if (srcIdx !== -1 && tgt && tgt !== src) {
+								const oldCol = cols[srcIdx];
+								cols[srcIdx] = typeof oldCol === "object"
+									? { ...oldCol, name: tgt }
+									: { name: tgt, datatype: "string" };
+							}
+						});
+					}
+					break;
+				case "restrictcolumns":
+					// Only keep selected columns
+					if (t.source_column && t.source_column.length > 0) {
+						cols = cols.filter(c => t.source_column.includes(getColName(c)));
+					}
+					break;
+				case "join":
+					// Joins may drop columns (drop_left_dataframe_collist)
+					if (t.params?.drop_left_dataframe_collist && Array.isArray(t.params.drop_left_dataframe_collist)) {
+						cols = cols.filter(c => !t.params.drop_left_dataframe_collist.includes(getColName(c)));
+					}
+					break;
+				default:
+					break;
+			}
+			dfCols[dfId] = cols;
+		});
+
+		// Store the replayed columns state to prevent overriding
+		window.replayedDataframeColumns = JSON.parse(JSON.stringify(dfCols));
+
+		return dfCols;
+	}, []);
+	// --- END: Replay transformations for columns in edit mode ---
+
 	const syncDataframeColumnsFromNodes = useCallback(() => {
 		if (!window.allNodes || !window.allEdges) return;
 
-		const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
+		// Use activeNodeId instead of undefined activeTransformationNodeId
+		const targetNodeId = activeNodeId;
+		if (!targetNodeId) return;
+
+		const incomingEdges = window.allEdges.filter(edge => edge.target === targetNodeId);
 
 		// Only consider source nodes as dataframes
 		const sources = incomingEdges
@@ -524,6 +600,18 @@ export const TransformationDrawer = ({
 		allDfs.forEach(df => {
 			dfCols[df.id] = Array.isArray(df.columns) ? df.columns : [];
 		});
+
+		// In edit mode, preserve any replayed columns that might have been added
+		// Only update if replayed columns haven't been set yet
+		if (isEditMode && window.replayedDataframeColumns && hasReplayedRef.current) {
+			Object.keys(window.replayedDataframeColumns).forEach(dfId => {
+				if (window.replayedDataframeColumns[dfId] && window.replayedDataframeColumns[dfId].length > 0) {
+					// Use replayed columns instead of overriding with original source columns
+					dfCols[dfId] = [...window.replayedDataframeColumns[dfId]];
+				}
+			});
+		}
+
 		setDataframeColumns(dfCols);
 
 		// Mark columns as loaded
@@ -545,7 +633,7 @@ export const TransformationDrawer = ({
 				target_column: Array.isArray(t.target_column) ? t.target_column : [],
 			}))
 		);
-	}, [activeNodeId]);
+	}, [activeNodeId, isEditMode, hasReplayedRef]);
 
 	useEffect(() => {
 		if (isOpen) {
@@ -1085,101 +1173,181 @@ export const TransformationDrawer = ({
 		});
 	}, []);
 
+	// Improved version with forceUpdate parameter and better dataframe column state sync
+	const appendColumnsFromRightToLeft = useCallback((leftDfId, rightDfId, forceUpdate = false, droppedColumns = []) => {
+		if (!leftDfId || !rightDfId || leftDfId === rightDfId) return;
+
+		if (window.allNodes) {
+			const leftNode = window.allNodes.find(
+				n => (n.data?.alias === leftDfId) || (n.id === leftDfId)
+			);
+			const rightNode = window.allNodes.find(
+				n => (n.data?.alias === rightDfId) || (n.id === rightDfId)
+			);
+
+			if (leftNode && rightNode) {
+				const leftCols = Array.isArray(leftNode.data.columns) ? [...leftNode.data.columns] : [];
+				const rightCols = Array.isArray(rightNode.data.columns) ? [...rightNode.data.columns] : [];
+				const leftColNames = new Set(
+					leftCols.map(col => typeof col === "object" && col.name ? col.name : col)
+				);
+
+				// Create a set of dropped columns for faster lookup
+				const droppedColumnsSet = new Set(droppedColumns);
+
+				let appended = false;
+				const newColumns = [];
+
+				rightCols.forEach(col => {
+					const colName = typeof col === "object" && col.name ? col.name : col;
+					// Only add columns that are not in the left table and not in the dropped columns list
+					if (colName && !leftColNames.has(colName) && !droppedColumnsSet.has(colName)) {
+						if (typeof col === "object" && col.name) {
+							leftCols.push({ ...col });
+							newColumns.push({ ...col });
+						} else {
+							leftCols.push(colName);
+							newColumns.push(colName);
+						}
+						appended = true;
+					}
+				});
+
+				// For joins, don't filter out columns here - let the joins component handle it
+				const finalCols = leftCols;
+
+				if (appended && typeof leftNode.data.onDataChange === "function") {
+					// Update the node data
+					leftNode.data.onDataChange({ columns: finalCols });
+
+					// Also update our local dataframe columns state
+					setDataframeColumns(prev => ({
+						...prev,
+						[leftDfId]: finalCols
+					}));
+
+					// If force update flag is true, refresh all transformations
+					if (forceUpdate) {
+						// Force refresh dataframe columns in the next render cycle
+						setTimeout(() => {
+							syncDataframeColumnsFromNodes();
+						}, 50);
+					}
+
+					// Dispatch column update event
+					window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
+						detail: {
+							sourceId: leftDfId,
+							addedColumns: newColumns,
+							droppedColumns: droppedColumns
+						}
+					}));
+				}
+			}
+		}
+	}, [setDataframeColumns, syncDataframeColumnsFromNodes]);
+
 	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic", givendatatype = "NUMBER", oldColumnName = null, restrictedColumns = null, restrictType = null) => {
-  console.log("operation type is ====>", operationType)
-  console.log("given datatype is  =====>", givendatatype)
-  const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
-  let datatype = "NUMBER";
-  if (operationType === "typecast") {
-    datatype = givendatatype;
-  } else if (operationType === "string") {
-    datatype = "VARCHAR";
-  } else if (operationType === "date") {
-    datatype = "date";
-  } else if (operationType === "constantcopy") {
-    datatype = givendatatype;
-  } else if (operationType === "rename") {
-    // For rename, preserve the original datatype
-    datatype = givendatatype;
-  }
+		console.log("operation type is ====>", operationType)
+		console.log("given datatype is  =====>", givendatatype)
+		const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
 
-  // Handle restrict columns operation
-  if (operationType === "restrictcolumns" && restrictedColumns !== null && (restrictType === "select" || restrictType === "drop" || restrictType === "restore")) {
-    setDataframeColumns(prev => {
-      const prevCols = prev[actualDfId] || [];
-      let newCols;
+		// Fix datatype assignment based on operation type
+		let datatype = "NUMBER"; // default
+		if (operationType === "typecast") {
+			datatype = givendatatype;
+		} else if (operationType === "string") {
+			datatype = "STRING"; // Changed from "VARCHAR" to "STRING"
+		} else if (operationType === "date") {
+			datatype = "DATE"; // Changed from "date" to "DATE"
+		} else if (operationType === "constantcopy") {
+			datatype = givendatatype;
+		} else if (operationType === "rename") {
+			// For rename, preserve the original datatype
+			datatype = givendatatype;
+		} else if (operationType === "arithmetic") {
+			datatype = "NUMBER";
+		} else if (operationType === "ranking") {
+			datatype = "NUMBER";
+		}
 
-      if (restrictType === "restore") {
-        // Restore original columns from context
-        const { state } = window.transformationContext || {};
-        const originalColumns = state?.originalSourceColumns?.[actualDfId];
-        newCols = originalColumns ? [...originalColumns] : prevCols;
-      } else if (restrictType === "select") {
-        // Keep only selected columns
-        newCols = prevCols.filter(col => {
-          const colName = typeof col === "object" ? col.name : col;
-          return restrictedColumns.includes(colName);
-        });
-      } else if (restrictType === "drop") {
-        // Remove selected columns (keep all others)
-        newCols = prevCols.filter(col => {
-          const colName = typeof col === "object" ? col.name : col;
-          return !restrictedColumns.includes(colName);
-        });
-      } else {
-        newCols = prevCols;
-      }
+		// Handle restrict columns operation
+		if (operationType === "restrictcolumns" && restrictedColumns !== null && (restrictType === "select" || restrictType === "drop" || restrictType === "restore")) {
+			setDataframeColumns(prev => {
+				const prevCols = prev[actualDfId] || [];
+				let newCols;
 
-      return {
-        ...prev,
-        [actualDfId]: newCols
-      };
-    });
+				if (restrictType === "restore") {
+					// Restore original columns from context
+					const { state } = window.transformationContext || {};
+					const originalColumns = state?.originalSourceColumns?.[actualDfId];
+					newCols = originalColumns ? [...originalColumns] : prevCols;
+				} else if (restrictType === "select") {
+					// Keep only selected columns
+					newCols = prevCols.filter(col => {
+						const colName = typeof col === "object" ? col.name : col;
+						return restrictedColumns.includes(colName);
+					});
+				} else if (restrictType === "drop") {
+					// Remove selected columns (keep all others)
+					newCols = prevCols.filter(col => {
+						const colName = typeof col === "object" ? col.name : col;
+						return !restrictedColumns.includes(colName);
+					});
+				} else {
+					newCols = prevCols;
+				}
 
-    // Update the actual node data
-    if (window.allNodes && Array.isArray(window.allNodes)) {
-      const reactNode = window.allNodes.find(n =>
-        (n.data?.alias === actualDfId) || (n.id === actualDfId)
-      );
-      if (reactNode && typeof reactNode.data.onDataChange === "function") {
-        let updatedCols;
+				return {
+					...prev,
+					[actualDfId]: newCols
+				};
+			});
 
-        if (restrictType === "restore") {
-          // Get original columns from transformation context
-          const { state } = window.transformationContext || {};
-          const originalColumns = state?.originalSourceColumns?.[actualDfId];
-          updatedCols = originalColumns ? [...originalColumns] : (Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : []);
-        } else {
-          const currentCols = Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : [];
+			// Update the actual node data
+			if (window.allNodes && Array.isArray(window.allNodes)) {
+				const reactNode = window.allNodes.find(n =>
+					(n.data?.alias === actualDfId) || (n.id === actualDfId)
+				);
+				if (reactNode && typeof reactNode.data.onDataChange === "function") {
+					let updatedCols;
 
-          if (restrictType === "select") {
-            // Keep only selected columns
-            updatedCols = currentCols.filter(col => {
-              const colName = typeof col === "object" ? col.name : col;
-              return restrictedColumns.includes(colName);
-            });
-          } else if (restrictType === "drop") {
-            // Remove selected columns (keep all others)
-            updatedCols = currentCols.filter(col => {
-              const colName = typeof col === "object" ? col.name : col;
-              return !restrictedColumns.includes(colName);
-            });
-          } else {
-            updatedCols = currentCols;
-          }
-        }
+					if (restrictType === "restore") {
+						// Get original columns from transformation context
+						const { state } = window.transformationContext || {};
+						const originalColumns = state?.originalSourceColumns?.[actualDfId];
+						updatedCols = originalColumns ? [...originalColumns] : (Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : []);
+					} else {
+						const currentCols = Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : [];
 
-        reactNode.data.onDataChange({ columns: updatedCols });
-        console.log("$$$$$$ restricted columns:", restrictType, restrictedColumns, "remaining cols:", updatedCols);
-      }
-    }
+						if (restrictType === "select") {
+							// Keep only selected columns
+							updatedCols = currentCols.filter(col => {
+								const colName = typeof col === "object" ? col.name : col;
+								return restrictedColumns.includes(colName);
+							});
+						} else if (restrictType === "drop") {
+							// Remove selected columns (keep all others)
+							updatedCols = currentCols.filter(col => {
+								const colName = typeof col === "object" ? col.name : col;
+								return !restrictedColumns.includes(colName);
+							});
+						} else {
+							updatedCols = currentCols;
+						}
+					}
 
-    // Trigger event for any other components that need to update
-    setTimeout(() => {
-      window.dispatchEvent(new Event("tantor-columns-updated"));
-    }, 10);
-    return;
-  }
+					reactNode.data.onDataChange({ columns: updatedCols });
+					console.log("$$$$$$ restricted columns:", restrictType, restrictedColumns, "remaining cols:", updatedCols);
+				}
+			}
+
+			// Trigger event for any other components that need to update
+			setTimeout(() => {
+				window.dispatchEvent(new Event("tantor-columns-updated"));
+			}, 10);
+			return;
+		}
 
 		// For rename operations, we need to replace the old column with the new one
 		if (operationType === "rename" && oldColumnName) {
@@ -1228,34 +1396,38 @@ export const TransformationDrawer = ({
 			}
 		} else {
 			// For other operations, add the column normally
-			// Update local state first for immediate UI update
-			appendColumnToDataframe(actualDfId, columnName, datatype);
+			// Update local state first for immediate UI update - use correct datatype
+			appendColumnToDataframe(dataframeId, columnName, datatype);
 
+			// --- BEGIN: Always update the actual source node's columns (edit & create flow) ---
 			if (window.allNodes && Array.isArray(window.allNodes)) {
 				const reactNode = window.allNodes.find(n =>
-					(n.data?.alias === actualDfId) || (n.id === actualDfId)
+					(n.data?.alias === dataframeId) || (n.id === dataframeId)
 				);
 				if (reactNode && typeof reactNode.data.onDataChange === "function") {
 					const newCols = Array.isArray(reactNode.data.columns)
 						? [...reactNode.data.columns]
 						: [];
 
-					const existingColIndex = newCols.findIndex(col =>
+					// Add new column if not present - use correct datatype
+					const exists = newCols.some(col =>
 						(typeof col === "object" ? col.name : col) === columnName
 					);
-
-					if (existingColIndex !== -1) {
-						if (typeof newCols[existingColIndex] === "object") {
-							newCols[existingColIndex] = { ...newCols[existingColIndex], datatype };
-						} else {
-							newCols[existingColIndex] = { name: columnName, datatype };
-						}
-					} else {
-						newCols.push({ name: columnName, datatype });
+					if (!exists) {
+						newCols.push({ name: columnName, datatype: datatype });
+						reactNode.data.onDataChange({ columns: newCols });
 					}
+				}
+			}
+			// --- END: Always update the actual source node's columns (edit & create flow) ---
 
-					reactNode.data.onDataChange({ columns: newCols });
-					console.log("$$$$$$ new cols are e=====>", newCols)
+			// Update replayed columns in edit mode to include the new column - use correct datatype
+			if (isEditMode && window.replayedDataframeColumns && window.replayedDataframeColumns[dataframeId]) {
+				const existsInReplayed = window.replayedDataframeColumns[dataframeId].some(col =>
+					(typeof col === "object" ? col.name : col) === columnName
+				);
+				if (!existsInReplayed) {
+					window.replayedDataframeColumns[dataframeId].push({ name: columnName, datatype: datatype });
 				}
 			}
 		}
@@ -1264,81 +1436,8 @@ export const TransformationDrawer = ({
 		setTimeout(() => {
 			window.dispatchEvent(new Event("tantor-columns-updated"));
 		}, 10);
-	}, [appendColumnToDataframe, setDataframeColumns]);
+	}, [appendColumnToDataframe, setDataframeColumns, isEditMode]);
 
-	// Improved version with forceUpdate parameter and better dataframe column state sync
-	const appendColumnsFromRightToLeft = useCallback((leftDfId, rightDfId, forceUpdate = false, droppedColumns = []) => {
-	if (!leftDfId || !rightDfId || leftDfId === rightDfId) return;
-
-	if (window.allNodes) {
-		const leftNode = window.allNodes.find(
-			n => (n.data?.alias === leftDfId) || (n.id === leftDfId)
-		);
-		const rightNode = window.allNodes.find(
-			n => (n.data?.alias === rightDfId) || (n.id === rightDfId)
-		);
-
-		if (leftNode && rightNode) {
-			const leftCols = Array.isArray(leftNode.data.columns) ? [...leftNode.data.columns] : [];
-			const rightCols = Array.isArray(rightNode.data.columns) ? [...rightNode.data.columns] : [];
-			const leftColNames = new Set(
-				leftCols.map(col => typeof col === "object" && col.name ? col.name : col)
-			);
-
-			// Create a set of dropped columns for faster lookup
-			const droppedColumnsSet = new Set(droppedColumns);
-
-			let appended = false;
-			const newColumns = [];
-
-			rightCols.forEach(col => {
-				const colName = typeof col === "object" && col.name ? col.name : col;
-				// Only add columns that are not in the left table and not in the dropped columns list
-				if (colName && !leftColNames.has(colName) && !droppedColumnsSet.has(colName)) {
-					if (typeof col === "object" && col.name) {
-						leftCols.push({ ...col });
-						newColumns.push({ ...col });
-					} else {
-						leftCols.push(colName);
-						newColumns.push(colName);
-					}
-					appended = true;
-				}
-			});
-
-			// For joins, don't filter out columns here - let the joins component handle it
-			const finalCols = leftCols;
-
-			if (appended && typeof leftNode.data.onDataChange === "function") {
-				// Update the node data
-				leftNode.data.onDataChange({ columns: finalCols });
-
-				// Also update our local dataframe columns state
-				setDataframeColumns(prev => ({
-					...prev,
-					[leftDfId]: finalCols
-				}));
-
-				// If force update flag is true, refresh all transformations
-				if (forceUpdate) {
-					// Force refresh dataframe columns in the next render cycle
-					setTimeout(() => {
-						syncDataframeColumnsFromNodes();
-					}, 50);
-				}
-
-				// Dispatch column update event
-				window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
-					detail: {
-						sourceId: leftDfId,
-						addedColumns: newColumns,
-						droppedColumns: droppedColumns
-					}
-				}));
-			}
-		}
-	}
-}, [setDataframeColumns, syncDataframeColumnsFromNodes]);
 
 	// Add an event listener for tantor-columns-updated events with details
 	useEffect(() => {
@@ -1377,6 +1476,7 @@ export const TransformationDrawer = ({
 		if (!isOpen) {
 			setIsDataLoaded(false);
 			setColumnsLoaded(false);
+			hasReplayedRef.current = false; // Reset on close
 			return;
 		}
 
@@ -1411,7 +1511,7 @@ export const TransformationDrawer = ({
 
 			setInitialTransformations(patchedOps);
 
-			// Set data loaded after transformations are set
+			// Wait for columns to load before replaying
 			setTimeout(() => {
 				setIsDataLoaded(true);
 			}, 300);
@@ -1430,13 +1530,28 @@ export const TransformationDrawer = ({
 
 	// Use initialTransformations for drawer state if in edit mode - wait for columns to be loaded
 	useEffect(() => {
-		if (isEditMode && initialTransformations.length > 0 && isDataLoaded && columnsLoaded) {
-			console.log("Setting transformations with loaded columns:", initialTransformations, dataframeColumns);
+		// Only run replay logic once per edit session
+		if (
+			isEditMode &&
+			initialTransformations.length > 0 &&
+			isDataLoaded &&
+			columnsLoaded &&
+			!hasReplayedRef.current
+		) {
+			const updatedDfCols = replayTransformationsForColumns(initialTransformations, dataframeColumns);
+			setDataframeColumns(updatedDfCols);
 			setTransformations(initialTransformations);
+			hasReplayedRef.current = true;
 		}
-		// Only prefill once when drawer opens in edit mode, data is loaded, and columns are available
 		// eslint-disable-next-line
-	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded]);
+	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded, replayTransformationsForColumns]);
+
+	// Reset replay flag when drawer closes or edit mode changes
+	useEffect(() => {
+		if (!isOpen || !isEditMode) {
+			hasReplayedRef.current = false;
+		}
+	}, [isOpen, isEditMode]);
 
 	if (!isOpen) return null;
 
@@ -1564,6 +1679,7 @@ export const TransformationDrawer = ({
 		</>
 	);
 };
+
 
 
 
