@@ -583,7 +583,7 @@ function TransformationCanvasContent() {
       // Determine if this is an update or create
       const isUpdate = isEditMode && editTransformationId;
       const url = isUpdate
-        ? `${hostname}/etl/transformation/update?transformation_id=${editTransformationId}`
+        ? `${hostname}/etl/transformation/edit/update?transformation_id=${editTransformationId}`
         : `${hostname}/etl/transformation`;
       const method = isUpdate ? "PATCH" : "POST";
 
