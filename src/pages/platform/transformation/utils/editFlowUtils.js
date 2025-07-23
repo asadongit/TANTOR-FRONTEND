@@ -85,35 +85,22 @@ const cleanNodeDataForSerialization = (nodeData) => {
  * @returns {Object} - Edit flow data structure
  */
 export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
-  // First get the latest procedure executions from the transformation context
   const contextProcedures = window.transformationContext?.state?.procedureExecution || {};
   const contextTargets = window.transformationContext?.state?.targets || {};
+  const targetToSourceMap = window.transformationContext?.state?.targetToSelectedSourceMap || {};
 
-  // Get latest target mappings from multiple sources with priority:
-  // 1. Context state (most up-to-date)
-  // 2. Node data targetMapping
-  // 3. localStorage confirmed mappings
 
-  console.log("Edit Flow - Context targets:", contextTargets);
-  console.log("Edit Flow - Node target mappings:", nodes.filter(n => n.type === 'target').map(n => ({
-    id: n.id,
-    targetMapping: n.data.targetMapping || {}
-  })));
 
   return {
     nodes: nodes.map(node => {
-      // Get latest procedures for this node from context if available
       const latestProcedures = contextProcedures[node.id] || [];
 
-      // Separate pre and post procedures from the context
       const latestPreProcedures = latestProcedures.filter(p => p.procedureType === "pre");
       const latestPostProcedures = latestProcedures.filter(p => p.procedureType === "post");
 
-      // Start with node's current procedures
       let finalPreProcedures = node.data.preProcedures || [];
       let finalPostProcedures = node.data.postProcedures || [];
 
-      // If we have context procedures, update node's procedures with latest parameter mappings
       if (latestPreProcedures.length > 0) {
         finalPreProcedures = finalPreProcedures.map(proc => {
           const latestProc = latestPreProcedures.find(p =>
@@ -158,31 +145,33 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
         postProcedures: finalPostProcedures
       };
 
-      // Log target mapping data for debugging
+      let finalSelectedSourceId = node.data.selectedSourceId;
+      if (node.type === 'target' && targetToSourceMap && targetToSourceMap[node.id]) {
+        finalSelectedSourceId = targetToSourceMap[node.id];
+        console.log(`Edit Flow - Updated selectedSourceId for target ${node.id}: ${finalSelectedSourceId}`);
+      }
+
       if (node.type === 'target') {
         console.log(`Edit Flow - Processing target node ${node.id}:`, {
           hasTargetMapping: !!node.data.targetMapping,
           targetMappingEntries: node.data.targetMapping ? Object.keys(node.data.targetMapping).length : 0,
           isConfirmed: window.localStorage.getItem(`targetMappingConfirmed_${node.id}`) === "true",
+          selectedSourceId: finalSelectedSourceId,
           targetMapping: node.data.targetMapping
         });
       }
 
-      // For target nodes, ensure we get the most up-to-date mapping
       let finalTargetMapping = {};
       if (node.type === 'target') {
-        // Priority 1: Context state (if exists)
         if (contextTargets[node.id] && contextTargets[node.id].targetMapping) {
           finalTargetMapping = { ...contextTargets[node.id].targetMapping };
           console.log(`Edit Flow - Using context mapping for ${node.id}:`, finalTargetMapping);
         }
-        // Priority 2: Node data
         else if (node.data && node.data.targetMapping) {
           finalTargetMapping = { ...node.data.targetMapping };
           console.log(`Edit Flow - Using node data mapping for ${node.id}:`, finalTargetMapping);
         }
 
-        // Check if it's confirmed (for debugging)
         const isConfirmed = window.localStorage.getItem(`targetMappingConfirmed_${node.id}`) === "true";
         console.log(`Edit Flow - Target node ${node.id} mapping confirmed:`, isConfirmed);
       }
@@ -193,7 +182,6 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
         position: node.position,
         data: {
           ...cleanNodeDataForSerialization(nodeData),
-          // Ensure critical properties are preserved with proper column structure
           connection: node.data.connection,
           connectionId: node.data.connectionId,
           connectionType: node.data.connectionType,
@@ -207,37 +195,28 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
             : [],
           alias: node.data.alias,
           objectType: node.data.objectType,
-          // Enhanced procedure data preservation with comprehensive parameter mapping
           preProcedures: finalPreProcedures.map(proc => ({
             ...proc,
-            // Ensure the latest parameter mappings are preserved
             parameterMapping: proc.parameterMapping || {},
             originalParameterMapping: proc.originalParameterMapping || {},
-            // Preserve additional procedure metadata
             procedureItemId: proc.procedureItemId,
             procedureType: proc.procedureType || "pre",
-            // Ensure procedure_parameter is preserved for restoration
             procedure_parameter: proc.procedure_parameter || []
           })),
           postProcedures: finalPostProcedures.map(proc => ({
             ...proc,
-            // Ensure the latest parameter mappings are preserved
             parameterMapping: proc.parameterMapping || {},
             originalParameterMapping: proc.originalParameterMapping || {},
-            // Preserve additional procedure metadata
             procedureItemId: proc.procedureItemId,
             procedureType: proc.procedureType || "post",
-            // Ensure procedure_parameter is preserved for restoration
             procedure_parameter: proc.procedure_parameter || []
           })),
           loadType: node.data.loadType,
           loadStrategy: node.data.loadStrategy,
-          // ENSURE TARGET MAPPING IS PRESERVED AS TOP-LEVEL PROPERTY
           targetMapping: node.type === 'target' ? finalTargetMapping : undefined,
-          selectedSourceId: node.data.selectedSourceId,
+          selectedSourceId: node.type === 'target' ? finalSelectedSourceId : node.data.selectedSourceId,
           name: node.data.name,
           description: node.data.description,
-          // Preserve transformation data with proper structure
           transformations: node.data.transformations || [],
           transformationConfig: node.data.transformationConfig || { operations: [] }
         },
@@ -297,7 +276,6 @@ export const validateEditFlowData = (editFlowData) => {
     return { isValid, errors };
   }
 
-  // Check required properties
   const requiredProps = ['nodes', 'edges', 'nodeIdCounter', 'createdAt', 'version'];
   for (const prop of requiredProps) {
     if (!(prop in editFlowData)) {
@@ -306,19 +284,16 @@ export const validateEditFlowData = (editFlowData) => {
     }
   }
 
-  // Validate nodes array
   if (editFlowData.nodes && !Array.isArray(editFlowData.nodes)) {
     errors.push("Nodes must be an array");
     isValid = false;
   }
 
-  // Validate edges array
   if (editFlowData.edges && !Array.isArray(editFlowData.edges)) {
     errors.push("Edges must be an array");
     isValid = false;
   }
 
-  // Validate node structure
   if (Array.isArray(editFlowData.nodes)) {
     editFlowData.nodes.forEach((node, index) => {
       if (!node.id) {
@@ -336,7 +311,6 @@ export const validateEditFlowData = (editFlowData) => {
     });
   }
 
-  // Validate edge structure
   if (Array.isArray(editFlowData.edges)) {
     editFlowData.edges.forEach((edge, index) => {
       if (!edge.id) {
