@@ -265,44 +265,83 @@ export const TargetNode = ({ id, data }) => {
   }, []);
 
   const getAllSourceColumns = () => {
+    // Start with basic source columns
     let allCols = getAllSelectedSourceColumns();
 
-    if (data && Array.isArray(data.transformations)) {
-      data.transformations.forEach(tr => {
-        if (Array.isArray(tr.target_column)) {
-          allCols = allCols.concat(tr.target_column);
+    // Get columns from connected transformations
+    if (window.allNodes && window.allEdges) {
+      // Find all transformation nodes connected to this target
+      const incomingEdges = window.allEdges.filter(e => e.target === id);
+      const transformationNodeIds = incomingEdges.map(e => e.source)
+        .filter(srcId => {
+          const node = window.allNodes.find(n => n.id === srcId);
+          return node && node.type === 'transformation';
+        });
+
+      // For each connected transformation, get their output columns (from transformations)
+      transformationNodeIds.forEach(transId => {
+        const transNode = window.allNodes.find(n => n.id === transId);
+        if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
+          transNode.data.transformations.forEach(tr => {
+            if (Array.isArray(tr.target_column)) {
+              allCols = [...allCols, ...tr.target_column];
+            }
+          });
         }
-        if (Array.isArray(tr.source_column)) {
-          allCols = allCols.concat(tr.source_column);
+      });
+
+      // Also get columns directly from connected sources via transformations
+      const sourceIds = new Set();
+      transformationNodeIds.forEach(transId => {
+        const transIncoming = window.allEdges.filter(e => e.target === transId);
+        transIncoming.forEach(e => {
+          const srcNode = window.allNodes.find(n => n.id === e.source && n.type === "source");
+          if (srcNode) {
+            sourceIds.add(srcNode.id);
+          }
+        });
+      });
+
+      // Collect all columns from source nodes
+      sourceIds.forEach(sourceId => {
+        const sourceNode = window.allNodes.find(n => n.id === sourceId);
+        if (sourceNode && sourceNode.data && Array.isArray(sourceNode.data.columns)) {
+          const sourceCols = sourceNode.data.columns.map(col =>
+            typeof col === "object" ? col.name : col
+          );
+          allCols = [...allCols, ...sourceCols];
         }
       });
     }
 
+    // Add any columns from explicit transformations in this target node's data
+    if (data && Array.isArray(data.transformations)) {
+      data.transformations.forEach(tr => {
+        if (Array.isArray(tr.target_column)) {
+          allCols = [...allCols, ...tr.target_column];
+        }
+        if (Array.isArray(tr.source_column)) {
+          allCols = [...allCols, ...tr.source_column];
+        }
+      });
+    }
+
+    // Remove duplicates and filter out empty values
     return Array.from(new Set(allCols.filter(Boolean)));
   };
 
-  const getAllTargetColumns = useCallback(() => {
-    // Try to get columns from the connected source node in window.allNodes
-    if (window.allNodes && selectedSourceForMapping) {
-      const srcNode = window.allNodes.find(n =>
-        n.id === selectedSourceForMapping || n.data?.alias === selectedSourceForMapping
-      );
-      if (srcNode && Array.isArray(srcNode.data?.columns)) {
-        return srcNode.data.columns.map(col =>
-          typeof col === "object" ? col.name : col
-        );
+  const getAllTargetColumns = () => {
+    let targetCols = [];
+    if (Array.isArray(columns) && columns.length > 0) {
+      targetCols = columns.map(col => (typeof col === "string" ? col : col.name || col));
+    } else {
+      const tableObj = tables.find(t => t.table_name === selectedTable);
+      if (tableObj && Array.isArray(tableObj.column_json)) {
+        targetCols = tableObj.column_json.map(col => col.column_name);
       }
     }
-    // Fallback to local columns
-    if (Array.isArray(columns) && columns.length > 0) {
-      return columns.map(col => (typeof col === "string" ? col : col.name || col));
-    }
-    const tableObj = tables.find(t => t.table_name === selectedTable);
-    if (tableObj && Array.isArray(tableObj.column_json)) {
-      return tableObj.column_json.map(col => col.column_name);
-    }
-    return [];
-  }, [columns, tables, selectedTable, selectedSourceForMapping]);
+    return targetCols;
+  };
 
   useEffect(() => {
     const validCols = getAllTargetColumns();
@@ -380,16 +419,27 @@ export const TargetNode = ({ id, data }) => {
   }, [selectedSourceForMapping, connectedSourceNodes]);
 
   const sourceColumnOptionsForMapping = useMemo(() => {
-    if (!selectedSourceNode) return [];
-    const cols = Array.isArray(selectedSourceNode.data?.columns)
-      ? selectedSourceNode.data.columns
-      : [];
-    return cols.map(col =>
-      typeof col === "object"
-        ? { value: col.name, label: col.name }
-        : { value: col, label: col }
-    );
-  }, [selectedSourceNode]);
+    // Start with columns from the selected source
+    let cols = [];
+    if (selectedSourceNode) {
+      cols = Array.isArray(selectedSourceNode.data?.columns)
+        ? selectedSourceNode.data.columns
+        : [];
+    }
+
+    // Add columns from transformations
+    const allAvailableCols = getAllSourceColumns();
+
+    // Combine both sources
+    const combinedCols = [...cols.map(col =>
+      typeof col === "object" ? col.name : col
+    ), ...allAvailableCols];
+
+    // Remove duplicates
+    const uniqueCols = Array.from(new Set(combinedCols.filter(Boolean)));
+
+    return uniqueCols.map(col => ({ value: col, label: col }));
+  }, [selectedSourceNode, getAllSourceColumns]);
 
   const handleSlideClick = () => {
     if (window.openTargetMappingDrawer) {
@@ -420,46 +470,34 @@ export const TargetNode = ({ id, data }) => {
   const handlePrefillAndOpenMappingDrawer = () => {
     if (!selectedSourceForMapping) return;
 
-    let shouldPrefill = true;
-    if (mappingConfirmedForSource[selectedSourceForMapping] !== undefined) {
-      shouldPrefill = !mappingConfirmedForSource[selectedSourceForMapping];
-    }
+    let mappingToSend = {};
 
-    let mappingToSend = targetMapping;
-    if (shouldPrefill) {
-      const cols = Array.isArray(selectedSourceNode?.data?.columns)
-        ? selectedSourceNode.data.columns
-        : [];
-
+    // If data.targetMapping is present and non-empty (edit mode), use it directly
+    if (data.targetMapping && Object.keys(data.targetMapping).length > 0) {
+      mappingToSend = data.targetMapping;
+    } else {
+      // CREATE MODE: Prefill mapping by matching target columns to source columns by name
+      const allAvailableSourceColumns = getAllSourceColumns();
       const sourceColMap = {};
-      cols.forEach(col => {
-        const colName = typeof col === "object" ? col.name : col;
-        if (colName) {
-          sourceColMap[colName.toLowerCase()] = colName;
-        }
+      allAvailableSourceColumns.forEach(col => {
+        if (col) sourceColMap[col.toLowerCase()] = col;
       });
-
-      const lowerSourceColNames = Object.keys(sourceColMap);
-
       const targetCols = getAllTargetColumns();
-
-      const prefilledMapping = {};
+      mappingToSend = {};
       targetCols.forEach(targetCol => {
-        if (lowerSourceColNames.includes(targetCol.toLowerCase())) {
-          prefilledMapping[targetCol] = sourceColMap[targetCol.toLowerCase()];
+        if (sourceColMap[targetCol.toLowerCase()]) {
+          mappingToSend[targetCol] = sourceColMap[targetCol.toLowerCase()];
         } else {
-          prefilledMapping[targetCol] = "";
+          mappingToSend[targetCol] = "";
         }
       });
-
-      console.log("Prefilled mapping:", prefilledMapping);
-
-      setTargetMapping(prefilledMapping);
-      if (typeof data.onDataChange === "function") {
-        data.onDataChange({ targetMapping: prefilledMapping });
-      }
-      mappingToSend = prefilledMapping;
     }
+
+    const allAvailableSourceColumns = getAllSourceColumns();
+    const enhancedSourceColumnOptions = allAvailableSourceColumns.map(col => ({
+      value: col,
+      label: col
+    }));
 
     if (window.openTargetMappingDrawer) {
       window.openTargetMappingDrawer(id, {
@@ -475,11 +513,10 @@ export const TargetNode = ({ id, data }) => {
             [selectedSourceForMapping]: true
           }));
         },
-        sourceColumnOptions: sourceColumnOptionsForMapping,
+        sourceColumnOptions: enhancedSourceColumnOptions,
       });
     }
   };
-
 
   const handleSourceSelectionChange = e => {
     const sourceId = e.target.value;
@@ -498,7 +535,6 @@ export const TargetNode = ({ id, data }) => {
       payload: { targetNodeId: id, sourceNodeId: sourceId }
     });
   };
-
   const addPreProcedureDropdown = () => {
     const newId = Math.max(...selectedPreProcedures.map(p => p.id), 0) + 1;
     setSelectedPreProcedures(prev => [...prev, { id: newId, procedure: null }]);

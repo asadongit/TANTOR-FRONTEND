@@ -689,9 +689,51 @@ const handleCancel = useCallback(() => {
 
   useEffect(() => {
     window.openTargetMappingDrawer = (nodeId, props = {}) => {
-      setArthDrawerNodeId(nodeId);
-      setArthDrawerProps({...props});
-      setArthDrawerOpen(true);
+      // Before opening the drawer, refresh all source columns
+      if (window.allNodes && window.allEdges) {
+        // Find the target node
+        const targetNode = window.allNodes.find(n => n.id === nodeId && n.type === 'target');
+        if (targetNode) {
+          // Find all transformation nodes connected to this target
+          const incomingEdges = window.allEdges.filter(e => e.target === nodeId);
+          const transformationNodeIds = incomingEdges.map(e => e.source)
+            .filter(srcId => {
+              const n = window.allNodes.find(n => n.id === srcId);
+              return n && n.type === 'transformation';
+            });
+
+          // For each transformation, ensure its columns are updated
+          transformationNodeIds.forEach(transId => {
+            const transNode = window.allNodes.find(n => n.id === transId);
+            if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
+              // Here we're just ensuring the transformations are processed
+              console.log(`Ensuring transformation columns for node ${transId} are up-to-date`);
+            }
+          });
+
+          // Trigger a global refresh event for all components to update their columns
+          window.dispatchEvent(new CustomEvent("tantor-refresh-all-columns", {
+            detail: { targetNodeId: nodeId }
+          }));
+
+          // Short delay to let columns update before opening the drawer
+          setTimeout(() => {
+            setArthDrawerNodeId(nodeId);
+            setArthDrawerProps({...props});
+            setArthDrawerOpen(true);
+          }, 50);
+        } else {
+          // If no extra processing needed, open drawer immediately
+          setArthDrawerNodeId(nodeId);
+          setArthDrawerProps({...props});
+          setArthDrawerOpen(true);
+        }
+      } else {
+        // Fallback to opening drawer directly
+        setArthDrawerNodeId(nodeId);
+        setArthDrawerProps({...props});
+        setArthDrawerOpen(true);
+      }
     };
 
     window.closeTargetMappingDrawer = () => {

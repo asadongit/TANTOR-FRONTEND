@@ -389,9 +389,6 @@ export const restoreNodesAndEdgesFromEditData = (editFlowData, setNodes, setEdge
     console.warn("Edit flow data validation warnings:", validation.errors);
   }
 
-  // REMOVED: Restoration key check for better performance
-
-  // Restore nodes with proper data structure and event handlers - OPTIMIZED
   const restoredNodes = (editFlowData.nodes || []).map(node => {
     const restoredNode = {
       ...node,
@@ -399,12 +396,9 @@ export const restoreNodesAndEdgesFromEditData = (editFlowData, setNodes, setEdge
         ...node.data,
         // Set onDataChange to a fast function that will be replaced later
         onDataChange: (newData) => {
-          // Immediate execution for better drawer performance
           console.log('Fast onDataChange called during restoration:', newData);
         },
-        // Mark the node as being restored with shorter duration
         _isRestoring: true,
-        // Ensure transformation data is properly structured
         transformations: node.data.transformations || [],
         transformationConfig: node.data.transformationConfig || { operations: [] }
       }
@@ -421,11 +415,7 @@ export const restoreNodesAndEdgesFromEditData = (editFlowData, setNodes, setEdge
     nodeIdRef.current = editFlowData.nodeIdCounter;
   }
 
-  console.log("Restoring flow data:", {
-    nodesCount: restoredNodes.length,
-    edgesCount: restoredEdges.length,
-    nodeIdCounter: editFlowData.nodeIdCounter
-  });
+
 
   return {
     nodes: restoredNodes,
