@@ -13,6 +13,7 @@ import { ConnectionNode } from '../nodes/connectionNode'
 import { ConsolidationNode } from '../nodes/consolidationNode'
 import { DrawerContainer } from '../drawers/DrawerContainer';
 import { useStateContext } from '../context/contextViewProvider';
+import { ToastProvider } from '../context/ToastContext';
 
 const nodeTypes = {
   sourceView: SourceViewNode,
@@ -98,20 +99,22 @@ export function ViewCanvas() {
         <Controls className="fill-black text-black stroke-black" />
       </div>
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        nodeTypes={nodeTypes}
-        fitView
-        zoom={0.25}
-        className="bg-gray-50"
-      >
-      </ReactFlow>
+      <ToastProvider>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          nodeTypes={nodeTypes}
+          fitView
+          zoom={0.25}
+          className="bg-gray-50"
+        >
+        </ReactFlow>
+      </ToastProvider>
       <DrawerContainer />
     </div>
   );

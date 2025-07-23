@@ -92,6 +92,8 @@ const TransformationItem = memo(({
   handleOperatorChange,
   setTransformationValidity,
   appendColumnsFromRightToLeft,
+  updateJoinsSourceColumns,
+  updateJoinsParam,
 }) => {
   const renderSourceAndOperationRow = () => (
     <div className="flex gap-2 mb-3">
@@ -122,6 +124,7 @@ const TransformationItem = memo(({
             e.target.value
           )}
         >
+		<option value="">None</option>
           {transformationOperations.map((op) => (
             <option key={op.id} value={op.id}>
               {op.name}
@@ -209,8 +212,9 @@ const TransformationItem = memo(({
           {...commonProps}
           allDataframes={allDataframes}
           dataframeColumns={dataframeColumns}
-          updateJoinsParam={(id, name, value) => updateFilterParam(id, name, value)}
+          updateJoinsParam={updateJoinsParam}
           appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
+          updateJoinsSourceColumns={updateJoinsSourceColumns}
         />;
       case 'filter':
         let operatorOptions = FILTER_OPERATORS;
@@ -478,6 +482,12 @@ export const TransformationDrawer = ({
 	const dropdownRefs = useRef({});
 	const transformationRefs = useRef([]);
 
+	// Add state to track if we are in edit mode and the initial transformations
+	const [isEditMode, setIsEditMode] = useState(false);
+	const [initialTransformations, setInitialTransformations] = useState([]);
+	const [isDataLoaded, setIsDataLoaded] = useState(false);
+	const [columnsLoaded, setColumnsLoaded] = useState(false);
+
 	useEffect(() => {
 		transformationRefs.current = transformationRefs.current.slice(0, transformations.length);
 	}, [transformations.length]);
@@ -516,6 +526,9 @@ export const TransformationDrawer = ({
 		});
 		setDataframeColumns(dfCols);
 
+		// Mark columns as loaded
+		setColumnsLoaded(true);
+
 		window.nodeToDataframeMap = {};
 		sources.forEach(df => {
 			window.nodeToDataframeMap[df.nodeId] = df.id;
@@ -536,6 +549,7 @@ export const TransformationDrawer = ({
 
 	useEffect(() => {
 		if (isOpen) {
+			setColumnsLoaded(false);
 			syncDataframeColumnsFromNodes();
 		}
 	}, [isOpen, syncDataframeColumnsFromNodes]);
@@ -586,6 +600,26 @@ export const TransformationDrawer = ({
 		setTransformations(ts => ts.map(t =>
 			t.id === id ? { ...t, params: { ...t.params, [paramName]: value } } : t
 		));
+	}, []);
+
+	// Add new function to handle joins column updates
+	const updateJoinsSourceColumns = useCallback((sourceId, combinedColumns) => {
+		// Update local dataframe columns state
+		setDataframeColumns(prev => ({
+			...prev,
+			[sourceId]: combinedColumns
+		}));
+
+		// Update the actual node data
+		if (window.allNodes && Array.isArray(window.allNodes)) {
+			const sourceNode = window.allNodes.find(n =>
+				(n.data?.alias === sourceId) || (n.id === sourceId)
+			);
+
+			if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
+				sourceNode.data.onDataChange({ columns: combinedColumns });
+			}
+		}
 	}, []);
 
 	const updateFilterParam = useCallback((id, paramName, value) => {
@@ -852,29 +886,19 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const handleAddTransformation = useCallback(() => {
-		setTransformations(ts => {
-			const newId = ts.length > 0 ? Math.max(...ts.map(t => t.id)) + 1 : 1;
-			const newTransformation = {
-				id: newId,
-				source_dataframe: allDataframes[0]?.id || "",
-				target_dataframe: allDataframes[0]?.id || "",
+		setTransformations(ts => [
+			...ts,
+			{
+				id: `transformation_${ts.length + 1}`,
 				source_column: [],
 				target_column: [],
-				transformation_operation: "arithmetic",
-				transformation_operator: "", // <-- set to "" by default
-				params: {
-					custom_value: "",
-					max_length: "",
-					padding_character: "",
-					start_position: "",
-					no_of_character: ""
-				},
-				transformation_order: ts.length + 1
-			};
-
-			return [...ts, newTransformation];
-		});
-	}, [allDataframes]);
+				params: {},
+				transformation_operation: "",
+				transformation_operator: "",
+				source_dataframe: activeNode?.data?.alias || "",
+			},
+		]);
+	}, [activeNode]);
 
 	const handleRemoveTransformation = useCallback((id) => {
 		setTransformations(ts => {
@@ -979,35 +1003,9 @@ export const TransformationDrawer = ({
 						drop_right_dataframe_collist: joinParams.drop_right_dataframe_collist
 					};
 
-					// If there are columns to drop, add a separate restrict columns transformation after this join
-					const allDroppedColumns = [
-						...joinParams.drop_left_dataframe_collist,
-						...joinParams.drop_right_dataframe_collist
-					];
-
-					if (allDroppedColumns.length > 0) {
-						// Add the join transformation first
-						result.push(transformationData);
-
-						// Then add a restrict columns transformation to drop the specified columns
-						result.push({
-							source_dataframe: t.source_dataframe,
-							target_dataframe: t.source_dataframe,
-							source_column: allDroppedColumns,
-							target_column: [],
-							transformation_operation: "restrictcolumns",
-							transformation_operator: "drop",
-							transformation_order: t.transformation_order + 0.5, // Insert between transformations
-							params: {}
-						});
-
-						// Update the order of subsequent transformations
-						transformations.slice(index + 1).forEach(nextT => {
-							nextT.transformation_order += 1;
-						});
-					} else {
-						result.push(transformationData);
-					}
+					// Remove the automatic restrict columns transformation creation
+					// The joins component handles column dropping internally
+					result.push(transformationData);
 					return; // Skip the default result.push at the end
 				case 'filter':
 					transformationData.params = getFilterParams(t);
@@ -1088,91 +1086,100 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic", givendatatype = "NUMBER", oldColumnName = null, restrictedColumns = null, restrictType = null) => {
-		console.log("operation type is ====>", operationType)
-		console.log("given datatype is  =====>", givendatatype)
-		const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
-		let datatype = "NUMBER";
-		if (operationType === "typecast") {
-			datatype = givendatatype;
-		} else if (operationType === "string") {
-			datatype = "VARCHAR";
-		} else if (operationType === "date") {
-			datatype = "date";
-		} else if (operationType === "constantcopy") {
-			datatype = givendatatype;
-		} else if (operationType === "rename") {
-			// For rename, preserve the original datatype
-			datatype = givendatatype;
-		}
+  console.log("operation type is ====>", operationType)
+  console.log("given datatype is  =====>", givendatatype)
+  const actualDfId = operationType === "arithmetic" ? dataframeId : dataframeId;
+  let datatype = "NUMBER";
+  if (operationType === "typecast") {
+    datatype = givendatatype;
+  } else if (operationType === "string") {
+    datatype = "VARCHAR";
+  } else if (operationType === "date") {
+    datatype = "date";
+  } else if (operationType === "constantcopy") {
+    datatype = givendatatype;
+  } else if (operationType === "rename") {
+    // For rename, preserve the original datatype
+    datatype = givendatatype;
+  }
 
-		// Handle restrict columns operation
-		if (operationType === "restrictcolumns" && restrictedColumns !== null && restrictType) {
-			setDataframeColumns(prev => {
-				const prevCols = prev[actualDfId] || [];
-				let newCols;
+  // Handle restrict columns operation
+  if (operationType === "restrictcolumns" && restrictedColumns !== null && (restrictType === "select" || restrictType === "drop" || restrictType === "restore")) {
+    setDataframeColumns(prev => {
+      const prevCols = prev[actualDfId] || [];
+      let newCols;
 
-				if (restrictType === "select") {
-					// Keep only selected columns
-					newCols = prevCols.filter(col => {
-						const colName = typeof col === "object" ? col.name : col;
-						return restrictedColumns.includes(colName);
-					});
-				} else if (restrictType === "drop") {
-					// Remove selected columns (keep all others)
-					newCols = prevCols.filter(col => {
-						const colName = typeof col === "object" ? col.name : col;
-						return !restrictedColumns.includes(colName);
-					});
-				} else {
-					newCols = prevCols;
-				}
+      if (restrictType === "restore") {
+        // Restore original columns from context
+        const { state } = window.transformationContext || {};
+        const originalColumns = state?.originalSourceColumns?.[actualDfId];
+        newCols = originalColumns ? [...originalColumns] : prevCols;
+      } else if (restrictType === "select") {
+        // Keep only selected columns
+        newCols = prevCols.filter(col => {
+          const colName = typeof col === "object" ? col.name : col;
+          return restrictedColumns.includes(colName);
+        });
+      } else if (restrictType === "drop") {
+        // Remove selected columns (keep all others)
+        newCols = prevCols.filter(col => {
+          const colName = typeof col === "object" ? col.name : col;
+          return !restrictedColumns.includes(colName);
+        });
+      } else {
+        newCols = prevCols;
+      }
 
-				return {
-					...prev,
-					[actualDfId]: newCols
-				};
-			});
+      return {
+        ...prev,
+        [actualDfId]: newCols
+      };
+    });
 
-			// Update the actual node data
-			if (window.allNodes && Array.isArray(window.allNodes)) {
-				const reactNode = window.allNodes.find(n =>
-					(n.data?.alias === actualDfId) || (n.id === actualDfId)
-				);
-				if (reactNode && typeof reactNode.data.onDataChange === "function") {
-					const currentCols = Array.isArray(reactNode.data.columns)
-						? [...reactNode.data.columns]
-						: [];
+    // Update the actual node data
+    if (window.allNodes && Array.isArray(window.allNodes)) {
+      const reactNode = window.allNodes.find(n =>
+        (n.data?.alias === actualDfId) || (n.id === actualDfId)
+      );
+      if (reactNode && typeof reactNode.data.onDataChange === "function") {
+        let updatedCols;
 
-					let updatedCols;
-					if (restrictType === "select") {
-						// Keep only selected columns
-						updatedCols = currentCols.filter(col => {
-							const colName = typeof col === "object" ? col.name : col;
-							return restrictedColumns.includes(colName);
-						});
-					} else if (restrictType === "drop") {
-						// Remove selected columns (keep all others)
-						updatedCols = currentCols.filter(col => {
-							const colName = typeof col === "object" ? col.name : col;
-							return !restrictedColumns.includes(colName);
-						});
-					} else {
-						updatedCols = currentCols;
-					}
+        if (restrictType === "restore") {
+          // Get original columns from transformation context
+          const { state } = window.transformationContext || {};
+          const originalColumns = state?.originalSourceColumns?.[actualDfId];
+          updatedCols = originalColumns ? [...originalColumns] : (Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : []);
+        } else {
+          const currentCols = Array.isArray(reactNode.data.columns) ? [...reactNode.data.columns] : [];
 
-					reactNode.data.onDataChange({ columns: updatedCols });
-					console.log("$$$$$$ restricted columns:", restrictType, restrictedColumns, "remaining cols:", updatedCols);
-				}
-			}
+          if (restrictType === "select") {
+            // Keep only selected columns
+            updatedCols = currentCols.filter(col => {
+              const colName = typeof col === "object" ? col.name : col;
+              return restrictedColumns.includes(colName);
+            });
+          } else if (restrictType === "drop") {
+            // Remove selected columns (keep all others)
+            updatedCols = currentCols.filter(col => {
+              const colName = typeof col === "object" ? col.name : col;
+              return !restrictedColumns.includes(colName);
+            });
+          } else {
+            updatedCols = currentCols;
+          }
+        }
 
-			// Trigger event for any other components that need to update
-			setTimeout(() => {
-				window.dispatchEvent(new Event("tantor-columns-updated"));
-			}, 10);
-			return;
-		}
+        reactNode.data.onDataChange({ columns: updatedCols });
+        console.log("$$$$$$ restricted columns:", restrictType, restrictedColumns, "remaining cols:", updatedCols);
+      }
+    }
 
-		console.log("column name is ======>", columnName)
+    // Trigger event for any other components that need to update
+    setTimeout(() => {
+      window.dispatchEvent(new Event("tantor-columns-updated"));
+    }, 10);
+    return;
+  }
 
 		// For rename operations, we need to replace the old column with the new one
 		if (operationType === "rename" && oldColumnName) {
@@ -1299,20 +1306,17 @@ export const TransformationDrawer = ({
 				}
 			});
 
-			// Also filter out any existing columns that are in the dropped list
-			const filteredLeftCols = leftCols.filter(col => {
-				const colName = typeof col === "object" && col.name ? col.name : col;
-				return !droppedColumnsSet.has(colName);
-			});
+			// For joins, don't filter out columns here - let the joins component handle it
+			const finalCols = leftCols;
 
-			if ((appended || filteredLeftCols.length !== leftCols.length) && typeof leftNode.data.onDataChange === "function") {
-				// Update the node data with filtered columns
-				leftNode.data.onDataChange({ columns: filteredLeftCols });
+			if (appended && typeof leftNode.data.onDataChange === "function") {
+				// Update the node data
+				leftNode.data.onDataChange({ columns: finalCols });
 
 				// Also update our local dataframe columns state
 				setDataframeColumns(prev => ({
 					...prev,
-					[leftDfId]: filteredLeftCols
+					[leftDfId]: finalCols
 				}));
 
 				// If force update flag is true, refresh all transformations
@@ -1368,6 +1372,72 @@ export const TransformationDrawer = ({
 		return () => window.removeEventListener("tantor-columns-updated", handler);
 	}, [isOpen, syncDataframeColumnsFromNodes]);
 
+	// Prefill transformations for edit flow
+	useEffect(() => {
+		if (!isOpen) {
+			setIsDataLoaded(false);
+			setColumnsLoaded(false);
+			return;
+		}
+
+		// Reset loading state when drawer opens
+		setIsDataLoaded(false);
+
+		// Detect edit mode by checking activeNode.data.transformations or transformationConfig
+		if (
+			activeNode &&
+			(activeNode.data?.transformations?.length > 0 ||
+				(activeNode.data?.transformationConfig?.operations?.length > 0))
+		) {
+			setIsEditMode(true);
+
+			// Prefer transformationConfig.operations if available
+			const ops =
+				activeNode.data.transformationConfig?.operations?.length > 0
+					? activeNode.data.transformationConfig.operations
+					: activeNode.data.transformations || [];
+
+			// Patch each transformation with required fields if missing
+			const patchedOps = ops.map((op, idx) => ({
+				...op,
+				id: op.id || `transformation_${idx + 1}`,
+				source_column: op.source_column || [],
+				target_column: op.target_column || [],
+				params: op.params || {},
+				transformation_operation: op.transformation_operation || "",
+				transformation_operator: op.transformation_operator || "",
+				source_dataframe: op.source_dataframe || activeNode.data.alias || "",
+			}));
+
+			setInitialTransformations(patchedOps);
+
+			// Set data loaded after transformations are set
+			setTimeout(() => {
+				setIsDataLoaded(true);
+			}, 300);
+		} else {
+			setIsEditMode(false);
+			setInitialTransformations([]);
+			setIsDataLoaded(true); // For new flows, data is ready immediately
+			if (!columnsLoaded) {
+				// For new flows, wait a bit for columns to load
+				setTimeout(() => {
+					setIsDataLoaded(true);
+				}, 100);
+			}
+		}
+	}, [isOpen, activeNode, columnsLoaded]);
+
+	// Use initialTransformations for drawer state if in edit mode - wait for columns to be loaded
+	useEffect(() => {
+		if (isEditMode && initialTransformations.length > 0 && isDataLoaded && columnsLoaded) {
+			console.log("Setting transformations with loaded columns:", initialTransformations, dataframeColumns);
+			setTransformations(initialTransformations);
+		}
+		// Only prefill once when drawer opens in edit mode, data is loaded, and columns are available
+		// eslint-disable-next-line
+	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded]);
+
 	if (!isOpen) return null;
 
 	return (
@@ -1412,52 +1482,64 @@ export const TransformationDrawer = ({
 				</div>
 
 				<div className="flex-1 overflow-y-auto p-4">
-					<div className="space-y-6">
-						{transformations.map((transformation, index) => (
-							<div
-								key={transformation.id}
-								ref={el => transformationRefs.current[index] = el}
-							>
-								<TransformationItem
-									transformation={transformation}
-									index={index}
-									allDataframes={allDataframes}
-									dataframeColumns={dataframeColumns}
-									openDropdowns={openDropdowns}
-									dropdownRefs={dropdownRefs}
-									handleRemoveTransformation={handleRemoveTransformation}
-									handleDataframeChange={handleDataframeChange}
-									handleOperationChange={handleOperationChange}
-									toggleDropdown={toggleDropdown}
-									handleSelectAllColumns={handleSelectAllColumns}
-									handleColumnSelection={handleColumnSelection}
-									updateTransformation={updateTransformation}
-									transformationOperations={transformationOperations}
-									updateStringParam={updateStringParam}
-									updateConstantCopyParam={updateConstantCopyParam}
-									updateFilterParam={updateFilterParam}
-									updateTypecastParam={updateTypecastParam}
-								 updateTargetColumns={updateTargetColumns}
-								 updateSortParam={updateSortParam}
-								 updateRankingParam={updateRankingParam}
-								 updateDateParam={updateDateParam}
-								 updateTargetColumn={updateTargetColumn}
-								 onAddNewTargetColumn={handleAddNewTargetColumn}
-								 appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
-								 handleOperatorChange={handleOperatorChange}
-								 setTransformationValidity={setTransformationValidity}
-								/>
+					{(!isDataLoaded || !columnsLoaded) && isEditMode ? (
+						<div className="flex items-center justify-center h-64">
+							<div className="text-center">
+								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8E77BB] mx-auto mb-4"></div>
+								<p className="text-gray-600">Loading transformation data...</p>
 							</div>
-						))}
+						</div>
+					) : (
+						<div className="space-y-6">
+							{transformations.map((transformation, index) => (
+								<div
+									key={transformation.id}
+									ref={el => transformationRefs.current[index] = el}
+								>
+									<TransformationItem
+										transformation={transformation}
+										index={index}
+										allDataframes={allDataframes}
+										dataframeColumns={dataframeColumns}
+										openDropdowns={openDropdowns}
+										dropdownRefs={dropdownRefs}
+										handleRemoveTransformation={handleRemoveTransformation}
+										handleDataframeChange={handleDataframeChange}
+										handleOperationChange={handleOperationChange}
+										toggleDropdown={toggleDropdown}
+										handleSelectAllColumns={handleSelectAllColumns}
+										handleColumnSelection={handleColumnSelection}
+										updateTransformation={updateTransformation}
+										transformationOperations={transformationOperations}
+										updateStringParam={updateStringParam}
+										updateConstantCopyParam={updateConstantCopyParam}
+										updateFilterParam={updateFilterParam}
+										updateTypecastParam={updateTypecastParam}
+									 updateTargetColumns={updateTargetColumns}
+									 updateSortParam={updateSortParam}
+									 updateRankingParam={updateRankingParam}
+									 updateDateParam={updateDateParam}
+									 updateTargetColumn={updateTargetColumn}
+									 onAddNewTargetColumn={handleAddNewTargetColumn}
+									 appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
+									 handleOperatorChange={handleOperatorChange}
+									 setTransformationValidity={setTransformationValidity}
+									 updateJoinsSourceColumns={updateJoinsSourceColumns}
+									 updateJoinsParam={updateJoinsParam}
+									/>
+								</div>
+							))}
 
-						<button
-							onClick={handleAddTransformation}
-							className="w-full py-2.5 bg-white border border-gray-300 hover:bg-gray-50 rounded-md flex items-center justify-center text-gray-700 transition-colors"
-						>
-							<Plus className="w-4 h-4 mr-2 text-[#8E77BB]" />
-							<span>Add Transformation</span>
-						</button>
-					</div>
+							<button
+								onClick={handleAddTransformation}
+								className="w-full py-2.5 bg-white border border-gray-300 hover:bg-gray-50 rounded-md flex items-center justify-center text-gray-700 transition-colors"
+								disabled={!isDataLoaded || !columnsLoaded}
+							>
+								<Plus className="w-4 h-4 mr-2 text-[#8E77BB]" />
+								<span>Add Transformation</span>
+							</button>
+						</div>
+					)}
 				</div>
 
 				<div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-3">
@@ -1470,7 +1552,7 @@ export const TransformationDrawer = ({
 					<button
 						onClick={handleSave}
 						className="px-5 py-2 bg-[#8E77BB] border border-[#8E77BB] rounded-md text-sm text-white hover:bg-[#7d68a5] transition-colors"
-						disabled={transformations.some(t =>
+						disabled={!isDataLoaded || !columnsLoaded || transformations.some(t =>
 							(t.transformation_operation === "arithmetic" && transformationsValidity[t.id] === false) ||
 							(t.transformation_operation === "string" && transformationsValidity[t.id] === false)
 						)}

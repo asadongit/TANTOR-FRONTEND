@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useStateContext } from "../context/contextViewProvider";
 import { Trash, X } from "lucide-react";
-import { toast } from "react-hot-toast";
+import { Icon } from "@iconify/react"; // Added for toast icons
 
 const getColumnGroupType = (columnType) => {
   if (!columnType) return null;
@@ -149,6 +149,7 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
   const { userSelections, finalPayload } = useStateContext();
   const [useComplexFilter, setUseComplexFilter] = useState(false);
   const [complexFilterQuery, setComplexFilterQuery] = useState('');
+  const [toast, setToast] = useState({ show: false, message: '', type: '' }); // Added toast state
 
   const [filterGroups, setFilterGroups] = useState(() => {
     // Default empty group structure
@@ -248,10 +249,14 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
 
     if (errors.length > 0) {
       errors.forEach(error => {
-        toast.error(error, {
-          position: "top-right",
-          duration: 5000,
+        setToast({
+          show: true,
+          message: error,
+          type: "error",
         });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 5000);
       });
       return false;
     }
@@ -509,50 +514,47 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
     if (useComplexFilter) {
       return complexFilterQuery || "Enter your custom WHERE condition above";
     }
-  
+
     const buildGroupSQL = (group) => {
       if (!group.conditions || !Array.isArray(group.conditions)) return '()';
-  
+
       const conditionsSQL = group.conditions
         .map((condition, index) => {
           const joinType = index === 0 ? '' : ` ${condition.joinType || 'AND'} `;
-  
+
           if (condition.type === 'condition') {
             if (!condition.column || (!condition.value && condition.operator !== 'between') ||
               (condition.operator === 'between' && (!condition.value || !condition.value2))) {
               return null;
             }
-  
+
             const columnType = getColumnGroupType(condition.conditionType);
             const shouldQuote = columnType !== 'NUMBER';
-  
+
             if (condition.operator === 'between') {
-              return `${joinType}${condition.column} BETWEEN ${
-                shouldQuote ? `'${condition.value}'` : condition.value
-              } AND ${
-                shouldQuote ? `'${condition.value2}'` : condition.value2
-              }`;
+              return `${joinType}${condition.column} BETWEEN ${shouldQuote ? `'${condition.value}'` : condition.value
+                } AND ${shouldQuote ? `'${condition.value2}'` : condition.value2
+                }`;
             }
-            return `${joinType}${condition.column} ${condition.operator} ${
-              shouldQuote ? `'${condition.value}'` : condition.value
-            }`;
+            return `${joinType}${condition.column} ${condition.operator} ${shouldQuote ? `'${condition.value}'` : condition.value
+              }`;
           } else {
             const nestedSQL = buildGroupSQL(condition);
             return nestedSQL ? `${joinType}${nestedSQL}` : null;
           }
         })
         .filter(Boolean);
-  
+
       return conditionsSQL.length > 0 ? `(${conditionsSQL.join('')})` : null;
     };
-  
+
     const groupsSQL = filterGroups
       .map((group, index) => {
         const groupSQL = buildGroupSQL(group);
         return index === 0 ? groupSQL : groupSQL ? `${group.joinType} ${groupSQL}` : null;
       })
       .filter(Boolean);
-  
+
     return groupsSQL.join(' ') || 'No valid conditions to generate SQL';
   };
 
@@ -624,10 +626,14 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
   const handleApplyFilters = () => {
     if (useComplexFilter) {
       if (!complexFilterQuery.trim()) {
-        toast.error("Please enter a valid SQL WHERE condition", {
-          position: "top-right",
-          duration: 5000,
+        setToast({
+          show: true,
+          message: "Please enter a valid SQL WHERE condition",
+          type: "error",
         });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 5000);
         return;
       }
       onApply(null, { complex_query: complexFilterQuery });
@@ -858,7 +864,6 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
                     {renderConditions(group.conditions, group.id, group.depth || 0)}
                   </div>
                 </div>
-
               ))}
 
               <div className="flex items-center gap-2">
@@ -872,8 +877,7 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
                 </select>
                 <button
                   onClick={() => addNewGroup()}
-                  className="bg-[#8E77BB] text-white rounded hover:bg-opacity-9
-                   text-sm flex items-center gap-1 px-2 py-1"
+                  className="bg-[#8E77BB] text-white rounded hover:bg-opacity-90 text-sm flex items-center gap-1 px-2 py-1"
                 >
                   <span>+</span>
                   <span>Add New Group</span>
@@ -926,6 +930,28 @@ const FilterComponent = ({ setIsOpen, columns, onApply }) => {
             Apply Filters
           </button>
         </div>
+
+        {/* Custom Toast */}
+        {toast.show && (
+          <div
+            className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === "success"
+                ? "bg-green-100 text-green-800 border-l-4 border-green-500"
+                : "bg-red-100 text-red-800 border-l-4 border-red-500"
+              }`}
+          >
+            <Icon
+              icon={toast.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"}
+              className="h-5 w-5"
+            />
+            <p>{toast.message}</p>
+            <button
+              onClick={() => setToast({ show: false, message: "", type: "" })}
+              className="ml-2 text-gray-500 hover:text-gray-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

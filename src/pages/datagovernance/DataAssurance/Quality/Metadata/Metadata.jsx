@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, X, Eye, ArrowUp, ArrowDown, ArrowUpDown, List, RefreshCcw } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useAuth } from '../../../../../context/AuthContext.jsx';
@@ -96,8 +96,27 @@ const Metadata = () => {
   const [metricsData, setMetricsData] = useState([]);
   const [tableData, setTableData] = useState([]);
   const [selectedGroups, setSelectedGroups] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const rowsPerPage = 5;
   const { token, decodedToken } = useAuth();
+
+  // Function to map and sort metrics data
+  const mapMetricsData = (scoreData) => {
+    const keys = Object.keys(scoreData);
+    const sortedKeys = keys.sort((a, b) => {
+      if (a.toLowerCase() === 'overall') return -1;
+      if (b.toLowerCase() === 'overall') return 1;
+      return a.localeCompare(b);
+    });
+
+    return sortedKeys.map((key) => ({
+      icon: "material-symbols:tab-group-outline",
+      bgcolor: "bg-[#8d77ba] bg-opacity-25",
+      iconcolor: "text-[#8d77ba]",
+      title: key,
+      count: scoreData[key] === 'N/A' ? 'N/A' : `${scoreData[key]}%`
+    }));
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -118,14 +137,7 @@ const Metadata = () => {
         }
 
         const scoreData = await scoreResponse.json();
-        const mappedMetrics = Object.keys(scoreData).map((key) => ({
-          icon: "material-symbols:tab-group-outline",
-          bgcolor: "bg-[#8d77ba] bg-opacity-25",
-          iconcolor: "text-[#8d77ba]",
-          title: key,
-          count: scoreData[key] === 'N/A' ? 'N/A' : `${scoreData[key]}%`
-        }));
-        setMetricsData(mappedMetrics);
+        setMetricsData(mapMetricsData(scoreData));
 
         // Fetch table data
         const tableResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/metadata/dashboard/table`, {
@@ -193,14 +205,7 @@ const Metadata = () => {
       }
 
       const scoreData = await scoreResponse.json();
-      const mappedMetrics = Object.keys(scoreData).map((key) => ({
-        icon: "material-symbols:tab-group-outline",
-        bgcolor: "bg-[#8d77ba] bg-opacity-25",
-        iconcolor: "text-[#8d77ba]",
-        title: key,
-        count: scoreData[key] === 'N/A' ? 'N/A' : `${scoreData[key]}%`
-      }));
-      setMetricsData(mappedMetrics);
+      setMetricsData(mapMetricsData(scoreData));
 
       // Refresh table data
       const tableResponse = await fetch(`${window._env_?.VITE_FAST_API}/scores/metadata/dashboard/table`, {
@@ -228,6 +233,7 @@ const Metadata = () => {
         lastRun: new Date(item.last_run_date).toLocaleDateString('en-GB')
       }));
       setTableData(mappedTableData);
+      setSortConfig({ key: null, direction: 'asc' })
 
       setToast({
         show: true,
@@ -254,11 +260,53 @@ const Metadata = () => {
     setCurrentPage(1);
   };
 
-  const filteredData = tableData.filter(item =>
-    item.connection.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.database.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.schema.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSort = (key) => {
+    setSortConfig(prev => {
+      if (prev.key === key && prev.direction === 'asc') {
+        return { key, direction: 'desc' };
+      }
+      return { key, direction: 'asc' };
+    });
+    setCurrentPage(1);
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'asc' ? (
+        <ArrowUp className="h-4 w-4 inline-block ml-1" />
+      ) : (
+        <ArrowDown className="h-4 w-4 inline-block ml-1" />
+      );
+    }
+    return <ArrowUpDown className="h-4 w-4 inline-block ml-1 opacity-50" />;
+  };
+
+  const filteredData = tableData
+    .filter(item =>
+      item.connection.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.database.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.schema.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+      let aValue = a[sortConfig.key] || '';
+      let bValue = b[sortConfig.key] || '';
+      // Handle numeric sorting for 'id' and 'overall' columns
+      if (sortConfig.key === 'id') {
+        aValue = parseInt(aValue, 10) || 0;
+        bValue = parseInt(bValue, 10) || 0;
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      if (sortConfig.key === 'overall') {
+        aValue = parseFloat(aValue) || 0;
+        bValue = parseFloat(bValue) || 0;
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      // String sorting for other columns
+      return sortConfig.direction === 'asc'
+        ? aValue.toString().localeCompare(bValue.toString())
+        : bValue.toString().localeCompare(aValue.toString());
+    });
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
   const indexOfLastItem = currentPage * rowsPerPage;
@@ -287,7 +335,7 @@ const Metadata = () => {
 
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
-            'bg-red-100 text-red-800 border-l-4 border-red-500'
+          'bg-red-100 text-red-800 border-l-4 border-red-500'
           }`}>
           <Icon
             icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
@@ -328,29 +376,19 @@ const Metadata = () => {
           </div>
 
           <button
-            className={`p-1 px-1.5 rounded-lg border ${viewMode === 'list' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
+            type="button"
             onClick={() => setViewMode(viewMode === 'both' ? 'list' : 'both')}
             title={viewMode === 'both' ? "Hide Card View" : "Show Both Views"}
+            className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            <Icon
-              icon="material-symbols-light:format-list-bulleted"
-              width="24"
-              height="24"
-              className="text-gray-600"
-            />
+            <List className="h-5 w-5" />
           </button>
-
           <button
-            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
             onClick={handleRefresh}
             disabled={isLoading}
+            className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            <Icon
-              icon="material-symbols:autorenew-rounded"
-              width="24"
-              height="24"
-              className={`text-gray-600 ${isLoading ? 'icon-rotate' : ''}`}
-            />
+            <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -386,13 +424,25 @@ const Metadata = () => {
         <table className="w-full">
           <thead>
             <tr className="bg-[#29304a] text-white">
-              <th className="text-left p-4 first:rounded-tl-lg">ID</th>
-              <th className="text-left p-4">Connection</th>
-              <th className="text-left p-4">Database</th>
-              <th className="text-left p-4">Schema</th>
-              <th className="text-left p-4">Overall</th>
-              <th className="text-left p-4 last:rounded-tr-lg flex justify-center items-center">Group Scores</th>
-              <th className="text-left p-4 last:rounded-tr-lg">Last run</th>
+              <th className="text-left p-4 first:rounded-tl-lg cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('id')}>
+                <span className="inline-flex items-center">ID {getSortIcon('id')}</span>
+              </th>
+              <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('connection')}>
+                <span className="inline-flex items-center">Connection {getSortIcon('connection')}</span>
+              </th>
+              <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('database')}>
+                <span className="inline-flex items-center">Database {getSortIcon('database')}</span>
+              </th>
+              <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('schema')}>
+                <span className="inline-flex items-center">Schema {getSortIcon('schema')}</span>
+              </th>
+              <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('overall')}>
+                <span className="inline-flex items-center">Overall {getSortIcon('overall')}</span>
+              </th>
+              <th className="text-center p-4">Group Scores</th>
+              <th className="text-left p-4 last:rounded-tr-lg cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('lastRun')}>
+                <span className="inline-flex items-center">Last Run {getSortIcon('lastRun')}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -444,10 +494,10 @@ const Metadata = () => {
                   onClick={() => goToPage(index + 1)}
                   disabled={isLoading}
                   className={`px-3 py-1 mx-1 rounded-md ${currentPage === index + 1
-                      ? 'bg-[#8e78b7] text-white'
-                      : isLoading
-                        ? 'text-gray-300 cursor-not-allowed'
-                        : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-[#8e78b7] text-white'
+                    : isLoading
+                      ? 'text-gray-300 cursor-not-allowed'
+                      : 'text-gray-600 hover:bg-gray-100'
                     }`}
                 >
                   {index + 1}

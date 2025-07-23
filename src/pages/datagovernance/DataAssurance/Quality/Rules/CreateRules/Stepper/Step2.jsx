@@ -44,6 +44,93 @@ const CustomMultiValueLabel = props => {
   );
 };
 
+const InfoModal = ({ onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-[#8d77ba]">Instruction Manual – Writing Rule & Score Queries</h2>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <X size={24} />
+            </button>
+          </div>
+
+          <div className="prose prose-sm max-w-none">
+            <p className="text-gray-700 mb-4">
+              <strong>Note:</strong> All queries are executed on the Trino engine. Please follow Trino-compatible SQL syntax for all rule and score queries.
+            </p>
+
+            <p className="mb-6">
+              <strong>Reference:</strong>{' '}
+              <a
+                href="https://trino.io/docs/current/functions.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#8d77ba] hover:underline"
+              >
+                Trino SQL Documentation
+              </a>
+            </p>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-[#8d77ba] border-b pb-2 mb-3">Table Reference Format</h3>
+              <p className="mb-2">Use fully qualified table names:</p>
+              <div className="bg-gray-50 p-3 rounded-md font-mono text-sm mb-2">
+                connection.schema.table
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-[#8d77ba] border-b pb-2 mb-3">Column Reference Format</h3>
+              <p className="mb-2">Use either:</p>
+              <div className="bg-gray-50 p-3 rounded-md font-mono text-sm mb-2">
+                Simple: columnname<br />
+                Fully qualified: connection.schema.table.column
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-[#8d77ba] border-b pb-2 mb-3">Rule Query Instructions</h3>
+              <ul className="list-disc pl-5 space-y-2">
+                <li>Rule queries should return violating rows.</li>
+                <li>If the query returns no rows, the rule is considered satisfied.</li>
+                <li>If the query returns any rows, the rule is violated.</li>
+              </ul>
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-[#8d77ba] border-b pb-2 mb-3">Score Query Instructions</h3>
+              <ul className="list-disc pl-5 space-y-2 mb-3">
+                <li>Score query must return two columns:</li>
+                <ul className="list-[circle] pl-5 mt-1 space-y-1">
+                  <li><code className="bg-gray-100 px-1 rounded">vio_count</code> – number of violating rows.</li>
+                  <li><code className="bg-gray-100 px-1 rounded">total_count</code> – total number of applicable rows.</li>
+                </ul>
+              </ul>
+              <p className="mt-3">
+                Score is calculated in backend as:
+              </p>
+              <div className="bg-gray-50 p-3 rounded-md font-mono text-sm mt-2">
+                (1 - (vio_count / total_count)) * 100
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-[#8d77ba] text-white rounded-md hover:bg-[#7a67a0] transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSummary = false, selectedRuleIds = [] }) {
   const { stepData, setStepData } = useStepData();
   const { token } = useAuth();
@@ -54,34 +141,69 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoaded, setSearchLoaded] = useState(false);
-  const editorRef = useRef(null);
+  const [activeTab, setActiveTab] = useState('rule');
+  const ruleEditorRef = useRef(null);
+  const scoreEditorRef = useRef(null);
   const [isCustomCreate, setIsCustomCreate] = useState(false);
   const [policyIds, setPolicyIds] = useState([]);
   const [isLoadingConnections, setIsLoadingConnections] = useState(false);
   const [isLoadingSchemas, setIsLoadingSchemas] = useState({});
   const [isLoadingTables, setIsLoadingTables] = useState({});
   const [isLoadingColumns, setIsLoadingColumns] = useState({});
+  const initialStep2Data = stepData.step2 || step2Data;
 
-  const [validationStatus, setValidationStatusState] = useState(() => stepData.validationStatus || {});
+  const [validationStatus, setValidationStatusState] = useState(() => {
+    if (stepData.validationStatus && Object.keys(stepData.validationStatus).length > 0) {
+      return stepData.validationStatus;
+    }
+    const newStatus = {};
+    if (Array.isArray(initialStep2Data)) {
+      initialStep2Data.forEach(ruleObj => {
+        const groupName = ruleObj.group;
+        const ruleId = ruleObj.rule?.id || ruleObj.id || ruleObj.ruleId;
+        const ruleIdx = data.rules[groupName]?.findIndex(r => r.id === ruleId);
+
+        if (ruleIdx !== -1) {
+          const queryKey = `${groupName}__${ruleIdx}`;
+          (ruleObj.connection_details || []).forEach((conn, connIdx) => {
+            const connKey = `${queryKey}__${connIdx}`;
+            newStatus[connKey] = {
+              ruleQueryStatus: 'validate_again',
+              scoreQueryStatus: data?.category.toLowerCase() === 'custom' ? 'validate_again' : null,
+            };
+          });
+        }
+      });
+    }
+    return newStatus;
+  });
 
   useEffect(() => {
     setStepData(prev => ({ ...prev, validationStatus }));
   }, [validationStatus]);
 
-  useEffect(() => {
-    if (stepData.validationStatus) {
-      setValidationStatusState(stepData.validationStatus);
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (stepData.validationStatus) {
+  //     setValidationStatusState(stepData.validationStatus);
+  //   }
+  // }, []);
 
   const setValidationStatus = useCallback((updater) => {
     setValidationStatusState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      return { ...prev, ...next };
+      const updated = { ...prev };
+      for (const key in next) {
+        if (updated[key]) {
+          updated[key] = { ...updated[key], ...next[key] };
+        } else {
+          updated[key] = next[key];
+        }
+      }
+      return updated;
     });
   }, []);
 
-  const initialStep2Data = stepData.step2 || step2Data;
+
 
   const [expandedGroups, setExpandedGroups] = useState({});
   const [leftPanelWidth, setLeftPanelWidth] = useState(30);
@@ -97,6 +219,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
 
   function buildInitialState() {
     const initialQueries = {};
+    const initialScoreQueries = {};
     const initialSelected = {};
     const initialConnections = {};
 
@@ -104,10 +227,16 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
       initialStep2Data.forEach(ruleObj => {
         const groupName = ruleObj.group;
         if (!initialQueries[groupName]) initialQueries[groupName] = [];
+        if (!initialScoreQueries[groupName]) initialScoreQueries[groupName] = [];
         initialQueries[groupName].push({
           id: ruleObj.rule?.id || ruleObj.id || ruleObj.ruleId,
           name: ruleObj.rule?.name || ruleObj.ruleName,
           query: ruleObj.rule?.query || ruleObj.query || '',
+        });
+        initialScoreQueries[groupName].push({
+          id: ruleObj.rule?.id || ruleObj.id || ruleObj.ruleId,
+          name: ruleObj.rule?.name || ruleObj.ruleName,
+          score_query: ruleObj.rule?.score_query || ruleObj.score_query || '',
         });
         if (!initialSelected[groupName]) initialSelected[groupName] = new Set();
         initialSelected[groupName].add(ruleObj.rule?.id || ruleObj.id || ruleObj.ruleId);
@@ -121,7 +250,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           connection: conn.connection || '',
           schema: Array.isArray(conn.schema) ? conn.schema.map(s => (typeof s === 'string' ? s.split('.').pop() : s)) : (conn.schema ? [conn.schema.split('.').pop()] : []),
           table: Array.isArray(conn.tables) ? conn.tables.map(t => (typeof t === 'string' ? t.split('.').pop() : t)) : (conn.tables ? [conn.tables.split('.').pop()] : []),
-          column: Array.isArray(conn.columns) ? conn.columns.map(c => (typeof c === 'string' ? c.split('.').pop() : c)) : (conn.columns ? [conn.columns.split('.').pop()] : []),
+          column: Array.isArray(conn.columns) ? conn.columns : (conn.columns ? [conn.columns] : []),
         }));
       });
     } else {
@@ -129,7 +258,12 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
         initialQueries[groupName] = rules.map(rule => ({
           id: rule.id,
           name: rule.name,
-          query: rule.query || `No Query defined for Rule:  "${rule.name}"`,
+          query: rule.query || `No Query defined for Rule: "${rule.name}"`,
+        }));
+        initialScoreQueries[groupName] = rules.map(rule => ({
+          id: rule.id,
+          name: rule.name,
+          score_query: rule.score_query || `No Score Query defined for Rule: "${rule.name}"`,
         }));
         initialSelected[groupName] = new Set(rules.map(rule => rule.id));
         rules.forEach((rule, rIdx) => {
@@ -146,22 +280,25 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
         });
       });
     }
-    return { initialQueries, initialSelected, initialConnections };
+    return { initialQueries, initialScoreQueries, initialSelected, initialConnections };
   }
 
   const initialStateRef = useRef(buildInitialState());
   const [queries, setQueries] = useState(initialStateRef.current.initialQueries);
+  const [scoreQueries, setScoreQueries] = useState(initialStateRef.current.initialScoreQueries);
   const [selectedRules, setSelectedRules] = useState(initialStateRef.current.initialSelected);
   const [connectionsByQuery, setConnectionsByQuery] = useState(initialStateRef.current.initialConnections);
 
   useEffect(() => {
     if (initialStep2Data && Array.isArray(initialStep2Data)) {
-      const { initialQueries, initialSelected, initialConnections } = buildInitialState();
+      const { initialQueries, initialScoreQueries, initialSelected, initialConnections } = buildInitialState();
       setQueries(initialQueries);
+      setScoreQueries(initialScoreQueries);
       setSelectedRules(initialSelected);
       setConnectionsByQuery(initialConnections);
     }
   }, [initialStep2Data]);
+
 
   const toggleGroup = (groupName) => {
     setExpandedGroups(prev => ({
@@ -211,24 +348,37 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     };
   }, [isDragging]);
 
-  const handleQueryChange = (value) => {
+  const handleQueryChange = (value, isScoreQuery = false) => {
     const currentGroup = groupNames[activeGroupIndex];
-    const updatedQueries = { ...queries };
-    if (updatedQueries[currentGroup] && updatedQueries[currentGroup][activeRuleIndex]) {
-      updatedQueries[currentGroup][activeRuleIndex].query = value;
-      setQueries(updatedQueries);
+    const queryKey = `${currentGroup}__${activeRuleIndex}`;
 
-      const queryKey = `${currentGroup}__${activeRuleIndex}`;
-      const conns = connectionsByQuery[queryKey] || [];
-      setValidationStatus(prev => {
-        const updated = { ...prev };
-        conns.forEach((_, idx) => {
-          const connKey = `${queryKey}__${idx}`;
-          delete updated[connKey];
-        });
-        return updated;
-      });
+    if (isScoreQuery) {
+      const updatedScoreQueries = { ...scoreQueries };
+      if (updatedScoreQueries[currentGroup] && updatedScoreQueries[currentGroup][activeRuleIndex]) {
+        updatedScoreQueries[currentGroup][activeRuleIndex].score_query = value;
+        setScoreQueries(updatedScoreQueries);
+      }
+    } else {
+      const updatedQueries = { ...queries };
+      if (updatedQueries[currentGroup] && updatedQueries[currentGroup][activeRuleIndex]) {
+        updatedQueries[currentGroup][activeRuleIndex].query = value;
+        setQueries(updatedQueries);
+      }
     }
+
+    const conns = connectionsByQuery[queryKey] || [];
+    setValidationStatus(prev => {
+      const updated = { ...prev };
+      conns.forEach((_, idx) => {
+        const connKey = `${queryKey}__${idx}`;
+        if (isScoreQuery) {
+          updated[connKey] = { ...(updated[connKey] || {}), scoreQueryStatus: 'validate_again' };
+        } else {
+          updated[connKey] = { ...(updated[connKey] || {}), ruleQueryStatus: 'validate_again' };
+        }
+      });
+      return updated;
+    });
   };
 
   const handleRuleCheckbox = (groupName, ruleId) => {
@@ -289,6 +439,9 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     return { idx, total: selected.length };
   };
 
+  const { idx: currentFlatIndex } = getCurrentSelectedFlatIndex();
+  const editorKey = `${activeGroupIndex}-${activeRuleIndex}-${currentFlatIndex}`;
+
   const goToNextQuery = () => {
     const selected = getAllSelectedRules();
     const { idx } = getCurrentSelectedFlatIndex();
@@ -314,13 +467,12 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     setActiveRuleIndex(ruleIdx);
   };
 
-  const getQueryById = (data, id) => {
+  const getQueryById = (data, id, isScoreQuery = false) => {
     if (!data?.rules) return '';
-
     for (const group of Object.values(data.rules)) {
       const rule = group.find(rule => rule.id === id);
       if (rule) {
-        return rule.query || '';
+        return isScoreQuery ? (rule.score_query || '') : (rule.query || '');
       }
     }
     return '';
@@ -331,18 +483,26 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     const rule = queries[currentGroup]?.[activeRuleIndex];
     if (rule && selectedRules[currentGroup]?.has(rule.id)) {
       const givenQuery = getQueryById(data, rule.id);
+      const givenScoreQuery = getQueryById(data, rule.id, true);
       const isQueryEmpty = givenQuery === '' || givenQuery == null;
-      setIsCustomCreate(!edit && data?.category.toLowerCase() === 'custom' && !isQueryEmpty);
+      const isScoreQueryEmpty = givenScoreQuery === '' || givenScoreQuery == null;
+      setIsCustomCreate(!edit && data?.category.toLowerCase() === 'custom' && (!isQueryEmpty || !isScoreQueryEmpty));
     } else {
       setIsCustomCreate(false);
     }
   }, [activeGroupIndex, activeRuleIndex, queries, selectedRules, data, edit]);
 
-  const getCurrentQuery = () => {
+  const getCurrentQuery = (isScoreQuery = false) => {
     const currentGroup = groupNames[activeGroupIndex];
-    const rule = queries[currentGroup]?.[activeRuleIndex];
-    if (!rule || !selectedRules[currentGroup]?.has(rule.id)) return '';
-    return rule.query;
+    if (isScoreQuery) {
+      const rule = scoreQueries[currentGroup]?.[activeRuleIndex];
+      if (!rule || !selectedRules[currentGroup]?.has(rule.id)) return '';
+      return rule.score_query;
+    } else {
+      const rule = queries[currentGroup]?.[activeRuleIndex];
+      if (!rule || !selectedRules[currentGroup]?.has(rule.id)) return '';
+      return rule.query;
+    }
   };
 
   const [connectionOptions, setConnectionOptions] = useState([]);
@@ -510,25 +670,27 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
         const idx = newConnections.findIndex(conn => conn.id === changedId);
         if (idx !== -1) {
           const connKey = `${queryKey}__${idx}`;
-          if (
-            prev[connKey] === 'success' ||
-            prev[connKey] === 'error' ||
-            prev[connKey] === 'pending' ||
-            prev[connKey] === 'validate_again'
-          ) {
-            updated[connKey] = "validate_again";
-          } else {
-            delete updated[connKey];
-          }
+          updated[connKey] = {
+            ruleQueryStatus: 'validate_again',
+            scoreQueryStatus: data?.category.toLowerCase() === 'custom' ? 'validate_again' : null,
+          };
         }
       }
       if (isDuplicate) {
         newConnections.forEach((conn, idx) => {
           const connKey = `${queryKey}__${idx}`;
-          if (!(connKey in prev)) {
-            delete updated[connKey];
+          if (!prev[connKey]) {
+            updated[connKey] = {
+              ruleQueryStatus: 'validate_again',
+              scoreQueryStatus: 'validate_again',
+            };
           }
         });
+        for (const key in updated) {
+          if (key.startsWith(queryKey + '__') && !newConnections.some((c, i) => `${queryKey}__${i}` === key)) {
+            delete updated[key];
+          }
+        }
       }
       return updated;
     });
@@ -613,6 +775,9 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
   };
 
   const handleRefresh = (conn) => {
+    const connIdx = connections.findIndex(c => c.id === conn.id);
+    if (connIdx === -1) return;
+
     setConnectionsForCurrent(
       connections.map(c =>
         c.id === conn.id
@@ -620,6 +785,17 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           : c
       )
     );
+
+    const queryKey = getCurrentQueryKey();
+    const connKey = `${queryKey}__${connIdx}`;
+
+    setValidationStatus(prev => ({
+      ...prev,
+      [connKey]: {
+        ruleQueryStatus: 'validate_again',
+        scoreQueryStatus: data?.category.toLowerCase() === 'custom' ? 'validate_again' : null,
+      }
+    }));
   };
 
   const generateResultJson = () => {
@@ -643,14 +819,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
               return schema ? `${connection}.${schema}.${tableName}` : `${connection}.${tableName}`;
             });
 
-            const columns = (conn.column || []).map(c => {
-              const columnName = c.split('.').pop();
-              const schema = (conn.schema || [])[0] || '';
-              const table = (conn.table || [])[0] || '';
-              return schema && table
-                ? `${connection}.${schema}.${table}.${columnName}`
-                : `${connection}.${columnName}`;
-            });
+            const columns = conn.column || [];
 
             return {
               connection,
@@ -663,6 +832,8 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
         const originalRule =
           (data.rules[groupName] || []).find(r => r.id === ruleObj.id) || {};
 
+        const scoreQueryObj = (scoreQueries[groupName] || []).find(sq => sq.id === ruleObj.id) || {};
+
         const ruleData = {
           ...(ruleObj.id ? { id: ruleObj.id } : {}),
           category,
@@ -672,6 +843,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
             id: ruleObj.id,
             name: ruleObj.name,
             query: ruleObj.query,
+            score_query: scoreQueryObj.score_query || '',
             description: originalRule.description ?? originalRule.desc ?? "",
             severity: originalRule.severity ?? "High",
             status: originalRule.status ?? "Active",
@@ -775,7 +947,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     return result;
   };
 
-  const handleRunSQL = async (groupName, ruleIdx, connIdx) => {
+  const handleRunSQL = async (groupName, ruleIdx, connIdx, isScoreQuery = false) => {
     const queryKey = `${groupName}__${ruleIdx}`;
     const conns = connectionsByQuery[queryKey] || [];
     const targetConn = conns[connIdx];
@@ -788,18 +960,24 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     for (const idx of sameConnIndices) {
       const conn = conns[idx];
       const connKey = `${queryKey}__${idx}`;
-      const rule = queries[groupName][ruleIdx];
+      const rule = isScoreQuery ? scoreQueries[groupName][ruleIdx] : queries[groupName][ruleIdx];
       if (!rule || !conn) continue;
 
+      const queryField = isScoreQuery ? 'score_query' : 'query';
+      const statusField = isScoreQuery ? 'scoreQueryStatus' : 'ruleQueryStatus';
+
       const replacedQuery = replacePlaceholders(
-        rule.query,
+        rule[queryField],
         conn.connection,
         conn.schema,
         conn.table,
         conn.column
       );
 
-      setValidationStatus(prev => ({ ...prev, [connKey]: 'pending' }));
+      setValidationStatus(prev => ({
+        ...prev,
+        [connKey]: { ...(prev[connKey] || {}), [statusField]: 'pending' }
+      }));
 
       try {
         const res = await fetch(`${window._env_?.VITE_FAST_API}/rules/executerule`, {
@@ -811,12 +989,21 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           body: JSON.stringify({ query: replacedQuery }),
         });
         if (res.ok) {
-          setValidationStatus(prev => ({ ...prev, [connKey]: 'success' }));
+          setValidationStatus(prev => ({
+            ...prev,
+            [connKey]: { ...(prev[connKey] || {}), [statusField]: 'success' }
+          }));
         } else {
-          setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
+          setValidationStatus(prev => ({
+            ...prev,
+            [connKey]: { ...(prev[connKey] || {}), [statusField]: 'error' }
+          }));
         }
       } catch {
-        setValidationStatus(prev => ({ ...prev, [connKey]: 'error' }));
+        setValidationStatus(prev => ({
+          ...prev,
+          [connKey]: { ...(prev[connKey] || {}), [statusField]: 'error' }
+        }));
       }
     }
   };
@@ -826,24 +1013,42 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     groupNames.forEach((groupName) => {
       (queries[groupName] || []).forEach((ruleObj, ruleIdx) => {
         if (!selectedRules[groupName]?.has(ruleObj.id)) return;
+
         const queryKey = `${groupName}__${ruleIdx}`;
         const conns = connectionsByQuery[queryKey] || [];
+
         conns.forEach((conn, connIdx) => {
           if (!conn.checked) return;
+
           const connKey = `${queryKey}__${connIdx}`;
-          if (validationStatus[connKey] !== 'success') {
-            all = false;
+          const currentValidation = validationStatus[connKey];
+
+          if (data?.category.toLowerCase() === 'pre-built') {
+            if (currentValidation?.ruleQueryStatus !== 'success') {
+              all = false;
+              return;
+            }
+          } else {
+            if (currentValidation?.ruleQueryStatus !== 'success' || currentValidation?.scoreQueryStatus !== 'success') {
+              all = false;
+              return;
+            }
           }
         });
+        if (!all) return;
       });
+      if (!all) return;
     });
     return all;
   })();
 
   const getUniqueValidationStatuses = () => {
     const statuses = new Set(['all']);
-    Object.values(validationStatus).forEach(status => {
-      if (status) statuses.add(status);
+    Object.values(validationStatus).forEach(connStatus => {
+      if (connStatus.ruleQueryStatus) statuses.add(connStatus.ruleQueryStatus);
+      if (connStatus.scoreQueryStatus && data?.category.toLowerCase() === 'custom') {
+        statuses.add(connStatus.scoreQueryStatus);
+      }
     });
     return Array.from(statuses);
   };
@@ -852,15 +1057,29 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     const queryKey = `${groupName}__${ruleIdx}`;
     const connKey = `${queryKey}__${connIdx}`;
     const rule = queries[groupName]?.[ruleIdx];
+    const scoreRule = scoreQueries[groupName]?.[ruleIdx];
+    const currentValidation = validationStatus[connKey] || {};
 
-    if (validationFilter !== 'all') {
-      if (validationStatus[connKey] !== validationFilter) {
-        return false;
+    const meetsValidationFilter = () => {
+      if (validationFilter === 'all') return true;
+      if (data?.category.toLowerCase() === 'pre-built') {
+        return currentValidation.ruleQueryStatus === validationFilter;
+      } else {
+        if (validationFilter === 'success') {
+          return currentValidation.ruleQueryStatus === 'success' && currentValidation.scoreQueryStatus === 'success';
+        }
+        return currentValidation.ruleQueryStatus === validationFilter || currentValidation.scoreQueryStatus === validationFilter;
       }
+    };
+
+    if (!meetsValidationFilter()) {
+      return false;
     }
 
-    if (querySearchText && rule) {
-      return rule.query.toLowerCase().includes(querySearchText.toLowerCase());
+    if (querySearchText && rule && scoreRule) {
+      const queryMatch = (rule.query || '').toLowerCase().includes(querySearchText.toLowerCase());
+      const scoreQueryMatch = (scoreRule.score_query || '').toLowerCase().includes(querySearchText.toLowerCase());
+      return queryMatch || scoreQueryMatch;
     }
 
     return true;
@@ -880,13 +1099,24 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
         if (!selectedRules[groupName]?.has(ruleObj.id)) return;
 
         const query = ruleObj.query || '';
-        let lastIndex = 0;
+        const scoreQuery = scoreQueries[groupName]?.[rIdx]?.score_query || '';
+        let lastIndexQuery = 0;
+        let lastIndexScoreQuery = 0;
         let count = 0;
-        while (lastIndex !== -1) {
-          lastIndex = query.toLowerCase().indexOf(querySearchText.toLowerCase(), lastIndex);
-          if (lastIndex !== -1) {
+
+        while (lastIndexQuery !== -1) {
+          lastIndexQuery = query.toLowerCase().indexOf(querySearchText.toLowerCase(), lastIndexQuery);
+          if (lastIndexQuery !== -1) {
             count++;
-            lastIndex += querySearchText.length;
+            lastIndexQuery += querySearchText.length;
+          }
+        }
+
+        while (lastIndexScoreQuery !== -1) {
+          lastIndexScoreQuery = scoreQuery.toLowerCase().indexOf(querySearchText.toLowerCase(), lastIndexScoreQuery);
+          if (lastIndexScoreQuery !== -1) {
+            count++;
+            lastIndexScoreQuery += querySearchText.length;
           }
         }
 
@@ -909,7 +1139,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
     setCurrentSearchIndex(results.length > 0 ? 0 : -1);
 
     return results;
-  }, [querySearchText, groupNames, queries, selectedRules]);
+  }, [querySearchText, groupNames, queries, scoreQueries, selectedRules]);
 
   useEffect(() => {
     if (querySearchText.trim()) {
@@ -918,8 +1148,11 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
       setSearchResults([]);
       setCurrentSearchIndex(-1);
 
-      if (editorRef.current?.editor) {
-        editorRef.current.editor.getSession().getSelection().clearSelection();
+      if (ruleEditorRef.current?.editor) {
+        ruleEditorRef.current.editor.getSession().getSelection().clearSelection();
+      }
+      if (scoreEditorRef.current?.editor) {
+        scoreEditorRef.current.editor.getSession().getSelection().clearSelection();
       }
     }
   }, [querySearchText]);
@@ -933,21 +1166,27 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
 
       setSearchLoaded(false);
       setTimeout(() => {
-        if (editorRef.current?.editor) {
-          const editor = editorRef.current.editor;
-
+        if (activeTab === 'rule' && ruleEditorRef.current?.editor) {
+          const editor = ruleEditorRef.current.editor;
           editor.findAll(querySearchText, {
             caseSensitive: false,
             wholeWord: false,
             regExp: false,
             preventScroll: true
           });
-
-          setSearchLoaded(true);
+        } else if (activeTab === 'score' && scoreEditorRef.current?.editor) {
+          const editor = scoreEditorRef.current.editor;
+          editor.findAll(querySearchText, {
+            caseSensitive: false,
+            wholeWord: false,
+            regExp: false,
+            preventScroll: true
+          });
         }
+        setSearchLoaded(true);
       }, 100);
     }
-  }, [currentSearchIndex, searchResults, querySearchText]);
+  }, [currentSearchIndex, searchResults, querySearchText, activeTab]);
 
   const goToNextSearchResult = () => {
     if (searchResults.length === 0) return;
@@ -978,6 +1217,30 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
       }
     }
   };
+
+  const [showInfoModal, setShowInfoModal] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'score' && scoreEditorRef.current?.editor) {
+      const editor = scoreEditorRef.current.editor;
+      const currentScoreQuery = getCurrentQuery(true);
+      // editor.setValue(currentScoreQuery || '');
+      if (querySearchText) {
+        setTimeout(() => {
+          editor.findAll(querySearchText, {
+            caseSensitive: false,
+            wholeWord: false,
+            regExp: false,
+            preventScroll: true
+          });
+          setSearchLoaded(true);
+        }, 100);
+      } else {
+        editor.getSession().getSelection().clearSelection();
+        setSearchLoaded(true);
+      }
+    }
+  }, [activeTab, querySearchText]);
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -1164,11 +1427,11 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                 <div className="relative flex items-center">
                   <input
                     type="text"
-                    placeholder="Search in SQL queries..."
+                    placeholder="Search in queries..."
                     value={querySearchText}
                     onChange={(e) => setQuerySearchText(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-lg w-56 focus:outline-none focus:ring-2 focus:ring-[#8d77ba] text-sm"
-                    title="Search for text within SQL queries"
+                    title="Search for text within queries"
                   />
                   {querySearchText && (
                     <>
@@ -1270,10 +1533,10 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                     label: `${conn.connection}.${schema}.${table}`,
                   }));
 
-                  const columnDropdownOpts = columnOpts.map(({ schema, table, column }) => ({
-                    value: column,
-                    label: `${conn.connection}.${schema}.${table}.${column}`,
-                  }));
+                  const columnDropdownOpts = columnOpts.map(({ schema, table, column }) => {
+                    const fqn = `${conn.connection}.${schema}.${table}.${column}`;
+                    return { value: fqn, label: fqn };
+                  });
 
                   const selectedSchema = (conn.schema || []).map(s => ({
                     value: s,
@@ -1285,21 +1548,38 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                     label: `${conn.connection}.${conn.schema[0] || ''}.${t}`,
                   }));
 
-                  const selectedColumns = (conn.column || []).map(c => ({
-                    value: c,
-                    label: `${conn.connection}.${conn.schema[0] || ''}.${conn.table[0] || ''}.${c}`,
+                  const selectedColumns = (conn.column || []).map(fqn => ({
+                    value: fqn,
+                    label: fqn
                   }));
 
-                  const connKey = `${groupNames[activeGroupIndex]}__${activeRuleIndex}__${idx}`;
                   let statusIcon = null;
-                  if (validationStatus[connKey] === 'success') {
-                    statusIcon = <span className="text-green-600 text-xs font-semibold mr-2">Valid Query</span>;
-                  } else if (validationStatus[connKey] === 'error') {
-                    statusIcon = <span className="text-red-600 text-xs font-semibold mr-2">Invalid Query</span>;
-                  } else if (validationStatus[connKey] === 'pending') {
-                    statusIcon = <span className="text-yellow-600 text-xs font-semibold mr-2">Validating...</span>;
-                  } else if (validationStatus[connKey] === 'validate_again') {
-                    statusIcon = <span className="text-orange-600 text-xs font-semibold mr-2">Validate Again</span>;
+                  const connKey = `${groupNames[activeGroupIndex]}__${activeRuleIndex}__${idx}`;
+                  const currentConnValidation = validationStatus[connKey];
+
+                  const ruleStatus = currentConnValidation?.ruleQueryStatus;
+                  const scoreStatus = currentConnValidation?.scoreQueryStatus;
+
+                  if (data?.category.toLowerCase() === 'pre-built') {
+                    if (ruleStatus === 'success') {
+                      statusIcon = <span className="text-green-600 text-xs font-semibold mr-2">Valid Query</span>;
+                    } else if (ruleStatus === 'error') {
+                      statusIcon = <span className="text-red-600 text-xs font-semibold mr-2">Invalid Query</span>;
+                    } else if (ruleStatus === 'pending') {
+                      statusIcon = <span className="text-yellow-600 text-xs font-semibold mr-2">Validating Rule...</span>;
+                    } else if (ruleStatus === 'validate_again') {
+                      statusIcon = <span className="text-orange-600 text-xs font-semibold mr-2">Validate Rule</span>;
+                    }
+                  } else {
+                    if (ruleStatus === 'success' && scoreStatus === 'success') {
+                      statusIcon = <span className="text-green-600 text-xs font-semibold mr-2">Valid Queries</span>;
+                    } else if (ruleStatus === 'error' || scoreStatus === 'error') {
+                      statusIcon = <span className="text-red-600 text-xs font-semibold mr-2">Invalid Queries</span>;
+                    } else if (ruleStatus === 'pending' || scoreStatus === 'pending') {
+                      statusIcon = <span className="text-yellow-600 text-xs font-semibold mr-2">Validating...</span>;
+                    } else if (ruleStatus === 'validate_again' || scoreStatus === 'validate_again' || !ruleStatus || !scoreStatus) {
+                      statusIcon = <span className="text-orange-600 text-xs font-semibold mr-2">Validate Queries</span>;
+                    }
                   }
 
                   return (
@@ -1318,12 +1598,42 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                           <span className="font-medium">Connection {idx + 1}</span>
                         </div>
                         <div className="flex gap-2 items-center">
-                          {statusIcon}
+                          {/* Rule Query Status */}
+                          {currentConnValidation?.ruleQueryStatus === 'success' && (
+                            <span className="text-green-600 text-xs font-semibold">Rule Query: Valid</span>
+                          )}
+                          {currentConnValidation?.ruleQueryStatus === 'error' && (
+                            <span className="text-red-600 text-xs font-semibold">Rule Query: Invalid</span>
+                          )}
+                          {currentConnValidation?.ruleQueryStatus === 'pending' && (
+                            <span className="text-yellow-600 text-xs font-semibold">Rule Query: Validating...</span>
+                          )}
+                          {(currentConnValidation?.ruleQueryStatus === 'validate_again' || !currentConnValidation?.ruleQueryStatus) && (
+                            <span className="text-orange-600 text-xs font-semibold">Rule Query: Validate</span>
+                          )}
+
+                          {/* Score Query Status (Only for custom categories) */}
+                          {data?.category.toLowerCase() === 'custom' && (
+                            <>
+                              {currentConnValidation?.scoreQueryStatus === 'success' && (
+                                <span className="text-green-600 text-xs font-semibold">Score Query: Valid</span>
+                              )}
+                              {currentConnValidation?.scoreQueryStatus === 'error' && (
+                                <span className="text-red-600 text-xs font-semibold">Score Query: Invalid</span>
+                              )}
+                              {currentConnValidation?.scoreQueryStatus === 'pending' && (
+                                <span className="text-yellow-600 text-xs font-semibold">Score Query: Validating...</span>
+                              )}
+                              {(currentConnValidation?.scoreQueryStatus === 'validate_again' || !currentConnValidation?.scoreQueryStatus) && (
+                                <span className="text-orange-600 text-xs font-semibold">Score Query: Validate</span>
+                              )}
+                            </>
+                          )}
                           <button
                             className="p-2 border rounded hover:bg-gray-100 relative group"
                             type="button"
                             title="Run SQL (required)"
-                            onClick={() => handleRunSQL(groupNames[activeGroupIndex], activeRuleIndex, idx)}
+                            onClick={() => handleRunSQL(groupNames[activeGroupIndex], activeRuleIndex, idx, activeTab === 'score')}
                             disabled={!conn.checked}
                           >
                             <div className="relative">
@@ -1472,7 +1782,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                     <div className="text-center p-4 text-gray-500 border border-dashed border-gray-300 rounded-md">
                       {querySearchText ? (
                         <div>
-                          <p className="font-medium mb-1">No SQL queries found containing "{querySearchText}"</p>
+                          <p className="font-medium mb-1">No queries found containing "{querySearchText}"</p>
                           <p className="text-sm">Try a different search term or clear the search</p>
                         </div>
                       ) : (
@@ -1484,19 +1794,13 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
             </div>
           </div>
 
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center w-full"> {/* Added w-full to ensure full width */}
-              <div className="flex justify-between w-full pr-4"> {/* Ensure justify-between applies to full width */}
-                <h3 className="text-md font-medium">Query</h3>
-                {isCustomCreate && (
-                  <div
-                    className="p-1 rounded-full text-gray-600 hover:bg-gray-200 cursor-pointer"
-                    title="Custom Rule Information"
-                  >
-                    <Info size={20} />
-                  </div>
-                )}
-              </div>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center w-full">
+              {data?.category.toLowerCase() === 'pre-built' && (
+                <div className="flex mb-4">
+                  <h3 className="font-medium">Rule Query</h3>
+                </div>
+              )}
               {searchResults.length > 0 && currentSearchIndex >= 0 && searchResults[currentSearchIndex] && (
                 <span className="ml-3 text-xs text-gray-500 italic">
                   Showing results from: {searchResults[currentSearchIndex].ruleName} ({searchResults[currentSearchIndex].groupName})
@@ -1505,41 +1809,151 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
             </div>
           </div>
 
+          {data?.category.toLowerCase() === 'custom' && (
+            <div className="mb-4 flex justify-between w-full pr-4">
+              <div className="flex border-b border-gray-200">
+                <button
+                  className={`px-4 py-2 font-medium ${activeTab === 'rule' ? 'border-b-2 border-[#8d77ba] text-[#8d77ba]' : 'text-gray-500'}`}
+                  onClick={() => setActiveTab('rule')}
+                >
+                  Rule Query
+                </button>
+                <button
+                  className={`px-4 py-2 font-medium ${activeTab === 'score' ? 'border-b-2 border-[#8d77ba] text-[#8d77ba]' : 'text-gray-500'}`}
+                  onClick={() => setActiveTab('score')}
+                >
+                  Score Query
+                </button>
+              </div>
+              <div
+                className="p-1 rounded-full text-gray-600 cursor-pointer justify-center text-center mt-4"
+                title="Custom Rule Information"
+                onClick={() => setShowInfoModal(true)}
+              >
+                <Info size={20} />
+              </div>
+            </div>
+          )}
+
           <div className="border rounded-lg mb-4">
-            <AceEditor
-              ref={editorRef}
-              mode="sql"
-              theme="tomorrow"
-              name="query-editor"
-              value={getCurrentQuery()}
-              onChange={handleQueryChange}
-              fontSize={14}
-              width="100%"
-              height="300px"
-              showPrintMargin={false}
-              showGutter={true}
-              highlightActiveLine={true}
-              setOptions={{
-                enableBasicAutocompletion: true,
-                enableLiveAutocompletion: true,
-                enableSnippets: true,
-                showLineNumbers: true,
-                tabSize: 2,
-              }}
-              readOnly={isPrebuiltEdit || isCustomCreate}
-              wrapEnabled={true}
-              onLoad={(editor) => {
-                editor.execCommand("find");
-                editor.findAll(querySearchText, {
-                  caseSensitive: false,
-                  wholeWord: false,
-                  regExp: false,
-                  preventScroll: false
-                });
-                editor.execCommand("find");
-                setSearchLoaded(true);
-              }}
-            />
+            {data?.category.toLowerCase() === 'custom' ? (
+              <>
+                <div style={{ display: activeTab === 'rule' ? 'block' : 'none' }}>
+                  <AceEditor
+                    ref={ruleEditorRef}
+                    key={editorKey}
+                    mode="sql"
+                    theme="tomorrow"
+                    name="rule-query-editor"
+                    value={getCurrentQuery(false)}
+                    onChange={(value) => handleQueryChange(value, false)}
+                    fontSize={14}
+                    width="100%"
+                    height="300px"
+                    showPrintMargin={false}
+                    showGutter={true}
+                    highlightActiveLine={true}
+                    setOptions={{
+                      enableBasicAutocompletion: true,
+                      enableLiveAutocompletion: true,
+                      enableSnippets: true,
+                      showLineNumbers: true,
+                      tabSize: 2,
+                    }}
+                    readOnly={isPrebuiltEdit || isCustomCreate}
+                    wrapEnabled={true}
+                    onLoad={(editor) => {
+                      if (activeTab === 'rule') {
+                        editor.execCommand("find");
+                        editor.findAll(querySearchText, {
+                          caseSensitive: false,
+                          wholeWord: false,
+                          regExp: false,
+                          preventScroll: false
+                        });
+                        editor.execCommand("find");
+                        setSearchLoaded(true);
+                      }
+                    }}
+                  />
+                </div>
+                <div style={{ display: activeTab === 'score' ? 'block' : 'none' }}>
+                  <AceEditor
+                    ref={scoreEditorRef}
+                    key={editorKey}
+                    mode="sql"
+                    theme="tomorrow"
+                    name="score-query-editor"
+                    value={getCurrentQuery(true)}
+                    onChange={(value) => handleQueryChange(value, true)}
+                    fontSize={14}
+                    width="100%"
+                    height="300px"
+                    showPrintMargin={false}
+                    showGutter={true}
+                    highlightActiveLine={true}
+                    setOptions={{
+                      enableBasicAutocompletion: true,
+                      enableLiveAutocompletion: true,
+                      enableSnippets: true,
+                      showLineNumbers: true,
+                      tabSize: 2,
+                    }}
+                    readOnly={isPrebuiltEdit || isCustomCreate}
+                    wrapEnabled={true}
+                    onLoad={(editor) => {
+                      if (activeTab === 'score') {
+                        editor.execCommand("find");
+                        editor.findAll(querySearchText, {
+                          caseSensitive: false,
+                          wholeWord: false,
+                          regExp: false,
+                          preventScroll: false
+                        });
+                        editor.execCommand("find");
+                        setSearchLoaded(true);
+                      }
+                    }}
+                  />
+                </div>
+              </>
+            ) : (
+              <AceEditor
+                ref={ruleEditorRef}
+                key={editorKey}
+                mode="sql"
+                theme="tomorrow"
+                name="query-editor"
+                value={getCurrentQuery(false)}
+                onChange={(value) => handleQueryChange(value, false)}
+                fontSize={14}
+                width="100%"
+                height="300px"
+                showPrintMargin={false}
+                showGutter={true}
+                highlightActiveLine={true}
+                setOptions={{
+                  enableBasicAutocompletion: true,
+                  enableLiveAutocompletion: true,
+                  enableSnippets: true,
+                  showLineNumbers: true,
+                  tabSize: 2,
+                }}
+                readOnly={isPrebuiltEdit || isCustomCreate}
+                wrapEnabled={true}
+                onLoad={(editor) => {
+                  editor.execCommand("find");
+                  editor.findAll(querySearchText, {
+                    caseSensitive: false,
+                    wholeWord: false,
+                    regExp: false,
+                    preventScroll: false
+                  });
+                  editor.execCommand("find");
+                  setSearchLoaded(true);
+                }}
+              />
+            )}
 
             <div className="flex justify-between items-center p-3 bg-gray-50 border-t">
               <div className="flex items-center gap-2">
@@ -1609,6 +2023,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           Next
         </button>
       </div>
+      {showInfoModal && <InfoModal onClose={() => setShowInfoModal(false)} />}
     </div>
   );
 }
