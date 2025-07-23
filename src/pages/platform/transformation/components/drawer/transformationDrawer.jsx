@@ -124,6 +124,7 @@ const TransformationItem = memo(({
             e.target.value
           )}
         >
+		<option value="">None</option>
           {transformationOperations.map((op) => (
             <option key={op.id} value={op.id}>
               {op.name}
@@ -481,6 +482,12 @@ export const TransformationDrawer = ({
 	const dropdownRefs = useRef({});
 	const transformationRefs = useRef([]);
 
+	// Add state to track if we are in edit mode and the initial transformations
+	const [isEditMode, setIsEditMode] = useState(false);
+	const [initialTransformations, setInitialTransformations] = useState([]);
+	const [isDataLoaded, setIsDataLoaded] = useState(false);
+	const [columnsLoaded, setColumnsLoaded] = useState(false);
+
 	useEffect(() => {
 		transformationRefs.current = transformationRefs.current.slice(0, transformations.length);
 	}, [transformations.length]);
@@ -519,6 +526,9 @@ export const TransformationDrawer = ({
 		});
 		setDataframeColumns(dfCols);
 
+		// Mark columns as loaded
+		setColumnsLoaded(true);
+
 		window.nodeToDataframeMap = {};
 		sources.forEach(df => {
 			window.nodeToDataframeMap[df.nodeId] = df.id;
@@ -539,6 +549,7 @@ export const TransformationDrawer = ({
 
 	useEffect(() => {
 		if (isOpen) {
+			setColumnsLoaded(false);
 			syncDataframeColumnsFromNodes();
 		}
 	}, [isOpen, syncDataframeColumnsFromNodes]);
@@ -875,29 +886,19 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const handleAddTransformation = useCallback(() => {
-		setTransformations(ts => {
-			const newId = ts.length > 0 ? Math.max(...ts.map(t => t.id)) + 1 : 1;
-			const newTransformation = {
-				id: newId,
-				source_dataframe: allDataframes[0]?.id || "",
-				target_dataframe: allDataframes[0]?.id || "",
+		setTransformations(ts => [
+			...ts,
+			{
+				id: `transformation_${ts.length + 1}`,
 				source_column: [],
 				target_column: [],
-				transformation_operation: "arithmetic",
-				transformation_operator: "", // <-- set to "" by default
-				params: {
-					custom_value: "",
-					max_length: "",
-					padding_character: "",
-					start_position: "",
-					no_of_character: ""
-				},
-				transformation_order: ts.length + 1
-			};
-
-			return [...ts, newTransformation];
-		});
-	}, [allDataframes]);
+				params: {},
+				transformation_operation: "",
+				transformation_operator: "",
+				source_dataframe: activeNode?.data?.alias || "",
+			},
+		]);
+	}, [activeNode]);
 
 	const handleRemoveTransformation = useCallback((id) => {
 		setTransformations(ts => {
@@ -1371,6 +1372,72 @@ export const TransformationDrawer = ({
 		return () => window.removeEventListener("tantor-columns-updated", handler);
 	}, [isOpen, syncDataframeColumnsFromNodes]);
 
+	// Prefill transformations for edit flow
+	useEffect(() => {
+		if (!isOpen) {
+			setIsDataLoaded(false);
+			setColumnsLoaded(false);
+			return;
+		}
+
+		// Reset loading state when drawer opens
+		setIsDataLoaded(false);
+
+		// Detect edit mode by checking activeNode.data.transformations or transformationConfig
+		if (
+			activeNode &&
+			(activeNode.data?.transformations?.length > 0 ||
+				(activeNode.data?.transformationConfig?.operations?.length > 0))
+		) {
+			setIsEditMode(true);
+
+			// Prefer transformationConfig.operations if available
+			const ops =
+				activeNode.data.transformationConfig?.operations?.length > 0
+					? activeNode.data.transformationConfig.operations
+					: activeNode.data.transformations || [];
+
+			// Patch each transformation with required fields if missing
+			const patchedOps = ops.map((op, idx) => ({
+				...op,
+				id: op.id || `transformation_${idx + 1}`,
+				source_column: op.source_column || [],
+				target_column: op.target_column || [],
+				params: op.params || {},
+				transformation_operation: op.transformation_operation || "",
+				transformation_operator: op.transformation_operator || "",
+				source_dataframe: op.source_dataframe || activeNode.data.alias || "",
+			}));
+
+			setInitialTransformations(patchedOps);
+
+			// Set data loaded after transformations are set
+			setTimeout(() => {
+				setIsDataLoaded(true);
+			}, 300);
+		} else {
+			setIsEditMode(false);
+			setInitialTransformations([]);
+			setIsDataLoaded(true); // For new flows, data is ready immediately
+			if (!columnsLoaded) {
+				// For new flows, wait a bit for columns to load
+				setTimeout(() => {
+					setIsDataLoaded(true);
+				}, 100);
+			}
+		}
+	}, [isOpen, activeNode, columnsLoaded]);
+
+	// Use initialTransformations for drawer state if in edit mode - wait for columns to be loaded
+	useEffect(() => {
+		if (isEditMode && initialTransformations.length > 0 && isDataLoaded && columnsLoaded) {
+			console.log("Setting transformations with loaded columns:", initialTransformations, dataframeColumns);
+			setTransformations(initialTransformations);
+		}
+		// Only prefill once when drawer opens in edit mode, data is loaded, and columns are available
+		// eslint-disable-next-line
+	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded]);
+
 	if (!isOpen) return null;
 
 	return (
@@ -1415,54 +1482,64 @@ export const TransformationDrawer = ({
 				</div>
 
 				<div className="flex-1 overflow-y-auto p-4">
-					<div className="space-y-6">
-						{transformations.map((transformation, index) => (
-							<div
-								key={transformation.id}
-								ref={el => transformationRefs.current[index] = el}
-							>
-								<TransformationItem
-									transformation={transformation}
-									index={index}
-									allDataframes={allDataframes}
-									dataframeColumns={dataframeColumns}
-									openDropdowns={openDropdowns}
-									dropdownRefs={dropdownRefs}
-									handleRemoveTransformation={handleRemoveTransformation}
-									handleDataframeChange={handleDataframeChange}
-									handleOperationChange={handleOperationChange}
-									toggleDropdown={toggleDropdown}
-									handleSelectAllColumns={handleSelectAllColumns}
-									handleColumnSelection={handleColumnSelection}
-									updateTransformation={updateTransformation}
-									transformationOperations={transformationOperations}
-									updateStringParam={updateStringParam}
-									updateConstantCopyParam={updateConstantCopyParam}
-									updateFilterParam={updateFilterParam}
-									updateTypecastParam={updateTypecastParam}
-								 updateTargetColumns={updateTargetColumns}
-								 updateSortParam={updateSortParam}
-								 updateRankingParam={updateRankingParam}
-								 updateDateParam={updateDateParam}
-								 updateTargetColumn={updateTargetColumn}
-								 onAddNewTargetColumn={handleAddNewTargetColumn}
-								 appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
-								 handleOperatorChange={handleOperatorChange}
-								 setTransformationValidity={setTransformationValidity}
-								 updateJoinsSourceColumns={updateJoinsSourceColumns}
-								 updateJoinsParam={updateJoinsParam}
-								/>
+					{(!isDataLoaded || !columnsLoaded) && isEditMode ? (
+						<div className="flex items-center justify-center h-64">
+							<div className="text-center">
+								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8E77BB] mx-auto mb-4"></div>
+								<p className="text-gray-600">Loading transformation data...</p>
 							</div>
-						))}
+						</div>
+					) : (
+						<div className="space-y-6">
+							{transformations.map((transformation, index) => (
+								<div
+									key={transformation.id}
+									ref={el => transformationRefs.current[index] = el}
+								>
+									<TransformationItem
+										transformation={transformation}
+										index={index}
+										allDataframes={allDataframes}
+										dataframeColumns={dataframeColumns}
+										openDropdowns={openDropdowns}
+										dropdownRefs={dropdownRefs}
+										handleRemoveTransformation={handleRemoveTransformation}
+										handleDataframeChange={handleDataframeChange}
+										handleOperationChange={handleOperationChange}
+										toggleDropdown={toggleDropdown}
+										handleSelectAllColumns={handleSelectAllColumns}
+										handleColumnSelection={handleColumnSelection}
+										updateTransformation={updateTransformation}
+										transformationOperations={transformationOperations}
+										updateStringParam={updateStringParam}
+										updateConstantCopyParam={updateConstantCopyParam}
+										updateFilterParam={updateFilterParam}
+										updateTypecastParam={updateTypecastParam}
+									 updateTargetColumns={updateTargetColumns}
+									 updateSortParam={updateSortParam}
+									 updateRankingParam={updateRankingParam}
+									 updateDateParam={updateDateParam}
+									 updateTargetColumn={updateTargetColumn}
+									 onAddNewTargetColumn={handleAddNewTargetColumn}
+									 appendColumnsFromRightToLeft={appendColumnsFromRightToLeft}
+									 handleOperatorChange={handleOperatorChange}
+									 setTransformationValidity={setTransformationValidity}
+									 updateJoinsSourceColumns={updateJoinsSourceColumns}
+									 updateJoinsParam={updateJoinsParam}
+									/>
+								</div>
+							))}
 
-						<button
-							onClick={handleAddTransformation}
-							className="w-full py-2.5 bg-white border border-gray-300 hover:bg-gray-50 rounded-md flex items-center justify-center text-gray-700 transition-colors"
-						>
-							<Plus className="w-4 h-4 mr-2 text-[#8E77BB]" />
-							<span>Add Transformation</span>
-						</button>
-					</div>
+							<button
+								onClick={handleAddTransformation}
+								className="w-full py-2.5 bg-white border border-gray-300 hover:bg-gray-50 rounded-md flex items-center justify-center text-gray-700 transition-colors"
+								disabled={!isDataLoaded || !columnsLoaded}
+							>
+								<Plus className="w-4 h-4 mr-2 text-[#8E77BB]" />
+								<span>Add Transformation</span>
+							</button>
+						</div>
+					)}
 				</div>
 
 				<div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-3">
@@ -1475,7 +1552,7 @@ export const TransformationDrawer = ({
 					<button
 						onClick={handleSave}
 						className="px-5 py-2 bg-[#8E77BB] border border-[#8E77BB] rounded-md text-sm text-white hover:bg-[#7d68a5] transition-colors"
-						disabled={transformations.some(t =>
+						disabled={!isDataLoaded || !columnsLoaded || transformations.some(t =>
 							(t.transformation_operation === "arithmetic" && transformationsValidity[t.id] === false) ||
 							(t.transformation_operation === "string" && transformationsValidity[t.id] === false)
 						)}
