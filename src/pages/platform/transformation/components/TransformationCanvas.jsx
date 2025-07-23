@@ -419,8 +419,8 @@ function TransformationCanvasContent() {
       console.log("Save Flow - Target data in transformation JSON:", Object.keys(transformationData.target).map(key => ({
         key,
         targetMapping: transformationData.target[key].targetMapping,
-        mappingEntries: transformationData.target[key].targetMapping ?
-                        Object.keys(transformationData.target[key].targetMapping).length : 0
+        mappingEntries: transformationData.target[key].targetMapping ? Object.keys(transformationData.target[key].targetMapping).length : 0,
+        sourceDataframe: transformationData.target[key].sourceDataframe // Add this line to debug sourceDataframe
       })));
 
       if (Object.keys(transformationData.source).length === 0) {
@@ -552,15 +552,13 @@ function TransformationCanvasContent() {
         .map(n => ({
           id: n.id,
           targetMapping: n.data.targetMapping,
+          selectedSourceId: n.data.selectedSourceId, // Add this line
           mappingEntries: n.data.targetMapping ? Object.keys(n.data.targetMapping).length : 0
         }))
       );
 
-      // Validate the edit flow data
-      const validation = validateEditFlowData(editFlowData);
-      if (!validation.isValid) {
-        console.warn("Edit flow data validation errors:", validation.errors);
-      }
+      // Also log the transformation context state for debugging
+      console.log("Save Flow - Target to Source map in context:", window.transformationContext?.state?.targetToSelectedSourceMap);
 
       const payload = {
         transformation_name: defineNode.data.name,
@@ -580,7 +578,6 @@ function TransformationCanvasContent() {
 
       console.log("Payload with edit flow data:", payload);
 
-      // Determine if this is an update or create
       const isUpdate = isEditMode && editTransformationId;
       const url = isUpdate
         ? `${hostname}/etl/transformation/edit/update?transformation_id=${editTransformationId}`

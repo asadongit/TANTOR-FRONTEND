@@ -698,6 +698,18 @@ export function useTrackConnections(nodes, edges) {
                 }
               }
             });
+
+            // IMPORTANT: Also explicitly update the targetToSelectedSourceMap if a selectedSourceId exists
+            if (data.selectedSourceId) {
+              dispatch({
+                type: ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE,
+                payload: {
+                  targetNodeId: id,
+                  sourceNodeId: data.selectedSourceId
+                }
+              });
+              console.log(`Restored target mapping relationship: Target ${id} -> Source ${data.selectedSourceId}`);
+            }
           }
           break;
 
