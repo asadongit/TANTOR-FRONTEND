@@ -581,6 +581,18 @@ export const SourceNode = ({ id, data }) => {
         columns: currentColumns.map(col => col.name)
       }
     });
+
+    // Store original columns (name + datatype) for editFlowUtils
+    dispatch({
+      type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: currentColumns.map(col => ({
+          name: col.name,
+          datatype: col.datatype
+        }))
+      }
+    });
   }, [selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings]);
 
   const getColumnsForTable = (tableName) => {

@@ -5,9 +5,6 @@ import Quality from './Components/Quality';
 import Profiling from './Components/Profiling';
 import Cleaning from './Components/Cleaning';
 
-const MemoizedProfiling = React.memo(Profiling);
-const MemoizedCleaning = React.memo(Cleaning);
-
 function Data() {
   const [activeStep, setActiveStep] = useState(0);
   const [query, setQuery] = useState('');
@@ -28,8 +25,8 @@ function Data() {
       props: { query, setQuery: handleSetQuery, setQuerySuccess: handleSetQuerySuccess },
     },
     { label: 'Quality', component: Quality, props: { query } },
-    { label: 'Profiling', component: MemoizedProfiling, props: {} },
-    { label: 'Cleaning', component: MemoizedCleaning, props: {} },
+    { label: 'Profiling', component: Profiling, props: {query} },
+    { label: 'Cleaning', component: Cleaning, props: { query } },
   ];
 
   const handleNext = () => {
