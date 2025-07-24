@@ -33,11 +33,11 @@ const RuleRunDetails = ({ show, onClose, runDetails, ruleSummary }) => {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 mb-8 text-base">
-                    <div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-4 mb-8 text-base">
+                    {/* <div>
                         <span className="font-semibold text-gray-700">ID:</span>
                         <span className="ml-2 text-gray-800">{ruleSummary.id}</span>
-                    </div>
+                    </div> */}
                     <div>
                         <span className="font-semibold text-gray-700">Severity:</span>
                         <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${ruleSummary.severity === 'High' ? 'bg-red-100 text-red-800' :
@@ -295,7 +295,7 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, isLoadin
                                 <thead>
                                     <tr className="bg-[#29304a] text-white">
                                         <th className="px-2 py-2 text-left font-semibold">#</th>
-                                        <th className="px-2 py-2 text-left font-semibold">ID</th>
+                                        {/* <th className="px-2 py-2 text-left font-semibold">ID</th> */}
                                         <th className="px-2 py-2 text-left font-semibold">Type</th>
                                         <th className="px-2 py-2 text-left font-semibold">Group</th>
                                         <th className="px-2 py-2 text-left font-semibold">Name</th>
@@ -308,7 +308,7 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, isLoadin
                                     {currentItems.map((rule, index) => (
                                         <tr key={rule.id} className="border-b border-gray-200 hover:bg-gray-50">
                                             <td className="px-2 py-2">{indexOfFirstItem + index + 1}</td>
-                                            <td className="px-2 py-2">{rule.id}</td>
+                                            {/* <td className="px-2 py-2">{rule.id}</td> */}
                                             <td className="px-2 py-2 max-w-[150px] truncate tooltip">{rule.type || '-'}</td>
                                             <td className="px-2 py-2 max-w-[150px] truncate">{rule.group_name || '-'}</td>
                                             <td className="px-2 py-2 max-w-[300px] truncate">{rule.name || '-'}</td>
