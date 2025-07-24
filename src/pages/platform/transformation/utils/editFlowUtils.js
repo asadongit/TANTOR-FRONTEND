@@ -88,6 +88,7 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
   const contextProcedures = window.transformationContext?.state?.procedureExecution || {};
   const contextTargets = window.transformationContext?.state?.targets || {};
   const targetToSourceMap = window.transformationContext?.state?.targetToSelectedSourceMap || {};
+  const sourceOriginalColumns = window.transformationContext?.state?.sourceOriginalColumns || {};
 
 
 
@@ -187,12 +188,17 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
           connectionType: node.data.connectionType,
           schema: node.data.schema,
           table: node.data.table,
-          columns: node.data.columns && Array.isArray(node.data.columns)
-            ? node.data.columns.map(col => ({
-                name: typeof col === 'string' ? col : col.name,
-                datatype: typeof col === 'object' ? col.datatype : undefined
-              }))
-            : [],
+          columns:
+            node.type === 'source'
+              ? (sourceOriginalColumns[node.id] || [])
+              : (
+                node.data.columns && Array.isArray(node.data.columns)
+                  ? node.data.columns.map(col => ({
+                      name: typeof col === 'string' ? col : col.name,
+                      datatype: typeof col === 'object' ? col.datatype : undefined
+                    }))
+                  : []
+                ),
           alias: node.data.alias,
           objectType: node.data.objectType,
           preProcedures: finalPreProcedures.map(proc => ({
