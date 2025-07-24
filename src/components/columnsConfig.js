@@ -51,7 +51,7 @@ const columnConfigurations = {
     ],
   
     migration: [
-      { key: "metadata_name", label: "Name", sortable: true },
+      { key: "workflow_name", label: "Name", sortable: true },
       { key: "project", label: "Project", sortable: true },
       { key: "created_by", label: "Created By", sortable: true },
       { key: "source_conn_name", label: "Source Connection", sortable: true },

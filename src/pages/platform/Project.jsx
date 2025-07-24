@@ -20,6 +20,9 @@ import { useProjectData } from "../../hooks/platform/project";
 import { useProjectCardData } from "../../hooks/platform/cardCounts";
 import CardGrid from "../../components/CardGrid";
 import { useAuth } from "../../context/AuthContext";
+import toast from "react-hot-toast";
+
+
 const Project = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
   const { data: projectData = [], isLoading: isProjectLoading, error: projectError, refetch: refetchProjects } = useProjectData();
@@ -37,17 +40,35 @@ const Project = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const [deleteModal, setDeleteModal] = useState({ open: false, projectId: null });
 
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
     modal2: false,
   });
+  const [editMode, setEditMode] = useState(false);
+  const [editProjectId, setEditProjectId] = useState(null);
 
   const navigate = useNavigate();
 
-  const openModal = (modalName) => {
+  const openModal = (modalName, editData = null) => {
     if (modalName === "modal1") {
-      setFormData(initialFormState);
+      if (editData) {
+        setFormData({
+          project: editData.project,
+          description: editData.description,
+          assigned_users: { assigned_users: editData.assigned_users?.assigned_users || "" },
+          // category: editData.category || "Select",
+          // subCategory: editData.subCategory || "Select",
+          created_by: editData.created_by || decodedToken?.preferred_username,
+        });
+        setEditMode(true);
+        setEditProjectId(editData.project_id);
+      } else {
+        setFormData(initialFormState);
+        setEditMode(false);
+        setEditProjectId(null);
+      }
       setErrors({});
     }
     setIsModalOpen((prevState) => ({ ...prevState, [modalName]: true }));
@@ -122,35 +143,39 @@ const Project = () => {
     return isValid;
   };
 
-  const createProject = async () => {
+  const createOrEditProject = async () => {
     if (!validateForm()) return;
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-           
-      const response = await fetch(`${hostnameV1}/projects`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-  
+      let response;
+      if (editMode && editProjectId) {
+        response = await fetch(`${hostnameV1}/projects/${editProjectId}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        });
+      } else {
+        response = await fetch(`${hostnameV1}/projects`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        });
+      }
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || "Failed to create project");
+        throw new Error(errorData?.message || "Failed to save project");
       }
-  
       refetchProjects();
-      
       closeModal("modal1");
       openModal("modal2");
     } catch (error) {
-      console.error("Creation failed:", error);
-      setErrors({
-        ...errors,
-        api: error.message || "Failed to create project. Please try again."
-      });
+      setErrors({ ...errors, api: error.message || "Failed to save project. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -160,6 +185,15 @@ const Project = () => {
     refetchProjects();
     refetchCardData();
   };
+
+  const handleDeleteClick = (row) => {
+    setDeleteModal({ open: true, projectId: row.project_id });
+  };
+
+  const handleEditClick = (row) => {
+    openModal("modal1", row);
+  };
+
 
   const categories = ["Ingestion", "CDC", "Federation"];
   const subCategories = {
@@ -210,17 +244,12 @@ const Project = () => {
     {
       label: "Edit",
       icon: <Pencil size={16} />,
-      onClick: (row) => console.log("Edit clicked for", row),
+      onClick: handleEditClick,
     },
     {
       label: "Delete",
       icon: <Trash2 size={16} />,
-      onClick: (row) => console.log("Delete clicked for", row),
-    },
-    {
-      label: "Run",
-      icon: <Play size={16} fill="currentColor" />,
-      onClick: (row) => console.log("Run clicked for", row),
+      onClick: handleDeleteClick,
     },
   ];
   
@@ -240,6 +269,32 @@ const Project = () => {
     const url = `/componentType=project&cardType=${card.title}&heading=${card.title}`;
     const encryptedUrl = encodeURIComponent(encrypt(url));
     navigate(`/details?${encryptedUrl}`);
+  };
+
+  const confirmDeleteProject = async () => {
+    console.log("Deleting project with ID:", deleteModal.projectId);
+    if (!deleteModal.projectId) return;
+    try {
+      const response = await fetch(`${hostnameV1}/projects/${deleteModal.projectId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        toast.error(errorData?.detail || "Failed to delete project");
+        throw new Error(errorData?.detail || "Failed to delete project");
+      }
+      toast.success("Project deleted successfully");
+      refetchProjects();
+      setDeleteModal({ open: false, projectId: null });
+    } catch (error) {
+      console.error("Delete failed:", error);
+      setErrors({ ...errors, api: error.message || "Failed to delete project. Please try again." });
+      setDeleteModal({ open: false, projectId: null });
+    }
   };
 
   return (
@@ -286,7 +341,7 @@ const Project = () => {
           refetch={refetchProjects}
 />
 
-      {/* Add Project Modal */}
+      {/* Add/Edit Project Modal */}
       {isModalOpen.modal1 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-[1000px] p-8 max-h-[90vh] overflow-y-auto">
@@ -301,7 +356,7 @@ const Project = () => {
                   />
                 </div>
                 <h2 className="text-xl font-bold text-[#8e78b7]">
-                  Create a Project
+                  {editMode ? "Edit Project" : "Create a Project"}
                 </h2>
               </div>
               <button
@@ -338,11 +393,11 @@ const Project = () => {
                       <p className="mt-1 text-sm text-red-500">{errors.project}</p>
                     )}
                   </div>
-                  <div>
+
+                  {/* <div>
                     <div className="relative">
                       <label className="block text-sm text-black mb-1.5">
                         Sub Category 
-                        {/* <span className="text-red-500">*</span> */}
                       </label>
                       <select
                         name="subCategory"
@@ -365,7 +420,7 @@ const Project = () => {
                         <p className="mt-1 text-sm text-red-500">{errors.subCategory}</p>
                       )}
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -388,7 +443,38 @@ const Project = () => {
                       <p className="mt-1 text-sm text-red-500">{errors.description}</p>
                     )}
                   </div>
-                  <div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  {/* <div>
+                    <div className="relative">
+                      <label className="block text-sm text-black mb-1.5">
+                        Category 
+                      </label>
+                      <select
+                        name="category"
+                        value={formData.category}
+                        onChange={handleInputChange}
+                        className={`w-full p-2.5 border ${errors.category ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white`}
+                      >
+                        <option value="Select">Select</option>
+                        {categories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        className="absolute right-3 top-10 pointer-events-none text-gray-500"
+                        size={18}
+                      />
+                      {errors.category && (
+                        <p className="mt-1 text-sm text-red-500">{errors.category}</p>
+                      )}
+                    </div>
+                  </div> */}
+
+                                    <div>
                     <div className="relative">
                       <label className="block text-sm text-black mb-1.5">
                         Manager <span className="text-red-500">*</span>
@@ -417,37 +503,6 @@ const Project = () => {
                   </div>
                 </div>
               </div>
-
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <div className="relative">
-                      <label className="block text-sm text-black mb-1.5">
-                        Category 
-                        {/* <span className="text-red-500">*</span> */}
-                      </label>
-                      <select
-                        name="category"
-                        value={formData.category}
-                        onChange={handleInputChange}
-                        className={`w-full p-2.5 border ${errors.category ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] appearance-none bg-white`}
-                      >
-                        <option value="Select">Select</option>
-                        {categories.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                      <ChevronDown
-                        className="absolute right-3 top-10 pointer-events-none text-gray-500"
-                        size={18}
-                      />
-                      {errors.category && (
-                        <p className="mt-1 text-sm text-red-500">{errors.category}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
 
             <div className="flex justify-start gap-4 mt-8">
@@ -459,11 +514,11 @@ const Project = () => {
                 Cancel
               </button>
               <button
-                onClick={createProject}
+                onClick={createOrEditProject}
                 disabled={isSubmitting}
                 className={`px-6 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a66a3] transition-colors ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                {isSubmitting ? 'Creating...' : 'Create'}
+                {isSubmitting ? (editMode ? 'Saving...' : 'Creating...') : (editMode ? 'Save' : 'Create')}
               </button>
             </div>
           </div>
@@ -510,6 +565,31 @@ const Project = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Project Modal */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl w-[400px] p-8 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-[#8e78b7] mb-4">Delete Project</h2>
+            <p className="mb-6 text-gray-700">Are you sure you want to delete this project?</p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setDeleteModal({ open: false, projectId: null })}
+                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteProject}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
