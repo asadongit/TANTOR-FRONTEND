@@ -495,13 +495,13 @@ export const TransformationDrawer = ({
 		transformationRefs.current = transformationRefs.current.slice(0, transformations.length);
 	}, [transformations.length]);
 
-	// --- BEGIN: Replay transformations for columns in edit mode ---
 	const replayTransformationsForColumns = useCallback((transformationsList, initialDfCols) => {
-		// Deep clone to avoid mutating original state
 		let dfCols = JSON.parse(JSON.stringify(initialDfCols));
 		const getColName = (col) => typeof col === "object" ? col.name : col;
 
-		transformationsList.forEach((t) => {
+		const renameMaps = {};
+
+		transformationsList.forEach((t, idx) => {
 			const dfId = t.source_dataframe;
 			if (!dfId) return;
 			let cols = Array.isArray(dfCols[dfId]) ? [...dfCols[dfId]] : [];
@@ -513,7 +513,6 @@ export const TransformationDrawer = ({
 				case "typecast":
 				case "date":
 				case "ranking":
-					// Add all new target columns if not present
 					if (t.target_column && t.target_column.length > 0) {
 						t.target_column.forEach(targetCol => {
 							const colName = getColName(targetCol);
@@ -525,8 +524,8 @@ export const TransformationDrawer = ({
 					}
 					break;
 				case "rename":
-					// Rename columns
 					if (t.source_column && t.target_column && t.source_column.length === t.target_column.length) {
+						const renameMap = {};
 						t.source_column.forEach((src, idx) => {
 							const tgt = t.target_column[idx];
 							const srcIdx = cols.findIndex(c => getColName(c) === src);
@@ -535,18 +534,33 @@ export const TransformationDrawer = ({
 								cols[srcIdx] = typeof oldCol === "object"
 									? { ...oldCol, name: tgt }
 									: { name: tgt, datatype: "string" };
+								renameMap[src] = tgt;
 							}
 						});
+						if (!renameMaps[dfId]) renameMaps[dfId] = {};
+						Object.assign(renameMaps[dfId], renameMap);
+
+						for (let j = idx + 1; j < transformationsList.length; j++) {
+							const nextT = transformationsList[j];
+							if (nextT.source_dataframe !== dfId) continue;
+							const map = renameMaps[dfId];
+							const updateColArr = (arr) => arr.map(col => map[col] || col);
+
+							if (Array.isArray(nextT.source_column)) {
+								nextT.source_column = updateColArr(nextT.source_column);
+							}
+							if (Array.isArray(nextT.target_column)) {
+								nextT.target_column = updateColArr(nextT.target_column);
+							}
+						}
 					}
 					break;
 				case "restrictcolumns":
-					// Only keep selected columns
 					if (t.source_column && t.source_column.length > 0) {
 						cols = cols.filter(c => t.source_column.includes(getColName(c)));
 					}
 					break;
 				case "join":
-					// Joins may drop columns (drop_left_dataframe_collist)
 					if (t.params?.drop_left_dataframe_collist && Array.isArray(t.params.drop_left_dataframe_collist)) {
 						cols = cols.filter(c => !t.params.drop_left_dataframe_collist.includes(getColName(c)));
 					}
