@@ -25,7 +25,8 @@ const Rules = () => {
     freq: '',
     date: '',
     time: '',
-    rule_ids: []
+    rule_ids: [],
+    display_s_nos: []
   });
   const [sortConfig, setSortConfig] = useState({ key: 'last_run_date', direction: 'desc' })
   const rowsPerPage = 5;
@@ -35,6 +36,14 @@ const Rules = () => {
   const selectAllRef = useRef(null);
   const [showSelectAllOptions, setShowSelectAllOptions] = useState(false);
   const { decodedToken } = useAuth();
+
+  const [deleteConfirmation, setDeleteConfirmation] = useState({
+    show: false,
+    ids: [],
+    serialNumbers: [],
+    isSingle: false,
+    item: null
+  });
 
   useEffect(() => {
     if (toast.show) {
@@ -228,6 +237,7 @@ const Rules = () => {
   };
 
   const handleScheduleSelected = (item, isScheduleForId = false) => {
+    console.log("item for schedule #######", item)
     let idsToSchedule = [];
 
     if (isScheduleForId) {
@@ -237,8 +247,14 @@ const Rules = () => {
     } else {
       idsToSchedule = [item.id];
     }
+    
+    const serialNumbersToDisplay = idsToSchedule.map(id => idToSerialNumberMap.get(id));
 
-    setSchedulerData(prev => ({ ...prev, rule_ids: idsToSchedule }));
+    setSchedulerData(prev => ({
+        ...prev,
+        rule_ids: idsToSchedule,
+        display_s_nos: serialNumbersToDisplay
+    }));
     setShowScheduler(true);
   };
 
@@ -264,7 +280,7 @@ const Rules = () => {
           type: 'success',
         });
         setShowScheduler(false);
-        setSchedulerData({ freq: 'Daily', date: '2016-02-10', time: '18:00', rule_ids: [] });
+        setSchedulerData({ freq: '', date: '', time: '', rule_ids: [], display_s_nos: [] });
       } else {
         throw new Error('Failed to schedule rules');
       }
@@ -282,7 +298,14 @@ const Rules = () => {
 
   const handleScheduleAllSelected = () => {
     if (selectedRows.length === 0) return;
-    setSchedulerData(prev => ({ ...prev, rule_ids: selectedRows }));
+    
+    const serialNumbersToDisplay = selectedRows.map(id => idToSerialNumberMap.get(id));
+    
+    setSchedulerData(prev => ({
+        ...prev,
+        rule_ids: selectedRows,
+        display_s_nos: serialNumbersToDisplay
+    }));
     setShowScheduler(true);
     setShowSelectAllOptions(false);
   };
@@ -292,7 +315,7 @@ const Rules = () => {
       const newDirection = prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc';
       return { key, direction: newDirection };
     });
-    setCurrentPage(1); // Reset to first page on sort
+    setCurrentPage(1);
   };
 
   const getSortIcon = (key) => {
@@ -314,28 +337,31 @@ const Rules = () => {
     )
     .sort((a, b) => {
       if (!sortConfig.key) return 0;
-
       const direction = sortConfig.direction === 'asc' ? 1 : -1;
-
       const aValue = a[sortConfig.key] || '';
       const bValue = b[sortConfig.key] || '';
-
       let comparison = 0;
-
       if (sortConfig.key === 'id') {
         comparison = (parseInt(aValue, 10) || 0) - (parseInt(bValue, 10) || 0);
       } else {
         comparison = aValue.toString().localeCompare(bValue.toString());
       }
-
       if (comparison === 0 && sortConfig.key === 'last_run_date') {
         const aUpdated = a.updated_date || '';
         const bUpdated = b.updated_date || '';
         return bUpdated.localeCompare(aUpdated) * direction;
       }
-
       return comparison * direction;
     });
+
+  const idToSerialNumberMap = new Map();
+  filteredData.forEach((item, index) => {
+    const serialNumber =
+      sortConfig.key === 'id' && sortConfig.direction === 'desc'
+        ? filteredData.length - index
+        : index + 1;
+    idToSerialNumberMap.set(item.id, serialNumber);
+  });
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
   const indexOfLastItem = currentPage * rowsPerPage;
@@ -404,13 +430,7 @@ const Rules = () => {
     }
   };
 
-  const [deleteConfirmation, setDeleteConfirmation] = useState({
-    show: false,
-    ids: [],
-    isSingle: false,
-    item: null
-  });
-
+  // <-- MODIFIED: Update handler to store serial numbers -->
   const handleDeleteSelected = async (item, isDeleteForId = false) => {
     let idsToDelete = [];
 
@@ -421,20 +441,28 @@ const Rules = () => {
     } else {
       idsToDelete = [item.id];
     }
+    
+    const serialNumbersToDelete = idsToDelete.map(id => idToSerialNumberMap.get(id));
 
     setDeleteConfirmation({
       show: true,
       ids: idsToDelete,
+      serialNumbers: serialNumbersToDelete,
       isSingle: isDeleteForId,
       item: item
     });
   };
 
+  // <-- MODIFIED: Update handler to store serial numbers -->
   const handleDeleteAllSelected = async () => {
     if (selectedRows.length === 0) return;
+    
+    const serialNumbersToDelete = selectedRows.map(id => idToSerialNumberMap.get(id));
+    
     setDeleteConfirmation({
       show: true,
       ids: selectedRows,
+      serialNumbers: serialNumbersToDelete,
       isSingle: false,
       item: null
     });
@@ -876,7 +904,6 @@ const Rules = () => {
                 {isLoading || tableData.length === 0
                   ? renderTableSkeleton()
                   : currentItems.map((item, index) => {
-                    // Calculate serial number based on sort direction for 'id'
                     const serialNumber =
                       sortConfig.key === 'id' && sortConfig.direction === 'desc'
                         ? filteredData.length - indexOfFirstItem - index
@@ -892,7 +919,6 @@ const Rules = () => {
                             className="h-4 w-4 text-[#8e78b7] rounded"
                           />
                         </td>
-                        {/* Use the new serialNumber variable here */}
                         <td className="p-4 font-medium">{serialNumber}</td>
                         <td className="p-4 text-gray-600">{item.category}</td>
                         <td className="p-4 text-gray-600">{item.type}</td>
@@ -932,7 +958,7 @@ const Rules = () => {
                                     onClick={() => handleRunSelected(item, true)}
                                     className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
                                   >
-                                    Run ID {item.id}
+                                    Run ID {serialNumber}
                                   </button>
                                   <button
                                     onClick={handleRunAllSelected}
@@ -964,7 +990,7 @@ const Rules = () => {
                                     onClick={() => handleRefreshSelected(item, true)}
                                     className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
                                   >
-                                    Refresh ID {item.id}
+                                    Refresh ID {serialNumber}
                                   </button>
                                   <button
                                     onClick={handleRefreshAllSelected}
@@ -989,7 +1015,7 @@ const Rules = () => {
                                     onClick={() => handleScheduleSelected(item, true)}
                                     className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
                                   >
-                                    Schedule ID {item.id}
+                                    Schedule ID {serialNumber}
                                   </button>
                                   <button
                                     onClick={handleScheduleAllSelected}
@@ -1014,7 +1040,7 @@ const Rules = () => {
                                     onClick={() => handleDeleteSelected(item, true)}
                                     className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
                                   >
-                                    Delete ID {item.id}
+                                    Delete ID {serialNumber}
                                   </button>
                                   <button
                                     onClick={handleDeleteAllSelected}
@@ -1049,8 +1075,8 @@ const Rules = () => {
                     key={index}
                     onClick={() => goToPage(index + 1)}
                     className={`px-3 py-1 mx-1 rounded-md ${currentPage === index + 1
-                      ? 'bg-[#8e78b7] text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-[#8e78b7] text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
                       }`}
                   >
                     {index + 1}
@@ -1074,20 +1100,20 @@ const Rules = () => {
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
             <h3 className="text-lg font-medium mb-4">Confirm Deletion</h3>
             <p className="mb-6">
-              {deleteConfirmation.ids.length > 1
-                ? `Are you sure you want to delete ${deleteConfirmation.ids.length} selected rules?`
-                : `Are you sure you want to delete rule ID ${deleteConfirmation.ids[0]}?`}
+              {deleteConfirmation.serialNumbers.length > 1
+                ? `Are you sure you want to delete the ${deleteConfirmation.serialNumbers.length} selected rules?`
+                : `Are you sure you want to delete the rule : ${deleteConfirmation.serialNumbers[0]}?`}
             </p>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setDeleteConfirmation({ show: false, ids: [], isSingle: false, item: null })}
+                onClick={() => setDeleteConfirmation({ show: false, ids: [], serialNumbers: [], isSingle: false, item: null })}
                 className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
-                  setDeleteConfirmation({ show: false, ids: [], isSingle: false, item: null });
+                  setDeleteConfirmation({ show: false, ids: [], serialNumbers: [], isSingle: false, item: null });
                   performDelete(deleteConfirmation.ids);
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
@@ -1103,7 +1129,7 @@ const Rules = () => {
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
             <h3 className="text-xl font-medium mb-4">Scheduler</h3>
             <p className="mb-4 text-gray-600">
-              Scheduling rule: {schedulerData.rule_ids.join(', ')}
+              Scheduling rule(s): {schedulerData.display_s_nos.join(', ')}
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
@@ -1112,7 +1138,8 @@ const Rules = () => {
                 onChange={(e) => setSchedulerData(prev => ({ ...prev, freq: e.target.value }))}
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
               >
-                <option value="Daily">Once</option>
+                <option value="" disabled>Select a frequency</option>
+                <option value="Once">Once</option>
                 <option value="Daily">Daily</option>
                 <option value="Weekly">Weekly</option>
                 <option value="Monthly">Monthly</option>
@@ -1123,6 +1150,7 @@ const Rules = () => {
               <input
                 type="date"
                 value={schedulerData.date}
+                min={new Date().toISOString().split("T")[0]}
                 onChange={(e) => setSchedulerData(prev => ({ ...prev, date: e.target.value }))}
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
               />
@@ -1140,7 +1168,7 @@ const Rules = () => {
               <button
                 onClick={() => {
                   setShowScheduler(false);
-                  setSchedulerData({ freq: 'Daily', date: '2016-02-10', time: '18:00', rule_ids: [] });
+                  setSchedulerData({ freq: '', date: '', time: '', rule_ids: [], display_s_nos: [] });
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
               >
