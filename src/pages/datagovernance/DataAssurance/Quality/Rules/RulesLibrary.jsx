@@ -381,10 +381,10 @@ const RulesLibrary = () => {
                             </button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            <div>
+                            {/* <div>
                                 <span className="font-semibold text-gray-700">ID:</span>
                                 <span className="ml-2 text-gray-800">{selectedRule.id}</span>
-                            </div>
+                            </div> */}
                             <div>
                                 <span className="font-semibold text-gray-700">Severity:</span>
                                 <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${selectedRule.severity === 'High' ? 'bg-red-100 text-red-700' :
