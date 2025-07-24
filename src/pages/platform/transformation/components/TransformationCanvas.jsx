@@ -19,7 +19,9 @@ import { useNavigate } from "react-router-dom";
 import { TransformationProvider, useTransformation, useTrackConnections } from "./TransformationContext";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
-import  TargetMappingDrawer  from "./TargetDrawer/TargetMappingDrawer"
+import TargetMappingDrawer from "./TargetDrawer/TargetMappingDrawer";
+import { prepareEditFlowData, validateEditFlowData, restoreNodesAndEdgesFromEditData } from "../utils/editFlowUtils";
+
 const nodeTypes = {
   define: DefineNode,
   source: SourceNode,
@@ -60,8 +62,103 @@ function TransformationCanvasContent() {
   const { token, decodedToken, project } = useAuth();
   const [arthDrawerOpen, setArthDrawerOpen] = useState(false);
   const [arthDrawerNodeId, setArthDrawerNodeId] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editTransformationId, setEditTransformationId] = useState(null);
+  const [isRestorationComplete, setIsRestorationComplete] = useState(false);
 
   useTrackConnections(nodes, edges);
+
+  // Check for edit mode and restore data on component mount - IMPROVED
+  useEffect(() => {
+    const editMode = sessionStorage.getItem('editMode');
+    const editFlowDataStr = sessionStorage.getItem('editFlowData');
+    const transformationId = sessionStorage.getItem('editTransformationId');
+
+    if (editMode === 'true' && editFlowDataStr && transformationId) {
+      try {
+        const editFlowData = JSON.parse(editFlowDataStr);
+        console.log("Starting edit mode restoration...", editFlowData);
+
+        setIsEditMode(true);
+        setEditTransformationId(transformationId);
+
+        // Restore nodes and edges from edit flow data
+        const restoredData = restoreNodesAndEdgesFromEditData(editFlowData, setNodes, setEdges, nodeIdRef);
+
+        // Set nodes and edges in a single batch to prevent multiple renders
+        setNodes(restoredData.nodes);
+        setEdges(restoredData.edges);
+
+        // Clear session storage after restoring
+        sessionStorage.removeItem('editMode');
+        sessionStorage.removeItem('editFlowData');
+        sessionStorage.removeItem('editTransformationId');
+
+        // Mark restoration complete after a short delay
+        setTimeout(() => {
+          setIsRestorationComplete(true);
+          setNodes(prevNodes =>
+            prevNodes.map(node => ({
+              ...node,
+              data: {
+                ...node.data,
+                _isRestoring: false
+              }
+            }))
+          );
+        }, 500);
+
+        toast.success("Transformation loaded for editing", {
+          duration: 2000,
+          position: "top-center",
+        });
+
+      } catch (error) {
+        console.error("Error restoring edit flow data:", error);
+        toast.error("Failed to load transformation for editing", {
+          duration: 3000,
+          position: "top-center",
+        });
+        setIsRestorationComplete(true);
+      }
+    } else {
+      setIsRestorationComplete(true);
+    }
+  }, []); // Empty dependency array to run only once
+
+  // Immediate onDataChange function without debouncing for better drawer performance
+  const onDataChangeImmediate = useCallback((nodeId, newData) => {
+    setNodes((prevNodes) =>
+      prevNodes.map((n) =>
+        n.id === nodeId
+          ? { ...n, data: { ...n.data, ...newData } }
+          : n
+      )
+    );
+  }, [setNodes]);
+
+  // Update onDataChange for all nodes - only after restoration is complete
+  useEffect(() => {
+    if (!isRestorationComplete) return;
+
+    setNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          onDataChange: (newData) => {
+            // Skip updates if the node is being restored
+            if (node.data._isRestoring) {
+              console.log('Skipping update during restoration for node:', node.id);
+              return;
+            }
+
+            onDataChangeImmediate(node.id, newData);
+          },
+        },
+      }))
+    );
+  }, [onDataChangeImmediate, isRestorationComplete]);
 
   useEffect(() => {
     id = nodeIdRef.current;
@@ -310,29 +407,15 @@ function TransformationCanvasContent() {
         return;
       }
 
+
+
+      // Wait for state update before generating JSON
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       setIsSaving(true);
-      const nameCheckResponse = await fetch(`${hostname}/etl/check-transformation-name?name=${encodeURIComponent(defineNode.data.name)}`, {
-        headers: {
-          "accept": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!nameCheckResponse.ok) {
-        throw new Error("Failed to check transformation name");
-      }
-
-      const nameCheckResult = await nameCheckResponse.json();
-      if (nameCheckResult.exists) {
-        toast.error("Transformation name already exists. Please choose another name.", {
-          duration: 3000,
-          position: "top-center",
-        });
-        setIsSaving(false);
-        return;
-      }
-
       const transformationData = generateTransformationJson();
+
+
 
       if (Object.keys(transformationData.source).length === 0) {
         toast.error("Source data is empty. Make sure your source nodes are properly connected.");
@@ -454,6 +537,11 @@ function TransformationCanvasContent() {
         }
       });
 
+      const editFlowData = prepareEditFlowData(nodes, edges, nodeIdRef.current);
+
+
+
+
       const payload = {
         transformation_name: defineNode.data.name,
         description: defineNode.data.description || "No description provided",
@@ -465,12 +553,21 @@ function TransformationCanvasContent() {
         status: "creating",
         created_by: decodedToken?.preferred_username || "unknown",
         project: project || "default",
-        extra_info: {}
+        extra_info: {
+          edit_flow: editFlowData
+        }
       };
 
-      console.log(payload);
-      const response = await fetch(`${hostname}/etl/transformation`, {
-        method: "POST",
+      console.log("Payload with edit flow data:", payload);
+
+      const isUpdate = isEditMode && editTransformationId;
+      const url = isUpdate
+        ? `${hostname}/etl/transformation/edit/update?transformation_id=${editTransformationId}`
+        : `${hostname}/etl/transformation`;
+      const method = isUpdate ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -480,12 +577,10 @@ function TransformationCanvasContent() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to save transformation");
+        throw new Error(errorData.detail || `Failed to ${isUpdate ? 'update' : 'save'} transformation`);
       }
 
-      // const savedData = await response.json();
-
-      toast.success("Transformation saved successfully!", {
+      toast.success(`Transformation ${isUpdate ? 'updated' : 'saved'} successfully!`, {
         duration: 3000,
         position: "top-center",
       });
@@ -495,24 +590,52 @@ function TransformationCanvasContent() {
       }, 1500);
 
     } catch (error) {
-      console.error("Error saving transformation:", error);
-      toast.error(`Failed to save transformation: ${error.message}`, {
+      console.error(`Error ${isEditMode ? 'updating' : 'saving'} transformation:`, error);
+      toast.error(`Failed to ${isEditMode ? 'update' : 'save'} transformation: ${error.message}`, {
         duration: 5000,
         position: "top-center",
       });
     } finally {
       setIsSaving(false);
     }
-  }, [generateTransformationJson, nodes, edges, navigate, hostname, token, decodedToken, project]);
+  }, [generateTransformationJson, nodes, edges, navigate, hostname, token, decodedToken, project, nodeIdRef, isEditMode, editTransformationId]);
 
  const handleNewFlow = useCallback(() => {
+  // Reset the context state
   dispatch({ type: ACTION_TYPES.RESET });
+
+  // Reset nodes and edges
   setNodes(initialNodes);
   setEdges(initialEdges);
   nodeIdRef.current = 1;
+
+  // Clear all localStorage mappings related to target mappings
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (
+        key.startsWith('targetMapping_') ||
+        key.startsWith('targetMappingConfirmed_') ||
+        key.startsWith('targetMapping_') ||
+        key.includes('_draft') ||
+        key.includes('_backup')
+      )) {
+      keysToRemove.push(key);
+    }
+  }
+
+  // Remove all identified keys
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+
+  console.log("Flow reset - cleared all target mapping data");
+
+  // Also clear debug variables if they exist
+  if (window.targetMappingsDebug) window.targetMappingsDebug = {};
+  if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
 }, [dispatch, setNodes, setEdges]);
 
 const handleCancel = useCallback(() => {
+  // Perform complete reset
   handleNewFlow();
   navigate("/transformation");
 }, [navigate, handleNewFlow]);
@@ -548,9 +671,51 @@ const handleCancel = useCallback(() => {
 
   useEffect(() => {
     window.openTargetMappingDrawer = (nodeId, props = {}) => {
-      setArthDrawerNodeId(nodeId);
-      setArthDrawerProps({...props});
-      setArthDrawerOpen(true);
+      // Before opening the drawer, refresh all source columns
+      if (window.allNodes && window.allEdges) {
+        // Find the target node
+        const targetNode = window.allNodes.find(n => n.id === nodeId && n.type === 'target');
+        if (targetNode) {
+          // Find all transformation nodes connected to this target
+          const incomingEdges = window.allEdges.filter(e => e.target === nodeId);
+          const transformationNodeIds = incomingEdges.map(e => e.source)
+            .filter(srcId => {
+              const n = window.allNodes.find(n => n.id === srcId);
+              return n && n.type === 'transformation';
+            });
+
+          // For each transformation, ensure its columns are updated
+          transformationNodeIds.forEach(transId => {
+            const transNode = window.allNodes.find(n => n.id === transId);
+            if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
+              // Here we're just ensuring the transformations are processed
+              console.log(`Ensuring transformation columns for node ${transId} are up-to-date`);
+            }
+          });
+
+          // Trigger a global refresh event for all components to update their columns
+          window.dispatchEvent(new CustomEvent("tantor-refresh-all-columns", {
+            detail: { targetNodeId: nodeId }
+          }));
+
+          // Short delay to let columns update before opening the drawer
+          setTimeout(() => {
+            setArthDrawerNodeId(nodeId);
+            setArthDrawerProps({...props});
+            setArthDrawerOpen(true);
+          }, 50);
+        } else {
+          // If no extra processing needed, open drawer immediately
+          setArthDrawerNodeId(nodeId);
+          setArthDrawerProps({...props});
+          setArthDrawerOpen(true);
+        }
+      } else {
+        // Fallback to opening drawer directly
+        setArthDrawerNodeId(nodeId);
+        setArthDrawerProps({...props});
+        setArthDrawerOpen(true);
+      }
     };
 
     window.closeTargetMappingDrawer = () => {
@@ -782,6 +947,8 @@ const handleCancel = useCallback(() => {
   }, [edges, activeTransformationNodeId, setNodes]);
 
   const handleTransformationApply = useCallback((transformationNodeId, transformations) => {
+    console.log('Applying transformations:', transformations);
+
     setNodes(prevNodes => {
       const outgoingEdges = edges.filter(edge => edge.source === transformationNodeId);
       const targetNodeIds = outgoingEdges
@@ -879,20 +1046,24 @@ const handleCancel = useCallback(() => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Saving...
+              {isEditMode ? "Updating..." : "Saving..."}
             </>
-          ) : "Save"}
+          ) : isEditMode ? "Update" : "Save"}
         </button>
       </div>
 
-      <TransformationDrawer
-        isOpen={drawerOpen}
-        onClose={closeTransformationDrawer}
-        activeNode={activeNode}
-        activeNodeId={activeTransformationNodeId}
-        onAddNewTargetColumn={handleAddNewTargetColumn}
-        onApplyTransformations={handleTransformationApply}
-      />
+      {/* Only render drawer after restoration is complete */}
+      {isRestorationComplete && (
+        <TransformationDrawer
+          isOpen={drawerOpen}
+          onClose={closeTransformationDrawer}
+          activeNode={activeNode}
+          activeNodeId={activeTransformationNodeId}
+          onAddNewTargetColumn={handleAddNewTargetColumn}
+          onApplyTransformations={handleTransformationApply}
+        />
+      )}
+
       {arthDrawerOpen && (
         <TargetMappingDrawer
           nodeId={arthDrawerNodeId}
@@ -906,8 +1077,8 @@ const handleCancel = useCallback(() => {
 
 const TransformationCanvas = () => {
   return (
-    <TransformationProvider>
-      <TransformationCanvasContent />
+
+    <TransformationProvider>      <TransformationCanvasContent />
     </TransformationProvider>
   );
 };

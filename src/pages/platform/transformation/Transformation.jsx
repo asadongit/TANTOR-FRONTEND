@@ -402,12 +402,12 @@ function Transformation() {
       label: "Run",
       icon: <Icon icon="material-symbols:play-arrow" className="w-5 h-5" />,
       onClick: (row) => handleTriggerETL(row.transformation_name),
-      show: (row) => row.status === 'Ready to run'
+      show: (row) => row.status !== 'creating' && row.status !== 'Running'
     },
     {
       label: "Edit",
       icon: <Icon icon="material-symbols:edit-outline" className="w-5 h-5" />,
-      onClick: (row) => console.log("Edit:", row)
+      onClick: (row) => handleEditTransformation(row)
     },
     {
       label: "Info",
@@ -421,6 +421,44 @@ function Transformation() {
     },
   ];
 
+  const handleEditTransformation = async (transformation) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(
+        `${hostname}/etl/transformation/${transformation.transformation_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.status === 200) {
+        const transformationData = response.data;
+
+        if (transformationData.extra_info?.edit_flow) {
+          sessionStorage.setItem('editFlowData', JSON.stringify(transformationData.extra_info.edit_flow));
+          sessionStorage.setItem('editTransformationId', transformation.transformation_id.toString());
+          sessionStorage.setItem('editMode', 'true');
+        }
+
+
+        navigate('/transformation/studio');
+      }
+    } catch (error) {
+      console.error("Error fetching transformation for edit:", error);
+      setToast({
+        show: true,
+        message: 'Failed to load transformation for editing',
+        type: 'error'
+      });
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+    }
+  };
 
   const DeleteTransformation = ({ isOpen, onClose, transformationData, onConfirmDelete }) => {
     const [isLoading, setIsLoading] = useState(false);

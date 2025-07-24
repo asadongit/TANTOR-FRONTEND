@@ -167,8 +167,9 @@ export const DefineNode = ({ id, data }) => {
   };
 
   useEffect(() => {
-    // Only validate if name is present and not already checked
-    if (data.name && data.name.trim() !== "" && !nameError && !nameExists) {
+    // Only validate if name is present, not already checked, and not in edit mode with existing data
+    const isEditMode = sessionStorage.getItem('editMode') === 'true';
+    if (data.name && data.name.trim() !== "" && !nameError && !nameExists && !isEditMode) {
       validateName(data.name);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
