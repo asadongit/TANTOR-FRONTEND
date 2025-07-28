@@ -374,11 +374,20 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
       const rows = responseText.trim().split('\n').map((row) => JSON.parse(row));
 
       if (rows.length > 0) {
-        setColumnDefs(Object.keys(rows[0]));
-        setData(rows);
-        setHasMore(rows.length === 100);
-        setQuerySuccess(true);
+        const firstRow = rows[0];
+        const allNulls = Object.values(firstRow).every(val => val === null);
 
+        if (allNulls && rows.length === 1) {
+          setData([]);
+          setColumnDefs(Object.keys(firstRow));
+          setHasMore(false);
+          setQuerySuccess(false);
+        } else {
+          setColumnDefs(Object.keys(rows[0]));
+          setData(rows);
+          setHasMore(rows.length === 100);
+          setQuerySuccess(true);
+        }
         const historyPayload = {
           query: query,
           owner: decodedToken?.preferred_username,
@@ -800,11 +809,16 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                     {loading ? 'Running...' : 'Run query'}
                     <Play size={14} />
                   </button>
-                  <button className="text-gray-500 p-1 hover:bg-gray-50 rounded" onClick={toggleEditorMaximize}>
+                  <button
+                    className="text-gray-500 p-1 hover:bg-gray-50 rounded"
+                    onClick={toggleEditorMaximize}
+                    title={isEditorMaximized ? "Minimize" : "Maximize"}
+                  >
                     {isEditorMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                   </button>
                   <button
                     className="text-gray-500 p-1 hover:bg-gray-50 rounded"
+                    title={"Refresh"}
                     onClick={() => {
                       setSelectedQuery('');
                       setSelectedTable('');
@@ -858,6 +872,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                   <button
                     className="text-gray-500 p-1 hover:bg-gray-50 rounded"
                     onClick={toggleOutputMaximize}
+                    title={isOutputMaximized ? "Minimize" : "Maximize"}
                   >
                     {isOutputMaximized ? (
                       <Minimize2 size={16} />
@@ -872,9 +887,9 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                     <div className="flex justify-center items-center h-full">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8d77ba]"></div>
                     </div>
-                  ) : data.length === 0 ? (
+                  ) : data.length === 0 || (data.length === 1 && Object.values(data[0]).every(val => val === null)) ? (
                     <div className="flex justify-center items-center h-full text-gray-500">
-                      No data returned
+                      No data available
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
