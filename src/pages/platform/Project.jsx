@@ -39,9 +39,8 @@ const Project = () => {
   const [formData, setFormData] = useState(initialFormState);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const [deleteModal, setDeleteModal] = useState({ open: false, projectId: null });
-
+  const [refreshing, setRefreshing] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ open: false, projectId: null });
   const [isModalOpen, setIsModalOpen] = useState({
     modal1: false,
     modal2: false,
@@ -181,9 +180,14 @@ const Project = () => {
     }
   };
   
-  const handleRefresh = () => {
-    refetchProjects();
-    refetchCardData();
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchProjects(), refetchCardData()]);
+      toast.success("Projects fetched successfully");
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleDeleteClick = (row) => {
@@ -258,8 +262,8 @@ const Project = () => {
     { key: "created_by", label: "Created By" },
     { key: "owner", label: "Owner" },
     { key: "connections", label: "Connections" },
-    { key: "metadata", label: "Migrations" },
-    { key: "migration", label: "Transformations" },
+    { key: "metadata", label: "Metadata" },
+    { key: "migration", label: "Migrations" },
     { key: "purge", label: "Purges" },
     { key: "cdc", label: "CDC" },
     { label: "Action", sortable: false },
@@ -305,6 +309,7 @@ const Project = () => {
        
           <button
             type="button"
+            onClick={()=>navigate(`/details?${encodeURIComponent(encrypt("componentType=project&heading=project"))}`)}
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
           >
             <List className="h-5 w-5" />
@@ -314,7 +319,7 @@ const Project = () => {
             className="text-black shadow-lg hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7] transition-colors"
             onClick={handleRefresh}
           >
-            <RefreshCcw className={`h-5 w-5 ${isProjectLoading ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
           <button
             onClick={() => openModal("modal1")}
