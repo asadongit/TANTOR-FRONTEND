@@ -582,7 +582,6 @@ export const SourceNode = ({ id, data }) => {
       }
     });
 
-    // Store original columns (name + datatype) for editFlowUtils
     dispatch({
       type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
       payload: {
@@ -661,25 +660,33 @@ export const SourceNode = ({ id, data }) => {
   }, [preProcedureDropdownOpen, postProcedureDropdownOpen]);
 
   const getNextAlias = useCallback(() => {
+    if (!selectedTable) return "";
+
+    const baseAlias = `df_${selectedTable}`;
     const sourceNodesFromWindow = window.allNodes ?
       window.allNodes.filter(n => n.type === "source") : [];
 
-    let maxNumber = 0;
+    const usedAliases = sourceNodesFromWindow
+      .filter(node =>
+        node.id !== id &&
+        node.data &&
+        node.data.table === selectedTable &&
+        typeof node.data.alias === "string"
+      )
+      .map(node => node.data.alias);
 
-    sourceNodesFromWindow.forEach(node => {
-      if (node.id !== id) {
-        const aliasMatch = (node.data?.alias || "").match(/^unnamed_source_(\d+)$/);
-        if (aliasMatch && aliasMatch[1]) {
-          const num = parseInt(aliasMatch[1], 10);
-          if (!isNaN(num) && num > maxNumber) {
-            maxNumber = num;
-          }
-        }
-      }
-    });
+    if (!usedAliases.includes(baseAlias)) {
+      return baseAlias;
+    }
 
-    return `unnamed_source_${maxNumber + 1}`;
-  }, [id]);
+    let suffix = 1;
+    let aliasWithSuffix = `${baseAlias}_${suffix}`;
+    while (usedAliases.includes(aliasWithSuffix)) {
+      suffix += 1;
+      aliasWithSuffix = `${baseAlias}_${suffix}`;
+    }
+    return aliasWithSuffix;
+  }, [id, selectedTable]);
 
   useEffect(() => {
     if (selectedTable && !alias) {
@@ -687,33 +694,27 @@ export const SourceNode = ({ id, data }) => {
     }
   }, [selectedTable, alias, getNextAlias]);
 
-  // Separate useEffect for handling table/procedure mode switching - PREVENT AUTO SWITCHING
   const handleObjectTypeChange = useCallback((newObjectType) => {
     if (newObjectType === selectedObjectType) return;
 
     if (selectedObjectType === "procedures" && newObjectType === "tables") {
-      // Save current procedure selections
       setProcedureSelections({
         selectedProcedure: selectedTable,
         selectedParameters: selectedColumns
       });
 
-      // Restore table selections
       setSelectedTable(tableSelections.selectedTable);
       setSelectedColumns(tableSelections.selectedColumns);
     } else if (selectedObjectType === "tables" && newObjectType === "procedures") {
-      // Save current table selections
       setTableSelections({
         selectedTable: selectedTable,
         selectedColumns: selectedColumns
       });
 
-      // Fetch procedures if needed
       if (selectedConnection.name && procedures.length === 0) {
         fetchProcedures(selectedConnection.name);
       }
 
-      // Restore procedure selections if available
       setSelectedTable(procedureSelections.selectedProcedure);
       setSelectedColumns(procedureSelections.selectedParameters);
     }
