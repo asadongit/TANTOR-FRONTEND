@@ -1,7 +1,7 @@
-const BusinessCatalogue = () => {
+const BusinessGlossary = () => {
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Business Catalogue</h1>
+      <h1 className="text-2xl font-semibold">Business Gloassary</h1>
       <div className="mt-4">
         <p className="text-gray-600">Manage business terms, definitions, and relationships.</p>
       </div>
@@ -9,4 +9,4 @@ const BusinessCatalogue = () => {
   );
 };
 
-export default BusinessCatalogue;
+export default BusinessGlossary;
