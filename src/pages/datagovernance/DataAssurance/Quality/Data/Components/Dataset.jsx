@@ -25,8 +25,9 @@ import AceEditor from 'react-ace';
 import 'ace-builds/src-noconflict/mode-mysql';
 import 'ace-builds/src-noconflict/theme-github';
 import 'ace-builds/src-noconflict/ext-language_tools';
+import { initialFormData } from './Cleaning.jsx';
 
-function Dataset({ query, setQuery, setQuerySuccess }) {
+function Dataset({ query, setQuery, setQuerySuccess,setFormData }) {
   const { token, hostnameV1, decodedToken } = useAuth();
   const [selectedTable, setSelectedTable] = useState('');
   const [isEditorMaximized, setIsEditorMaximized] = useState(false);
@@ -418,6 +419,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
       setQuerySuccess(false);
     } finally {
       setLoading(false);
+      setFormData(initialFormData)
     }
   };
 
