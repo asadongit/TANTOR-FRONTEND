@@ -204,25 +204,33 @@ export const TargetNode = ({ id, data }) => {
   }, [fetchConnections]);
 
   const getNextAlias = useCallback(() => {
+    if (!selectedTable) return "";
+
+    const baseAlias = `df_${selectedTable}`;
     const targetNodesFromWindow = window.allNodes ?
       window.allNodes.filter(n => n.type === "target") : [];
 
-    let maxNumber = 0;
+    const usedAliases = targetNodesFromWindow
+      .filter(node =>
+        node.id !== id &&
+        node.data &&
+        node.data.table === selectedTable &&
+        typeof node.data.alias === "string"
+      )
+      .map(node => node.data.alias);
 
-    targetNodesFromWindow.forEach(node => {
-      if (node.id !== id) {
-        const aliasMatch = (node.data?.alias || "").match(/^unnamed_target_(\d+)$/);
-        if (aliasMatch && aliasMatch[1]) {
-          const num = parseInt(aliasMatch[1], 10);
-          if (!isNaN(num) && num > maxNumber) {
-            maxNumber = num;
-          }
-        }
-      }
-    });
+    if (!usedAliases.includes(baseAlias)) {
+      return baseAlias;
+    }
 
-    return `unnamed_target_${maxNumber + 1}`;
-  }, [id]);
+    let suffix = 1;
+    let aliasWithSuffix = `${baseAlias}_${suffix}`;
+    while (usedAliases.includes(aliasWithSuffix)) {
+      suffix += 1;
+      aliasWithSuffix = `${baseAlias}_${suffix}`;
+    }
+    return aliasWithSuffix;
+  }, [id, selectedTable]);
 
   useEffect(() => {
     if (selectedTable && !alias) {
