@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import Select from 'react-select';
 import { useAuth } from '../../../../../../context/AuthContext.jsx';
+import { ToastContainer, toast } from 'react-toastify';
 
 const DataDisplayModal = ({ data, onClose }) => {
   if (!data || data.length === 0) return null;
@@ -79,7 +80,7 @@ const cleaningOptions = [
   { id: 'skewness', label: 'Skewness', expandable: true },
 ];
 
-const initialFormData = {
+export const initialFormData = {
   flag: 'false',
   missing_values_strategy: 'mean',
   datetime_col: '',
@@ -94,9 +95,9 @@ const initialFormData = {
 };
 
 
-function Cleaning({ query }) {
-   const { token, hostnameV1, decodedToken } = useAuth();
-  const [formData, setFormData] = useState(initialFormData);
+function Cleaning({ query, formData, setFormData }) {
+  const { token, hostnameV1, decodedToken } = useAuth();
+  // const [formData, setFormData] = useState(initialFormData);
   const [showModal, setShowModal] = useState(false);
   const [cleanedData, setCleanedData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -124,7 +125,7 @@ function Cleaning({ query }) {
         setNormalisationColumns(data.numerical_columns || [])
         setColumns(data.all_columns || [])
       } catch (error) {
-        console.error('Error fetching columns:', error);
+        toast.error('Failed to fetch columns');
       }
     };
 
@@ -160,14 +161,22 @@ function Cleaning({ query }) {
         body: formDataObj,
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (data.status === 'success') {
         setCleanedData(data.cleaned_df);
         setShowDisplayButton(true);
+        toast.success('Data cleaned successfully!'); 
+      } else {
+        toast.error(data.message || 'Failed to fetch cleaned data');
       }
+
     } catch (error) {
-      console.error('Error during cleaning:', error);
+      toast.error('Failed to fetch cleaned data');
     } finally {
       setLoading(false);
     }
@@ -199,6 +208,8 @@ function Cleaning({ query }) {
         : [...prev.operations, operation];
       return { ...prev, operations: newOperations };
     });
+
+    setShowDisplayButton(false);
   };
 
   const renderExpandableContent = (optionId) => {
@@ -441,7 +452,7 @@ function Cleaning({ query }) {
           onClose={() => setShowModal(false)}
         />
       )}
-
+      <ToastContainer />
     </div>
   );
 }
