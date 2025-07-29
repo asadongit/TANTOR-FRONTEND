@@ -1007,27 +1007,30 @@ export const TransformationDrawer = ({
 	}, []);
 
 	const handleAddTransformation = useCallback(() => {
-		setTransformations(ts => [
-			...ts,
-			{
-				id: `transformation_${ts.length + 1}`,
-				source_column: [],
-				target_column: [],
-				params: {},
-				transformation_operation: "",
-				transformation_operator: "",
-				source_dataframe: activeNode?.data?.alias || "",
-			},
-		]);
+		setTransformations(ts => {
+			const newTs = [
+				...ts,
+				{
+					id: `transformation_${ts.length + 1}`,
+					source_column: [],
+					target_column: [],
+					params: {},
+					transformation_operation: "",
+					transformation_operator: "",
+					source_dataframe: activeNode?.data?.alias || "",
+				},
+			];
+			// Assign transformation_order to all
+			return newTs.map((t, idx) => ({ ...t, transformation_order: idx + 1 }));
+		});
 	}, [activeNode]);
 
 	const handleRemoveTransformation = useCallback((id) => {
 		setTransformations(ts => {
 			if (ts.length <= 1) return ts;
-
-			return ts
-				.filter(t => t.id !== id)
-				.map((t, idx) => ({ ...t, transformation_order: idx + 1 }));
+			const filtered = ts.filter(t => t.id !== id);
+			// Reassign transformation_order after removal
+			return filtered.map((t, idx) => ({ ...t, transformation_order: idx + 1 }));
 		});
 	}, []);
 
@@ -1618,6 +1621,7 @@ useEffect(() => {
 					transformation_operation: op.transformation_operation || "",
 					transformation_operator: op.transformation_operator || "",
 					source_dataframe: op.source_dataframe || activeNode.data.alias || "",
+					transformation_order: idx + 1, // <-- Ensure order is set
 				};
 			});
 
