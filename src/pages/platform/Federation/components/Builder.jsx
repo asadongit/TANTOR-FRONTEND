@@ -1,5 +1,4 @@
 import CircularProgress from "@mui/material/CircularProgress";
-import { ToastContainer, toast } from "react-toastify";
 import Switch from "@mui/material/Switch";
 import {
     TextField,
@@ -9,27 +8,24 @@ import {
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react'; // Added X for toast close button
+import { Icon } from "@iconify/react"; // Added for toast icons
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 
 export default function Builder({ handleSwitch, checked }) {
     const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
-    // var encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
     const [columnDefs, setColumnDefs] = useState([]);
-    const [curl, setCurl] = useState("pervious curl is")
-
+    const [curl, setCurl] = useState("pervious curl is");
     const [selectedView, setSelectedView] = useState("");
-    const [shownViews, setShownViews] = useState([])
+    const [shownViews, setShownViews] = useState([]);
+    const [toast, setToast] = useState({ show: false, message: '', type: '' }); // Added toast state
 
     useEffect(() => {
         const fetchViews = async () => {
             try {
-                // const project = sessionStorage.getItem("project");
-                // const createdBy = sessionStorage.getItem("created_by");
-
                 const params = new URLSearchParams({
                     project: project,
                     created_by: decodedToken?.preferred_username,
@@ -39,7 +35,7 @@ export default function Builder({ handleSwitch, checked }) {
                 const data = await response.json();
 
                 if (data && data.result) {
-                    console.log("views in builder is =-====>", data.result)
+                    console.log("views in builder is =-====>", data.result);
                     setShownViews(data.result);
                 } else {
                     console.error("Invalid response from the API");
@@ -52,9 +48,7 @@ export default function Builder({ handleSwitch, checked }) {
         fetchViews();
     }, []);
 
-
     const handleViewChange = async (event, value) => {
-        // setData([])
         setSelectedView(value);
         setColumnDefs([]);
         setData([]);
@@ -67,10 +61,10 @@ export default function Builder({ handleSwitch, checked }) {
             const cachingResponse = await fetch(`${hostnameV1}/checkCaching/${selectedView}`);
             const cachingData = await cachingResponse.json();
 
-            console.log("caching response is ====>", cachingData.result)
+            console.log("caching response is ====>", cachingData.result);
 
             if (cachingData.result) {
-                console.log("inside iff===>")
+                console.log("inside iff===>");
                 fetch(`${hostnameV1}/view/${selectedView}`, {
                     method: "POST",
                     headers: {
@@ -83,9 +77,16 @@ export default function Builder({ handleSwitch, checked }) {
                     .then((response) => response.json().then((data) => ({ status: response.status, data })))
                     .then(({ status, data }) => {
                         if (status === 200) {
-                            console.log("data result is ====>", data)
+                            console.log("data result is ====>", data);
                             if (data.detail) {
-                                toast.error("Table is empty");
+                                setToast({
+                                    show: true,
+                                    message: "Table is empty",
+                                    type: "error",
+                                });
+                                setTimeout(() => {
+                                    setToast({ show: false, message: "", type: "" });
+                                }, 3000);
                                 setData([]);
                             } else {
                                 const rows = data;
@@ -97,19 +98,33 @@ export default function Builder({ handleSwitch, checked }) {
                         } else {
                             if (data) {
                                 const res = JSON.parse(data);
-                                toast.error(res.detail);
+                                setToast({
+                                    show: true,
+                                    message: res.detail,
+                                    type: "error",
+                                });
+                                setTimeout(() => {
+                                    setToast({ show: false, message: "", type: "" });
+                                }, 3000);
                             }
                         }
                     })
                     .catch((error) => {
                         console.error("Error fetching data:", error);
-                        toast.error("Something went wrong!");
+                        setToast({
+                            show: true,
+                            message: "Something went wrong!",
+                            type: "error",
+                        });
+                        setTimeout(() => {
+                            setToast({ show: false, message: "", type: "" });
+                        }, 3000);
                     })
                     .finally(() => {
                         setLoading(false);
                     });
             } else {
-                console.log("inside else===>")
+                console.log("inside else===>");
                 fetch(`${hostnameV1}/view/${selectedView}`, {
                     method: "POST",
                     headers: {
@@ -137,7 +152,14 @@ export default function Builder({ handleSwitch, checked }) {
                                 .filter(item => item !== null);
 
                             if (dataArray.length === 0) {
-                                toast.error("Table is empty");
+                                setToast({
+                                    show: true,
+                                    message: "Table is empty",
+                                    type: "error",
+                                });
+                                setTimeout(() => {
+                                    setToast({ show: false, message: "", type: "" });
+                                }, 3000);
                                 setData([]);
                             } else {
                                 console.log("Parsed Data Array: ", dataArray);
@@ -150,13 +172,27 @@ export default function Builder({ handleSwitch, checked }) {
                         } else {
                             if (data) {
                                 const res = JSON.parse(data);
-                                toast.error(res.detail);
+                                setToast({
+                                    show: true,
+                                    message: res.detail,
+                                    type: "error",
+                                });
+                                setTimeout(() => {
+                                    setToast({ show: false, message: "", type: "" });
+                                }, 3000);
                             }
                         }
                     })
                     .catch((error) => {
                         console.error("Error fetching data:", error);
-                        toast.error("Something went wrong!");
+                        setToast({
+                            show: true,
+                            message: "Something went wrong!",
+                            type: "error",
+                        });
+                        setTimeout(() => {
+                            setToast({ show: false, message: "", type: "" });
+                        }, 3000);
                     })
                     .finally(() => {
                         setLoading(false);
@@ -164,23 +200,28 @@ export default function Builder({ handleSwitch, checked }) {
             }
         } catch (error) {
             console.error("Error checking caching status:", error);
-            toast.error("Failed to check caching status");
+            setToast({
+                show: true,
+                message: "Failed to check caching status",
+                type: "error",
+            });
+            setTimeout(() => {
+                setToast({ show: false, message: "", type: "" });
+            }, 3000);
             setLoading(false);
         }
     };
 
-
     const executeQuery = (query = "", page = 1) => {
         setLoading(true);
-        setViewsDetails(null)
+        setViewsDetails(null);
 
         const payload = {
             page: page,
-            // isCaching: isCaching
         };
 
-        checkCaching(payload)
-        var url = `${hostnameV1}/view/${selectedView}`
+        checkCaching(payload);
+        var url = `${hostnameV1}/view/${selectedView}`;
         fetch(`${hostnameV1}/generate_curl`, {
             method: "POST",
             headers: {
@@ -196,13 +237,12 @@ export default function Builder({ handleSwitch, checked }) {
             .then((response) =>
                 response.text().then((text) => {
                     console.log("Raw response text:", text);
-                    setCurl(text)
+                    setCurl(text);
                 })
             )
             .catch((error) => {
                 console.error("Error fetching data:", error);
             });
-
     };
 
     const [pageNo, setPageNo] = useState(1);
@@ -223,14 +263,14 @@ export default function Builder({ handleSwitch, checked }) {
     };
 
     const [queryLoading, setQueryLoading] = useState(false);
-    const [isQueryModalOpen, setIsQueryModalOpen] = useState(false)
+    const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
     const [viewsDetails, setViewsDetails] = useState(null);
 
     const handleQueryDetails = async () => {
-        console.log("query details is ===>", viewsDetails)
+        console.log("query details is ===>", viewsDetails);
         if (viewsDetails === null) {
             try {
-                setQueryLoading(true)
+                setQueryLoading(true);
                 setIsQueryModalOpen(true);
                 const response = await fetch(`${hostnameV1}/analyzeQuery`, {
                     method: 'POST',
@@ -249,25 +289,23 @@ export default function Builder({ handleSwitch, checked }) {
                 }
                 const data = await response.json();
                 if (data) {
-                    setLoading(false)
+                    setLoading(false);
                     setViewsDetails(data);
-                }
-                else {
-                    setQueryLoading(false)
+                } else {
+                    setQueryLoading(false);
                     setViewsDetails(null);
                     console.error("Invalid response from the API");
                 }
             } catch (error) {
-                setQueryLoading(false)
+                setQueryLoading(false);
                 console.error("Error fetching data:", error);
                 setViewsDetails({ status: "Failed", message: "Unable to fetch data" });
             } finally {
-                setQueryLoading(false)
+                setQueryLoading(false);
                 setIsQueryModalOpen(true);
             }
-        }
-        else {
-            console.log("query details  IN ELSE is ===>", viewsDetails)
+        } else {
+            console.log("query details IN ELSE is ===>", viewsDetails);
             setIsQueryModalOpen(true);
         }
     };
@@ -374,7 +412,7 @@ export default function Builder({ handleSwitch, checked }) {
                                                 id="panel2-header"
                                             >
                                                 <div className="flex">
-                                                    <div class="bg-[#8E77BB] mr-6 text-white rounded-lg px-2.5 py-0.5">
+                                                    <div className="bg-[#8E77BB] mr-6 text-white rounded-lg px-2.5 py-0.5">
                                                         POST
                                                     </div>
                                                     <Typography component="span">
@@ -403,8 +441,8 @@ export default function Builder({ handleSwitch, checked }) {
                                                 onClick={handlePreviousPage}
                                                 disabled={pageNo === 1}
                                                 className={`px-8 py-1.5 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm focus:outline-none mr-4 
-        ${pageNo === 1 ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white bg-[#8e78b7] hover:bg-[#7a63a8]"}
-        dark:bg-[#8e78b7] dark:hover:bg-[#7a63a8] dark:focus:ring-[#8e78b7]`}
+                                                    ${pageNo === 1 ? "text-gray-400 bg-gray-200 cursor-not-allowed" : "text-white bg-[#8e78b7] hover:bg-[#7a63a8]"}
+                                                    dark:bg-[#8e78b7] dark:hover:bg-[#7a63a8] dark:focus:ring-[#8e78b7]`}
                                             >
                                                 Previous
                                             </button>
@@ -424,6 +462,27 @@ export default function Builder({ handleSwitch, checked }) {
                         </>
                     )}
                 </div>
+                {toast.show && (
+                    <div
+                        className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
+                            toast.type === "success"
+                                ? "bg-green-100 text-green-800 border-l-4 border-green-500"
+                                : "bg-red-100 text-red-800 border-l-4 border-red-500"
+                        }`}
+                    >
+                        <Icon
+                            icon={toast.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"}
+                            className="h-5 w-5"
+                        />
+                        <p>{toast.message}</p>
+                        <button
+                            onClick={() => setToast({ show: false, message: "", type: "" })}
+                            className="ml-2 text-gray-500 hover:text-gray-700"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
             </div>
             {isQueryModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -475,6 +534,5 @@ export default function Builder({ handleSwitch, checked }) {
                 </div>
             )}
         </>
-    )
-
+    );
 }

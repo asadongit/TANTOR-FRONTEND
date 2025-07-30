@@ -10,6 +10,8 @@ const STRING_OPERATIONS = [
   { id: "ltrim", name: "Left Trim" },
   { id: "rtrim", name: "Right Trim" },
   { id: "concat", name: "Concat" },
+  { id: "upper", name: "Upper" },
+  { id: "lower", name: "Lower" },
 ];
 
 const isStringType = (datatype) => {
@@ -104,6 +106,8 @@ export const StringOperationParameters = ({ operator, params, onChange }) => {
     case 'trim':
     case 'ltrim':
     case 'rtrim':
+    case 'upper':
+    case 'lower':
       return null;
     default:
       return null;
@@ -533,6 +537,8 @@ export const getStringParams = (transformation) => {
     case "trim":
     case "ltrim":
     case "rtrim":
+    case "upper":
+    case "lower":
       return {};
     default:
       return {};
