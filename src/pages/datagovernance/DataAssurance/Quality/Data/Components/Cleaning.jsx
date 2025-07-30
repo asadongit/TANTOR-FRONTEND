@@ -44,7 +44,7 @@ const DataDisplayModal = ({ data, onClose }) => {
                       key={`${index}-${header}`}
                       className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
                     >
-                      {row[header]}
+                      {row[header]?.toString()}
                     </td>
                   ))}
                 </tr>
@@ -76,7 +76,7 @@ const cleaningOptions = [
   { id: 'missing_categorical', label: 'Handle Missing Categorical', expandable: true },
   { id: 'binning', label: 'Perform Binning', expandable: true },
   { id: 'change_datatypes', label: 'Change Datatypes', expandable: true },
-  { id: 'normalisation', label: 'Numerical Normalisation', expandable: true },
+  { id: 'normalization', label: 'Numerical Normalisation', expandable: true },
   { id: 'skewness', label: 'Skewness', expandable: true },
 ];
 
@@ -88,7 +88,7 @@ export const initialFormData = {
   bin_column_name: '',
   bin_values: '',
   datatype_conversion: '',
-  normalization_strategy: 'min-max',
+  normalization_strategy: 'minmax',
   numerical_cols: [],
   skewness_strategy: 'boxcox',
   operations: [],
@@ -170,7 +170,7 @@ function Cleaning({ query, formData, setFormData }) {
       if (data.status === 'success') {
         setCleanedData(data.cleaned_df);
         setShowDisplayButton(true);
-        toast.success('Data cleaned successfully!'); 
+        toast.success('Data cleaned successfully!');
       } else {
         toast.error(data.message || 'Failed to fetch cleaned data');
       }
@@ -259,14 +259,22 @@ function Cleaning({ query, formData, setFormData }) {
           <div className="mt-2 ml-6 w-3/4 space-y-2">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Column</label>
-              <select name="datatype_conversion_column" value={formData.datatype_conversion.split(':')[0] || ''} onChange={(e) => { const type = formData.datatype_conversion.split(':')[1] || 'string'; setFormData(prev => ({ ...prev, datatype_conversion: `${e.target.value}:${type}` })); }} className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+              <select name="datatype_conversion_column" value={formData.datatype_conversion.split(':')[0] || ''} onChange={(e) => { const type = formData.datatype_conversion.split(':')[1] || 'int'; setFormData(prev => ({ ...prev, datatype_conversion: `${e.target.value}:${type}` })); }} className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                 <option value="">Select column</option>
                 {columns.map(col => <option key={col} value={col}>{col}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Target Datatype</label>
-              <select name="datatype_conversion_type" value={formData.datatype_conversion.split(':')[1] || 'string'} onChange={(e) => { const col = formData.datatype_conversion.split(':')[0] || ''; setFormData(prev => ({ ...prev, datatype_conversion: `${col}:${e.target.value}` })); }} className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+              <select
+                name="datatype_conversion_type"
+                value={formData.datatype_conversion.split(':')[1] || 'int'}
+                onChange={(e) => {
+                  const col = formData.datatype_conversion.split(':')[0] || '';
+                  setFormData(prev => ({ ...prev, datatype_conversion: `${col}:${e.target.value}` }));
+                }}
+                className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
                 <option value="int">Integer</option>
                 <option value="float">Float</option>
                 <option value="str">String</option>
@@ -276,7 +284,7 @@ function Cleaning({ query, formData, setFormData }) {
             </div>
           </div>
         );
-      case 'normalisation': {
+      case 'normalization': {
         const selectOptions = normalisationColumns.map(col => ({
           value: col,
           label: col,
@@ -316,8 +324,8 @@ function Cleaning({ query, formData, setFormData }) {
                 onChange={handleInputChange}
                 className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="min-max">Min-Max</option>
-                <option value="z-score">Z-Score</option>
+                <option value="minmax">Min-Max</option>
+                <option value="standard">Z-Score</option>
               </select>
             </div>
           </div>
