@@ -67,7 +67,7 @@ const DataDisplayModal = ({ data, onClose }) => {
 };
 
 const cleaningOptions = [
-  { id: 'remove_duplicates', label: 'Remove Duplicate Columns' },
+  { id: 'remove_duplicates', label: 'Remove Duplicate Rows' },
   { id: 'drop_constant', label: 'Drop Constant Columns' },
   { id: 'remove_outliers', label: 'Drop Outliers' },
   { id: 'correlation', label: 'Remove Correlated Features' },
