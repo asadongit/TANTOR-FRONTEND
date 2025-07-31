@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, List, RefreshCcw, Plus, ArrowUpRight } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../components/Breadcrumb.jsx';
-import AddCatalogueModal from './AddCatalogueModal.jsx';
+import { useNavigate } from 'react-router-dom';
+
 
 const BusinessGlossary = () => {
 
   const tableData = [
-    { id: '#457', Name: 'A', Description: 'Category1', status: 'Approved', Domain: 'Healthcare', AssetType: 'Term' },
-    { id: '#457', Name: 'B', Description: 'Category1', status: 'Approved', Domain: 'Healthcare', AssetType: 'Term' },
-    { id: '#457', Name: 'C', Description: 'Category1', status: 'Approved', Domain: 'Healthcare', AssetType: 'Term' },
+    { id: '#1', Name: 'Account Data', Description: 'Category1', status: 'Approved', Domain: 'Healthcare', AssetType: 'Term' },
+    { id: '#2', Name: 'Account Holder', Description: 'Category1', status: 'Approved', Domain: 'Healthcare', AssetType: 'Cateogory' },
+    { id: '#3', Name: 'Audit Trail', Description: 'Category1', status: 'Approved', Domain: 'Healthcare', AssetType: 'Subcategory' },
   ];
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,6 +88,12 @@ const BusinessGlossary = () => {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const navigate = useNavigate();
+  const handleViewDetails = (item) => {
+    const urlFriendlyName = item.Name.toLowerCase().replace(/\s+/g, '-');
+    navigate(`/datagovernance/business-catalogue/glossary/${urlFriendlyName}`);
+  };
+
   return (
     <div className="p-6">
       <Breadcrumb />
@@ -97,7 +104,7 @@ const BusinessGlossary = () => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search ..."
+              placeholder="Search Gloassary..."
               className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none"
               value={searchTerm}
               onChange={handleSearchChange}
@@ -154,6 +161,7 @@ const BusinessGlossary = () => {
                     <button
                       className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
                       title="View Details"
+                      onClick={() => handleViewDetails(item)}
                     >
                       <ArrowUpRight className="h-5 w-5 text-[#8e78b7]" />
                     </button>
