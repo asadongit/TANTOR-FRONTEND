@@ -585,7 +585,7 @@ export const TransformationDrawer = ({
 					(node.type === "source" && (node.data?.alias === dfId || node.id === dfId))
 				);
 				if (sourceNode && typeof sourceNode.data.onDataChange === "function" && dfCols[dfId]?.length > 0) {
-					console.log(`Updating source node ${dfId} with replayed columns during replay`);
+					// console.log(`Updating source node ${dfId} with replayed columns during replay`);
 					sourceNode.data.onDataChange({ columns: [...dfCols[dfId]] });
 				}
 			});
@@ -640,7 +640,7 @@ export const TransformationDrawer = ({
 					);
 					if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
 						sourceNode.data.onDataChange({ columns: [...window.replayedDataframeColumns[dfId]] });
-						console.log(`Updated source node ${dfId} with replayed columns:`, window.replayedDataframeColumns[dfId]);
+						// console.log(`Updated source node ${dfId} with replayed columns:`, window.replayedDataframeColumns[dfId]);
 					}
 				}
 			});
@@ -1156,7 +1156,7 @@ export const TransformationDrawer = ({
 			result.push(transformationData);
 		});
 
-		console.log("Saving transformations:", result);
+		// console.log("Saving transformations:", result);
 
 		if (activeNode && activeNode.data && activeNode.data.onDataChange) {
 			activeNode.data.onDataChange({
@@ -1373,7 +1373,6 @@ export const TransformationDrawer = ({
         }
 
         reactNode.data.onDataChange({ columns: updatedCols });
-        console.log("$$$$$$ restricted columns:", restrictType, restrictedColumns, "remaining cols:", updatedCols);
       }
     }
 
@@ -1426,7 +1425,6 @@ export const TransformationDrawer = ({
         });
 
         reactNode.data.onDataChange({ columns: updatedCols });
-        console.log("$$$$$$ renamed column from", oldColumnName, "to", columnName, "cols:", updatedCols);
       }
     }
   } else {
@@ -1451,7 +1449,6 @@ export const TransformationDrawer = ({
         if (!exists) {
           newCols.push({ name: columnName, datatype: datatype });
           reactNode.data.onDataChange({ columns: newCols });
-          console.log(`Added new column ${columnName} to source ${dataframeId} in ${isEditMode ? 'edit' : 'create'} mode`);
         }
       }
     }
@@ -1469,7 +1466,6 @@ export const TransformationDrawer = ({
 
       if (!existsInReplayed) {
         window.replayedDataframeColumns[dataframeId].push({ name: columnName, datatype: datatype });
-        console.log(`Added new column ${columnName} to replayed columns for ${dataframeId}`);
       }
     }
   }
@@ -1507,7 +1503,6 @@ useEffect(() => {
           );
 
           if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
-            console.log(`Refreshing source node ${details.sourceId} columns after column update event`);
             sourceNode.data.onDataChange({
               columns: [...window.replayedDataframeColumns[details.sourceId]]
             });

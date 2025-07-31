@@ -437,7 +437,7 @@ export const SourceNode = ({ id, data }) => {
       }
     });
 
-    console.log("Applied Procedure Mapping:", procedureJSON);
+    // console.log("Applied Procedure Mapping:", procedureJSON);
     closeParametersModal();
   };
 
@@ -804,8 +804,8 @@ export const SourceNode = ({ id, data }) => {
         procedure: proc,
       }));
 
-      console.log("--------------------",data.preProcedures);
-      console.log("Restored Pre-Procedures:", restoredPreProcedures);
+      // console.log("--------------------",data.preProcedures);
+      // console.log("Restored Pre-Procedures:", restoredPreProcedures);
       setSelectedPreProcedures(restoredPreProcedures);
       hasUpdated = true;
     }
@@ -829,10 +829,7 @@ export const SourceNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    // Log only if we actually updated something
-    if (hasUpdated) {
-      console.log("Source node data restored:", data);
-    }
+
   }, [
     // Remove problematic dependencies that cause infinite loops
     data.connection,
