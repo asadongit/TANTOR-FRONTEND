@@ -128,18 +128,11 @@ function transformationReducer(state, action) {
       };
 
     case ACTION_TYPES.UPDATE_TARGET:
-      // Check for targetMapping in different sources with priority order
       const newTargetMapping = action.payload.data.targetMapping ||
                               state.targets[action.payload.id]?.targetMapping ||
                               state.preservedTargetMappings[action.payload.id] || {};
 
-      // Log for debugging
-      if (action.payload.data.targetMapping) {
-        console.log(`TransformationContext: Updating target ${action.payload.id} with mapping:`,
-          action.payload.data.targetMapping);
-      }
 
-      // Store the mapping in preservedTargetMappings for persistence
       if (Object.keys(newTargetMapping).length > 0) {
         state.preservedTargetMappings[action.payload.id] = {...newTargetMapping};
       }
@@ -355,7 +348,7 @@ function transformationReducer(state, action) {
       if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
       if (window.targetMappingsDebug) window.targetMappingsDebug = {};
 
-      console.log("TransformationContext fully reset");
+      // console.log("TransformationContext fully reset");
       return initialState;
 
     default:
@@ -727,7 +720,7 @@ export function useTrackConnections(nodes, edges) {
                   sourceNodeId: data.selectedSourceId
                 }
               });
-              console.log(`Restored target mapping relationship: Target ${id} -> Source ${data.selectedSourceId}`);
+              // console.log(`Restored target mapping relationship: Target ${id} -> Source ${data.selectedSourceId}`);
             }
           }
           break;

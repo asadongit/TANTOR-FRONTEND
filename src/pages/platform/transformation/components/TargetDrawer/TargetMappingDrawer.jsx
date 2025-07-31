@@ -61,7 +61,7 @@ const TargetMappingDrawer = ({
         // Convert to array and update state
         const columnsArray = Array.from(sourceColumns);
         if (columnsArray.length > 0) {
-            console.log(`Target Mapping Drawer - Found ${columnsArray.length} source columns:`, columnsArray);
+            // console.log(`Target Mapping Drawer - Found ${columnsArray.length} source columns:`, columnsArray);
             setAvailableSourceColumns(columnsArray);
         }
     }, [nodeId]);
@@ -76,7 +76,7 @@ const TargetMappingDrawer = ({
                 // Remove duplicates
                 return Array.from(new Set(allCols));
             });
-            console.log("Target mapping drawer received source columns:", sourceColValues);
+            // console.log("Target mapping drawer received source columns:", sourceColValues);
         }
 
         // Always try to refresh columns from all nodes
@@ -86,7 +86,6 @@ const TargetMappingDrawer = ({
     // Listen for the column update event to refresh source columns
     useEffect(() => {
         const handleColumnUpdate = () => {
-            console.log("Target Mapping Drawer - Refreshing source columns after update event");
             refreshSourceColumns();
         };
 
@@ -244,11 +243,11 @@ const TargetMappingDrawer = ({
         });
     }, [nodeId]);
 
-    useEffect(() => {
-        if (initialMappingReceived) {
-            console.log(`Target mapping updated for node ${nodeId}:`, localMapping);
-        }
-    }, [localMapping, nodeId, initialMappingReceived]);
+    // useEffect(() => {
+    //     if (initialMappingReceived) {
+    //         console.log(`Target mapping updated for node ${nodeId}:`, localMapping);
+    //     }
+    // }, [localMapping, nodeId, initialMappingReceived]);
 
     // Use both sourceColumnOptions prop and our internal state for mapping
     const allSourceColumnsForMapping = useMemo(() => {

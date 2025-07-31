@@ -187,32 +187,30 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
       let finalSelectedSourceId = node.data.selectedSourceId;
       if (node.type === 'target' && targetToSourceMap && targetToSourceMap[node.id]) {
         finalSelectedSourceId = targetToSourceMap[node.id];
-        console.log(`Edit Flow - Updated selectedSourceId for target ${node.id}: ${finalSelectedSourceId}`);
+        // console.log(`Edit Flow - Updated selectedSourceId for target ${node.id}: ${finalSelectedSourceId}`);
       }
 
       if (node.type === 'target') {
-        console.log(`Edit Flow - Processing target node ${node.id}:`, {
-          hasTargetMapping: !!node.data.targetMapping,
-          targetMappingEntries: node.data.targetMapping ? Object.keys(node.data.targetMapping).length : 0,
-          isConfirmed: window.localStorage.getItem(`targetMappingConfirmed_${node.id}`) === "true",
-          selectedSourceId: finalSelectedSourceId,
-          targetMapping: node.data.targetMapping
-        });
+        // console.log(`Edit Flow - Processing target node ${node.id}:`, {
+        //   hasTargetMapping: !!node.data.targetMapping,
+        //   targetMappingEntries: node.data.targetMapping ? Object.keys(node.data.targetMapping).length : 0,
+        //   isConfirmed: window.localStorage.getItem(`targetMappingConfirmed_${node.id}`) === "true",
+        //   selectedSourceId: finalSelectedSourceId,
+        //   targetMapping: node.data.targetMapping
+        // });
       }
 
       let finalTargetMapping = {};
       if (node.type === 'target') {
         if (contextTargets[node.id] && contextTargets[node.id].targetMapping) {
           finalTargetMapping = { ...contextTargets[node.id].targetMapping };
-          console.log(`Edit Flow - Using context mapping for ${node.id}:`, finalTargetMapping);
+          // console.log(`Edit Flow - Using context mapping for ${node.id}:`, finalTargetMapping);
         }
         else if (node.data && node.data.targetMapping) {
           finalTargetMapping = { ...node.data.targetMapping };
-          console.log(`Edit Flow - Using node data mapping for ${node.id}:`, finalTargetMapping);
+          // console.log(`Edit Flow - Using node data mapping for ${node.id}:`, finalTargetMapping);
         }
 
-        const isConfirmed = window.localStorage.getItem(`targetMappingConfirmed_${node.id}`) === "true";
-        console.log(`Edit Flow - Target node ${node.id} mapping confirmed:`, isConfirmed);
       }
 
       return {
@@ -398,7 +396,7 @@ export const restoreFlowFromEditData = (editFlowData) => {
 
       onDataChange: (newData) => {
 
-        console.log('Immediate onDataChange called during restoration:', newData);
+        // console.log('Immediate onDataChange called during restoration:', newData);
       },
     }
   }));
@@ -440,7 +438,7 @@ export const restoreNodesAndEdgesFromEditData = (editFlowData, setNodes, setEdge
         ...node.data,
 
         onDataChange: (newData) => {
-          console.log('Fast onDataChange called during restoration:', newData);
+          // console.log('Fast onDataChange called during restoration:', newData);
         },
         _isRestoring: true,
         transformations: node.data.transformations || [],
