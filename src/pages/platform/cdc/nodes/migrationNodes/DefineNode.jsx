@@ -79,6 +79,22 @@ useEffect(() => {
   nodeData.name, 
 ]);
 
+  // Initialize node with pre-populated data in edit mode
+  useEffect(() => {
+    if (data?.define && Object.keys(data.define).length > 0) {
+      const defineData = data.define;
+      
+      // Pre-populate node data
+      if (defineData) {
+        setNodeData({
+          name: defineData.name || "",
+          description: defineData.description || "",
+          autoName: defineData.autoName || "",
+        });
+      }
+    }
+  }, [data?.define]);
+
   
 
 
