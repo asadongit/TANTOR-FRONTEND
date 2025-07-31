@@ -77,7 +77,7 @@ function TransformationCanvasContent() {
     if (editMode === 'true' && editFlowDataStr && transformationId) {
       try {
         const editFlowData = JSON.parse(editFlowDataStr);
-        console.log("Starting edit mode restoration...", editFlowData);
+        // console.log("Starting edit mode restoration...", editFlowData);
 
         setIsEditMode(true);
         setEditTransformationId(transformationId);
@@ -149,7 +149,7 @@ function TransformationCanvasContent() {
           onDataChange: (newData) => {
             // Skip updates if the node is being restored
             if (node.data._isRestoring) {
-              console.log('Skipping update during restoration for node:', node.id);
+              // console.log('Skipping update during restoration for node:', node.id);
               return;
             }
 
@@ -627,7 +627,7 @@ function TransformationCanvasContent() {
   // Remove all identified keys
   keysToRemove.forEach(key => localStorage.removeItem(key));
 
-  console.log("Flow reset - cleared all target mapping data");
+  // console.log("Flow reset - cleared all target mapping data");
 
   // Also clear debug variables if they exist
   if (window.targetMappingsDebug) window.targetMappingsDebug = {};
@@ -688,8 +688,7 @@ const handleCancel = useCallback(() => {
           transformationNodeIds.forEach(transId => {
             const transNode = window.allNodes.find(n => n.id === transId);
             if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
-              // Here we're just ensuring the transformations are processed
-              console.log(`Ensuring transformation columns for node ${transId} are up-to-date`);
+              // console.log(`Ensuring transformation columns for node ${transId} are up-to-date`);
             }
           });
 
@@ -947,7 +946,7 @@ const handleCancel = useCallback(() => {
   }, [edges, activeTransformationNodeId, setNodes]);
 
   const handleTransformationApply = useCallback((transformationNodeId, transformations) => {
-    console.log('Applying transformations:', transformations);
+    // console.log('Applying transformations:', transformations);
 
     setNodes(prevNodes => {
       const outgoingEdges = edges.filter(edge => edge.source === transformationNodeId);

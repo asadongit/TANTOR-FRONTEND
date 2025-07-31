@@ -204,25 +204,33 @@ export const TargetNode = ({ id, data }) => {
   }, [fetchConnections]);
 
   const getNextAlias = useCallback(() => {
+    if (!selectedTable) return "";
+
+    const baseAlias = `df_${selectedTable}`;
     const targetNodesFromWindow = window.allNodes ?
       window.allNodes.filter(n => n.type === "target") : [];
 
-    let maxNumber = 0;
+    const usedAliases = targetNodesFromWindow
+      .filter(node =>
+        node.id !== id &&
+        node.data &&
+        node.data.table === selectedTable &&
+        typeof node.data.alias === "string"
+      )
+      .map(node => node.data.alias);
 
-    targetNodesFromWindow.forEach(node => {
-      if (node.id !== id) {
-        const aliasMatch = (node.data?.alias || "").match(/^unnamed_target_(\d+)$/);
-        if (aliasMatch && aliasMatch[1]) {
-          const num = parseInt(aliasMatch[1], 10);
-          if (!isNaN(num) && num > maxNumber) {
-            maxNumber = num;
-          }
-        }
-      }
-    });
+    if (!usedAliases.includes(baseAlias)) {
+      return baseAlias;
+    }
 
-    return `unnamed_target_${maxNumber + 1}`;
-  }, [id]);
+    let suffix = 1;
+    let aliasWithSuffix = `${baseAlias}_${suffix}`;
+    while (usedAliases.includes(aliasWithSuffix)) {
+      suffix += 1;
+      aliasWithSuffix = `${baseAlias}_${suffix}`;
+    }
+    return aliasWithSuffix;
+  }, [id, selectedTable]);
 
   useEffect(() => {
     if (selectedTable && !alias) {
@@ -373,7 +381,7 @@ export const TargetNode = ({ id, data }) => {
 
   const handleSetTargetMapping = useCallback((newMapping) => {
     if (JSON.stringify(newMapping) !== JSON.stringify(targetMapping)) {
-      console.log("Target Node - Setting new target mapping:", newMapping);
+      // console.log("Target Node - Setting new target mapping:", newMapping);
       setTargetMapping(newMapping);
       if (typeof data.onDataChange === "function") {
         data.onDataChange({ targetMapping: newMapping });
@@ -705,12 +713,12 @@ export const TargetNode = ({ id, data }) => {
                           "";
         initialMapping[param.name] = paramValue;
 
-        console.log(`Target Node - Parameter ${param.name}:`, {
-          fromStored: storedMapping[param.name],
-          fromProcedure: procedure.parameterMapping?.[param.name],
-          fromOriginal: procedure.originalParameterMapping?.[param.name],
-          finalValue: paramValue
-        });
+        // console.log(`Target Node - Parameter ${param.name}:`, {
+        //   fromStored: storedMapping[param.name],
+        //   fromProcedure: procedure.parameterMapping?.[param.name],
+        //   fromOriginal: procedure.originalParameterMapping?.[param.name],
+        //   finalValue: paramValue
+        // });
       });
     }
 
@@ -921,9 +929,9 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    if (hasUpdated) {
-      console.log("Target node data restored:", data);
-    }
+    // if (hasUpdated) {
+    //   console.log("Target node data restored:", data);
+    // }
   }, [
     data.connection,
     data.connectionId,
@@ -941,7 +949,7 @@ export const TargetNode = ({ id, data }) => {
 
 
     if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0) {
-      console.log("Target Node - Restoring pre-procedures parameter mappings:", data.preProcedures);
+      // console.log("Target Node - Restoring pre-procedures parameter mappings:", data.preProcedures);
 
       const initialPreMappings = {};
       data.preProcedures.forEach((procData, index) => {
@@ -953,11 +961,11 @@ export const TargetNode = ({ id, data }) => {
         if (Object.keys(parameterMapping).length > 0) {
           initialPreMappings[mappingKey] = parameterMapping;
 
-          console.log("Target Node - Restored pre-procedure mapping:", {
-            mappingKey,
-            parameterMapping,
-            procedureName: procData.procedure_name
-          });
+          // console.log("Target Node - Restored pre-procedure mapping:", {
+          //   mappingKey,
+          //   parameterMapping,
+          //   procedureName: procData.procedure_name
+          // });
 
           const procedureJSON = {
             "EventType": "BeforeTargetWrite",
@@ -993,7 +1001,7 @@ export const TargetNode = ({ id, data }) => {
     }
 
     if (data.postProcedures && Array.isArray(data.postProcedures) && data.postProcedures.length > 0) {
-      console.log("Target Node - Restoring post-procedures parameter mappings:", data.postProcedures);
+      // console.log("Target Node - Restoring post-procedures parameter mappings:", data.postProcedures);
 
       const initialPostMappings = {};
       data.postProcedures.forEach((procData, index) => {
@@ -1005,11 +1013,11 @@ export const TargetNode = ({ id, data }) => {
         if (Object.keys(parameterMapping).length > 0) {
           initialPostMappings[mappingKey] = parameterMapping;
 
-          console.log("Target Node - Restored post-procedure mapping:", {
-            mappingKey,
-            parameterMapping,
-            procedureName: procData.procedure_name
-          });
+          // console.log("Target Node - Restored post-procedure mapping:", {
+          //   mappingKey,
+          //   parameterMapping,
+          //   procedureName: procData.procedure_name
+          // });
 
           const procedureJSON = {
             "EventType": "AfterTargetWrite",

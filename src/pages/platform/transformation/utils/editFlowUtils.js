@@ -6,24 +6,67 @@
 const cleanNodeDataForSerialization = (nodeData) => {
   const cleaned = { ...nodeData };
 
-  // Remove function references that can't be serialized
+
   delete cleaned.onDataChange;
   delete cleaned.generateUniqueName;
 
-  // Preserve transformation data structure
+
   if (cleaned.transformations && Array.isArray(cleaned.transformations)) {
-    cleaned.transformations = cleaned.transformations.map(t => ({
-      ...t,
-      // Ensure all transformation properties are preserved
-      params: t.params || {},
-      source_column: t.source_column || [],
-      target_column: t.target_column || [],
-      transformation_operation: t.transformation_operation || '',
-      transformation_operator: t.transformation_operator || ''
-    }));
+    cleaned.transformations = cleaned.transformations.map(t => {
+
+      let params = t.params || {};
+      if (
+        t.transformation_operation === "arithmetic" &&
+        params.arith_operation &&
+        !params.conditions
+      ) {
+
+        const arithStr = params.arith_operation;
+
+        const regex = /([^\+\-\*\/]+)\s*([\+\-\*\/])\s*([^\+\-\*\/]+)/;
+        const match = regex.exec(arithStr);
+        if (match) {
+
+          const leftExpr = match[1].trim();
+          const operatorSymbol = match[2].trim();
+          const rightExpr = match[3].trim();
+
+          const extract = (expr) => {
+            const colMatch = /\['(.+)'\]/.exec(expr);
+            if (colMatch) {
+              return { type: "column", value: colMatch[1] };
+            }
+
+            if (!isNaN(Number(expr))) {
+              return { type: "custom", value: expr };
+            }
+
+            return { type: "custom", value: expr };
+          };
+          const left = extract(leftExpr);
+          const right = extract(rightExpr);
+          const opMap = { "+": "addition", "-": "subtraction", "*": "multiplication", "/": "division" };
+          const operator = opMap[operatorSymbol] || "";
+          params.conditions = [{
+            left_type: left.type,
+            left_value: left.value,
+            operator,
+            right_type: right.type,
+            right_value: right.value
+          }];
+        }
+      }
+      return {
+        ...t,
+        params,
+        source_column: t.source_column || [],
+        target_column: t.target_column || [],
+        transformation_operation: t.transformation_operation || '',
+        transformation_operator: t.transformation_operator || ''
+      };
+    });
   }
 
-  // Preserve transformationConfig
   if (cleaned.transformationConfig && cleaned.transformationConfig.operations) {
     cleaned.transformationConfig.operations = cleaned.transformationConfig.operations.map(op => ({
       ...op,
@@ -35,10 +78,8 @@ const cleanNodeDataForSerialization = (nodeData) => {
     }));
   }
 
-  // Deep clone procedures to avoid reference issues - ENHANCED DEEP CLONE
   if (cleaned.preProcedures && Array.isArray(cleaned.preProcedures)) {
     cleaned.preProcedures = cleaned.preProcedures.map(proc => {
-      // Create a fresh deep clone to avoid reference issues
       const clonedProc = JSON.parse(JSON.stringify({
         ...proc,
         parameterMapping: proc.parameterMapping || {},
@@ -46,7 +87,6 @@ const cleanNodeDataForSerialization = (nodeData) => {
         procedure_parameter: Array.isArray(proc.procedure_parameter) ? proc.procedure_parameter : []
       }));
 
-      // Ensure we prioritize the latest parameter mappings
       if (proc.isUpdated) {
         clonedProc.parameterMapping = proc.parameterMapping || {};
       }
@@ -57,7 +97,6 @@ const cleanNodeDataForSerialization = (nodeData) => {
 
   if (cleaned.postProcedures && Array.isArray(cleaned.postProcedures)) {
     cleaned.postProcedures = cleaned.postProcedures.map(proc => {
-      // Create a fresh deep clone to avoid reference issues
       const clonedProc = JSON.parse(JSON.stringify({
         ...proc,
         parameterMapping: proc.parameterMapping || {},
@@ -65,7 +104,6 @@ const cleanNodeDataForSerialization = (nodeData) => {
         procedure_parameter: Array.isArray(proc.procedure_parameter) ? proc.procedure_parameter : []
       }));
 
-      // Ensure we prioritize the latest parameter mappings
       if (proc.isUpdated) {
         clonedProc.parameterMapping = proc.parameterMapping || {};
       }
@@ -149,32 +187,30 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
       let finalSelectedSourceId = node.data.selectedSourceId;
       if (node.type === 'target' && targetToSourceMap && targetToSourceMap[node.id]) {
         finalSelectedSourceId = targetToSourceMap[node.id];
-        console.log(`Edit Flow - Updated selectedSourceId for target ${node.id}: ${finalSelectedSourceId}`);
+        // console.log(`Edit Flow - Updated selectedSourceId for target ${node.id}: ${finalSelectedSourceId}`);
       }
 
       if (node.type === 'target') {
-        console.log(`Edit Flow - Processing target node ${node.id}:`, {
-          hasTargetMapping: !!node.data.targetMapping,
-          targetMappingEntries: node.data.targetMapping ? Object.keys(node.data.targetMapping).length : 0,
-          isConfirmed: window.localStorage.getItem(`targetMappingConfirmed_${node.id}`) === "true",
-          selectedSourceId: finalSelectedSourceId,
-          targetMapping: node.data.targetMapping
-        });
+        // console.log(`Edit Flow - Processing target node ${node.id}:`, {
+        //   hasTargetMapping: !!node.data.targetMapping,
+        //   targetMappingEntries: node.data.targetMapping ? Object.keys(node.data.targetMapping).length : 0,
+        //   isConfirmed: window.localStorage.getItem(`targetMappingConfirmed_${node.id}`) === "true",
+        //   selectedSourceId: finalSelectedSourceId,
+        //   targetMapping: node.data.targetMapping
+        // });
       }
 
       let finalTargetMapping = {};
       if (node.type === 'target') {
         if (contextTargets[node.id] && contextTargets[node.id].targetMapping) {
           finalTargetMapping = { ...contextTargets[node.id].targetMapping };
-          console.log(`Edit Flow - Using context mapping for ${node.id}:`, finalTargetMapping);
+          // console.log(`Edit Flow - Using context mapping for ${node.id}:`, finalTargetMapping);
         }
         else if (node.data && node.data.targetMapping) {
           finalTargetMapping = { ...node.data.targetMapping };
-          console.log(`Edit Flow - Using node data mapping for ${node.id}:`, finalTargetMapping);
+          // console.log(`Edit Flow - Using node data mapping for ${node.id}:`, finalTargetMapping);
         }
 
-        const isConfirmed = window.localStorage.getItem(`targetMappingConfirmed_${node.id}`) === "true";
-        console.log(`Edit Flow - Target node ${node.id} mapping confirmed:`, isConfirmed);
       }
 
       return {
@@ -352,20 +388,20 @@ export const restoreFlowFromEditData = (editFlowData) => {
     console.warn("Edit flow data validation warnings:", validation.errors);
   }
 
-  // Restore nodes with proper data structure - OPTIMIZED
+
   const restoredNodes = (editFlowData.nodes || []).map(node => ({
     ...node,
     data: {
       ...node.data,
-      // Add back the onDataChange function placeholder with immediate execution
+
       onDataChange: (newData) => {
-        // Immediate execution for better performance
-        console.log('Immediate onDataChange called during restoration:', newData);
+
+        // console.log('Immediate onDataChange called during restoration:', newData);
       },
     }
   }));
 
-  // Restore edges
+
   const restoredEdges = editFlowData.edges || [];
 
   return {
@@ -400,9 +436,9 @@ export const restoreNodesAndEdgesFromEditData = (editFlowData, setNodes, setEdge
       ...node,
       data: {
         ...node.data,
-        // Set onDataChange to a fast function that will be replaced later
+
         onDataChange: (newData) => {
-          console.log('Fast onDataChange called during restoration:', newData);
+          // console.log('Fast onDataChange called during restoration:', newData);
         },
         _isRestoring: true,
         transformations: node.data.transformations || [],
@@ -413,10 +449,10 @@ export const restoreNodesAndEdgesFromEditData = (editFlowData, setNodes, setEdge
     return restoredNode;
   });
 
-  // Restore edges
+
   const restoredEdges = editFlowData.edges || [];
 
-  // Update the node ID counter to continue from where we left off
+
   if (nodeIdRef && editFlowData.nodeIdCounter) {
     nodeIdRef.current = editFlowData.nodeIdCounter;
   }
@@ -460,7 +496,7 @@ export const updateNodePositions = (nodes, options = {}) => {
     target: []
   };
 
-  // Group nodes by type
+
   nodes.forEach(node => {
     if (nodesByType[node.type]) {
       nodesByType[node.type].push(node);
@@ -471,7 +507,7 @@ export const updateNodePositions = (nodes, options = {}) => {
   let currentX = startX;
   let currentY = startY;
 
-  // Position nodes in order: define, source, transformation, target
+
   ['define', 'source', 'transformation', 'target'].forEach(type => {
     if (nodesByType[type].length > 0) {
       nodesByType[type].forEach((node, index) => {
@@ -484,7 +520,7 @@ export const updateNodePositions = (nodes, options = {}) => {
         };
         updatedNodes.push(updatedNode);
       });
-      currentX += spacing; // Move to next column for next type
+      currentX += spacing;
     }
   });
 

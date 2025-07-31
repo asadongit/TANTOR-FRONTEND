@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../../../../../context/AuthContext.jsx';
 
-const Profiling = ({ query }) => {
+const Profiling = ({ query,setProfilingSuccess }) => {
   const [loading, setLoading] = useState(false);
   const iframeRef = useRef(null);
   const [profilingData, updateProfilingData] = useState("");
@@ -11,6 +11,7 @@ const Profiling = ({ query }) => {
   useEffect(() => {
       const fetchData = async () => {
         setLoading(true);
+        setProfilingSuccess(false)
         try {
           const response = await fetch(`${hostnameV1}/profiling`, {
             method: 'POST',
@@ -26,6 +27,7 @@ const Profiling = ({ query }) => {
             var result = await response.text();
             result = result.replace(/Brought to you by YData/g, '');
             updateProfilingData(result);
+            setProfilingSuccess(true)
           } else {
             console.error('Failed to fetch data:', response.statusText);
           }
