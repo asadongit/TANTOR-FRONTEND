@@ -425,7 +425,8 @@ export const SourceNode = ({ id, data }) => {
       "procedureId": `${selectedProcedureForModal.procedure_name}_${eventType}_${procedureOrder}`,
       "procedureItemId": modalProcedureItemId,
       "procedureType": modalProcedureType,
-      "timestamp": Date.now()
+      "timestamp": Date.now(),
+      "isUpdated": true
     };
 
     dispatch({
@@ -436,7 +437,7 @@ export const SourceNode = ({ id, data }) => {
       }
     });
 
-    console.log("Applied Procedure Mapping:", procedureJSON);
+    // console.log("Applied Procedure Mapping:", procedureJSON);
     closeParametersModal();
   };
 
@@ -501,6 +502,53 @@ export const SourceNode = ({ id, data }) => {
       ? tableSelections.selectedColumns
       : selectedColumns;
 
+    // Include parameter mappings in procedure data
+    const enrichedPreProcedures = selectedPreProcedures
+      .filter(p => p.procedure)
+      .map(p => {
+        const mappingKey = `pre_${p.id}_${p.procedure.procedure_name}`;
+        const parameterMapping =
+          storedParameterMappings[mappingKey] ||
+          p.procedure.parameterMapping ||
+          p.procedure.originalParameterMapping ||
+          {};
+        const originalParameterMapping =
+          p.procedure.originalParameterMapping ||
+          storedParameterMappings[mappingKey] ||
+          p.procedure.parameterMapping ||
+          {};
+        return {
+          ...p.procedure,
+          parameterMapping,
+          originalParameterMapping,
+          procedureItemId: p.id,
+          procedureType: "pre"
+        };
+      });
+
+    const enrichedPostProcedures = selectedPostProcedures
+      .filter(p => p.procedure)
+      .map(p => {
+        const mappingKey = `post_${p.id}_${p.procedure.procedure_name}`;
+        const parameterMapping =
+          storedParameterMappings[mappingKey] ||
+          p.procedure.parameterMapping ||
+          p.procedure.originalParameterMapping ||
+          {};
+        const originalParameterMapping =
+          p.procedure.originalParameterMapping ||
+          storedParameterMappings[mappingKey] ||
+          p.procedure.parameterMapping ||
+          {};
+        return {
+          ...p.procedure,
+          parameterMapping,
+          originalParameterMapping,
+          procedureItemId: p.id,
+          procedureType: "post"
+        };
+      });
+
     data.onDataChange({
       connection: selectedConnection.name,
       connectionId: selectedConnection.id,
@@ -513,8 +561,8 @@ export const SourceNode = ({ id, data }) => {
       })),
       alias: alias,
       objectType: selectedObjectType,
-      preProcedures: selectedPreProcedures.filter(p => p.procedure).map(p => p.procedure),
-      postProcedures: selectedPostProcedures.filter(p => p.procedure).map(p => p.procedure),
+      preProcedures: enrichedPreProcedures,
+      postProcedures: enrichedPostProcedures,
     });
 
     dispatch({
@@ -533,7 +581,18 @@ export const SourceNode = ({ id, data }) => {
         columns: currentColumns.map(col => col.name)
       }
     });
-  }, [selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures]);
+
+    dispatch({
+      type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: currentColumns.map(col => ({
+          name: col.name,
+          datatype: col.datatype
+        }))
+      }
+    });
+  }, [selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings]);
 
   const getColumnsForTable = (tableName) => {
     const tableObj = tables.find(t => t.table_name === tableName);
@@ -601,31 +660,437 @@ export const SourceNode = ({ id, data }) => {
   }, [preProcedureDropdownOpen, postProcedureDropdownOpen]);
 
   const getNextAlias = useCallback(() => {
+    if (!selectedTable) return "";
+
+    const baseAlias = `df_${selectedTable}`;
     const sourceNodesFromWindow = window.allNodes ?
       window.allNodes.filter(n => n.type === "source") : [];
 
-    let maxNumber = 0;
+    const usedAliases = sourceNodesFromWindow
+      .filter(node =>
+        node.id !== id &&
+        node.data &&
+        node.data.table === selectedTable &&
+        typeof node.data.alias === "string"
+      )
+      .map(node => node.data.alias);
 
-    sourceNodesFromWindow.forEach(node => {
-      if (node.id !== id) {
-        const aliasMatch = (node.data?.alias || "").match(/^unnamed_source_(\d+)$/);
-        if (aliasMatch && aliasMatch[1]) {
-          const num = parseInt(aliasMatch[1], 10);
-          if (!isNaN(num) && num > maxNumber) {
-            maxNumber = num;
-          }
-        }
-      }
-    });
+    if (!usedAliases.includes(baseAlias)) {
+      return baseAlias;
+    }
 
-    return `unnamed_source_${maxNumber + 1}`;
-  }, [id]);
+    let suffix = 1;
+    let aliasWithSuffix = `${baseAlias}_${suffix}`;
+    while (usedAliases.includes(aliasWithSuffix)) {
+      suffix += 1;
+      aliasWithSuffix = `${baseAlias}_${suffix}`;
+    }
+    return aliasWithSuffix;
+  }, [id, selectedTable]);
 
   useEffect(() => {
     if (selectedTable && !alias) {
       setAlias(getNextAlias());
     }
   }, [selectedTable, alias, getNextAlias]);
+
+  const handleObjectTypeChange = useCallback((newObjectType) => {
+    if (newObjectType === selectedObjectType) return;
+
+    if (selectedObjectType === "procedures" && newObjectType === "tables") {
+      setProcedureSelections({
+        selectedProcedure: selectedTable,
+        selectedParameters: selectedColumns
+      });
+
+      setSelectedTable(tableSelections.selectedTable);
+      setSelectedColumns(tableSelections.selectedColumns);
+    } else if (selectedObjectType === "tables" && newObjectType === "procedures") {
+      setTableSelections({
+        selectedTable: selectedTable,
+        selectedColumns: selectedColumns
+      });
+
+      if (selectedConnection.name && procedures.length === 0) {
+        fetchProcedures(selectedConnection.name);
+      }
+
+      setSelectedTable(procedureSelections.selectedProcedure);
+      setSelectedColumns(procedureSelections.selectedParameters);
+    }
+
+    setSelectedObjectType(newObjectType);
+  }, [selectedObjectType, selectedTable, selectedColumns, tableSelections, procedureSelections, selectedConnection.name, procedures.length, fetchProcedures]);
+
+  // Initialize state from restored data if available - FIXED with proper dependency management
+  useEffect(() => {
+    let hasUpdated = false;
+
+    if (data.connection && data.connectionId && data.connectionType && !selectedConnection.name) {
+      setSelectedConnection({
+        name: data.connection,
+        id: data.connectionId,
+        type: data.connectionType
+      });
+      hasUpdated = true;
+
+      // Fetch schemas when connection is restored - only if schemas are empty
+      if (schemas.length === 0) {
+        fetchSchemas(data.connection);
+      }
+    }
+
+    if (data.schema && !selectedSchema) {
+      setSelectedSchema(data.schema);
+      hasUpdated = true;
+
+      // Fetch tables when schema is restored - only if tables are empty
+      if (data.connection && tables.length === 0) {
+        fetchTablesAndColumns(data.connection, data.schema);
+      }
+    }
+
+    if (data.table && !selectedTable) {
+      setSelectedTable(data.table);
+      hasUpdated = true;
+
+      // When setting table in edit mode, also set the columns for that table
+      if (data.connection && data.schema && tables.length > 0) {
+        const tableColumns = getColumnsForTable(data.table);
+        if (tableColumns.length > 0) {
+          setColumns(tableColumns);
+        }
+      }
+    }
+
+    if (data.alias && !alias) {
+      setAlias(data.alias);
+      hasUpdated = true;
+    }
+
+    if (data.columns && Array.isArray(data.columns) && selectedColumns.length === 0) {
+      setSelectedColumns(data.columns);
+      hasUpdated = true;
+    }
+
+    // Handle object type restoration - PREVENT AUTOMATIC SWITCHING - but allow initial setting
+    if (data.objectType && (!selectedObjectType || selectedObjectType === "")) {
+      setSelectedObjectType(data.objectType);
+      hasUpdated = true;
+
+      // If procedures are selected, fetch procedures - only once
+      if (data.objectType === "procedures" && data.connection && procedures.length === 0) {
+        fetchProcedures(data.connection);
+      }
+    } else if (!selectedObjectType && !data.objectType) {
+      // Default to tables only if no object type is set and no data exists
+      if (data.table && !data.preProcedures && !data.postProcedures) {
+        setSelectedObjectType("tables");
+        hasUpdated = true;
+      } else if ((data.preProcedures && data.preProcedures.length > 0) || (data.postProcedures && data.postProcedures.length > 0)) {
+        setSelectedObjectType("procedures");
+        hasUpdated = true;
+      } else if (!selectedObjectType) {
+        // Default to tables for new nodes
+        setSelectedObjectType("tables");
+        hasUpdated = true;
+      }
+    }
+
+    // Handle pre-procedures restoration - only if not already set
+    if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0 && selectedPreProcedures.length === 1 && !selectedPreProcedures[0].procedure) {
+      const restoredPreProcedures = data.preProcedures.map((proc, index) => ({
+        id: index + 1,
+        procedure: proc,
+      }));
+
+      // console.log("--------------------",data.preProcedures);
+      // console.log("Restored Pre-Procedures:", restoredPreProcedures);
+      setSelectedPreProcedures(restoredPreProcedures);
+      hasUpdated = true;
+    }
+
+    // Handle post-procedures restoration - only if not already set
+    if (data.postProcedures && Array.isArray(data.postProcedures) && data.postProcedures.length > 0 && selectedPostProcedures.length === 1 && !selectedPostProcedures[0].procedure) {
+      const restoredPostProcedures = data.postProcedures.map((proc, index) => ({
+        id: index + 1,
+        procedure: proc
+      }));
+      setSelectedPostProcedures(restoredPostProcedures);
+      hasUpdated = true;
+    }
+
+    // Handle table selections for procedure mode - only if not already set
+    if (data.objectType === "procedures" && data.table && !tableSelections.selectedTable) {
+      setTableSelections({
+        selectedTable: data.table,
+        selectedColumns: data.columns || []
+      });
+      hasUpdated = true;
+    }
+
+
+  }, [
+    // Remove problematic dependencies that cause infinite loops
+    data.connection,
+    data.connectionId,
+    data.connectionType,
+    data.schema,
+    data.table,
+    data.alias,
+    data.objectType
+    // Removed: schemas.length, tables.length, procedures.length, selectedConnection.name, etc.
+  ]);
+
+  // Additional useEffect to handle columns setup when tables are loaded and we have restored data
+  useEffect(() => {
+    if (data.table && data.columns && selectedTable === data.table && tables.length > 0) {
+      // Make sure columns are set for the selected table
+      const tableColumns = getColumnsForTable(data.table);
+      if (tableColumns.length > 0 && columns.length === 0) {
+        setColumns(tableColumns);
+      }
+
+      // Set selected columns if they were restored but not yet applied
+      if (selectedColumns.length === 0 && data.columns.length > 0) {
+        setSelectedColumns(data.columns);
+
+        // Also update table selections if in tables mode
+        if (selectedObjectType === "tables") {
+          setTableSelections(prev => ({
+            ...prev,
+            selectedTable: data.table,
+            selectedColumns: data.columns
+          }));
+        }
+      }
+    }
+  }, [tables, data.table, data.columns, selectedTable, selectedObjectType, columns.length, selectedColumns.length]);
+
+  // Additional useEffect to handle procedure restoration after procedures are fetched
+  useEffect(() => {
+    if (selectedObjectType === "procedures" && procedures.length > 0 && data.preProcedures) {
+      // Re-map procedures after they are fetched
+      if (selectedPreProcedures.length === 1 && !selectedPreProcedures[0].procedure && data.preProcedures.length > 0) {
+        const restoredPreProcedures = data.preProcedures.map((procData, index) => {
+          const foundProcedure = procedures.find(p => p.procedure_name === procData.procedure_name);
+          return {
+            id: index + 1,
+            procedure: foundProcedure || procData
+          };
+        });
+        setSelectedPreProcedures(restoredPreProcedures);
+
+        // Restore parameter mappings for pre-procedures
+        const restoredPreMappings = {};
+        data.preProcedures.forEach((procData, index) => {
+          if (procData.parameterMapping && Object.keys(procData.parameterMapping).length > 0) {
+            const mappingKey = `pre_${index + 1}_${procData.procedure_name}`;
+            restoredPreMappings[mappingKey] = procData.parameterMapping;
+          }
+        });
+
+        setStoredParameterMappings(prev => ({
+          ...prev,
+          ...restoredPreMappings
+        }));
+
+        // Auto-apply procedure mappings to context during restoration
+        data.preProcedures.forEach((procData, index) => {
+          const procedureOrder = index + 1;
+          const mappedParams = procData.parameterMapping
+            ? Object.entries(procData.parameterMapping)
+                .filter(([param, value]) => value !== "")
+                .map(([param, value]) => value)
+            : [];
+
+          const procedureJSON = {
+            "EventType": "BeforeSourceRead",
+            "Dataset": alias || "unnamed_source",
+            "ProcName": procData.procedure_name,
+            "ProcParams": mappedParams,
+            "ProcOrder": procedureOrder,
+            "parameterMapping": procData.parameterMapping || {},
+            "procedureId": `${procData.procedure_name}_BeforeSourceRead_${procedureOrder}`,
+            "procedureItemId": index + 1,
+            "procedureType": "pre",
+            "timestamp": Date.now(),
+            "isRestored": true
+          };
+
+          dispatch({
+            type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+            payload: {
+              sourceNodeId: id,
+              procedureMapping: procedureJSON
+            }
+          });
+        });
+      }
+    }
+
+    if (selectedObjectType === "procedures" && procedures.length > 0 && data.postProcedures) {
+      // Re-map procedures after they are fetched
+      if (selectedPostProcedures.length === 1 && !selectedPostProcedures[0].procedure && data.postProcedures.length > 0) {
+        const restoredPostProcedures = data.postProcedures.map((procData, index) => {
+          const foundProcedure = procedures.find(p => p.procedure_name === procData.procedure_name);
+          return {
+            id: index + 1,
+            procedure: foundProcedure || procData
+          };
+        });
+        setSelectedPostProcedures(restoredPostProcedures);
+
+        // Restore parameter mappings for post-procedures
+        const restoredPostMappings = {};
+        data.postProcedures.forEach((procData, index) => {
+          if (procData.parameterMapping && Object.keys(procData.parameterMapping).length > 0) {
+            const mappingKey = `post_${index + 1}_${procData.procedure_name}`;
+            restoredPostMappings[mappingKey] = procData.parameterMapping;
+          }
+        });
+
+        setStoredParameterMappings(prev => ({
+          ...prev,
+          ...restoredPostMappings
+        }));
+
+        // Auto-apply procedure mappings to context during restoration
+        data.postProcedures.forEach((procData, index) => {
+          const procedureOrder = index + 1;
+          const mappedParams = procData.parameterMapping
+            ? Object.entries(procData.parameterMapping)
+                .filter(([param, value]) => value !== "")
+                .map(([param, value]) => value)
+            : [];
+
+          const procedureJSON = {
+            "EventType": "AfterSourceRead",
+            "Dataset": alias || "unnamed_source",
+            "ProcName": procData.procedure_name,
+            "ProcParams": mappedParams,
+            "ProcOrder": procedureOrder,
+            "parameterMapping": procData.parameterMapping || {},
+            "procedureId": `${procData.procedure_name}_AfterSourceRead_${procedureOrder}`,
+            "procedureItemId": index + 1,
+            "procedureType": "post",
+            "timestamp": Date.now(),
+            "isRestored": true
+          };
+
+          dispatch({
+            type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+            payload: {
+              sourceNodeId: id,
+              procedureMapping: procedureJSON
+            }
+          });
+        });
+      }
+    }
+  }, [procedures, selectedObjectType, data.preProcedures, data.postProcedures, dispatch, ACTION_TYPES, id, alias]);
+
+  // New useEffect to handle initial parameter mapping restoration from edit data
+  useEffect(() => {
+    // Restore parameter mappings when procedures are first restored
+    if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0) {
+      const initialPreMappings = {};
+      data.preProcedures.forEach((procData, index) => {
+        if (procData.parameterMapping && Object.keys(procData.parameterMapping).length > 0) {
+          const mappingKey = `pre_${index + 1}_${procData.procedure_name}`;
+          initialPreMappings[mappingKey] = procData.parameterMapping;
+        }
+      });
+
+      if (Object.keys(initialPreMappings).length > 0) {
+        setStoredParameterMappings(prev => ({
+          ...prev,
+          ...initialPreMappings
+        }));
+      }
+
+      // Auto-apply procedure mappings even if procedures aren't fetched yet
+      data.preProcedures.forEach((procData, index) => {
+        const procedureOrder = index + 1;
+        const mappedParams = procData.parameterMapping
+          ? Object.entries(procData.parameterMapping)
+              .filter(([param, value]) => value !== "")
+              .map(([param, value]) => value)
+          : [];
+
+        const procedureJSON = {
+          "EventType": "BeforeSourceRead",
+          "Dataset": alias || "unnamed_source",
+          "ProcName": procData.procedure_name,
+          "ProcParams": mappedParams,
+          "ProcOrder": procedureOrder,
+          "parameterMapping": procData.parameterMapping || {},
+          "procedureId": `${procData.procedure_name}_BeforeSourceRead_${procedureOrder}`,
+          "procedureItemId": index + 1,
+          "procedureType": "pre",
+          "timestamp": Date.now(),
+          "isRestored": true
+        };
+
+        dispatch({
+          type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+          payload: {
+            sourceNodeId: id,
+            procedureMapping: procedureJSON
+          }
+        });
+      });
+    }
+
+    if (data.postProcedures && Array.isArray(data.postProcedures) && data.postProcedures.length > 0) {
+      const initialPostMappings = {};
+      data.postProcedures.forEach((procData, index) => {
+        if (procData.parameterMapping && Object.keys(procData.parameterMapping).length > 0) {
+          const mappingKey = `post_${index + 1}_${procData.procedure_name}`;
+          initialPostMappings[mappingKey] = procData.parameterMapping;
+        }
+      });
+
+      if (Object.keys(initialPostMappings).length > 0) {
+        setStoredParameterMappings(prev => ({
+          ...prev,
+          ...initialPostMappings
+        }));
+      }
+
+      // Auto-apply procedure mappings even if procedures aren't fetched yet
+      data.postProcedures.forEach((procData, index) => {
+        const procedureOrder = index + 1;
+        const mappedParams = procData.parameterMapping
+          ? Object.entries(procData.parameterMapping)
+              .filter(([param, value]) => value !== "")
+              .map(([param, value]) => value)
+          : [];
+
+        const procedureJSON = {
+          "EventType": "AfterSourceRead",
+          "Dataset": alias || "unnamed_source",
+          "ProcName": procData.procedure_name,
+          "ProcParams": mappedParams,
+          "ProcOrder": procedureOrder,
+          "parameterMapping": procData.parameterMapping || {},
+          "procedureId": `${procData.procedure_name}_AfterSourceRead_${procedureOrder}`,
+          "procedureItemId": index + 1,
+          "procedureType": "post",
+          "timestamp": Date.now(),
+          "isRestored": true
+        };
+
+        dispatch({
+          type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+          payload: {
+            sourceNodeId: id,
+            procedureMapping: procedureJSON
+          }
+        });
+      });
+    }
+  }, [data.preProcedures, data.postProcedures, dispatch, ACTION_TYPES, id, alias]);
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[280px] max-w-[320px] relative group">
@@ -808,23 +1273,7 @@ export const SourceNode = ({ id, data }) => {
                       ? "bg-[#8E77BB] text-white border-[#8E77BB]"
                       : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
                   }`}
-                  onClick={() => {
-                    if (selectedObjectType === "procedures") {
-                      setProcedureSelections({
-                        selectedProcedure: selectedTable,
-                        selectedParameters: selectedColumns
-                      });
-                    }
-
-                    setSelectedObjectType("tables");
-
-                    setSelectedTable(tableSelections.selectedTable);
-                    setSelectedColumns(tableSelections.selectedColumns);
-
-                    if (!loading.tables && tables.length === 0 && !tableSelections.selectedTable) {
-                      fetchTablesAndColumns(selectedConnection.name, selectedSchema);
-                    }
-                  }}
+                  onClick={() => handleObjectTypeChange("tables")}
                 >
                   Tables
                 </button>
@@ -835,24 +1284,7 @@ export const SourceNode = ({ id, data }) => {
                       ? "bg-[#8E77BB] text-white border-[#8E77BB]"
                       : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
                   }`}
-                  onClick={() => {
-                    if (selectedObjectType === "tables") {
-                      setTableSelections({
-                        selectedTable: selectedTable,
-                        selectedColumns: selectedColumns
-                      });
-                    }
-
-                    setSelectedObjectType("procedures");
-
-
-                    if (selectedConnection.name && tableSelections.selectedTable) {
-                      fetchProcedures(selectedConnection.name);
-                    }
-
-                    setSelectedTable(procedureSelections.selectedProcedure);
-                    setSelectedColumns(procedureSelections.selectedParameters);
-                  }}
+                  onClick={() => handleObjectTypeChange("procedures")}
                 >
                   Procedures
                 </button>
@@ -906,11 +1338,15 @@ export const SourceNode = ({ id, data }) => {
                             className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedTable === table.table_name ? "bg-gray-100" : ""}`}
                             onClick={() => {
                               setSelectedTable(table.table_name);
-                              setSelectedColumns([]);
+                              setSelectedColumns([]); // Clear previous selections
+
+                              // Get and set columns for the selected table
                               const tableColumns = getColumnsForTable(table.table_name);
                               setColumns(tableColumns);
+
                               setTableDropdownOpen(false);
 
+                              // Update table selections state
                               setTableSelections({
                                 selectedTable: table.table_name,
                                 selectedColumns: []
@@ -1245,6 +1681,15 @@ export const SourceNode = ({ id, data }) => {
                 </div>
               </div>
             ) : selectedObjectType === "tables" && selectedTable && columns.length === 0 ? (
+              <div>
+                <div className="flex items-center justify-center py-4">
+                  <div className="text-center">
+                    <Loader size={16} className="animate-spin text-[#8E77BB] mx-auto mb-2" />
+                    <div className="text-[11px] text-gray-500">Loading columns...</div>
+                  </div>
+                </div>
+              </div>
+            ) : selectedObjectType === "tables" && selectedTable ? (
               <div className="text-center py-2 text-[11px] text-gray-500">
                 No columns found for this table
               </div>

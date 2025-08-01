@@ -9,18 +9,14 @@ const ARITHMETIC_OPERATORS = [
   { id: "division", name: "Divide", symbol: "÷" },
 ];
 
-// Wrap with forwardRef to expose validation
 export const ArithmeticOperationFields = forwardRef(({
     transformation,
     sourceCols,
     handleSelectAllColumns,
     updateTransformation = () => {},
     onAddNewTargetColumn,
-    setIsValid // <-- new prop for validation callback
+    setIsValid
 }, ref) => {
-    const [isAddingNewColumn, setIsAddingNewColumn] = useState(false);
-    const [newColumnName, setNewColumnName] = useState("");
-    const inputRef = useRef(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [modalInput, setModalInput] = useState("");
     const modalInputRef = useRef(null);
@@ -39,59 +35,135 @@ export const ArithmeticOperationFields = forwardRef(({
         const datatype = typeof col === "object" && col.datatype ? col.datatype : "";
         return {
             value: colName,
-            label: datatype ? `${colName} (${datatype})` : colName
+            label: datatype ? `${colName} (${datatype})` : colName,
+            type: "column"
         };
     });
 
-    const targetColumnOptions = [
-        ...columnOptions
-    ];
+    const getValueOption = (type, value) => {
+        if (!value) return null;
+        if (type === "column") {
+            const found = columnOptions.find(opt => opt.value === value);
+            return found || { value, label: value, type: "column" };
+        }
+        return { value, label: value, type: "custom" };
+    };
 
-    const selectedTargetOption = isAddingNewColumn && newColumnName
-        ? { value: newColumnName, label: newColumnName }
-        : transformation.target_column[0]
-            ? { value: transformation.target_column[0], label: transformation.target_column[0] }
-            : null;
+    const operatorOptions = ARITHMETIC_OPERATORS.map(op => ({
+        value: op.id,
+        label: op.symbol
+    }));
 
-    const selectedSourceOptions = Array.isArray(transformation.source_column)
-        ? transformation.source_column.map(colName => ({
-            value: colName,
-            label: colName
-        }))
-        : [];
-
-    // Validation state
     const [customValueError, setCustomValueError] = useState(false);
 
-    // Validation logic
-    useEffect(() => {
-        const isSingleSource = Array.isArray(transformation.source_column) && transformation.source_column.length === 1;
-        const customValue = transformation.params?.custom_value;
-        const isValid = !(isSingleSource && (!customValue || customValue === ""));
-        setCustomValueError(isSingleSource && (!customValue || customValue === ""));
-        if (typeof setIsValid === "function") setIsValid(isValid);
-    }, [transformation.source_column, transformation.params?.custom_value, setIsValid]);
 
-    // Expose validation for parent via ref
-    useImperativeHandle(ref, () => ({
-        isValid: () => {
-            const isSingleSource = Array.isArray(transformation.source_column) && transformation.source_column.length === 1;
-            const customValue = transformation.params?.custom_value;
-            return !(isSingleSource && (!customValue || customValue === ""));
+    const parseArithOperation = (arithStr) => {
+        if (!arithStr) return null;
+
+        const tokens = [];
+        const regex = /(\[[^\]]+\]|[^\+\-\*\/\s]+|[\+\-\*\/])/g;
+        let match;
+        while ((match = regex.exec(arithStr)) !== null) {
+            tokens.push(match[0].trim());
         }
+        const opMap = { "+": "addition", "-": "subtraction", "*": "multiplication", "/": "division" };
+        const extract = (expr) => {
+            const colMatch = /\['(.+)'\]/.exec(expr);
+            if (colMatch) {
+                return { type: "column", value: colMatch[1] };
+            }
+            if (!isNaN(Number(expr))) {
+                return { type: "custom", value: expr };
+            }
+
+            const dfColMatch = /([a-zA-Z0-9_]+)\['(.+)'\]/.exec(expr);
+            if (dfColMatch) {
+                return { type: "column", value: dfColMatch[2] };
+            }
+            return { type: "custom", value: expr };
+        };
+        const parts = [];
+        let i = 0;
+        let left = extract(tokens[i++]);
+        while (i < tokens.length) {
+            const operatorToken = tokens[i++];
+            const rightToken = tokens[i++];
+            if (!operatorToken || !rightToken) break;
+            const operator = opMap[operatorToken] || "";
+            const right = extract(rightToken);
+            parts.push({
+                left_type: left.type,
+                left_value: left.value,
+                operator,
+                right_type: right.type,
+                right_value: right.value
+            });
+            left = right;
+        }
+        return parts.length > 0 ? parts : null;
+    };
+
+    const [conditions, setConditions] = useState(() => {
+
+        if (Array.isArray(transformation.params?.conditions) && transformation.params.conditions.length > 1) {
+            return transformation.params.conditions;
+        }
+
+        const arithStr = transformation.params?.arith_operation;
+        const parsed = parseArithOperation(arithStr);
+        if (parsed) return parsed;
+
+        if (Array.isArray(transformation.params?.conditions)) {
+            return transformation.params.conditions;
+        }
+
+        const { left_type, left_value, operator, right_type, right_value } = transformation.params || {};
+        if (left_type && operator && right_type) {
+            return [{ left_type, left_value, operator, right_type, right_value }];
+        }
+        return [{
+            left_type: undefined, left_value: undefined,
+            operator: undefined, right_type: undefined, right_value: undefined
+        }];
+    });
+
+
+    useEffect(() => {
+        const arith_operation = buildArithOperation();
+        updateTransformation(
+            transformation.id,
+            "params",
+            { ...transformation.params, arith_operation, conditions }
+        );
+
+    }, [conditions]);
+
+    useEffect(() => {
+        const isValid = conditions.length > 0 &&
+            !!conditions[0].left_type && !!conditions[0].left_value &&
+            !!conditions[0].operator && !!conditions[0].right_type && !!conditions[0].right_value &&
+            conditions.slice(1).every(
+                c => !!c.operator && !!c.right_type && !!c.right_value
+            );
+        setCustomValueError(!isValid);
+        if (typeof setIsValid === "function") setIsValid(isValid);
+    }, [conditions, setIsValid]);
+
+    useImperativeHandle(ref, () => ({
+        isValid: () =>
+            conditions.length > 0 &&
+            !!conditions[0].left_type && !!conditions[0].left_value &&
+            !!conditions[0].operator && !!conditions[0].right_type && !!conditions[0].right_value &&
+            conditions.slice(1).every(
+                c => !!c.operator && !!c.right_type && !!c.right_value
+            )
     }));
 
     useEffect(() => {
-        if (!isAddingNewColumn && transformation.target_column[0]) {
-            setNewColumnName("");
+        if (!transformation.target_column[0]) {
+            setShowAddModal(false);
         }
-    }, [transformation.target_column, isAddingNewColumn]);
-
-    useEffect(() => {
-        if (isAddingNewColumn && inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, [isAddingNewColumn]);
+    }, [transformation.target_column]);
 
     useEffect(() => {
         if (showAddModal && modalInputRef.current) {
@@ -105,32 +177,46 @@ export const ArithmeticOperationFields = forwardRef(({
     };
 
     const handleTargetChange = (selected, { action }) => {
-        if (action === "clear") {
-            setIsAddingNewColumn(false);
-            setNewColumnName("");
+        if (action === "clear" || !selected) {
             handleSelectAllColumns(transformation.id, 'target', [], true);
             return;
         }
-        if (selected) {
-            setIsAddingNewColumn(false);
-            setNewColumnName("");
-            handleSelectAllColumns(transformation.id, 'target', [selected.value], true);
-        }
+        handleSelectAllColumns(transformation.id, 'target', [selected.value], true);
     };
 
-    const handleNewColumnNameChange = (e) => {
-        const name = e.target.value;
-        setNewColumnName(name);
-        if (name.trim()) {
-            handleSelectAllColumns(transformation.id, 'target', [name], true);
-        } else {
-            handleSelectAllColumns(transformation.id, 'target', [], true);
-        }
+    const getColExpr = (val) => {
+        if (!val) return "";
+        return `${transformation.source_dataframe}['${val}']`;
     };
 
-    const handleOperatorChange = (operatorId) => {
-        updateTransformation(transformation.id, "transformation_operator", operatorId);
+    const getExprPart = (type, value) => {
+        if (!type || !value) return "";
+        if (type === "column") return getColExpr(value);
+        return value;
     };
+
+    const buildArithOperation = () => {
+        if (!conditions.length) return "";
+        let expr = getExprPart(conditions[0].left_type, conditions[0].left_value);
+        for (let i = 0; i < conditions.length; ++i) {
+            const cond = conditions[i];
+            const op = ARITHMETIC_OPERATORS.find(o => o.id === cond.operator)?.symbol || "";
+            const opMap = { "+": "+", "-": "-", "×": "*", "÷": "/" };
+            const jsOp = opMap[op] || op;
+            expr += ` ${jsOp} ${getExprPart(cond.right_type, cond.right_value)}`;
+        }
+        return expr;
+    };
+
+    useEffect(() => {
+        const arith_operation = buildArithOperation();
+        updateTransformation(
+            transformation.id,
+            "params",
+            { ...transformation.params, arith_operation, conditions }
+        );
+
+    }, [conditions]);
 
     const customStyles = {
         control: (provided) => ({
@@ -213,9 +299,13 @@ export const ArithmeticOperationFields = forwardRef(({
     };
 
     const CustomMenuList = (props) => {
+        const isCurrentTargetNew =
+            transformation.target_column &&
+            transformation.target_column[0] &&
+            !columnOptions.some(opt => opt.value === transformation.target_column[0]);
         return (
             <components.MenuList {...props}>
-                {!isAddingNewColumn && (
+                {!isCurrentTargetNew && (
                     <div
                         style={{
                             padding: '8px 12px',
@@ -241,8 +331,6 @@ export const ArithmeticOperationFields = forwardRef(({
         const name = modalInput.trim();
         if (name) {
             setShowAddModal(false);
-            setIsAddingNewColumn(false);
-            setNewColumnName("");
             handleSelectAllColumns(transformation.id, 'target', [name], true);
             if (onAddNewTargetColumn && typeof onAddNewTargetColumn === "function") {
                 onAddNewTargetColumn(name);
@@ -309,107 +397,319 @@ export const ArithmeticOperationFields = forwardRef(({
         </div>
     );
 
+
+    const makeSelectOptions = () => [
+        { value: "__custom__", label: "Custom Value", type: "custom" },
+        ...columnOptions
+    ];
+
+    const [customValueModal, setCustomValueModal] = useState({ open: false, side: null, value: "" });
+
+    const targetColumnOptions = [
+        ...columnOptions
+    ];
+
+    const selectedTargetOption =
+        transformation.target_column && transformation.target_column[0]
+            ? { value: transformation.target_column[0], label: transformation.target_column[0] }
+            : null;
+
+    const handleCondChange = (idx, field, value, type) => {
+        setConditions(conds => {
+            const updated = [...conds];
+            if (field === "left" || field === "right") {
+                updated[idx][`${field}_type`] = type;
+                updated[idx][`${field}_value`] = value;
+            } else if (field === "operator") {
+                updated[idx].operator = value;
+            }
+            return updated;
+        });
+    };
+
+    const handleAddCondition = (idx) => {
+        setConditions(conds => {
+            const newCond = {
+                left_type: undefined, left_value: undefined,
+                operator: undefined, right_type: undefined, right_value: undefined
+            };
+            return [
+                ...conds.slice(0, idx + 1),
+                newCond,
+                ...conds.slice(idx + 1)
+            ];
+        });
+    };
+
+    const handleRemoveCondition = (idx) => {
+        setConditions(conds => conds.length <= 1 || idx === 0 ? conds : conds.filter((_, i) => i !== idx));
+    };
+
     return (
         <div>
-
-            <div className="mb-4">
-                <label className="block text-sm text-gray-700 mb-1">
-                    Operator
-                </label>
-                <div className="flex flex-wrap gap-2">
-                    {ARITHMETIC_OPERATORS.map(op => (
-                        <button
-                            key={op.id}
-                            className={`py-2 px-3 text-sm rounded-md ${
-                                transformation.transformation_operator === op.id
-                                    ? 'bg-[#8E77BB] text-white'
-                                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                            }`}
-                            onClick={() => handleOperatorChange(op.id)}
-                            type="button"
-                        >
-                            {op.symbol}
-                        </button>
-                    ))}
-                </div>
+            <div className="mb-2">
+                <label className="text-xs text-gray-600 block mb-1">Arithmatic Condition</label>
             </div>
-            <div className="flex gap-4 items-end">
-                <div className="flex-1">
-                    <label className="text-xs text-gray-600 block mb-1">Source Columns</label>
-                    <Select
-                        isMulti
-                        options={columnOptions}
-                        value={selectedSourceOptions}
-                        onChange={handleSourceChange}
-                        placeholder="Select columns"
-                        className="text-sm"
-                        styles={customStyles}
-                        noOptionsMessage={() => "No numeric columns available"}
-                        closeMenuOnSelect={false}
-                        theme={theme => ({
-                            ...theme,
-                            colors: {
-                                ...theme.colors,
-                                primary: '#8E77BB',
-                                primary25: '#f3f4f6',
-                                neutral0: 'white',
-                                neutral80: '#111827',
-                            },
-                        })}
-                    />
-                </div>
-                <div className="flex-1">
-                    <label className="block text-xs text-gray-600 mb-1">
-                        Custom Value{" "}
-                        {Array.isArray(transformation.source_column) && transformation.source_column.length === 1 && (
-                            <span className="text-red-500 font-normal">(required)</span>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "180px 180px 180px 48px 48px",
+                    rowGap: 12,
+                    columnGap: 32,
+                    alignItems: "center",
+                    marginBottom: 8
+                }}
+            >
+                {conditions.map((cond, idx) => (
+                    <React.Fragment key={idx}>
+                        {idx === 0 && (
+                            <>
+                                <div>
+                <label className="text-xs text-gray-600 block mb-1">Select Column Or Enter Value</label>
+
+                                    <Select
+                                        options={makeSelectOptions()}
+                                        value={getValueOption(cond.left_type, cond.left_value)}
+                                        onChange={selected => {
+                                            if (!selected) {
+                                                handleCondChange(idx, "left", undefined, undefined);
+                                                return;
+                                            }
+                                            if (selected.value === "__custom__") {
+                                                setCustomValueModal({ open: true, side: `left-${idx}`, value: "" });
+                                                return;
+                                            }
+                                            handleCondChange(idx, "left", selected.value, selected.type);
+                                        }}
+                                        className="text-sm"
+                                        styles={customStyles}
+                                        isClearable
+                                        menuPlacement="auto"
+                                        noOptionsMessage={() => "No numeric columns available"}
+                                    />
+                                </div>
+                                <div>
+                <label className="text-xs text-gray-600 block mb-1">Operator</label>
+
+                                    <Select
+                                        options={operatorOptions}
+                                        value={operatorOptions.find(op => op.value === cond.operator) || null}
+                                        onChange={selected => handleCondChange(idx, "operator", selected ? selected.value : undefined)}
+                                        // placeholder="Operator"
+                                        className="text-sm"
+                                        styles={customStyles}
+                                        menuPlacement="auto"
+                                    />
+                                </div>
+                                <div>
+                <label className="text-xs text-gray-600 block mb-1">Select Column Or Enter Value</label>
+
+                                    <Select
+                                        options={makeSelectOptions()}
+                                        value={getValueOption(cond.right_type, cond.right_value)}
+                                        onChange={selected => {
+                                            if (!selected) {
+                                                handleCondChange(idx, "right", undefined, undefined);
+                                                return;
+                                            }
+                                            if (selected.value === "__custom__") {
+                                                setCustomValueModal({ open: true, side: `right-${idx}`, value: "" });
+                                                return;
+                                            }
+                                            handleCondChange(idx, "right", selected.value, selected.type);
+                                        }}
+                                        // placeholder="Select column or custom value"
+                                        className="text-sm"
+                                        styles={customStyles}
+                                        isClearable
+                                        menuPlacement="auto"
+                                        noOptionsMessage={() => "No numeric columns available"}
+                                    />
+                                </div>
+                                <div>
+                                    {conditions.length === 1 && (
+                                        <button
+                                            type="button"
+                                        className="w-8 h-8 mt-5 rounded bg-[#8E77BB] text-white flex items-center justify-center"
+                                            title="Add another condition"
+                                            onClick={() => handleAddCondition(idx)}
+                                        >
+                                            +
+                                        </button>
+                                    )}
+                                </div>
+                                <div />
+                            </>
                         )}
-                    </label>
-                    <input
-                        type="number"
-                        step="1"
-                        pattern="[0-9]*"
-                        className={`w-full p-2 text-sm bg-white border ${customValueError ? "border-red-500" : "border-gray-300"} rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]`}
-                        placeholder="Enter custom value"
-                        value={transformation.params?.custom_value || ""}
-                        onChange={e => {
-                            const val = e.target.value;
-                            if (val === "" || /^-?\d+$/.test(val)) {
-                                updateTransformation(transformation.id, "params.custom_value", val);
-                            }
-                        }}
-                        inputMode="numeric"
-                    />
+                        {idx > 0 && (
+                            <>
+                                <div>
+                <label className="text-xs text-gray-600 block mb-1">Operator</label>
 
-                </div>
+                                    <Select
+                                        options={operatorOptions}
+                                        value={operatorOptions.find(op => op.value === cond.operator) || null}
+                                        onChange={selected => handleCondChange(idx, "operator", selected ? selected.value : undefined)}
+                                        // placeholder="Operator"
+                                        className="text-sm"
+                                        styles={customStyles}
+                                        menuPlacement="auto"
+                                    />
+                                </div>
+                                <div>
+                <label className="text-xs text-gray-600 block mb-1">Select Column Or Enter Value</label>
+
+                                    <Select
+                                        options={makeSelectOptions()}
+                                        value={getValueOption(cond.right_type, cond.right_value)}
+                                        onChange={selected => {
+                                            if (!selected) {
+                                                handleCondChange(idx, "right", undefined, undefined);
+                                                return;
+                                            }
+                                            if (selected.value === "__custom__") {
+                                                setCustomValueModal({ open: true, side: `right-${idx}`, value: "" });
+                                                return;
+                                            }
+                                            handleCondChange(idx, "right", selected.value, selected.type);
+                                        }}
+                                        // placeholder="Select column or custom value"
+                                        className="text-sm"
+                                        styles={customStyles}
+                                        isClearable
+                                        menuPlacement="auto"
+                                        noOptionsMessage={() => "No numeric columns available"}
+                                    />
+                                </div>
+                                <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+                                    <button
+                                        type="button"
+                                        className="w-8 h-8 rounded bg-[#8E77BB] text-white flex items-center justify-center"
+                                        title="Add another condition"
+                                        onClick={() => handleAddCondition(idx)}
+                                    >
+                                        +
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="w-8 h-8 rounded bg-gray-200 text-gray-700 flex items-center justify-center"
+                                        title="Remove this condition"
+                                        onClick={() => handleRemoveCondition(idx)}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                                <div />
+                                <div />
+                            </>
+                        )}
+                    </React.Fragment>
+                ))}
             </div>
-            <div className="flex mt-4">
-                <div className="w-1/2">
-                    <label className="text-xs text-gray-600 block mb-1">Target Column</label>
-                    <Select
-                        options={targetColumnOptions}
-                        value={selectedTargetOption}
-                        onChange={handleTargetChange}
-                        placeholder="Select target column"
-                        className="text-sm"
-                        styles={customStyles}
-                        noOptionsMessage={() => "No numeric columns available"}
-                        isClearable
-                        components={{ MenuList: CustomMenuList }}
-                        menuIsOpen={undefined}
-                        theme={theme => ({
-                            ...theme,
-                            colors: {
-                                ...theme.colors,
-                                primary: '#8E77BB',
-                                primary25: '#f3f4f6',
-                                neutral0: 'white',
-                                neutral80: '#111827',
-                            },
-                        })}
-                    />
-                </div>
+            <div className="mt-6" style={{ maxWidth: 400 }}>
+                <label className="text-xs text-gray-600 block mb-1">Target Column</label>
+                <Select
+                    options={targetColumnOptions}
+                    value={selectedTargetOption}
+                    onChange={handleTargetChange}
+                    placeholder="Select target column"
+                    className="text-sm"
+                    styles={customStyles}
+                    noOptionsMessage={() => "No numeric columns available"}
+                    isClearable
+                    components={{ MenuList: CustomMenuList }}
+                    menuIsOpen={undefined}
+                    theme={theme => ({
+                        ...theme,
+                        colors: {
+                            ...theme.colors,
+                            primary: '#8E77BB',
+                            primary25: '#f3f4f6',
+                            neutral0: 'white',
+                            neutral80: '#111827',
+                        },
+                    })}
+                />
             </div>
+            {showAddModal && AddColumnModal}
+            {customValueModal.open && (() => {
+                const match = /^(\w+)-(\d+)$/.exec(customValueModal.side || "");
+                if (!match) return null;
+                const [, side, idxStr] = match;
+                const idx = parseInt(idxStr, 10);
+                return (
+                    <div
+                        style={{
+                            position: "fixed",
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            background: "rgba(0,0,0,0.2)",
+                            zIndex: 10000,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
+                        }}
+                        onClick={() => setCustomValueModal({ open: false, side: null, value: "" })}
+                    >
+                        <div
+                            style={{
+                                background: "white",
+                                padding: 24,
+                                borderRadius: 8,
+                                minWidth: 320,
+                                boxShadow: "0 2px 16px rgba(0,0,0,0.15)"
+                            }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="mb-3 text-base font-medium text-gray-700">
+                                Enter Custom Value
+                            </div>
+                            <input
+                                type="number"
+                                className="w-full p-2 mb-4 border border-gray-300 rounded text-gray-800"
+                                placeholder="Enter custom value"
+                                value={customValueModal.value}
+                                onChange={e => setCustomValueModal(modal => ({ ...modal, value: e.target.value }))}
+                                onKeyDown={e => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        setConditions(conds => {
+                                            const updated = [...conds];
+                                            updated[idx][`${side}_type`] = "custom";
+                                            updated[idx][`${side}_value`] = customValueModal.value;
+                                            return updated;
+                                        });
+                                        setCustomValueModal({ open: false, side: null, value: "" });
+                                    }
+                                }}
+                                autoFocus
+                            />
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    className="px-3 py-1 rounded bg-gray-200 text-gray-700"
+                                    onClick={() => setCustomValueModal({ open: false, side: null, value: "" })}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    className="px-3 py-1 rounded bg-[#8E77BB] text-white"
+                                    onClick={() => {
+                                        setConditions(conds => {
+                                            const updated = [...conds];
+                                            updated[idx][`${side}_type`] = "custom";
+                                            updated[idx][`${side}_value`] = customValueModal.value;
+                                            return updated;
+                                        });
+                                        setCustomValueModal({ open: false, side: null, value: "" });
+                                    }}
+                                    disabled={!customValueModal.value.trim()}
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
             {showAddModal && AddColumnModal}
         </div>
     );

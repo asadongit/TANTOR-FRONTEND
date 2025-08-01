@@ -203,6 +203,7 @@ export default function CDCJobView() {
     update_events_seen: 0,
     delete_events_seen: 0,
   });
+  const [isAdhocLoading, setIsAdhocLoading] = useState(false);
 
   const openModal = (configType) => {
     setActiveConfigType(configType);
@@ -221,28 +222,28 @@ export default function CDCJobView() {
 
   const [selectedConnectorName, setselectedConnectorName] = useState("")
 
-useEffect(() => {
-  if (selectedConnectorName!="") {
-    const fetchMetrics = async () => {
-      try {
-        const metricsResponse = await axios.get(
-          `${hostnameV2}/cdc/debezium-metrics`,
-          {
-            params: { connector_name: selectedConnectorName },
-            headers: { accept: "application/json" },
-          }
-        );
-        console.log("Metrics response:", metricsResponse);
-        setMetrics(metricsResponse.data);
-      } catch (error) {
-        console.error("Error fetching metrics:", error);
-        // toast.error("Failed to fetch metrics data");
-      }
-    };
+  useEffect(() => {
+    if (selectedConnectorName != "") {
+      const fetchMetrics = async () => {
+        try {
+          const metricsResponse = await axios.get(
+            `${hostnameV2}/cdc/debezium-metrics`,
+            {
+              params: { connector_name: selectedConnectorName },
+              headers: { accept: "application/json" },
+            }
+          );
+          console.log("Metrics response:", metricsResponse);
+          setMetrics(metricsResponse.data);
+        } catch (error) {
+          console.error("Error fetching metrics:", error);
+          // toast.error("Failed to fetch metrics data");
+        }
+      };
 
-    fetchMetrics();
-  }
-}, [selectedConnectorName]);
+      fetchMetrics();
+    }
+  }, [selectedConnectorName]);
 
   useEffect(() => {
     if (!cdcId) return;
@@ -258,7 +259,7 @@ useEffect(() => {
         setTargetConfigs(targetConfigs || []);
         const connectorName = sourceConfigs[0]?.config?.config?.["topic.prefix"];
         setselectedConnectorName(connectorName)
-        
+
         // if (connectorName) {
         //   try {
         //     const metricsResponse = await axios.get(
@@ -401,7 +402,7 @@ useEffect(() => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [cdcId,data]);
+  }, [cdcId, data]);
 
   useEffect(() => {
     if (data) {
@@ -471,6 +472,36 @@ useEffect(() => {
     setActiveConfigType(type);
     setIsModalOpen(true);
   };
+
+  const handleAdhocSnapshot = async () => {
+    console.log("Adhoc snapshot triggered");
+
+    setIsAdhocLoading(true);
+
+    try {
+      const response = await fetch(`${hostnameV2}/cdc/${cdcId}/adhoc-snapshot`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Adhoc snapshot response:", data);
+        toast.success(data.message || "Adhoc snapshot triggered successfully");
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || "Failed to trigger adhoc snapshot");
+      }
+    } catch (error) {
+      console.error("Error triggering adhoc snapshot:", error);
+      toast.error("Failed to trigger adhoc snapshot");
+    } finally {
+      setIsAdhocLoading(false);
+    }
+  }
 
   // const handleActivateConfig = (configId) => {
   //   // Update the config history to mark the selected config as active
@@ -1358,49 +1389,57 @@ useEffect(() => {
 
         <div className="bg-white rounded-t-lg shadow-sm border border-gray-200 mb-5">
           <div className="px-2">
-            <nav className="flex space-x-2">
-              <button
-                className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === "overview"
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                onClick={() => setActiveTab("overview")}
-              >
-                Overview
-              </button>
-              <button
-                className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === "logs"
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                onClick={() => setActiveTab("logs")}
-              >
-                Logs
-              </button>
+            <nav className="flex space-x-2 items-center justify-between">
+              <div className="flex space-x-2">
+                <button
+                  className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === "overview"
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  onClick={() => setActiveTab("overview")}
+                >
+                  Overview
+                </button>
+                <button
+                  className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === "logs"
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  onClick={() => setActiveTab("logs")}
+                >
+                  Logs
+                </button>
+                <button
+                  className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === "configurations"
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  onClick={() => setActiveTab("configurations")}
+                >
+                  Configuration History
+                </button>
+              </div>
 
-              {/* <button
-                className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === 'metrics' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300'}`}
-                onClick={() => setActiveTab('metrics')}
-              >
-                Performance Metrics
-              </button> */}
-              <button
-                className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === "configurations"
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                onClick={() => setActiveTab("configurations")}
-              >
-                Configuration History
-              </button>
-              {/* <button
-                className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === 'Connectors' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300'}`}
-                onClick={() => setActiveTab('Connectors')}
-              >
-Connectors              </button> */}
+              <div>
+                <button
+                  className="py-2 px-4 text-sm font-medium text-white bg-purple-600 hover:bg-purple-500 rounded disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  onClick={handleAdhocSnapshot}
+                  disabled={isAdhocLoading}
+                >
+                  {isAdhocLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Adhoc Snapshot"
+                  )}
+                </button>
+              </div>
             </nav>
           </div>
         </div>
+
 
         {/* <div className="bg-white rounded-b-lg shadow-sm border-x border-b border-gray-200 mb-6 p-6">
           {activeTab === 'overview' && (

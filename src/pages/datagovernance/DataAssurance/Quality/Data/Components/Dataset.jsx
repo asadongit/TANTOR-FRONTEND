@@ -25,8 +25,9 @@ import AceEditor from 'react-ace';
 import 'ace-builds/src-noconflict/mode-mysql';
 import 'ace-builds/src-noconflict/theme-github';
 import 'ace-builds/src-noconflict/ext-language_tools';
+import { initialFormData } from './Cleaning.jsx';
 
-function Dataset({ query, setQuery, setQuerySuccess }) {
+function Dataset({ query, setQuery, setQuerySuccess,setFormData }) {
   const { token, hostnameV1, decodedToken } = useAuth();
   const [selectedTable, setSelectedTable] = useState('');
   const [isEditorMaximized, setIsEditorMaximized] = useState(false);
@@ -40,7 +41,6 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
   const [columns, setColumns] = useState({});
   const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyItems, setHistoryItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
   const [columnDefs, setColumnDefs] = useState([]);
@@ -106,41 +106,6 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
   useEffect(() => {
     fetchConnections();
   }, [token, hostnameV1]);
-
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        setHistoryLoading(true);
-        const response = await fetch(`${hostnameV1}/scores/data/history`, {
-          method: 'POST',
-          headers: {
-            accept: 'application/json',
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ owner: decodedToken?.preferred_username }),
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch history');
-        const historyData = await response.json();
-        const historyConnections = historyData.connections || [];
-
-        const connectionNames = connections.map((conn) => conn.connection_name);
-        const filteredHistory = historyConnections.filter((conn) => connectionNames.includes(conn));
-
-        setHistoryItems(filteredHistory);
-      } catch (error) {
-        console.error('Error fetching history:', error);
-        toast.error('Failed to load history');
-      } finally {
-        setHistoryLoading(false);
-      }
-    };
-
-    if (connections.length > 0) {
-      fetchHistory();
-    }
-  }, [connections, token, hostnameV1, decodedToken]);
 
   const toggleExpand = async (itemName, connection, schema, table) => {
     if (connection && !schema && !table) {
@@ -303,12 +268,69 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
     setQuerySuccess(false);
   };
 
-  const executeQuery = async (query, page = 1) => {
-    if (!query.trim()) {
+  const [queryHistory, setQueryHistory] = useState([]);
+
+  const fetchQueryHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      const type = 'dg';
+      const project = 'dg';
+      const response = await fetch(`${hostnameV1}/queries/${decodedToken?.preferred_username}/${project}/${type}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch query history');
+      const data = await response.json();
+      const filteredHistory = data.filter(query => query && query.trim() !== "");
+      setQueryHistory(filteredHistory);
+      return filteredHistory;
+    } catch (error) {
+      console.error("Error fetching query history:", error);
+      toast.error("Failed to load query history");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (decodedToken?.preferred_username) {
+      fetchQueryHistory();
+    }
+  }, []);
+
+  function removeComments(sql) {
+    const lines = sql.split("\n");
+    let newQuery = "";
+    let inSingleLineComment = false;
+    let inMultiLineComment = false;
+    lines.forEach((line) => {
+      const trimmedLine = line.trim();
+      if (inMultiLineComment) {
+        if (trimmedLine.includes("*/")) {
+          inMultiLineComment = false;
+          return;
+        }
+        return;
+      }
+      if (trimmedLine.startsWith("/*")) {
+        inMultiLineComment = true;
+        return;
+      }
+      if (trimmedLine.startsWith("--")) return;
+      newQuery += line + "\n";
+    });
+    return newQuery.trim();
+  }
+
+  const executeQuery = async (newQuery, page = 1) => {
+    if (!newQuery.trim()) {
       toast.error('Please enter a query');
       return;
     }
 
+    const query = removeComments(newQuery);
     setLoading(true);
     setData([]);
     setColumnDefs([]);
@@ -326,7 +348,6 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
 
       if (!secureQueryResponse.ok) {
         const errData = await secureQueryResponse.json();
-        // toast.error(errData.detail || 'Error in query validation');
         throw new Error(errData.detail || 'Query validation failed');
       }
 
@@ -354,10 +375,39 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
       const rows = responseText.trim().split('\n').map((row) => JSON.parse(row));
 
       if (rows.length > 0) {
-        setColumnDefs(Object.keys(rows[0]));
-        setData(rows);
-        setHasMore(rows.length === 100);
-        setQuerySuccess(true);
+        const firstRow = rows[0];
+        const allNulls = Object.values(firstRow).every(val => val === null);
+
+        if (allNulls && rows.length === 1) {
+          setData([]);
+          setColumnDefs(Object.keys(firstRow));
+          setHasMore(false);
+          setQuerySuccess(false);
+        } else {
+          setColumnDefs(Object.keys(rows[0]));
+          setData(rows);
+          setHasMore(rows.length === 100);
+          setQuerySuccess(true);
+        }
+        const historyPayload = {
+          query: query,
+          owner: decodedToken?.preferred_username,
+          project: 'dg',
+          type: 'dg'
+        };
+
+        await fetch(`${hostnameV1}/save_query`, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "Content-Type": "application/json",
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(historyPayload),
+        });
+
+        const updatedHistory = await fetchQueryHistory();
+        if (updatedHistory) setQueryHistory(updatedHistory);
       } else {
         setData([]);
         setHasMore(false);
@@ -369,6 +419,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
       setQuerySuccess(false);
     } finally {
       setLoading(false);
+      setFormData(initialFormData)
     }
   };
 
@@ -488,7 +539,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
     <div className="w-full h-[calc(100vh-190px)]">
       <div className="flex gap-5 h-full">
         {!(isEditorMaximized || isOutputMaximized) && (
-          <div 
+          <div
             className={`bg-white rounded-lg shadow-sm overflow-hidden flex flex-col relative 
               ${isSidebarCollapsed ? 'w-[40px]' : 'w-[280px]'} transition-all duration-200`}
           >
@@ -562,15 +613,15 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                     <div>
                       <div className="flex justify-between items-center px-4 pb-1 border-b border-gray-100">
                         <span className="text-sm font-medium text-gray-600">Connections</span>
-                        <button 
+                        <button
                           onClick={refreshConnections}
                           disabled={isRefreshingConnections}
                           className="text-gray-500 hover:text-[#8d77ba] p-1 transition-colors"
                           title="Refresh connections"
                         >
-                          <RefreshCw 
-                            size={14} 
-                            className={isRefreshingConnections ? 'animate-spin' : ''} 
+                          <RefreshCw
+                            size={14}
+                            className={isRefreshingConnections ? 'animate-spin' : ''}
                           />
                         </button>
                       </div>
@@ -701,33 +752,24 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                         <div className="flex justify-center items-center">
                           <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#8d77ba]"></div>
                         </div>
-                      ) : historyItems.length === 0 ? (
+                      ) : queryHistory.length === 0 ? (
                         <div className="text-gray-500 text-sm pl-4">No history available</div>
                       ) : (
-                        historyItems
+                        queryHistory
                           .filter((item) => item.toLowerCase().includes(searchTerm.toLowerCase()))
                           .map((item, index) => (
                             <div
                               key={index}
-                              className={`px-4 py-2 text-sm cursor-pointer rounded
-                              ${selectedTable.includes(item) ? 'text-[#8d77ba] bg-[#8d77ba10]' : 'text-gray-700 hover:bg-gray-50'}`}
+                              className={`px-4 py-2 text-[10px] cursor-pointer tooltip rounded text-gray-700 hover:bg-gray-50`}
                               onClick={() => {
-                                let found = false;
-                                for (const connection of connections) {
-                                  const schemasList = schemas[connection.connection_name] || [];
-                                  for (const schema of schemasList) {
-                                    const tablesList = tables[`${connection.connection_name}-${schema}`] || [];
-                                    if (tablesList.includes(item)) {
-                                      handleSelectTable(connection.connection_name, schema, item);
-                                      found = true;
-                                      break;
-                                    }
-                                  }
-                                  if (found) break;
-                                }
+                                setSelectedQuery(item);
+                                setQuery(item);
+                                setData([]);
+                                setColumnDefs([]);
+                                setQuerySuccess(false);
                               }}
                             >
-                              {item}
+                              {`${index + 1}. ${item}`}
                             </div>
                           ))
                       )}
@@ -750,9 +792,9 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
 
         <div
           className={`${isEditorMaximized || isOutputMaximized
-              ? 'flex-1' 
-              : 'flex-1 flex flex-col gap-5' 
-            } min-w-0 h-full`} 
+            ? 'flex-1'
+            : 'flex-1 flex flex-col gap-5'
+            } min-w-0 h-full`}
         >
           {!isOutputMaximized && (
             <div
@@ -769,11 +811,16 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                     {loading ? 'Running...' : 'Run query'}
                     <Play size={14} />
                   </button>
-                  <button className="text-gray-500 p-1 hover:bg-gray-50 rounded" onClick={toggleEditorMaximize}>
+                  <button
+                    className="text-gray-500 p-1 hover:bg-gray-50 rounded"
+                    onClick={toggleEditorMaximize}
+                    title={isEditorMaximized ? "Minimize" : "Maximize"}
+                  >
                     {isEditorMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                   </button>
                   <button
                     className="text-gray-500 p-1 hover:bg-gray-50 rounded"
+                    title={"Refresh"}
                     onClick={() => {
                       setSelectedQuery('');
                       setSelectedTable('');
@@ -827,6 +874,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                   <button
                     className="text-gray-500 p-1 hover:bg-gray-50 rounded"
                     onClick={toggleOutputMaximize}
+                    title={isOutputMaximized ? "Minimize" : "Maximize"}
                   >
                     {isOutputMaximized ? (
                       <Minimize2 size={16} />
@@ -841,9 +889,9 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                     <div className="flex justify-center items-center h-full">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#8d77ba]"></div>
                     </div>
-                  ) : data.length === 0 ? (
+                  ) : data.length === 0 || (data.length === 1 && Object.values(data[0]).every(val => val === null)) ? (
                     <div className="flex justify-center items-center h-full text-gray-500">
-                      No data returned
+                      No data available
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -855,7 +903,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                                 key={index}
                                 scope="col"
                                 className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider truncate"
-                                style={{ maxWidth: '200px' }} 
+                                style={{ maxWidth: '200px' }}
                               >
                                 {column}
                               </th>
@@ -869,7 +917,7 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                                 <td
                                   key={colIndex}
                                   className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 truncate"
-                                  style={{ maxWidth: '200px' }} 
+                                  style={{ maxWidth: '200px' }}
                                   title={row[column]}
                                 >
                                   {row[column]}
@@ -891,8 +939,8 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                         onClick={handlePreviousPage}
                         disabled={pageNo === 1}
                         className={`flex items-center gap-1 px-3 py-1 rounded text-sm ${pageNo === 1
-                            ? 'text-gray-400 cursor-not-allowed'
-                            : 'text-gray-700 hover:bg-gray-100'
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-gray-700 hover:bg-gray-100'
                           }`}
                       >
                         <ChevronLeft size={16} />
@@ -902,8 +950,8 @@ function Dataset({ query, setQuery, setQuerySuccess }) {
                         onClick={handleNextPage}
                         disabled={!hasMore}
                         className={`flex items-center gap-1 px-3 py-1 rounded text-sm ${!hasMore
-                            ? 'text-gray-400 cursor-not-allowed'
-                            : 'text-gray-700 hover:bg-gray-100'
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-gray-700 hover:bg-gray-100'
                           }`}
                       >
                         Next

@@ -77,7 +77,7 @@ const InfoModal = ({ onClose }) => {
               <h3 className="text-lg font-semibold text-[#8d77ba] border-b pb-2 mb-3">Table Reference Format</h3>
               <p className="mb-2">Use fully qualified table names:</p>
               <div className="bg-gray-50 p-3 rounded-md font-mono text-sm mb-2">
-                connectionname.schemaname.tablename
+                connection.schema.table
               </div>
             </div>
 
@@ -86,7 +86,7 @@ const InfoModal = ({ onClose }) => {
               <p className="mb-2">Use either:</p>
               <div className="bg-gray-50 p-3 rounded-md font-mono text-sm mb-2">
                 Simple: columnname<br />
-                Fully qualified: connectionname.schemaname.tablename.columnname
+                Fully qualified: connection.schema.table.column
               </div>
             </div>
 
@@ -112,7 +112,7 @@ const InfoModal = ({ onClose }) => {
                 Score is calculated in backend as:
               </p>
               <div className="bg-gray-50 p-3 rounded-md font-mono text-sm mt-2">
-                score = 100 - (vio_count * 100.0 / total_count)
+                (1 - (vio_count / total_count)) * 100
               </div>
             </div>
           </div>
@@ -250,7 +250,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
           connection: conn.connection || '',
           schema: Array.isArray(conn.schema) ? conn.schema.map(s => (typeof s === 'string' ? s.split('.').pop() : s)) : (conn.schema ? [conn.schema.split('.').pop()] : []),
           table: Array.isArray(conn.tables) ? conn.tables.map(t => (typeof t === 'string' ? t.split('.').pop() : t)) : (conn.tables ? [conn.tables.split('.').pop()] : []),
-          column: Array.isArray(conn.columns) ? conn.columns.map(c => (typeof c === 'string' ? c.split('.').pop() : c)) : (conn.columns ? [conn.columns.split('.').pop()] : []),
+          column: Array.isArray(conn.columns) ? conn.columns : (conn.columns ? [conn.columns] : []),
         }));
       });
     } else {
@@ -776,7 +776,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
 
   const handleRefresh = (conn) => {
     const connIdx = connections.findIndex(c => c.id === conn.id);
-    if (connIdx === -1) return; 
+    if (connIdx === -1) return;
 
     setConnectionsForCurrent(
       connections.map(c =>
@@ -819,14 +819,7 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
               return schema ? `${connection}.${schema}.${tableName}` : `${connection}.${tableName}`;
             });
 
-            const columns = (conn.column || []).map(c => {
-              const columnName = c.split('.').pop();
-              const schema = (conn.schema || [])[0] || '';
-              const table = (conn.table || [])[0] || '';
-              return schema && table
-                ? `${connection}.${schema}.${table}.${columnName}`
-                : `${connection}.${columnName}`;
-            });
+            const columns = conn.column || [];
 
             return {
               connection,
@@ -1540,10 +1533,10 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                     label: `${conn.connection}.${schema}.${table}`,
                   }));
 
-                  const columnDropdownOpts = columnOpts.map(({ schema, table, column }) => ({
-                    value: column,
-                    label: `${conn.connection}.${schema}.${table}.${column}`,
-                  }));
+                  const columnDropdownOpts = columnOpts.map(({ schema, table, column }) => {
+                    const fqn = `${conn.connection}.${schema}.${table}.${column}`;
+                    return { value: fqn, label: fqn };
+                  });
 
                   const selectedSchema = (conn.schema || []).map(s => ({
                     value: s,
@@ -1555,9 +1548,9 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
                     label: `${conn.connection}.${conn.schema[0] || ''}.${t}`,
                   }));
 
-                  const selectedColumns = (conn.column || []).map(c => ({
-                    value: c,
-                    label: `${conn.connection}.${conn.schema[0] || ''}.${conn.table[0] || ''}.${c}`,
+                  const selectedColumns = (conn.column || []).map(fqn => ({
+                    value: fqn,
+                    label: fqn
                   }));
 
                   let statusIcon = null;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ArrowUpRight, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
+import { Search, ArrowUpRight, ChevronLeft, ChevronRight, List, X, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useAuth } from '../../../../../context/AuthContext';
@@ -15,19 +15,29 @@ const RulesLibrary = () => {
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [selectedRule, setSelectedRule] = useState(null);
     const [modalPage, setModalPage] = useState(1);
+    const [sortColumn, setSortColumn] = useState(null);
+    const [sortDirection, setSortDirection] = useState('asc');
     const rowsPerPage = 5;
     const modalRowsPerPage = 5;
     const { decodedToken } = useAuth();
     const navigate = useNavigate();
 
-    // Dynamically generate metricsData from groupCounts
-    const metricsData = Object.keys(groupCounts).map((group) => ({
-        icon: "material-symbols:tab-group-outline",
-        bgcolor: "bg-[#8d77ba] bg-opacity-25",
-        iconcolor: "text-[#8d77ba]",
-        title: group,
-        count: groupCounts[group] || "-",
-    }));
+    const metricsData = () => {
+        const keys = Object.keys(groupCounts);
+        const sortedKeys = keys.sort((a, b) => {
+            if (a.toLowerCase() === 'overall') return -1;
+            if (b.toLowerCase() === 'overall') return 1;
+            return a.localeCompare(b);
+        });
+
+        return sortedKeys.map((group) => ({
+            icon: "material-symbols:tab-group-outline",
+            bgcolor: "bg-[#8d77ba] bg-opacity-25",
+            iconcolor: "text-[#8d77ba]",
+            title: group,
+            count: groupCounts[group] || "-",
+        }));
+    };
 
     const fetchLibraryData = async () => {
         setIsLoading(true);
@@ -97,7 +107,33 @@ const RulesLibrary = () => {
         setModalPage(1);
     };
 
-    const filteredData = libraryData.filter(item =>
+    const handleSort = (column) => {
+        if (sortColumn === column) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
+        setCurrentPage(1);
+    };
+
+    const sortedData = [...libraryData].sort((a, b) => {
+        if (!sortColumn) return 0;
+        const aValue = a[sortColumn] || '';
+        const bValue = b[sortColumn] || '';
+        // Handle numeric sorting for 'id' specifically
+        if (sortColumn === 'id') {
+            const aNum = parseInt(aValue, 10);
+            const bNum = parseInt(bValue, 10);
+            return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+        // String sorting for other fields
+        return sortDirection === 'asc'
+            ? aValue.toString().localeCompare(bValue.toString())
+            : bValue.toString().localeCompare(aValue.toString());
+    });
+
+    const filteredData = sortedData.filter(item =>
         Object.values(item).some(val =>
             val && val.toString().toLowerCase().includes(searchTerm.toLowerCase())
         )
@@ -116,6 +152,17 @@ const RulesLibrary = () => {
     const modalIndexOfLastItem = modalPage * modalRowsPerPage;
     const modalIndexOfFirstItem = modalIndexOfLastItem - modalRowsPerPage;
     const modalCurrentItems = selectedRule ? parseConnectionDetails(selectedRule.mappings).slice(modalIndexOfFirstItem, modalIndexOfLastItem) : [];
+
+    const renderSortIcon = (column) => {
+        if (sortColumn === column) {
+            return sortDirection === 'asc' ? (
+                <ArrowUp className="inline-block h-4 w-4 ml-1" />
+            ) : (
+                <ArrowDown className="inline-block h-4 w-4 ml-1" />
+            );
+        }
+        return <ArrowUpDown className="inline-block h-4 w-4 ml-1 opacity-50" />;
+    };
 
     return (
         <div className="p-6">
@@ -160,7 +207,7 @@ const RulesLibrary = () => {
                             </div>
                         ))
                     ) : (
-                        metricsData.map((metric, index) => (
+                        metricsData().map((metric, index) => (
                             <div
                                 key={index}
                                 className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
@@ -186,12 +233,24 @@ const RulesLibrary = () => {
                         <table className="w-full min-w-[1200px]">
                             <thead>
                                 <tr className="bg-[#29304a] text-white">
-                                    <th className="text-left p-4">ID</th>
-                                    <th className="text-left p-4">Type</th>
-                                    <th className="text-left p-4">Group</th>
-                                    <th className="text-left p-4">Name</th>
-                                    <th className="text-left p-4">Severity</th>
-                                    <th className="text-left p-4">Owner</th>
+                                    <th className="text-left p-4 cursor-pointer hover:bg-[#3a4363]">
+                                        ID
+                                    </th>
+                                    <th className="text-left p-4 cursor-pointer hover:bg-[#3a4363]" onClick={() => handleSort('type')}>
+                                        Type {renderSortIcon('type')}
+                                    </th>
+                                    <th className="text-left p-4 cursor-pointer hover:bg-[#3a4363]" onClick={() => handleSort('group_name')}>
+                                        Group {renderSortIcon('group_name')}
+                                    </th>
+                                    <th className="text-left p-4 cursor-pointer hover:bg-[#3a4363]" onClick={() => handleSort('name')}>
+                                        Name {renderSortIcon('name')}
+                                    </th>
+                                    <th className="text-left p-4 cursor-pointer hover:bg-[#3a4363]" onClick={() => handleSort('severity')}>
+                                        Severity {renderSortIcon('severity')}
+                                    </th>
+                                    <th className="text-left p-4 cursor-pointer hover:bg-[#3a4363]" onClick={() => handleSort('owner')}>
+                                        Owner {renderSortIcon('owner')}
+                                    </th>
                                     <th className="text-left p-4">Actions</th>
                                 </tr>
                             </thead>
@@ -223,32 +282,41 @@ const RulesLibrary = () => {
                                         </tr>
                                     ))
                                 ) : (
-                                    currentItems.map((item) => (
-                                        <tr key={item.id} className="border-b hover:bg-gray-50">
-                                            <td className="p-4 font-medium">{item.id}</td>
-                                            <td className="p-4 text-gray-600">{item.type}</td>
-                                            <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
-                                            <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
-                                            <td className="p-4">
-                                                <span className={`px-2 pt-1 pb-2 text-center rounded-full text-sm font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
-                                                    item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-green-100 text-green-700'
-                                                    }`}>
-                                                    {item.severity}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 text-gray-600">{item.owner}</td>
-                                            <td className="p-4">
-                                                <button
-                                                    onClick={() => handleViewDetails(item)}
-                                                    className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
-                                                    title="View Details"
-                                                >
-                                                    <ArrowUpRight className="h-5 w-5 text-[#8e78b7]" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    currentItems.map((item, index) => {
+                                        // Calculate serial number based on sort direction for 'id'
+                                        const serialNumber =
+                                            sortColumn === 'id' && sortDirection === 'desc'
+                                                ? filteredData.length - indexOfFirstItem - index
+                                                : indexOfFirstItem + index + 1;
+
+                                        return (
+                                            <tr key={item.id} className="border-b hover:bg-gray-50">
+                                                {/* Use the new serialNumber variable here */}
+                                                <td className="p-4 font-medium">{serialNumber}</td>
+                                                <td className="p-4 text-gray-600">{item.type}</td>
+                                                <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
+                                                <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
+                                                <td className="p-4">
+                                                    <span className={`px-2 pt-1 pb-2 text-center rounded-full text-sm font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
+                                                        item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-green-100 text-green-700'
+                                                        }`}>
+                                                        {item.severity}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-gray-600">{item.owner}</td>
+                                                <td className="p-4">
+                                                    <button
+                                                        onClick={() => handleViewDetails(item)}
+                                                        className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
+                                                        title="View Details"
+                                                    >
+                                                        <ArrowUpRight className="h-5 w-5 text-[#8e78b7]" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -313,10 +381,10 @@ const RulesLibrary = () => {
                             </button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            <div>
+                            {/* <div>
                                 <span className="font-semibold text-gray-700">ID:</span>
                                 <span className="ml-2 text-gray-800">{selectedRule.id}</span>
-                            </div>
+                            </div> */}
                             <div>
                                 <span className="font-semibold text-gray-700">Severity:</span>
                                 <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${selectedRule.severity === 'High' ? 'bg-red-100 text-red-700' :
@@ -392,7 +460,8 @@ const RulesLibrary = () => {
                                     </table>
                                 </div>
                                 {parseConnectionDetails(selectedRule.mappings).length > modalRowsPerPage && (
-                                    <div className="flex justify-end items-center py-2 border-t">
+                                    <div class
+                                        Name="flex justify-end items-center py-2 border-t">
                                         <div className="flex items-center gap-1">
                                             <button
                                                 onClick={() => modalPage > 1 && setModalPage(modalPage - 1)}

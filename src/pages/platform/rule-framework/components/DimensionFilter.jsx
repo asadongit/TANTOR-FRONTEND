@@ -14,6 +14,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
   const [isLoadingDimensions, setIsLoadingDimensions] = useState(false);
   const [isLoadingValues, setIsLoadingValues] = useState(false);
   const [openValueDropdown, setOpenValueDropdown] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Filters state
   const [filters, setFilters] = useState([
@@ -119,6 +120,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setOpenValueDropdown(null);
+        setSearchTerm("");
       }
     }
 
@@ -202,6 +204,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
     // Close dropdown if it was for the removed filter
     if (openValueDropdown === index) {
       setOpenValueDropdown(null);
+      setSearchTerm("");
     }
   };
 
@@ -263,6 +266,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
     setFilters([...updatedFilters]);
     updateNodeData({dimensionQuery: "", dimensionFilters: updatedFilters});
     setOpenValueDropdown(null);
+    setSearchTerm("");
   };
 
   return (
@@ -289,6 +293,10 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
               const displayText = filter.value?.length
                 ? `${filter.value.length} selected`
                 : "Select values";
+
+              const filteredValues = currentValues.filter(item => 
+                item.name.toLowerCase().includes(searchTerm.toLowerCase())
+              );
 
               return (
                 <div
@@ -349,12 +357,12 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
                           ? "bg-gray-100 text-gray-400"
                           : "bg-white"
                       }`}
-                      onClick={() =>
-                        filter.operator &&
+                      onClick={() => {
+                        setSearchTerm("");
                         setOpenValueDropdown(
                           openValueDropdown === index ? null : index
-                        )
-                      }
+                        );
+                      }}
                       disabled={!filter.operator}
                     >
                       <span className="truncate">{displayText}</span>
@@ -364,15 +372,28 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
                     </button>
 
                     {openValueDropdown === index && (
-                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48">
-                        <div className="p-2 text-sm max-h-48 overflow-y-auto">
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48 flex flex-col">
+                        {/* Search Input */}
+                        <div className="p-2 border-b">
+                          <input
+                            type="text"
+                            placeholder="Search values..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            autoFocus
+                          />
+                        </div>
+                        
+                        {/* Values List */}
+                        <div className="flex-1 overflow-y-auto max-h-40">
                           {isLoadingValues ? (
                             <div className="p-2 text-gray-500 text-center">
                               Loading values...
                             </div>
-                          ) : currentValues.length > 0 ? (
+                          ) : filteredValues.length > 0 ? (
                             <div className="space-y-0.5">
-                              {currentValues.map((dimValue) => {
+                              {filteredValues.map((dimValue) => {
                                 const isChecked = filter.value?.some(
                                   (v) => v.id === dimValue.id
                                 );
@@ -404,7 +425,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
                             </div>
                           ) : (
                             <div className="p-2 text-gray-500 text-center">
-                              No values available
+                              {searchTerm ? "No matching values" : "No values available"}
                             </div>
                           )}
                         </div>

@@ -14,6 +14,8 @@ const initialState = {
   targetToSelectedSourceMap: {},
   procedureExecution: {},
   originalSourceColumns: {}, // New property to store original selections
+  preservedTargetMappings: {}, // New property to maintain target mappings across edit sessions
+  sourceOriginalColumns: {}, // <-- Add this for original columns per source node
 };
 
 const ACTION_TYPES = {
@@ -36,6 +38,9 @@ const ACTION_TYPES = {
   UPDATE_PROCEDURE_EXECUTION: 'UPDATE_PROCEDURE_EXECUTION',
   REMOVE_PROCEDURE_EXECUTION: 'REMOVE_PROCEDURE_EXECUTION', // New action type
   SET_ORIGINAL_SOURCE_COLUMNS: 'SET_ORIGINAL_SOURCE_COLUMNS', // New action type
+  PRESERVE_TARGET_MAPPING: 'PRESERVE_TARGET_MAPPING', // New action type
+  RESTORE_TARGET_MAPPINGS: 'RESTORE_TARGET_MAPPINGS', // New action type
+  SET_SOURCE_ORIGINAL_COLUMNS: 'SET_SOURCE_ORIGINAL_COLUMNS', // <-- Add new action type
 };
 
 function transformationReducer(state, action) {
@@ -116,12 +121,22 @@ function transformationReducer(state, action) {
           [action.payload.id]: {
             ...action.payload.data,
             alias: action.payload.data.alias,
-            targetMapping: action.payload.data.targetMapping || {}
+            targetMapping: action.payload.data.targetMapping ||
+                          state.preservedTargetMappings[action.payload.id] || {}
           }
         }
       };
 
     case ACTION_TYPES.UPDATE_TARGET:
+      const newTargetMapping = action.payload.data.targetMapping ||
+                              state.targets[action.payload.id]?.targetMapping ||
+                              state.preservedTargetMappings[action.payload.id] || {};
+
+
+      if (Object.keys(newTargetMapping).length > 0) {
+        state.preservedTargetMappings[action.payload.id] = {...newTargetMapping};
+      }
+
       return {
         ...state,
         targets: {
@@ -129,7 +144,7 @@ function transformationReducer(state, action) {
           [action.payload.id]: {
             ...state.targets[action.payload.id],
             ...action.payload.data,
-            targetMapping: action.payload.data.targetMapping || state.targets[action.payload.id]?.targetMapping || {}
+            targetMapping: newTargetMapping
           }
         }
       };
@@ -185,11 +200,10 @@ function transformationReducer(state, action) {
     }
 
     case ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION: {
-
       const { sourceNodeId, procedureMapping } = action.payload;
       const currentProcedures = state.procedureExecution[sourceNodeId] || [];
 
-
+      // Find existing procedure by procedureItemId and procedureType
       const existingIndex = currentProcedures.findIndex(p =>
         p.procedureItemId === procedureMapping.procedureItemId &&
         p.procedureType === procedureMapping.procedureType
@@ -197,12 +211,28 @@ function transformationReducer(state, action) {
 
       let updatedProcedures;
       if (existingIndex !== -1) {
-
+        // Update existing procedure, preserving original parameter mapping if not updated
         updatedProcedures = [...currentProcedures];
-        updatedProcedures[existingIndex] = procedureMapping;
-      } else {
+        const existingProcedure = updatedProcedures[existingIndex];
 
-        updatedProcedures = [...currentProcedures, procedureMapping];
+        // If the new mapping has isUpdated flag, use the new parameterMapping
+        // If it's restored, always use the restored parameterMapping
+        // Otherwise, preserve the original parameterMapping if it exists
+        const finalParameterMapping = procedureMapping.isUpdated || procedureMapping.isRestored
+          ? procedureMapping.parameterMapping
+          : existingProcedure.parameterMapping || procedureMapping.parameterMapping;
+
+        updatedProcedures[existingIndex] = {
+          ...procedureMapping,
+          parameterMapping: finalParameterMapping,
+          originalParameterMapping: existingProcedure.originalParameterMapping || existingProcedure.parameterMapping || procedureMapping.parameterMapping
+        };
+      } else {
+        // Add new procedure
+        updatedProcedures = [...currentProcedures, {
+          ...procedureMapping,
+          originalParameterMapping: procedureMapping.parameterMapping || {}
+        }];
       }
 
       return {
@@ -261,7 +291,64 @@ function transformationReducer(state, action) {
       };
     }
 
+    case ACTION_TYPES.PRESERVE_TARGET_MAPPING:
+      return {
+        ...state,
+        preservedTargetMappings: {
+          ...state.preservedTargetMappings,
+          [action.payload.targetId]: action.payload.mapping
+        }
+      };
+
+    case ACTION_TYPES.RESTORE_TARGET_MAPPINGS:
+      // Batch update all targets with preserved mappings
+      const updatedTargets = {...state.targets};
+
+      Object.keys(state.preservedTargetMappings).forEach(targetId => {
+        if (updatedTargets[targetId]) {
+          updatedTargets[targetId] = {
+            ...updatedTargets[targetId],
+            targetMapping: {
+              ...state.preservedTargetMappings[targetId]
+            }
+          };
+        }
+      });
+
+      return {
+        ...state,
+        targets: updatedTargets
+      };
+
+    case ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS: {
+      const { sourceNodeId, columns } = action.payload;
+      return {
+        ...state,
+        sourceOriginalColumns: {
+          ...state.sourceOriginalColumns,
+          [sourceNodeId]: columns
+        }
+      };
+    }
+
     case ACTION_TYPES.RESET:
+      // Explicitly remove any target mappings from localStorage to ensure fresh state
+      Object.keys(state.targets).forEach(targetId => {
+        try {
+          window.localStorage.removeItem(`targetMapping_${targetId}`);
+          window.localStorage.removeItem(`targetMappingConfirmed_${targetId}`);
+          window.localStorage.removeItem(`targetMapping_${targetId}_draft`);
+          window.localStorage.removeItem(`targetMapping_${targetId}_backup`);
+        } catch (e) {
+          console.error("Error clearing localStorage during reset:", e);
+        }
+      });
+
+      // Also clear all preserved mappings to prevent them from reappearing
+      if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
+      if (window.targetMappingsDebug) window.targetMappingsDebug = {};
+
+      // console.log("TransformationContext fully reset");
       return initialState;
 
     default:
@@ -278,8 +365,23 @@ export function TransformationProvider({ children }) {
   // Make context available globally for restrict columns operations
   useEffect(() => {
     window.transformationContext = { state, dispatch, ACTION_TYPES };
+
+    // Add debugging for target mappings
+    if (window.transformationContext && state.targets) {
+      const targetMappings = {};
+      Object.entries(state.targets).forEach(([id, target]) => {
+        targetMappings[id] = target.targetMapping || {};
+      });
+      window.targetMappingsDebug = targetMappings;
+
+      // Also track preserved mappings for debugging
+      window.preservedTargetMappingsDebug = state.preservedTargetMappings;
+    }
+
     return () => {
       delete window.transformationContext;
+      delete window.targetMappingsDebug;
+      delete window.preservedTargetMappingsDebug;
     };
   }, [state, dispatch, ACTION_TYPES]);
 
@@ -314,7 +416,7 @@ export function TransformationProvider({ children }) {
       source: {},
       target: {},
       logging:{
-        isLoggingEnabled :false,
+        isLoggingEnabled :true,
         isLoggingEnabledForEachDataset: false
       },
       procedureExecution: state.procedureExecution,
@@ -455,6 +557,25 @@ export function TransformationProvider({ children }) {
     return Array.from(new Set(allCols));
   };
 
+  // New helper function to get target mapping by node ID
+  const getTargetMappingById = (targetNodeId) => {
+    // Try multiple sources with priority
+    if (state.targets[targetNodeId]?.targetMapping) {
+      return state.targets[targetNodeId].targetMapping;
+    }
+
+    if (state.preservedTargetMappings[targetNodeId]) {
+      return state.preservedTargetMappings[targetNodeId];
+    }
+
+    return {};
+  };
+
+  // Helper to get original columns for a source node
+  const getSourceOriginalColumns = (sourceNodeId) => {
+    return state.sourceOriginalColumns[sourceNodeId] || [];
+  };
+
   return (
     <TransformationContext.Provider
       value={{
@@ -465,6 +586,8 @@ export function TransformationProvider({ children }) {
         getAllSelectedSourceColumns,
         targetToSelectedSourceMap: state.targetToSelectedSourceMap,
         procedureExecution: state.procedureExecution,
+        getTargetMappingById,  // Expose the new helper
+        getSourceOriginalColumns, // <-- Expose helper
       }}
     >
       {children}
@@ -537,7 +660,10 @@ export function useTrackConnections(nodes, edges) {
                   table: data.table,
                   columns: data.columns,
                   dfId: `s_df_${sourceIndex}`,
-                  alias: data.alias
+                  alias: data.alias,
+                  objectType: data.objectType,
+                  preProcedures: data.preProcedures,
+                  postProcedures: data.postProcedures
                 }
               }
             });
@@ -576,10 +702,26 @@ export function useTrackConnections(nodes, edges) {
                   loadStrategy: data.loadStrategy,
                   dfId: `t_df_${targetIndex}`,
                   alias: data.alias,
-                  targetMapping: data.targetMapping || {}
+                  targetMapping: data.targetMapping || {},
+                  selectedSourceId: data.selectedSourceId,
+                  objectType: data.objectType,
+                  preProcedures: data.preProcedures,
+                  postProcedures: data.postProcedures
                 }
               }
             });
+
+            // IMPORTANT: Also explicitly update the targetToSelectedSourceMap if a selectedSourceId exists
+            if (data.selectedSourceId) {
+              dispatch({
+                type: ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE,
+                payload: {
+                  targetNodeId: id,
+                  sourceNodeId: data.selectedSourceId
+                }
+              });
+              // console.log(`Restored target mapping relationship: Target ${id} -> Source ${data.selectedSourceId}`);
+            }
           }
           break;
 

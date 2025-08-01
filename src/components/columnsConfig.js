@@ -37,9 +37,21 @@ const columnConfigurations = {
       { key: "status", label: "Status", sortable: true },
       { label: "Action", sortable: false },
     ],
+
+    metadata: [
+      { key: "metadata_name", label: "Name", sortable: true },
+      { key: "project", label: "Project Name", sortable: true },
+      { key: "created_by", label: "Created By", sortable: true },
+      { key: "source_conn_name", label: "Source Connection", sortable: true },
+      { key: "target_conn_name", label: "Target Connection", sortable: true },
+      { key: "source_table", label: "Source Table", sortable: true },
+      { key: "target_table", label: "Target Table", sortable: true },
+      { key: "status", label: "Status", sortable: true },
+      { label: "Action", sortable: false },
+    ],
   
     migration: [
-      { key: "metadata_name", label: "Name", sortable: true },
+      { key: "workflow_name", label: "Name", sortable: true },
       { key: "project", label: "Project", sortable: true },
       { key: "created_by", label: "Created By", sortable: true },
       { key: "source_conn_name", label: "Source Connection", sortable: true },
@@ -62,13 +74,25 @@ const columnConfigurations = {
       { label: "Action", sortable: false },
     ],
   
+    // project: [
+    //   { key: "project_name", label: "Project Name", sortable: true },
+    //   { key: "records_purged", label: "Records Purged", sortable: true },
+    //   { key: "timestamp", label: "Purge Timestamp", sortable: true },
+    //   { key: "size_before", label: "Size Before", sortable: true },
+    //   { key: "size_after", label: "Size After", sortable: true },
+    //   { label: "Action", sortable: false },
+    // ],
+
     project: [
-      { key: "project_name", label: "Project Name", sortable: true },
-      { key: "records_purged", label: "Records Purged", sortable: true },
-      { key: "timestamp", label: "Purge Timestamp", sortable: true },
-      { key: "size_before", label: "Size Before", sortable: true },
-      { key: "size_after", label: "Size After", sortable: true },
-      { label: "Action", sortable: false },
+      { key: "project", label: "Project Name", sortable: true },
+      { key: "created_by", label: "Created By", sortable: true },
+      { key: "owner", label: "Owner", sortable: true },
+      { key: "connections", label: "Connections", sortable: true },
+      { key: "metadata", label: "Metadata", sortable: true },
+      { key: "migration", label: "Migration", sortable: true },
+      { key: "purge", label: "Purges", sortable: true },
+      { key: "cdc", label: "CDC", sortable: true },
+      // { label: "Action", sortable: false },
     ],
   
     federation: [
