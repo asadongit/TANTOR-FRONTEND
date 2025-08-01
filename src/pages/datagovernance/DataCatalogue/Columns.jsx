@@ -136,6 +136,16 @@ function Columns() {
     setCurrentPage(prevPage)
   }
 
+  useEffect(() => {
+    if (showEditPage) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showEditPage]);
 
   return (
     <div className="p-5">
@@ -190,7 +200,6 @@ function Columns() {
           <table className="w-full">
             <thead>
               <tr className="bg-[#29304a] text-white">
-                <th className="text-left p-4">SNo</th>
                 <th className="text-left p-4">ID</th>
                 <th className="text-left p-4">Name</th>
                 {/* <th className="text-left p-4">Table</th>
@@ -213,7 +222,6 @@ function Columns() {
             <tbody>
               {currentItems.length > 0 ? currentItems.map((column, index) => (
                 <tr key={index} className="border-b text-gray-500">
-                  <td className="p-4">{(currentPage -1) * itemsPerPage + index+1}</td>
                   <td className="p-4">{column.id}</td>
                   <td className="p-4 underline underline-offset-4 text-blue-600">{column.name}</td>
                   {/* <td className="p-4">{column.table}</td>
