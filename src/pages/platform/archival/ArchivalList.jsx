@@ -99,7 +99,7 @@ const handleDeleteClick = (row) => {
 const confirmDeleteMigration = async () => {
   if (!deleteModal.migrationId) return;
   try {
-    await axios.delete(`${hostnameV1}/ddl-migration/${deleteModal.migrationId}`, {
+    await axios.delete(`${hostnameV1}/delete-migration/${deleteModal.migrationId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     toast.success("Migration removed from platform.");
