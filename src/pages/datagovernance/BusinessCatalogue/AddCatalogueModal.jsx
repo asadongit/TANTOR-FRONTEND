@@ -263,7 +263,57 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const validateTabData = (tabKey) => {
+        const data = formData[tabKey];
+        const tabName = tabs.find(t => t.toLowerCase().replace('-', '') === tabKey);
+
+        if (!data.name || String(data.name).trim() === '') {
+            return { isValid: true, error: null };
+        }
+
+        const requiredFields = {
+            domain: { description: 'Description', owner: 'Owner', status: 'Status' },
+            category: { desc: 'Description', owner: 'Owner', status: 'Status' },
+            subcategory: { desc: 'Description', owner: 'Owner', status: 'Status' },
+            term: { desc: 'Description', owner: 'Owner', status: 'Status' },
+            tag: { desc: 'Description', owner: 'Owner', status: 'Status' },
+            subtag: { desc: 'Description', owner: 'Owner', status: 'Status' },
+        };
+
+        const fieldsToCheck = requiredFields[tabKey];
+        if (fieldsToCheck) {
+            for (const field in fieldsToCheck) {
+                if (!data[field] || String(data[field]).trim() === '') {
+                    return {
+                        isValid: false,
+                        error: `The '${fieldsToCheck[field]}' field is required in the '${tabName}' tab.`
+                        // error: `The '${fieldsToCheck[field]}' field is required in the '${tabName}' tab since a name has been entered.`
+                    };
+                }
+            }
+        }
+
+        if (tabKey === 'domain' && data.stakeholder.length === 0) {
+            return {
+                isValid: false,
+                error: `At least one 'Stakeholder' is required in the 'Domain' tab since a name has been entered.`
+            };
+        }
+
+        return { isValid: true, error: null };
+    };
+
     const handleSave = async () => {
+        for (const tab of tabs) {
+            const tabKey = tab.toLowerCase().replace('-', '');
+            const validation = validateTabData(tabKey);
+            if (!validation.isValid) {
+                setSaveError(validation.error);
+                setActiveTab(tab);
+                return;
+            }
+        }
+
         setIsSaving(true);
         setSaveError(null);
 
@@ -333,37 +383,64 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             }
 
             console.log('Catalogue saved successfully');
-            onClose(); // Close the modal on success
+            onClose();
 
         } catch (err) {
             console.error("Failed to save catalogue:", err);
-            setSaveError(err.message); // Set the error message to be displayed
+            setSaveError(err.message);
         } finally {
-            setIsSaving(false); // Stop the loading indicator
+            setIsSaving(false);
         }
     };
 
-    const handleNext = () => {
-        const currentIndex = tabs.indexOf(activeTab);
-        if (currentIndex < tabs.length - 1) setActiveTab(tabs[currentIndex + 1]);
+    const handleTabChange = (newTab) => {
+        const currentTabKey = activeTab.toLowerCase().replace('-', '');
+        const validation = validateTabData(currentTabKey);
+
+        if (!validation.isValid) {
+            setSaveError(validation.error);
+            return;
+        }
+
+        setActiveTab(newTab);
         setError(null);
-        setSaveError(null); // Clear errors on tab navigation
+        setSaveError(null);
+    };
+
+    const handleNext = () => {
+        const currentTabKey = activeTab.toLowerCase().replace('-', '');
+        const validation = validateTabData(currentTabKey);
+
+        if (!validation.isValid) {
+            setSaveError(validation.error);
+            return;
+        }
+
+        const currentIndex = tabs.indexOf(activeTab);
+        if (currentIndex < tabs.length - 1) {
+            setActiveTab(tabs[currentIndex + 1]);
+            setError(null);
+            setSaveError(null);
+        }
     };
 
     const handlePrevious = () => {
         const currentIndex = tabs.indexOf(activeTab);
-        if (currentIndex > 0) setActiveTab(tabs[currentIndex - 1]);
-        setError(null);
-        setSaveError(null); // Clear errors on tab navigation
+        if (currentIndex > 0) {
+            setActiveTab(tabs[currentIndex - 1]);
+            setError(null);
+            setSaveError(null);
+        }
     };
 
-    // --- All other handlers (handleModalContentClick, handle...NameChange, handle...SuggestionClick, etc.) remain unchanged ---
     const handleModalContentClick = (e) => e.stopPropagation();
 
     const handleDomainNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, domain: { id: null, name: value, description: '', owner: '', stakeholder: [], status: '' } }));
-
+        setFormData(prev => ({ ...prev, domain: { ...prev.domain, id: null, name: value } }));
+        if (!value) {
+            setFormData(prev => ({ ...prev, domain: initialFormData.domain }));
+        }
         if (value) {
             const filtered = allDomains.filter(d => d.name.toLowerCase().includes(value.toLowerCase()));
             setDomainSuggestions(filtered);
@@ -387,8 +464,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
 
     const handleCategoryNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, category: { id: null, name: value, desc: '', owner: '', status: '' } }));
-
+        setFormData(prev => ({ ...prev, category: { ...prev.category, id: null, name: value } }));
+        if (!value) {
+            setFormData(prev => ({ ...prev, category: initialFormData.category }));
+        }
         if (value && allCategories.length > 0) {
             const filtered = allCategories.filter(c => c.name.toLowerCase().includes(value.toLowerCase()));
             setCategorySuggestions(filtered);
@@ -412,8 +491,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
 
     const handleSubCategoryNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, subcategory: { id: null, name: value, desc: '', owner: '', status: '' } }));
-
+        setFormData(prev => ({ ...prev, subcategory: { ...prev.subcategory, id: null, name: value } }));
+        if (!value) {
+            setFormData(prev => ({ ...prev, subcategory: initialFormData.subcategory }));
+        }
         if (value && allSubCategories.length > 0) {
             const filtered = allSubCategories.filter(sc => sc.name.toLowerCase().includes(value.toLowerCase()));
             setSubCategorySuggestions(filtered);
@@ -437,7 +518,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
 
     const handleTermNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, term: { id: null, name: value, desc: '', owner: '', status: '' } }));
+        setFormData(prev => ({ ...prev, term: { ...prev.term, id: null, name: value } }));
+        if (!value) {
+            setFormData(prev => ({ ...prev, term: initialFormData.term }));
+        }
         if (value && allTerms.length > 0) {
             const filtered = allTerms.filter(t => t.name.toLowerCase().includes(value.toLowerCase()));
             setTermSuggestions(filtered);
@@ -461,7 +545,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
 
     const handleTagNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, tag: { id: null, name: value, desc: '', owner: '', status: '' } }));
+        setFormData(prev => ({ ...prev, tag: { ...prev.tag, id: null, name: value } }));
+        if (!value) {
+            setFormData(prev => ({ ...prev, tag: initialFormData.tag }));
+        }
         if (value && allTags.length > 0) {
             const filtered = allTags.filter(t => t.name.toLowerCase().includes(value.toLowerCase()));
             setTagSuggestions(filtered);
@@ -485,7 +572,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
 
     const handleSubTagNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, subtag: { id: null, name: value, desc: '', owner: '', status: '' } }));
+        setFormData(prev => ({ ...prev, subtag: { ...prev.subtag, id: null, name: value } }));
+        if (!value) {
+            setFormData(prev => ({ ...prev, subtag: initialFormData.subtag }));
+        }
         if (value && allSubTags.length > 0) {
             const filtered = allSubTags.filter(st => st.name.toLowerCase().includes(value.toLowerCase()));
             setSubTagSuggestions(filtered);
@@ -506,7 +596,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         }));
         setShowSubTagSuggestions(false);
     };
-
 
     const handleInputChange = (tab, field, value) => {
         const tabKey = tab.toLowerCase().replace('-', '');
@@ -536,7 +625,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             user.username.toLowerCase().includes(stakeholderSearchTerm.toLowerCase())
         );
 
-    // --- renderFormContent, ParentHierarchy, and other rendering logic remain unchanged ---
     const ParentHierarchy = ({ data }) => (
         <div className="flex flex-wrap items-center gap-6 mb-6">
             {Object.entries(data).filter(([_, value]) => value).map(([key, value]) => (
@@ -549,7 +637,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
     );
 
     const renderFormContent = () => {
-
         const PlaceholderMessage = ({ children }) => (
             <div className="py-16 text-center text-gray-500 bg-gray-50 rounded-md mt-4">
                 <p className="font-medium">{children}</p>
@@ -585,7 +672,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                                 />
                                 {isLoading && <Loader2 className="animate-spin h-5 w-5 text-gray-500 absolute right-2 top-9" />}
                                 {showSuggestions && domainSuggestions.length > 0 && (
-                                    <ul className="fixed z-50 w-[26rem] bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto shadow-lg">
+                                    <ul className="absolute z-50 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto shadow-lg">
                                         {domainSuggestions.map((domain) => (
                                             <li
                                                 key={domain.domain_id}
@@ -637,7 +724,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                                 className="min-h-[42px] p-2 border border-gray-300 bg-white rounded-md focus-within:ring-1 focus-within:ring-[#8e78b7] focus-within:border-[#8e78b7] flex flex-wrap items-center gap-2 cursor-pointer"
                                 onClick={() => setShowStakeholderOptions(prev => !prev)}
                             >
-                                {isStakeholdersLoading && <Loader2 className="animate-spin h-4 w-4 text-gray-400 absolute right-2" />}
+                                {isStakeholdersLoading && <Loader2 className="animate-spin h-4 w-4 text-gray-400" />}
                                 {formData.domain.stakeholder.length > 0 ? (
                                     formData.domain.stakeholder.map(username => (
                                         <span key={username} className="bg-[#e4dcf5] text-[#584185] text-sm font-medium px-2.5 py-1 rounded-full flex items-center gap-2">
@@ -694,156 +781,160 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                         </div>
                     </div>
                 );
-
             case 'Category':
-                if (!formData.domain.name) {
-                    return <PlaceholderMessage>Please select a Domain first to add a Category.</PlaceholderMessage>;
-                }
-                return (
-                    <div className="space-y-6 py-8">
-                        {error && <div className="text-red-600 bg-red-100 p-3 rounded-md mb-4">{error}</div>}
-                        <ParentHierarchy data={parentDataFor[activeTab]} />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="relative" ref={categorySuggestionsRef}>
-                                <label htmlFor="category-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                <input
-                                    type="text"
-                                    id="category-name"
-                                    placeholder="Enter or select category"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.category.name}
-                                    onChange={handleCategoryNameChange}
-                                    onFocus={() => { if (allCategories.length > 0) setShowCategorySuggestions(true); }}
-                                    autoComplete="off"
-                                    disabled={!formData.domain.name}
-                                />
-                                {isCategoryLoading && <Loader2 className="animate-spin h-5 w-5 text-gray-500 absolute right-2 top-9" />}
-                                {showCategorySuggestions && categorySuggestions.length > 0 && (
-                                    <ul className="fixed z-50 w-[26rem] bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto shadow-lg">
-                                        {categorySuggestions.map((cat) => (
-                                            <li
-                                                key={cat.category_id}
-                                                className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                                onClick={() => handleCategorySuggestionClick(cat)}
-                                            >
-                                                {cat.name}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                            <div>
-                                <label htmlFor="category-desc" className="block text-sm font-medium text-gray-700 mb-1">Desc</label>
-                                <input
-                                    type="text"
-                                    id="category-desc"
-                                    placeholder="Description"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.category.desc}
-                                    onChange={(e) => handleInputChange('Category', 'desc', e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label htmlFor="category-owner" className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                                <select
-                                    id="category-owner"
-                                    className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.category.owner}
-                                    onChange={(e) => handleInputChange('Category', 'owner', e.target.value)}
-                                >
-                                    <option value="">Select</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="category-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                <select
-                                    id="category-status"
-                                    className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.category.status}
-                                    onChange={(e) => handleInputChange('Category', 'status', e.target.value)}
-                                >
-                                    <option value="">Select</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
-                                    <option value="Deprecated">Deprecated</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                );
-
             case 'Sub-category':
-                if (!formData.category.name) {
-                    return <PlaceholderMessage>Please select a Category first to add a Sub-category.</PlaceholderMessage>;
+            case 'Term':
+            case 'Tag':
+            case 'Sub-tag':
+                const genericTabKey = activeTab.toLowerCase().replace('-', '');
+                const genericData = formData[genericTabKey];
+                const parentKey =
+                    activeTab === 'Category' ? 'domain' :
+                        activeTab === 'Sub-category' ? 'category' :
+                            activeTab === 'Sub-tag' ? 'tag' :
+                                ''; 
+
+                if (parentKey && !formData[parentKey].name) {
+                    return <PlaceholderMessage>Please select a {parentKey} first to add a {activeTab}.</PlaceholderMessage>;
                 }
+
+                const suggestions = {
+                    'Category': categorySuggestions,
+                    'Sub-category': subCategorySuggestions,
+                    'Term': termSuggestions,
+                    'Tag': tagSuggestions,
+                    'Sub-tag': subTagSuggestions,
+                }[activeTab];
+
+                const allData = {
+                    'Category': allCategories,
+                    'Sub-category': allSubCategories,
+                    'Term': allTerms,
+                    'Tag': allTags,
+                    'Sub-tag': allSubTags,
+                }[activeTab];
+
+                const suggestionsRefMap = {
+                    'Category': categorySuggestionsRef,
+                    'Sub-category': subCategorySuggestionsRef,
+                    'Term': termSuggestionsRef,
+                    'Tag': tagSuggestionsRef,
+                    'Sub-tag': subTagSuggestionsRef,
+                };
+
+                const showSuggestionsMap = {
+                    'Category': showCategorySuggestions,
+                    'Sub-category': showSubCategorySuggestions,
+                    'Term': showTermSuggestions,
+                    'Tag': showTagSuggestions,
+                    'Sub-tag': showSubTagSuggestions,
+                };
+
+                const setShowSuggestionsMap = {
+                    'Category': setShowCategorySuggestions,
+                    'Sub-category': setShowSubCategorySuggestions,
+                    'Term': setShowTermSuggestions,
+                    'Tag': setShowTagSuggestions,
+                    'Sub-tag': setShowSubTagSuggestions,
+                };
+
+                const handleNameChangeMap = {
+                    'Category': handleCategoryNameChange,
+                    'Sub-category': handleSubCategoryNameChange,
+                    'Term': handleTermNameChange,
+                    'Tag': handleTagNameChange,
+                    'Sub-tag': handleSubTagNameChange,
+                };
+
+                const handleSuggestionClickMap = {
+                    'Category': handleCategorySuggestionClick,
+                    'Sub-category': handleSubCategorySuggestionClick,
+                    'Term': handleTermSuggestionClick,
+                    'Tag': handleTagSuggestionClick,
+                    'Sub-tag': handleSubTagSuggestionClick,
+                };
+
+                const isLoadingMap = {
+                    'Category': isCategoryLoading,
+                    'Sub-category': isSubCategoryLoading,
+                    'Term': isTermLoading,
+                    'Tag': isTagLoading,
+                    'Sub-tag': isSubTagLoading,
+                };
+
+                const idKeyMap = {
+                    'Category': 'category_id',
+                    'Sub-category': 'sub_category_id',
+                    'Term': 'term_id',
+                    'Tag': 'tag_id',
+                    'Sub-tag': 'sub_tag_id',
+                }
+
                 return (
                     <div className="space-y-6 py-8">
                         {error && <div className="text-red-600 bg-red-100 p-3 rounded-md mb-4">{error}</div>}
                         <ParentHierarchy data={parentDataFor[activeTab]} />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="relative" ref={subCategorySuggestionsRef}>
-                                <label htmlFor="subcategory-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                            <div className="relative" ref={suggestionsRefMap[activeTab]}>
+                                <label htmlFor={`${genericTabKey}-name`} className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                                 <input
                                     type="text"
-                                    id="subcategory-name"
-                                    placeholder="Enter or select sub-category"
+                                    id={`${genericTabKey}-name`}
+                                    placeholder={`Enter or select ${genericTabKey}`}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.subcategory.name}
-                                    onChange={handleSubCategoryNameChange}
-                                    onFocus={() => { if (allSubCategories.length > 0) setShowSubCategorySuggestions(true); }}
+                                    value={genericData.name}
+                                    onChange={handleNameChangeMap[activeTab]}
+                                    onFocus={() => { if (allData.length > 0) setShowSuggestionsMap[activeTab](true); }}
                                     autoComplete="off"
-                                    disabled={!formData.category.name}
+                                    disabled={parentKey && !formData[parentKey].name}
                                 />
-                                {isSubCategoryLoading && <Loader2 className="animate-spin h-5 w-5 text-gray-500 absolute right-2 top-9" />}
-                                {showSubCategorySuggestions && subCategorySuggestions.length > 0 && (
+                                {isLoadingMap[activeTab] && <Loader2 className="animate-spin h-5 w-5 text-gray-500 absolute right-2 top-9" />}
+                                {showSuggestionsMap[activeTab] && suggestions.length > 0 && (
                                     <ul className="fixed z-50 w-[26rem] bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto shadow-lg">
-                                        {subCategorySuggestions.map((sc) => (
+                                        {suggestions.map((item) => (
                                             <li
-                                                key={sc.sub_category_id}
+                                                key={item[idKeyMap[activeTab]]}
                                                 className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                                onClick={() => handleSubCategorySuggestionClick(sc)}
+                                                onClick={() => handleSuggestionClickMap[activeTab](item)}
                                             >
-                                                {sc.name}
+                                                {item.name}
                                             </li>
                                         ))}
                                     </ul>
                                 )}
                             </div>
                             <div>
-                                <label htmlFor="subcategory-desc" className="block text-sm font-medium text-gray-700 mb-1">Desc</label>
+                                <label htmlFor={`${genericTabKey}-desc`} className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <input
                                     type="text"
-                                    id="subcategory-desc"
+                                    id={`${genericTabKey}-desc`}
                                     placeholder="Description"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.subcategory.desc}
-                                    onChange={(e) => handleInputChange('Sub-category', 'desc', e.target.value)}
+                                    value={genericData.desc}
+                                    onChange={(e) => handleInputChange(activeTab, 'desc', e.target.value)}
                                 />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label htmlFor="subcategory-owner" className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+                                <label htmlFor={`${genericTabKey}-owner`} className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
                                 <select
-                                    id="subcategory-owner"
+                                    id={`${genericTabKey}-owner`}
                                     className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.subcategory.owner}
-                                    onChange={(e) => handleInputChange('Sub-category', 'owner', e.target.value)}
+                                    value={genericData.owner}
+                                    onChange={(e) => handleInputChange(activeTab, 'owner', e.target.value)}
                                 >
                                     <option value="">Select</option>
                                     <option value="Admin">Admin</option>
                                 </select>
                             </div>
                             <div>
-                                <label htmlFor="subcategory-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                <label htmlFor={`${genericTabKey}-status`} className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                                 <select
-                                    id="subcategory-status"
+                                    id={`${genericTabKey}-status`}
                                     className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.subcategory.status}
-                                    onChange={(e) => handleInputChange('Sub-category', 'status', e.target.value)}
+                                    value={genericData.status}
+                                    onChange={(e) => handleInputChange(activeTab, 'status', e.target.value)}
                                 >
                                     <option value="">Select</option>
                                     <option value="Active">Active</option>
@@ -855,246 +946,11 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                     </div>
                 );
 
-            case 'Term':
-                return (
-                    <>
-                        {error && <div className="text-red-600 bg-red-100 p-3 rounded-md mt-6">{error}</div>}
-                        <div className="space-y-6 pb-8 pt-4">
-                            <ParentHierarchy data={parentDataFor[activeTab]} />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="relative" ref={termSuggestionsRef}>
-                                    <label htmlFor="term-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                    <input
-                                        type="text"
-                                        id="term-name"
-                                        placeholder="Enter or select term"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                        value={formData.term.name}
-                                        onChange={handleTermNameChange}
-                                        onFocus={() => { if (allTerms.length > 0) setShowTermSuggestions(true); }}
-                                        autoComplete="off"
-                                    />
-                                    {isTermLoading && <Loader2 className="animate-spin h-5 w-5 text-gray-500 absolute right-2 top-9" />}
-                                    {showTermSuggestions && termSuggestions.length > 0 && (
-                                        <ul className="fixed z-50 w-[26rem] bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto shadow-lg">
-                                            {termSuggestions.map((term) => (
-                                                <li
-                                                    key={term.term_id}
-                                                    className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                                    onClick={() => handleTermSuggestionClick(term)}
-                                                >
-                                                    {term.name}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                                <div>
-                                    <label htmlFor="term-desc" className="block text-sm font-medium text-gray-700 mb-1">Desc</label>
-                                    <input
-                                        type="text"
-                                        id="term-desc"
-                                        placeholder="Description"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                        value={formData.term.desc}
-                                        onChange={(e) => handleInputChange('Term', 'desc', e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label htmlFor="term-owner" className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                                    <select
-                                        id="term-owner"
-                                        className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                        value={formData.term.owner}
-                                        onChange={(e) => handleInputChange('Term', 'owner', e.target.value)}
-                                    >
-                                        <option value="">Select</option>
-                                        <option value="Admin">Admin</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label htmlFor="term-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                    <select
-                                        id="term-status"
-                                        className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                        value={formData.term.status}
-                                        onChange={(e) => handleInputChange('Term', 'status', e.target.value)}
-                                    >
-                                        <option value="">Select</option>
-                                        <option value="Active">Active</option>
-                                        <option value="Inactive">Inactive</option>
-                                        <option value="Deprecated">Deprecated</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                );
-
-            case 'Tag':
-                return (
-                    <>
-                        {error && <div className="text-red-600 bg-red-100 p-3 rounded-md mt-6">{error}</div>}
-                        <div className="space-y-6 pb-8 pt-4">
-                            {error && <div className="text-red-600 bg-red-100 p-3 rounded-md ">{error}</div>}
-                            <ParentHierarchy data={parentDataFor[activeTab]} />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="relative" ref={tagSuggestionsRef}>
-                                    <label htmlFor="tag-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                    <input
-                                        type="text"
-                                        id="tag-name"
-                                        placeholder="Enter or select tag"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                        value={formData.tag.name}
-                                        onChange={handleTagNameChange}
-                                        onFocus={() => { if (allTags.length > 0) setShowTagSuggestions(true); }}
-                                        autoComplete="off"
-                                    />
-                                    {isTagLoading && <Loader2 className="animate-spin h-5 w-5 text-gray-500 absolute right-2 top-9" />}
-                                    {showTagSuggestions && tagSuggestions.length > 0 && (
-                                        <ul className="fixed z-50 w-[26rem] bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto shadow-lg">
-                                            {tagSuggestions.map((tag) => (
-                                                <li
-                                                    key={tag.tag_id}
-                                                    className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                                    onClick={() => handleTagSuggestionClick(tag)}
-                                                >
-                                                    {tag.name}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                                <div>
-                                    <label htmlFor="tag-desc" className="block text-sm font-medium text-gray-700 mb-1">Desc</label>
-                                    <input
-                                        type="text"
-                                        id="tag-desc"
-                                        placeholder="Description"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                        value={formData.tag.desc}
-                                        onChange={(e) => handleInputChange('Tag', 'desc', e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label htmlFor="tag-owner" className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                                    <select
-                                        id="tag-owner"
-                                        className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                        value={formData.tag.owner}
-                                        onChange={(e) => handleInputChange('Tag', 'owner', e.target.value)}
-                                    >
-                                        <option value="">Select</option>
-                                        <option value="Admin">Admin</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label htmlFor="tag-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                    <select
-                                        id="tag-status"
-                                        className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                        value={formData.tag.status}
-                                        onChange={(e) => handleInputChange('Tag', 'status', e.target.value)}
-                                    >
-                                        <option value="">Select</option>
-                                        <option value="Active">Active</option>
-                                        <option value="Inactive">Inactive</option>
-                                        <option value="Deprecated">Deprecated</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                );
-
-            case 'Sub-tag':
-                if (!formData.tag.name) {
-                    return <PlaceholderMessage>Please select a Tag first to add a Sub-tag.</PlaceholderMessage>;
-                }
-                return (
-                    <div className="space-y-6 pb-8 pt-4">
-                        {error && <div className="text-red-600 bg-red-100 p-3 rounded-md mb-4">{error}</div>}
-                        <ParentHierarchy data={parentDataFor[activeTab]} />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="relative" ref={subTagSuggestionsRef}>
-                                <label htmlFor="subtag-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                <input
-                                    type="text"
-                                    id="subtag-name"
-                                    placeholder="Enter or select sub-tag"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.subtag.name}
-                                    onChange={handleSubTagNameChange}
-                                    onFocus={() => { if (allSubTags.length > 0) setShowSubTagSuggestions(true); }}
-                                    autoComplete="off"
-                                    disabled={!formData.tag.name}
-                                />
-                                {isSubTagLoading && <Loader2 className="animate-spin h-5 w-5 text-gray-500 absolute right-2 top-9" />}
-                                {showSubTagSuggestions && subTagSuggestions.length > 0 && (
-                                    <ul className="fixed z-50 w-[26rem] bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto shadow-lg">
-                                        {subTagSuggestions.map((st) => (
-                                            <li
-                                                key={st.sub_tag_id}
-                                                className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                                onClick={() => handleSubTagSuggestionClick(st)}
-                                            >
-                                                {st.name}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                            <div>
-                                <label htmlFor="subtag-desc" className="block text-sm font-medium text-gray-700 mb-1">Desc</label>
-                                <input
-                                    type="text"
-                                    id="subtag-desc"
-                                    placeholder="Description"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.subtag.desc}
-                                    onChange={(e) => handleInputChange('Sub-tag', 'desc', e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label htmlFor="subtag-owner" className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                                <select
-                                    id="subtag-owner"
-                                    className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.subtag.owner}
-                                    onChange={(e) => handleInputChange('Sub-tag', 'owner', e.target.value)}
-                                >
-                                    <option value="">Select</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="subtag-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                <select
-                                    id="subtag-status"
-                                    className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.subtag.status}
-                                    onChange={(e) => handleInputChange('Sub-tag', 'status', e.target.value)}
-                                >
-                                    <option value="">Select</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
-                                    <option value="Deprecated">Deprecated</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                );
             default:
                 return <div className="mt-6 text-center text-gray-500 py-10">Select a tab to begin.</div>;
         }
     };
+
 
     if (!isOpen) return null;
 
@@ -1115,11 +971,11 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 </div>
                 <div className="p-6 overflow-y-auto">
                     <div className="border-b border-gray-200">
-                        <nav className="-mb-px flex space-x-20 overflow-x-auto">
+                        <nav className="-mb-px flex space-x-8 overflow-x-auto">
                             {tabs.map(tab => (
                                 <button
                                     key={tab}
-                                    onClick={() => setActiveTab(tab)}
+                                    onClick={() => handleTabChange(tab)}
                                     className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-md focus:outline-none ${activeTab === tab
                                         ? 'border-[#8e78b7] text-[#8e78b7]'
                                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -1157,7 +1013,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                             type="button"
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-green-600 text-white border border-transparent rounded-md shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSaving && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
                             {isSaving ? 'Saving...' : 'Save & Exit'}
