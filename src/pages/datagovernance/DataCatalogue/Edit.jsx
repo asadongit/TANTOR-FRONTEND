@@ -1,5 +1,7 @@
 import { Pencil, CircleX, Plus, X, ChevronDown, Loader2, Search } from 'lucide-react';
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useAuth } from '../../../context/AuthContext';
+import AddCatalogueModal from '../BusinessCatalogue/AddCatalogueModal';
 
 const API_BASE_URL = `${window._env_?.VITE_FAST_API}/business_catalogue/add`;
 const OWNER_OPTIONS = ['Admin'];
@@ -146,8 +148,8 @@ ${direction === 'top' ? 'bottom-full mb-1' : 'mt-1'}
 };
 
 const Edit = ({ onClose, editDetails, type }) => {
-  console.log("edit details are @@@@@", editDetails);
-  console.log("type is @@@ ",type)
+  const { decodedToken } = useAuth();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [domains, setDomains] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -166,11 +168,15 @@ const Edit = ({ onClose, editDetails, type }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isLoadingSubCategories, setIsLoadingSubCategories] = useState(false);
-  const [isLoadingTags, setIsLoadingTags] = useState(false); 
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
   const [isLoadingSubTags, setIsLoadingSubTags] = useState(false);
-  const [isLoadingTerms, setIsLoadingTerms] = useState(false); 
+  const [isLoadingTerms, setIsLoadingTerms] = useState(false);
 
   const [saveError, setSaveError] = useState('');
+
+  const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
+    ['data steward', 'data owner'].includes(role.toLowerCase())
+  );
 
   const fetchDomains = useCallback(() => fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/domain`).then(res => res.json()).then(setDomains).catch(e => console.error('Error fetching domains:', e)), []);
 
@@ -371,7 +377,7 @@ const Edit = ({ onClose, editDetails, type }) => {
     setSubTags([]);
   };
 
- const handleSave = async () => {
+  const handleSave = async () => {
     setSaveError('');
     const hasSelection = [selectedDomains, selectedCategories, selectedSubCategories, selectedTags, selectedSubTags, selectedTerms].some(arr => arr.length > 0);
 
@@ -467,7 +473,19 @@ const Edit = ({ onClose, editDetails, type }) => {
 
           {/* DOMAIN */}
           <div className={formSectionClass}>
-            <div className='mb-2 font-medium'>Domain</div>
+            <div className='flex justify-between items-center mb-2'>
+              <div className='font-medium'>Domain</div>
+              {isUserAuthorized && (
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className='flex items-center gap-x-1.5 px-3 py-1 rounded-md text-sm font-semibold bg-[#8d77ba] text-white hover:bg-opacity-90'
+                  aria-label="Add new catalogue item"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add
+                </button>
+              )}
+            </div>
             <div className='flex justify-between items-start gap-x-2'>
               <MultiSelectDropdown
                 options={domains?.map(d => ({ value: d.domain_id, label: d.name })) || []}
@@ -574,6 +592,9 @@ const Edit = ({ onClose, editDetails, type }) => {
           <button onClick={handleSave} className='w-36 h-10 p-2 border border-[#8d77ba] rounded-md text-[#8d77ba] hover:bg-[#8d77ba] hover:text-white'>Save</button>
         </div>
       </div>
+
+      {/* Add Catalogue Modal */}
+      <AddCatalogueModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   )
 };

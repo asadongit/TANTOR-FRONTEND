@@ -27,7 +27,7 @@ function TableDetailsPage() {
     const location = useLocation();
     const { tableName } = useParams();
     const { tableData, columns } = location.state || {};
-    const { token } = useAuth();
+    const { token, decodedToken } = useAuth(); 
 
     const [activeTab, setActiveTab] = useState('Summary');
     const [complianceTags, setComplianceTags] = useState([]);
@@ -41,12 +41,14 @@ function TableDetailsPage() {
     const [loadingSampleData, setLoadingSampleData] = useState(false);
     const [sampleDataError, setSampleDataError] = useState(null);
 
-    // State for editable description
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [description, setDescription] = useState('');
     const [originalDescription, setOriginalDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
+    const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
+        ['data steward', 'data owner'].includes(role.toLowerCase())
+    );
 
     useEffect(() => {
         if (!tableData) return;
@@ -307,7 +309,7 @@ function TableDetailsPage() {
                                         <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                                             <Pencil className="h-5 w-5 text-[#8d77ba]" /> Description
                                         </h3>
-                                        {!isEditingDescription && (
+                                        {isUserAuthorized && !isEditingDescription && (
                                             <button
                                                 onClick={() => setIsEditingDescription(true)}
                                                 className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-[#8d77ba] transition-colors"
