@@ -7,7 +7,7 @@ import { useAuth } from "../../../context/AuthContext.jsx";
 const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
-        className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === label
+        className={`px-4 py-2 text-md font-medium border-b-2 ${activeTab === label
                 ? 'border-[#8d77ba] text-[#8d77ba]'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
@@ -41,6 +41,13 @@ function ColumnDetailsPage() {
     const [sampleData, setSampleData] = useState([]);
     const [loadingSampleData, setLoadingSampleData] = useState(false);
     const [sampleDataError, setSampleDataError] = useState(null);
+
+    // State for editable description
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const [description, setDescription] = useState('');
+    const [originalDescription, setOriginalDescription] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
 
     const singleColumn = allData?.find(val => val.column_name === columnData?.name && val.table_name === val.table_name);
 
@@ -122,13 +129,11 @@ function ColumnDetailsPage() {
                 }
 
                 const data = await response.json();
-
                 const columnBusinessInfo = Object.values(data)[0];
 
                 if (!columnBusinessInfo) {
                     throw new Error("Business data format from API is incorrect.");
                 }
-
                 const tags = {
                     domain: columnBusinessInfo.domain || [],
                     category: columnBusinessInfo.category || [],
@@ -137,7 +142,6 @@ function ColumnDetailsPage() {
                     tag: columnBusinessInfo.tag || [],
                     subTag: columnBusinessInfo.sub_tag || [],
                 };
-
                 const schemaForState = {
                     domain: tags.domain?.map(t => t.name) || [],
                     category: tags.category?.map(t => t.name) || [],
@@ -146,7 +150,6 @@ function ColumnDetailsPage() {
                     tag: tags.tag?.map(t => t.name) || [],
                     subTag: tags.subTag?.map(t => t.name) || [],
                 };
-
                 const newCompositeState = [];
                 const domainNames = schemaForState.domain;
                 const categoryNames = schemaForState.category;
@@ -189,7 +192,6 @@ function ColumnDetailsPage() {
                         });
                     }
                 }
-
                 setBusinessData({ schema: schemaForState, composite: newCompositeState });
 
             } catch (error) {
@@ -243,6 +245,29 @@ function ColumnDetailsPage() {
 
         fetchSampleData();
     }, [activeTab, columnData, token]);
+    
+    useEffect(() => {
+        if (singleColumn) {
+            const initialDesc ='Column Description';
+            setDescription(initialDesc);
+            setOriginalDescription(initialDesc);
+        }
+    }, [singleColumn]);
+
+    const handleCancelEdit = () => {
+        setDescription(originalDescription);
+        setIsEditingDescription(false);
+    };
+
+    const handleSaveDescription = async () => {
+        if (!singleColumn) {
+            console.error("Column data is not available to save description.");
+            alert("An error occurred. Cannot save description.");
+            return;
+        }
+        setOriginalDescription(description);
+        setIsEditingDescription(false);
+    };
 
 
     if (!columnData) {
@@ -272,14 +297,14 @@ function ColumnDetailsPage() {
                     <div className="flex items-start gap-4 w-full">
                         <div className="flex justify-between w-full" >
                             <div className="flex items-center gap-2">
-                                <ChartColumn size={24} className="text-gray-600" />
+                                <ChartColumn size={24} className="text-[#8d77ba]" />
                                 <h1 className="text-2xl font-bold text-gray-800">{columnData?.name?.toLowerCase()}</h1>
                             </div>
                         </div>
                     </div>
 
                     <div className="border-b border-gray-200 mt-4">
-                        <nav className="-mb-px flex space-x-10">
+                        <nav className="-mb-px flex space-x-10 text-md">
                             {tabs.map(tab => (
                                 <Tab key={tab} label={tab} activeTab={activeTab} setActiveTab={setActiveTab} />
                             ))}
@@ -288,56 +313,112 @@ function ColumnDetailsPage() {
 
                     <div className="mt-5">
                         {activeTab === 'Summary' && (
-                            <div>
-                                <p className="text-gray-600">Column Description</p>
-                                <div className="my-4">
-                                    <div className='flex items-center gap-2 mb-2'>
-                                        <FileCheck2 className="h-5 w-5 text-[#8d77ba]" />
-                                        <h3 className="text-lg font-semibold">Compliance</h3>
+                                <div className="space-y-4">
+                                    {/* Description Section */}
+                                    <div>
+                                        <div className='flex items-center justify-between mb-2'>
+                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                                <Pencil className="h-5 w-5 text-[#8d77ba]" /> Description
+                                            </h3>
+                                            {!isEditingDescription && (
+                                                <button
+                                                    onClick={() => setIsEditingDescription(true)}
+                                                    className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-[#8d77ba] transition-colors"
+                                                    aria-label="Edit description"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+                                            )}
+                                        </div>
+                                        {isEditingDescription ? (
+                                            <div>
+                                                <textarea
+                                                    value={description}
+                                                    onChange={(e) => setDescription(e.target.value)}
+                                                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-200 focus:border-[#8d77ba] transition"
+                                                    rows="4"
+                                                    placeholder="Enter column description..."
+                                                />
+                                                <div className="flex justify-end gap-2 mt-2">
+                                                    <button
+                                                        onClick={handleCancelEdit}
+                                                        className="px-4 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        onClick={handleSaveDescription}
+                                                        disabled={isSaving}
+                                                        className="px-4 py-1.5 text-sm font-medium text-white bg-[#8d77ba] rounded-md hover:bg-[#7a68a5] disabled:bg-purple-300 disabled:cursor-not-allowed transition-colors"
+                                                    >
+                                                        {isSaving ? 'Saving...' : 'Save'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-gray-600 pl-7 min-h-[2rem]">
+                                                {description ? description : <span className="text-gray-400 italic">No description provided</span>}
+                                            </div>
+                                        )}
                                     </div>
-                                    {loadingTags ? (
-                                        <InfoPill label="Loading..." />
-                                    ) : complianceTags.length > 0 ? (
-                                        complianceTags.map((tag, index) => (
-                                            <InfoPill key={index} label={tag} />
-                                        ))
-                                    ) : (
-                                        <InfoPill label="N/A" />
-                                    )}
+    
+                                    {/* Compliance Section */}
+                                    <div>
+                                        <div className='flex items-center gap-2 mb-3'>
+                                            <FileCheck2 className="h-5 w-5 text-[#8d77ba]" />
+                                            <h3 className="text-lg font-semibold text-gray-800">Compliance</h3>
+                                        </div>
+                                        <div className="pl-7">
+                                            {loadingTags ? (
+                                                <InfoPill label="Loading..." />
+                                            ) : complianceTags.length > 0 ? (
+                                                complianceTags.map((tag, index) => (
+                                                    <InfoPill key={index} label={tag} />
+                                                ))
+                                            ) : (
+                                                <InfoPill label="N/A" />
+                                            )}
+                                        </div>
+                                    </div>
+    
+                                    {/* Technical Details Section */}
+                                    <div>
+                                        {/* <div className='flex items-center gap-2 mb-2'>
+                                            <TableOfContents className="h-5 w-5 text-[#8d77ba]" />
+                                            <h3 className="text-lg font-semibold text-gray-800">Technical Details</h3>
+                                        </div> */}
+                                        <div className="overflow-x-auto rounded-lg shadow border">
+                                            <table className="min-w-full">
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Type</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_TYPE}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Nullable</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.is_nullable === 'Y' ? 'Yes' : 'No'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Length</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_LENGTH}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Scale</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_SCALE}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Precision</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_PRECISION}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Constraints</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(singleColumn.column_metadata)}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="mt-6">
-                                     <div className="overflow-x-auto rounded-lg shadow border">
-                                        <table className="min-w-full">
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Type</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_TYPE}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Nullable</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.is_nullable === 'Y' ? 'Yes' : 'No'}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Length</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_LENGTH}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Scale</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_SCALE}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Precision</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_PRECISION}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Constraints</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(singleColumn.column_metadata)}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                     </div>
-                                </div>
-                            </div>
                         )}
 
                         {activeTab === 'Business' && (
@@ -378,18 +459,26 @@ function ColumnDetailsPage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">
-                                                {businessData.composite.map((row, index) => (
-                                                    <tr key={index} className="hover:bg-gray-50">
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.id}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 hover:underline cursor-pointer">{row.column}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.domain}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.category}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subCategory}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.term}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.tag}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subTag}</td>
+                                                {businessData.composite && businessData.composite.length > 0 && !(businessData.composite.length === 1 && businessData.composite[0].domain === 'N/A') ? (
+                                                    businessData.composite.map((row, index) => (
+                                                        <tr key={index} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.id}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 hover:underline cursor-pointer">{row.column}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.domain}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.category}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subCategory}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.term}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.tag}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subTag}</td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="8" className="text-center py-10 px-4 text-sm text-gray-500">
+                                                            No business data available for this column.
+                                                        </td>
                                                     </tr>
-                                                ))}
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
@@ -408,7 +497,7 @@ function ColumnDetailsPage() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                )) : <p className="text-gray-500">No business metadata available.</p>}
+                                                )) : <p className="text-gray-500">No business data available.</p>}
                                         </div>
                                     </div>
                                 )}

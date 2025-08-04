@@ -12,7 +12,6 @@ function Tables() {
   const [tableData, setTableData] = useState([]);
   const { token } = useAuth();
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
-  const [showModal, setShowModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   const [allTablesRawData, setAllTablesRawData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,6 +23,10 @@ function Tables() {
   const [fetchingEditId, setFetchingEditId] = useState(null);
   const navigate = useNavigate();
 
+  // --- NEW STATE FOR COLUMN DETAILS MODAL ---
+  const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
+  const [currentColumns, setCurrentColumns] = useState([]);
+
   const processTableData = (data) => {
     const tableMap = new Map();
 
@@ -34,7 +37,7 @@ function Tables() {
         tableMap.set(tableKey, {
           id: `#${item.conn_metadata_id.substring(0, 8)}`,
           name: item.table_name,
-          description: `Table description`,
+          description: `Table description`, // You might want a real description from your API
           schema: item.table_schema,
           database: item.connection_type,
           connection_name: item.connection_name,
@@ -148,7 +151,6 @@ function Tables() {
       }
 
       const prefillData = await response.json();
-
       const detailsToEdit = {
         connection_set: [{
           table_name: table.name,
@@ -157,10 +159,8 @@ function Tables() {
         }],
         prefill: prefillData
       };
-
       setEditDetails(detailsToEdit);
       setShowEditPage(true);
-
     } catch (error) {
       console.error('Error fetching pre-fill data:', error);
       setToast({ show: true, message: error.message, type: 'error' });
@@ -177,6 +177,14 @@ function Tables() {
     });
   };
 
+  // --- NEW HANDLER TO OPEN COLUMN MODAL ---
+  const handleColumnClick = (table) => {
+    const columns = getTableColumns(table);
+    setSelectedTable(table); // Store the table whose columns are being viewed
+    setCurrentColumns(columns);
+    setIsColumnModalOpen(true);
+  };
+
   return (
     <div className="p-4">
       {toast.show && (
@@ -188,10 +196,7 @@ function Tables() {
             className="h-5 w-5"
           />
           <p>{toast.message}</p>
-          <button
-            onClick={() => setToast({ show: false, message: '', type: '' })}
-            className="ml-2 text-gray-500 hover:text-gray-700"
-          >
+          <button onClick={() => setToast({ show: false, message: '', type: '' })} className="ml-2 text-gray-500 hover:text-gray-700">
             <Icon icon="mdi:close" className="h-4 w-4" />
           </button>
         </div>
@@ -223,7 +228,8 @@ function Tables() {
 
       {loading ? (
         <div className="flex justify-center items-center h-40">
-          <p>Loading data...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+          <p className="ml-2">Loading data...</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden mt-5">
@@ -249,8 +255,7 @@ function Tables() {
                 {currentTableData.length > 0 ? currentTableData.map((table, index) => (
                   <tr key={table.id} className="border-b hover:bg-gray-50 text-sm">
                     <td className="p-4">{indexOfFirstItem + index + 1}</td>
-                    <td className="p-4 text-blue-600 underline cursor-pointer"
-                      onClick={() => handleNavigate(table)}>
+                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleNavigate(table)}>
                       {table.name}
                     </td>
                     <td className="p-4 max-w-xs truncate tooltip">{table.name}</td>
@@ -258,7 +263,10 @@ function Tables() {
                     <td className="p-4">{table.database}</td>
                     <td className="p-4">{table.schema}</td>
                     <td className="p-4">{table.owner}</td>
-                    <td className="p-4 text-blue-600 underline cursor-pointer">{table.column}</td>
+                    {/* --- MODIFIED: Added onClick handler to the columns cell --- */}
+                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleColumnClick(table)}>
+                      {table.column}
+                    </td>
                     <td className="p-4">critical</td>
                     <td className="p-4">{table.CreatedDate}</td>
                     <td className="p-4">{table.lastUpdated}</td>
@@ -268,8 +276,7 @@ function Tables() {
                         onClick={() => handleShowEditPage(table)}
                         disabled={fetchingEditId === table.id}
                       >
-
-                        <Pencil className="h-4 w-4" />
+                        {fetchingEditId === table.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
                       </button>
                     </td>
                   </tr>
@@ -310,13 +317,8 @@ function Tables() {
       )}
       {showEditPage && (
         <div className="fixed inset-0 z-50 flex">
-          <div
-            className="absolute inset-0 bg-black bg-opacity-30 backdrop-blur-sm"
-            onClick={() => setShowEditPage(false)}
-          />
-
-          <div
-            className="relative ml-auto w-full sm:w-[400px] h-full bg-white shadow-xl z-50 animate-slide-in">
+          <div className="absolute inset-0 bg-black bg-opacity-30 backdrop-blur-sm" onClick={() => setShowEditPage(false)} />
+          <div className="relative ml-auto w-full sm:w-[400px] h-full bg-white shadow-xl z-50 animate-slide-in">
             <Edit
               onClose={() => {
                 setEditDetails({});
@@ -328,6 +330,68 @@ function Tables() {
           </div>
         </div>
       )}
+
+      {/* --- NEW: JSX for the Column Details Modal --- */}
+      {isColumnModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center animate-fadeIn">
+          <div
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setIsColumnModalOpen(false)}
+          ></div>
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] flex flex-col m-4">
+            <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white z-10">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Column Details: <span className="font-bold text-[#29304a]">{selectedTable?.name}</span>
+              </h2>
+              <button
+                onClick={() => setIsColumnModalOpen(false)}
+                className="text-gray-500 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto">
+              <table className="w-full text-sm text-left text-gray-700">
+                <thead className="text-xs text-white uppercase bg-[#29304a] sticky top-0">
+                  <tr>
+                    <th scope="col" className="px-6 py-3">Column Name</th>
+                    <th scope="col" className="px-6 py-3">Data Type</th>
+                    <th scope="col" className="px-6 py-3">Length</th>
+                    <th scope="col" className="px-6 py-3">Precision</th>
+                    <th scope="col" className="px-6 py-3">Scale</th>
+                    <th scope="col" className="px-6 py-3">Nullable</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentColumns.length > 0 ? currentColumns.map((col, index) => (
+                    <tr key={index} className="bg-white border-b hover:bg-gray-50">
+                      <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{col.column_name}</td>
+                      <td className="px-6 py-4">{col.column_metadata?.DATA_TYPE || 'N/A'}</td>
+                      <td className="px-6 py-4">{col.column_metadata?.DATA_LENGTH ?? 'N/A'}</td>
+                      <td className="px-6 py-4">{col.column_metadata?.DATA_PRECISION ?? 'N/A'}</td>
+                      <td className="px-6 py-4">{col.column_metadata?.DATA_SCALE ?? 'N/A'}</td>
+                      <td className="px-6 py-4">{col.column_metadata?.is_nullable === 'N' ? 'No' : 'Yes'}</td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="6" className="text-center py-10">No column details found for this table.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end items-center p-4 border-t sticky bottom-0 bg-white z-10">
+              <button
+                onClick={() => setIsColumnModalOpen(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

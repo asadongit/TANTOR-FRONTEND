@@ -29,10 +29,9 @@ function Columns() {
 
     const processColumnData = (data) => {
         return data.map(item => {
-            const dataType = item.column_metadata ? item.column_metadata.DATA_TYPE || 'UNKNOWN' : 'UNKNOWN';
-            const isNullable = item.column_metadata ? item.column_metadata.is_nullable === 'Y' : false;
 
             return {
+                conn_metadata_id: item.conn_metadata_id, // Keep the full, unique ID
                 id: `#${item.conn_metadata_id.substring(0, 4)}`,
                 name: item.column_name || 'Unnamed',
                 diagram: "Diagram_1",
@@ -97,21 +96,31 @@ function Columns() {
     };
 
     const handleShowEditPage = (column) => {
-        setShowEditPage(true);
-        setEditColumnDetails(column);
-    }
+        const rawDataItem = allTablesRawData.find(
+            item => item.conn_metadata_id === column.conn_metadata_id
+        );
 
-    // Handle checkbox selection
-    const handleSelectAll = (e) => {
-        const isChecked = e.target.checked;
-        setColumnData(columnData.map(item => ({ ...item, selected: isChecked })));
-    };
+        if (rawDataItem) {
+            const detailsForEdit = {
+                connection_name: rawDataItem.connection_name,
+                table_schema: rawDataItem.table_schema,
+                table_name: rawDataItem.table_name,
+                column: rawDataItem.column_name
+            };
 
-    const handleSelectItem = (index) => {
-        const updatedData = [...columnData];
-        updatedData[index].selected = !updatedData[index].selected;
-        setColumnData(updatedData);
-
+            setEditColumnDetails(detailsForEdit);
+            setShowEditPage(true);
+        } else {
+            console.error("Could not find the detailed data for the selected column:", column);
+            setToast({
+                show: true,
+                message: 'Error: Could not find details for the selected column.',
+                type: 'error'
+            });
+            setTimeout(() => {
+                setToast({ show: false, message: '', type: '' });
+            }, 3000);
+        }
     };
 
     const handlPageSize = (e) => {
