@@ -466,10 +466,10 @@ const Edit = ({ onClose, editDetails, type }) => {
 
         {/* Form Section */}
         <div className='flex flex-col items-start gap-5 p-6 pt-2 text-sm'>
-          <div>
+          {/* <div>
             <div className='mb-2 font-medium'>Top users</div>
             <div className='text-gray-500'><p>ABCD</p><p>ABCD</p><p>ABCD</p></div>
-          </div>
+          </div> */}
 
           {/* DOMAIN */}
           <div className={formSectionClass}>
