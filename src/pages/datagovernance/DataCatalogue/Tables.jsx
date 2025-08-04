@@ -5,6 +5,7 @@ import { Search, RefreshCcw, ChevronLeft, ChevronRight, Pencil, Table, X, Loader
 import { secureQuery, fetchConnectionDetails } from './Components/function.js';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import Edit from "./Edit.jsx";
+import { useNavigate } from "react-router-dom";
 
 function Tables() {
   const [loading, setLoading] = useState(true);
@@ -21,6 +22,7 @@ function Tables() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [fetchingEditId, setFetchingEditId] = useState(null);
+  const navigate = useNavigate();
 
   const processTableData = (data) => {
     const tableMap = new Map();
@@ -128,7 +130,7 @@ function Tables() {
   const totalPages = Math.ceil(filteredTableData.length / itemsPerPage);
 
   const handleShowEditPage = async (table) => {
-    setFetchingEditId(table.id); 
+    setFetchingEditId(table.id);
     try {
       const response = await fetch(`${window._env_?.VITE_FAST_API}/catalogue/table/prefill`, {
         method: 'POST',
@@ -168,8 +170,15 @@ function Tables() {
     }
   };
 
+  const handleNavigate = (table) => {
+    const columns = getTableColumns(table);
+    navigate(`/datagovernance/data-catalogue/table/${table.name}`, {
+      state: { tableData: table, columns: columns }
+    });
+  };
+
   return (
-    <div>
+    <div className="p-4">
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
           'bg-red-100 text-red-800 border-l-4 border-red-500'
@@ -236,14 +245,14 @@ function Tables() {
                   <th className="text-left px-4 whitespace-nowrap py-1">Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="text-gray-700">
                 {currentTableData.length > 0 ? currentTableData.map((table, index) => (
                   <tr key={table.id} className="border-b hover:bg-gray-50 text-sm">
                     <td className="p-4">{indexOfFirstItem + index + 1}</td>
-                    <td className="p-4 text-blue-600 hover:underline cursor-pointer" onClick={() => {
-                      setSelectedTable(table);
-                      setShowModal(true);
-                    }} > {table.name}</td>
+                    <td className="p-4 text-blue-600 underline cursor-pointer"
+                      onClick={() => handleNavigate(table)}>
+                      {table.name}
+                    </td>
                     <td className="p-4 max-w-xs truncate tooltip">{table.name}</td>
                     <td className="p-4 max-w-xs truncate tooltip">{table.description}</td>
                     <td className="p-4">{table.database}</td>
