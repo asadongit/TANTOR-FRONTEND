@@ -5,6 +5,7 @@ import Schema from './Schema';
 import Tables from './Tables';
 import Columns from './Columns';
 import TableDetailsPage from './TableDetailsPage';
+import ColumnDetailsPage from './ColumnDetailsPage';
 
 
 const PREFIX = '/datagovernance/data-catalogue';
@@ -17,5 +18,6 @@ export const DataCatalogueRoutes = (
     <Route path={`${PREFIX}/table`} element={<Tables />} />
     <Route path={`${PREFIX}/column`} element={<Columns />} />
     <Route path={`${PREFIX}/table/:tableName`} element={<TableDetailsPage />} />
+    <Route path={`${PREFIX}/column/:columnName`} element={<ColumnDetailsPage />} />
   </>
 );

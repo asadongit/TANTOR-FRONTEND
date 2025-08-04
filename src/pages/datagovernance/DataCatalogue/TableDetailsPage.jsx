@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, Link } from 'react-router-dom';
-import { Pencil, Lightbulb, Table, Layers,TableOfContents } from 'lucide-react';
+import { Pencil, Lightbulb, Table, Layers, TableOfContents, FileCheck2 } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 
@@ -8,8 +8,8 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
         className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === label
-                ? 'border-[#8d77ba] text-[#8d77ba]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-[#8d77ba] text-[#8d77ba]'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
     >
         {label}
@@ -108,11 +108,11 @@ function TableDetailsPage() {
                 }
 
                 const data = await response.json();
-                
+
                 const tableBusinessInfo = Object.values(data)[0];
 
                 if (!tableBusinessInfo || !tableBusinessInfo.table_tags) {
-                     throw new Error("Business data format from API is incorrect.");
+                    throw new Error("Business data format from API is incorrect.");
                 }
 
                 const tags = tableBusinessInfo.table_tags;
@@ -124,7 +124,7 @@ function TableDetailsPage() {
                     tag: tags.tag?.map(t => t.name) || [],
                     subTag: tags.sub_tag?.map(t => t.name) || [],
                 };
-                
+
                 const newCompositeState = [];
                 const domainNames = schemaForState.domain;
                 const categoryNames = schemaForState.category;
@@ -139,7 +139,7 @@ function TableDetailsPage() {
                     tagNames.length,
                     subTagNames.length
                 );
-                
+
                 if (maxLength === 0) {
                     newCompositeState.push({
                         id: '01',
@@ -184,7 +184,7 @@ function TableDetailsPage() {
         const fetchSampleData = async () => {
             setLoadingSampleData(true);
             setSampleDataError(null);
-            setSampleData([]); 
+            setSampleData([]);
 
             try {
                 const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/columns/sample_data`, {
@@ -270,7 +270,10 @@ function TableDetailsPage() {
                             <div>
                                 <p className="text-gray-600">{tableData.description}</p>
                                 <div className="my-4">
-                                    <h3 className="text-sm font-semibold text-gray-500 mb-2">Compliance</h3>
+                                    <div className='flex items-center gap-2 mb-2'>
+                                        <FileCheck2 className="h-5 w-5 text-[#8d77ba]" />
+                                        <h3 className="text-lg font-semibold">Compliance</h3>
+                                    </div>
                                     {loadingTags ? (
                                         <InfoPill label="Loading..." />
                                     ) : complianceTags.length > 0 ? (
@@ -316,8 +319,8 @@ function TableDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Composite view')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Composite view'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <Layers className="h-4 w-4" />
@@ -326,8 +329,8 @@ function TableDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Table Detail View')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Table Detail View'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <TableOfContents className="h-4 w-4" />
@@ -365,19 +368,19 @@ function TableDetailsPage() {
                                 ) : (
                                     <div className="p-1">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                            {Object.keys(businessData.schema).length > 0 ? 
-                                             Object.entries(businessData.schema).map(([title, pills]) => (
-                                                 <div key={title}>
-                                                     <h3 className="text-base font-semibold text-gray-700 mb-3 capitalize">{formatTitle(title)}</h3>
-                                                     <div className="flex flex-wrap gap-2">
-                                                         {pills.length > 0 ? (
-                                                             pills.map(item => <InfoPill key={item} label={item} />)
-                                                         ) : (
-                                                             <InfoPill label="N/A" />
-                                                         )}
-                                                     </div>
-                                                 </div>
-                                             )) : <p className="text-gray-500">No business metadata available.</p>}
+                                            {Object.keys(businessData.schema).length > 0 ?
+                                                Object.entries(businessData.schema).map(([title, pills]) => (
+                                                    <div key={title}>
+                                                        <h3 className="text-base font-semibold text-gray-700 mb-3 capitalize">{formatTitle(title)}</h3>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {pills.length > 0 ? (
+                                                                pills.map(item => <InfoPill key={item} label={item} />)
+                                                            ) : (
+                                                                <InfoPill label="N/A" />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )) : <p className="text-gray-500">No business metadata available.</p>}
                                         </div>
                                     </div>
                                 )}
@@ -387,7 +390,7 @@ function TableDetailsPage() {
                         {activeTab === 'Sample data' && (
                             <div>
                                 {loadingSampleData && <p className="text-gray-500">Loading sample data...</p>}
-                                
+
                                 {sampleDataError && <p className="text-red-600">Error: {sampleDataError}</p>}
 
                                 {!loadingSampleData && !sampleDataError && sampleData.length === 0 && (
