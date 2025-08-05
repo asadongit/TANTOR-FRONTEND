@@ -17,7 +17,7 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
 );
 
 const InfoPill = ({ label }) => (
-    <span className="bg-[#8e78b7] text-white text-xs font-medium me-2 px-2.5 py-1 rounded-full">
+    <span className="bg-[#8e78b7] text-white text-xs font-medium me-2 px-3 py-2 rounded-full">
         {label}
     </span>
 );
@@ -762,7 +762,7 @@ function ColumnDetailsPage() {
                 </div>
 
                 <div className="w-full xl:w-80 flex-shrink-0 space-y-6">
-                    <div className="bg-white p-5 rounded-lg shadow-sm">
+                    {/* <div className="bg-white p-5 rounded-lg shadow-sm">
                         <div className="flex items-center justify-between">
                             <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Lightbulb className="h-5 w-5 text-purple-400" />  Snapshot</h2>
                         </div>
@@ -774,7 +774,43 @@ function ColumnDetailsPage() {
                             <div className="flex justify-between"><span className="text-gray-500">Last updated</span> <span className="font-medium text-gray-800">{new Date(singleColumn.updated_at).toLocaleDateString()}</span></div>
                             <div className="flex justify-between"><span className="text-gray-500">Owner</span> <span className="font-medium text-gray-800">{singleColumn.created_by}</span></div>
                         </div>
-                    </div>
+                    </div> */}
+                    <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[#8d77ba]">
+                                                <Lightbulb />
+                                            </span>
+                                            <h3 className="font-normal text-lg">Snapshot</h3>
+                                        </div>
+                    
+                                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                                            <div className="text-gray-500">Type</div>
+                                            <div className="font-normal">Column</div>
+                    
+                                            <div className="text-gray-500">Data source</div>
+                                            <div className="font-normal">{singleColumn.connection_type}</div>
+                                        </div>
+                    
+                                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                                            <div className="text-gray-500">Created on</div>
+                                            <div className="font-normal">
+                                                {new Date(singleColumn.created_at).toLocaleDateString()}
+                                            </div>
+                    
+                                            <div className="text-gray-500">Last updated</div>
+                                            <div className="font-normal">
+                                                {new Date(singleColumn.updated_at).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                    
+                                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                                            <div className="text-gray-500">Owner</div>
+                                            <div className="font-normal">{singleColumn.created_by}</div>
+                    
+                                            <div className="text-gray-500">Steward</div>
+                                            <div className="font-normal">{singleColumn?.steward || 'Admin'}</div>
+                                        </div>
+                                    </div>
                 </div>
             </div>
         </div>

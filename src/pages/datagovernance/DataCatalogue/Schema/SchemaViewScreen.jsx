@@ -1,47 +1,215 @@
-import { useEffect, useState } from "react";
-import { CalendarCheck, TableOfContents, Layers, Lightbulb } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import {
+  CalendarCheck,
+  TableOfContents,
+  Layers,
+  Lightbulb,
+  Pencil,
+  ChevronUp,
+  ChevronDown,
+  Database
+} from "lucide-react";
+import CompositeViewComponent from "../Schema/CompositeViewComponent";
+import SchemaDetailsViewComponent from "./SchemaDetailsViewComponenet";
+import toast from "react-hot-toast";
+import { useAuth } from "../../../../context/AuthContext";
+import { Pagination } from "@mui/material";
+import { useLocation } from "react-router-dom";
+import Breadcrumb from "../../../../components/Breadcrumb";
 
-const SchemaViewScreen = ({schema}) => {
+const SchemaViewScreen = () => {
   const hostnameV1 = window._env_?.VITE_FAST_API;
+  const { token, decodedToken } = useAuth();
 
   const [activeTab, setActiveTab] = useState("summary");
-  const [activeTabBusiness, setActiveTabBusiness] = useState("composite-view")
+  const [businessTabResponse, setBusinessTabResponse] = useState([]);
+  const [complianceResponse, setComplianceResponse] = useState([]);
+  const [loadingBusinessTab, setLoadingBusinessTab] = useState(false);
+  const [loadingComplianceApi, setLoadingComplianceApi] = useState(false);
 
-  console.log("schema from schemaViewScreen ", schema)
+  // Access Tab State
+  const [accessData, setAccessData] = useState([]);
+  const [loadingAccessData, setLoadingAccessData] = useState(false);
+  const [expandedRows, setExpandedRows] = useState({});
 
-  const fetchDataCatalogueBusiness = async () => {
-    const formData = {
-      "connection_set":[
-      {
-        "table_schema": schema.schema, 
-        "connection_name": schema.connectionName,
-      }
-      ]
-    }
-    const response = await fetch(`${hostnameV1}/data_catalogue/business_tab`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData)
-    })
+  const [isEditing, setIsEditing] = useState(false);
+  const [summaryText, setSummaryText] = useState(`Schema description`);
 
-    const json = await response.json();
-    console.log("json ", json)
+  const [activeTabBusiness, setActiveTabBusiness] = useState("composite-view");
+
+  const location = useLocation();
+  const schema = location.state?.schemaData;
+
+  if (!schema) {
+    return <p>Schema data not available.</p>;
   }
 
+  const fetchDataCatalogueBusiness = async () => {
+    if (businessTabResponse.length > 0) {
+      return;
+    }
+
+    setLoadingBusinessTab(true);
+
+    try {
+      const formData = {
+        connection_set: [
+          {
+            table_schema: schema.schema,
+            connection_name: schema.connectionName,
+          },
+        ],
+      };
+      const response = await fetch(
+        `${hostnameV1}/data_catalogue/business_tab`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      const json = await response.json();
+      setBusinessTabResponse(json);
+    } catch {
+      toast.error("Error fetching Data Catalogue");
+      setLoadingBusinessTab(false);
+    } finally {
+      setLoadingBusinessTab(false);
+    }
+  };
+
+  const fetchDataCatalogueCompliance = async () => {
+    if (complianceResponse.length > 0) {
+      return;
+    }
+
+    setLoadingComplianceApi(true);
+
+    try {
+      const formData = {
+        connection_set: [
+          {
+            table_schema: schema.schema,
+            connection_name: schema.connectionName,
+          },
+        ],
+      };
+      const response = await fetch(
+        `${hostnameV1}/data_catalogue/compliance_tags`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      const json = await response.json();
+      setComplianceResponse(json);
+    } catch {
+      toast.error("Error fetching Compliance");
+      setLoadingComplianceApi(false);
+    } finally {
+      setLoadingComplianceApi(false);
+    }
+  };
+
+  const fetchAccessData = async () => {
+    setLoadingAccessData(true);
+
+    try {
+      const response = await fetch(
+        `${window._env_?.VITE_FAST_API}/data_catalogue/access_tab`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            connection_set: [
+              {
+                connection_name: schema.connectionName,
+                table_schema: schema.schema,
+              },
+            ],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch access data. Status: ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+
+      const processedData = [];
+      if (data.role) {
+        for (const [name, users] of Object.entries(data.role)) {
+          processedData.push({ type: "Role", name, users: users || [] });
+        }
+      }
+      if (data.group) {
+        for (const [name, users] of Object.entries(data.group)) {
+          processedData.push({ type: "Group", name, users: users || [] });
+        }
+      }
+      if (data.subgroup) {
+        for (const [name, users] of Object.entries(data.subgroup)) {
+          processedData.push({ type: "Sub-group", name, users: users || [] });
+        }
+      }
+
+      setAccessData(processedData);
+    } catch (error) {
+      console.error("Error fetching access data:", error);
+      toast.error("Failed to load access information.");
+      setLoadingAccessData(false);
+    } finally {
+      setLoadingAccessData(false);
+    }
+  };
+
+  const toggleRow = (name) => {
+    setExpandedRows(prev => ({
+        ...prev,
+        [name]: !prev[name]
+    }));
+  };
+
   useEffect(() => {
-    fetchDataCatalogueBusiness()
-  }, [])
-    
+    if(activeTab === "business" && businessTabResponse.length === 0) {
+      fetchDataCatalogueBusiness();
+    } else if(activeTab === "access" && accessData.length === 0) {
+      fetchAccessData();
+    } else if(activeTab === "summary" && complianceResponse.length === 0) {
+      fetchDataCatalogueCompliance();
+    }
+  }, [activeTab]);
+
+  const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(
+    (role) => ["data steward", "data owner"].includes(role.toLowerCase())
+  );
+
   return (
-    <div className="">
+    <div className="p-5">
+      <Breadcrumb />
       <div className="flex gap-4 mt-10">
-         {/* main div */}
-         <div className="bg-white w-[70%] h-full p-5">
+        {/* main div */}
+        <div className="bg-white w-[70%] h-full p-5">
           {/* heading */}
           <div className="flex justify-between items-center pb-6">
-            <h1 className="font-medium">{schema?.schema}</h1>
+            <div className="flex items-center gap-2">
+              <span className="text-[#8d77ba]"><Database /></span>
+              <h1 className="font-medium text-xl">{schema?.schema}</h1>
+            </div>
 
             <div className="flex gap-7 text-sm">
               <div className="border-r pr-6 text-center">
@@ -57,230 +225,248 @@ const SchemaViewScreen = ({schema}) => {
 
           {/* main content */}
           <div className="flex gap-10 text-gray-500">
-            <button 
+            <button
               onClick={() => {
-                 setActiveTab("summary")
+                setActiveTab("summary");
               }}
               className={`cursor-pointer pb-2 ${
                 activeTab === "summary"
                   ? "text-[#8d77ba] border-b-2 font-medium border-[#8d77ba]"
                   : "text-gray-500"
               }`}
-              >
+            >
               Summary
             </button>
-            <button 
+            <button
               onClick={() => {
-                setActiveTab("access")
+                setActiveTab("access");
               }}
               className={`cursor-pointer pb-2 ${
                 activeTab === "access"
                   ? "text-[#8d77ba] border-b-2 font-medium border-[#8d77ba]"
                   : "text-gray-500"
-              }`}>
-                Access
+              }`}
+            >
+              Access
             </button>
-            <button 
+            <button
               onClick={() => {
-                setActiveTab("business")
+                setActiveTab("business");
               }}
               className={`cursor-pointer pb-2 ${
                 activeTab === "business"
                   ? "text-[#8d77ba] border-b-2 font-medium border-[#8d77ba]"
                   : "text-gray-500"
-              }`}>
-                Business
+              }`}
+            >
+              Business
             </button>
-            <button 
-              onClick={() => {
-                setActiveTab("description")
-              }}
-              className={`cursor-pointer pb-2 ${
-                activeTab === "description"
-                  ? "text-[#8d77ba] border-b-2 font-medium border-[#8d77ba]"
-                  : "text-gray-500"
-              }`}>
-                Description</button>
           </div>
 
           {activeTab === "summary" && (
             <>
-            <div className="text-gray-500 pt-5 font-light border-gray-300 border-t">
-              Lorem ipsum dolor sit amet consectetur, adipisicing elit. 
-              Autem quae repellendus nihil eveniet numquam quasi ex id, recusandae voluptatum aliquid blanditiis pariatur eos quam enim quidem laborum! 
-              Possimus adipisci rerum fuga reiciendis? Nihil, suscipit delectus at voluptatibus fuga, possimus accusamus asperiores nisi laudantium explicabo quasi. Aspernatur praesentium pariatur ad hic sunt consequatur dolorem consectetur, atque error nam impedit nobis deleniti amet autem vel itaque minima iste tenetur dolore alias tempore. 
-              Necessitatibus distinctio error doloribus ipsam ex commodi eos eaque animi nemo consequuntur, velit cumque, enim facilis maxime non suscipit ipsa. Reprehenderit mollitia quae, eveniet est ullam commodi rem repudiandae nulla?
-            </div>
-
-            <div className="pt-12">
-              <div className="flex items-center gap-x-2">
-                <span className="text-[#8d77ba]"><CalendarCheck /></span>
-                <span className="font-medium">Compliance</span>
+              <div className="text-gray-500 pt-5 font-light border-t border-gray-300 relative group">
+                {!isEditing ? (
+                  <>
+                    <p className="whitespace-pre-line">{summaryText}</p>
+                    {isUserAuthorized && (
+                      <button
+                        className="absolute top-3 right-3 pt-2 hover:text-gray-600 text-[#8d77ba]"
+                        onClick={() => setIsEditing(true)}
+                      >
+                        <Pencil size={18} />
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <textarea
+                      className="w-full p-3 border border-gray-300 rounded-md text-sm text-gray-700"
+                      rows={6}
+                      value={summaryText}
+                      onChange={(e) => setSummaryText(e.target.value)}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        className="px-4 py-1 bg-[#8d77ba] text-white rounded hover:bg-[#7a66a8] text-sm"
+                        onClick={() => setIsEditing(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="px-4 py-1 bg-[#8d77ba] text-white rounded hover:bg-[#7a66a8] text-sm"
+                        onClick={() => setIsEditing(false)}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="flex gap-3 pt-4 text-sm">
-                <span className="bg-purple-100 text-[#8d77ba] border border-[#8d77ba] p-1 w-20 text-center rounded-2xl">GDPR</span>
-                <span className="bg-purple-100 text-[#8d77ba] border border-[#8d77ba] p-1 w-20 text-center rounded-2xl">DPDP</span>
-                <span className="bg-purple-100 text-[#8d77ba] border border-[#8d77ba] p-1 w-20 text-center rounded-2xl">PCI DSS</span>
+              <div className="pt-12">
+                <div className="flex items-center gap-x-2">
+                  <span className="text-[#8d77ba]">
+                    <CalendarCheck />
+                  </span>
+                  <span className="font-medium">Compliance</span>
+                </div>
+
+                {loadingComplianceApi ? (
+                  <div className="pt-4 text-gray-500 text-sm">
+                    Loading Compliance tags...
+                  </div>
+                ) : (
+                  <div className="flex gap-3 pt-4 text-sm">
+                    {!complianceResponse?.sub_tags || complianceResponse.sub_tags.length === 0 ? (
+                      <span className="bg-[#8d77ba] text-white border border-[#8d77ba] p-1 w-20 text-center rounded-2xl">
+                        NA
+                      </span>
+                    ) : (
+                      complianceResponse.sub_tags.map((res, idx) => (
+                        <span key={idx} className="bg-[#8d77ba] text-white border border-[#8d77ba] p-1 w-20 text-center rounded-2xl">
+                          {res.name}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                )}
+
               </div>
-            </div>
             </>
           )}
 
           {activeTab === "access" && (
-            <div className="text-gray-500 pt-5 font-light border-gray-300 border-t">
-              Lorem ipsum dolor sit amet consectetur, adipisicing elit. 
-              Autem quae repellendus nihil eveniet numquam quasi ex id, recusandae voluptatum aliquid blanditiis pariatur eos quam enim quidem laborum! 
-              Possimus adipisci rerum fuga reiciendis? Nihil, suscipit delectus at voluptatibus fuga, possimus accusamus asperiores nisi laudantium explicabo quasi. Aspernatur praesentium pariatur ad hic sunt consequatur dolorem consectetur, atque error nam impedit nobis deleniti amet autem vel itaque minima iste tenetur dolore alias tempore. 
-              Necessitatibus distinctio error doloribus ipsam ex commodi eos eaque animi nemo consequuntur, velit cumque, enim facilis maxime non suscipit ipsa. Reprehenderit mollitia quae, eveniet est ullam commodi rem repudiandae nulla?
-            </div>
+            loadingAccessData ? 
+              <div className="pt-7 text-center text-sm text-gray-500 border-t">
+                Loading access api...
+              </div> :
+            <div className="overflow-x-auto mt-2 rounded-lg shadow border border-t">
+              <table className="min-w-full">
+                  <thead className="bg-gray-50">
+                      <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Count</th>
+                      </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                      {accessData.map((item) => (
+                          <React.Fragment key={`${item.type}-${item.name}`}>
+                              <tr className="hover:bg-gray-50">
+                                  <td className="px-6 py-4">
+                                      <button onClick={() => toggleRow(item.name)} className="text-gray-500 hover:text-[#8d77ba] transition-colors">
+                                          {expandedRows[item.name] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                      </button>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.type}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.name}</td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.users.length}</td>
+                              </tr>
+                              {expandedRows[item.name] && (
+                                  <tr>
+                                      <td colSpan="4" className="px-6 py-4 bg-purple-50/50">
+                                          <div className="flex items-center flex-wrap gap-2">
+                                              <h4 className="font-semibold text-gray-700 text-sm">Users:</h4>
+                                              {item.users.length > 0 ? (
+                                                  item.users.map(user => (
+                                                      <span key={user} className="bg-purple-100 text-[#8d77ba] text-xs font-semibold px-2.5 py-1 rounded-full">
+                                                          {user}
+                                                      </span>
+                                                  ))
+                                              ) : (
+                                                  <span className="text-gray-500 italic text-sm">
+                                                      No users found in this {item.type.toLowerCase()}.
+                                                  </span>
+                                              )}
+                                          </div>
+                                      </td>
+                                  </tr>
+                              )}
+                          </React.Fragment>
+                      ))}
+                  </tbody>
+              </table>
+          </div>
           )}
 
           {activeTab === "business" && (
             <>
-            <div className="text-gray-500 pt-5 font-light border-b pb-6 border-t">
-              Lorem ipsum dolor sit amet consectetur, adipisicing elit. 
-              Autem quae repellendus nihil eveniet numquam quasi ex id, 
-            </div>
-
-            <div className="flex gap-6 items-center pt-4">
-              <div className="flex gap-1">
-                <button 
-                  onClick={() => setActiveTabBusiness("composite-view")}
-                  className="text-[#8d77ba] pb-2"><TableOfContents size={20}/></button>
-                <button
-                  className={`pb-2 ${activeTabBusiness === "composite-view" ? `text-[#8d77ba] border-b-2 border-[#8d77ba] font-semibold` : `text-gray-500`}`}
-                  onClick={() => setActiveTabBusiness("composite-view")}>
+              <div className="flex gap-6 items-center pt-4 border-t">
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setActiveTabBusiness("composite-view")}
+                    className="text-[#8d77ba] pb-2"
+                  >
+                    <TableOfContents size={20} />
+                  </button>
+                  <button
+                    className={`pb-2 ${
+                      activeTabBusiness === "composite-view"
+                        ? `text-[#8d77ba] border-b-2 border-[#8d77ba] font-semibold`
+                        : `text-gray-500`
+                    }`}
+                    onClick={() => setActiveTabBusiness("composite-view")}
+                  >
                     Composite view
-                </button>
-              </div>
-              <div className="flex gap-1 pb-3 pt-4">
-                <button 
-                  onClick={() => setActiveTabBusiness("schema-details")}
-                  className="text-[#8d77ba] pb-2"><Layers size={20}/></button>
-                <button
-                   className={`pb-2 ${activeTabBusiness === "schema-details" ? `text-[#8d77ba] border-b-2 border-[#8d77ba] font-semibold` : `text-gray-500`}`}
-                  onClick={() => setActiveTabBusiness("schema-details")}>
+                  </button>
+                </div>
+                <div className="flex gap-1 pb-3 pt-4">
+                  <button
+                    onClick={() => setActiveTabBusiness("schema-details")}
+                    className="text-[#8d77ba] pb-2"
+                  >
+                    <Layers size={20} />
+                  </button>
+                  <button
+                    className={`pb-2 ${
+                      activeTabBusiness === "schema-details"
+                        ? `text-[#8d77ba] border-b-2 border-[#8d77ba] font-semibold`
+                        : `text-gray-500`
+                    }`}
+                    onClick={() => setActiveTabBusiness("schema-details")}
+                  >
                     Schema details
-                </button>
-              </div>
-            </div>
-
-            {activeTabBusiness === "composite-view" && (
-              <div className="flex-col">
-
-                <div className="flex">
-                  <div className="w-[50%]">
-                    <div className="mt-3">Domain</div>
-                    <div className="mt-3 text-gray-500">
-                      <span className="mr-3 p-2 rounded-lg bg-gray-50">Financial</span>
-                      <span className="p-2 rounded-lg bg-gray-50">Healthcare</span>
-                    </div>
-                  </div>
-                  <div className="w-[50%]">
-                    <div className="mt-3">Terms</div>
-                    <div className="mt-3 text-gray-500">
-                      <span className="mr-3 p-2 rounded-lg bg-gray-50">Beneficiary</span>
-                      <span className="p-2 rounded-lg bg-gray-50">Blockchain</span>
-                    </div>
-                  </div>
+                  </button>
                 </div>
-
-                <div className="flex mt-5">
-                  <div className="w-[50%]">
-                    <div className="mt-3">Categroy</div>
-                    <div className="mt-3 text-gray-500">
-                      <span className="mr-3 p-2 rounded-lg bg-gray-50">Banking</span>
-                      <span className="mr-3 p-2 rounded-lg bg-gray-50">Insurance</span>
-                    </div>
-                  </div>
-                  <div className="w-[50%]">
-                    <div className="mt-3">Sub-category</div>
-                    <div className="mt-3 text-gray-500">
-                      <span className="mr-3 p-2 rounded-lg bg-gray-50">Retail banking</span>
-                      <span className="p-2 rounded-lg bg-gray-50">Life insurance</span>
-                    </div>
-                  </div>
-                </div>
-
-                 <div className="flex mt-5">
-                  <div className="w-[50%]">
-                    <div className="mt-3">Tags</div>
-                    <div className="mt-3 text-gray-500">
-                      <span className="mr-3 p-2 rounded-lg bg-gray-50">Sensitivity</span>
-                      <span className="p-2 rounded-lg bg-gray-50">Compliance and regulatory</span>
-                    </div>
-                  </div>
-                  <div className="w-[50%]">
-                    <div className="mt-3">Sub-tags</div>
-                    <div className="mt-3 text-gray-500">
-                      <span className="mr-3 p-2 rounded-lg bg-gray-50">PII</span>
-                      <span className="mr-3 p-2 rounded-lg bg-gray-50">GDPR</span>
-                      <span className="mr-3 p-2 rounded-lg bg-gray-50">CCPA</span>
-                      <span className="mr-3 p-2 rounded-lg bg-gray-50">KYC</span>
-                    </div>
-                  </div>
-                </div>
-
               </div>
-            )}
 
-            {activeTabBusiness === "schema-details" && (
-              <div className="bg-white rounded-lg shadow overflow-hidden mt-5 text-sm">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-[#29304a] text-white">
-                      <th className="text-left p-4">ID</th>
-                      <th className="text-left p-4">Schema</th>
-                      <th className="text-left p-4">Domain</th>
-                      <th className="text-left p-4">Category</th>
-                      <th className="text-left p-4">Sub-category</th>
-                      <th className="text-left p-4">Term</th>
-                      <th className="text-left p-4">Tag</th>
-                      <th className="text-left p-4">Sub-tag</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b">
-                      <td className="p-4">#01</td>
-                      <td className="p-4">Schema</td>
-                      <td className="p-4">Domain</td>
-                      <td className="p-4">Category</td>
-                      <td className="p-4">Sub-category</td>
-                      <td className="p-4">Term</td>
-                      <td className="p-4">Tag</td>
-                      <td className="p-4">Sub-tag</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="p-4">#01</td>
-                      <td className="p-4">Schema</td>
-                      <td className="p-4">Domain</td>
-                      <td className="p-4">Category</td>
-                      <td className="p-4">Sub-category</td>
-                      <td className="p-4">Term</td>
-                      <td className="p-4">Tag</td>
-                      <td className="p-4">Sub-tag</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
+              {activeTabBusiness === "composite-view" &&
+                (loadingBusinessTab ? (
+                  <div className="text-sm text-center text-gray-500 p-3">
+                    Loading business information...
+                  </div>
+                ) : (
+                  <CompositeViewComponent
+                    tableData={businessTabResponse}
+                    componentInfo={schema}
+                    activeTabBusiness={activeTabBusiness}
+                  />
+                ))}
+
+              {activeTabBusiness === "schema-details" &&
+                (loadingBusinessTab ? (
+                  <div className="text-sm text-center text-gray-500 p-3">
+                    Loading business information...
+                  </div>
+                ) : (
+                  <SchemaDetailsViewComponent
+                    tableData={businessTabResponse}
+                    componentInfo={schema}
+                    activeTabBusiness={activeTabBusiness}
+                  />
+                ))}
             </>
           )}
-
-          {activeTab === "description" && (
-            <div className="text-gray-500 pt-5 font-light border-b pb-6 border-t">
-              Schema description
-            </div>
-          )}
-
-         </div>
+        </div>
 
         {/* Snapshot div */}
         <div className="bg-white w-[30%] p-5 text-sm">
-
           <div className="flex items-center gap-2">
-            <span className="text-[#8d77ba]"><Lightbulb /></span>
+            <span className="text-[#8d77ba]">
+              <Lightbulb />
+            </span>
             <h3 className="font-normal text-lg">Snapshot</h3>
           </div>
 
@@ -294,10 +480,14 @@ const SchemaViewScreen = ({schema}) => {
 
           <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
             <div className="text-gray-500">Created on</div>
-            <div className="font-normal">{schema?.CreatedDate.replace(/\//g, '-')}</div>
+            <div className="font-normal">
+              {schema?.CreatedDate.replace(/\//g, "-")}
+            </div>
 
             <div className="text-gray-500">Last updated</div>
-            <div className="font-normal">{schema?.lastUpdated.replace(/\//g, '-')}</div>
+            <div className="font-normal">
+              {schema?.lastUpdated.replace(/\//g, "-")}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
@@ -310,7 +500,7 @@ const SchemaViewScreen = ({schema}) => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export default SchemaViewScreen;

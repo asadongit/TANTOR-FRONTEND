@@ -8,8 +8,8 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
         className={`px-4 py-2 text-md font-medium border-b-2 ${activeTab === label
-                ? 'border-[#8d77ba] text-[#8d77ba]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-[#8d77ba] text-[#8d77ba]'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
     >
         {label}
@@ -17,7 +17,7 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
 );
 
 const InfoPill = ({ label }) => (
-    <span className="bg-[#8e78b7] text-white text-xs font-medium me-2 px-2.5 py-1 rounded-full">
+    <span className="bg-[#8e78b7] text-white text-xs font-medium me-2 px-3 py-2 rounded-full">
         {label}
     </span>
 );
@@ -34,7 +34,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
                 Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
             </span>
             <div className="flex items-center">
-                 <button
+                <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                     className="px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -58,7 +58,7 @@ function TableDetailsPage() {
     const location = useLocation();
     const { tableName } = useParams();
     const { tableData, columns } = location.state || {};
-    const { token, decodedToken } = useAuth(); 
+    const { token, decodedToken } = useAuth();
 
     const [activeTab, setActiveTab] = useState('Summary');
     const [complianceTags, setComplianceTags] = useState([]);
@@ -522,7 +522,9 @@ function TableDetailsPage() {
                                                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Name</th>
                                                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Description</th>
                                                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Classification</th>
-                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Action</th>
+                                                        {isUserAuthorized && (
+                                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Action</th>
+                                                        )}
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -532,15 +534,17 @@ function TableDetailsPage() {
                                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{col.column_name}</td>
                                                             <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-xs">Column Description</td>
                                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Classification</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                                                                <button className="text-gray-400 hover:text-gray-600"><Pencil size={16} /></button>
-                                                            </td>
+                                                            {isUserAuthorized && (
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                                                                    <button className="text-gray-400 hover:text-gray-600"><Pencil size={16} /></button>
+                                                                </td>
+                                                            )}
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <Pagination 
+                                        <Pagination
                                             currentPage={summaryColumnsCurrentPage}
                                             totalPages={totalSummaryColumnPages}
                                             onPageChange={handleSummaryColumnPageChange}
@@ -561,8 +565,8 @@ function TableDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Composite view')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Composite view'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <Layers className="h-4 w-4" />
@@ -571,8 +575,8 @@ function TableDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Table Detail View')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Table Detail View'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <TableOfContents className="h-4 w-4" />
@@ -758,7 +762,7 @@ function TableDetailsPage() {
                 </div>
 
                 <div className="w-full xl:w-80 flex-shrink-0 space-y-6">
-                    <div className="bg-white p-5 rounded-lg shadow-sm">
+                    {/* <div className="bg-white p-5 rounded-lg shadow-sm">
                         <div className="flex items-center justify-between">
                             <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Lightbulb className="h-5 w-5 text-purple-400" />  Snapshot</h2>
                         </div>
@@ -769,6 +773,42 @@ function TableDetailsPage() {
                             <div className="flex justify-between"><span className="text-gray-500">Last updated</span> <span className="font-medium text-gray-800">{tableData.lastUpdated}</span></div>
                             <div className="flex justify-between"><span className="text-gray-500">Owner</span> <span className="font-medium text-gray-800">{tableData.owner}</span></div>
                             <div className="flex justify-between"><span className="text-gray-500">Steward</span> <span className="font-medium text-gray-800">{tableData.steward || 'Admin'}</span></div>
+                        </div>
+                    </div> */}
+                    <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[#8d77ba]">
+                                <Lightbulb />
+                            </span>
+                            <h3 className="font-normal text-lg">Snapshot</h3>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                            <div className="text-gray-500">Type</div>
+                            <div className="font-normal">Table</div>
+
+                            <div className="text-gray-500">Data source</div>
+                            <div className="font-normal">{tableData?.database}</div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                            <div className="text-gray-500">Created on</div>
+                            <div className="font-normal">
+                                {tableData?.CreatedDate}
+                            </div>
+
+                            <div className="text-gray-500">Last updated</div>
+                            <div className="font-normal">
+                                {tableData?.lastUpdated}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                            <div className="text-gray-500">Owner</div>
+                            <div className="font-normal">{tableData?.owner}</div>
+
+                            <div className="text-gray-500">Steward</div>
+                            <div className="font-normal">{tableData?.steward || 'Admin'}</div>
                         </div>
                     </div>
                 </div>
