@@ -1062,11 +1062,11 @@ export const TargetNode = ({ id, data }) => {
     }
   }, [data.preProcedures, data.postProcedures, dispatch, ACTION_TYPES, id, alias]);
 
+  // FIX: Only update enableCountLogging if value is different and not restoring
   useEffect(() => {
     // Expose the setter function to allow external updates
     data.setEnableCountLogging = setEnableCountLogging;
 
-    // Only update enableCountLogging if not already in sync and not restoring
     if (
       typeof data.enableCountLogging === 'boolean' &&
       enableCountLogging !== data.enableCountLogging &&
