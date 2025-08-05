@@ -426,10 +426,12 @@ const BusinessCatalogue = () => {
                     <button onClick={fetchCatalogueData} disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">
                         <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
                     </button>
+                    {isUserAuthorized && (
                     <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a67a0] transition-colors shadow-sm">
                         <Plus className="h-5 w-5" />
                         <span>Add</span>
                     </button>
+                    )}
                 </div>
             </div>
 
