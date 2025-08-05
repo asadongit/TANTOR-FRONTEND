@@ -18,13 +18,10 @@ const components = [
 ];
 
 export const TransformationSidebar = () => {
-  console.log("this works")
+  console.log("hope this works")
   const [expanded, setExpanded] = useState(true);
   const { state, dispatch, ACTION_TYPES } = useTransformation();
 
-  const [globalCountLogging, setGlobalCountLogging] = useState(
-    state.properties?.logging?.isLoggingEnabledForEachDataset || false
-  );
   const [emailLogging, setEmailLogging] = useState(
     state.properties?.email?.isEmailEnabled || false
   );
@@ -38,18 +35,13 @@ export const TransformationSidebar = () => {
     window.triggerSidebarUpdate = () => {
       setForceUpdate((prev) => prev + 1);
     };
-
     return () => {
       delete window.triggerSidebarUpdate;
     };
   }, []);
 
   useEffect(() => {
-    if (state.properties?.logging?.isLoggingEnabledForEachDataset !== undefined) {
-      if (globalCountLogging !== state.properties.logging.isLoggingEnabledForEachDataset) {
-        setGlobalCountLogging(state.properties.logging.isLoggingEnabledForEachDataset);
-      }
-    }
+
     if (state.properties?.email?.isEmailEnabled !== undefined) {
       if (emailLogging !== state.properties.email.isEmailEnabled) {
         setEmailLogging(state.properties.email.isEmailEnabled);
@@ -74,7 +66,6 @@ export const TransformationSidebar = () => {
     );
 
     if (allSourceAndTargetNodes.length === 0) {
-      if (globalCountLogging !== false) setGlobalCountLogging(false);
       return;
     }
 
@@ -86,12 +77,6 @@ export const TransformationSidebar = () => {
       (node) => node.data && node.data.enableCountLogging === true
     );
 
-    // Only update sidebar state if not already in sync
-    if (globalCountLogging !== allNodesWithLoggingEnabled) {
-      setGlobalCountLogging(allNodesWithLoggingEnabled);
-    }
-
-    // Only dispatch if not already in sync
     if (
       state.properties?.logging?.isLoggingEnabledForEachDataset !== allNodesWithLoggingEnabled ||
       state.properties?.logging?.hasMixedNodeSettings !== (anyNodeWithLoggingEnabled && !allNodesWithLoggingEnabled)
@@ -113,7 +98,7 @@ export const TransformationSidebar = () => {
     forceUpdate,
     dispatch,
     ACTION_TYPES,
-    globalCountLogging,
+    // REMOVE globalCountLogging from dependencies
     state.properties?.logging?.isLoggingEnabledForEachDataset,
     state.properties?.logging?.hasMixedNodeSettings
   ]);
@@ -131,10 +116,10 @@ export const TransformationSidebar = () => {
     setExpanded(!expanded);
   };
 
+  // Use only the global state for checked value
   const handleGlobalCountLoggingToggle = () => {
-    const newValue = !globalCountLogging;
-    setGlobalCountLogging(newValue);
-
+    const newValue = !state.properties?.logging?.isLoggingEnabledForEachDataset;
+    // No setGlobalCountLogging here
     dispatch({
       type: ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES,
       payload: {
@@ -150,19 +135,15 @@ export const TransformationSidebar = () => {
       const sourceAndTargetNodes = window.allNodes.filter(
         (node) => node.type === "source" || node.type === "target"
       );
-
       sourceAndTargetNodes.forEach((node) => {
         if (node.data) {
           node.data.enableCountLogging = newValue;
-
           if (typeof node.data.onDataChange === "function") {
             node.data.onDataChange({ enableCountLogging: newValue });
           }
-
           if (typeof node.data.setEnableCountLogging === "function") {
             node.data.setEnableCountLogging(newValue);
           }
-
           if (node.type === "source") {
             dispatch({
               type: ACTION_TYPES.UPDATE_SOURCE,
@@ -182,9 +163,7 @@ export const TransformationSidebar = () => {
           }
         }
       });
-
       window.allNodesLastUpdate = Date.now();
-
       if (typeof window.updateReactFlowInstance === "function") {
         window.updateReactFlowInstance();
       }
@@ -290,7 +269,7 @@ export const TransformationSidebar = () => {
                 </div>
                 <input
                   type="checkbox"
-                  checked={globalCountLogging}
+                  checked={state.properties?.logging?.isLoggingEnabledForEachDataset || false}
                   onChange={handleGlobalCountLoggingToggle}
                   className="form-checkbox h-5 w-5 text-[#8E77BB] border-gray-300 rounded focus:ring-2 focus:ring-[#8E77BB]"
                 />
