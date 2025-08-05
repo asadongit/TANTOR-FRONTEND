@@ -18,7 +18,7 @@ const components = [
 ];
 
 export const TransformationSidebar = () => {
-  console.log("abcd")
+  console.log("this works")
   const [expanded, setExpanded] = useState(true);
   const { state, dispatch, ACTION_TYPES } = useTransformation();
 
@@ -46,10 +46,14 @@ export const TransformationSidebar = () => {
 
   useEffect(() => {
     if (state.properties?.logging?.isLoggingEnabledForEachDataset !== undefined) {
-      setGlobalCountLogging(state.properties.logging.isLoggingEnabledForEachDataset);
+      if (globalCountLogging !== state.properties.logging.isLoggingEnabledForEachDataset) {
+        setGlobalCountLogging(state.properties.logging.isLoggingEnabledForEachDataset);
+      }
     }
     if (state.properties?.email?.isEmailEnabled !== undefined) {
-      setEmailLogging(state.properties.email.isEmailEnabled);
+      if (emailLogging !== state.properties.email.isEmailEnabled) {
+        setEmailLogging(state.properties.email.isEmailEnabled);
+      }
     }
   }, [
     state.properties?.logging?.isLoggingEnabledForEachDataset,
@@ -70,7 +74,7 @@ export const TransformationSidebar = () => {
     );
 
     if (allSourceAndTargetNodes.length === 0) {
-      setGlobalCountLogging(false);
+      if (globalCountLogging !== false) setGlobalCountLogging(false);
       return;
     }
 
@@ -109,7 +113,7 @@ export const TransformationSidebar = () => {
     forceUpdate,
     dispatch,
     ACTION_TYPES,
-    globalCountLogging, // add as dependency
+    globalCountLogging,
     state.properties?.logging?.isLoggingEnabledForEachDataset,
     state.properties?.logging?.hasMixedNodeSettings
   ]);

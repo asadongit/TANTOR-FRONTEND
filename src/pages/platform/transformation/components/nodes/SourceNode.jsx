@@ -846,7 +846,6 @@ export const SourceNode = ({ id, data }) => {
     data.alias,
     data.objectType,
     data.enableCountLogging // Keep this dependency for proper restoration
-    // Removed: schemas.length, tables.length, procedures.length, selectedConnection.name, etc.
   ]);
 
   // Additional useEffect to handle columns setup when tables are loaded and we have restored data
