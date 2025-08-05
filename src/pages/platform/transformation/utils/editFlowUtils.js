@@ -184,22 +184,24 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
         });
       }
 
-      // FIXED: Get the most current enableCountLogging value from multiple sources
+      // FIXED: Get the most current enableCountLogging value with proper fallback
       let currentEnableCountLogging = false;
 
-      if (node.type === 'source') {
-        // For source nodes, check context first, then node data
-        currentEnableCountLogging = contextSources[node.id]?.enableCountLogging ??
-                                   node.data.enableCountLogging ??
-                                   false;
-      } else if (node.type === 'target') {
-        // For target nodes, check context first, then node data
-        currentEnableCountLogging = contextTargets[node.id]?.enableCountLogging ??
-                                   node.data.enableCountLogging ??
-                                   false;
-      } else {
-        // For other node types, use node data
-        currentEnableCountLogging = node.data.enableCountLogging ?? false;
+      try {
+        if (node.type === 'source') {
+          currentEnableCountLogging = contextSources[node.id]?.enableCountLogging ??
+                                     node.data.enableCountLogging ??
+                                     false;
+        } else if (node.type === 'target') {
+          currentEnableCountLogging = contextTargets[node.id]?.enableCountLogging ??
+                                     node.data.enableCountLogging ??
+                                     false;
+        } else {
+          currentEnableCountLogging = node.data.enableCountLogging ?? false;
+        }
+      } catch (error) {
+        console.warn(`Error getting enableCountLogging for node ${node.id}:`, error);
+        currentEnableCountLogging = false;
       }
 
       const nodeData = {
@@ -207,7 +209,8 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
         preProcedures: finalPreProcedures,
         postProcedures: finalPostProcedures,
         // Use the most current enableCountLogging value
-        enableCountLogging: currentEnableCountLogging
+        enableCountLogging: currentEnableCountLogging,
+        _restorationTimestamp: Date.now() // Add timestamp for restoration tracking
       };
 
       let finalSelectedSourceId = node.data.selectedSourceId;
@@ -311,15 +314,29 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
       transformationStudioVersion: "1.0",
       restorationSupport: "enhanced"
     },
-    // FIXED: Include the most current global properties for restoration
+    // FIXED: Include the most current global properties with validation
     properties: {
       ...globalProperties,
-      // Ensure we have the current sidebar state
       logging: {
         ...globalProperties.logging,
-        // Double-check the current state by examining actual nodes
-        isLoggingEnabledForEachDataset: nodes.filter(n => n.type === 'source' || n.type === 'target')
-          .every(n => n.data?.enableCountLogging === true)
+        isLoggingEnabledForEachDataset: (() => {
+          try {
+            const sourceAndTargetNodes = nodes.filter(n => n.type === 'source' || n.type === 'target');
+            if (sourceAndTargetNodes.length === 0) return false;
+
+            return sourceAndTargetNodes.every(n => {
+              if (n.type === 'source') {
+                return contextSources[n.id]?.enableCountLogging ?? n.data?.enableCountLogging ?? false;
+              } else if (n.type === 'target') {
+                return contextTargets[n.id]?.enableCountLogging ?? n.data?.enableCountLogging ?? false;
+              }
+              return false;
+            });
+          } catch (error) {
+            console.warn('Error calculating global logging state:', error);
+            return globalProperties.logging?.isLoggingEnabledForEachDataset || false;
+          }
+        })()
       }
     }
   };
@@ -458,15 +475,25 @@ export const restoreNodesAndEdgesFromEditData = (editFlowData, setNodes, setEdge
       ...node,
       data: {
         ...node.data,
-
         onDataChange: (newData) => {
-          // console.log('Fast onDataChange called during restoration:', newData);
+          // Prevent infinite loops during restoration
+          if (node.data._isRestoring) return;
+          // console.log('Controlled onDataChange called:', newData);
         },
         _isRestoring: true,
+        _restorationStart: Date.now(),
         transformations: node.data.transformations || [],
         transformationConfig: node.data.transformationConfig || { operations: [] }
       }
     };
+
+    // Clear restoration flag after a delay
+    setTimeout(() => {
+      if (restoredNode.data) {
+        restoredNode.data._isRestoring = false;
+        delete restoredNode.data._restorationStart;
+      }
+    }, 1000);
 
     return restoredNode;
   });

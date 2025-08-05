@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Database,
   FileSpreadsheet,
@@ -10,6 +10,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useTransformation } from "./TransformationContext";
+import { debounceCountLogging } from '../utils/debounce';
 
 const components = [
   { id: "source", name: "Source", icon: Database },
@@ -21,13 +22,10 @@ export const TransformationSidebar = () => {
   const [expanded, setExpanded] = useState(true);
   const { state, dispatch, ACTION_TYPES } = useTransformation();
 
-  const [globalCountLogging, setGlobalCountLogging] = useState(
-    state.properties?.logging?.isLoggingEnabledForEachDataset || false
-  );
-  const [emailLogging, setEmailLogging] = useState(
-    state.properties?.email?.isEmailEnabled || false
-  );
+  const [globalCountLogging, setGlobalCountLogging] = useState(false);
+  const [emailLogging, setEmailLogging] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
+  const [isUpdatingGlobal, setIsUpdatingGlobal] = useState(false);
 
   const transformationExists =
     Array.isArray(window.allNodes) &&
@@ -43,55 +41,137 @@ export const TransformationSidebar = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (state.properties?.logging?.isLoggingEnabledForEachDataset !== undefined) {
-      setGlobalCountLogging(state.properties.logging.isLoggingEnabledForEachDataset);
-    }
-    if (state.properties?.email?.isEmailEnabled !== undefined) {
-      setEmailLogging(state.properties.email.isEmailEnabled);
-    }
-  }, [
-    state.properties?.logging?.isLoggingEnabledForEachDataset,
-    state.properties?.email?.isEmailEnabled
-  ]);
+  // FIXED: Debounced function for global count logging updates
+  const debouncedGlobalUpdate = useMemo(() => {
+    return debounceCountLogging((newValue) => {
+      if (isUpdatingGlobal) return;
 
-  useEffect(() => {
-    if (!window.allNodes) return;
-
-    const allSourceAndTargetNodes = window.allNodes.filter(
-      (node) => node.type === "source" || node.type === "target"
-    );
-
-    if (allSourceAndTargetNodes.length === 0) {
-      setGlobalCountLogging(false);
-      return;
-    }
-
-    const allNodesWithLoggingEnabled = allSourceAndTargetNodes.every(
-      (node) => node.data && node.data.enableCountLogging === true
-    );
-
-    const anyNodeWithLoggingEnabled = allSourceAndTargetNodes.some(
-      (node) => node.data && node.data.enableCountLogging === true
-    );
-
-    const isRestoringNodes = allSourceAndTargetNodes.some(
-      (node) => node.data && node.data._isRestoring
-    );
-
-    if (!isRestoringNodes) {
-      setGlobalCountLogging(allNodesWithLoggingEnabled);
+      setIsUpdatingGlobal(true);
 
       dispatch({
         type: ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES,
         payload: {
           logging: {
             isLoggingEnabled: true,
-            isLoggingEnabledForEachDataset: allNodesWithLoggingEnabled,
-            hasMixedNodeSettings: anyNodeWithLoggingEnabled && !allNodesWithLoggingEnabled,
+            isLoggingEnabledForEachDataset: newValue,
+            hasMixedNodeSettings: false,
           },
         },
       });
+
+      if (window.allNodes) {
+        const sourceAndTargetNodes = window.allNodes.filter(
+          (node) => node.type === "source" || node.type === "target"
+        );
+
+        sourceAndTargetNodes.forEach((node) => {
+          if (node.data) {
+            node.data.enableCountLogging = newValue;
+
+            if (typeof node.data.onDataChange === "function") {
+              node.data.onDataChange({ enableCountLogging: newValue });
+            }
+
+            if (typeof node.data.setEnableCountLogging === "function") {
+              node.data.setEnableCountLogging(newValue);
+            }
+
+            if (node.type === "source") {
+              dispatch({
+                type: ACTION_TYPES.UPDATE_SOURCE,
+                payload: {
+                  id: node.id,
+                  data: { enableCountLogging: newValue },
+                },
+              });
+            } else if (node.type === "target") {
+              dispatch({
+                type: ACTION_TYPES.UPDATE_TARGET,
+                payload: {
+                  id: node.id,
+                  data: { enableCountLogging: newValue },
+                },
+              });
+            }
+          }
+        });
+
+        window.allNodesLastUpdate = Date.now();
+
+        if (typeof window.updateReactFlowInstance === "function") {
+          window.updateReactFlowInstance();
+        }
+      }
+
+      setTimeout(() => setIsUpdatingGlobal(false), 100);
+    }, 150);
+  }, [dispatch, ACTION_TYPES, isUpdatingGlobal]);
+
+  // FIXED: Improved initialization from state with proper error handling
+  useEffect(() => {
+    try {
+      const loggingState = state.properties?.logging?.isLoggingEnabledForEachDataset;
+      const emailState = state.properties?.email?.isEmailEnabled;
+
+      if (typeof loggingState === 'boolean' && loggingState !== globalCountLogging) {
+        setGlobalCountLogging(loggingState);
+      }
+
+      if (typeof emailState === 'boolean' && emailState !== emailLogging) {
+        setEmailLogging(emailState);
+      }
+    } catch (error) {
+      console.warn('Error syncing sidebar state:', error);
+    }
+  }, [
+    state.properties?.logging?.isLoggingEnabledForEachDataset,
+    state.properties?.email?.isEmailEnabled
+  ]);
+
+  // FIXED: Improved node synchronization with debouncing
+  useEffect(() => {
+    if (!window.allNodes || isUpdatingGlobal) return;
+
+    try {
+      const allSourceAndTargetNodes = window.allNodes.filter(
+        (node) => node.type === "source" || node.type === "target"
+      );
+
+      if (allSourceAndTargetNodes.length === 0) {
+        if (globalCountLogging !== false) {
+          setGlobalCountLogging(false);
+        }
+        return;
+      }
+
+      const allNodesWithLoggingEnabled = allSourceAndTargetNodes.every(
+        (node) => node.data && node.data.enableCountLogging === true
+      );
+
+      const anyNodeWithLoggingEnabled = allSourceAndTargetNodes.some(
+        (node) => node.data && node.data.enableCountLogging === true
+      );
+
+      const isRestoringNodes = allSourceAndTargetNodes.some(
+        (node) => node.data && node.data._isRestoring
+      );
+
+      if (!isRestoringNodes && allNodesWithLoggingEnabled !== globalCountLogging) {
+        setGlobalCountLogging(allNodesWithLoggingEnabled);
+
+        dispatch({
+          type: ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES,
+          payload: {
+            logging: {
+              isLoggingEnabled: true,
+              isLoggingEnabledForEachDataset: allNodesWithLoggingEnabled,
+              hasMixedNodeSettings: anyNodeWithLoggingEnabled && !allNodesWithLoggingEnabled,
+            },
+          },
+        });
+      }
+    } catch (error) {
+      console.warn('Error in node synchronization:', error);
     }
   }, [
     window.allNodes?.length,
@@ -99,7 +179,20 @@ export const TransformationSidebar = () => {
     forceUpdate,
     dispatch,
     ACTION_TYPES,
+    globalCountLogging,
+    isUpdatingGlobal
   ]);
+
+  // FIXED: Improved global count logging toggle
+  const handleGlobalCountLoggingToggle = useCallback(() => {
+    if (isUpdatingGlobal) return;
+
+    const newValue = !globalCountLogging;
+    setGlobalCountLogging(newValue);
+
+    // Use debounced function for the actual update
+    debouncedGlobalUpdate(newValue);
+  }, [globalCountLogging, debouncedGlobalUpdate, isUpdatingGlobal]);
 
   const onDragStart = (event, nodeType) => {
     if (nodeType === "transformation" && transformationExists) {
@@ -112,66 +205,6 @@ export const TransformationSidebar = () => {
 
   const handleToggle = () => {
     setExpanded(!expanded);
-  };
-
-  const handleGlobalCountLoggingToggle = () => {
-    const newValue = !globalCountLogging;
-    setGlobalCountLogging(newValue);
-
-    dispatch({
-      type: ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES,
-      payload: {
-        logging: {
-          isLoggingEnabled: true,
-          isLoggingEnabledForEachDataset: newValue,
-          hasMixedNodeSettings: false,
-        },
-      },
-    });
-
-    if (window.allNodes) {
-      const sourceAndTargetNodes = window.allNodes.filter(
-        (node) => node.type === "source" || node.type === "target"
-      );
-
-      sourceAndTargetNodes.forEach((node) => {
-        if (node.data) {
-          node.data.enableCountLogging = newValue;
-
-          if (typeof node.data.onDataChange === "function") {
-            node.data.onDataChange({ enableCountLogging: newValue });
-          }
-
-          if (typeof node.data.setEnableCountLogging === "function") {
-            node.data.setEnableCountLogging(newValue);
-          }
-
-          if (node.type === "source") {
-            dispatch({
-              type: ACTION_TYPES.UPDATE_SOURCE,
-              payload: {
-                id: node.id,
-                data: { enableCountLogging: newValue },
-              },
-            });
-          } else if (node.type === "target") {
-            dispatch({
-              type: ACTION_TYPES.UPDATE_TARGET,
-              payload: {
-                id: node.id,
-                data: { enableCountLogging: newValue },
-              },
-            });
-          }
-        }
-      });
-
-      window.allNodesLastUpdate = Date.now();
-
-      if (typeof window.updateReactFlowInstance === "function") {
-        window.updateReactFlowInstance();
-      }
-    }
   };
 
   const handleEmailLoggingToggle = () => {
@@ -275,6 +308,7 @@ export const TransformationSidebar = () => {
                   type="checkbox"
                   checked={globalCountLogging}
                   onChange={handleGlobalCountLoggingToggle}
+                  disabled={isUpdatingGlobal}
                   className="form-checkbox h-5 w-5 text-[#8E77BB] border-gray-300 rounded focus:ring-2 focus:ring-[#8E77BB]"
                 />
               </label>

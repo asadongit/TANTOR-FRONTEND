@@ -61,6 +61,7 @@ export const SourceNode = ({ id, data }) => {
   const [preProcedureSearch, setPreProcedureSearch] = useState("");
   const [postProcedureSearch, setPostProcedureSearch] = useState("");
   const [enableCountLogging, setEnableCountLogging] = useState(false);
+  const [isUpdatingCheckbox, setIsUpdatingCheckbox] = useState(false);
 
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
@@ -1709,33 +1710,44 @@ export const SourceNode = ({ id, data }) => {
                     type="checkbox"
                     className="mr-1.5 h-3.5 w-3.5"
                     checked={enableCountLogging}
+                    disabled={isUpdatingCheckbox}
                     onChange={(e) => {
                       const newValue = e.target.checked;
+
+                      setIsUpdatingCheckbox(true);
                       setEnableCountLogging(newValue);
 
-                      if (data.onDataChange) {
-                        data.onDataChange({ enableCountLogging: newValue });
-                      }
+                      setTimeout(() => {
+                        try {
+                          if (data.onDataChange) {
+                            data.onDataChange({ enableCountLogging: newValue });
+                          }
 
-                      if (window.allNodes) {
-                        const nodeIndex = window.allNodes.findIndex(n => n.id === id);
-                        if (nodeIndex !== -1) {
-                          window.allNodes[nodeIndex].data.enableCountLogging = newValue;
+                          if (window.allNodes) {
+                            const nodeIndex = window.allNodes.findIndex(n => n.id === id);
+                            if (nodeIndex !== -1) {
+                              window.allNodes[nodeIndex].data.enableCountLogging = newValue;
+                            }
+                          }
+
+                          dispatch({
+                            type: ACTION_TYPES.UPDATE_SOURCE,
+                            payload: {
+                              id: id,
+                              data: { enableCountLogging: newValue }
+                            }
+                          });
+
+                          window.allNodesLastUpdate = Date.now();
+                          if (window.triggerSidebarUpdate) {
+                            window.triggerSidebarUpdate();
+                          }
+                        } catch (error) {
+                          console.warn('Error updating count logging:', error);
+                        } finally {
+                          setTimeout(() => setIsUpdatingCheckbox(false), 100);
                         }
-                      }
-
-                      dispatch({
-                        type: ACTION_TYPES.UPDATE_SOURCE,
-                        payload: {
-                          id: id,
-                          data: { enableCountLogging: newValue }
-                        }
-                      });
-
-                      window.allNodesLastUpdate = Date.now();
-                      if (window.triggerSidebarUpdate) {
-                        window.triggerSidebarUpdate();
-                      }
+                      }, 50);
                     }}
                   />
                   <span>Enable Count Logging</span>
