@@ -506,7 +506,7 @@ const BusinessCatalogue = () => {
                                         <td className="p-3 text-gray-600">{item.createdDate}</td>
                                         <td className="p-3 text-gray-600">{item.updatedDate}</td>
                                         <td className="p-3">{getStatusBadge(item.status)}</td>
-                                        {!isUserAuthorized && (
+                                        {isUserAuthorized && (
                                             <td className="px-6 p-4 text-center whitespace-nowrap">
                                                 <div className="relative">
                                                     <button
