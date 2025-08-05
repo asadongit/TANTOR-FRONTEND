@@ -37,16 +37,11 @@ function Tables() {
         tableMap.set(tableKey, {
           id: `#${item.conn_metadata_id.substring(0, 8)}`,
           name: item.table_name,
-          description: `Table description`, // You might want a real description from your API
+          description: item.table_description || 'Table description',
           schema: item.table_schema,
           database: item.connection_type,
           connection_name: item.connection_name,
           owner: item.created_by || 'System',
-          project: item.project || 'default',
-          is_migrated: item.is_migrated,
-          is_purged: item.is_purged,
-          is_virtualization: item.is_virtualization,
-          cdc_enabled: item.cdc_enabled,
           column: 0,
           CreatedDate: new Date(item.created_at).toLocaleDateString(),
           lastUpdated: new Date(item.updated_at).toLocaleDateString(),

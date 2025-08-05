@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import {
-  CalendarCheck,
   TableOfContents,
   Layers,
   Lightbulb,
   Pencil,
   ChevronUp,
   ChevronDown,
-  Database
+  Database,
+  FileCheck2
 } from "lucide-react";
 import CompositeViewComponent from "../Schema/CompositeViewComponent";
 import SchemaDetailsViewComponent from "./SchemaDetailsViewComponenet";
@@ -307,7 +307,7 @@ const SchemaViewScreen = () => {
               <div className="pt-12">
                 <div className="flex items-center gap-x-2">
                   <span className="text-[#8d77ba]">
-                    <CalendarCheck />
+                    <FileCheck2 />
                   </span>
                   <span className="font-medium">Compliance</span>
                 </div>
