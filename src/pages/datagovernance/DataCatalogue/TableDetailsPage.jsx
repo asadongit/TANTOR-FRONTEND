@@ -3,13 +3,14 @@ import { useLocation, useParams, Link } from 'react-router-dom';
 import { Pencil, Lightbulb, Table, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
+import { toast } from 'react-hot-toast';
 
 const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
         className={`px-4 py-2 text-md font-medium border-b-2 ${activeTab === label
-            ? 'border-[#8d77ba] text-[#8d77ba]'
-            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-[#8d77ba] text-[#8d77ba]'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
     >
         {label}
@@ -37,7 +38,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
                 <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="ml-2 px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     Previous
                 </button>
@@ -351,11 +352,47 @@ function TableDetailsPage() {
     const handleSaveDescription = async () => {
         if (!tableData) {
             console.error("Table data is not available to save description.");
-            alert("An error occurred. Cannot save description.");
             return;
         }
-        setOriginalDescription(description);
-        setIsEditingDescription(false);
+
+        if (description === originalDescription) {
+            setIsEditingDescription(false);
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/edit_table_description`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'accept': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    connection_name: tableData.connection_name,
+                    table_schema: tableData.schema,
+                    table_name: tableData.name,
+                    table_description: description
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({})); 
+                const errorMessage = errorData.detail || `HTTP error! Status: ${response.status}`;
+                toast.error("Failed to edit description!");
+            }
+
+            await response.json();
+            setOriginalDescription(description);
+            setIsEditingDescription(false); 
+            toast.success("Description edited successfully!");
+
+        } catch (error) {
+            console.error("Error saving description:", error);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const toggleRow = (name) => {
@@ -565,8 +602,8 @@ function TableDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Composite view')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Composite view'
-                                            ? 'bg-purple-100 text-[#8d77ba]'
-                                            : 'text-gray-600 hover:bg-gray-100'
+                                                ? 'bg-purple-100 text-[#8d77ba]'
+                                                : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <Layers className="h-4 w-4" />
@@ -575,8 +612,8 @@ function TableDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Table Detail View')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Table Detail View'
-                                            ? 'bg-purple-100 text-[#8d77ba]'
-                                            : 'text-gray-600 hover:bg-gray-100'
+                                                ? 'bg-purple-100 text-[#8d77ba]'
+                                                : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <TableOfContents className="h-4 w-4" />
@@ -762,19 +799,6 @@ function TableDetailsPage() {
                 </div>
 
                 <div className="w-full xl:w-80 flex-shrink-0 space-y-6">
-                    {/* <div className="bg-white p-5 rounded-lg shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Lightbulb className="h-5 w-5 text-purple-400" />  Snapshot</h2>
-                        </div>
-                        <div className="mt-4 space-y-3 text-sm">
-                            <div className="flex justify-between"><span className="text-gray-500">Type</span> <span className="font-medium text-gray-800">Table</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Data source</span> <span className="font-medium text-gray-800">{tableData.database}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Created on</span> <span className="font-medium text-gray-800">{tableData.CreatedDate}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Last updated</span> <span className="font-medium text-gray-800">{tableData.lastUpdated}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Owner</span> <span className="font-medium text-gray-800">{tableData.owner}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Steward</span> <span className="font-medium text-gray-800">{tableData.steward || 'Admin'}</span></div>
-                        </div>
-                    </div> */}
                     <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
                         <div className="flex items-center gap-2">
                             <span className="text-[#8d77ba]">
