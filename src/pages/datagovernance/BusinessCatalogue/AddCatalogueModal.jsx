@@ -179,11 +179,17 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             if (activeTab === 'Term') {
                 setIsTermLoading(true);
                 setError(null);
+                const payload = {
+
+                };
+                if (formData.domain && formData.domain.id !== null) {
+                    payload.domain_id = [formData.domain.id];
+                }
                 try {
                     const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/terms`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-                        body: JSON.stringify({ domain_id: [formData.domain.id] })
+                        body: JSON.stringify(payload)
                     });
                     if (!response.ok) throw new Error('Failed to fetch terms');
                     const data = await response.json();
@@ -208,10 +214,14 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 setIsTagLoading(true);
                 setError(null);
                 try {
+                    const payload = {};
+                    if (formData.domain && formData.domain.id !== null) {
+                        payload.domain_id = [formData.domain.id];
+                    }
                     const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/tag`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-                        body: JSON.stringify({ domain_id: [formData.domain.id] })
+                        body: JSON.stringify(payload)
                     });
                     if (!response.ok) throw new Error('Failed to fetch tags');
                     const data = await response.json();
@@ -236,10 +246,16 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 setIsSubTagLoading(true);
                 setError(null);
                 try {
+                    const payload = {
+                        tag_id: [formData.tag.id]
+                    };
+                    if (formData.domain && formData.domain.id !== null) {
+                        payload.domain_id = [formData.domain.id];
+                    }
                     const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/sub_tag`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-                        body: JSON.stringify({ tag_id: [formData.tag.id] })
+                        body: JSON.stringify(payload)
                     });
                     if (!response.ok) throw new Error('Failed to fetch sub-tags');
                     const data = await response.json();
@@ -354,7 +370,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         };
 
         const payload = {
-            domain: transformLevel('domain', formData.domain , { domain_id: formData.domain.id }),
+            domain: transformLevel('domain', formData.domain, { domain_id: formData.domain.id }),
             category: transformLevel('category', formData.category, { domain_id: formData.domain.id }),
             subcategory: transformLevel('subcategory', formData.subcategory, {
                 domain_id: formData.domain.id,
@@ -805,11 +821,11 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 const genericData = formData[genericTabKey];
                 const parentKey =
                     activeTab === 'Category' ? 'domain' :
-                    activeTab === 'Sub-category' ? 'category' :
-                    activeTab === 'Term' ? 'domain' :
-                    activeTab === 'Tag' ? 'domain' :
-                    activeTab === 'Sub-tag' ? 'tag' :
-                    '';
+                        activeTab === 'Sub-category' ? 'category' :
+                            activeTab === 'Term' ? 'domain' :
+                                activeTab === 'Tag' ? 'domain' :
+                                    activeTab === 'Sub-tag' ? 'tag' :
+                                        '';
 
                 if (parentKey && !formData[parentKey].name) {
                     return <PlaceholderMessage>Please select a {parentKey} first to add a {activeTab}.</PlaceholderMessage>;

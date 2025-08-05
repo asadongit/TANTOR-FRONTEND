@@ -66,9 +66,9 @@ const MultiSelectDropdown = ({ options, selectedValues, onChange, placeholder, d
   );
 
   const dropdownMenuClasses = `
-  absolute z-20 w-full bg-white border border-gray-300 rounded-md shadow-lg
-${direction === 'top' ? 'bottom-full mb-1' : 'mt-1'}
-`;
+    absolute z-20 w-full bg-white border border-gray-300 rounded-md shadow-lg
+    ${direction === 'top' ? 'bottom-full mb-1' : 'mt-1'}
+  `;
 
   return (
     <div className="relative w-full" ref={dropdownRef}>
@@ -235,7 +235,7 @@ const Edit = ({ onClose, editDetails, type }) => {
   }, []);
 
   const fetchSubCategories = useCallback((domainIds, categoryIds) => {
-    if (categoryIds.length === 0) return;
+    if (categoryIds.length === 0 || domainIds.length === 0) return;
     setIsLoadingSubCategories(true);
     fetch(`${API_BASE_URL}/sub_category`, {
       method: 'POST',
@@ -252,13 +252,15 @@ const Edit = ({ onClose, editDetails, type }) => {
       .finally(() => setIsLoadingSubCategories(false));
   }, []);
 
-  const fetchSubTags = useCallback((tagIds) => {
-    if (tagIds.length === 0) return;
+  // UPDATED: fetchSubTags now accepts domainIds and tagIds
+  const fetchSubTags = useCallback((domainIds, tagIds) => {
+    if (tagIds.length === 0 || domainIds.length === 0) return;
     setIsLoadingSubTags(true);
     fetch(`${API_BASE_URL}/sub_tag`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-      body: JSON.stringify({ tag_id: tagIds.map(Number) })
+      // UPDATED: Payload now includes both domain_id and tag_id
+      body: JSON.stringify({ domain_id: domainIds.map(Number), tag_id: tagIds.map(Number) })
     })
       .then(res => res.json()).then(apiSubTags => {
         setSubTags(prev => {
@@ -305,9 +307,10 @@ const Edit = ({ onClose, editDetails, type }) => {
             if (selectedCategoryIds.length > 0) {
               dependentFetches.push(fetchSubCategories(selectedDomainIds, selectedCategoryIds));
             }
-          }
-          if (selectedTagIds.length > 0) {
-            dependentFetches.push(fetchSubTags(selectedTagIds));
+            if (selectedTagIds.length > 0) {
+              // UPDATED: Pass both domain and tag IDs when fetching sub-tags on initialization
+              dependentFetches.push(fetchSubTags(selectedDomainIds, selectedTagIds));
+            }
           }
           await Promise.all(dependentFetches);
         }
@@ -319,7 +322,8 @@ const Edit = ({ onClose, editDetails, type }) => {
       }
     };
     initializeForm();
-  }, [editDetails, type, fetchDomains]);
+  }, [editDetails, type, fetchDomains, fetchCategories, fetchSubCategories, fetchTags, fetchSubTags, fetchTerms]);
+
 
   const handleOpenCategories = () => {
     if (categories.length === 0 && !isLoadingCategories && selectedDomains.length > 0) {
@@ -328,7 +332,7 @@ const Edit = ({ onClose, editDetails, type }) => {
   };
 
   const handleOpenSubCategories = () => {
-    if (subCategories.length === 0 && !isLoadingSubCategories && selectedCategories.length > 0) {
+    if (subCategories.length === 0 && !isLoadingSubCategories && selectedDomains.length > 0 && selectedCategories.length > 0) {
       fetchSubCategories(selectedDomains, selectedCategories);
     }
   };
@@ -339,9 +343,10 @@ const Edit = ({ onClose, editDetails, type }) => {
     }
   };
 
+  // UPDATED: Check for selectedDomains before fetching sub-tags
   const handleOpenSubTags = () => {
-    if (subTags.length === 0 && !isLoadingSubTags && selectedTags.length > 0) {
-      fetchSubTags(selectedTags);
+    if (subTags.length === 0 && !isLoadingSubTags && selectedDomains.length > 0 && selectedTags.length > 0) {
+      fetchSubTags(selectedDomains, selectedTags);
     }
   };
 
@@ -353,6 +358,7 @@ const Edit = ({ onClose, editDetails, type }) => {
 
   const handleDomainChange = (newValues) => {
     setSelectedDomains(newValues);
+    // Reset all dependent fields
     setSelectedCategories([]);
     setSelectedSubCategories([]);
     setSelectedTags([]);
@@ -367,12 +373,14 @@ const Edit = ({ onClose, editDetails, type }) => {
 
   const handleCategoryChange = (newValues) => {
     setSelectedCategories(newValues);
+    // Reset dependent sub-category field
     setSelectedSubCategories([]);
     setSubCategories([]);
   };
 
   const handleTagChange = (newValues) => {
     setSelectedTags(newValues);
+    // Reset dependent sub-tag field
     setSelectedSubTags([]);
     setSubTags([]);
   };
@@ -460,17 +468,12 @@ const Edit = ({ onClose, editDetails, type }) => {
       <div className='flex-grow overflow-y-auto'>
         {/* Header */}
         <div className='flex justify-between items-center px-6 py-4 border-b sticky top-0 bg-white z-10'>
-          <div className='flex items-center gap-x-3 text-[#8d77ba]'><Pencil className="w-4 h-4" /><span className='font-semibold'>Edit Column</span></div>
+          <div className='flex items-center gap-x-3 text-[#8d77ba]'><Pencil className="w-4 h-4" /><span className='font-semibold'>Edit {type === 'column' ? 'Column' : 'Table'}</span></div>
           <button onClick={onClose} aria-label="Close" className='text-gray-500 hover:text-gray-600'><CircleX className="w-5 h-5" /></button>
         </div>
 
         {/* Form Section */}
         <div className='flex flex-col items-start gap-5 p-6 pt-2 text-sm'>
-          {/* <div>
-            <div className='mb-2 font-medium'>Top users</div>
-            <div className='text-gray-500'><p>ABCD</p><p>ABCD</p><p>ABCD</p></div>
-          </div> */}
-
           {/* DOMAIN */}
           <div className={formSectionClass}>
             <div className='flex justify-between items-center mb-2'>

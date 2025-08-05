@@ -1,8 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, List, RefreshCcw, Plus, X, Copy, FileQuestion } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, List, RefreshCcw, Plus, X, Copy, FileQuestion, Trash2, MoreHorizontal, Pencil, AlertTriangle } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../components/Breadcrumb.jsx';
 import AddCatalogueModal from './AddCatalogueModal.jsx';
+import toast, { Toaster } from 'react-hot-toast';
+
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfirming }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center animate-fadeIn" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200">
+                        <X className="h-5 w-5 text-gray-600" />
+                    </button>
+                </div>
+                <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                        <AlertTriangle className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="mt-1">
+                        <p className="text-sm text-gray-600">{message}</p>
+                    </div>
+                </div>
+                <div className="mt-6 flex justify-end gap-3">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        disabled={isConfirming}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-300 disabled:cursor-wait"
+                    >
+                        {isConfirming ? 'Deleting...' : 'Delete'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 
 const metricConfig = [
@@ -13,8 +54,6 @@ const metricConfig = [
     { title: 'Tag', apiKey: 'Tag', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
     { title: 'Sub-tag', apiKey: 'Sub Tag', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
 ];
-
-
 
 const MetricCardSkeleton = () => (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 animate-pulse">
@@ -29,7 +68,7 @@ const MetricCardSkeleton = () => (
 
 const TableRowSkeleton = () => (
     <tr className="border-b animate-pulse">
-        {Array.from({ length: 11 }).map((_, i) => (
+        {Array.from({ length: 12 }).map((_, i) => (
             <td key={i} className="p-4">
                 <div className="h-4 bg-gray-200 rounded w-full"></div>
             </td>
@@ -61,7 +100,7 @@ const DetailsModal = ({ isOpen, onClose, title, data }) => {
         );
     }, [data, searchTerm]);
 
-   
+
     useEffect(() => {
         const handleEsc = (event) => {
             if (event.key === 'Escape') {
@@ -74,13 +113,12 @@ const DetailsModal = ({ isOpen, onClose, title, data }) => {
         };
     }, [onClose]);
 
-  
+
     useEffect(() => {
         if (!isOpen) {
             setSearchTerm('');
         }
     }, [isOpen]);
-
 
     return (
         <div
@@ -89,7 +127,7 @@ const DetailsModal = ({ isOpen, onClose, title, data }) => {
         >
             <div
                 className={`bg-white rounded-xl shadow-2xl w-full max-w-lg m-4 transform transition-all duration-300 ease-in-out ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
-                onClick={e => e.stopPropagation()} 
+                onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b bg-gray-50 rounded-t-xl">
@@ -167,7 +205,7 @@ const BusinessCatalogue = () => {
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [viewMode, setViewMode] = useState('both'); 
+    const [viewMode, setViewMode] = useState('both');
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [detailsModal, setDetailsModal] = useState({ isOpen: false, title: '', data: [] });
@@ -178,17 +216,17 @@ const BusinessCatalogue = () => {
         setIsLoading(true);
         setError(null);
         try {
-          
+
             const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/dashboard/count`);
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
             const data = await response.json();
 
-          
+
             setMetricCounts(data.counts);
 
-           
+
             const formattedTableData = Object.entries(data.details).map(([id, item]) => ({
                 id: `${id}`,
                 domain: item.Domain,
@@ -254,7 +292,7 @@ const BusinessCatalogue = () => {
         setDetailsModal({ isOpen: false, title: '', data: [] });
     };
 
-  
+
     const filteredAndSortedData = React.useMemo(() => {
         let filtered = tableData.filter(item =>
             Object.values(item).some(val =>
@@ -272,7 +310,7 @@ const BusinessCatalogue = () => {
                 if (Array.isArray(aValue)) aValue = aValue.length;
                 if (Array.isArray(bValue)) bValue = bValue.length;
 
-             
+
                 if (sortConfig.key === 'id') {
                     aValue = parseInt(aValue, 10) || 0;
                     bValue = parseInt(bValue, 10) || 0;
@@ -298,6 +336,65 @@ const BusinessCatalogue = () => {
         ...config,
         count: metricCounts ? (metricCounts[config.apiKey] || 0) : 0,
     }));
+
+    const [activeMenu, setActiveMenu] = useState(null);
+
+    const handleClickOutside = () => {
+        setActiveMenu(null);
+    };
+
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleOpenDeleteModal = (item) => {
+        setItemToDelete(item);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleCloseDeleteModal = () => {
+        setIsDeleteModalOpen(false);
+        setItemToDelete(null);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!itemToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            const payload = {
+                id_set: [{
+                    domain_id: [parseInt(itemToDelete.id, 10)]
+                }]
+            };
+
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/dashboard/delete_element`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail || `HTTP error! Status: ${response.status}`);
+            }
+
+            toast.success('Domian deleted successfully!');
+            handleCloseDeleteModal();
+            await fetchCatalogueData();
+
+        } catch (err) {
+            console.error("Failed to delete element:", err);
+            toast.error(err.message || "An unexpected error occurred.");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
 
 
     return (
@@ -347,7 +444,7 @@ const BusinessCatalogue = () => {
                     <table className="w-full text-sm">
                         <thead className="bg-gray-800 text-white">
                             <tr>
-                                {['id', 'domain', 'category', 'subcategory', 'term', 'description', 'tag', 'createdBy', 'createdDate', 'updatedDate', 'status'].map(key => (
+                                {['id', 'domain', 'category', 'subcategory', 'term', 'description', 'tag', 'createdBy', 'createdDate', 'updatedDate', 'status', 'Action'].map(key => (
                                     <th key={key} className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700" onClick={() => handleSort(key)}>
                                         <span className="inline-flex items-center capitalize">{key.replace(/([A-Z])/g, ' $1')} {getSortIcon(key)}</span>
                                     </th>
@@ -358,7 +455,7 @@ const BusinessCatalogue = () => {
                             {isLoading ? (
                                 Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} />)
                             ) : (
-                                currentItems.map((item) => (
+                                currentItems.map((item, index) => (
                                     <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
                                         <td className="p-3 text-gray-700 font-medium">{item.id}</td>
                                         <td className="p-3 text-gray-600">{item.domain}</td>
@@ -371,6 +468,38 @@ const BusinessCatalogue = () => {
                                         <td className="p-3 text-gray-600">{item.createdDate}</td>
                                         <td className="p-3 text-gray-600">{item.updatedDate}</td>
                                         <td className="p-3">{getStatusBadge(item.status)}</td>
+                                        <td className="px-6 p-4 text-center whitespace-nowrap">
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setActiveMenu(activeMenu === index ? null : index)}
+                                                    className="p-1.5 rounded-full hover:bg-gray-100"
+                                                >
+                                                    <MoreHorizontal className="h-5 w-5" />
+                                                </button>
+                                                {activeMenu === index && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-100" onClick={handleClickOutside} />
+                                                        <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                                            <div className="flex items-center p-1 gap-1">
+                                                                <button
+
+                                                                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleOpenDeleteModal(item)}
+                                                                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))
                             )}
@@ -401,6 +530,14 @@ const BusinessCatalogue = () => {
 
             <AddCatalogueModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
             <DetailsModal isOpen={detailsModal.isOpen} onClose={handleCloseDetailsModal} title={detailsModal.title} data={detailsModal.data} />
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={handleCloseDeleteModal}
+                onConfirm={handleConfirmDelete}
+                title="Confirm Deletion"
+                message={`Are you sure you want to delete the domain "${itemToDelete?.domain}"? This action cannot be undone.`}
+                isConfirming={isDeleting}
+            />
         </div>
     );
 };
