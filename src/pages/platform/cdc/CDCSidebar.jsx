@@ -11,7 +11,7 @@ import {
 import { useWorkflow } from "./context/WorkflowContext";
 
 export function CDCSidebar({ initialCanvasType }) {
-   const { addPipeline, addNode, setNodes, setPipelines } = useWorkflow();
+   const { addPipeline, addNode, setNodes, setPipelines, editMode } = useWorkflow();
    const [collapsed, setCollapsed] = useState(false);
    const [isHovering, setIsHovering] = useState(null);
    const hasRun = useRef(false);
@@ -248,11 +248,13 @@ export function CDCSidebar({ initialCanvasType }) {
         }`}
       >
         <div
-          className="flex items-center p-3 rounded-lg border border-gray-300 hover:bg-gray-100 transition cursor-move relative "
-          draggable
+          className={`flex items-center p-3 rounded-lg border border-gray-300 transition cursor-move relative ${
+            editMode ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+          }`}
+          draggable={!editMode}
           onMouseEnter={() => setIsHovering("pipeline")}
           onMouseLeave={() => setIsHovering(null)}
-          onDragStart={(e) => {
+          onDragStart={!editMode ? (e) => {
             e.dataTransfer.setData(
               "application/reactflow",
               JSON.stringify({
@@ -261,11 +263,11 @@ export function CDCSidebar({ initialCanvasType }) {
               })
             );
             e.dataTransfer.effectAllowed = "move";
-          }}
-          onDoubleClick={() => {
+          } : undefined}
+          onDoubleClick={!editMode ? () => {
             addPipeline(canvasType || "default");
             setCollapsed(true);
-          }}
+          } : undefined}
         >
           <div className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-lg">
             <iconify-icon
@@ -281,7 +283,7 @@ export function CDCSidebar({ initialCanvasType }) {
                   bg-[#8e78b7] text-white text-xs px-2 py-1 rounded-md
                   whitespace-nowrap z-30 shadow-lg"
               >
-                Add Pipeline +
+                {editMode ? 'Edit Mode - No New Pipelines' : 'Add Pipeline +'}
               </div>
             )}
           </div>
@@ -289,7 +291,7 @@ export function CDCSidebar({ initialCanvasType }) {
           {!collapsed && (
             <div className="flex items-center justify-between flex-grow">
               <span className="text-gray-800 text-sm font-medium ml-3">
-                Add Pipeline
+                {editMode ? 'Edit Mode' : 'Add Pipeline'}
               </span>
               <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center ml-2">
                 <Plus className="w-3 h-3 text-gray-600" />
@@ -335,14 +337,16 @@ export function CDCSidebar({ initialCanvasType }) {
           {nodes.map((node) => (
             <div
               key={node.type}
-              className="flex items-center p-3 rounded-lg border border-gray-300 hover:bg-gray-100 transition cursor-move relative"
-              draggable
+              className={`flex items-center p-3 rounded-lg border border-gray-300 transition cursor-move relative ${
+                editMode ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+              }`}
+              draggable={!editMode}
               onMouseEnter={() => setIsHovering(node.type)}
               onMouseLeave={() => setIsHovering(null)}
-              onDragStart={handleNodeDrag(node.type)}
-              onDoubleClick={() => {
+              onDragStart={!editMode ? handleNodeDrag(node.type) : undefined}
+              onDoubleClick={!editMode ? () => {
                 addNode && addNode(node.type, canvasType);
-              }}
+              } : undefined}
             >
               <div className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-lg">
                 {node.iconType === "iconify" ? (
@@ -362,7 +366,7 @@ export function CDCSidebar({ initialCanvasType }) {
                       bg-[#8e78b7] text-white text-xs px-2 py-1 rounded-md
                       whitespace-nowrap z-30 shadow-lg "
                   >
-                    {node.label} +
+                    {editMode ? `${node.label} (Edit Mode)` : `${node.label} +`}
                   </div>
                 )}
               </div>

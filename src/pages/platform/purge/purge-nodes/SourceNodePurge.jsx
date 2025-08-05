@@ -9,8 +9,7 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "../../../../context/AuthContext";
 import { usePurgeContext } from "../../react-flow/context/PurgeContext";
 
-export function SourceNode({ id }) {
-
+export function SourceNode({ id, data }) {
   const hostname = window._env_?.VITE_FAST_API;
   const hostnameV2 = window._env_?.VITE_FAST_API_V2;
   const { token, decodedToken, project } = useAuth();
@@ -187,15 +186,19 @@ export function SourceNode({ id }) {
     }
   }, [hostname, token]);
 
-  const filteredTables = tables.filter((table) =>
-    table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
-  );
+  const filteredTables = Array.isArray(tables)
+    ? tables.filter((table) =>
+        table && table.table_name && table.table_name.toLowerCase().includes(searchTerm?.toLowerCase() || "")
+      )
+    : [];
 
-  const filterMetaData = metadata.filter((sourceTable) =>
-    sourceTable.source_table
-      .toLowerCase()
-      .includes(searchTerm?.toLowerCase() || "")
-  );
+  // Defensive: ensure metadata is always an array
+  const filterMetaData = Array.isArray(metadata)
+    ? metadata.filter((sourceTable) =>
+        sourceTable && sourceTable.source_table &&
+        sourceTable.source_table.toLowerCase().includes(searchTerm?.toLowerCase() || "")
+      )
+    : [];
 
   useEffect(() => {
     handleSelectedTables(selectedItems);
@@ -315,6 +318,30 @@ export function SourceNode({ id }) {
 
     return sortedPartitions[0]?.partition_name || null;
   };
+
+  // Pre-populate state from data prop on mount (edit mode)
+  useEffect(() => {
+    if (data) {
+      if (data.connectionName) setSelectedConnection(data.connectionName);
+      if (data.schemaName) {
+        setSelectedSchema(data.schemaName);
+        fetchschema(data.connectionName);
+      }
+      // Fix: select tableName if present in data
+      if (data.tableName) setSelectedTables([data.tableName]);
+      if (data.selectedItems) setSelectedItems(data.selectedItems);
+      if (data.selectedBulkSourceTables) setSelectedBulkSourceTables(data.selectedBulkSourceTables);
+      if (data.tableName) setTables(data.tableName);
+      if (data.schemas) setSchema(data.schemas);
+      if (data.searchTerm) setSearchTerm(data.searchTerm);
+      if (data.scope) setSelectedPurgeScope(data.scope);
+      else if (data.selectedPurgeScope) setSelectedPurgeScope(data.selectedPurgeScope);
+      if (data.connectionName && data.schemaName) {
+        fetchTables(data.connectionName, data.schemaName);
+      }
+      // Add more fields as needed for full pre-population
+    }
+  }, [data]);
 
   return (
     <div
@@ -671,13 +698,6 @@ export function SourceNode({ id }) {
                               handleSelectedDataSetName([table.table_name]);
                             }}
                             className="h-3 w-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                            disabled={
-                              selectedPurgeScope === "subset" &&
-                              table.length > 0 &&
-                              !selectedTables.includes(
-                                selectedTables.table_name
-                              )
-                            }
                           />
                           <label
                             htmlFor={`table-${idx}`}
@@ -719,4 +739,5 @@ export function SourceNode({ id }) {
 
 SourceNode.propTypes = {
   id: PropTypes.string.isRequired,
+  data: PropTypes.object,
 };

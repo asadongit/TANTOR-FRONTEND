@@ -25,6 +25,7 @@ export const WorkflowProvider = ({ children }) => {
   const [pipelineMappings, setPipelineMappings] = useState({});
   const [inProgressMappings, setInProgressMappings] = useState({});
   const [bulkMappings, setBulkMappings] = useState({});
+  const [editMode, setEditMode] = useState(false);
 
   const pipelineCounterRef = useRef({ count: 0 });
   const reactFlowInstance = useReactFlow();
@@ -61,9 +62,12 @@ export const WorkflowProvider = ({ children }) => {
     }, 100);
   };
 
-  const updatePipelineData = (pipelineId, nodeType, nodeData) => {
+  const updatePipelineData = (pipelineId, nodeType, nodeData) => {   
     setPipelines((prevPipelines) => {
+      console.log("Previous pipelines:", prevPipelines);
+      
       if (!prevPipelines[pipelineId]) {
+        console.log("Pipeline not found:", pipelineId);
         return prevPipelines;
       }
 
@@ -80,7 +84,7 @@ export const WorkflowProvider = ({ children }) => {
         };
       }
 
-      return {
+      const updatedPipelines = {
         ...prevPipelines,
         [pipelineId]: {
           ...prevPipelines[pipelineId],
@@ -93,6 +97,7 @@ export const WorkflowProvider = ({ children }) => {
           },
         },
       };
+      return updatedPipelines;
     });
   };
 
@@ -289,7 +294,7 @@ export const WorkflowProvider = ({ children }) => {
     });
   };
 
-  const updateData = (ID, isPipelineNode = false, type, updatedNodeData) => {
+  const updateData = (ID, isPipelineNode = false, type, updatedNodeData) => {  
     isPipelineNode
       ? updatePipelineData(ID, type, updatedNodeData)
       : updateCustomNode(ID, type, updatedNodeData);
@@ -389,6 +394,37 @@ export const WorkflowProvider = ({ children }) => {
     }));
   };
 
+  // Function to get enhanced node data for storage (includes all user inputs)
+  const getEnhancedNodeData = () => {
+    const enhancedNodes = nodes.map((node) => {
+      const pid = node.data?.pipelineId || node.id;
+      const latestData = pipelines[pid]?.data;
+      
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          // Include all the user input data
+          define: latestData?.define || node.data?.define,
+          source: latestData?.source || node.data?.source,
+          target: latestData?.target || node.data?.target,
+          scheduler: latestData?.scheduler || node.data?.scheduler,
+        },
+      };
+    });
+    
+    return {
+      nodes: enhancedNodes,
+      edges,
+      pipelineData: {
+        define: pipelines[Object.keys(pipelines)[0]]?.data?.define,
+        source: pipelines[Object.keys(pipelines)[0]]?.data?.source,
+        target: pipelines[Object.keys(pipelines)[0]]?.data?.target,
+        scheduler: pipelines[Object.keys(pipelines)[0]]?.data?.scheduler,
+      }
+    };
+  };
+
   const getUniquesource_tablesInBulk = () => {
     const source_tables = new Set();
     for (const nodeid in bulkMappings) {
@@ -429,6 +465,9 @@ export const WorkflowProvider = ({ children }) => {
         updateBulkMappings,
         deselectMapping,
         bulkMappings,
+        editMode,
+        setEditMode,
+        getEnhancedNodeData,
       }}
     >
       {children}

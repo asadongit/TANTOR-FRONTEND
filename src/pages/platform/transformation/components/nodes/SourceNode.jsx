@@ -60,6 +60,7 @@ export const SourceNode = ({ id, data }) => {
   const [storedParameterMappings, setStoredParameterMappings] = useState({});
   const [preProcedureSearch, setPreProcedureSearch] = useState("");
   const [postProcedureSearch, setPostProcedureSearch] = useState("");
+  const [enableCountLogging, setEnableCountLogging] = useState(false);
 
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
@@ -494,6 +495,8 @@ export const SourceNode = ({ id, data }) => {
   }, [fetchConnections]);
 
   useEffect(() => {
+    data.setEnableCountLogging = setEnableCountLogging;
+
     const currentTable = selectedObjectType === "procedures" && tableSelections.selectedTable
       ? tableSelections.selectedTable
       : selectedTable;
@@ -502,7 +505,6 @@ export const SourceNode = ({ id, data }) => {
       ? tableSelections.selectedColumns
       : selectedColumns;
 
-    // Include parameter mappings in procedure data
     const enrichedPreProcedures = selectedPreProcedures
       .filter(p => p.procedure)
       .map(p => {
@@ -563,6 +565,7 @@ export const SourceNode = ({ id, data }) => {
       objectType: selectedObjectType,
       preProcedures: enrichedPreProcedures,
       postProcedures: enrichedPostProcedures,
+      enableCountLogging: enableCountLogging,
     });
 
     dispatch({
@@ -592,7 +595,7 @@ export const SourceNode = ({ id, data }) => {
         }))
       }
     });
-  }, [selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings]);
+  }, [selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging]);
 
   const getColumnsForTable = (tableName) => {
     const tableObj = tables.find(t => t.table_name === tableName);
@@ -773,6 +776,12 @@ export const SourceNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
+    // FIXED: Initialize enableCountLogging from data during restoration
+    if (typeof data.enableCountLogging === 'boolean') {
+      setEnableCountLogging(data.enableCountLogging);
+      hasUpdated = true;
+    }
+
     // Handle object type restoration - PREVENT AUTOMATIC SWITCHING - but allow initial setting
     if (data.objectType && (!selectedObjectType || selectedObjectType === "")) {
       setSelectedObjectType(data.objectType);
@@ -804,8 +813,6 @@ export const SourceNode = ({ id, data }) => {
         procedure: proc,
       }));
 
-      // console.log("--------------------",data.preProcedures);
-      // console.log("Restored Pre-Procedures:", restoredPreProcedures);
       setSelectedPreProcedures(restoredPreProcedures);
       hasUpdated = true;
     }
@@ -829,7 +836,6 @@ export const SourceNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-
   }, [
     // Remove problematic dependencies that cause infinite loops
     data.connection,
@@ -838,7 +844,8 @@ export const SourceNode = ({ id, data }) => {
     data.schema,
     data.table,
     data.alias,
-    data.objectType
+    data.objectType,
+    data.enableCountLogging // Keep this dependency for proper restoration
     // Removed: schemas.length, tables.length, procedures.length, selectedConnection.name, etc.
   ]);
 
@@ -1694,6 +1701,47 @@ export const SourceNode = ({ id, data }) => {
                 No columns found for this table
               </div>
             ) : null}
+
+            {selectedTable && (
+              <div className="mt-2">
+                <label className="flex items-center text-xs font-semibold text-black">
+                  <input
+                    type="checkbox"
+                    className="mr-1.5 h-3.5 w-3.5"
+                    checked={enableCountLogging}
+                    onChange={(e) => {
+                      const newValue = e.target.checked;
+                      setEnableCountLogging(newValue);
+
+                      if (data.onDataChange) {
+                        data.onDataChange({ enableCountLogging: newValue });
+                      }
+
+                      if (window.allNodes) {
+                        const nodeIndex = window.allNodes.findIndex(n => n.id === id);
+                        if (nodeIndex !== -1) {
+                          window.allNodes[nodeIndex].data.enableCountLogging = newValue;
+                        }
+                      }
+
+                      dispatch({
+                        type: ACTION_TYPES.UPDATE_SOURCE,
+                        payload: {
+                          id: id,
+                          data: { enableCountLogging: newValue }
+                        }
+                      });
+
+                      window.allNodesLastUpdate = Date.now();
+                      if (window.triggerSidebarUpdate) {
+                        window.triggerSidebarUpdate();
+                      }
+                    }}
+                  />
+                  <span>Enable Count Logging</span>
+                </label>
+              </div>
+            )}
           </>
         )}
       </div>

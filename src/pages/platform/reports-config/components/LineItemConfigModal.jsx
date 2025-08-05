@@ -37,7 +37,7 @@ function LineItemConfigModal() {
         ruleId: "",
         ruleName: "",
         metrics: [],
-        dimensions: [{ id: "", name: "", operator: "", value: [] }],
+        dimensions: [],
         filters: [],
       },
     ];
@@ -47,7 +47,7 @@ function LineItemConfigModal() {
 
   const addDimension = (ruleIndex) => {
     const newRules = [...rules];
-    console.log("Rule with index ==>> ", newRules[ruleIndex].dimensions);
+
     newRules[ruleIndex].dimensions.push({
       id: "",
       name: "",
@@ -67,17 +67,17 @@ function LineItemConfigModal() {
 
   const removeDimension = (ruleIndex, dimIndex) => {
     const newRules = [...rules];
-    if (newRules[ruleIndex].dimensions.length > 1)
-      newRules[ruleIndex].dimensions.splice(dimIndex, 1);
+    // if (newRules[ruleIndex].dimensions.length > 1)
+    newRules[ruleIndex].dimensions.splice(dimIndex, 1);
     
-    else if (newRules[ruleIndex].dimensions.length == 1) {
-      newRules[ruleIndex].dimensions[0] = {
-        id: "",
-        name: "",
-        operator: "",
-        value: [],
-      };
-    }
+    // else if (newRules[ruleIndex].dimensions.length == 1) {
+    //   newRules[ruleIndex].dimensions[0] = {
+    //     id: "",
+    //     name: "",
+    //     operator: "",
+    //     value: [],
+    //   };
+    // }
     updateLineItemRules(lineItemId, newRules);
   };
 
