@@ -147,6 +147,21 @@ export default function RuleSelector() {
       const ruleNames = rulesWithoutMetrics.map(rule => rule.ruleName).join(", ");
       return toast.error(`Rule(s) "${ruleNames}" must have at least one metric selected.`);
     }
+    
+    // Check if any metrics are invalid
+    const invalidMetrics = rules.flatMap(rule => 
+      rule.metrics.filter(m => 
+        (!m.name) ||
+        (m.name && (m.parameterName && !m.parameterOperator)) ||
+        (m.name && (!m.parameterName && m.parameterOperator))
+      )
+    );
+
+    console.log("invalidMetrics ==> ", invalidMetrics);
+    
+    if(invalidMetrics.length > 0){
+      return toast.error("Invalid metric configuration")
+    }
 
     // Check dimensions validation
     const invalidDimensions = rules.flatMap(rule => 

@@ -7,11 +7,6 @@ export const generateSQLQuery = ({
   complexQuery
 }) => {
   try {
-    console.log("QUERYYY => ",{
-  tableName,
-  selectedColumns,
-  complexQuery
-})
     if (!tableName || !selectedColumns || selectedColumns.length === 0) {
       return '';
     }
@@ -26,8 +21,6 @@ export const generateSQLQuery = ({
         let columnStr = '  ' + col.name; // Add indentation
         
         // Handle aggregate function if exists
-        console.log("AGGREGATE ==> ", col.aggregate);
-
         if (col.aggregate.length > 0 && col.aggregate !== 'NONE') {
           // columnStr = `  ${col.aggregate}(${col.name})`;
           const aggregates = col.aggregate;
