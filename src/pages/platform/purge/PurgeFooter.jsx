@@ -96,6 +96,32 @@ const PurgeFooter = ({ onCancel }) => {
         partition.tableName !== null;
     };
 
+    // Collect all node UI state for ui_json
+    // For full React Flow graph, include all nodes and edges with their data and positions
+    const ui_json = {
+      defineNode: {
+        name: defineNodeName,
+        desc: defineNodeDesc,
+      },
+      sourceNode: {
+        ...sourceData,
+        filters: filters?.source,
+        dropPartitions: dropPartitions?.source,
+        scope: selectedScope, // Add selected scope
+      },
+      targetNode: {
+        ...targetData,
+        filters: filters?.target,
+        dropPartitions: dropPartitions?.target,
+        scope: selectedScope, // Add selected scope
+      },
+      bulk: {
+        selectedBulkTargetTablesPayload,
+        bulkFiltersAndPartitions,
+      },
+      // Add more node details as needed
+    };
+
     return {
       created_by: decodedToken.preferred_username,
       description: defineNodeDesc,
@@ -155,6 +181,7 @@ const PurgeFooter = ({ onCancel }) => {
       },
       target_table: targetData.tableName,
       transformation: {},
+      ui_json,
     };
   };
 
