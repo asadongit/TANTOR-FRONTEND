@@ -176,7 +176,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
 
     useEffect(() => {
         const fetchTerms = async () => {
-            if (activeTab === 'Term' && formData.domain.id) {
+            if (activeTab === 'Term') {
                 setIsTermLoading(true);
                 setError(null);
                 try {
@@ -200,11 +200,11 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             }
         };
         fetchTerms();
-    }, [activeTab, formData.domain.id]);
+    }, [activeTab]);
 
     useEffect(() => {
         const fetchTags = async () => {
-            if (activeTab === 'Tag' && formData.domain.id) {
+            if (activeTab === 'Tag') {
                 setIsTagLoading(true);
                 setError(null);
                 try {
@@ -228,7 +228,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             }
         };
         fetchTags();
-    }, [activeTab, formData.domain.id]);
+    }, [activeTab]);
 
     useEffect(() => {
         const fetchSubTags = async () => {
@@ -354,7 +354,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         };
 
         const payload = {
-            domain: transformLevel('domain', formData.domain),
+            domain: transformLevel('domain', formData.domain , { domain_id: formData.domain.id }),
             category: transformLevel('category', formData.category, { domain_id: formData.domain.id }),
             subcategory: transformLevel('subcategory', formData.subcategory, {
                 domain_id: formData.domain.id,

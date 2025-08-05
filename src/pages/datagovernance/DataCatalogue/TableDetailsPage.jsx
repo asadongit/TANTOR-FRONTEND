@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, Link } from 'react-router-dom';
-import { Pencil, Lightbulb, Table, Layers, TableOfContents, FileCheck2 } from 'lucide-react';
+import { Pencil, Lightbulb, Table, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 
@@ -21,6 +21,37 @@ const InfoPill = ({ label }) => (
         {label}
     </span>
 );
+
+// Pagination Component
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) {
+        return null; // Don't render pagination if there's only one page
+    }
+
+    return (
+        <div className="flex justify-between items-center mt-4 px-1">
+            <span className="text-sm text-gray-700">
+                Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+            </span>
+            <div className="flex items-center">
+                 <button
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Previous
+                </button>
+                <button
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="ml-2 px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Next
+                </button>
+            </div>
+        </div>
+    );
+};
 
 
 function TableDetailsPage() {
@@ -45,6 +76,19 @@ function TableDetailsPage() {
     const [description, setDescription] = useState('');
     const [originalDescription, setOriginalDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+    // Access Tab State
+    const [accessData, setAccessData] = useState([]);
+    const [loadingAccessData, setLoadingAccessData] = useState(false);
+    const [accessDataError, setAccessDataError] = useState(null);
+    const [expandedRows, setExpandedRows] = useState({});
+
+    // Pagination States
+    const [itemsPerPage] = useState(5);
+    const [summaryColumnsCurrentPage, setSummaryColumnsCurrentPage] = useState(1);
+    const [accessCurrentPage, setAccessCurrentPage] = useState(1);
+    const [businessCurrentPage, setBusinessCurrentPage] = useState(1);
+    const [sampleDataCurrentPage, setSampleDataCurrentPage] = useState(1);
 
     const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
         ['data steward', 'data owner'].includes(role.toLowerCase())
@@ -77,7 +121,7 @@ function TableDetailsPage() {
                 }
 
                 const data = await response.json();
-                setComplianceTags(data.sub_tags || []);
+                setComplianceTags(data.sub_tags?.map(tag => tag.name) || []);
             } catch (error) {
                 console.error('Error fetching compliance tags:', error);
                 setComplianceTags([]);
@@ -94,6 +138,7 @@ function TableDetailsPage() {
 
         const fetchBusinessData = async () => {
             setLoadingBusinessData(true);
+            setBusinessCurrentPage(1);
             try {
                 const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/business_tab`, {
                     method: 'POST',
@@ -116,7 +161,6 @@ function TableDetailsPage() {
                 }
 
                 const data = await response.json();
-
                 const tableBusinessInfo = Object.values(data)[0];
 
                 if (!tableBusinessInfo || !tableBusinessInfo.table_tags) {
@@ -193,6 +237,7 @@ function TableDetailsPage() {
             setLoadingSampleData(true);
             setSampleDataError(null);
             setSampleData([]);
+            setSampleDataCurrentPage(1);
 
             try {
                 const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/columns/sample_data`, {
@@ -228,6 +273,69 @@ function TableDetailsPage() {
     }, [activeTab, tableData, token]);
 
     useEffect(() => {
+        if (activeTab !== 'Access' || !tableData) return;
+
+        const fetchAccessData = async () => {
+            setLoadingAccessData(true);
+            setAccessDataError(null);
+            setAccessData([]);
+            setExpandedRows({});
+            setAccessCurrentPage(1);
+
+            try {
+                const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/access_tab`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        connection_set: [{
+                            connection_name: tableData.connection_name,
+                            table_schema: tableData.schema,
+                            table_name: tableData.name
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch access data. Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                const processedData = [];
+                if (data.role) {
+                    for (const [name, users] of Object.entries(data.role)) {
+                        processedData.push({ type: 'Role', name, users: users || [] });
+                    }
+                }
+                if (data.group) {
+                    for (const [name, users] of Object.entries(data.group)) {
+                        processedData.push({ type: 'Group', name, users: users || [] });
+                    }
+                }
+                if (data.subgroup) {
+                    for (const [name, users] of Object.entries(data.subgroup)) {
+                        processedData.push({ type: 'Sub-group', name, users: users || [] });
+                    }
+                }
+
+                setAccessData(processedData);
+
+            } catch (error) {
+                console.error("Error fetching access data:", error);
+                setAccessDataError("Failed to load access information.");
+            } finally {
+                setLoadingAccessData(false);
+            }
+        };
+
+        fetchAccessData();
+    }, [activeTab, tableData, token]);
+
+    useEffect(() => {
         if (tableData) {
             const initialDesc = tableData.description || '';
             setDescription(initialDesc);
@@ -246,13 +354,46 @@ function TableDetailsPage() {
             alert("An error occurred. Cannot save description.");
             return;
         }
-        // NOTE: Here you would add your API call to persist the description.
-        // setIsSaving(true);
-        // await api.saveTableDescription(tableData.id, description);
-        // setIsSaving(false);
         setOriginalDescription(description);
         setIsEditingDescription(false);
     };
+
+    const toggleRow = (name) => {
+        setExpandedRows(prev => ({
+            ...prev,
+            [name]: !prev[name]
+        }));
+    };
+
+    // --- Pagination Logic & Handlers ---
+
+    // Summary Tab Columns
+    const indexOfLastSummaryColumn = summaryColumnsCurrentPage * itemsPerPage;
+    const indexOfFirstSummaryColumn = indexOfLastSummaryColumn - itemsPerPage;
+    const currentSummaryColumns = columns?.slice(indexOfFirstSummaryColumn, indexOfLastSummaryColumn) || [];
+    const totalSummaryColumnPages = Math.ceil((columns?.length || 0) / itemsPerPage);
+    const handleSummaryColumnPageChange = (page) => setSummaryColumnsCurrentPage(page);
+
+    // Access Tab
+    const indexOfLastAccessItem = accessCurrentPage * itemsPerPage;
+    const indexOfFirstAccessItem = indexOfLastAccessItem - itemsPerPage;
+    const currentAccessItems = accessData.slice(indexOfFirstAccessItem, indexOfLastAccessItem);
+    const totalAccessPages = Math.ceil(accessData.length / itemsPerPage);
+    const handleAccessPageChange = (page) => setAccessCurrentPage(page);
+
+    // Business Tab
+    const indexOfLastBusinessItem = businessCurrentPage * itemsPerPage;
+    const indexOfFirstBusinessItem = indexOfLastBusinessItem - itemsPerPage;
+    const currentBusinessItems = businessData.composite.slice(indexOfFirstBusinessItem, indexOfLastBusinessItem);
+    const totalBusinessPages = Math.ceil(businessData.composite.length / itemsPerPage);
+    const handleBusinessPageChange = (page) => setBusinessCurrentPage(page);
+
+    // Sample Data Tab
+    const indexOfLastSampleDataItem = sampleDataCurrentPage * itemsPerPage;
+    const indexOfFirstSampleDataItem = indexOfLastSampleDataItem - itemsPerPage;
+    const currentSampleDataItems = sampleData.slice(indexOfFirstSampleDataItem, indexOfLastSampleDataItem);
+    const totalSampleDataPages = Math.ceil(sampleData.length / itemsPerPage);
+    const handleSampleDataPageChange = (page) => setSampleDataCurrentPage(page);
 
 
     if (!tableData) {
@@ -277,7 +418,7 @@ function TableDetailsPage() {
     return (
         <div className="p-4 bg-gray-50 min-h-screen">
             <Breadcrumb />
-            <div className="mt-2 flex flex-col lg:flex-row gap-8">
+            <div className="mt-2 flex flex-col xl:flex-row gap-8">
                 <div className="flex-grow bg-white px-6 pt-6 pb-10 rounded-lg shadow-sm min-w-0">
                     <div className="flex items-start gap-4 w-full">
                         <div className="flex justify-between w-full" >
@@ -293,7 +434,7 @@ function TableDetailsPage() {
                     </div>
 
                     <div className="border-b border-gray-200 mt-4">
-                        <nav className="-mb-px flex space-x-10">
+                        <nav className="-mb-px flex space-x-10 overflow-x-auto">
                             {tabs.map(tab => (
                                 <Tab key={tab} label={tab} activeTab={activeTab} setActiveTab={setActiveTab} />
                             ))}
@@ -372,32 +513,39 @@ function TableDetailsPage() {
 
                                 {/* Columns Table Section */}
                                 {columns && columns.length > 0 ? (
-                                    <div className="overflow-x-auto rounded-lg shadow ">
-                                        <table className="min-w-full">
-                                            <thead >
-                                                <tr className="bg-[#29304a] text-white">
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">ID</th>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Name</th>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Description</th>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Classification</th>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {columns.map((col, index) => (
-                                                    <tr key={col.id}>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{col.column_name}</td>
-                                                        <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-xs">Column Description</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Classification</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                                                            <button className="text-gray-400 hover:text-gray-600"><Pencil size={16} /></button>
-                                                        </td>
+                                    <>
+                                        <div className="overflow-x-auto rounded-lg shadow border">
+                                            <table className="min-w-full">
+                                                <thead>
+                                                    <tr className="bg-[#29304a] text-white">
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">ID</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Name</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Description</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Classification</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Action</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {currentSummaryColumns.map((col, index) => (
+                                                        <tr key={col.id}>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{indexOfFirstSummaryColumn + index + 1}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{col.column_name}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-500 truncate max-w-xs">Column Description</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Classification</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                                                                <button className="text-gray-400 hover:text-gray-600"><Pencil size={16} /></button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <Pagination 
+                                            currentPage={summaryColumnsCurrentPage}
+                                            totalPages={totalSummaryColumnPages}
+                                            onPageChange={handleSummaryColumnPageChange}
+                                        />
+                                    </>
                                 ) : (
                                     <div className="mt-6 border rounded-lg p-10 text-center bg-gray-50">
                                         <h3 className="text-lg font-medium text-gray-900">No Columns Found</h3>
@@ -435,42 +583,49 @@ function TableDetailsPage() {
                                 {loadingBusinessData ? (
                                     <div className="text-center p-10">Loading business data...</div>
                                 ) : businessView === 'Table Detail View' ? (
-                                    <div className="overflow-x-auto rounded-lg shadow">
-                                        <table className="min-w-full">
-                                            <thead>
-                                                <tr className="bg-[#29304a] text-white">
-                                                    {['ID', 'Schema', 'Domain', 'Category', 'Sub-category', 'Tag', 'Sub-tag'].map(header => (
-                                                        <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">{header}</th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {businessData.composite && businessData.composite.length > 0 ? (
-                                                    businessData.composite.map((row, index) => (
-                                                        <tr key={index} className="hover:bg-gray-50">
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.id}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 hover:underline cursor-pointer">{row.table}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.domain}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.category}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subCategory}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.tag}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subTag}</td>
-                                                        </tr>
-                                                    ))
-                                                ) : (
-                                                    <tr>
-                                                        <td colSpan="7" className="text-center py-10 px-4 text-sm text-gray-500">
-                                                            No detailed business data available.
-                                                        </td>
+                                    <>
+                                        <div className="overflow-x-auto rounded-lg shadow">
+                                            <table className="min-w-full">
+                                                <thead>
+                                                    <tr className="bg-[#29304a] text-white">
+                                                        {['ID', 'Schema', 'Domain', 'Category', 'Sub-category', 'Tag', 'Sub-tag'].map(header => (
+                                                            <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">{header}</th>
+                                                        ))}
                                                     </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {currentBusinessItems && currentBusinessItems.length > 0 ? (
+                                                        currentBusinessItems.map((row, index) => (
+                                                            <tr key={index} className="hover:bg-gray-50">
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.id}</td>
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 hover:underline cursor-pointer">{row.table}</td>
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.domain}</td>
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.category}</td>
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subCategory}</td>
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.tag}</td>
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subTag}</td>
+                                                            </tr>
+                                                        ))
+                                                    ) : (
+                                                        <tr>
+                                                            <td colSpan="7" className="text-center py-10 px-4 text-sm text-gray-500">
+                                                                No detailed business data available.
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <Pagination
+                                            currentPage={businessCurrentPage}
+                                            totalPages={totalBusinessPages}
+                                            onPageChange={handleBusinessPageChange}
+                                        />
+                                    </>
                                 ) : (
                                     <div className="p-1">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                            {Object.keys(businessData.schema).length > 0 ?
+                                            {Object.keys(businessData.schema).length > 0 && Object.values(businessData.schema).some(pills => pills.length > 0) ?
                                                 Object.entries(businessData.schema).map(([title, pills]) => (
                                                     <div key={title}>
                                                         <h3 className="text-base font-semibold text-gray-700 mb-3 capitalize">{formatTitle(title)}</h3>
@@ -492,48 +647,117 @@ function TableDetailsPage() {
                         {activeTab === 'Sample data' && (
                             <div>
                                 {loadingSampleData && <p className="text-gray-500">Loading sample data...</p>}
-
                                 {sampleDataError && <p className="text-red-600">Error: {sampleDataError}</p>}
-
                                 {!loadingSampleData && !sampleDataError && sampleData.length === 0 && (
                                     <p className="text-gray-500">No sample data is available for this table.</p>
                                 )}
-
                                 {!loadingSampleData && !sampleDataError && sampleData.length > 0 && (
-                                    <div className="overflow-x-auto mt-2 rounded-lg shadow">
-                                        <table className="min-w-full">
-                                            <thead>
-                                                <tr className="bg-[#29304a] text-white">
-                                                    {sampleDataHeaders.map(header => (
-                                                        <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">
-                                                            {header.replace(/_/g, ' ')}
-                                                        </th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {sampleData.map((row, rowIndex) => (
-                                                    <tr key={rowIndex} className="hover:bg-gray-50">
+                                    <>
+                                        <div className="overflow-x-auto mt-2 rounded-lg shadow">
+                                            <table className="min-w-full">
+                                                <thead>
+                                                    <tr className="bg-[#29304a] text-white">
                                                         {sampleDataHeaders.map(header => (
-                                                            <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                                                {row[header]}
-                                                            </td>
+                                                            <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">
+                                                                {header.replace(/_/g, ' ')}
+                                                            </th>
                                                         ))}
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {currentSampleDataItems.map((row, rowIndex) => (
+                                                        <tr key={rowIndex} className="hover:bg-gray-50">
+                                                            {sampleDataHeaders.map(header => (
+                                                                <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                                                    {row[header]}
+                                                                </td>
+                                                            ))}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <Pagination
+                                            currentPage={sampleDataCurrentPage}
+                                            totalPages={totalSampleDataPages}
+                                            onPageChange={handleSampleDataPageChange}
+                                        />
+                                    </>
                                 )}
                             </div>
                         )}
 
-
-                        {activeTab === 'Access' && <p>Access control and history will be displayed here.</p>}
+                        {activeTab === 'Access' && (
+                            <div>
+                                {loadingAccessData && <p className="text-center text-gray-500 p-4">Loading access information...</p>}
+                                {accessDataError && <p className="text-center text-red-600 p-4">Error: {accessDataError}</p>}
+                                {!loadingAccessData && !accessDataError && (
+                                    accessData.length > 0 ? (
+                                        <>
+                                            <div className="overflow-x-auto mt-2 rounded-lg shadow border">
+                                                <table className="min-w-full">
+                                                    <thead className="bg-gray-50">
+                                                        <tr>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Count</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-gray-200">
+                                                        {currentAccessItems.map((item) => (
+                                                            <React.Fragment key={`${item.type}-${item.name}`}>
+                                                                <tr className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4">
+                                                                        <button onClick={() => toggleRow(item.name)} className="text-gray-500 hover:text-[#8d77ba] transition-colors">
+                                                                            {expandedRows[item.name] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                                        </button>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.type}</td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.name}</td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.users.length}</td>
+                                                                </tr>
+                                                                {expandedRows[item.name] && (
+                                                                    <tr>
+                                                                        <td colSpan="4" className="px-6 py-4 bg-purple-50/50">
+                                                                            <div className="flex items-center flex-wrap gap-2">
+                                                                                <h4 className="font-semibold text-gray-700 text-sm">Users:</h4>
+                                                                                {item.users.length > 0 ? (
+                                                                                    item.users.map(user => (
+                                                                                        <span key={user} className="bg-purple-100 text-[#8d77ba] text-xs font-semibold px-2.5 py-1 rounded-full">
+                                                                                            {user}
+                                                                                        </span>
+                                                                                    ))
+                                                                                ) : (
+                                                                                    <span className="text-gray-500 italic text-sm">
+                                                                                        No users found in this {item.type.toLowerCase()}.
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                )}
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <Pagination
+                                                currentPage={accessCurrentPage}
+                                                totalPages={totalAccessPages}
+                                                onPageChange={handleAccessPageChange}
+                                            />
+                                        </>
+                                    ) : (
+                                        <p className="text-center text-gray-500 mt-4 p-4">No access information is available for this table.</p>
+                                    )
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                <div className="w-full lg:w-80 flex-shrink-0 space-y-6">
+                <div className="w-full xl:w-80 flex-shrink-0 space-y-6">
                     <div className="bg-white p-5 rounded-lg shadow-sm">
                         <div className="flex items-center justify-between">
                             <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Lightbulb className="h-5 w-5 text-purple-400" />  Snapshot</h2>
