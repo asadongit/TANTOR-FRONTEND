@@ -5,6 +5,7 @@ import Breadcrumb from '../../../components/Breadcrumb.jsx';
 import AddCatalogueModal from './AddCatalogueModal.jsx';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../context/AuthContext.jsx';
+import EditDetailModal from './EditDetailModal.jsx';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfirming }) => {
     if (!isOpen) return null;
@@ -196,7 +197,6 @@ const DetailsModal = ({ isOpen, onClose, title, data }) => {
     );
 };
 
-
 const BusinessCatalogue = () => {
 
     const [metricCounts, setMetricCounts] = useState(null);
@@ -209,6 +209,8 @@ const BusinessCatalogue = () => {
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [detailsModal, setDetailsModal] = useState({ isOpen: false, title: '', data: [] });
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [itemToEdit, setItemToEdit] = useState(null);
     const rowsPerPage = 10;
 
     const { token, decodedToken } = useAuth();
@@ -236,18 +238,17 @@ const BusinessCatalogue = () => {
             const formattedTableData = Object.entries(data.details).map(([id, item]) => ({
                 id: `${id}`,
                 domain: item.Domain,
-                category: item["Domain's Categories"].map(c => c.name),
-                subcategory: item["Domain's Sub-Categories"].map(sc => sc.name),
-                term: item["Domain's Terms"].map(t => t.name),
-                tag: item["Domain's Tags"].map(tg => tg.name),
-                subtag: item["Domain's Sub-Tags"].map(st => st.name),
+                category: item["Domain's Categories"],
+                subcategory: item["Domain's Sub-Categories"],
+                term: item["Domain's Terms"],
+                tag: item["Domain's Tags"],
+                subtag: item["Domain's Sub-Tags"],
                 description: item.Description || 'N/A',
                 createdBy: item["Created By"].join(', ') || 'N/A',
                 createdDate: item["Created Date"],
                 updatedDate: item["Updated Date"] || 'N/A',
                 status: item.Status
             }));
-            setTableData(formattedTableData);
             setTableData(formattedTableData);
 
         } catch (err) {
@@ -282,13 +283,22 @@ const BusinessCatalogue = () => {
     };
 
     const getStatusBadge = (status) => {
-        const styles = {
-            Active: "px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full",
-            Completed: "px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full",
-            Inactive: "px-2 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full",
-            Pending: "px-2 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full",
-        };
-        return <span className={styles[status] || "px-2 py-1 text-xs font-medium text-gray-800 bg-gray-100 rounded-full"}>{status}</span>;
+        const lowerStatus = status?.toLowerCase();
+        let styles = "px-2 py-1 text-xs font-medium rounded-full ";
+        switch (lowerStatus) {
+            case 'active':
+            case 'completed':
+                styles += "text-green-800 bg-green-100";
+                break;
+            case 'inactive':
+            case 'pending':
+                styles += "text-yellow-800 bg-yellow-100";
+                break;
+            default:
+                styles += "text-gray-800 bg-gray-100";
+                break;
+        }
+        return <span className={styles}>{status}</span>;
     };
 
     const handleOpenDetailsModal = (title, data) => {
@@ -298,14 +308,24 @@ const BusinessCatalogue = () => {
     const handleCloseDetailsModal = () => {
         setDetailsModal({ isOpen: false, title: '', data: [] });
     };
+    
+    const handleOpenEditModal = (item) => {
+        setItemToEdit(item);
+        setIsEditModalOpen(true);
+    };
+
+    const handleCloseEditModal = () => {
+        setIsEditModalOpen(false);
+        setItemToEdit(null);
+    };
 
 
     const filteredAndSortedData = React.useMemo(() => {
         let filtered = tableData.filter(item =>
             Object.values(item).some(val =>
                 Array.isArray(val)
-                    ? val.join(' ').toLowerCase().includes(searchTerm.toLowerCase())
-                    : val.toString().toLowerCase().includes(searchTerm.toLowerCase())
+                    ? val.map(obj => obj.name || '').join(' ').toLowerCase().includes(searchTerm.toLowerCase())
+                    : String(val).toLowerCase().includes(searchTerm.toLowerCase())
             )
         );
 
@@ -462,8 +482,8 @@ const BusinessCatalogue = () => {
                         <thead className="bg-gray-800 text-white">
                             <tr>
                                 {tableHeaders.map(key => (
-                                    <th key={key} className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700" onClick={() => handleSort(key)}>
-                                        <span className="inline-flex items-center capitalize">{key.replace(/([A-Z])/g, ' $1')} {getSortIcon(key)}</span>
+                                    <th key={key} className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700" onClick={() => key !== 'Action' && handleSort(key)}>
+                                        <span className="inline-flex items-center capitalize">{key.replace(/([A-Z])/g, ' $1')} {key !== 'Action' && getSortIcon(key)}</span>
                                     </th>
                                 ))}
                             </tr>
@@ -476,17 +496,17 @@ const BusinessCatalogue = () => {
                                     <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
                                         <td className="p-3 text-gray-700 font-medium">{item.id}</td>
                                         <td className="p-3 text-gray-600">{item.domain}</td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Categories', item.category)} className="text-blue-600 underline">{item.category.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-categories', item.subcategory)} className="text-blue-600 underline">{item.subcategory.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Terms', item.term)} className="text-blue-600 underline">{item.term.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Tags', item.tag)} className="text-blue-600 underline">{item.tag.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-Tags', item.subtag)} className="text-blue-600 underline">{item.subtag.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Categories', item.category.map(c => c.name))} className="text-blue-600 underline">{item.category.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-categories', item.subcategory.map(sc => sc.name))} className="text-blue-600 underline">{item.subcategory.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Terms', item.term.map(t => t.name))} className="text-blue-600 underline">{item.term.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Tags', item.tag.map(tg => tg.name))} className="text-blue-600 underline">{item.tag.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-Tags', item.subtag.map(st => st.name))} className="text-blue-600 underline">{item.subtag.length}</button></td>
                                         <td className="p-3 text-gray-600 truncate max-w-xs" title={item.description}>{item.description}</td>
                                         <td className="p-3 text-gray-600">{item.createdBy}</td>
                                         <td className="p-3 text-gray-600">{item.createdDate}</td>
                                         <td className="p-3 text-gray-600">{item.updatedDate}</td>
                                         <td className="p-3">{getStatusBadge(item.status)}</td>
-                                        {isUserAuthorized && (
+                                        {!isUserAuthorized && (
                                             <td className="px-6 p-4 text-center whitespace-nowrap">
                                                 <div className="relative">
                                                     <button
@@ -497,17 +517,25 @@ const BusinessCatalogue = () => {
                                                     </button>
                                                     {activeMenu === index && (
                                                         <>
-                                                            <div className="fixed inset-0 z-100" onClick={handleClickOutside} />
+                                                            <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
                                                             <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
                                                                 <div className="flex items-center p-1 gap-1">
                                                                     <button
-
+                                                                        onClick={() => {
+                                                                            handleOpenEditModal(item);
+                                                                            setActiveMenu(null);
+                                                                        }}
+                                                                        title="Edit Domain Details"
                                                                         className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                                                                     >
                                                                         <Pencil className="h-4 w-4" />
                                                                     </button>
                                                                     <button
-                                                                        onClick={() => handleOpenDeleteModal(item)}
+                                                                        onClick={() => {
+                                                                            handleOpenDeleteModal(item);
+                                                                            setActiveMenu(null);
+                                                                        }}
+                                                                        title="Delete Domain"
                                                                         className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                                                                     >
                                                                         <Trash2 className="h-4 w-4" />
@@ -550,6 +578,12 @@ const BusinessCatalogue = () => {
 
             <AddCatalogueModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
             <DetailsModal isOpen={detailsModal.isOpen} onClose={handleCloseDetailsModal} title={detailsModal.title} data={detailsModal.data} />
+            <EditDetailModal
+                isOpen={isEditModalOpen}
+                onClose={handleCloseEditModal}
+                data={itemToEdit}
+                onEditComplete={fetchCatalogueData}
+            />
             <ConfirmationModal
                 isOpen={isDeleteModalOpen}
                 onClose={handleCloseDeleteModal}
