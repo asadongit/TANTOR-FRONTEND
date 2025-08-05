@@ -6,7 +6,8 @@ import {
   Lightbulb,
   Pencil,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Database
 } from "lucide-react";
 import CompositeViewComponent from "../Schema/CompositeViewComponent";
 import SchemaDetailsViewComponent from "./SchemaDetailsViewComponenet";
@@ -205,7 +206,10 @@ const SchemaViewScreen = () => {
         <div className="bg-white w-[70%] h-full p-5">
           {/* heading */}
           <div className="flex justify-between items-center pb-6">
-            <h1 className="font-medium">{schema?.schema}</h1>
+            <div className="flex items-center gap-2">
+              <span className="text-[#8d77ba]"><Database /></span>
+              <h1 className="font-medium text-xl">{schema?.schema}</h1>
+            </div>
 
             <div className="flex gap-7 text-sm">
               <div className="border-r pr-6 text-center">
@@ -314,23 +318,30 @@ const SchemaViewScreen = () => {
                   </div>
                 ) : (
                   <div className="flex gap-3 pt-4 text-sm">
-                    {complianceResponse.sub_tags?.map((res, idx) => (
-                      <span key={idx} className="bg-purple-100 text-[#8d77ba] border border-[#8d77ba] p-1 w-20 text-center rounded-2xl">
-                        {res.name}
+                    {!complianceResponse?.sub_tags || complianceResponse.sub_tags.length === 0 ? (
+                      <span className="bg-[#8d77ba] text-white border border-[#8d77ba] p-1 w-20 text-center rounded-2xl">
+                        NA
                       </span>
-                    ))}
+                    ) : (
+                      complianceResponse.sub_tags.map((res, idx) => (
+                        <span key={idx} className="bg-[#8d77ba] text-white border border-[#8d77ba] p-1 w-20 text-center rounded-2xl">
+                          {res.name}
+                        </span>
+                      ))
+                    )}
                   </div>
                 )}
+
               </div>
             </>
           )}
 
           {activeTab === "access" && (
             loadingAccessData ? 
-              <div className="pt-7 text-center text-sm text-gray-500">
+              <div className="pt-7 text-center text-sm text-gray-500 border-t">
                 Loading access api...
               </div> :
-            <div className="overflow-x-auto mt-2 rounded-lg shadow border">
+            <div className="overflow-x-auto mt-2 rounded-lg shadow border border-t">
               <table className="min-w-full">
                   <thead className="bg-gray-50">
                       <tr>

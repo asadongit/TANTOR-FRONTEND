@@ -5,7 +5,7 @@ import { secureQuery, fetchConnectionDetails } from '../Components/function.js';
 import { useAuth } from "../../../../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import SchemaViewScreen from "../Schema/SchemaViewScreen.jsx"
-import { Search } from 'lucide-react';
+import { Search, Database, Columns3 } from 'lucide-react';
 
 function Schema() {
   const [loading, setLoading] = useState(true);
@@ -201,9 +201,10 @@ function Schema() {
         </div>
       )}
       <Breadcrumb/>
-      {schemaViewScreen ? (
+      {/* {schemaViewScreen ? (
         <SchemaViewScreen schema={schemaForViewScreen}/>
-      ) : (
+      ) : ( */}
+      {
         <>
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-semibold">Schema</h1>
@@ -309,8 +310,9 @@ function Schema() {
               <div className="relative h-[500px] bg-white rounded-lg shadow-2xl mx-4 w-full max-w-5xl transform transition-all duration-300 ease-out flex flex-col max-h-[90vh]">
                 
                 <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-lg font-semibold text-gray-900">Column Details:</span>
+                  <div className="flex items-center">
+                    <span className="pr-1 text-[#8d77ba]"><Columns3 /></span>
+                    <span className="text-lg font-semibold text-gray-900 pr-3">Column Details:</span>
                     <span className="text-md">{currentSchema.schema}</span>
                   </div>
                   <button
@@ -375,8 +377,9 @@ function Schema() {
               <div className="relative h-[500px] bg-white rounded-lg shadow-2xl mx-4 w-full max-w-5xl transform transition-all duration-300 ease-out flex flex-col max-h-[90vh]">
                 
                 <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-lg font-semibold text-gray-900">Table Details:</span>
+                  <div className="flex items-center">
+                    <span className="pr-1 text-[#8d77ba]"><Database /></span>
+                    <span className="text-lg font-semibold text-gray-900 pr-3"> Schema Details:</span>
                     <span className="text-md">{currentSchema.schema}</span>
                   </div>
                   <button
@@ -431,7 +434,7 @@ function Schema() {
           )}
 
         </>
-      )}
+      }
     </div>
   );
 }

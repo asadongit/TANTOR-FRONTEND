@@ -115,42 +115,42 @@ const SchemaDetailsViewComponent = ({ tableData, componentInfo, activeTabBusines
                     <td className="p-4 font-medium">{row.schema}</td>
                     <td className="p-4">
                       {row.domain && (
-                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
                           {row.domain}
                         </span>
                       )}
                     </td>
                     <td className="p-4">
                       {row.category && (
-                        <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
                           {row.category}
                         </span>
                       )}
                     </td>
                     <td className="p-4">
                       {row.sub_category && (
-                        <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">
+                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
                           {row.sub_category}
                         </span>
                       )}
                     </td>
                     <td className="p-4">
                       {row.term && (
-                        <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
                           {row.term}
                         </span>
                       )}
                     </td>
                     <td className="p-4">
                       {row.tag && (
-                        <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs">
+                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
                           {row.tag}
                         </span>
                       )}
                     </td>
                     <td className="p-4">
                       {row.sub_tag && (
-                        <span className="inline-block px-2 py-1 bg-pink-100 text-pink-800 rounded-full text-xs">
+                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
                           {row.sub_tag}
                         </span>
                       )}
