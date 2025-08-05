@@ -204,25 +204,33 @@ export const TargetNode = ({ id, data }) => {
   }, [fetchConnections]);
 
   const getNextAlias = useCallback(() => {
+    if (!selectedTable) return "";
+
+    const baseAlias = `df_${selectedTable}`;
     const targetNodesFromWindow = window.allNodes ?
       window.allNodes.filter(n => n.type === "target") : [];
 
-    let maxNumber = 0;
+    const usedAliases = targetNodesFromWindow
+      .filter(node =>
+        node.id !== id &&
+        node.data &&
+        node.data.table === selectedTable &&
+        typeof node.data.alias === "string"
+      )
+      .map(node => node.data.alias);
 
-    targetNodesFromWindow.forEach(node => {
-      if (node.id !== id) {
-        const aliasMatch = (node.data?.alias || "").match(/^unnamed_target_(\d+)$/);
-        if (aliasMatch && aliasMatch[1]) {
-          const num = parseInt(aliasMatch[1], 10);
-          if (!isNaN(num) && num > maxNumber) {
-            maxNumber = num;
-          }
-        }
-      }
-    });
+    if (!usedAliases.includes(baseAlias)) {
+      return baseAlias;
+    }
 
-    return `unnamed_target_${maxNumber + 1}`;
-  }, [id]);
+    let suffix = 1;
+    let aliasWithSuffix = `${baseAlias}_${suffix}`;
+    while (usedAliases.includes(aliasWithSuffix)) {
+      suffix += 1;
+      aliasWithSuffix = `${baseAlias}_${suffix}`;
+    }
+    return aliasWithSuffix;
+  }, [id, selectedTable]);
 
   useEffect(() => {
     if (selectedTable && !alias) {
@@ -265,19 +273,68 @@ export const TargetNode = ({ id, data }) => {
   }, []);
 
   const getAllSourceColumns = () => {
+    // Start with basic source columns
     let allCols = getAllSelectedSourceColumns();
 
-    if (data && Array.isArray(data.transformations)) {
-      data.transformations.forEach(tr => {
-        if (Array.isArray(tr.target_column)) {
-          allCols = allCols.concat(tr.target_column);
+    // Get columns from connected transformations
+    if (window.allNodes && window.allEdges) {
+      // Find all transformation nodes connected to this target
+      const incomingEdges = window.allEdges.filter(e => e.target === id);
+      const transformationNodeIds = incomingEdges.map(e => e.source)
+        .filter(srcId => {
+          const node = window.allNodes.find(n => n.id === srcId);
+          return node && node.type === 'transformation';
+        });
+
+      // For each connected transformation, get their output columns (from transformations)
+      transformationNodeIds.forEach(transId => {
+        const transNode = window.allNodes.find(n => n.id === transId);
+        if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
+          transNode.data.transformations.forEach(tr => {
+            if (Array.isArray(tr.target_column)) {
+              allCols = [...allCols, ...tr.target_column];
+            }
+          });
         }
-        if (Array.isArray(tr.source_column)) {
-          allCols = allCols.concat(tr.source_column);
+      });
+
+      // Also get columns directly from connected sources via transformations
+      const sourceIds = new Set();
+      transformationNodeIds.forEach(transId => {
+        const transIncoming = window.allEdges.filter(e => e.target === transId);
+        transIncoming.forEach(e => {
+          const srcNode = window.allNodes.find(n => n.id === e.source && n.type === "source");
+          if (srcNode) {
+            sourceIds.add(srcNode.id);
+          }
+        });
+      });
+
+      // Collect all columns from source nodes
+      sourceIds.forEach(sourceId => {
+        const sourceNode = window.allNodes.find(n => n.id === sourceId);
+        if (sourceNode && sourceNode.data && Array.isArray(sourceNode.data.columns)) {
+          const sourceCols = sourceNode.data.columns.map(col =>
+            typeof col === "object" ? col.name : col
+          );
+          allCols = [...allCols, ...sourceCols];
         }
       });
     }
 
+    // Add any columns from explicit transformations in this target node's data
+    if (data && Array.isArray(data.transformations)) {
+      data.transformations.forEach(tr => {
+        if (Array.isArray(tr.target_column)) {
+          allCols = [...allCols, ...tr.target_column];
+        }
+        if (Array.isArray(tr.source_column)) {
+          allCols = [...allCols, ...tr.source_column];
+        }
+      });
+    }
+
+    // Remove duplicates and filter out empty values
     return Array.from(new Set(allCols.filter(Boolean)));
   };
 
@@ -324,7 +381,7 @@ export const TargetNode = ({ id, data }) => {
 
   const handleSetTargetMapping = useCallback((newMapping) => {
     if (JSON.stringify(newMapping) !== JSON.stringify(targetMapping)) {
-      console.log("Target Node - Setting new target mapping:", newMapping);
+      // console.log("Target Node - Setting new target mapping:", newMapping);
       setTargetMapping(newMapping);
       if (typeof data.onDataChange === "function") {
         data.onDataChange({ targetMapping: newMapping });
@@ -370,16 +427,27 @@ export const TargetNode = ({ id, data }) => {
   }, [selectedSourceForMapping, connectedSourceNodes]);
 
   const sourceColumnOptionsForMapping = useMemo(() => {
-    if (!selectedSourceNode) return [];
-    const cols = Array.isArray(selectedSourceNode.data?.columns)
-      ? selectedSourceNode.data.columns
-      : [];
-    return cols.map(col =>
-      typeof col === "object"
-        ? { value: col.name, label: col.name }
-        : { value: col, label: col }
-    );
-  }, [selectedSourceNode]);
+    // Start with columns from the selected source
+    let cols = [];
+    if (selectedSourceNode) {
+      cols = Array.isArray(selectedSourceNode.data?.columns)
+        ? selectedSourceNode.data.columns
+        : [];
+    }
+
+    // Add columns from transformations
+    const allAvailableCols = getAllSourceColumns();
+
+    // Combine both sources
+    const combinedCols = [...cols.map(col =>
+      typeof col === "object" ? col.name : col
+    ), ...allAvailableCols];
+
+    // Remove duplicates
+    const uniqueCols = Array.from(new Set(combinedCols.filter(Boolean)));
+
+    return uniqueCols.map(col => ({ value: col, label: col }));
+  }, [selectedSourceNode, getAllSourceColumns]);
 
   const handleSlideClick = () => {
     if (window.openTargetMappingDrawer) {
@@ -410,46 +478,34 @@ export const TargetNode = ({ id, data }) => {
   const handlePrefillAndOpenMappingDrawer = () => {
     if (!selectedSourceForMapping) return;
 
-    let shouldPrefill = true;
-    if (mappingConfirmedForSource[selectedSourceForMapping] !== undefined) {
-      shouldPrefill = !mappingConfirmedForSource[selectedSourceForMapping];
-    }
+    let mappingToSend = {};
 
-    let mappingToSend = targetMapping;
-    if (shouldPrefill) {
-      const cols = Array.isArray(selectedSourceNode?.data?.columns)
-        ? selectedSourceNode.data.columns
-        : [];
-
+    // If data.targetMapping is present and non-empty (edit mode), use it directly
+    if (data.targetMapping && Object.keys(data.targetMapping).length > 0) {
+      mappingToSend = data.targetMapping;
+    } else {
+      // CREATE MODE: Prefill mapping by matching target columns to source columns by name
+      const allAvailableSourceColumns = getAllSourceColumns();
       const sourceColMap = {};
-      cols.forEach(col => {
-        const colName = typeof col === "object" ? col.name : col;
-        if (colName) {
-          sourceColMap[colName.toLowerCase()] = colName;
-        }
+      allAvailableSourceColumns.forEach(col => {
+        if (col) sourceColMap[col.toLowerCase()] = col;
       });
-
-      const lowerSourceColNames = Object.keys(sourceColMap);
-
       const targetCols = getAllTargetColumns();
-
-      const prefilledMapping = {};
+      mappingToSend = {};
       targetCols.forEach(targetCol => {
-        if (lowerSourceColNames.includes(targetCol.toLowerCase())) {
-          prefilledMapping[targetCol] = sourceColMap[targetCol.toLowerCase()];
+        if (sourceColMap[targetCol.toLowerCase()]) {
+          mappingToSend[targetCol] = sourceColMap[targetCol.toLowerCase()];
         } else {
-          prefilledMapping[targetCol] = "";
+          mappingToSend[targetCol] = "";
         }
       });
-
-      console.log("Prefilled mapping:", prefilledMapping);
-
-      setTargetMapping(prefilledMapping);
-      if (typeof data.onDataChange === "function") {
-        data.onDataChange({ targetMapping: prefilledMapping });
-      }
-      mappingToSend = prefilledMapping;
     }
+
+    const allAvailableSourceColumns = getAllSourceColumns();
+    const enhancedSourceColumnOptions = allAvailableSourceColumns.map(col => ({
+      value: col,
+      label: col
+    }));
 
     if (window.openTargetMappingDrawer) {
       window.openTargetMappingDrawer(id, {
@@ -465,11 +521,10 @@ export const TargetNode = ({ id, data }) => {
             [selectedSourceForMapping]: true
           }));
         },
-        sourceColumnOptions: sourceColumnOptionsForMapping,
+        sourceColumnOptions: enhancedSourceColumnOptions,
       });
     }
   };
-
 
   const handleSourceSelectionChange = e => {
     const sourceId = e.target.value;
@@ -488,7 +543,6 @@ export const TargetNode = ({ id, data }) => {
       payload: { targetNodeId: id, sourceNodeId: sourceId }
     });
   };
-
   const addPreProcedureDropdown = () => {
     const newId = Math.max(...selectedPreProcedures.map(p => p.id), 0) + 1;
     setSelectedPreProcedures(prev => [...prev, { id: newId, procedure: null }]);
@@ -659,12 +713,12 @@ export const TargetNode = ({ id, data }) => {
                           "";
         initialMapping[param.name] = paramValue;
 
-        console.log(`Target Node - Parameter ${param.name}:`, {
-          fromStored: storedMapping[param.name],
-          fromProcedure: procedure.parameterMapping?.[param.name],
-          fromOriginal: procedure.originalParameterMapping?.[param.name],
-          finalValue: paramValue
-        });
+        // console.log(`Target Node - Parameter ${param.name}:`, {
+        //   fromStored: storedMapping[param.name],
+        //   fromProcedure: procedure.parameterMapping?.[param.name],
+        //   fromOriginal: procedure.originalParameterMapping?.[param.name],
+        //   finalValue: paramValue
+        // });
       });
     }
 
@@ -875,9 +929,9 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    if (hasUpdated) {
-      console.log("Target node data restored:", data);
-    }
+    // if (hasUpdated) {
+    //   console.log("Target node data restored:", data);
+    // }
   }, [
     data.connection,
     data.connectionId,
@@ -895,7 +949,7 @@ export const TargetNode = ({ id, data }) => {
 
 
     if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0) {
-      console.log("Target Node - Restoring pre-procedures parameter mappings:", data.preProcedures);
+      // console.log("Target Node - Restoring pre-procedures parameter mappings:", data.preProcedures);
 
       const initialPreMappings = {};
       data.preProcedures.forEach((procData, index) => {
@@ -907,11 +961,11 @@ export const TargetNode = ({ id, data }) => {
         if (Object.keys(parameterMapping).length > 0) {
           initialPreMappings[mappingKey] = parameterMapping;
 
-          console.log("Target Node - Restored pre-procedure mapping:", {
-            mappingKey,
-            parameterMapping,
-            procedureName: procData.procedure_name
-          });
+          // console.log("Target Node - Restored pre-procedure mapping:", {
+          //   mappingKey,
+          //   parameterMapping,
+          //   procedureName: procData.procedure_name
+          // });
 
           const procedureJSON = {
             "EventType": "BeforeTargetWrite",
@@ -947,7 +1001,7 @@ export const TargetNode = ({ id, data }) => {
     }
 
     if (data.postProcedures && Array.isArray(data.postProcedures) && data.postProcedures.length > 0) {
-      console.log("Target Node - Restoring post-procedures parameter mappings:", data.postProcedures);
+      // console.log("Target Node - Restoring post-procedures parameter mappings:", data.postProcedures);
 
       const initialPostMappings = {};
       data.postProcedures.forEach((procData, index) => {
@@ -959,11 +1013,11 @@ export const TargetNode = ({ id, data }) => {
         if (Object.keys(parameterMapping).length > 0) {
           initialPostMappings[mappingKey] = parameterMapping;
 
-          console.log("Target Node - Restored post-procedure mapping:", {
-            mappingKey,
-            parameterMapping,
-            procedureName: procData.procedure_name
-          });
+          // console.log("Target Node - Restored post-procedure mapping:", {
+          //   mappingKey,
+          //   parameterMapping,
+          //   procedureName: procData.procedure_name
+          // });
 
           const procedureJSON = {
             "EventType": "AfterTargetWrite",

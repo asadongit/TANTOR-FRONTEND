@@ -89,16 +89,51 @@ const ArchivalList = () => {
       const encryptedUrl = encodeURIComponent(encrypt(url));
       navigate(`/details?${encryptedUrl}`);
     };
+    const [deleteModal, setDeleteModal] = useState({ open: false, migrationId: null });
+
+const handleDeleteClick = (row) => {
+  console.log("Delete clicked for row:", row);
+  setDeleteModal({ open: true, migrationId: row.migration_id });
+};
+
+const confirmDeleteMigration = async () => {
+  if (!deleteModal.migrationId) return;
+  try {
+    await axios.delete(`${hostnameV1}/delete-migration/${deleteModal.migrationId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    toast.success("Migration removed from platform.");
+    refetchArchival();
+  } catch (error) {
+    toast.error("Failed to remove migration.");
+  } finally {
+    setDeleteModal({ open: false, migrationId: null });
+  }
+};
+
+const handleEditClick = async (row) => {
+  try {
+    const nodeJson = row.ui_json;
+    if (nodeJson) {
+      navigate('/canvas/metadataCanvas', { state: { nodeJson } });
+    } else {
+      toast.error('No migration node data found.');
+    }
+  } catch (error) {
+    toast.error('Failed to fetch migration node data.');
+  }
+};
+
     const actions = [
       {
         label: "Edit",
         icon: <Pencil size={16} />,
-        onClick: (row) => console.log("Edit clicked for", row),
+        onClick: handleEditClick,
       },
       {
         label: "Delete",
         icon: <Trash2 size={16} />,
-        onClick: (row) => console.log("Delete clicked for", row),
+        onClick: handleDeleteClick,
       },
       {
         label: "Run",
@@ -119,11 +154,11 @@ const ArchivalList = () => {
       },
     ];
 
-    useEffect(() => {
-  if (archivalData.length > 0) {
-    console.log("First row:", archivalData[0]);
-  }
-}, [archivalData]);
+//     useEffect(() => {
+//   if (archivalData.length > 0) {
+//     console.log("First row:", archivalData[0]);
+//   }
+// }, [archivalData]);
 
   return (
     <div className="p-6">
@@ -160,9 +195,34 @@ const ArchivalList = () => {
           refetch={refetchArchival}
 />
 
+      {/* Delete Migration Modal */}
+{deleteModal.open && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-2xl w-[400px] p-8 max-h-[90vh] overflow-y-auto">
+      <h2 className="text-xl font-bold text-[#8e78b7] mb-4">Remove Migration</h2>
+      <p className="mb-4 text-gray-700">Are you sure you want to remove this migration?</p>
+      <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm">
+        Note: This will only remove the listing from the platform, not from the connections.
+      </div>
+      <div className="flex justify-end gap-4">
+        <button
+          onClick={() => setDeleteModal({ open: false, migrationId: null })}
+          className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={confirmDeleteMigration}
+          className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
 
 export default ArchivalList;
-    

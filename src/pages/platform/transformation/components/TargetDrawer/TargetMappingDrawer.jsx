@@ -13,47 +13,129 @@ const TargetMappingDrawer = ({
     const [globalSearch, setGlobalSearch] = useState("");
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [initialMappingReceived, setInitialMappingReceived] = useState(false);
+    const [availableSourceColumns, setAvailableSourceColumns] = useState([]);
 
     const [localMapping, setLocalMapping] = useState({});
 
+    // Function to collect all available source columns from window.allNodes
+    const refreshSourceColumns = useCallback(() => {
+        if (!window.allNodes || !window.allEdges) return;
+
+        // Find all source nodes connected to this target node through transformations
+        const sourceColumns = new Set();
+
+        // Find all transformation nodes connected to this target
+        const incomingEdges = window.allEdges.filter(e => e.target === nodeId);
+        const transformationNodeIds = incomingEdges.map(e => e.source)
+            .filter(srcId => {
+                const node = window.allNodes.find(n => n.id === srcId);
+                return node && node.type === 'transformation';
+            });
+
+        // For each transformation node, get all connected source nodes
+        transformationNodeIds.forEach(transId => {
+            const transIncoming = window.allEdges.filter(e => e.target === transId);
+            transIncoming.forEach(e => {
+                const sourceNode = window.allNodes.find(n => n.id === e.source && n.type === 'source');
+                if (sourceNode && sourceNode.data && Array.isArray(sourceNode.data.columns)) {
+                    sourceNode.data.columns.forEach(col => {
+                        const colName = typeof col === 'object' ? col.name : col;
+                        if (colName) sourceColumns.add(colName);
+                    });
+                }
+            });
+
+            // Also get columns from transformation outputs
+            const transNode = window.allNodes.find(n => n.id === transId);
+            if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
+                transNode.data.transformations.forEach(tr => {
+                    if (Array.isArray(tr.target_column)) {
+                        tr.target_column.forEach(col => {
+                            if (col) sourceColumns.add(col);
+                        });
+                    }
+                });
+            }
+        });
+
+        // Convert to array and update state
+        const columnsArray = Array.from(sourceColumns);
+        if (columnsArray.length > 0) {
+            // console.log(`Target Mapping Drawer - Found ${columnsArray.length} source columns:`, columnsArray);
+            setAvailableSourceColumns(columnsArray);
+        }
+    }, [nodeId]);
+
+    // Update available source columns when sourceColumnOptions change
     useEffect(() => {
-        const hasValidMappings = targetMapping &&
-            typeof targetMapping === 'object' &&
-            Object.keys(targetMapping).some(key => targetMapping[key]);
+        if (sourceColumnOptions && sourceColumnOptions.length > 0) {
+            const sourceColValues = sourceColumnOptions.map(opt => opt.value);
+            setAvailableSourceColumns(prevCols => {
+                // Combine new columns with existing ones
+                const allCols = [...prevCols, ...sourceColValues];
+                // Remove duplicates
+                return Array.from(new Set(allCols));
+            });
+            // console.log("Target mapping drawer received source columns:", sourceColValues);
+        }
 
+        // Always try to refresh columns from all nodes
+        refreshSourceColumns();
+    }, [sourceColumnOptions, refreshSourceColumns]);
 
+    // Listen for the column update event to refresh source columns
+    useEffect(() => {
+        const handleColumnUpdate = () => {
+            refreshSourceColumns();
+        };
 
+        window.addEventListener("tantor-columns-updated", handleColumnUpdate);
+        window.addEventListener("tantor-refresh-all-columns", handleColumnUpdate);
+
+        // Refresh immediately on mount
+        refreshSourceColumns();
+
+        return () => {
+            window.removeEventListener("tantor-columns-updated", handleColumnUpdate);
+            window.removeEventListener("tantor-refresh-all-columns", handleColumnUpdate);
+        };
+    }, [refreshSourceColumns]);
+
+    useEffect(() => {
         let effectiveMapping = {};
 
-        if (hasValidMappings) {
+        const hasNonEmptyMapping =
+            targetMapping &&
+            typeof targetMapping === 'object' &&
+            Object.values(targetMapping).some(val => val && val.trim() !== "");
+
+        if (hasNonEmptyMapping) {
             effectiveMapping = { ...targetMapping };
-        }
-        else if (window.localStorage.getItem(`targetMapping_${nodeId}`)) {
-            try {
-                const storedMapping = JSON.parse(window.localStorage.getItem(`targetMapping_${nodeId}`));
-
-                const targetColumns = getAllTargetColumns();
-                const hasValidColumns = Object.keys(storedMapping).some(key =>
-                    targetColumns.includes(key)
-                );
-
-                if (storedMapping && typeof storedMapping === 'object' && hasValidColumns) {
-                    effectiveMapping = storedMapping;
-                } else {
-                    console.log("herreeeee");
-                    window.localStorage.removeItem(`targetMapping_${nodeId}`);
-                }
-            } catch (e) {
-                console.error("Error parsing stored mapping:", e);
+        } else {
+            // CREATE MODE: auto-map by name
+            let allSourceCols = [];
+            if (sourceColumnOptions && sourceColumnOptions.length > 0) {
+                allSourceCols = sourceColumnOptions.map(opt => opt.value);
             }
-        }
-        else if (window.transformationContext?.state?.targets?.[nodeId]?.targetMapping) {
-            effectiveMapping = { ...window.transformationContext.state.targets[nodeId].targetMapping };
-        }
-        else if (window.transformationContext?.state?.preservedTargetMappings?.[nodeId]) {
-            effectiveMapping = { ...window.transformationContext.state.preservedTargetMappings[nodeId] };
+            if (allSourceCols.length === 0 && availableSourceColumns && availableSourceColumns.length > 0) {
+                allSourceCols = availableSourceColumns;
+            }
+            const sourceColMap = {};
+            allSourceCols.forEach(col => {
+                if (col) sourceColMap[col.toLowerCase()] = col;
+            });
+            const targetCols = getAllTargetColumns();
+            effectiveMapping = {};
+            targetCols.forEach(targetCol => {
+                if (sourceColMap[targetCol.toLowerCase()]) {
+                    effectiveMapping[targetCol] = sourceColMap[targetCol.toLowerCase()];
+                } else {
+                    effectiveMapping[targetCol] = "";
+                }
+            });
         }
 
+        // Always ensure all target columns are present in the mapping
         const allTargetColumns = getAllTargetColumns();
         const completedMapping = { ...effectiveMapping };
         allTargetColumns.forEach(col => {
@@ -66,8 +148,8 @@ const TargetMappingDrawer = ({
         setInitialMappingReceived(true);
 
         window.localStorage.setItem(`targetMapping_${nodeId}`, JSON.stringify(completedMapping));
-
-    }, [targetMapping, nodeId, getAllTargetColumns]);
+    // --- END PATCH ---
+    }, [targetMapping, nodeId, getAllTargetColumns, sourceColumnOptions, availableSourceColumns]);
 
     const filteredTargetColumns = useMemo(
         () => getAllTargetColumns().filter(col =>
@@ -161,11 +243,34 @@ const TargetMappingDrawer = ({
         });
     }, [nodeId]);
 
-    useEffect(() => {
-        if (initialMappingReceived) {
-            console.log(`Target mapping updated for node ${nodeId}:`, localMapping);
+    // useEffect(() => {
+    //     if (initialMappingReceived) {
+    //         console.log(`Target mapping updated for node ${nodeId}:`, localMapping);
+    //     }
+    // }, [localMapping, nodeId, initialMappingReceived]);
+
+    // Use both sourceColumnOptions prop and our internal state for mapping
+    const allSourceColumnsForMapping = useMemo(() => {
+        // Start with the provided source column options
+        let combined = [...sourceColumnOptions];
+
+        // Add any columns we've found ourselves
+        if (availableSourceColumns.length > 0) {
+            combined = [...combined, ...availableSourceColumns.map(col => ({ value: col, label: col }))];
         }
-    }, [localMapping, nodeId, initialMappingReceived]);
+
+        // Deduplicate based on value
+        const valueSet = new Set();
+        const uniqueOptions = combined.filter(opt => {
+            if (!valueSet.has(opt.value)) {
+                valueSet.add(opt.value);
+                return true;
+            }
+            return false;
+        });
+
+        return uniqueOptions;
+    }, [sourceColumnOptions, availableSourceColumns]);
 
     return (
         <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col border-l border-gray-200 transition-transform duration-300">
@@ -226,13 +331,13 @@ const TargetMappingDrawer = ({
                             {filteredTargetColumns.map((targetCol) => {
                                 const open = dropdownOpen[targetCol] || false;
                                 const search = searchTerms[targetCol] || "";
-                                const filteredOptions = sourceColumnOptions.filter(opt =>
+                                const filteredOptions = allSourceColumnsForMapping.filter(opt =>
                                     opt.label.toLowerCase().includes(search.toLowerCase())
                                 );
 
                                 // Always compute selectedLabel from latest local mapping
                                 const currentValue = localMapping[targetCol] || "";
-                                const selectedOption = sourceColumnOptions.find(opt => opt.value === currentValue);
+                                const selectedOption = allSourceColumnsForMapping.find(opt => opt.value === currentValue);
                                 const selectedLabel = selectedOption ? selectedOption.label : "";
 
                                 return (

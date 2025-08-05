@@ -77,7 +77,7 @@ function TransformationCanvasContent() {
     if (editMode === 'true' && editFlowDataStr && transformationId) {
       try {
         const editFlowData = JSON.parse(editFlowDataStr);
-        console.log("Starting edit mode restoration...", editFlowData);
+        // console.log("Starting edit mode restoration...", editFlowData);
 
         setIsEditMode(true);
         setEditTransformationId(transformationId);
@@ -149,7 +149,7 @@ function TransformationCanvasContent() {
           onDataChange: (newData) => {
             // Skip updates if the node is being restored
             if (node.data._isRestoring) {
-              console.log('Skipping update during restoration for node:', node.id);
+              // console.log('Skipping update during restoration for node:', node.id);
               return;
             }
 
@@ -415,13 +415,7 @@ function TransformationCanvasContent() {
       setIsSaving(true);
       const transformationData = generateTransformationJson();
 
-      // LOG TARGET DATA FOR DEBUGGING
-      console.log("Save Flow - Target data in transformation JSON:", Object.keys(transformationData.target).map(key => ({
-        key,
-        targetMapping: transformationData.target[key].targetMapping,
-        mappingEntries: transformationData.target[key].targetMapping ?
-                        Object.keys(transformationData.target[key].targetMapping).length : 0
-      })));
+
 
       if (Object.keys(transformationData.source).length === 0) {
         toast.error("Source data is empty. Make sure your source nodes are properly connected.");
@@ -543,24 +537,10 @@ function TransformationCanvasContent() {
         }
       });
 
-      // Prepare edit flow data using utility function
       const editFlowData = prepareEditFlowData(nodes, edges, nodeIdRef.current);
 
-      // LOG TARGET NODES IN EDIT FLOW
-      console.log("Save Flow - Target nodes in edit flow:", editFlowData.nodes
-        .filter(n => n.type === 'target')
-        .map(n => ({
-          id: n.id,
-          targetMapping: n.data.targetMapping,
-          mappingEntries: n.data.targetMapping ? Object.keys(n.data.targetMapping).length : 0
-        }))
-      );
 
-      // Validate the edit flow data
-      const validation = validateEditFlowData(editFlowData);
-      if (!validation.isValid) {
-        console.warn("Edit flow data validation errors:", validation.errors);
-      }
+
 
       const payload = {
         transformation_name: defineNode.data.name,
@@ -580,10 +560,9 @@ function TransformationCanvasContent() {
 
       console.log("Payload with edit flow data:", payload);
 
-      // Determine if this is an update or create
       const isUpdate = isEditMode && editTransformationId;
       const url = isUpdate
-        ? `${hostname}/etl/transformation/update?transformation_id=${editTransformationId}`
+        ? `${hostname}/etl/transformation/edit/update?transformation_id=${editTransformationId}`
         : `${hostname}/etl/transformation`;
       const method = isUpdate ? "PATCH" : "POST";
 
@@ -648,7 +627,7 @@ function TransformationCanvasContent() {
   // Remove all identified keys
   keysToRemove.forEach(key => localStorage.removeItem(key));
 
-  console.log("Flow reset - cleared all target mapping data");
+  // console.log("Flow reset - cleared all target mapping data");
 
   // Also clear debug variables if they exist
   if (window.targetMappingsDebug) window.targetMappingsDebug = {};
@@ -692,9 +671,50 @@ const handleCancel = useCallback(() => {
 
   useEffect(() => {
     window.openTargetMappingDrawer = (nodeId, props = {}) => {
-      setArthDrawerNodeId(nodeId);
-      setArthDrawerProps({...props});
-      setArthDrawerOpen(true);
+      // Before opening the drawer, refresh all source columns
+      if (window.allNodes && window.allEdges) {
+        // Find the target node
+        const targetNode = window.allNodes.find(n => n.id === nodeId && n.type === 'target');
+        if (targetNode) {
+          // Find all transformation nodes connected to this target
+          const incomingEdges = window.allEdges.filter(e => e.target === nodeId);
+          const transformationNodeIds = incomingEdges.map(e => e.source)
+            .filter(srcId => {
+              const n = window.allNodes.find(n => n.id === srcId);
+              return n && n.type === 'transformation';
+            });
+
+          // For each transformation, ensure its columns are updated
+          transformationNodeIds.forEach(transId => {
+            const transNode = window.allNodes.find(n => n.id === transId);
+            if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
+              // console.log(`Ensuring transformation columns for node ${transId} are up-to-date`);
+            }
+          });
+
+          // Trigger a global refresh event for all components to update their columns
+          window.dispatchEvent(new CustomEvent("tantor-refresh-all-columns", {
+            detail: { targetNodeId: nodeId }
+          }));
+
+          // Short delay to let columns update before opening the drawer
+          setTimeout(() => {
+            setArthDrawerNodeId(nodeId);
+            setArthDrawerProps({...props});
+            setArthDrawerOpen(true);
+          }, 50);
+        } else {
+          // If no extra processing needed, open drawer immediately
+          setArthDrawerNodeId(nodeId);
+          setArthDrawerProps({...props});
+          setArthDrawerOpen(true);
+        }
+      } else {
+        // Fallback to opening drawer directly
+        setArthDrawerNodeId(nodeId);
+        setArthDrawerProps({...props});
+        setArthDrawerOpen(true);
+      }
     };
 
     window.closeTargetMappingDrawer = () => {
@@ -926,7 +946,7 @@ const handleCancel = useCallback(() => {
   }, [edges, activeTransformationNodeId, setNodes]);
 
   const handleTransformationApply = useCallback((transformationNodeId, transformations) => {
-    console.log('Applying transformations:', transformations);
+    // console.log('Applying transformations:', transformations);
 
     setNodes(prevNodes => {
       const outgoingEdges = edges.filter(edge => edge.source === transformationNodeId);

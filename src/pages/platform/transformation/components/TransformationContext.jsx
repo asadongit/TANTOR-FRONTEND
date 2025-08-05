@@ -15,6 +15,7 @@ const initialState = {
   procedureExecution: {},
   originalSourceColumns: {}, // New property to store original selections
   preservedTargetMappings: {}, // New property to maintain target mappings across edit sessions
+  sourceOriginalColumns: {}, // <-- Add this for original columns per source node
 };
 
 const ACTION_TYPES = {
@@ -39,6 +40,7 @@ const ACTION_TYPES = {
   SET_ORIGINAL_SOURCE_COLUMNS: 'SET_ORIGINAL_SOURCE_COLUMNS', // New action type
   PRESERVE_TARGET_MAPPING: 'PRESERVE_TARGET_MAPPING', // New action type
   RESTORE_TARGET_MAPPINGS: 'RESTORE_TARGET_MAPPINGS', // New action type
+  SET_SOURCE_ORIGINAL_COLUMNS: 'SET_SOURCE_ORIGINAL_COLUMNS', // <-- Add new action type
 };
 
 function transformationReducer(state, action) {
@@ -126,18 +128,11 @@ function transformationReducer(state, action) {
       };
 
     case ACTION_TYPES.UPDATE_TARGET:
-      // Check for targetMapping in different sources with priority order
       const newTargetMapping = action.payload.data.targetMapping ||
                               state.targets[action.payload.id]?.targetMapping ||
                               state.preservedTargetMappings[action.payload.id] || {};
 
-      // Log for debugging
-      if (action.payload.data.targetMapping) {
-        console.log(`TransformationContext: Updating target ${action.payload.id} with mapping:`,
-          action.payload.data.targetMapping);
-      }
 
-      // Store the mapping in preservedTargetMappings for persistence
       if (Object.keys(newTargetMapping).length > 0) {
         state.preservedTargetMappings[action.payload.id] = {...newTargetMapping};
       }
@@ -325,6 +320,17 @@ function transformationReducer(state, action) {
         targets: updatedTargets
       };
 
+    case ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS: {
+      const { sourceNodeId, columns } = action.payload;
+      return {
+        ...state,
+        sourceOriginalColumns: {
+          ...state.sourceOriginalColumns,
+          [sourceNodeId]: columns
+        }
+      };
+    }
+
     case ACTION_TYPES.RESET:
       // Explicitly remove any target mappings from localStorage to ensure fresh state
       Object.keys(state.targets).forEach(targetId => {
@@ -342,7 +348,7 @@ function transformationReducer(state, action) {
       if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
       if (window.targetMappingsDebug) window.targetMappingsDebug = {};
 
-      console.log("TransformationContext fully reset");
+      // console.log("TransformationContext fully reset");
       return initialState;
 
     default:
@@ -565,6 +571,11 @@ export function TransformationProvider({ children }) {
     return {};
   };
 
+  // Helper to get original columns for a source node
+  const getSourceOriginalColumns = (sourceNodeId) => {
+    return state.sourceOriginalColumns[sourceNodeId] || [];
+  };
+
   return (
     <TransformationContext.Provider
       value={{
@@ -576,6 +587,7 @@ export function TransformationProvider({ children }) {
         targetToSelectedSourceMap: state.targetToSelectedSourceMap,
         procedureExecution: state.procedureExecution,
         getTargetMappingById,  // Expose the new helper
+        getSourceOriginalColumns, // <-- Expose helper
       }}
     >
       {children}
@@ -698,6 +710,18 @@ export function useTrackConnections(nodes, edges) {
                 }
               }
             });
+
+            // IMPORTANT: Also explicitly update the targetToSelectedSourceMap if a selectedSourceId exists
+            if (data.selectedSourceId) {
+              dispatch({
+                type: ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE,
+                payload: {
+                  targetNodeId: id,
+                  sourceNodeId: data.selectedSourceId
+                }
+              });
+              // console.log(`Restored target mapping relationship: Target ${id} -> Source ${data.selectedSourceId}`);
+            }
           }
           break;
 
