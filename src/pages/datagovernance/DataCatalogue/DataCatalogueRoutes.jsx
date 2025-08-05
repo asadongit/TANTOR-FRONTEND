@@ -16,7 +16,7 @@ export const DataCatalogueRoutes = (
     <Route path={`${PREFIX}`} element={<DataCatalogue />} />
     <Route path={`${PREFIX}/database`} element={<Database />} />
     <Route path={`${PREFIX}/schema`} element={<Schema />} />
-    <Route path={`${PREFIX}/schema-view-screen`} element={<SchemaViewScreen />}/>
+    <Route path={`${PREFIX}/schema/:schemaName`} element={<SchemaViewScreen />}/>
     <Route path={`${PREFIX}/table`} element={<Tables />} />
     <Route path={`${PREFIX}/column`} element={<Columns />} />
     <Route path={`${PREFIX}/table/:tableName`} element={<TableDetailsPage />} />
