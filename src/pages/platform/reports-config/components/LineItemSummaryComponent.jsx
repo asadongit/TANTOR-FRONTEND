@@ -304,7 +304,7 @@ const LineItemSummary = () => {
                             key={idx} 
                             className="bg-green-50 text-green-800 px-2 py-1 rounded text-xs font-medium"
                           >
-                            {metric}
+                            {metric.name}
                           </span>
                         ))}
                       </div>

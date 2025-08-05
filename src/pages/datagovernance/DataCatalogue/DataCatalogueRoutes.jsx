@@ -1,9 +1,12 @@
 import { Route } from 'react-router-dom';
 import DataCatalogue from './DataCatalogue';
 import Database from './Database';
-import Schema from './Schema';
+import Schema from './Schema/Schema';
 import Tables from './Tables';
 import Columns from './Columns';
+import TableDetailsPage from './TableDetailsPage';
+import ColumnDetailsPage from './ColumnDetailsPage';
+import SchemaViewScreen from './Schema/SchemaViewScreen';
 
 
 const PREFIX = '/datagovernance/data-catalogue';
@@ -13,7 +16,10 @@ export const DataCatalogueRoutes = (
     <Route path={`${PREFIX}`} element={<DataCatalogue />} />
     <Route path={`${PREFIX}/database`} element={<Database />} />
     <Route path={`${PREFIX}/schema`} element={<Schema />} />
+    <Route path={`${PREFIX}/schema-view-screen`} element={<SchemaViewScreen />}/>
     <Route path={`${PREFIX}/table`} element={<Tables />} />
     <Route path={`${PREFIX}/column`} element={<Columns />} />
+    <Route path={`${PREFIX}/table/:tableName`} element={<TableDetailsPage />} />
+    <Route path={`${PREFIX}/column/:columnName`} element={<ColumnDetailsPage />} />
   </>
 );

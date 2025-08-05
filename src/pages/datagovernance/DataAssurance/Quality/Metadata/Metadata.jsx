@@ -283,9 +283,9 @@ const Metadata = () => {
 
   const filteredData = tableData
     .filter(item =>
-      item.connection.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.database.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.schema.toLowerCase().includes(searchTerm.toLowerCase())
+      item?.connection?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item?.database?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item?.schema?.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
       if (!sortConfig.key) return 0;

@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { usePurgeContext } from "../../react-flow/context/PurgeContext";
 import { useAuth } from "../../../../context/AuthContext";
 
-export function TargetNode({ id }) {
+export function TargetNode({ id, data }) {
   const hostname = window._env_?.VITE_FAST_API;
   const hostnameV2 = window._env_?.VITE_FAST_API_V2;
   const { token, decodedToken, project } = useAuth();
@@ -387,6 +387,28 @@ export function TargetNode({ id }) {
   useEffect(() => {
     handleTargetConnectionName(targetConnection);
   }, [targetConnection]);
+
+  // Pre-populate state from data prop on mount (edit mode)
+  useEffect(() => {
+    if (data) {
+      if (data.connectionName) setTargetConnection(data.connectionName);
+      if (data.schemaName) {
+        setSelectedSchema(data.schemaName);
+        fetchSchema(data.connectionName);
+      }
+      if (data.scope === "subset" && data.tableName) setSelectedTableName([data.tableName]);
+    if (data.scope === "bulk" && data.tableName) setSelectedBulkTables([data.tableName]);
+    if (data.selectedTableName) setSelectedTableName(data.TableName);
+    if (data.checkedBulkTables) setCheckedBulkTables(data.checkedBulkTables);
+    if (data.searchTerm) setSearchTerm(data.searchTerm);
+    // if (data.selectedPurgeScope) setSelectedPurgeScope(data.scope);
+    // Fetch tables if both connection and schema are present
+    if (data.connectionName && data.selectedSchema) {
+      fetchTables(data.connectionName, data.selectedSchema);
+    }
+    // Add more fields as needed for full pre-population
+  }
+}, [data, handleTargetConnectionName]);
 
   const handleTableSelection = (tableName) => {
     if (selectedScope === "subset") {
@@ -1182,4 +1204,5 @@ export function TargetNode({ id }) {
 
 TargetNode.propTypes = {
   id: PropTypes.string.isRequired,
+  data: PropTypes.object,
 };

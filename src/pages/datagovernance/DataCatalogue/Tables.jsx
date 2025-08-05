@@ -1,17 +1,31 @@
 import React, { useState, useEffect } from "react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
+import { Search, RefreshCcw, ChevronLeft, ChevronRight, Pencil, Table, X, Loader2 } from 'lucide-react';
 import { secureQuery, fetchConnectionDetails } from './Components/function.js';
 import { useAuth } from "../../../context/AuthContext.jsx";
+import Edit from "./Edit.jsx";
+import { useNavigate } from "react-router-dom";
 
 function Tables() {
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
   const { token } = useAuth();
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
-  const [showModal, setShowModal] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   const [allTablesRawData, setAllTablesRawData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showEditPage, setShowEditPage] = useState(false);
+  const [editDetails, setEditDetails] = useState({});
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [fetchingEditId, setFetchingEditId] = useState(null);
+  const navigate = useNavigate();
+
+  // --- NEW STATE FOR COLUMN DETAILS MODAL ---
+  const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
+  const [currentColumns, setCurrentColumns] = useState([]);
 
   const processTableData = (data) => {
     const tableMap = new Map();
@@ -23,7 +37,7 @@ function Tables() {
         tableMap.set(tableKey, {
           id: `#${item.conn_metadata_id.substring(0, 8)}`,
           name: item.table_name,
-          description: `Table in ${item.connection_type} database`,
+          description: `Table description`, // You might want a real description from your API
           schema: item.table_schema,
           database: item.connection_type,
           connection_name: item.connection_name,
@@ -69,15 +83,10 @@ function Tables() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const secureQueryResponse = await secureQuery({
-        user_query: "",
-      }, token);
-
+      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
-
       const allTablesData = await fetchConnectionDetails(policyIds, token);
       setAllTablesRawData(allTablesData);
-
       const processedData = processTableData(allTablesData);
       setTableData(processedData);
       return { success: true };
@@ -96,207 +105,131 @@ function Tables() {
   const handleRefresh = async () => {
     const result = await loadData();
     if (result.success) {
-      setToast({
-        show: true,
-        message: 'Table data refreshed successfully',
-        type: 'success'
-      });
+      setToast({ show: true, message: 'Table data refreshed successfully', type: 'success' });
     } else {
-      setToast({
-        show: true,
-        message: 'Failed to refresh table data',
-        type: 'error'
-      });
+      setToast({ show: true, message: 'Failed to refresh table data', type: 'error' });
     }
     setTimeout(() => {
       setToast({ show: false, message: '', type: '' });
     }, 3000);
   };
 
-  const handleSelectAll = (e) => {
-    const isChecked = e.target.checked;
-    setTableData(tableData.map(item => ({ ...item, selected: isChecked })));
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
   };
 
-  const handleSelectItem = (index) => {
-    const updatedData = [...tableData];
-    updatedData[index].selected = !updatedData[index].selected;
-    setTableData(updatedData);
+  const filteredTableData = tableData.filter(table =>
+    table?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    table?.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    table?.schema?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    table?.database?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    table?.owner?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentTableData = filteredTableData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTableData.length / itemsPerPage);
+
+  const handleShowEditPage = async (table) => {
+    setFetchingEditId(table.id);
+    try {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/catalogue/table/prefill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
+        body: JSON.stringify({
+          table_name: table.name,
+          table_schema: table.schema,
+          connection_name: table.connection_name,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to fetch edit details');
+      }
+
+      const prefillData = await response.json();
+      const detailsToEdit = {
+        connection_set: [{
+          table_name: table.name,
+          table_schema: table.schema,
+          connection_name: table.connection_name,
+        }],
+        prefill: prefillData
+      };
+      setEditDetails(detailsToEdit);
+      setShowEditPage(true);
+    } catch (error) {
+      console.error('Error fetching pre-fill data:', error);
+      setToast({ show: true, message: error.message, type: 'error' });
+      setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+    } finally {
+      setFetchingEditId(null);
+    }
+  };
+
+  const handleNavigate = (table) => {
+    const columns = getTableColumns(table);
+    navigate(`/datagovernance/data-catalogue/table/${table.name}`, {
+      state: { tableData: table, columns: columns }
+    });
+  };
+
+  // --- NEW HANDLER TO OPEN COLUMN MODAL ---
+  const handleColumnClick = (table) => {
+    const columns = getTableColumns(table);
+    setSelectedTable(table); // Store the table whose columns are being viewed
+    setCurrentColumns(columns);
+    setIsColumnModalOpen(true);
   };
 
   return (
-    <div>
+    <div className="p-4">
       {toast.show && (
-        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
-          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
           'bg-red-100 text-red-800 border-l-4 border-red-500'
-        }`}>
+          }`}>
           <Icon
             icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
             className="h-5 w-5"
           />
           <p>{toast.message}</p>
-          <button
-            onClick={() => setToast({ show: false, message: '', type: '' })}
-            className="ml-2 text-gray-500 hover:text-gray-700"
-          >
+          <button onClick={() => setToast({ show: false, message: '', type: '' })} className="ml-2 text-gray-500 hover:text-gray-700">
             <Icon icon="mdi:close" className="h-4 w-4" />
           </button>
         </div>
       )}
 
-      {showModal && selectedTable && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] relative flex flex-col">
-            <button
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 z-10"
-              onClick={() => setShowModal(false)}
-            >
-              <Icon icon="mdi:close" className="h-6 w-6" />
-            </button>
-            <div className="p-6 flex-shrink-0">
-              <h2 className="text-xl font-semibold mb-2">Table Details</h2>
-            </div>
-            <div className="flex-1 overflow-y-auto px-6 pb-6">
-              <div className="mb-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="font-medium">Name:</div>
-                    <div>{selectedTable.name}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Schema:</div>
-                    <div>{selectedTable.schema}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Database:</div>
-                    <div>{selectedTable.database}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Connection Name:</div>
-                    <div>{selectedTable.connection_name}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Owner:</div>
-                    <div>{selectedTable.owner}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Project:</div>
-                    <div>{selectedTable.project}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Description:</div>
-                    <div>{selectedTable.description}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Migrated:</div>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      selectedTable.is_migrated ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {selectedTable.is_migrated ? 'Yes' : 'No'}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="font-medium">Purged:</div>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      selectedTable.is_purged ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {selectedTable.is_purged ? 'Yes' : 'No'}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="font-medium">Virtualization:</div>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      selectedTable.is_virtualization ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {selectedTable.is_virtualization ? 'Yes' : 'No'}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="font-medium">CDC Enabled:</div>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      selectedTable.cdc_enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {selectedTable.cdc_enabled ? 'Yes' : 'No'}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="font-medium">Created Date:</div>
-                    <div>{selectedTable.CreatedDate}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Last Updated:</div>
-                    <div>{selectedTable.lastUpdated}</div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div className="font-semibold mb-2">Columns</div>
-                <div className="overflow-x-auto">
-                  <table className="w-full border">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="text-left p-2 border">Column Name</th>
-                        <th className="text-left p-2 border">Data Type</th>
-                        <th className="text-left p-2 border">Nullable</th>
-                        <th className="text-left p-2 border">Default</th>
-                        <th className="text-left p-2 border">Length</th>
-                        <th className="text-left p-2 border">Precision</th>
-                        <th className="text-left p-2 border">Scale</th>
-                        <th className="text-left p-2 border">Column Key</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {getTableColumns(selectedTable).length > 0 ? getTableColumns(selectedTable).map((col, idx) => {
-                        const meta = col.column_metadata || {};
-                        return (
-                          <tr key={idx}>
-                            <td className="p-2 border">{col.column_name || '-'}</td>
-                            <td className="p-2 border">{meta.DATA_TYPE || '-'}</td>
-                            <td className="p-2 border">{meta.is_nullable || '-'}</td>
-                            <td className="p-2 border">{meta.COLUMN_DEFAULT !== undefined && meta.COLUMN_DEFAULT !== null && meta.COLUMN_DEFAULT !== "null" ? meta.COLUMN_DEFAULT : '-'}</td>
-                            <td className="p-2 border">{meta.DATA_LENGTH !== undefined && meta.DATA_LENGTH !== null && meta.DATA_LENGTH !== "null" ? meta.DATA_LENGTH : '-'}</td>
-                            <td className="p-2 border">{meta.DATA_PRECISION !== undefined && meta.DATA_PRECISION !== null && meta.DATA_PRECISION !== "null" ? meta.DATA_PRECISION : '-'}</td>
-                            <td className="p-2 border">{meta.DATA_SCALE !== undefined && meta.DATA_SCALE !== null && meta.DATA_SCALE !== "null" ? meta.DATA_SCALE : '-'}</td>
-                            <td className="p-2 border">{meta.COLUMN_KEY !== undefined && meta.COLUMN_KEY !== null && meta.COLUMN_KEY !== "null" ? meta.COLUMN_KEY : '-'}</td>
-                          </tr>
-                        );
-                      }) : (
-                        <tr>
-                          <td colSpan="8" className="p-2 text-center">No column details available</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <Breadcrumb/>
+      <Breadcrumb />
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Table</h1>
+        <h1 className="text-2xl font-semibold ml-2">Table</h1>
         <div className="flex items-center gap-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search Tables"
+              className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none"
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+          </div>
           <button
-            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50 disabled:opacity-50"
             onClick={handleRefresh}
             disabled={loading}
+            className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            <Icon
-              icon="material-symbols:autorenew-rounded"
-              width="24"
-              height="24"
-              className={`text-gray-600 ${loading ? 'animate-spin' : ''}`}
-            />
+            <RefreshCcw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center items-center h-40">
-          <p>Loading data...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+          <p className="ml-2">Loading data...</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden mt-5">
@@ -304,74 +237,161 @@ function Tables() {
             <table className="w-full">
               <thead>
                 <tr className="bg-[#29304a] text-white">
-                  <th className="text-left p-4">Sno</th>
-                  <th className="text-left p-4">Name</th>
-                  <th className="text-left p-4">Description</th>
-                  <th className="text-left p-4">Schema</th>
-                  <th className="text-left p-4">Database</th>
-                  {/* <th className="text-left p-4">Connection Name</th> */}
-                  <th className="text-left p-4">Owner</th>
-                  <th className="text-left p-4">Project</th>
-                  <th className="text-left p-4">Columns</th>
-                  <th className="text-left p-4">Created Date</th>
-                  <th className="text-left p-4">Last Updated</th>
-                  {/* <th className="text-left p-4">Action</th>
-                  <th className="text-left p-4">
-                    <input
-                      type="checkbox"
-                      name="selectAll"
-                      onChange={handleSelectAll}
-                    />
-                  </th> */}
+                  <th className="text-left px-4 py-1">Id</th>
+                  <th className="text-left px-4 py-1">Name</th>
+                  <th className="text-left px-4 py-1">Alias</th>
+                  <th className="text-left px-4 py-1">Description</th>
+                  <th className="text-left px-4 py-1">Database</th>
+                  <th className="text-left px-4 py-1">Schema</th>
+                  <th className="text-left px-4 py-1">Owner</th>
+                  <th className="text-left px-4 py-1">Columns</th>
+                  <th className="text-left px-4 py-1">Tags</th>
+                  <th className="text-left px-4 py-1">Created Date</th>
+                  <th className="text-left px-4 py-1">Last Updated</th>
+                  <th className="text-left px-4 whitespace-nowrap py-1">Action</th>
                 </tr>
               </thead>
-              <tbody>
-                {tableData.length > 0 ? tableData.map((table, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="p-4">{index + 1}</td>
-                    <td className="p- text-blue-600 hover:underline cursor-pointer " onClick={() => {
-                          setSelectedTable(table);
-                          setShowModal(true);
-                        }} > {table.name}</td>
-                    <td className="p-4">{table.description}</td>
-                    <td className="p-4">{table.schema}</td>
+              <tbody className="text-gray-700">
+                {currentTableData.length > 0 ? currentTableData.map((table, index) => (
+                  <tr key={table.id} className="border-b hover:bg-gray-50 text-sm">
+                    <td className="p-4">{indexOfFirstItem + index + 1}</td>
+                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleNavigate(table)}>
+                      {table.name}
+                    </td>
+                    <td className="p-4 max-w-xs truncate tooltip">{table.name}</td>
+                    <td className="p-4 max-w-xs truncate tooltip">{table.description}</td>
                     <td className="p-4">{table.database}</td>
-                    {/* <td className="p-4">{table.connection_name}</td> */}
+                    <td className="p-4">{table.schema}</td>
                     <td className="p-4">{table.owner}</td>
-                    <td className="p-4">{table.project}</td>
-                    <td className="p-4">{table.column}</td>
+                    {/* --- MODIFIED: Added onClick handler to the columns cell --- */}
+                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleColumnClick(table)}>
+                      {table.column}
+                    </td>
+                    <td className="p-4">critical</td>
                     <td className="p-4">{table.CreatedDate}</td>
                     <td className="p-4">{table.lastUpdated}</td>
-                    {/* <td className="p-4">
+                    <td className="px-6 p-4 text-center whitespace-nowrap">
                       <button
-                        className="text-blue-600 hover:underline"
-                        onClick={() => {
-                          setSelectedTable(table);
-                          setShowModal(true);
-                        }}
+                        className="p-1.5 rounded-full hover:bg-gray-100 cursor-pointer disabled:cursor-wait"
+                        onClick={() => handleShowEditPage(table)}
+                        disabled={fetchingEditId === table.id}
                       >
-                        View
+                        {fetchingEditId === table.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
                       </button>
                     </td>
-                    <td className="p-4">
-                      <input
-                        type="checkbox"
-                        name={`select-${index}`}
-                        checked={table.selected || false}
-                        onChange={() => handleSelectItem(index)}
-                      />
-                    </td> */}
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan="13" className="p-4 text-center">No table data available</td>
+                    <td colSpan="12" className="p-4 text-center">No table data available</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+
+          <div className="flex justify-between items-center px-4 py-3 border-t">
+            <span className="text-sm text-gray-600">
+              Showing {filteredTableData.length > 0 ? indexOfFirstItem + 1 : 0} to {Math.min(indexOfLastItem, filteredTableData.length)} of {filteredTableData.length} Entries
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <span className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages > 0 ? totalPages : 1}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
+      {showEditPage && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black bg-opacity-30 backdrop-blur-sm" onClick={() => setShowEditPage(false)} />
+          <div className="relative ml-auto w-full sm:w-[400px] h-full bg-white shadow-xl z-50 animate-slide-in">
+            <Edit
+              onClose={() => {
+                setEditDetails({});
+                setShowEditPage(false);
+              }}
+              editDetails={editDetails}
+              type="table"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* --- NEW: JSX for the Column Details Modal --- */}
+      {isColumnModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center animate-fadeIn">
+          <div
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setIsColumnModalOpen(false)}
+          ></div>
+          <div className="relative bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] flex flex-col m-4">
+            <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white z-10">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Column Details: <span className="font-bold text-[#29304a]">{selectedTable?.name}</span>
+              </h2>
+              <button
+                onClick={() => setIsColumnModalOpen(false)}
+                className="text-gray-500 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto">
+              <table className="w-full text-sm text-left text-gray-700">
+                <thead className="text-xs text-white uppercase bg-[#29304a] sticky top-0">
+                  <tr>
+                    <th scope="col" className="px-6 py-3">Column Name</th>
+                    <th scope="col" className="px-6 py-3">Data Type</th>
+                    <th scope="col" className="px-6 py-3">Length</th>
+                    <th scope="col" className="px-6 py-3">Precision</th>
+                    <th scope="col" className="px-6 py-3">Scale</th>
+                    <th scope="col" className="px-6 py-3">Nullable</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentColumns.length > 0 ? currentColumns.map((col, index) => (
+                    <tr key={index} className="bg-white border-b hover:bg-gray-50">
+                      <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{col.column_name}</td>
+                      <td className="px-6 py-4">{col.column_metadata?.DATA_TYPE || 'N/A'}</td>
+                      <td className="px-6 py-4">{col.column_metadata?.DATA_LENGTH ?? 'N/A'}</td>
+                      <td className="px-6 py-4">{col.column_metadata?.DATA_PRECISION ?? 'N/A'}</td>
+                      <td className="px-6 py-4">{col.column_metadata?.DATA_SCALE ?? 'N/A'}</td>
+                      <td className="px-6 py-4">{col.column_metadata?.is_nullable === 'N' ? 'No' : 'Yes'}</td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="6" className="text-center py-10">No column details found for this table.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end items-center p-4 border-t sticky bottom-0 bg-white z-10">
+              <button
+                onClick={() => setIsColumnModalOpen(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

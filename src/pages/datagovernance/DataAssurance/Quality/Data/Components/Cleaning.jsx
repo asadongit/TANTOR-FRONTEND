@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import Select from 'react-select';
 import { useAuth } from '../../../../../../context/AuthContext.jsx';
+import { ToastContainer, toast } from 'react-toastify';
 
 const DataDisplayModal = ({ data, onClose }) => {
   if (!data || data.length === 0) return null;
@@ -43,7 +44,7 @@ const DataDisplayModal = ({ data, onClose }) => {
                       key={`${index}-${header}`}
                       className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
                     >
-                      {row[header]}
+                      {row[header]?.toString()}
                     </td>
                   ))}
                 </tr>
@@ -66,7 +67,7 @@ const DataDisplayModal = ({ data, onClose }) => {
 };
 
 const cleaningOptions = [
-  { id: 'remove_duplicates', label: 'Remove Duplicate Columns' },
+  { id: 'remove_duplicates', label: 'Remove Duplicate Rows' },
   { id: 'drop_constant', label: 'Drop Constant Columns' },
   { id: 'remove_outliers', label: 'Drop Outliers' },
   { id: 'correlation', label: 'Remove Correlated Features' },
@@ -75,11 +76,11 @@ const cleaningOptions = [
   { id: 'missing_categorical', label: 'Handle Missing Categorical', expandable: true },
   { id: 'binning', label: 'Perform Binning', expandable: true },
   { id: 'change_datatypes', label: 'Change Datatypes', expandable: true },
-  { id: 'normalisation', label: 'Numerical Normalisation', expandable: true },
+  { id: 'normalization', label: 'Numerical Normalisation', expandable: true },
   { id: 'skewness', label: 'Skewness', expandable: true },
 ];
 
-const initialFormData = {
+export const initialFormData = {
   flag: 'false',
   missing_values_strategy: 'mean',
   datetime_col: '',
@@ -87,16 +88,16 @@ const initialFormData = {
   bin_column_name: '',
   bin_values: '',
   datatype_conversion: '',
-  normalization_strategy: 'min-max',
+  normalization_strategy: 'minmax',
   numerical_cols: [],
   skewness_strategy: 'boxcox',
   operations: [],
 };
 
 
-function Cleaning({ query }) {
-   const { token, hostnameV1, decodedToken } = useAuth();
-  const [formData, setFormData] = useState(initialFormData);
+function Cleaning({ query, formData, setFormData }) {
+  const { token, hostnameV1, decodedToken } = useAuth();
+  // const [formData, setFormData] = useState(initialFormData);
   const [showModal, setShowModal] = useState(false);
   const [cleanedData, setCleanedData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -124,7 +125,7 @@ function Cleaning({ query }) {
         setNormalisationColumns(data.numerical_columns || [])
         setColumns(data.all_columns || [])
       } catch (error) {
-        console.error('Error fetching columns:', error);
+        toast.error('Failed to fetch columns');
       }
     };
 
@@ -160,14 +161,22 @@ function Cleaning({ query }) {
         body: formDataObj,
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (data.status === 'success') {
         setCleanedData(data.cleaned_df);
         setShowDisplayButton(true);
+        toast.success('Data cleaned successfully!');
+      } else {
+        toast.error(data.message || 'Failed to fetch cleaned data');
       }
+
     } catch (error) {
-      console.error('Error during cleaning:', error);
+      toast.error('Failed to fetch cleaned data');
     } finally {
       setLoading(false);
     }
@@ -199,6 +208,8 @@ function Cleaning({ query }) {
         : [...prev.operations, operation];
       return { ...prev, operations: newOperations };
     });
+
+    setShowDisplayButton(false);
   };
 
   const renderExpandableContent = (optionId) => {
@@ -248,14 +259,22 @@ function Cleaning({ query }) {
           <div className="mt-2 ml-6 w-3/4 space-y-2">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Column</label>
-              <select name="datatype_conversion_column" value={formData.datatype_conversion.split(':')[0] || ''} onChange={(e) => { const type = formData.datatype_conversion.split(':')[1] || 'string'; setFormData(prev => ({ ...prev, datatype_conversion: `${e.target.value}:${type}` })); }} className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+              <select name="datatype_conversion_column" value={formData.datatype_conversion.split(':')[0] || ''} onChange={(e) => { const type = formData.datatype_conversion.split(':')[1] || 'int'; setFormData(prev => ({ ...prev, datatype_conversion: `${e.target.value}:${type}` })); }} className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                 <option value="">Select column</option>
                 {columns.map(col => <option key={col} value={col}>{col}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Target Datatype</label>
-              <select name="datatype_conversion_type" value={formData.datatype_conversion.split(':')[1] || 'string'} onChange={(e) => { const col = formData.datatype_conversion.split(':')[0] || ''; setFormData(prev => ({ ...prev, datatype_conversion: `${col}:${e.target.value}` })); }} className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+              <select
+                name="datatype_conversion_type"
+                value={formData.datatype_conversion.split(':')[1] || 'int'}
+                onChange={(e) => {
+                  const col = formData.datatype_conversion.split(':')[0] || '';
+                  setFormData(prev => ({ ...prev, datatype_conversion: `${col}:${e.target.value}` }));
+                }}
+                className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
                 <option value="int">Integer</option>
                 <option value="float">Float</option>
                 <option value="str">String</option>
@@ -265,7 +284,7 @@ function Cleaning({ query }) {
             </div>
           </div>
         );
-      case 'normalisation': {
+      case 'normalization': {
         const selectOptions = normalisationColumns.map(col => ({
           value: col,
           label: col,
@@ -305,8 +324,8 @@ function Cleaning({ query }) {
                 onChange={handleInputChange}
                 className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="min-max">Min-Max</option>
-                <option value="z-score">Z-Score</option>
+                <option value="minmax">Min-Max</option>
+                <option value="standard">Z-Score</option>
               </select>
             </div>
           </div>
@@ -441,7 +460,7 @@ function Cleaning({ query }) {
           onClose={() => setShowModal(false)}
         />
       )}
-
+      <ToastContainer />
     </div>
   );
 }

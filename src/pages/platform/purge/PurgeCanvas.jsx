@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import ReactFlow, { addEdge, Controls, Panel, useEdgesState, useNodesState } from "reactflow";
 import { DefineNodePurge } from "../purge/purge-nodes/DefineNodePurge";
 import { SourceNode } from "../purge/purge-nodes/SourceNodePurge";
@@ -22,11 +23,107 @@ const nodeTypes = {
 let id = 0;
 const getId = () => `node_+${id++}`
 
+// Utility to serialize the full React Flow graph for Purge (nodes, edges, positions, user data)
+function getPurgeFlowGraph(nodes, edges) {
+  return {
+    nodes: nodes.map(node => ({
+      id: node.id,
+      type: node.type,
+      position: node.position,
+      data: node.data, // all user-entered data for the node
+      // add other node properties if needed
+    })),
+    edges: edges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: edge.type,
+      // add other edge properties if needed
+    })),
+  };
+}
+
 function PurgeCanvas() {
+  const location = useLocation();
+  const ui_json = location.state?.ui_json;
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const {isVisibleFooter, handleIsVisibleFooter} = useStateContext("");
+  const {isVisibleFooter, handleIsVisibleFooter, handleDefineNodeName, handleDefineNodeDesc, handleSourceConnectionName, handleSourceSchemaName, handleSelectedTables, handleTargetConnectionName} = useStateContext("");
+
+  // Pre-populate nodes from ui_json on mount (edit flow)
+  useEffect(() => {
+    if (ui_json) {
+      const initialNodes = [];
+      const initialEdges = [];
+      let y = 50;
+      // Use saved positions if available, else default
+      // Define node
+      if (ui_json.defineNode) {
+        initialNodes.push({
+          id: 'define',
+          type: 'define',
+          position: ui_json.defineNode.position || { x: 100, y },
+          data: { ...ui_json.defineNode },
+        });
+        if (ui_json.defineNode.name) handleDefineNodeName(ui_json.defineNode.name);
+        if (ui_json.defineNode.desc) handleDefineNodeDesc(ui_json.defineNode.desc);
+        y += 120;
+      }
+      // Source node
+      if (ui_json.sourceNode) {
+        initialNodes.push({
+          id: 'source',
+          type: 'source',
+          position: ui_json.sourceNode.position || { x: 350, y: 50 },
+          data: { ...ui_json.sourceNode },
+        });
+        // Pre-populate context for Source node
+        if (ui_json.sourceNode.connectionName) handleSourceConnectionName(ui_json.sourceNode.connectionName);
+        if (ui_json.sourceNode.schemaName) handleSourceSchemaName(ui_json.sourceNode.schemaName);
+        if (ui_json.sourceNode.selectedTables) handleSelectedTables(ui_json.sourceNode.selectedTables);
+        y += 120;
+      }
+      // Target node
+      if (ui_json.targetNode) {
+        initialNodes.push({
+          id: 'target',
+          type: 'target',
+          position: ui_json.targetNode.position || { x: 600, y: 50 },
+          data: { ...ui_json.targetNode },
+        });
+        // Pre-populate context for Target node
+        if (ui_json.targetNode.connectionName) handleTargetConnectionName(ui_json.targetNode.connectionName);
+        y += 120;
+      }
+      // Scheduler node (if present)
+      if (ui_json.scheduleNode) {
+        initialNodes.push({
+          id: 'schedule',
+          type: 'schedule',
+          position: ui_json.scheduleNode.position || { x: 850, y: 50 },
+          data: { ...ui_json.scheduleNode },
+        });
+      }
+      // Add default edges if all nodes present
+      if (ui_json.defineNode && ui_json.sourceNode) {
+        initialEdges.push({ id: 'e1', source: 'define', target: 'source' });
+      }
+      if (ui_json.sourceNode && ui_json.targetNode) {
+        initialEdges.push({ id: 'e2', source: 'source', target: 'target' });
+      }
+      setNodes(initialNodes);
+      setEdges(initialEdges);
+      setTimeout(() => {
+        if (window.openDrawer) {
+          if (ui_json.defineNode) window.openDrawer('define');
+          if (ui_json.sourceNode) window.openDrawer('source');
+          if (ui_json.targetNode) window.openDrawer('target');
+          if (ui_json.scheduleNode) window.openDrawer('schedule');
+        }
+      }, 300);
+    }
+  }, [ui_json, setNodes, setEdges, handleDefineNodeName, handleDefineNodeDesc, handleSourceConnectionName, handleSourceSchemaName, handleSelectedTables, handleTargetConnectionName])
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
@@ -145,11 +242,14 @@ function PurgeCanvas() {
   useEffect(() => {
     window.deleteNode = onNodeDelete;
     window.handleConnectNode = handleConnectNode;
+    // Expose the utility globally for PurgeFooter to use
+    window.getPurgeFlowGraph = () => getPurgeFlowGraph(nodes, edges);
     return () => {
       window.deleteNode = undefined;
       window.handleConnectNode = undefined;
+      window.getPurgeFlowGraph = undefined;
     }
-  }, [onNodeDelete, handleConnectNode]);
+  }, [onNodeDelete, handleConnectNode, nodes, edges]);
 
   return (
     <div className="h-full relative">
