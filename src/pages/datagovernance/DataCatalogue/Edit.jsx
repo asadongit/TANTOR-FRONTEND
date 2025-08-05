@@ -178,7 +178,19 @@ const Edit = ({ onClose, editDetails, type }) => {
     ['data steward', 'data owner'].includes(role.toLowerCase())
   );
 
-  const fetchDomains = useCallback(() => fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/domain`).then(res => res.json()).then(setDomains).catch(e => console.error('Error fetching domains:', e)), []);
+  const fetchDomains = useCallback(() => 
+  fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/domain`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json', 
+      'accept': 'application/json' 
+    },
+    body: JSON.stringify({ business_catalogue: false })
+  })
+  .then(res => res.json())
+  .then(setDomains)
+  .catch(e => console.error('Error fetching domains:', e)), 
+[]);
 
   const fetchTags = useCallback((domainIds) => {
     if (domainIds.length === 0) return;
@@ -222,7 +234,7 @@ const Edit = ({ onClose, editDetails, type }) => {
     fetch(`${API_BASE_URL}/category`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-      body: JSON.stringify({ domain_id: domainIds.map(Number) })
+      body: JSON.stringify({ 'business_catalogue': false ,domain_id: domainIds.map(Number) })
     })
       .then(res => res.json()).then(apiCategories => {
         setCategories(prev => {
@@ -240,7 +252,7 @@ const Edit = ({ onClose, editDetails, type }) => {
     fetch(`${API_BASE_URL}/sub_category`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-      body: JSON.stringify({ domain_id: domainIds.map(Number), category_id: categoryIds.map(Number) })
+      body: JSON.stringify({ 'business_catalogue': false ,domain_id: domainIds.map(Number), category_id: categoryIds.map(Number) })
     })
       .then(res => res.json()).then(apiSubCategories => {
         setSubCategories(prev => {
