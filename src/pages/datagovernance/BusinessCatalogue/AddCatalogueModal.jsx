@@ -85,7 +85,11 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 setIsLoading(true);
                 setError(null);
                 try {
-                    const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/domain`);
+                    const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/domain`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
+                        body: JSON.stringify({ 'business_catalogue': true })
+                    });
                     if (!response.ok) throw new Error('Network response was not ok');
                     const data = await response.json();
                     setAllDomains(data);
@@ -124,7 +128,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                     const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/category`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-                        body: JSON.stringify({ domain_id: [formData.domain.id] })
+                        body: JSON.stringify({ 'business_catalogue': true , domain_id: [formData.domain.id] })
                     });
                     if (!response.ok) throw new Error('Failed to fetch categories');
                     const data = await response.json();
@@ -154,7 +158,8 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                         headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
                         body: JSON.stringify({
                             domain_id: [formData.domain.id],
-                            category_id: [formData.category.id]
+                            category_id: [formData.category.id],
+                            business_catalogue: true ,
                         })
                     });
                     if (!response.ok) throw new Error('Failed to fetch sub-categories');
