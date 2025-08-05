@@ -85,34 +85,21 @@ function transformationReducer(state, action) {
           [action.payload.id]: {
             ...state.sources[action.payload.id],
             ...action.payload.data,
-            // FIXED: Better enableCountLogging handling with validation
-            enableCountLogging: (() => {
-              try {
-                const newValue = action.payload.data.enableCountLogging;
-                if (typeof newValue === 'boolean') {
-                  return newValue;
-                }
-                return state.sources[action.payload.id]?.enableCountLogging || false;
-              } catch (error) {
-                console.warn('Error updating source enableCountLogging:', error);
-                return false;
-              }
-            })()
+            // FIXED: Ensure enableCountLogging is properly updated and preserved
+            enableCountLogging: typeof action.payload.data.enableCountLogging === 'boolean'
+              ? action.payload.data.enableCountLogging
+              : (state.sources[action.payload.id]?.enableCountLogging || false)
           }
         }
       };
 
-      // FIXED: Debounced sidebar update
+      // Trigger a sidebar update notification
       if (typeof action.payload.data.enableCountLogging === 'boolean') {
         setTimeout(() => {
-          try {
-            if (window.triggerSidebarUpdate) {
-              window.triggerSidebarUpdate();
-            }
-          } catch (error) {
-            console.warn('Error triggering sidebar update:', error);
+          if (window.triggerSidebarUpdate) {
+            window.triggerSidebarUpdate();
           }
-        }, 100);
+        }, 0);
       }
 
       return updatedSourceState;
@@ -184,34 +171,21 @@ function transformationReducer(state, action) {
             ...state.targets[action.payload.id],
             ...action.payload.data,
             targetMapping: newTargetMapping,
-            // FIXED: Better enableCountLogging handling
-            enableCountLogging: (() => {
-              try {
-                const newValue = action.payload.data.enableCountLogging;
-                if (typeof newValue === 'boolean') {
-                  return newValue;
-                }
-                return state.targets[action.payload.id]?.enableCountLogging || false;
-              } catch (error) {
-                console.warn('Error updating target enableCountLogging:', error);
-                return false;
-              }
-            })()
+            // FIXED: Ensure enableCountLogging is properly updated and preserved
+            enableCountLogging: typeof action.payload.data.enableCountLogging === 'boolean'
+              ? action.payload.data.enableCountLogging
+              : (state.targets[action.payload.id]?.enableCountLogging || false)
           }
         }
       };
 
-      // FIXED: Debounced sidebar update
+      // Trigger a sidebar update notification
       if (typeof action.payload.data.enableCountLogging === 'boolean') {
         setTimeout(() => {
-          try {
-            if (window.triggerSidebarUpdate) {
-              window.triggerSidebarUpdate();
-            }
-          } catch (error) {
-            console.warn('Error triggering sidebar update:', error);
+          if (window.triggerSidebarUpdate) {
+            window.triggerSidebarUpdate();
           }
-        }, 100);
+        }, 0);
       }
 
       return updatedTargetState;
@@ -399,18 +373,14 @@ function transformationReducer(state, action) {
     }
 
     case ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES:
-      try {
-        return {
-          ...state,
-          properties: {
-            ...state.properties,
-            ...action.payload
-          }
-        };
-      } catch (error) {
-        console.warn('Error updating global properties:', error);
-        return state;
-      }
+      // console.log("Updating global properties:", action.payload);
+      return {
+        ...state,
+        properties: {
+          ...state.properties,
+          ...action.payload
+        }
+      };
 
     case ACTION_TYPES.RESET:
       Object.keys(state.targets).forEach(targetId => {

@@ -64,7 +64,6 @@ export const TargetNode = ({ id, data }) => {
   const [postProcedureSearch, setPostProcedureSearch] = useState("");
 
   const [enableCountLogging, setEnableCountLogging] = useState(false);
-  const [isUpdatingCheckbox, setIsUpdatingCheckbox] = useState(false);
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -879,13 +878,10 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    // FIXED: Initialize enableCountLogging with proper error handling
-    if (typeof data.enableCountLogging === 'boolean' && !isUpdatingCheckbox) {
-      const shouldUpdate = data.enableCountLogging !== enableCountLogging;
-      if (shouldUpdate) {
-        setEnableCountLogging(data.enableCountLogging);
-        hasUpdated = true;
-      }
+    // FIXED: Initialize enableCountLogging from data during restoration
+    if (typeof data.enableCountLogging === 'boolean') {
+      setEnableCountLogging(data.enableCountLogging);
+      hasUpdated = true;
     }
 
     if (data.targetMapping && Object.keys(data.targetMapping).length > 0) {
@@ -954,28 +950,130 @@ export const TargetNode = ({ id, data }) => {
     data.objectType,
     data.loadType,
     data.loadStrategy,
-    data.selectedSourceId
-    // Removed: data.enableCountLogging
+    data.selectedSourceId,
+    data.enableCountLogging // Keep this dependency for proper restoration
   ]);
 
-  // FIXED: Separate effect for enableCountLogging with debouncing
   useEffect(() => {
-    if (typeof data.enableCountLogging === 'boolean' &&
-        data.enableCountLogging !== enableCountLogging &&
-        !isUpdatingCheckbox &&
-        !data._isRestoring) {
 
-      const timeoutId = setTimeout(() => {
-        setEnableCountLogging(data.enableCountLogging);
-      }, 50);
 
-      return () => clearTimeout(timeoutId);
+    if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0) {
+      // console.log("Target Node - Restoring pre-procedures parameter mappings:", data.preProcedures);
+
+      const initialPreMappings = {};
+      data.preProcedures.forEach((procData, index) => {
+        const procedureItemId = procData.procedureItemId || (index + 1);
+        const mappingKey = `pre_${procedureItemId}_${procData.procedure_name}`;
+
+        const parameterMapping = procData.parameterMapping || procData.originalParameterMapping || {};
+
+        if (Object.keys(parameterMapping).length > 0) {
+          initialPreMappings[mappingKey] = parameterMapping;
+
+          // console.log("Target Node - Restored pre-procedure mapping:", {
+          //   mappingKey,
+          //   parameterMapping,
+          //   procedureName: procData.procedure_name
+          // });
+
+          const procedureJSON = {
+            "EventType": "BeforeTargetWrite",
+            "Dataset": alias || "unnamed_target",
+            "ProcName": procData.procedure_name,
+            "ProcParams": Object.values(parameterMapping).filter(Boolean),
+            "ProcOrder": index + 1,
+            "parameterMapping": parameterMapping,
+            "originalParameterMapping": procData.originalParameterMapping || parameterMapping,
+            "procedureId": `${procData.procedure_name}_BeforeTargetWrite_${index + 1}`,
+            "procedureItemId": procedureItemId,
+            "procedureType": "pre",
+            "timestamp": Date.now(),
+            "isRestored": true
+          };
+
+          dispatch({
+            type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+            payload: {
+              sourceNodeId: id,
+              procedureMapping: procedureJSON
+            }
+          });
+        }
+      });
+
+      if (Object.keys(initialPreMappings).length > 0) {
+        setStoredParameterMappings(prev => ({
+          ...prev,
+          ...initialPreMappings
+        }));
+      }
     }
-  }, [data.enableCountLogging, enableCountLogging, isUpdatingCheckbox, data._isRestoring]);
+
+    if (data.postProcedures && Array.isArray(data.postProcedures) && data.postProcedures.length > 0) {
+      // console.log("Target Node - Restoring post-procedures parameter mappings:", data.postProcedures);
+
+      const initialPostMappings = {};
+      data.postProcedures.forEach((procData, index) => {
+        const procedureItemId = procData.procedureItemId || (index + 1);
+        const mappingKey = `post_${procedureItemId}_${procData.procedure_name}`;
+
+        const parameterMapping = procData.parameterMapping || procData.originalParameterMapping || {};
+
+        if (Object.keys(parameterMapping).length > 0) {
+          initialPostMappings[mappingKey] = parameterMapping;
+
+          // console.log("Target Node - Restored post-procedure mapping:", {
+          //   mappingKey,
+          //   parameterMapping,
+          //   procedureName: procData.procedure_name
+          // });
+
+          const procedureJSON = {
+            "EventType": "AfterTargetWrite",
+            "Dataset": alias || "unnamed_target",
+            "ProcName": procData.procedure_name,
+            "ProcParams": Object.values(parameterMapping).filter(Boolean),
+            "ProcOrder": index + 1,
+            "parameterMapping": parameterMapping,
+            "originalParameterMapping": procData.originalParameterMapping || parameterMapping,
+            "procedureId": `${procData.procedure_name}_AfterTargetWrite_${index + 1}`,
+            "procedureItemId": procedureItemId,
+            "procedureType": "post",
+            "timestamp": Date.now(),
+            "isRestored": true
+          };
+
+          dispatch({
+            type: ACTION_TYPES.UPDATE_PROCEDURE_EXECUTION,
+            payload: {
+              sourceNodeId: id,
+              procedureMapping: procedureJSON
+            }
+          });
+        }
+      });
+
+      if (Object.keys(initialPostMappings).length > 0) {
+        setStoredParameterMappings(prev => ({
+          ...prev,
+          ...initialPostMappings
+        }));
+      }
+    }
+  }, [data.preProcedures, data.postProcedures, dispatch, ACTION_TYPES, id, alias]);
 
   useEffect(() => {
     // Expose the setter function to allow external updates
     data.setEnableCountLogging = setEnableCountLogging;
+
+    // Only update enableCountLogging if not already in sync and not restoring
+    if (
+      typeof data.enableCountLogging === 'boolean' &&
+      enableCountLogging !== data.enableCountLogging &&
+      !data._isRestoring
+    ) {
+      setEnableCountLogging(data.enableCountLogging);
+    }
 
     const enrichedPreProcedures = selectedPreProcedures
       .filter(p => p.procedure)
@@ -1384,52 +1482,44 @@ export const TargetNode = ({ id, data }) => {
                       </div>
                     </div>
 
-                    {/* FIXED: Improved Count Logging checkbox */}
+                    {/* Add Count Logging checkbox after Load Strategy - FIXED */}
                     <div className="mt-2">
                       <label className="flex items-center text-xs font-semibold text-black">
                         <input
                           type="checkbox"
                           className="mr-1.5 h-3.5 w-3.5"
                           checked={enableCountLogging}
-                          disabled={isUpdatingCheckbox}
                           onChange={(e) => {
                             const newValue = e.target.checked;
-
-                            setIsUpdatingCheckbox(true);
                             setEnableCountLogging(newValue);
 
-                            // Debounced update to prevent rapid state changes
-                            setTimeout(() => {
-                              try {
-                                if (data.onDataChange) {
-                                  data.onDataChange({ enableCountLogging: newValue });
-                                }
+                            // FIXED: Immediately update the data through onDataChange with the actual node reference
+                            if (data.onDataChange) {
+                              data.onDataChange({ enableCountLogging: newValue });
+                            }
 
-                                if (window.allNodes) {
-                                  const nodeIndex = window.allNodes.findIndex(n => n.id === id);
-                                  if (nodeIndex !== -1) {
-                                    window.allNodes[nodeIndex].data.enableCountLogging = newValue;
-                                  }
-                                }
-
-                                dispatch({
-                                  type: ACTION_TYPES.UPDATE_TARGET,
-                                  payload: {
-                                    id: id,
-                                    data: { enableCountLogging: newValue }
-                                  }
-                                });
-
-                                window.allNodesLastUpdate = Date.now();
-                                if (window.triggerSidebarUpdate) {
-                                  window.triggerSidebarUpdate();
-                                }
-                              } catch (error) {
-                                console.warn('Error updating count logging:', error);
-                              } finally {
-                                setTimeout(() => setIsUpdatingCheckbox(false), 100);
+                            // FIXED: Update the actual node data in window.allNodes if available
+                            if (window.allNodes) {
+                              const nodeIndex = window.allNodes.findIndex(n => n.id === id);
+                              if (nodeIndex !== -1) {
+                                window.allNodes[nodeIndex].data.enableCountLogging = newValue;
                               }
-                            }, 50);
+                            }
+
+                            // Update context immediately for JSON generation
+                            dispatch({
+                              type: ACTION_TYPES.UPDATE_TARGET,
+                              payload: {
+                                id: id,
+                                data: { enableCountLogging: newValue }
+                              }
+                            });
+
+                            // Trigger sidebar update
+                            window.allNodesLastUpdate = Date.now();
+                            if (window.triggerSidebarUpdate) {
+                              window.triggerSidebarUpdate();
+                            }
                           }}
                         />
                         <span>Enable Count Logging</span>
