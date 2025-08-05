@@ -18,6 +18,7 @@ const components = [
 ];
 
 export const TransformationSidebar = () => {
+  console.log("abcd")
   const [expanded, setExpanded] = useState(true);
   const { state, dispatch, ACTION_TYPES } = useTransformation();
 
