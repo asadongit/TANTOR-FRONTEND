@@ -99,7 +99,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             const fetchStakeholders = async () => {
                 setIsStakeholdersLoading(true);
                 try {
-                    const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users/names`);
+                    const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users/names/stakeholders`);
                     if (!response.ok) throw new Error('Network response was not ok for stakeholders');
                     const data = await response.json();
                     setStakeholders(data);
@@ -179,18 +179,30 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             if (activeTab === 'Term') {
                 setIsTermLoading(true);
                 setError(null);
+                const payload = {
+
+                };
+                if (formData.domain && formData.domain.id !== null) {
+                    payload.domain_id = [formData.domain.id];
+                }
                 try {
-                    const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/terms`);
+                    const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/terms`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
                     if (!response.ok) throw new Error('Failed to fetch terms');
                     const data = await response.json();
                     setAllTerms(data);
                 } catch (err) {
                     console.error("Failed to fetch terms:", err);
-                    setError("Could not load existing terms. You can still enter a new one.");
+                    setError("Could not load existing terms for this domain. You can still enter a new one.");
                     setAllTerms([]);
                 } finally {
                     setIsTermLoading(false);
                 }
+            } else {
+                setAllTerms([]);
             }
         };
         fetchTerms();
@@ -202,17 +214,27 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 setIsTagLoading(true);
                 setError(null);
                 try {
-                    const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/tag`);
+                    const payload = {};
+                    if (formData.domain && formData.domain.id !== null) {
+                        payload.domain_id = [formData.domain.id];
+                    }
+                    const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/tag`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
                     if (!response.ok) throw new Error('Failed to fetch tags');
                     const data = await response.json();
                     setAllTags(data);
                 } catch (err) {
                     console.error("Failed to fetch tags:", err);
-                    setError("Could not load existing tags. You can still enter a new one.");
+                    setError("Could not load existing tags for this domain. You can still enter a new one.");
                     setAllTags([]);
                 } finally {
                     setIsTagLoading(false);
                 }
+            } else {
+                setAllTags([]);
             }
         };
         fetchTags();
@@ -224,10 +246,16 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 setIsSubTagLoading(true);
                 setError(null);
                 try {
+                    const payload = {
+                        tag_id: [formData.tag.id]
+                    };
+                    if (formData.domain && formData.domain.id !== null) {
+                        payload.domain_id = [formData.domain.id];
+                    }
                     const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/sub_tag`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-                        body: JSON.stringify({ tag_id: [formData.tag.id] })
+                        body: JSON.stringify(payload)
                     });
                     if (!response.ok) throw new Error('Failed to fetch sub-tags');
                     const data = await response.json();
@@ -287,7 +315,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                     return {
                         isValid: false,
                         error: `The '${fieldsToCheck[field]}' field is required in the '${tabName}' tab.`
-                        // error: `The '${fieldsToCheck[field]}' field is required in the '${tabName}' tab since a name has been entered.`
                     };
                 }
             }
@@ -343,14 +370,18 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         };
 
         const payload = {
-            domain: transformLevel('domain', formData.domain),
+            domain: transformLevel('domain', formData.domain, { domain_id: formData.domain.id }),
             category: transformLevel('category', formData.category, { domain_id: formData.domain.id }),
             subcategory: transformLevel('subcategory', formData.subcategory, {
                 domain_id: formData.domain.id,
                 category_id: formData.category.id
             }),
-            term: transformLevel('term', formData.term),
-            tag: transformLevel('tag', formData.tag),
+            term: transformLevel('term', formData.term
+                // , { domain_id: formData.domain.id }
+            ),
+            tag: transformLevel('tag', formData.tag
+                // , { domain_id: formData.domain.id }
+            ),
             subtag: transformLevel('subtag', formData.subtag, { tag_id: formData.tag.id })
         };
 
@@ -791,8 +822,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 const parentKey =
                     activeTab === 'Category' ? 'domain' :
                         activeTab === 'Sub-category' ? 'category' :
-                            activeTab === 'Sub-tag' ? 'tag' :
-                                ''; 
+                            activeTab === 'Term' ? 'domain' :
+                                activeTab === 'Tag' ? 'domain' :
+                                    activeTab === 'Sub-tag' ? 'tag' :
+                                        '';
 
                 if (parentKey && !formData[parentKey].name) {
                     return <PlaceholderMessage>Please select a {parentKey} first to add a {activeTab}.</PlaceholderMessage>;
