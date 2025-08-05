@@ -64,6 +64,8 @@ export const TargetNode = ({ id, data }) => {
   const [postProcedureSearch, setPostProcedureSearch] = useState("");
 
   const [enableCountLogging, setEnableCountLogging] = useState(false);
+  // Add a ref to track restoration
+  const hasRestoredEnableCountLogging = useRef(false);
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -879,8 +881,9 @@ export const TargetNode = ({ id, data }) => {
     }
 
     // FIXED: Initialize enableCountLogging from data during restoration
-    if (typeof data.enableCountLogging === 'boolean') {
+    if (typeof data.enableCountLogging === 'boolean' && !hasRestoredEnableCountLogging.current) {
       setEnableCountLogging(data.enableCountLogging);
+      hasRestoredEnableCountLogging.current = true;
       hasUpdated = true;
     }
 

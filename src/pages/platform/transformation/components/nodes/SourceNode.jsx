@@ -61,6 +61,8 @@ export const SourceNode = ({ id, data }) => {
   const [preProcedureSearch, setPreProcedureSearch] = useState("");
   const [postProcedureSearch, setPostProcedureSearch] = useState("");
   const [enableCountLogging, setEnableCountLogging] = useState(false);
+  // Add a ref to track restoration
+  const hasRestoredEnableCountLogging = useRef(false);
 
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
@@ -776,9 +778,13 @@ export const SourceNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    // FIXED: Initialize enableCountLogging from data during restoration
-    if (typeof data.enableCountLogging === 'boolean') {
+    // FIXED: Only set enableCountLogging from data once during restoration
+    if (
+      typeof data.enableCountLogging === 'boolean' &&
+      !hasRestoredEnableCountLogging.current
+    ) {
       setEnableCountLogging(data.enableCountLogging);
+      hasRestoredEnableCountLogging.current = true;
       hasUpdated = true;
     }
 
