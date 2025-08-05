@@ -383,13 +383,13 @@ const BusinessCatalogue = () => {
                 throw new Error(result.detail || `HTTP error! Status: ${response.status}`);
             }
 
-            toast.success('Domian deleted successfully!');
+            toast.success('Domain deleted successfully!');
             handleCloseDeleteModal();
             await fetchCatalogueData();
 
         } catch (err) {
             console.error("Failed to delete element:", err);
-            toast.error(err.message || "An unexpected error occurred.");
+            toast.error("Failed to delete element");
         } finally {
             setIsDeleting(false);
         }
