@@ -179,12 +179,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             if (activeTab === 'Term') {
                 setIsTermLoading(true);
                 setError(null);
-                const payload = {
-
-                };
-                if (formData.domain && formData.domain.id !== null) {
-                    payload.domain_id = [formData.domain.id];
-                }
+                const payload = {};
                 try {
                     const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/terms`, {
                         method: 'POST',
@@ -215,9 +210,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 setError(null);
                 try {
                     const payload = {};
-                    if (formData.domain && formData.domain.id !== null) {
-                        payload.domain_id = [formData.domain.id];
-                    }
                     const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/tag`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
@@ -249,9 +241,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                     const payload = {
                         tag_id: [formData.tag.id]
                     };
-                    if (formData.domain && formData.domain.id !== null) {
-                        payload.domain_id = [formData.domain.id];
-                    }
                     const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/sub_tag`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
