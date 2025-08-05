@@ -4,6 +4,7 @@ import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../components/Breadcrumb.jsx';
 import AddCatalogueModal from './AddCatalogueModal.jsx';
 import toast, { Toaster } from 'react-hot-toast';
+import { useAuth } from '../../../context/AuthContext.jsx';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfirming }) => {
     if (!isOpen) return null;
@@ -211,6 +212,11 @@ const BusinessCatalogue = () => {
     const [detailsModal, setDetailsModal] = useState({ isOpen: false, title: '', data: [] });
     const rowsPerPage = 10;
 
+    const { token, decodedToken } = useAuth();
+    const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
+        ['data steward', 'data owner'].includes(role.toLowerCase())
+    );
+
 
     const fetchCatalogueData = async () => {
         setIsLoading(true);
@@ -395,6 +401,14 @@ const BusinessCatalogue = () => {
         }
     };
 
+    const tableHeaders = [
+        'id', 'domain', 'category', 'subcategory', 'term', 'description',
+        'tag', 'createdBy', 'createdDate', 'updatedDate', 'status'
+    ];
+    if (isUserAuthorized) {
+        tableHeaders.push('Action');
+    }
+
 
 
     return (
@@ -444,7 +458,7 @@ const BusinessCatalogue = () => {
                     <table className="w-full text-sm">
                         <thead className="bg-gray-800 text-white">
                             <tr>
-                                {['id', 'domain', 'category', 'subcategory', 'term', 'description', 'tag', 'createdBy', 'createdDate', 'updatedDate', 'status', 'Action'].map(key => (
+                                {tableHeaders.map(key => (
                                     <th key={key} className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700" onClick={() => handleSort(key)}>
                                         <span className="inline-flex items-center capitalize">{key.replace(/([A-Z])/g, ' $1')} {getSortIcon(key)}</span>
                                     </th>
@@ -468,6 +482,7 @@ const BusinessCatalogue = () => {
                                         <td className="p-3 text-gray-600">{item.createdDate}</td>
                                         <td className="p-3 text-gray-600">{item.updatedDate}</td>
                                         <td className="p-3">{getStatusBadge(item.status)}</td>
+                                        {isUserAuthorized && (
                                         <td className="px-6 p-4 text-center whitespace-nowrap">
                                             <div className="relative">
                                                 <button
@@ -500,6 +515,7 @@ const BusinessCatalogue = () => {
                                                 )}
                                             </div>
                                         </td>
+                                        )}
                                     </tr>
                                 ))
                             )}
