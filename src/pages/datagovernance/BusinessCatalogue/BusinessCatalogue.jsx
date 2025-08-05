@@ -50,9 +50,9 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfi
 
 const metricConfig = [
     { title: 'Domain', apiKey: 'Domain', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
-    { title: 'Term', apiKey: 'Term', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
     { title: 'Category', apiKey: 'Category', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
     { title: 'Sub-category', apiKey: 'Sub Category', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
+    { title: 'Term', apiKey: 'Term', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
     { title: 'Tag', apiKey: 'Tag', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
     { title: 'Sub-tag', apiKey: 'Sub Tag', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
 ];
