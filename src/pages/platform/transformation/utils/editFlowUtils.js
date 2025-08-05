@@ -125,10 +125,16 @@ const cleanNodeDataForSerialization = (nodeData) => {
 export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
   const contextProcedures = window.transformationContext?.state?.procedureExecution || {};
   const contextTargets = window.transformationContext?.state?.targets || {};
+  const contextSources = window.transformationContext?.state?.sources || {};
   const targetToSourceMap = window.transformationContext?.state?.targetToSelectedSourceMap || {};
   const sourceOriginalColumns = window.transformationContext?.state?.sourceOriginalColumns || {};
 
+  const globalProperties = window.transformationContext?.state?.properties || {
+    logging: { isLoggingEnabled: true, isLoggingEnabledForEachDataset: false },
+    email: { isEmailEnabled: false }
+  };
 
+  // console.log("Preparing edit flow data with global properties:", globalProperties);
 
   return {
     nodes: nodes.map(node => {
@@ -178,39 +184,45 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
         });
       }
 
+      // FIXED: Get the most current enableCountLogging value from multiple sources
+      let currentEnableCountLogging = false;
+
+      if (node.type === 'source') {
+        // For source nodes, check context first, then node data
+        currentEnableCountLogging = contextSources[node.id]?.enableCountLogging ??
+                                   node.data.enableCountLogging ??
+                                   false;
+      } else if (node.type === 'target') {
+        // For target nodes, check context first, then node data
+        currentEnableCountLogging = contextTargets[node.id]?.enableCountLogging ??
+                                   node.data.enableCountLogging ??
+                                   false;
+      } else {
+        // For other node types, use node data
+        currentEnableCountLogging = node.data.enableCountLogging ?? false;
+      }
+
       const nodeData = {
         ...node.data,
         preProcedures: finalPreProcedures,
-        postProcedures: finalPostProcedures
+        postProcedures: finalPostProcedures,
+        // Use the most current enableCountLogging value
+        enableCountLogging: currentEnableCountLogging
       };
 
       let finalSelectedSourceId = node.data.selectedSourceId;
       if (node.type === 'target' && targetToSourceMap && targetToSourceMap[node.id]) {
         finalSelectedSourceId = targetToSourceMap[node.id];
-        // console.log(`Edit Flow - Updated selectedSourceId for target ${node.id}: ${finalSelectedSourceId}`);
-      }
-
-      if (node.type === 'target') {
-        // console.log(`Edit Flow - Processing target node ${node.id}:`, {
-        //   hasTargetMapping: !!node.data.targetMapping,
-        //   targetMappingEntries: node.data.targetMapping ? Object.keys(node.data.targetMapping).length : 0,
-        //   isConfirmed: window.localStorage.getItem(`targetMappingConfirmed_${node.id}`) === "true",
-        //   selectedSourceId: finalSelectedSourceId,
-        //   targetMapping: node.data.targetMapping
-        // });
       }
 
       let finalTargetMapping = {};
       if (node.type === 'target') {
         if (contextTargets[node.id] && contextTargets[node.id].targetMapping) {
           finalTargetMapping = { ...contextTargets[node.id].targetMapping };
-          // console.log(`Edit Flow - Using context mapping for ${node.id}:`, finalTargetMapping);
         }
         else if (node.data && node.data.targetMapping) {
           finalTargetMapping = { ...node.data.targetMapping };
-          // console.log(`Edit Flow - Using node data mapping for ${node.id}:`, finalTargetMapping);
         }
-
       }
 
       return {
@@ -224,11 +236,9 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
           connectionType: node.data.connectionType,
           schema: node.data.schema,
           table: node.data.table,
-          columns:
-            node.type === 'source'
+          columns: node.type === 'source'
               ? (sourceOriginalColumns[node.id] || [])
-              : (
-                node.data.columns && Array.isArray(node.data.columns)
+              : (node.data.columns && Array.isArray(node.data.columns)
                   ? node.data.columns.map(col => ({
                       name: typeof col === 'string' ? col : col.name,
                       datatype: typeof col === 'object' ? col.datatype : undefined
@@ -260,7 +270,8 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
           name: node.data.name,
           description: node.data.description,
           transformations: node.data.transformations || [],
-          transformationConfig: node.data.transformationConfig || { operations: [] }
+          transformationConfig: node.data.transformationConfig || { operations: [] },
+          enableCountLogging: currentEnableCountLogging
         },
         deletable: node.deletable,
         draggable: node.draggable,
@@ -299,6 +310,17 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
       reactFlowVersion: "11.x",
       transformationStudioVersion: "1.0",
       restorationSupport: "enhanced"
+    },
+    // FIXED: Include the most current global properties for restoration
+    properties: {
+      ...globalProperties,
+      // Ensure we have the current sidebar state
+      logging: {
+        ...globalProperties.logging,
+        // Double-check the current state by examining actual nodes
+        isLoggingEnabledForEachDataset: nodes.filter(n => n.type === 'source' || n.type === 'target')
+          .every(n => n.data?.enableCountLogging === true)
+      }
     }
   };
 };
