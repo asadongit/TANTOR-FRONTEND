@@ -92,12 +92,13 @@ const PaginationSkeleton = () => (
 
 
 const DetailsModal = ({ isOpen, onClose, title, data }) => {
+
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredData = React.useMemo(() => {
         if (!data) return [];
         return data.filter(item =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
+            item?.toLowerCase().includes(searchTerm?.toLowerCase())
         );
     }, [data, searchTerm]);
 
@@ -170,8 +171,6 @@ const DetailsModal = ({ isOpen, onClose, title, data }) => {
                             </ul>
                         ) : (
                             <div className="text-center py-10 text-gray-500">
-                                <FileQuestion className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                                <h4 className="font-semibold">No Results Found</h4>
                                 <p className="text-sm">
                                     {searchTerm
                                         ? `Your search for "${searchTerm}" did not return any results.`
@@ -214,7 +213,7 @@ const BusinessCatalogue = () => {
 
     const { token, decodedToken } = useAuth();
     const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-        ['data steward', 'data owner'].includes(role.toLowerCase())
+        ['data steward', 'data owner'].includes(role?.toLowerCase())
     );
 
 
@@ -233,20 +232,22 @@ const BusinessCatalogue = () => {
             setMetricCounts(data.counts);
 
 
+
             const formattedTableData = Object.entries(data.details).map(([id, item]) => ({
                 id: `${id}`,
                 domain: item.Domain,
-                category: item["Domain's Categories"],
-                subcategory: item["Domain's Sub-Categories"],
-                term: item["Domain's Terms"],
-                tag: item["Domain's Tags"],
-                subtag: item["Domain's Sub-Tags"],
+                category: item["Domain's Categories"].map(c => c.name),
+                subcategory: item["Domain's Sub-Categories"].map(sc => sc.name),
+                term: item["Domain's Terms"].map(t => t.name),
+                tag: item["Domain's Tags"].map(tg => tg.name),
+                subtag: item["Domain's Sub-Tags"].map(st => st.name),
                 description: item.Description || 'N/A',
                 createdBy: item["Created By"].join(', ') || 'N/A',
                 createdDate: item["Created Date"],
                 updatedDate: item["Updated Date"] || 'N/A',
                 status: item.Status
             }));
+            setTableData(formattedTableData);
             setTableData(formattedTableData);
 
         } catch (err) {
@@ -402,8 +403,8 @@ const BusinessCatalogue = () => {
     };
 
     const tableHeaders = [
-        'id', 'domain', 'category', 'subcategory', 'term', 'description',
-        'tag', 'createdBy', 'createdDate', 'updatedDate', 'status'
+        'id', 'domain', 'category', 'subcategory', 'term', 'tag', 'subtag',
+        'description', 'createdBy', 'createdDate', 'updatedDate', 'status'
     ];
     if (isUserAuthorized) {
         tableHeaders.push('Action');
@@ -427,10 +428,10 @@ const BusinessCatalogue = () => {
                         <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
                     </button>
                     {isUserAuthorized && (
-                    <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a67a0] transition-colors shadow-sm">
-                        <Plus className="h-5 w-5" />
-                        <span>Add</span>
-                    </button>
+                        <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a67a0] transition-colors shadow-sm">
+                            <Plus className="h-5 w-5" />
+                            <span>Add</span>
+                        </button>
                     )}
                 </div>
             </div>
@@ -478,45 +479,46 @@ const BusinessCatalogue = () => {
                                         <td className="p-3"><button onClick={() => handleOpenDetailsModal('Categories', item.category)} className="text-blue-600 underline">{item.category.length}</button></td>
                                         <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-categories', item.subcategory)} className="text-blue-600 underline">{item.subcategory.length}</button></td>
                                         <td className="p-3"><button onClick={() => handleOpenDetailsModal('Terms', item.term)} className="text-blue-600 underline">{item.term.length}</button></td>
-                                        <td className="p-3 text-gray-600 truncate max-w-xs" title={item.description}>{item.description}</td>
                                         <td className="p-3"><button onClick={() => handleOpenDetailsModal('Tags', item.tag)} className="text-blue-600 underline">{item.tag.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-Tags', item.subtag)} className="text-blue-600 underline">{item.subtag.length}</button></td>
+                                        <td className="p-3 text-gray-600 truncate max-w-xs" title={item.description}>{item.description}</td>
                                         <td className="p-3 text-gray-600">{item.createdBy}</td>
                                         <td className="p-3 text-gray-600">{item.createdDate}</td>
                                         <td className="p-3 text-gray-600">{item.updatedDate}</td>
                                         <td className="p-3">{getStatusBadge(item.status)}</td>
                                         {isUserAuthorized && (
-                                        <td className="px-6 p-4 text-center whitespace-nowrap">
-                                            <div className="relative">
-                                                <button
-                                                    onClick={() => setActiveMenu(activeMenu === index ? null : index)}
-                                                    className="p-1.5 rounded-full hover:bg-gray-100"
-                                                >
-                                                    <MoreHorizontal className="h-5 w-5" />
-                                                </button>
-                                                {activeMenu === index && (
-                                                    <>
-                                                        <div className="fixed inset-0 z-100" onClick={handleClickOutside} />
-                                                        <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                                                            <div className="flex items-center p-1 gap-1">
-                                                                <button
+                                            <td className="px-6 p-4 text-center whitespace-nowrap">
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={() => setActiveMenu(activeMenu === index ? null : index)}
+                                                        className="p-1.5 rounded-full hover:bg-gray-100"
+                                                    >
+                                                        <MoreHorizontal className="h-5 w-5" />
+                                                    </button>
+                                                    {activeMenu === index && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-100" onClick={handleClickOutside} />
+                                                            <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                                                <div className="flex items-center p-1 gap-1">
+                                                                    <button
 
-                                                                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                                                                >
-                                                                    <Pencil className="h-4 w-4" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleOpenDeleteModal(item)}
-                                                                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </button>
+                                                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleOpenDeleteModal(item)}
+                                                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </button>
 
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
                                         )}
                                     </tr>
                                 ))
