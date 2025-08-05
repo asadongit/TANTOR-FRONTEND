@@ -55,3 +55,34 @@ export function debounceTargetMapping(func, wait = 300) {
     }, wait);
   };
 }
+
+/**
+ * Debounce count logging state update for better performance
+ * @param {Function} func - The function to debounce
+ * @param {number} wait - The delay in milliseconds
+ * @returns {Function} - The debounced function with immediate feedback
+ */
+export function debounceCountLogging(func, wait = 150) {
+  let timeout;
+  let lastArgs = null;
+  let lastResult = null;
+
+  return function executedFunction(...args) {
+    const context = this;
+    lastArgs = args;
+
+    // Provide immediate visual feedback
+    const result = func.apply(context, args);
+    lastResult = result;
+
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      if (lastArgs && typeof func.complete === 'function') {
+        func.complete.apply(context, lastArgs);
+        lastArgs = null;
+      }
+    }, wait);
+
+    return lastResult;
+  };
+}

@@ -620,7 +620,7 @@ function Transformation() {
           </div>
 
           <button
-            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
+            className="p-2 px-2 rounded-lg border border-gray-400 hover:bg-gray-50"
             onClick={handleRefresh}
             title="Refresh data"
             disabled={isLoading}
