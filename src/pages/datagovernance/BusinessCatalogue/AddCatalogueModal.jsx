@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, FolderPlus, Loader2, Search } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import toast, { Toaster } from 'react-hot-toast';
 
-const AddCatalogueModal = ({ isOpen, onClose }) => {
+const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
     const { token, decodedToken } = useAuth();
     const [activeTab, setActiveTab] = useState('Domain');
     const initialFormData = {
@@ -411,7 +412,12 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 const errorData = await response.json().catch(() => ({ detail: 'An unexpected error occurred while saving.' }));
                 throw new Error(errorData.detail || `Server responded with status: ${response.status}`);
             }
-            onClose();
+            if (onAddComplete) {
+                onAddComplete();
+            } else {
+                toast.success('Catalogue added successfully!');
+                onClose();
+            }
         } catch (err) {
             console.error("Failed to save catalogue:", err);
             setSaveError(err.message);
