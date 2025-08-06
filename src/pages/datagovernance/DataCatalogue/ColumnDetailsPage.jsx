@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
-import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp,ChevronLeft,FilePenLine } from 'lucide-react';
+import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp, ChevronLeft, FilePenLine } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import toast from 'react-hot-toast';
@@ -23,10 +23,9 @@ const InfoPill = ({ label }) => (
     </span>
 );
 
-// Pagination Component
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
     if (totalPages <= 1) {
-        return null; // Don't render pagination if there's only one page
+        return null; 
     }
 
     return (
@@ -59,8 +58,8 @@ function ColumnDetailsPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const { columnName } = useParams();
-    const { columnData, allData } = location.state || {};
     const { token, decodedToken } = useAuth();
+    const { columnDetails } = location.state || {};
 
     const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
         ['data steward', 'data owner'].includes(role.toLowerCase())
@@ -83,20 +82,15 @@ function ColumnDetailsPage() {
     const [originalDescription, setOriginalDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    // Access Tab State
     const [accessData, setAccessData] = useState([]);
     const [loadingAccessData, setLoadingAccessData] = useState(false);
     const [accessDataError, setAccessDataError] = useState(null);
     const [expandedRows, setExpandedRows] = useState({});
 
-    // Pagination States
     const [itemsPerPage] = useState(8);
     const [accessCurrentPage, setAccessCurrentPage] = useState(1);
     const [businessCurrentPage, setBusinessCurrentPage] = useState(1);
     const [sampleDataCurrentPage, setSampleDataCurrentPage] = useState(1);
-
-
-    const singleColumn = allData?.find(val => val.column_name === columnData?.name);
 
 
     const getConstraints = (meta) => {
@@ -109,7 +103,7 @@ function ColumnDetailsPage() {
     };
 
     useEffect(() => {
-        if (!columnData) return;
+        if (!columnDetails) return;
 
         const fetchComplianceTags = async () => {
             setLoadingTags(true);
@@ -123,18 +117,15 @@ function ColumnDetailsPage() {
                     },
                     body: JSON.stringify({
                         connection_set: [{
-                            connection_name: singleColumn.connection_name,
-                            table_schema: singleColumn.table_schema,
-                            table_name: singleColumn.table_name,
-                            column: singleColumn.column_name
+                            connection_name: columnDetails.connection_name,
+                            table_schema: columnDetails.table_schema,
+                            table_name: columnDetails.table_name,
+                            column: columnDetails.column_name
                         }]
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch compliance tags');
-                }
-
+                if (!response.ok) throw new Error('Failed to fetch compliance tags');
                 const data = await response.json();
                 setComplianceTags(data.sub_tags?.map(tag => tag.name) || []);
             } catch (error) {
@@ -146,10 +137,10 @@ function ColumnDetailsPage() {
         };
 
         fetchComplianceTags();
-    }, [columnData, token, singleColumn]);
+    }, [columnDetails, token]);
 
     useEffect(() => {
-        if (activeTab !== 'Business' || !singleColumn) return;
+        if (activeTab !== 'Business' || !columnDetails) return;
 
         const fetchBusinessData = async () => {
             setLoadingBusinessData(true);
@@ -157,31 +148,23 @@ function ColumnDetailsPage() {
             try {
                 const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/business_tab`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'accept': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                    },
+                    headers: { 'Content-Type': 'application/json', 'accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
                         connection_set: [{
-                            connection_name: singleColumn.connection_name,
-                            table_schema: singleColumn.table_schema,
-                            table_name: singleColumn.table_name,
-                            column: singleColumn.column_name
+                            connection_name: columnDetails.connection_name,
+                            table_schema: columnDetails.table_schema,
+                            table_name: columnDetails.table_name,
+                            column: columnDetails.column_name
                         }],
                     }),
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
                 const columnBusinessInfo = Object.values(data)[0];
 
-                if (!columnBusinessInfo) {
-                    throw new Error("Business data format from API is incorrect.");
-                }
+                if (!columnBusinessInfo) throw new Error("Business data format from API is incorrect.");
+
                 const tags = {
                     domain: columnBusinessInfo.domain || [],
                     category: columnBusinessInfo.category || [],
@@ -199,44 +182,24 @@ function ColumnDetailsPage() {
                     subTag: tags.subTag?.map(t => t.name) || [],
                 };
                 const newCompositeState = [];
-                const domainNames = schemaForState.domain;
-                const categoryNames = schemaForState.category;
-                const subCategoryNames = schemaForState.subCategory;
-                const termsNames = schemaForState.term;
-                const tagNames = schemaForState.tag;
-                const subTagNames = schemaForState.subTag;
-
-                const maxLength = Math.max(
-                    domainNames.length,
-                    categoryNames.length,
-                    subCategoryNames.length,
-                    termsNames.length,
-                    tagNames.length,
-                    subTagNames.length
-                );
+                const maxLength = Math.max(...Object.values(schemaForState).map(arr => arr.length));
 
                 if (maxLength === 0) {
                     newCompositeState.push({
-                        id: '01',
-                        column: columnBusinessInfo.column_name || columnData.name,
-                        domain: 'N/A',
-                        category: 'N/A',
-                        subCategory: 'N/A',
-                        term: 'N/A',
-                        tag: 'N/A',
-                        subTag: 'N/A',
+                        id: '01', column: columnDetails.column_name, domain: 'N/A', category: 'N/A',
+                        subCategory: 'N/A', term: 'N/A', tag: 'N/A', subTag: 'N/A',
                     });
                 } else {
                     for (let i = 0; i < maxLength; i++) {
                         newCompositeState.push({
                             id: (i + 1).toString().padStart(2, '0'),
-                            column: columnBusinessInfo.column_name || columnData.name,
-                            domain: domainNames[i] || '-',
-                            category: categoryNames[i] || '-',
-                            subCategory: subCategoryNames[i] || '-',
-                            term: termsNames[i] || '-',
-                            tag: tagNames[i] || '-',
-                            subTag: subTagNames[i] || '-',
+                            column: columnDetails.column_name,
+                            domain: schemaForState.domain[i] || '-',
+                            category: schemaForState.category[i] || '-',
+                            subCategory: schemaForState.subCategory[i] || '-',
+                            term: schemaForState.term[i] || '-',
+                            tag: schemaForState.tag[i] || '-',
+                            subTag: schemaForState.subTag[i] || '-',
                         });
                     }
                 }
@@ -251,39 +214,29 @@ function ColumnDetailsPage() {
         };
 
         fetchBusinessData();
-    }, [activeTab, singleColumn, token, columnData.name]);
+    }, [activeTab, columnDetails, token]);
 
     useEffect(() => {
-        if (activeTab !== 'Sample data' || !singleColumn) return;
+        if (activeTab !== 'Sample data' || !columnDetails) return;
 
         const fetchSampleData = async () => {
             setLoadingSampleData(true);
             setSampleDataError(null);
             setSampleData([]);
             setSampleDataCurrentPage(1);
-
             try {
                 const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/columns/sample_data`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
-                        connection_name: singleColumn.connection_name,
-                        table_schema: singleColumn.table_schema,
-                        table_name: singleColumn.table_name
+                        connection_name: columnDetails.connection_name,
+                        table_schema: columnDetails.table_schema,
+                        table_name: columnDetails.table_name
                     })
                 });
-
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch sample data. Status: ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`Failed to fetch sample data. Status: ${response.status}`);
                 const data = await response.json();
                 setSampleData(data || []);
-
             } catch (error) {
                 console.error("Error fetching sample data:", error);
                 setSampleDataError("Failed to fetch sample data.");
@@ -291,12 +244,11 @@ function ColumnDetailsPage() {
                 setLoadingSampleData(false);
             }
         };
-
         fetchSampleData();
-    }, [activeTab, singleColumn, token]);
+    }, [activeTab, columnDetails, token]);
 
     useEffect(() => {
-        if (activeTab !== 'Access' || !singleColumn) return;
+        if (activeTab !== 'Access' || !columnDetails) return;
 
         const fetchAccessData = async () => {
             setLoadingAccessData(true);
@@ -308,27 +260,19 @@ function ColumnDetailsPage() {
             try {
                 const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/access_tab`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
                         connection_set: [{
-                            connection_name: singleColumn.connection_name,
-                            table_schema: singleColumn.table_schema,
-                            table_name: singleColumn.table_name,
-                            column: singleColumn.column_name
+                            connection_name: columnDetails.connection_name,
+                            table_schema: columnDetails.table_schema,
+                            table_name: columnDetails.table_name,
+                            column: columnDetails.column_name
                         }]
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch access data. Status: ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`Failed to fetch access data. Status: ${response.status}`);
                 const data = await response.json();
-
                 const processedData = [];
                 if (data.role) {
                     for (const [name, users] of Object.entries(data.role)) {
@@ -345,9 +289,7 @@ function ColumnDetailsPage() {
                         processedData.push({ type: 'Sub-group', name, users: users || [] });
                     }
                 }
-
                 setAccessData(processedData);
-
             } catch (error) {
                 console.error("Error fetching access data:", error);
                 setAccessDataError("Failed to load access information.");
@@ -357,49 +299,43 @@ function ColumnDetailsPage() {
         };
 
         fetchAccessData();
-    }, [activeTab, singleColumn, token]);
+    }, [activeTab, columnDetails, token]);
 
     useEffect(() => {
-        if (singleColumn) {
-            const columnTagInfo = singleColumn.tags_column_json?.find(
-                tag => tag.column_name === singleColumn.column_name
+        if (columnDetails) {
+            console.log("column details aaree",columnDetails)
+            const columnTagInfo = columnDetails.tags_column_json?.find(
+                tag => tag.column_name === columnDetails.column_name
             );
             const foundDescription = columnTagInfo?.column_description?.[0];
             const initialDesc = foundDescription || 'Column Description';
+            console.log("initial desc is ",initialDesc)
             setDescription(initialDesc);
             setOriginalDescription(initialDesc);
         }
-    }, [singleColumn]);
+    }, [columnDetails]);
 
     const handleCancelEdit = () => {
         setDescription(originalDescription);
         setIsEditingDescription(false);
     };
 
-
     const handleSaveDescription = async () => {
-        if (!singleColumn) {
-           
-            return;
-        }
+        if (!columnDetails) return;
 
         setIsSaving(true);
-
         try {
             const payload = {
-                connection_name: singleColumn.connection_name,
-                table_schema: singleColumn.table_schema,
-                table_name: singleColumn.table_name,
-                column_name: singleColumn.column_name,
+                connection_name: columnDetails.connection_name,
+                table_schema: columnDetails.table_schema,
+                table_name: columnDetails.table_name,
+                column_name: columnDetails.column_name,
                 column_description: description,
             };
 
             const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/edit_column_description`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload),
             });
 
@@ -410,41 +346,31 @@ function ColumnDetailsPage() {
 
             setOriginalDescription(description);
             setIsEditingDescription(false);
-            toast.success("Column description edited!")
-
+            toast.success("Column description edited!");
         } catch (error) {
             console.error("Error saving description:", error);
-            toast.success(" Error editing column description")
+            toast.error("Error editing column description.");
         } finally {
             setIsSaving(false);
         }
     };
 
-
     const toggleRow = (name) => {
-        setExpandedRows(prev => ({
-            ...prev,
-            [name]: !prev[name]
-        }));
+        setExpandedRows(prev => ({ ...prev, [name]: !prev[name] }));
     };
 
-    // --- Pagination Logic & Handlers ---
-
-    // Access Tab
     const indexOfLastAccessItem = accessCurrentPage * itemsPerPage;
     const indexOfFirstAccessItem = indexOfLastAccessItem - itemsPerPage;
     const currentAccessItems = accessData.slice(indexOfFirstAccessItem, indexOfLastAccessItem);
     const totalAccessPages = Math.ceil(accessData.length / itemsPerPage);
     const handleAccessPageChange = (page) => setAccessCurrentPage(page);
 
-    // Business Tab
     const indexOfLastBusinessItem = businessCurrentPage * itemsPerPage;
     const indexOfFirstBusinessItem = indexOfLastBusinessItem - itemsPerPage;
     const currentBusinessItems = businessData.composite.slice(indexOfFirstBusinessItem, indexOfLastBusinessItem);
     const totalBusinessPages = Math.ceil(businessData.composite.length / itemsPerPage);
     const handleBusinessPageChange = (page) => setBusinessCurrentPage(page);
 
-    // Sample Data Tab
     const indexOfLastSampleDataItem = sampleDataCurrentPage * itemsPerPage;
     const indexOfFirstSampleDataItem = indexOfLastSampleDataItem - itemsPerPage;
     const currentSampleDataItems = sampleData.slice(indexOfFirstSampleDataItem, indexOfLastSampleDataItem);
@@ -452,7 +378,7 @@ function ColumnDetailsPage() {
     const handleSampleDataPageChange = (page) => setSampleDataCurrentPage(page);
 
 
-    if (!columnData || !singleColumn) {
+    if (!columnDetails) {
         return (
             <div className="p-4">
                 Column data not found. Please navigate from the columns list.
@@ -467,7 +393,7 @@ function ColumnDetailsPage() {
         const spacedTitle = title.replace(/([A-Z])/g, ' $1');
         const capitalized = spacedTitle.charAt(0).toUpperCase() + spacedTitle.slice(1);
         return capitalized.replace('Sub Category', 'Sub-category').replace('Sub Tag', 'Sub-tag');
-    }
+    };
 
     const sampleDataHeaders = sampleData.length > 0 ? Object.keys(sampleData[0]) : [];
 
@@ -483,7 +409,7 @@ function ColumnDetailsPage() {
                                     <ChevronLeft className="h-6 w-6" />
                                 </button>
                                 <ChartColumn size={24} className="text-[#8d77ba]" />
-                                <h1 className="text-2xl font-bold text-gray-800">{columnData?.name?.toLowerCase()}</h1>
+                                <h1 className="text-xl font-bold text-gray-800">{columnDetails?.column_name}</h1>
                             </div>
                         </div>
                     </div>
@@ -542,7 +468,7 @@ function ColumnDetailsPage() {
                                         </div>
                                     ) : (
                                         <div className="text-gray-600 pl-7 min-h-[2rem]">
-                                            {description && description !== 'Column Description' ? description : <span className="text-gray-400 italic">No description provided</span>}
+                                            {description}
                                         </div>
                                     )}
                                 </div>
@@ -573,27 +499,27 @@ function ColumnDetailsPage() {
                                             <tbody className="bg-white divide-y divide-gray-200">
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Type</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_TYPE}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_TYPE}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Nullable</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.is_nullable === 'Y' ? 'Yes' : 'No'}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.is_nullable === 'Y' ? 'Yes' : 'No'}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Length</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_LENGTH}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_LENGTH}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Scale</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_SCALE}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_SCALE}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Precision</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_PRECISION}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_PRECISION}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Constraints</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(singleColumn.column_metadata)}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(columnDetails.column_metadata)}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -808,38 +734,29 @@ function ColumnDetailsPage() {
                 <div className="w-full xl:w-80 flex-shrink-0 space-y-6">
                     <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
                         <div className="flex items-center gap-2">
-                            <span className="text-[#8d77ba]">
-                                <Lightbulb />
-                            </span>
+                            <span className="text-[#8d77ba]"><Lightbulb /></span>
                             <h3 className="font-normal text-lg">Snapshot</h3>
                         </div>
 
                         <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
                             <div className="text-gray-500">Type</div>
                             <div className="font-normal">Column</div>
-
                             <div className="text-gray-500">Data source</div>
-                            <div className="font-normal">{singleColumn.connection_type}</div>
+                            <div className="font-normal">{columnDetails.connection_type}</div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
                             <div className="text-gray-500">Created on</div>
-                            <div className="font-normal">
-                                {new Date(singleColumn.created_at).toLocaleDateString()}
-                            </div>
-
+                            <div className="font-normal">{new Date(columnDetails.created_at).toLocaleDateString()}</div>
                             <div className="text-gray-500">Last updated</div>
-                            <div className="font-normal">
-                                {new Date(singleColumn.updated_at).toLocaleDateString()}
-                            </div>
+                            <div className="font-normal">{new Date(columnDetails.updated_at).toLocaleDateString()}</div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
                             <div className="text-gray-500">Owner</div>
-                            <div className="font-normal">{singleColumn.created_by}</div>
-
+                            <div className="font-normal">{columnDetails.created_by}</div>
                             <div className="text-gray-500">Steward</div>
-                            <div className="font-normal">{singleColumn?.steward || 'Admin'}</div>
+                            <div className="font-normal">{columnDetails?.steward || 'Admin'}</div>
                         </div>
                     </div>
                 </div>

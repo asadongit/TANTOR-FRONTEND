@@ -49,6 +49,9 @@ const BusinessGlossary = () => {
         Domain: item.domain_name,
         DomainId: item.domain_id,
         AssetType: item.asset_type,
+        CreatedDate: item.created_date,
+        UpdatedDate: item.updated_date,
+        Owner: item.owner
       }));
       setGlossaryData(formattedData);
     } catch (e) {

@@ -200,10 +200,17 @@ function Columns() {
     }, [showEditPage]);
 
     const handleNavigate = (column) => {
+    const selectedColumnRawData = allTablesRawData.find(
+        item => item.conn_metadata_id === column.conn_metadata_id && item.column_name === column.name
+    );
+    if (selectedColumnRawData) {
         navigate(`/datagovernance/data-catalogue/column/${column.name}`, {
-            state: { columnData: column, allData: allTablesRawData }
+            state: { columnDetails: selectedColumnRawData }
         });
-    };
+    } else {
+        console.error("Raw data for the selected column could not be found.");
+    }
+};
 
     return (
         <div className="p-5">
