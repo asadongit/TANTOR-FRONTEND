@@ -201,9 +201,6 @@ function Schema() {
         </div>
       )}
       <Breadcrumb/>
-      {/* {schemaViewScreen ? (
-        <SchemaViewScreen schema={schemaForViewScreen}/>
-      ) : ( */}
       {
         <>
           <div className="flex items-center justify-between mb-6">
