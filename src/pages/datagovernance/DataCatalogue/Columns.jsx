@@ -95,33 +95,65 @@ function Columns() {
         }, 3000);
     };
 
-    const handleShowEditPage = (column) => {
-        const rawDataItem = allTablesRawData.find(
-            item => item.conn_metadata_id === column.conn_metadata_id
-        );
+   const [fetchingEditId, setFetchingEditId] = useState(null);
+    const handleShowEditPage = async (column) => {
+        setFetchingEditId(column.conn_metadata_id);
+        try {
+            const rawDataItem = allTablesRawData.find(
+                item => item.conn_metadata_id === column.conn_metadata_id
+            );
 
-        if (rawDataItem) {
-            const detailsForEdit = {
-                connection_name: rawDataItem.connection_name,
-                table_schema: rawDataItem.table_schema,
-                table_name: rawDataItem.table_name,
-                column: rawDataItem.column_name
+            if (!rawDataItem) {
+                throw new Error("Could not find the detailed data for the selected column.");
+            }
+
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/catalogue/column/prefill`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    column: rawDataItem.column_name,
+                    table_name: rawDataItem.table_name,
+                    table_schema: rawDataItem.table_schema,
+                    connection_name: rawDataItem.connection_name,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to fetch edit details for the column');
+            }
+
+            const prefillData = await response.json();
+
+            const detailsToEdit = {
+                connection_set: [{
+                    column_name: rawDataItem.column_name,
+                    table_name: rawDataItem.table_name,
+                    table_schema: rawDataItem.table_schema,
+                    connection_name: rawDataItem.connection_name,
+                }],
+                prefill: prefillData
             };
 
-            setEditColumnDetails(detailsForEdit);
+            setEditColumnDetails(detailsToEdit);
             setShowEditPage(true);
-        } else {
-            console.error("Could not find the detailed data for the selected column:", column);
+
+        } catch (error) {
+            console.error('Error fetching pre-fill data for column:', error);
             setToast({
                 show: true,
-                message: 'Error: Could not find details for the selected column.',
+                message: error.message,
                 type: 'error'
             });
-            setTimeout(() => {
-                setToast({ show: false, message: '', type: '' });
-            }, 3000);
+            setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+        } finally {
+            setFetchingEditId(null);
         }
     };
+    
 
     const handlPageSize = (e) => {
         setPageSize(parseInt(e.target.value, 10));

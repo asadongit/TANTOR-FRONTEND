@@ -240,7 +240,7 @@ function Tables() {
                   <th className="text-left px-4 py-1">Schema</th>
                   <th className="text-left px-4 py-1">Owner</th>
                   <th className="text-left px-4 py-1">Columns</th>
-                  <th className="text-left px-4 py-1">Tags</th>
+                  {/* <th className="text-left px-4 py-1">Tags</th> */}
                   <th className="text-left px-4 py-1">Created Date</th>
                   <th className="text-left px-4 py-1">Last Updated</th>
                   <th className="text-left px-4 whitespace-nowrap py-1">Action</th>
@@ -262,7 +262,7 @@ function Tables() {
                     <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleColumnClick(table)}>
                       {table.column}
                     </td>
-                    <td className="p-4">critical</td>
+                    {/* <td className="p-4">critical</td> */}
                     <td className="p-4">{table.CreatedDate}</td>
                     <td className="p-4">{table.lastUpdated}</td>
                     <td className="px-6 p-4 text-center whitespace-nowrap">

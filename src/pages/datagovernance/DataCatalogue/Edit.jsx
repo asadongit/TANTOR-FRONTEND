@@ -2,6 +2,7 @@ import { Pencil, CircleX, Plus, X, ChevronDown, Loader2, Search } from 'lucide-r
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import AddCatalogueModal from '../BusinessCatalogue/AddCatalogueModal';
+import toast from "react-hot-toast";
 
 const API_BASE_URL = `${window._env_?.VITE_FAST_API}/business_catalogue/add`;
 const OWNER_OPTIONS = ['Admin'];
@@ -148,6 +149,9 @@ const MultiSelectDropdown = ({ options, selectedValues, onChange, placeholder, d
 };
 
 const Edit = ({ onClose, editDetails, type }) => {
+
+  console.log("detailss @@@@@@@@@ ", editDetails)
+  console.log("type is ", type)
   const { decodedToken } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -178,19 +182,19 @@ const Edit = ({ onClose, editDetails, type }) => {
     ['data steward', 'data owner'].includes(role.toLowerCase())
   );
 
-  const fetchDomains = useCallback(() => 
-  fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/domain`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json', 
-      'accept': 'application/json' 
-    },
-    body: JSON.stringify({ business_catalogue: false })
-  })
-  .then(res => res.json())
-  .then(setDomains)
-  .catch(e => console.error('Error fetching domains:', e)), 
-[]);
+  const fetchDomains = useCallback(() =>
+    fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/domain`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': 'application/json'
+      },
+      body: JSON.stringify({ business_catalogue: false })
+    })
+      .then(res => res.json())
+      .then(setDomains)
+      .catch(e => console.error('Error fetching domains:', e)),
+    []);
 
   const fetchTags = useCallback((domainIds) => {
     if (domainIds.length === 0) return;
@@ -200,7 +204,17 @@ const Edit = ({ onClose, editDetails, type }) => {
       headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
       body: JSON.stringify({ domain_id: domainIds.map(Number) })
     })
-      .then(res => res.json()).then(apiTags => {
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(apiTags => {
+        if (!Array.isArray(apiTags)) {
+          console.error("API did not return an array:", apiTags);
+          return;
+        }
         setTags(prev => {
           const combined = [...prev, ...apiTags];
           return Array.from(new Map(combined.map(item => [item.tag_id, item])).values());
@@ -218,7 +232,17 @@ const Edit = ({ onClose, editDetails, type }) => {
       headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
       body: JSON.stringify({ domain_id: domainIds.map(Number) })
     })
-      .then(res => res.json()).then(apiTerms => {
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(apiTerms => {
+        if (!Array.isArray(apiTerms)) {
+          console.error("API did not return an array for terms:", apiTerms);
+          return;
+        }
         setTerms(prev => {
           const combined = [...prev, ...apiTerms];
           return Array.from(new Map(combined.map(item => [item.term_id, item])).values());
@@ -228,15 +252,26 @@ const Edit = ({ onClose, editDetails, type }) => {
       .finally(() => setIsLoadingTerms(false));
   }, [type]);
 
+
   const fetchCategories = useCallback((domainIds) => {
     if (domainIds.length === 0) return;
     setIsLoadingCategories(true);
     fetch(`${API_BASE_URL}/category`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-      body: JSON.stringify({ 'business_catalogue': false ,domain_id: domainIds.map(Number) })
+      body: JSON.stringify({ 'business_catalogue': false, domain_id: domainIds.map(Number) })
     })
-      .then(res => res.json()).then(apiCategories => {
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(apiCategories => {
+        if (!Array.isArray(apiCategories)) {
+          console.error("API did not return an array for categories:", apiCategories);
+          return;
+        }
         setCategories(prev => {
           const combined = [...prev, ...apiCategories];
           return Array.from(new Map(combined.map(item => [item.category_id, item])).values());
@@ -252,9 +287,19 @@ const Edit = ({ onClose, editDetails, type }) => {
     fetch(`${API_BASE_URL}/sub_category`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-      body: JSON.stringify({ 'business_catalogue': false ,domain_id: domainIds.map(Number), category_id: categoryIds.map(Number) })
+      body: JSON.stringify({ 'business_catalogue': false, domain_id: domainIds.map(Number), category_id: categoryIds.map(Number) })
     })
-      .then(res => res.json()).then(apiSubCategories => {
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(apiSubCategories => {
+        if (!Array.isArray(apiSubCategories)) {
+          console.error("API did not return an array for sub-categories:", apiSubCategories);
+          return;
+        }
         setSubCategories(prev => {
           const combined = [...prev, ...apiSubCategories];
           return Array.from(new Map(combined.map(item => [item.sub_category_id, item])).values());
@@ -264,17 +309,25 @@ const Edit = ({ onClose, editDetails, type }) => {
       .finally(() => setIsLoadingSubCategories(false));
   }, []);
 
-  // UPDATED: fetchSubTags now accepts domainIds and tagIds
   const fetchSubTags = useCallback((domainIds, tagIds) => {
     if (tagIds.length === 0 || domainIds.length === 0) return;
     setIsLoadingSubTags(true);
     fetch(`${API_BASE_URL}/sub_tag`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-      // UPDATED: Payload now includes both domain_id and tag_id
       body: JSON.stringify({ domain_id: domainIds.map(Number), tag_id: tagIds.map(Number) })
     })
-      .then(res => res.json()).then(apiSubTags => {
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(apiSubTags => {
+        if (!Array.isArray(apiSubTags)) {
+          console.error("API did not return an array for sub-tags:", apiSubTags);
+          return;
+        }
         setSubTags(prev => {
           const combined = [...prev, ...apiSubTags];
           return Array.from(new Map(combined.map(item => [item.sub_tag_id, item])).values());
@@ -410,25 +463,26 @@ const Edit = ({ onClose, editDetails, type }) => {
     let endpoint;
 
     if (type === 'column') {
+      const element = editDetails.connection_set.map(connection => ({
+        connection_set: [{
+          connection_name: connection.connection_name,
+          table_schema: connection.table_schema,
+          table_name: connection.table_name,
+          column: connection.column_name
+        }],
+        id_set: [{
+          column_name: connection.column_name,
+          domain_id: selectedDomains.map(Number),
+          category_id: selectedCategories.map(Number),
+          sub_category_id: selectedSubCategories.map(Number),
+          term_id: selectedTerms.map(Number),
+          tag_id: selectedTags.map(Number),
+          sub_tag_id: selectedSubTags.map(Number)
+        }]
+      }));
       endpoint = `${window._env_?.VITE_FAST_API}/data_catalogue/add_catalogue_element_column`;
       payload = {
-        elements: [{
-          connection_set: [{
-            connection_name: editDetails.connection_name,
-            table_schema: editDetails.table_schema,
-            table_name: editDetails.table_name,
-            column: editDetails.column
-          }],
-          id_set: [{
-            column_name: editDetails.column,
-            domain_id: selectedDomains.map(Number),
-            category_id: selectedCategories.map(Number),
-            sub_category_id: selectedSubCategories.map(Number),
-            term_id: selectedTerms.map(Number),
-            tag_id: selectedTags.map(Number),
-            sub_tag_id: selectedSubTags.map(Number)
-          }]
-        }]
+        elements: element
       };
     } else {
       endpoint = `${window._env_?.VITE_FAST_API}/data_catalogue/add_catalogue_element_table`;
@@ -458,9 +512,10 @@ const Edit = ({ onClose, editDetails, type }) => {
       }
       console.log('Save successful:', await response.json());
       onClose();
+      toast.success("Saved Successfully")
     } catch (error) {
       console.error('Error saving catalogue element:', error);
-      setSaveError(`Save failed: ${error.message}`);
+      setSaveError(`Failed to save details`);
     }
   };
 
