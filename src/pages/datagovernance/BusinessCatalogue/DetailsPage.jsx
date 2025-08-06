@@ -7,7 +7,6 @@ const DetailsPage = () => {
   const location = useLocation();
   const item = location.state?.glossaryItem;
   const navigate = useNavigate();
-  console.log("glossary data is @@@@@ ",item)
 
   const [mainTab, setMainTab] = useState('Overview');
   const [activeDetail, setActiveDetail] = useState(null);
@@ -271,12 +270,34 @@ const DetailsPage = () => {
         </div>
 
         <div className="w-full lg:w-1/4">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2 flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-purple-400" /> Metadata
-            </h3>
-            <div className="space-y-3 text-sm">
-              {Object.entries(metadata).map(([key, value]) => (<div key={key} className="flex justify-between"><span className="text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span><span className="font-medium text-gray-800">{value}</span></div>))}
+          <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-[#8d77ba]">
+                <Lightbulb />
+              </span>
+              <h3 className="font-normal text-lg">Metadata</h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+              <div className="text-gray-500">Created Date</div>
+              <div className="font-normal">
+                {item.CreatedDate ? new Date(item.CreatedDate).toLocaleDateString() : 'N/A'}
+              </div>
+
+              <div className="text-gray-500">Updated Date</div>
+              <div className="font-normal">
+                {item.UpdatedDate ? new Date(item.UpdatedDate).toLocaleDateString() : 'N/A'}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+              <div className="text-gray-500">Status</div>
+              <div className="font-normal">
+                {item.status}
+              </div>
+              <div className="text-gray-500">Owner</div>
+              <div className="font-normal">{item.owner || 'Admin'}</div>
+
             </div>
           </div>
         </div>
