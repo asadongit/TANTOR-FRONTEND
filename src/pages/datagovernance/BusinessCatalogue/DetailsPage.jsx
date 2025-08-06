@@ -6,104 +6,85 @@ import Breadcrumb from '../../../components/Breadcrumb';
 const DetailsPage = () => {
   const location = useLocation();
   const item = location.state?.glossaryItem;
-  console.log("glossaryItem is @@@@", item);
   const navigate = useNavigate();
+  console.log("glossary data is @@@@@ ",item)
 
   const [mainTab, setMainTab] = useState('Overview');
   const [activeDetail, setActiveDetail] = useState(null);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 5;
+  const [overviewData, setOverviewData] = useState(null);
+  const [isOverviewLoading, setIsOverviewLoading] = useState(false);
+  const [overviewError, setOverviewError] = useState(null);
 
-  // --- Static data for Overview tab ---
-  const metadata = { status: 'Data type', createdOn: '24-10-2024', lastUpdated: '31-10-2024', owner: 'Abhishek Singh', standard: 'Data source' };
-  const summaryData = { domain: '01', category: '01', 'sub-category': '02', terms: '02', tag: '02', 'sub-tag': '50' };
-  const allDetailsData = {
-    domain: [{ id: '#D01', name: 'Healthcare Domain', description: 'Details related to the primary healthcare domain.' }, { id: '#D02', name: 'Finance Domain', description: 'Financial sector information and data points.' }],
-    category: [{ id: '#C01', name: 'Patient Data', description: 'Category for all patient-related information.' }, { id: '#C02', name: 'Billing Data', description: 'Information concerning invoices and payments.' }, { id: '#C03', name: 'Provider Data', description: 'Category for doctors and hospital information.' }],
-    'sub-category': [{ id: '#S01', name: 'Demographics', description: 'Sub-category for patient demographic details.' }, { id: '#S02', name: 'Insurance Info', description: 'Patient insurance and coverage details.' }],
-    terms: [{ id: '#T01', name: 'HIPAA', description: 'Term related to Health Insurance Portability and Accountability Act.' }],
-    tag: [{ id: '#TG1', name: 'PII', description: 'Tag for Personally Identifiable Information.' }, { id: '#TG2', name: 'Confidential', description: 'Tag for confidential data.' }],
-    'sub-tag': [{ id: '#ST1', name: 'PHI', description: 'Sub-tag for Protected Health Information.' }],
-  };
-
-  // --- State for Technical tab data ---
   const [technicalData, setTechnicalData] = useState([]);
   const [isTechnicalLoading, setIsTechnicalLoading] = useState(false);
   const [technicalError, setTechnicalError] = useState(null);
 
-  // --- API call for Technical data ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 5;
+
   useEffect(() => {
-    // Function to transform API response into a flat structure for the table
+    const fetchOverviewData = async () => {
+      if (!item) return;
+      setIsOverviewLoading(true);
+      setOverviewError(null);
+      try {
+        const payload = { asset: [{ asset_id: item.id, domain_id: item.DomainId, asset_type: item.AssetType }] };
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/business_glossary/overview`, {
+          method: 'POST',
+          headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+        const data = await response.json();
+        setOverviewData(data);
+      } catch (error) {
+        console.error("Failed to fetch overview data:", error);
+        setOverviewError(error.message);
+        setOverviewData(null);
+      } finally {
+        setIsOverviewLoading(false);
+      }
+    };
+    fetchOverviewData();
+  }, [item]);
+
+  useEffect(() => {
     const transformApiResponse = (apiData) => {
       const flattenedData = [];
       let idCounter = 1;
-
       apiData.forEach(entry => {
         if (entry.columns && entry.columns.length > 0) {
           entry.columns.forEach(columnName => {
-            flattenedData.push({
-              id: idCounter++,
-              connection: entry.connection,
-              schema: entry.schema,
-              table: entry.table,
-              column: columnName,
-            });
+            flattenedData.push({ id: idCounter++, connection: entry.connection, schema: entry.schema, table: entry.table, column: columnName });
           });
         } else {
-          // If columns array is empty or not present, show a hyphen
-          flattenedData.push({
-            id: idCounter++,
-            connection: entry.connection,
-            schema: entry.schema,
-            table: entry.table,
-            column: '-',
-          });
+          flattenedData.push({ id: idCounter++, connection: entry.connection, schema: entry.schema, table: entry.table, column: '-' });
         }
       });
       return flattenedData;
     };
 
     const fetchTechnicalData = async () => {
-      if (!item) return; // Don't fetch if item data is not available
-
+      if (!item) return;
       setIsTechnicalLoading(true);
       setTechnicalError(null);
-
+      setCurrentPage(1);
       try {
-        // Construct the payload from the item details
-        const payload = {
-          policy_ids: [item.id], // Using item.id as per the logic
-          asset: [
-            {
-              asset_id: item.id,
-              domain_id: item.DomainId,
-              asset_type: item.AssetType,
-            },
-          ],
-        };
-
+        const payload = { policy_ids: [item.id], asset: [{ asset_id: item.id, domain_id: item.DomainId, asset_type: item.AssetType }] };
         const response = await fetch(`${window._env_?.VITE_FAST_API}/business_glossary/overview/technical`, {
           method: 'POST',
-          headers: {
-            'accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
+          headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-
-        if (!response.ok) {
-          throw new Error(`API request failed with status ${response.status}`);
-        }
-
+        if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
         const data = await response.json();
         const formattedData = transformApiResponse(data);
         setTechnicalData(formattedData);
-
       } catch (error) {
         console.error("Failed to fetch technical data:", error);
         setTechnicalError(error.message);
-        setTechnicalData([]); // Clear data on error
+        setTechnicalData([]);
       } finally {
         setIsTechnicalLoading(false);
       }
@@ -114,8 +95,12 @@ const DetailsPage = () => {
     }
   }, [mainTab, item]);
 
+  const detailTabs = ['Domain', 'Category', 'Sub-category', 'Term', 'Tag', 'Sub-tag'];
+  const getApiKeyFromDetail = (detail) => detail ? detail.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('') : null;
+  const activeDetailDataKey = getApiKeyFromDetail(activeDetail);
+  const currentDetails = overviewData && activeDetailDataKey ? overviewData[activeDetailDataKey] || [] : [];
+  const handleDetailClick = (detailType) => setActiveDetail(detailType);
 
-  // --- Pagination Logic (now uses state) ---
   const totalPages = Math.ceil(technicalData.length / rowsPerPage);
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
@@ -123,8 +108,24 @@ const DetailsPage = () => {
   const goToNextPage = () => setCurrentPage((prev) => (prev < totalPages ? prev + 1 : prev));
   const goToPreviousPage = () => setCurrentPage((prev) => (prev > 1 ? prev - 1 : prev));
 
-  const handleDetailClick = (detailType) => setActiveDetail(detailType);
-  const detailTabs = ['Domain', 'Category', 'Sub - category', 'Terms', 'Tag', 'Sub - tag'];
+
+  const handleQuickAction = (detailItem) => {
+
+    const glossaryItemForNav = {
+      id: detailItem.asset_id,
+      Name: detailItem.name,
+      Description: detailItem.description,
+      status: detailItem.status,
+      AssetType: detailItem.asset_type,
+      DomainId: detailItem.domain_id
+    };
+
+    const urlFriendlyName = detailItem.asset_type?.toLowerCase();
+    const destinationUrl = `/datagovernance/business-catalogue/glossary/${urlFriendlyName}`;
+    navigate(destinationUrl, { state: { glossaryItem: glossaryItemForNav } });
+  };
+
+  const metadata = { status: item?.status || 'N/A', createdOn: '24-10-2024', lastUpdated: '31-10-2024', owner: 'Abhishek Singh', standard: 'Data source' };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -144,87 +145,127 @@ const DetailsPage = () => {
           </div>
 
           {mainTab === 'Overview' && (
-            <>
-              <p className="text-gray-600 mb-4">This is the description for {item?.Name}</p>
-              <div className="overflow-x-auto rounded-lg shadow">
-                <table className="w-full text-left mb-3">
-                  <thead className="bg-[#29304a] text-white uppercase text-xs"><tr>{detailTabs.map(tab => <th key={tab} className="p-3">{tab.replace(' - ', '-')}</th>)}</tr></thead>
-                  <tbody><tr>{Object.entries(summaryData).map(([key, value]) => (<td key={key} className="px-3 pt-3"><button onClick={() => handleDetailClick(key)} className="text-blue-600 underline font-medium">{value}</button></td>))}</tr></tbody>
-                </table>
-              </div>
-              {activeDetail && (
-                <div className="mt-6">
-                  <h2 className="text-2xl font-semibold mb-2">Details</h2>
-                  <div className="flex border-b mb-4 flex-wrap">
-                    {detailTabs.map(tab => {
-                      const tabKey = tab.toLowerCase().replace(' - ', '-');
-                      return (<button key={tabKey} onClick={() => handleDetailClick(tabKey)} className={`px-10 py-2 font-semibold ${activeDetail === tabKey ? 'text-[#8e78b7] border-b-2 border-[#8e78b7]' : 'text-gray-500'}`}>{tab}</button>);
-                    })}
-                  </div>
-                  <div className="overflow-x-auto rounded-lg border">
-                    <table className="w-full text-left">
-                      <thead className="bg-[#29304a] text-white"><tr><th className="p-4 font-medium">ID</th><th className="p-4 font-medium">Name</th><th className="p-4 font-medium">Description</th><th className="p-4 font-medium">Quick action</th></tr></thead>
-                      <tbody>
-                        {(allDetailsData[activeDetail] || []).map((item, index) => (
-                          <tr key={index} className="border-b hover:bg-gray-50">
-                            <td className="p-4 text-gray-600">{item.id}</td><td className="p-4 text-gray-800">{item.name}</td><td className="p-4 text-gray-600">{item.description}</td>
-                            <td className="p-4"><button className="p-1.5 hover:bg-gray-200 rounded-full"><ArrowUpRight className="h-5 w-5 text-gray-600" /></button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </>
+            isOverviewLoading ? <p className="text-center p-8">Loading overview data...</p> :
+              overviewError ? <p className="text-center p-8 text-red-500">Error: {overviewError}</p> :
+                !overviewData ? <p className="text-center p-8 text-gray-500">No overview data available.</p> :
+                  (
+                    <>
+                      <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-2 pt-2">
+                        <FilePenLine className="h-5 w-5 text-[#8d77ba]" />
+                        <span>Description</span>
+                      </h2>
+                      <p className="text-gray-600 mb-4">{item?.Description}</p>
+
+                      <div className="overflow-x-auto rounded-lg shadow">
+                        <table className="w-full text-left mb-3">
+                          <thead className="bg-[#29304a] text-white uppercase text-xs">
+                            <tr>{detailTabs.map(tab => <th key={tab} className="p-3">{tab}</th>)}</tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              {detailTabs.map(tab => {
+                                const stateKey = tab.toLowerCase().replace('-', '-');
+                                const apiKey = getApiKeyFromDetail(stateKey);
+                                const count = overviewData.Counts[apiKey] || 0;
+                                return (
+                                  <td key={stateKey} className="px-3 pt-3">
+                                    <button onClick={() => handleDetailClick(stateKey)} className="text-blue-600 underline font-medium" disabled={count === 0}>{count}</button>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      {activeDetail && (
+                        <div className="mt-6">
+                          <h2 className="text-2xl font-semibold mb-2">Details</h2>
+                          <div className="flex border-b mb-4 flex-wrap">
+                            {detailTabs.map(tab => {
+                              const tabKey = tab.toLowerCase().replace(' - ', '-');
+                              return (<button key={tabKey} onClick={() => handleDetailClick(tabKey)} className={`px-10 py-2 font-semibold ${activeDetail === tabKey ? 'text-[#8e78b7] border-b-2 border-[#8e78b7]' : 'text-gray-500'}`}>{tab}</button>);
+                            })}
+                          </div>
+                          <div className="overflow-x-auto rounded-lg border">
+                            <table className="w-full text-left">
+                              <thead className="bg-[#29304a] text-white">
+                                <tr>
+                                  <th className="p-4 font-medium">S.No.</th>
+                                  <th className="p-4 font-medium">Name</th>
+                                  <th className="p-4 font-medium">Description</th>
+                                  <th className="p-4 font-medium">Quick action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {currentDetails.length > 0 ? (
+                                  currentDetails.map((detailItem, index) => (
+                                    <tr key={`${detailItem.asset_id}-${index}`} className="border-b hover:bg-gray-50">
+                                      <td className="p-2 text-gray-600">{index + 1}</td>
+                                      <td className="p-2 text-gray-800">{detailItem.name}</td>
+                                      <td className="p-2 text-gray-600">{detailItem.description || 'N/A'}</td>
+                                      <td className="p-2">
+                                        <button onClick={() => handleQuickAction(detailItem)} className="p-1.5 hover:bg-gray-200 rounded-full">
+                                          <ArrowUpRight className="h-5 w-5 text-gray-600" />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr><td colSpan="4" className="text-center p-8 text-gray-500">No data available for this section.</td></tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )
           )}
 
           {mainTab === 'Technical' && (
             <div className="mt-4">
-              {isTechnicalLoading ? (
-                <p className="text-center p-8">Loading technical data...</p>
-              ) : technicalError ? (
-                <p className="text-center p-8 text-red-500">Error: {technicalError}</p>
-              ) : (
-                <>
-                  <div className="overflow-x-auto rounded-lg border">
-                    <table className="w-full text-left">
-                      <thead className="bg-[#29304a] text-white">
-                        <tr>
-                          <th className="p-4 font-medium">Connection</th>
-                          <th className="p-4 font-medium">Schema</th>
-                          <th className="p-4 font-medium">Table</th>
-                          <th className="p-4 font-medium">Column</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentTechnicalItems.length > 0 ? currentTechnicalItems.map((item) => (
-                          <tr key={item.id} className="border-b hover:bg-gray-50">
-                            <td className="p-4"><a href="#" className="text-blue-600 hover:underline">{item.connection}</a></td>
-                            <td className="p-4"><a href="#" className="text-blue-600 hover:underline">{item.schema}</a></td>
-                            <td className="p-4"><a href="#" className="text-blue-600 hover:underline">{item.table}</a></td>
-                            <td className="p-4 text-gray-800">{item.column}</td>
-                          </tr>
-                        )) : (
+              {isTechnicalLoading ? <p className="text-center p-8">Loading technical data...</p> :
+                technicalError ? <p className="text-center p-8 text-red-500">Error: {technicalError}</p> :
+                  (
+                    <>
+                      <div className="overflow-x-auto rounded-lg border">
+                        <table className="w-full text-left">
+                          <thead className="bg-[#29304a] text-white">
                             <tr>
-                                <td colSpan="4" className="text-center p-8 text-gray-500">No technical data available.</td>
+                              <th className="p-3 font-medium">S.No.</th>
+                              <th className="p-3 font-medium">Connection</th>
+                              <th className="p-3 font-medium">Schema</th>
+                              <th className="p-3 font-medium">Table</th>
+                              <th className="p-3 font-medium">Column</th>
                             </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  {technicalData.length > 0 && (
-                    <div className="flex justify-between items-center px-4 py-3">
-                      <span className="text-sm text-gray-600">Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, technicalData.length)} of {technicalData.length} results</span>
-                      <div className="flex items-center gap-1">
-                        <button onClick={goToPreviousPage} disabled={currentPage === 1} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronLeft className="h-5 w-5" /></button>
-                        <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
-                        <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronRight className="h-5 w-5" /></button>
+                          </thead>
+                          <tbody>
+                            {currentTechnicalItems.length > 0 ? currentTechnicalItems.map((techItem, index) => (
+                              <tr key={techItem.id} className="border-b hover:bg-gray-50">
+                                <td className="p-3 text-gray-600">{indexOfFirstItem + index + 1}</td>
+                                <td className="p-3"><a href="#" className="text-blue-600 hover:underline">{techItem.connection}</a></td>
+                                <td className="p-3"><a href="#" className="text-blue-600 hover:underline">{techItem.schema}</a></td>
+                                <td className="p-3"><a href="#" className="text-blue-600 hover:underline">{techItem.table}</a></td>
+                                <td className="p-3 text-gray-800">{techItem.column}</td>
+                              </tr>
+                            )) : (
+                              <tr><td colSpan="5" className="text-center p-8 text-gray-500">No technical data available.</td></tr>
+                            )}
+                          </tbody>
+                        </table>
                       </div>
-                    </div>
+                      {technicalData.length > 0 && (
+                        <div className="flex justify-between items-center px-4 py-3">
+                          <span className="text-sm text-gray-600">Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, technicalData.length)} of {technicalData.length} results</span>
+                          <div className="flex items-center gap-1">
+                            <button onClick={goToPreviousPage} disabled={currentPage === 1} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronLeft className="h-5 w-5" /></button>
+                            <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
+                            <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronRight className="h-5 w-5" /></button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
-              )}
             </div>
           )}
         </div>

@@ -430,6 +430,12 @@ const BusinessCatalogue = () => {
         tableHeaders.push('Action');
     }
 
+    const handleAddComplete = () => {
+        setIsAddModalOpen(false);
+        toast.success('Catalogue added successfully!');
+        fetchCatalogueData();
+        setSearchTerm('');
+    };
 
 
     return (
@@ -576,7 +582,11 @@ const BusinessCatalogue = () => {
 
             </div>
 
-            <AddCatalogueModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
+            <AddCatalogueModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                onAddComplete={handleAddComplete}
+            />
             <DetailsModal isOpen={detailsModal.isOpen} onClose={handleCloseDetailsModal} title={detailsModal.title} data={detailsModal.data} />
             <EditDetailModal
                 isOpen={isEditModalOpen}
