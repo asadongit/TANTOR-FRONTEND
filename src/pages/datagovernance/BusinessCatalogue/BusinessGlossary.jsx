@@ -42,11 +42,12 @@ const BusinessGlossary = () => {
       }
       const data = await response.json();
       const formattedData = data.map(item => ({
-        id: `${item.id}`,
+        id: item.id,
         Name: item.name,
         Description: item.description || 'N/A',
         status: item.status,
         Domain: item.domain_name,
+        DomainId: item.domain_id,
         AssetType: item.asset_type,
       }));
       setGlossaryData(formattedData);
@@ -127,8 +128,9 @@ const BusinessGlossary = () => {
   const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(currentPage + 1) };
 
   const handleViewDetails = (item) => {
-    const urlFriendlyName = item.Name.toLowerCase().replace(/\s+/g, '-');
-    navigate(`/datagovernance/business-catalogue/glossary/${urlFriendlyName}`);
+    const urlFriendlyName = item?.AssetType?.toLowerCase();
+    const destinationUrl = `/datagovernance/business-catalogue/glossary/${urlFriendlyName}`;
+    navigate(destinationUrl, { state: { glossaryItem: item } });
   };
 
   const renderTableBody = () => {
@@ -179,54 +181,54 @@ const BusinessGlossary = () => {
     );
   };
 
-    const handleDownload = () => {
-      if (filteredData.length === 0) {
-        return; 
+  const handleDownload = () => {
+    if (filteredData.length === 0) {
+      return;
+    }
+
+    const dataToExport = filteredData.map((item, index) => ({
+      s_no: index + 1,
+      Name: item.Name,
+      Description: item.Description,
+      status: item.status,
+      Domain: item.Domain,
+      AssetType: item.AssetType,
+    }));
+
+    const exportColumns = [
+      { key: 's_no', label: 'S.No.' },
+      { key: 'Name', label: 'Name' },
+      { key: 'Description', label: 'Description' },
+      { key: 'status', label: 'Status' },
+      { key: 'Domain', label: 'Domain' },
+      { key: 'AssetType', label: 'Asset Type' },
+    ];
+
+    const escapeCSV = (value) => {
+      const str = String(value ?? '');
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
       }
-
-      const dataToExport = filteredData.map((item, index) => ({
-        s_no: index + 1,
-        Name: item.Name,
-        Description: item.Description,
-        status: item.status,
-        Domain: item.Domain,
-        AssetType: item.AssetType,
-      }));
-
-      const exportColumns = [
-        { key: 's_no', label: 'S.No.' },
-        { key: 'Name', label: 'Name' },
-        { key: 'Description', label: 'Description' },
-        { key: 'status', label: 'Status' },
-        { key: 'Domain', label: 'Domain' },
-        { key: 'AssetType', label: 'Asset Type' },
-      ];
-
-      const escapeCSV = (value) => {
-        const str = String(value ?? '');
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-          return `"${str.replace(/"/g, '""')}"`;
-        }
-        return str;
-      };
-
-      const header = exportColumns.map(c => c.label).join(',');
-      const rows = dataToExport.map(row =>
-        exportColumns.map(c => escapeCSV(row[c.key])).join(',')
-      );
-      const csvContent = [header, ...rows].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      const today = new Date().toISOString().slice(0, 10);
-      link.setAttribute('download', `business-glossary_${today}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      return str;
     };
+
+    const header = exportColumns.map(c => c.label).join(',');
+    const rows = dataToExport.map(row =>
+      exportColumns.map(c => escapeCSV(row[c.key])).join(',')
+    );
+    const csvContent = [header, ...rows].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    const today = new Date().toISOString().slice(0, 10);
+    link.setAttribute('download', `business-glossary_${today}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">

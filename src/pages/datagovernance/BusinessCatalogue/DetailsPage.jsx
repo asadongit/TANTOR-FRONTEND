@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, ArrowUpRight, Lightbulb,FilePenLine } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, ArrowUpRight, Lightbulb, FilePenLine } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Breadcrumb from '../../../components/Breadcrumb';
 
 const DetailsPage = () => {
+  const location = useLocation();
+  const item = location.state?.glossaryItem;
+  console.log("glossaryItem is @@@@", item);
   const navigate = useNavigate();
-  const { itemName } = useParams();
 
   const [mainTab, setMainTab] = useState('Overview');
   const [activeDetail, setActiveDetail] = useState(null);
@@ -13,12 +15,7 @@ const DetailsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 5;
 
-  const formatTitle = (slug) => {
-    if (!slug) return '';
-    return slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  };
-  const pageTitle = formatTitle(itemName);
-
+  // --- Static data for Overview tab ---
   const metadata = { status: 'Data type', createdOn: '24-10-2024', lastUpdated: '31-10-2024', owner: 'Abhishek Singh', standard: 'Data source' };
   const summaryData = { domain: '01', category: '01', 'sub-category': '02', terms: '02', tag: '02', 'sub-tag': '50' };
   const allDetailsData = {
@@ -29,18 +26,96 @@ const DetailsPage = () => {
     tag: [{ id: '#TG1', name: 'PII', description: 'Tag for Personally Identifiable Information.' }, { id: '#TG2', name: 'Confidential', description: 'Tag for confidential data.' }],
     'sub-tag': [{ id: '#ST1', name: 'PHI', description: 'Sub-tag for Protected Health Information.' }],
   };
-  
-  const technicalData = [
-    { id: 1, connection: 'Oracle', database: 'DataSphere', schema: 'A', table: 'B', column: '1' },
-    { id: 2, connection: 'Oracle', database: 'DataNest', schema: 'A', table: 'B', column: '1' },
-    { id: 3, connection: 'Oracle', database: 'InfoVault', schema: 'A', table: 'B', column: '1' },
-    { id: 4, connection: 'Oracle', database: 'DataSphere', schema: 'A', table: 'B', column: '1' },
-    { id: 5, connection: 'Oracle', database: 'DataSphere', schema: 'A', table: 'B', column: '1' },
-    { id: 6, connection: 'PostgreSQL', database: 'CoreDB', schema: 'C', table: 'D', column: '2' },
-    { id: 7, connection: 'PostgreSQL', database: 'ArchiveDB', schema: 'C', table: 'D', column: '2' },
-    { id: 8, connection: 'MySQL', database: 'WebAppDB', schema: 'E', table: 'F', column: '3' },
-  ];
 
+  // --- State for Technical tab data ---
+  const [technicalData, setTechnicalData] = useState([]);
+  const [isTechnicalLoading, setIsTechnicalLoading] = useState(false);
+  const [technicalError, setTechnicalError] = useState(null);
+
+  // --- API call for Technical data ---
+  useEffect(() => {
+    // Function to transform API response into a flat structure for the table
+    const transformApiResponse = (apiData) => {
+      const flattenedData = [];
+      let idCounter = 1;
+
+      apiData.forEach(entry => {
+        if (entry.columns && entry.columns.length > 0) {
+          entry.columns.forEach(columnName => {
+            flattenedData.push({
+              id: idCounter++,
+              connection: entry.connection,
+              schema: entry.schema,
+              table: entry.table,
+              column: columnName,
+            });
+          });
+        } else {
+          // If columns array is empty or not present, show a hyphen
+          flattenedData.push({
+            id: idCounter++,
+            connection: entry.connection,
+            schema: entry.schema,
+            table: entry.table,
+            column: '-',
+          });
+        }
+      });
+      return flattenedData;
+    };
+
+    const fetchTechnicalData = async () => {
+      if (!item) return; // Don't fetch if item data is not available
+
+      setIsTechnicalLoading(true);
+      setTechnicalError(null);
+
+      try {
+        // Construct the payload from the item details
+        const payload = {
+          policy_ids: [item.id], // Using item.id as per the logic
+          asset: [
+            {
+              asset_id: item.id,
+              domain_id: item.DomainId,
+              asset_type: item.AssetType,
+            },
+          ],
+        };
+
+        const response = await fetch(`${window._env_?.VITE_FAST_API}/business_glossary/overview/technical`, {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const formattedData = transformApiResponse(data);
+        setTechnicalData(formattedData);
+
+      } catch (error) {
+        console.error("Failed to fetch technical data:", error);
+        setTechnicalError(error.message);
+        setTechnicalData([]); // Clear data on error
+      } finally {
+        setIsTechnicalLoading(false);
+      }
+    };
+
+    if (mainTab === 'Technical') {
+      fetchTechnicalData();
+    }
+  }, [mainTab, item]);
+
+
+  // --- Pagination Logic (now uses state) ---
   const totalPages = Math.ceil(technicalData.length / rowsPerPage);
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
@@ -58,7 +133,7 @@ const DetailsPage = () => {
         <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
           <ChevronLeft className="h-6 w-6" />
         </button>
-        <h1 className="text-2xl font-bold">{pageTitle}</h1>
+        <h1 className="text-2xl font-bold">{item?.Name}</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
@@ -70,7 +145,7 @@ const DetailsPage = () => {
 
           {mainTab === 'Overview' && (
             <>
-              <p className="text-gray-600 mb-4">This is the description for {pageTitle}. It refers to the information associated with a user's profile in a system...</p>
+              <p className="text-gray-600 mb-4">This is the description for {item?.Name}</p>
               <div className="overflow-x-auto rounded-lg shadow">
                 <table className="w-full text-left mb-3">
                   <thead className="bg-[#29304a] text-white uppercase text-xs"><tr>{detailTabs.map(tab => <th key={tab} className="p-3">{tab.replace(' - ', '-')}</th>)}</tr></thead>
@@ -106,34 +181,50 @@ const DetailsPage = () => {
 
           {mainTab === 'Technical' && (
             <div className="mt-4">
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full text-left">
-                  <thead className="bg-[#29304a] text-white">
-                    <tr>
-                      <th className="p-4 font-medium">Connection</th><th className="p-4 font-medium">Database</th><th className="p-4 font-medium">Schema</th><th className="p-4 font-medium">Table</th><th className="p-4 font-medium">Column</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentTechnicalItems.map((item) => (
-                      <tr key={item.id} className="border-b hover:bg-gray-50">
-                        <td className="p-4"><a href="#" className="text-blue-600 hover:underline">{item.connection}</a></td>
-                        <td className="p-4 text-gray-800">{item.database}</td>
-                        <td className="p-4"><a href="#" className="text-blue-600 hover:underline">{item.schema}</a></td>
-                        <td className="p-4"><a href="#" className="text-blue-600 hover:underline">{item.table}</a></td>
-                        <td className="p-4"><a href="#" className="text-blue-600 hover:underline">{item.column}</a></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex justify-between items-center px-4 py-3">
-                <span className="text-sm text-gray-600">Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, technicalData.length)} of {technicalData.length} results</span>
-                <div className="flex items-center gap-1">
-                  <button onClick={goToPreviousPage} disabled={currentPage === 1} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronLeft className="h-5 w-5" /></button>
-                  <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
-                  <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronRight className="h-5 w-5" /></button>
-                </div>
-              </div>
+              {isTechnicalLoading ? (
+                <p className="text-center p-8">Loading technical data...</p>
+              ) : technicalError ? (
+                <p className="text-center p-8 text-red-500">Error: {technicalError}</p>
+              ) : (
+                <>
+                  <div className="overflow-x-auto rounded-lg border">
+                    <table className="w-full text-left">
+                      <thead className="bg-[#29304a] text-white">
+                        <tr>
+                          <th className="p-4 font-medium">Connection</th>
+                          <th className="p-4 font-medium">Schema</th>
+                          <th className="p-4 font-medium">Table</th>
+                          <th className="p-4 font-medium">Column</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentTechnicalItems.length > 0 ? currentTechnicalItems.map((item) => (
+                          <tr key={item.id} className="border-b hover:bg-gray-50">
+                            <td className="p-4"><a href="#" className="text-blue-600 hover:underline">{item.connection}</a></td>
+                            <td className="p-4"><a href="#" className="text-blue-600 hover:underline">{item.schema}</a></td>
+                            <td className="p-4"><a href="#" className="text-blue-600 hover:underline">{item.table}</a></td>
+                            <td className="p-4 text-gray-800">{item.column}</td>
+                          </tr>
+                        )) : (
+                            <tr>
+                                <td colSpan="4" className="text-center p-8 text-gray-500">No technical data available.</td>
+                            </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {technicalData.length > 0 && (
+                    <div className="flex justify-between items-center px-4 py-3">
+                      <span className="text-sm text-gray-600">Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, technicalData.length)} of {technicalData.length} results</span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={goToPreviousPage} disabled={currentPage === 1} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronLeft className="h-5 w-5" /></button>
+                        <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
+                        <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronRight className="h-5 w-5" /></button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -141,7 +232,7 @@ const DetailsPage = () => {
         <div className="w-full lg:w-1/4">
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-semibold mb-4 border-b pb-2 flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-purple-400" /> Metadata
+              <Lightbulb className="h-5 w-5 text-purple-400" /> Metadata
             </h3>
             <div className="space-y-3 text-sm">
               {Object.entries(metadata).map(([key, value]) => (<div key={key} className="flex justify-between"><span className="text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span><span className="font-medium text-gray-800">{value}</span></div>))}
