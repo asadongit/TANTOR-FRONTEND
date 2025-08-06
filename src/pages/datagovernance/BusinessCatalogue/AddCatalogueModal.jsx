@@ -351,23 +351,33 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
 
         const transformLevel = (level, data, parentIds = {}) => {
             if (!data.name || !data.status) return null;
+
             const ownerAsArray = data.owner ? [data.owner] : [];
-            const standardData = {
+
+            const standardObject = {
                 name: data.name,
                 description: data.desc || data.description || '',
                 status: data.status,
                 owner: ownerAsArray,
             };
-            if (level === 'domain') {
-                standardData.stakeholder = data.stakeholder || [];
-            }
+
             const validParentIds = Object.entries(parentIds).reduce((acc, [key, value]) => {
                 if (value !== null && value !== undefined) {
                     acc[key] = value;
                 }
                 return acc;
             }, {});
-            return { ...validParentIds, standard: standardData };
+
+            const finalObject = {
+                ...validParentIds,
+                standard: standardObject
+            };
+
+            if (level === 'domain') {
+                finalObject.stakeholder = data.stakeholder || [];
+            }
+
+            return finalObject;
         };
 
         const payload = {
@@ -728,7 +738,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             case 'Sub-tag':
                 const genericTabKey = activeTab.toLowerCase().replace('-', '');
                 const genericData = formData[genericTabKey];
-                const parentKey = activeTab === 'Category' ? 'domain' : activeTab === 'Sub-category' ? 'category' : activeTab === 'Sub-tag' ? 'tag' : '';
+                const parentKey = activeTab === 'Category' ? 'domain' : activeTab === 'Sub-category' ? 'category' : activeTab === 'Term' ? 'domain' : activeTab === 'Tag' ? 'domain' : activeTab === 'Sub-tag' ? 'tag' : '';
 
                 if (parentKey && !formData[parentKey].name) {
                     return <PlaceholderMessage>Please select a {parentKey} first to add a {activeTab}.</PlaceholderMessage>;
