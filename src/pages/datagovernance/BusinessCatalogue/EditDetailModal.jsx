@@ -1,5 +1,4 @@
-
-import { Search, Loader2, X, Pencil} from 'lucide-react';
+import { Search, Loader2, X, Pencil } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -7,8 +6,8 @@ import { toast } from 'react-hot-toast';
 const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
     const [activeTab, setActiveTab] = useState('');
     const [formData, setFormData] = useState({});
-    const [isSaving, setIsSaving] = useState(false); 
-
+    const [isSaving, setIsSaving] = useState(false);
+    const [errors, setErrors] = useState({});
     const [stakeholders, setStakeholders] = useState([]);
     const [isStakeholdersLoading, setIsStakeholdersLoading] = useState(false);
     const [stakeholderError, setStakeholderError] = useState(null);
@@ -45,7 +44,7 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
             try {
                 const ids = rowData.rowId.split('-');
                 const [domainId, , categoryId, subCategoryId, termId, tagId, subTagId] = ids;
-                
+
                 const payload = {};
                 if (domainId && domainId !== 'null') payload.domain_id = [parseInt(domainId)];
                 if (categoryId && categoryId !== 'null') payload.category_id = [parseInt(categoryId)];
@@ -119,7 +118,7 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
                         status: subTagData?.status || '',
                     },
                 };
-                
+
                 setFormData(updatedFormData);
 
             } catch (error) {
@@ -168,9 +167,53 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
 
     if (!isOpen || !rowData) return null;
 
+    const validateForms = () => {
+        const allErrors = {};
+        let firstErrorTab = null;
+
+        availableTabs.forEach(tab => {
+            const tabKey = tab.toLowerCase().replace('-', '');
+            const data = formData[tabKey];
+            const tabErrors = {};
+
+            if (!data.name?.trim()) tabErrors.name = 'Name is required.';
+
+            if (tabKey === 'domain') {
+                if (!data.description?.trim()) tabErrors.description = 'Description is required.';
+                if (!data.stakeholder || data.stakeholder.length === 0) {
+                    tabErrors.stakeholder = 'At least one stakeholder is required.';
+                }
+            } else {
+                if (!data.desc?.trim()) tabErrors.desc = 'Description is required.';
+            }
+
+            if (!data.owner) tabErrors.owner = 'Owner must be selected.';
+            if (!data.status) tabErrors.status = 'Status must be selected.';
+
+            if (Object.keys(tabErrors).length > 0) {
+                allErrors[tabKey] = tabErrors;
+                if (!firstErrorTab) {
+                    firstErrorTab = tab;
+                }
+            }
+        });
+
+        if (firstErrorTab) {
+            setActiveTab(firstErrorTab);
+            setErrors(allErrors[firstErrorTab.toLowerCase().replace('-', '')]);
+            return false;
+        }
+
+        setErrors({});
+        return true;
+    };
+
     const handleSaveChanges = async () => {
+        if (!validateForms()) {
+            return;
+        }
+
         setIsSaving(true);
-        
         try {
             const ids = rowData.rowId.split('-');
             const [domainId, , categoryId, subCategoryId, termId, tagId, subTagId] = ids;
@@ -235,11 +278,11 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
                 throw new Error(errorData.detail || `API error: ${response.statusText}`);
             }
             if (onSaveSuccess) {
-            onSaveSuccess();
-        } else {
-            toast.success("Changes saved successfully!");
-            onClose();
-        }
+                onSaveSuccess();
+            } else {
+                toast.success("Changes saved successfully!");
+                onClose();
+            }
 
         } catch (error) {
             console.error("Failed to save changes:", error);
@@ -255,6 +298,9 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
             ...prev,
             [tabKey]: { ...prev[tabKey], [field]: value }
         }));
+        if (errors[field]) {
+            setErrors(prevErrors => ({ ...prevErrors, [field]: undefined }));
+        }
     };
 
     const handleStakeholderSelect = (username) => {
@@ -288,111 +334,120 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
         }
 
         if (activeTab === 'Domain') {
-             return (
-                 <div className="space-y-6 py-8">
-                     {stakeholderError && <div className="text-red-600 bg-red-100 p-3 rounded-md">{stakeholderError}</div>}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                             <input type="text" value={currentData.name || ''} onChange={(e) => handleInputChange(activeTab, 'name', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md"/>
-                         </div>
-                         <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                             <input type="text" value={currentData.description || ''} onChange={(e) => handleInputChange(activeTab, 'description', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md"/>
-                         </div>
-                     </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                             <select value={currentData?.owner?.toLowerCase() || ''} onChange={(e) => handleInputChange(activeTab, 'owner', e.target.value)} className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md">
-                                 <option value="">Select</option><option value="admin">Admin</option>
-                             </select>
-                         </div>
-                         <div>
-                             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                             <select value={currentData.status || ''} onChange={(e) => handleInputChange(activeTab, 'status', e.target.value)} className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md">
+            return (
+                <div className="space-y-6 py-8">
+                    {stakeholderError && <div className="text-red-600 bg-red-100 p-3 rounded-md">{stakeholderError}</div>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label htmlFor={`${tabKey}-name`} className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                            <input id={`${tabKey}-name`} type="text" value={currentData.name || ''} onChange={(e) => handleInputChange(activeTab, 'name', e.target.value)} className={`w-full px-3 py-2 border rounded-md ${errors.name ? 'border-red-500' : 'border-gray-300'}`} />
+                            {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name}</p>}
+                        </div>
+                        <div>
+                            <label htmlFor={`${tabKey}-description`} className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <input id={`${tabKey}-description`} type="text" value={currentData.description || ''} onChange={(e) => handleInputChange(activeTab, 'description', e.target.value)} className={`w-full px-3 py-2 border rounded-md ${errors.description ? 'border-red-500' : 'border-gray-300'}`} />
+                            {errors.description && <p className="text-red-600 text-xs mt-1">{errors.description}</p>}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label htmlFor={`${tabKey}-owner`} className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+                            <select id={`${tabKey}-owner`} value={currentData?.owner?.toLowerCase() || ''} onChange={(e) => handleInputChange(activeTab, 'owner', e.target.value)} className={`w-full px-3 py-2 border bg-white rounded-md ${errors.owner ? 'border-red-500' : 'border-gray-300'}`}>
+                                <option value="">Select</option><option value="admin">Admin</option>
+                            </select>
+                            {errors.owner && <p className="text-red-600 text-xs mt-1">{errors.owner}</p>}
+                        </div>
+                        <div>
+                            <label htmlFor={`${tabKey}-status`} className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select id={`${tabKey}-status`} value={currentData.status || ''} onChange={(e) => handleInputChange(activeTab, 'status', e.target.value)} className={`w-full px-3 py-2 border bg-white rounded-md ${errors.status ? 'border-red-500' : 'border-gray-300'}`}>
                                 <option value="">Select</option><option value="Active">Active</option><option value="Inactive">Inactive</option><option value="Deprecated">Deprecated</option>
-                             </select>
-                         </div>
-                     </div>
-                     <div className="relative" ref={stakeholderRef}>
-                         <label className="block text-sm font-medium text-gray-700 mb-1">Stakeholder</label>
-                          <div className="min-h-[42px] p-2 border border-gray-300 bg-white rounded-md focus-within:ring-1 focus-within:ring-[#8e78b7] flex flex-wrap items-center gap-2"
-                              onClick={() => !isStakeholdersLoading && setShowStakeholderOptions(prev => !prev)}>
-                             {isStakeholdersLoading && !stakeholderError && <Loader2 className="animate-spin h-4 w-4 text-gray-400" />}
-                             {(currentData.stakeholder?.length > 0) ? (
-                                 currentData.stakeholder.map(username => (
-                                     <span key={username} className="bg-[#e4dcf5] text-[#584185] text-sm font-medium px-2.5 py-1 rounded-full flex items-center gap-2">
-                                         {username}
-                                         <button type="button" onClick={(e) => { e.stopPropagation(); handleStakeholderRemove(username); }} className="text-[#584185] hover:text-black">
-                                             <X className="h-3 w-3" />
-                                         </button>
-                                     </span>
-                                 ))
-                             ) : (
+                            </select>
+                            {errors.status && <p className="text-red-600 text-xs mt-1">{errors.status}</p>}
+                        </div>
+                    </div>
+                    <div className="relative" ref={stakeholderRef}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Stakeholder</label>
+                        <div className={`min-h-[42px] p-2 border bg-white rounded-md focus-within:ring-1 focus-within:ring-[#8e78b7] flex flex-wrap items-center gap-2 ${errors.stakeholder ? 'border-red-500' : 'border-gray-300'}`}
+                            onClick={() => !isStakeholdersLoading && setShowStakeholderOptions(prev => !prev)}>
+                            {isStakeholdersLoading && !stakeholderError && <Loader2 className="animate-spin h-4 w-4 text-gray-400" />}
+                            {(currentData.stakeholder?.length > 0) ? (
+                                currentData.stakeholder.map(username => (
+                                    <span key={username} className="bg-[#e4dcf5] text-[#584185] text-sm font-medium px-2.5 py-1 rounded-full flex items-center gap-2">
+                                        {username}
+                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleStakeholderRemove(username); }} className="text-[#584185] hover:text-black">
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </span>
+                                ))
+                            ) : (
                                 !isStakeholdersLoading && <span className="text-gray-500">Select stakeholders</span>
-                             )}
-                         </div>
-                         {showStakeholderOptions && (
-                             <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md max-h-48 overflow-y-auto shadow-lg">
-                                 <div className="p-2 sticky top-0 bg-white border-b">
-                                     <div className="relative">
-                                         <Search className="h-4 w-4 absolute top-1/2 left-2 -translate-y-1/2 text-gray-400" />
-                                         <input type="text" placeholder="Search..."
-                                             className="w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md"
-                                             value={stakeholderSearchTerm}
-                                             onChange={(e) => setStakeholderSearchTerm(e.target.value)}
-                                             onClick={(e) => e.stopPropagation()}
-                                             autoFocus
-                                         />
-                                     </div>
-                                 </div>
-                                 <ul>
-                                     {filteredStakeholders.length > 0 ? (
-                                         filteredStakeholders.map((user) => (
-                                             <li key={user.id}
-                                                 className="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm"
-                                                 onClick={() => handleStakeholderSelect(user.username)}>
-                                                 {user.username}
-                                             </li>
-                                         ))
-                                     ) : (
-                                         <li className="px-3 py-2 text-gray-500 text-sm">
-                                             {isStakeholdersLoading ? 'Loading...' : 'No matching stakeholders found.'}
-                                         </li>
-                                     )}
-                                 </ul>
-                             </div>
-                         )}
-                     </div>
-                 </div>
-               );
+                            )}
+                        </div>
+                        {errors.stakeholder && <p className="text-red-600 text-xs mt-1">{errors.stakeholder}</p>}
+                        {showStakeholderOptions && (
+                            <div className="fixed z-50 mt-1 w-[calc(100%-5rem)] max-w-[53rem] bg-white border border-gray-300 rounded-md max-h-48 overflow-y-auto shadow-lg">
+                                <div className="p-2 sticky top-0 bg-white border-b">
+                                    <div className="relative">
+                                        <Search className="h-4 w-4 absolute top-1/2 left-2 -translate-y-1/2 text-gray-400" />
+                                        <input type="text" placeholder="Search..."
+                                            className="w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md"
+                                            value={stakeholderSearchTerm}
+                                            onChange={(e) => setStakeholderSearchTerm(e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
+                                <ul>
+                                    {filteredStakeholders.length > 0 ? (
+                                        filteredStakeholders.map((user) => (
+                                            <li key={user.id}
+                                                className="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm"
+                                                onClick={() => handleStakeholderSelect(user.username)}>
+                                                {user.username}
+                                            </li>
+                                        ))
+                                    ) : (
+                                        <li className="px-3 py-2 text-gray-500 text-sm">
+                                            {isStakeholdersLoading ? 'Loading...' : 'No matching stakeholders found.'}
+                                        </li>
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
         }
-        
+
         return (
             <div className="space-y-6 py-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                        <input type="text" value={currentData.name || ''} onChange={(e) => handleInputChange(activeTab, 'name', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <label htmlFor={`${tabKey}-name`} className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input id={`${tabKey}-name`} type="text" value={currentData.name || ''} onChange={(e) => handleInputChange(activeTab, 'name', e.target.value)} className={`w-full px-3 py-2 border rounded-md ${errors.name ? 'border-red-500' : 'border-gray-300'}`} />
+                        {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name}</p>}
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <input type="text" value={currentData.desc || ''} onChange={(e) => handleInputChange(activeTab, 'desc', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                        <label htmlFor={`${tabKey}-desc`} className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <input id={`${tabKey}-desc`} type="text" value={currentData.desc || ''} onChange={(e) => handleInputChange(activeTab, 'desc', e.target.value)} className={`w-full px-3 py-2 border rounded-md ${errors.desc ? 'border-red-500' : 'border-gray-300'}`} />
+                        {errors.desc && <p className="text-red-600 text-xs mt-1">{errors.desc}</p>}
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                        <select value={currentData.owner || ''} onChange={(e) => handleInputChange(activeTab, 'owner', e.target.value)} className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md">
-                           <option value="">Select</option><option value="Admin">Admin</option>
+                    <div>
+                        <label htmlFor={`${tabKey}-owner`} className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+                        <select id={`${tabKey}-owner`} value={currentData.owner || ''} onChange={(e) => handleInputChange(activeTab, 'owner', e.target.value)} className={`w-full px-3 py-2 border bg-white rounded-md ${errors.owner ? 'border-red-500' : 'border-gray-300'}`}>
+                            <option value="">Select</option><option value="Admin">Admin</option>
                         </select>
+                        {errors.owner && <p className="text-red-600 text-xs mt-1">{errors.owner}</p>}
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select value={currentData.status || ''} onChange={(e) => handleInputChange(activeTab, 'status', e.target.value)} className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md">
+                        <label htmlFor={`${tabKey}-status`} className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id={`${tabKey}-status`} value={currentData.status || ''} onChange={(e) => handleInputChange(activeTab, 'status', e.target.value)} className={`w-full px-3 py-2 border bg-white rounded-md ${errors.status ? 'border-red-500' : 'border-gray-300'}`}>
                             <option value="">Select</option><option value="Active">Active</option><option value="Inactive">Inactive</option><option value="Deprecated">Deprecated</option>
                         </select>
+                        {errors.status && <p className="text-red-600 text-xs mt-1">{errors.status}</p>}
                     </div>
                 </div>
             </div>
@@ -412,10 +467,13 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
                             {availableTabs.map(tab => (
                                 <button
                                     key={tab}
-                                    onClick={() => setActiveTab(tab)}
+                                    onClick={() => {
+                                        setActiveTab(tab);
+                                        setErrors({});
+                                    }}
                                     className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-md focus:outline-none ${activeTab === tab
-                                            ? 'border-[#8e78b7] text-[#8e78b7]'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        ? 'border-[#8e78b7] text-[#8e78b7]'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                         }`}
                                 >
                                     {tab}
@@ -429,9 +487,9 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
                     <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-md hover:bg-gray-50" disabled={isSaving}>
                         Cancel
                     </button>
-                    <button 
-                        type="button" 
-                        onClick={handleSaveChanges} 
+                    <button
+                        type="button"
+                        onClick={handleSaveChanges}
                         disabled={isSaving}
                         className="px-4 py-2 text-sm font-medium bg-green-600 text-white border border-transparent rounded-md shadow-sm hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed flex items-center justify-center"
                     >
@@ -441,7 +499,7 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
                                 Saving...
                             </>
                         ) : (
-                            'Save Changes'
+                            'Save'
                         )}
                     </button>
                 </div>
@@ -450,11 +508,10 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
     );
 };
 
-
 const EditDetailModal = ({ isOpen, onClose, data, onEditComplete }) => {
     const [isStepperOpen, setIsStepperOpen] = useState(false);
     const [selectedRowData, setSelectedRowData] = useState(null);
-    
+
     const tableRows = useMemo(() => {
         if (!data) return [];
 
@@ -496,7 +553,7 @@ const EditDetailModal = ({ isOpen, onClose, data, onEditComplete }) => {
         }
         return rows;
     }, [data]);
-    
+
     const handleEditClick = (row) => {
         setSelectedRowData(row);
         setIsStepperOpen(true);
@@ -506,11 +563,11 @@ const EditDetailModal = ({ isOpen, onClose, data, onEditComplete }) => {
         setIsStepperOpen(false);
         setSelectedRowData(null);
     };
-    
+
     if (!isOpen || !data) return null;
-     const handleSaveSuccess = () => {
-        handleStepperClose(); 
-        onClose();           
+    const handleSaveSuccess = () => {
+        handleStepperClose();
+        onClose();
         toast.success('Changes saved successfully!');
         if (onEditComplete) {
             onEditComplete();
@@ -528,10 +585,10 @@ const EditDetailModal = ({ isOpen, onClose, data, onEditComplete }) => {
                     onClick={e => e.stopPropagation()}
                 >
                     <div className="flex justify-between items-center p-4 border-b bg-gray-50 rounded-t-xl">
-                        <h3 className="text-lg font-bold text-[#8d77ba]">
-                            Edit Catalogue 
-                            {/* <span className="font-bold text-[#8d77ba]">{data.domain}</span> */}
-                        </h3>
+                        <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                            <Pencil className="h-5 w-5 mr-2 text-[#8e78b7]" />
+                            Edit catalogue
+                        </h2>
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1 rounded-full transition-colors">
                             <X className="h-5 w-5" />
                         </button>
@@ -586,8 +643,8 @@ const EditDetailModal = ({ isOpen, onClose, data, onEditComplete }) => {
                     </div>
                 </div>
             </div>
-            
-            <RowEditStepperModal 
+
+            <RowEditStepperModal
                 isOpen={isStepperOpen}
                 onClose={handleStepperClose}
                 rowData={selectedRowData}
