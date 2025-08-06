@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useParams, Link } from 'react-router-dom';
-import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp } from 'lucide-react';
+import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
+import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp,ChevronLeft } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 
@@ -8,8 +8,8 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
         className={`px-4 py-2 text-md font-medium border-b-2 ${activeTab === label
-                ? 'border-[#8d77ba] text-[#8d77ba]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-[#8d77ba] text-[#8d77ba]'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
     >
         {label}
@@ -34,7 +34,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
                 Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
             </span>
             <div className="flex items-center">
-                 <button
+                <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                     className="px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -56,6 +56,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
 function ColumnDetailsPage() {
     const location = useLocation();
+    const navigate = useNavigate();
     const { columnName } = useParams();
     const { columnData, allData } = location.state || {};
     const { token, decodedToken } = useAuth();
@@ -292,7 +293,7 @@ function ColumnDetailsPage() {
 
         fetchSampleData();
     }, [activeTab, singleColumn, token]);
-    
+
     useEffect(() => {
         if (activeTab !== 'Access' || !singleColumn) return;
 
@@ -326,7 +327,7 @@ function ColumnDetailsPage() {
                 }
 
                 const data = await response.json();
-                
+
                 const processedData = [];
                 if (data.role) {
                     for (const [name, users] of Object.entries(data.role)) {
@@ -339,11 +340,11 @@ function ColumnDetailsPage() {
                     }
                 }
                 if (data.subgroup) {
-                     for (const [name, users] of Object.entries(data.subgroup)) {
+                    for (const [name, users] of Object.entries(data.subgroup)) {
                         processedData.push({ type: 'Sub-group', name, users: users || [] });
                     }
                 }
-                
+
                 setAccessData(processedData);
 
             } catch (error) {
@@ -386,9 +387,9 @@ function ColumnDetailsPage() {
             [name]: !prev[name]
         }));
     };
-    
+
     // --- Pagination Logic & Handlers ---
-    
+
     // Access Tab
     const indexOfLastAccessItem = accessCurrentPage * itemsPerPage;
     const indexOfFirstAccessItem = indexOfLastAccessItem - itemsPerPage;
@@ -438,6 +439,9 @@ function ColumnDetailsPage() {
                     <div className="flex items-start gap-4 w-full">
                         <div className="flex justify-between w-full" >
                             <div className="flex items-center gap-2">
+                                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
+                                    <ChevronLeft className="h-6 w-6" />
+                                </button>
                                 <ChartColumn size={24} className="text-[#8d77ba]" />
                                 <h1 className="text-2xl font-bold text-gray-800">{columnData?.name?.toLowerCase()}</h1>
                             </div>
@@ -564,8 +568,8 @@ function ColumnDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Composite view')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Composite view'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <Layers className="h-4 w-4" />
@@ -574,8 +578,8 @@ function ColumnDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Table Detail View')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Table Detail View'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <TableOfContents className="h-4 w-4" />
@@ -692,7 +696,7 @@ function ColumnDetailsPage() {
                         )}
 
                         {activeTab === 'Access' && (
-                             <div>
+                            <div>
                                 {loadingAccessData && <p className="text-center text-gray-500 p-4">Loading access information...</p>}
                                 {accessDataError && <p className="text-center text-red-600 p-4">Error: {accessDataError}</p>}
                                 {!loadingAccessData && !accessDataError && (
@@ -746,7 +750,7 @@ function ColumnDetailsPage() {
                                                     </tbody>
                                                 </table>
                                             </div>
-                                            <Pagination 
+                                            <Pagination
                                                 currentPage={accessCurrentPage}
                                                 totalPages={totalAccessPages}
                                                 onPageChange={handleAccessPageChange}
@@ -762,55 +766,42 @@ function ColumnDetailsPage() {
                 </div>
 
                 <div className="w-full xl:w-80 flex-shrink-0 space-y-6">
-                    {/* <div className="bg-white p-5 rounded-lg shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Lightbulb className="h-5 w-5 text-purple-400" />  Snapshot</h2>
-                        </div>
-                        <div className="mt-4 space-y-3 text-sm">
-                            <div className="flex justify-between"><span className="text-gray-500">Type</span> <span className="font-medium text-gray-800">Column</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Data source</span> <span className="font-medium text-gray-800">{singleColumn.connection_type}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Table</span> <span className="font-medium text-gray-800">{singleColumn.table_name}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Created on</span> <span className="font-medium text-gray-800">{new Date(singleColumn.created_at).toLocaleDateString()}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Last updated</span> <span className="font-medium text-gray-800">{new Date(singleColumn.updated_at).toLocaleDateString()}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Owner</span> <span className="font-medium text-gray-800">{singleColumn.created_by}</span></div>
-                        </div>
-                    </div> */}
                     <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[#8d77ba]">
-                                                <Lightbulb />
-                                            </span>
-                                            <h3 className="font-normal text-lg">Snapshot</h3>
-                                        </div>
-                    
-                                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
-                                            <div className="text-gray-500">Type</div>
-                                            <div className="font-normal">Column</div>
-                    
-                                            <div className="text-gray-500">Data source</div>
-                                            <div className="font-normal">{singleColumn.connection_type}</div>
-                                        </div>
-                    
-                                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
-                                            <div className="text-gray-500">Created on</div>
-                                            <div className="font-normal">
-                                                {new Date(singleColumn.created_at).toLocaleDateString()}
-                                            </div>
-                    
-                                            <div className="text-gray-500">Last updated</div>
-                                            <div className="font-normal">
-                                                {new Date(singleColumn.updated_at).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                    
-                                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
-                                            <div className="text-gray-500">Owner</div>
-                                            <div className="font-normal">{singleColumn.created_by}</div>
-                    
-                                            <div className="text-gray-500">Steward</div>
-                                            <div className="font-normal">{singleColumn?.steward || 'Admin'}</div>
-                                        </div>
-                                    </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[#8d77ba]">
+                                <Lightbulb />
+                            </span>
+                            <h3 className="font-normal text-lg">Snapshot</h3>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                            <div className="text-gray-500">Type</div>
+                            <div className="font-normal">Column</div>
+
+                            <div className="text-gray-500">Data source</div>
+                            <div className="font-normal">{singleColumn.connection_type}</div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                            <div className="text-gray-500">Created on</div>
+                            <div className="font-normal">
+                                {new Date(singleColumn.created_at).toLocaleDateString()}
+                            </div>
+
+                            <div className="text-gray-500">Last updated</div>
+                            <div className="font-normal">
+                                {new Date(singleColumn.updated_at).toLocaleDateString()}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                            <div className="text-gray-500">Owner</div>
+                            <div className="font-normal">{singleColumn.created_by}</div>
+
+                            <div className="text-gray-500">Steward</div>
+                            <div className="font-normal">{singleColumn?.steward || 'Admin'}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

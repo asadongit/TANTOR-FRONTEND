@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useParams, Link } from 'react-router-dom';
-import { Pencil, Lightbulb, Table, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp } from 'lucide-react';
+import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
+import { Pencil, Lightbulb, Table, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp,ChevronLeft } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { toast } from 'react-hot-toast';
@@ -9,8 +9,8 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
         className={`px-4 py-2 text-md font-medium border-b-2 ${activeTab === label
-                ? 'border-[#8d77ba] text-[#8d77ba]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-[#8d77ba] text-[#8d77ba]'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
     >
         {label}
@@ -56,6 +56,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
 
 function TableDetailsPage() {
+    const navigate = useNavigate();
     const location = useLocation();
     const { tableName } = useParams();
     const { tableData, columns } = location.state || {};
@@ -378,14 +379,14 @@ function TableDetailsPage() {
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({})); 
+                const errorData = await response.json().catch(() => ({}));
                 const errorMessage = errorData.detail || `HTTP error! Status: ${response.status}`;
                 toast.error("Failed to edit description!");
             }
 
             await response.json();
             setOriginalDescription(description);
-            setIsEditingDescription(false); 
+            setIsEditingDescription(false);
             toast.success("Description edited successfully!");
 
         } catch (error) {
@@ -460,6 +461,9 @@ function TableDetailsPage() {
                     <div className="flex items-start gap-4 w-full">
                         <div className="flex justify-between w-full" >
                             <div className="flex items-center gap-2">
+                                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
+                                    <ChevronLeft className="h-6 w-6" />
+                                </button>
                                 <Table size={24} className="text-gray-600" />
                                 <h1 className="text-2xl font-bold text-gray-800">{tableData?.name?.toLowerCase()}</h1>
                             </div>
@@ -487,7 +491,7 @@ function TableDetailsPage() {
                                         <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                                             <Pencil className="h-5 w-5 text-[#8d77ba]" /> Description
                                         </h3>
-                                        {isUserAuthorized && !isEditingDescription && (
+                                        {!isUserAuthorized && !isEditingDescription && (
                                             <button
                                                 onClick={() => setIsEditingDescription(true)}
                                                 className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-[#8d77ba] transition-colors"
@@ -602,8 +606,8 @@ function TableDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Composite view')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Composite view'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <Layers className="h-4 w-4" />
@@ -612,8 +616,8 @@ function TableDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Table Detail View')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Table Detail View'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <TableOfContents className="h-4 w-4" />
