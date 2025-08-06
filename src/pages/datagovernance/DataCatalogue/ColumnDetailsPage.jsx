@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
-import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp,ChevronLeft } from 'lucide-react';
+import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp,ChevronLeft,FilePenLine } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
+import toast from 'react-hot-toast';
 
 const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
@@ -95,7 +96,7 @@ function ColumnDetailsPage() {
     const [sampleDataCurrentPage, setSampleDataCurrentPage] = useState(1);
 
 
-    const singleColumn = allData?.find(val => val.column_name === columnData?.name && val.table_name === val.table_name);
+    const singleColumn = allData?.find(val => val.column_name === columnData?.name);
 
 
     const getConstraints = (meta) => {
@@ -360,7 +361,11 @@ function ColumnDetailsPage() {
 
     useEffect(() => {
         if (singleColumn) {
-            const initialDesc = 'Column Description';
+            const columnTagInfo = singleColumn.tags_column_json?.find(
+                tag => tag.column_name === singleColumn.column_name
+            );
+            const foundDescription = columnTagInfo?.column_description?.[0];
+            const initialDesc = foundDescription || 'Column Description';
             setDescription(initialDesc);
             setOriginalDescription(initialDesc);
         }
@@ -371,15 +376,50 @@ function ColumnDetailsPage() {
         setIsEditingDescription(false);
     };
 
+
     const handleSaveDescription = async () => {
         if (!singleColumn) {
-            console.error("Column data is not available to save description.");
-            alert("An error occurred. Cannot save description.");
+           
             return;
         }
-        setOriginalDescription(description);
-        setIsEditingDescription(false);
+
+        setIsSaving(true);
+
+        try {
+            const payload = {
+                connection_name: singleColumn.connection_name,
+                table_schema: singleColumn.table_schema,
+                table_name: singleColumn.table_name,
+                column_name: singleColumn.column_name,
+                column_description: description,
+            };
+
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/edit_column_description`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Failed to save description.');
+            }
+
+            setOriginalDescription(description);
+            setIsEditingDescription(false);
+            toast.success("Column description edited!")
+
+        } catch (error) {
+            console.error("Error saving description:", error);
+            toast.success(" Error editing column description")
+        } finally {
+            setIsSaving(false);
+        }
     };
+
 
     const toggleRow = (name) => {
         setExpandedRows(prev => ({
@@ -463,7 +503,7 @@ function ColumnDetailsPage() {
                                 <div>
                                     <div className='flex items-center justify-between mb-2'>
                                         <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                                            <Pencil className="h-5 w-5 text-[#8d77ba]" /> Description
+                                            <FilePenLine className="h-5 w-5 text-[#8d77ba]" /> Description
                                         </h3>
                                         {isUserAuthorized && !isEditingDescription && (
                                             <button
@@ -502,7 +542,7 @@ function ColumnDetailsPage() {
                                         </div>
                                     ) : (
                                         <div className="text-gray-600 pl-7 min-h-[2rem]">
-                                            {description ? description : <span className="text-gray-400 italic">No description provided</span>}
+                                            {description && description !== 'Column Description' ? description : <span className="text-gray-400 italic">No description provided</span>}
                                         </div>
                                     )}
                                 </div>

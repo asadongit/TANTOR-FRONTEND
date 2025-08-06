@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
-import { Pencil, Lightbulb, Table, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp,ChevronLeft } from 'lucide-react';
+import { Pencil, Lightbulb, Table, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp,ChevronLeft,FilePenLine } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { toast } from 'react-hot-toast';
@@ -489,7 +489,7 @@ function TableDetailsPage() {
                                 <div>
                                     <div className='flex items-center justify-between mb-2'>
                                         <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                                            <Pencil className="h-5 w-5 text-[#8d77ba]" /> Description
+                                            <FilePenLine className="h-5 w-5 text-[#8d77ba]" /> Description
                                         </h3>
                                         {!isUserAuthorized && !isEditingDescription && (
                                             <button
