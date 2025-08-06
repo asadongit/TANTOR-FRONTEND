@@ -128,7 +128,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                     const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/category`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
-                        body: JSON.stringify({ 'business_catalogue': true , domain_id: [formData.domain.id] })
+                        body: JSON.stringify({ 'business_catalogue': true, domain_id: [formData.domain.id] })
                     });
                     if (!response.ok) throw new Error('Failed to fetch categories');
                     const data = await response.json();
@@ -159,7 +159,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                         body: JSON.stringify({
                             domain_id: [formData.domain.id],
                             category_id: [formData.category.id],
-                            business_catalogue: true ,
+                            business_catalogue: true,
                         })
                     });
                     if (!response.ok) throw new Error('Failed to fetch sub-categories');
@@ -285,54 +285,65 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const validateTabData = (tabKey) => {
-        const data = formData[tabKey];
-        const tabName = tabs.find(t => t.toLowerCase().replace('-', '') === tabKey);
+    const [errors, setErrors] = useState({});
 
-        if (!data.name || String(data.name).trim() === '') {
-            return { isValid: true, error: null };
+    const validateForms = () => {
+        const allErrors = {};
+        let firstErrorTab = null;
+
+        const isAnythingEntered = tabs.some(tab => {
+            const tabKey = tab.toLowerCase().replace('-', '');
+            return formData[tabKey]?.name?.trim();
+        });
+
+        if (!isAnythingEntered) {
+            setSaveError("Nothing to save. Please fill out at least one form tab.");
+            setErrors({});
+            return false;
         }
 
-        const requiredFields = {
-            domain: { description: 'Description', owner: 'Owner', status: 'Status' },
-            category: { desc: 'Description', owner: 'Owner', status: 'Status' },
-            subcategory: { desc: 'Description', owner: 'Owner', status: 'Status' },
-            term: { desc: 'Description', owner: 'Owner', status: 'Status' },
-            tag: { desc: 'Description', owner: 'Owner', status: 'Status' },
-            subtag: { desc: 'Description', owner: 'Owner', status: 'Status' },
-        };
+        for (const tab of tabs) {
+            const tabKey = tab.toLowerCase().replace('-', '');
+            const data = formData[tabKey];
+            const tabErrors = {};
 
-        const fieldsToCheck = requiredFields[tabKey];
-        if (fieldsToCheck) {
-            for (const field in fieldsToCheck) {
-                if (!data[field] || String(data[field]).trim() === '') {
-                    return {
-                        isValid: false,
-                        error: `The '${fieldsToCheck[field]}' field is required in the '${tabName}' tab.`
-                    };
+            if (data?.name?.trim()) {
+                if (tabKey === 'domain') {
+                    if (!data.description?.trim()) tabErrors.description = 'Description is required.';
+                    if (!data.stakeholder || data.stakeholder.length === 0) {
+                        tabErrors.stakeholder = 'At least one stakeholder is required.';
+                    }
+                } else {
+                    if (!data.desc?.trim()) tabErrors.desc = 'Description is required.';
+                }
+
+                if (!data.owner) tabErrors.owner = 'Owner must be selected.';
+                if (!data.status) tabErrors.status = 'Status must be selected.';
+
+                if (Object.keys(tabErrors).length > 0) {
+                    allErrors[tabKey] = tabErrors;
+                    if (!firstErrorTab) {
+                        firstErrorTab = tab;
+                    }
                 }
             }
         }
 
-        if (tabKey === 'domain' && data.stakeholder.length === 0) {
-            return {
-                isValid: false,
-                error: `At least one 'Stakeholder' is required in the 'Domain' tab since a name has been entered.`
-            };
+        if (firstErrorTab) {
+            setActiveTab(firstErrorTab);
+            setErrors(allErrors[firstErrorTab.toLowerCase().replace('-', '')]);
+            setSaveError(null);
+            return false;
         }
 
-        return { isValid: true, error: null };
+        setErrors({});
+        setSaveError(null);
+        return true;
     };
 
     const handleSave = async () => {
-        for (const tab of tabs) {
-            const tabKey = tab.toLowerCase().replace('-', '');
-            const validation = validateTabData(tabKey);
-            if (!validation.isValid) {
-                setSaveError(validation.error);
-                setActiveTab(tab);
-                return;
-            }
+        if (!validateForms()) {
+            return;
         }
 
         setIsSaving(true);
@@ -340,7 +351,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
 
         const transformLevel = (level, data, parentIds = {}) => {
             if (!data.name || !data.status) return null;
-
             const ownerAsArray = data.owner ? [data.owner] : [];
             const standardData = {
                 name: data.name,
@@ -348,18 +358,15 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 status: data.status,
                 owner: ownerAsArray,
             };
-
             if (level === 'domain') {
                 standardData.stakeholder = data.stakeholder || [];
             }
-
             const validParentIds = Object.entries(parentIds).reduce((acc, [key, value]) => {
                 if (value !== null && value !== undefined) {
                     acc[key] = value;
                 }
                 return acc;
             }, {});
-
             return { ...validParentIds, standard: standardData };
         };
 
@@ -370,12 +377,8 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 domain_id: formData.domain.id,
                 category_id: formData.category.id
             }),
-            term: transformLevel('term', formData.term
-                // , { domain_id: formData.domain.id }
-            ),
-            tag: transformLevel('tag', formData.tag
-                // , { domain_id: formData.domain.id }
-            ),
+            term: transformLevel('term', formData.term),
+            tag: transformLevel('tag', formData.tag),
             subtag: transformLevel('subtag', formData.subtag, { tag_id: formData.tag.id })
         };
 
@@ -383,14 +386,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             if (value) acc[key] = value;
             return acc;
         }, {});
-
-        if (Object.keys(finalPayload).length === 0) {
-            setSaveError("Nothing to save. Please fill out at least one form tab.");
-            setIsSaving(false);
-            return;
-        }
-
-        console.log('Final Payload to be Sent:', JSON.stringify(finalPayload, null, 2));
 
         try {
             const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/add_new`, {
@@ -406,10 +401,7 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 const errorData = await response.json().catch(() => ({ detail: 'An unexpected error occurred while saving.' }));
                 throw new Error(errorData.detail || `Server responded with status: ${response.status}`);
             }
-
-            console.log('Catalogue saved successfully');
             onClose();
-
         } catch (err) {
             console.error("Failed to save catalogue:", err);
             setSaveError(err.message);
@@ -419,50 +411,30 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
     };
 
     const handleTabChange = (newTab) => {
-        const currentTabKey = activeTab.toLowerCase().replace('-', '');
-        const validation = validateTabData(currentTabKey);
-
-        if (!validation.isValid) {
-            setSaveError(validation.error);
-            return;
-        }
-
         setActiveTab(newTab);
         setError(null);
+        setErrors({});
         setSaveError(null);
     };
 
     const handleNext = () => {
-        const currentTabKey = activeTab.toLowerCase().replace('-', '');
-        const validation = validateTabData(currentTabKey);
-
-        if (!validation.isValid) {
-            setSaveError(validation.error);
-            return;
-        }
-
         const currentIndex = tabs.indexOf(activeTab);
         if (currentIndex < tabs.length - 1) {
-            setActiveTab(tabs[currentIndex + 1]);
-            setError(null);
-            setSaveError(null);
+            handleTabChange(tabs[currentIndex + 1]);
         }
     };
 
     const handlePrevious = () => {
         const currentIndex = tabs.indexOf(activeTab);
         if (currentIndex > 0) {
-            setActiveTab(tabs[currentIndex - 1]);
-            setError(null);
-            setSaveError(null);
+            handleTabChange(tabs[currentIndex - 1]);
         }
     };
-
-    const handleModalContentClick = (e) => e.stopPropagation();
 
     const handleDomainNameChange = (e) => {
         const value = e.target.value;
         setFormData(prev => ({ ...prev, domain: { ...prev.domain, id: null, name: value } }));
+        if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
         if (!value) {
             setFormData(prev => ({ ...prev, domain: initialFormData.domain }));
         }
@@ -474,7 +446,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             setShowSuggestions(false);
         }
     };
-
     const handleSuggestionClick = (domain) => {
         setFormData(prev => ({
             ...prev,
@@ -486,10 +457,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         }));
         setShowSuggestions(false);
     };
-
     const handleCategoryNameChange = (e) => {
         const value = e.target.value;
         setFormData(prev => ({ ...prev, category: { ...prev.category, id: null, name: value } }));
+        if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
         if (!value) {
             setFormData(prev => ({ ...prev, category: initialFormData.category }));
         }
@@ -501,7 +472,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             setShowCategorySuggestions(false);
         }
     };
-
     const handleCategorySuggestionClick = (category) => {
         setFormData(prev => ({
             ...prev,
@@ -513,10 +483,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         }));
         setShowCategorySuggestions(false);
     };
-
     const handleSubCategoryNameChange = (e) => {
         const value = e.target.value;
         setFormData(prev => ({ ...prev, subcategory: { ...prev.subcategory, id: null, name: value } }));
+        if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
         if (!value) {
             setFormData(prev => ({ ...prev, subcategory: initialFormData.subcategory }));
         }
@@ -528,7 +498,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             setShowSubCategorySuggestions(false);
         }
     };
-
     const handleSubCategorySuggestionClick = (subcategory) => {
         setFormData(prev => ({
             ...prev,
@@ -540,10 +509,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         }));
         setShowSubCategorySuggestions(false);
     };
-
     const handleTermNameChange = (e) => {
         const value = e.target.value;
         setFormData(prev => ({ ...prev, term: { ...prev.term, id: null, name: value } }));
+        if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
         if (!value) {
             setFormData(prev => ({ ...prev, term: initialFormData.term }));
         }
@@ -555,7 +524,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             setShowTermSuggestions(false);
         }
     };
-
     const handleTermSuggestionClick = (term) => {
         setFormData(prev => ({
             ...prev,
@@ -567,10 +535,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         }));
         setShowTermSuggestions(false);
     };
-
     const handleTagNameChange = (e) => {
         const value = e.target.value;
         setFormData(prev => ({ ...prev, tag: { ...prev.tag, id: null, name: value } }));
+        if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
         if (!value) {
             setFormData(prev => ({ ...prev, tag: initialFormData.tag }));
         }
@@ -582,7 +550,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             setShowTagSuggestions(false);
         }
     };
-
     const handleTagSuggestionClick = (tag) => {
         setFormData(prev => ({
             ...prev,
@@ -594,10 +561,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         }));
         setShowTagSuggestions(false);
     };
-
     const handleSubTagNameChange = (e) => {
         const value = e.target.value;
         setFormData(prev => ({ ...prev, subtag: { ...prev.subtag, id: null, name: value } }));
+        if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
         if (!value) {
             setFormData(prev => ({ ...prev, subtag: initialFormData.subtag }));
         }
@@ -609,7 +576,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             setShowSubTagSuggestions(false);
         }
     };
-
     const handleSubTagSuggestionClick = (subtag) => {
         setFormData(prev => ({
             ...prev,
@@ -628,6 +594,12 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             ...prev,
             [tabKey]: { ...prev[tabKey], [field]: value }
         }));
+        if (errors[field]) {
+            setErrors(prevErrors => ({ ...prevErrors, [field]: undefined }));
+        }
+        if (saveError) {
+            setSaveError(null);
+        }
     };
 
     const handleStakeholderSelect = (username) => {
@@ -638,12 +610,10 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
         setStakeholderSearchTerm('');
         setShowStakeholderOptions(false);
     };
-
     const handleStakeholderRemove = (username) => {
         const updated = formData.domain.stakeholder.filter(s => s !== username);
         handleInputChange('Domain', 'stakeholder', updated);
     };
-
     const filteredStakeholders = stakeholders
         .filter(user => !formData.domain.stakeholder.includes(user.username))
         .filter(user =>
@@ -668,7 +638,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                 <p className="text-sm mt-1">You can skip this and navigate to another tab if not needed.</p>
             </div>
         );
-
         const parentDataFor = {
             'Category': { domain: formData.domain.name },
             'Sub-category': { domain: formData.domain.name, category: formData.category.name },
@@ -676,7 +645,6 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             'Tag': { domain: formData.domain.name, category: formData.category.name, subcategory: formData.subcategory.name, term: formData.term.name },
             'Sub-tag': { domain: formData.domain.name, category: formData.category.name, subcategory: formData.subcategory.name, term: formData.term.name, tag: formData.tag.name },
         };
-
         switch (activeTab) {
             case 'Domain':
                 return (
@@ -685,121 +653,68 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="relative" ref={suggestionsRef}>
                                 <label htmlFor="domain-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                <input
-                                    type="text"
-                                    id="domain-name"
-                                    placeholder="Enter or select domain name"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.domain.name}
-                                    onChange={handleDomainNameChange}
-                                    onFocus={() => setShowSuggestions(true)}
-                                    autoComplete="off"
-                                />
+                                <input id="domain-name" type="text" placeholder="Enter or select domain name" value={formData.domain.name} onChange={handleDomainNameChange} onFocus={() => setShowSuggestions(true)} autoComplete="off"
+                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors.name ? 'border-red-500' : 'border-gray-300'}`} />
                                 {isLoading && <Loader2 className="animate-spin h-5 w-5 text-gray-500 absolute right-2 top-9" />}
+                                {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name}</p>}
                                 {showSuggestions && domainSuggestions.length > 0 && (
                                     <ul className="absolute z-50 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto shadow-lg">
-                                        {domainSuggestions.map((domain) => (
-                                            <li
-                                                key={domain.domain_id}
-                                                className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                                onClick={() => handleSuggestionClick(domain)}
-                                            >
-                                                {domain.name}
-                                            </li>
-                                        ))}
+                                        {domainSuggestions.map((domain) => (<li key={domain.domain_id} className="px-3 py-2 cursor-pointer hover:bg-gray-100" onClick={() => handleSuggestionClick(domain)}> {domain.name} </li>))}
                                     </ul>
                                 )}
                             </div>
                             <div>
                                 <label htmlFor="domain-description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <input type="text" id="domain-description" placeholder="Description" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.domain.description}
-                                    onChange={(e) => handleInputChange('Domain', 'description', e.target.value)}
-                                    autoComplete="off"
-                                />
+                                <input id="domain-description" type="text" placeholder="Description" value={formData.domain.description} onChange={(e) => handleInputChange('Domain', 'description', e.target.value)} autoComplete="off"
+                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors.description ? 'border-red-500' : 'border-gray-300'}`} />
+                                {errors.description && <p className="text-red-600 text-xs mt-1">{errors.description}</p>}
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label htmlFor="domain-owner" className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                                <select id="domain-owner" className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.domain.owner}
-                                    onChange={(e) => handleInputChange('Domain', 'owner', e.target.value)}
-                                >
-                                    <option value="">Select</option>
-                                    <option value="Admin">Admin</option>
+                                <select id="domain-owner" value={formData.domain.owner} onChange={(e) => handleInputChange('Domain', 'owner', e.target.value)}
+                                    className={`w-full px-3 py-2 border bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors.owner ? 'border-red-500' : 'border-gray-300'}`}>
+                                    <option value="">Select</option><option value="Admin">Admin</option>
                                 </select>
+                                {errors.owner && <p className="text-red-600 text-xs mt-1">{errors.owner}</p>}
                             </div>
                             <div>
                                 <label htmlFor="domain-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                <select id="domain-status" className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={formData.domain.status}
-                                    onChange={(e) => handleInputChange('Domain', 'status', e.target.value)}
-                                >
-                                    <option value="">Select</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
-                                    <option value="Deprecated">Deprecated</option>
+                                <select id="domain-status" value={formData.domain.status} onChange={(e) => handleInputChange('Domain', 'status', e.target.value)}
+                                    className={`w-full px-3 py-2 border bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors.status ? 'border-red-500' : 'border-gray-300'}`}>
+                                    <option value="">Select</option><option value="Active">Active</option><option value="Inactive">Inactive</option><option value="Deprecated">Deprecated</option>
                                 </select>
+                                {errors.status && <p className="text-red-600 text-xs mt-1">{errors.status}</p>}
                             </div>
                         </div>
                         <div className="relative" ref={stakeholderRef}>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Stakeholder</label>
-                            <div
-                                className="min-h-[42px] p-2 border border-gray-300 bg-white rounded-md focus-within:ring-1 focus-within:ring-[#8e78b7] focus-within:border-[#8e78b7] flex flex-wrap items-center gap-2 cursor-pointer"
-                                onClick={() => setShowStakeholderOptions(prev => !prev)}
-                            >
+                            <div onClick={() => setShowStakeholderOptions(prev => !prev)}
+                                className={`min-h-[42px] p-2 border bg-white rounded-md focus-within:ring-1 focus-within:ring-[#8e78b7] flex flex-wrap items-center gap-2 cursor-pointer ${errors.stakeholder ? 'border-red-500' : 'border-gray-300'}`}>
                                 {isStakeholdersLoading && <Loader2 className="animate-spin h-4 w-4 text-gray-400" />}
                                 {formData.domain.stakeholder.length > 0 ? (
                                     formData.domain.stakeholder.map(username => (
                                         <span key={username} className="bg-[#e4dcf5] text-[#584185] text-sm font-medium px-2.5 py-1 rounded-full flex items-center gap-2">
                                             {username}
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.stopPropagation(); handleStakeholderRemove(username); }}
-                                                className="text-[#584185] hover:text-black focus:outline-none"
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </button>
+                                            <button type="button" onClick={(e) => { e.stopPropagation(); handleStakeholderRemove(username); }} className="text-[#584185] hover:text-black focus:outline-none"><X className="h-3 w-3" /></button>
                                         </span>
                                     ))
-                                ) : (
-                                    !isStakeholdersLoading && <span className="text-gray-500">Select stakeholders</span>
-                                )}
+                                ) : (!isStakeholdersLoading && <span className="text-gray-500">Select stakeholders</span>)}
                             </div>
-
+                            {errors.stakeholder && <p className="text-red-600 text-xs mt-1">{errors.stakeholder}</p>}
                             {showStakeholderOptions && (
                                 <div className="fixed z-50 mt-1 w-[calc(100%-5rem)] max-w-[53rem]">
                                     <ul className="bg-white border border-gray-300 rounded-md max-h-48 overflow-y-auto shadow-lg flex flex-col">
                                         <li className="p-2 sticky top-0 bg-white border-b">
                                             <div className="relative">
                                                 <Search className="h-4 w-4 absolute top-1/2 left-2 -translate-y-1/2 text-gray-400" />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Search..."
-                                                    className="w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md"
-                                                    value={stakeholderSearchTerm}
-                                                    onChange={(e) => setStakeholderSearchTerm(e.target.value)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
+                                                <input type="text" placeholder="Search..." value={stakeholderSearchTerm} onChange={(e) => setStakeholderSearchTerm(e.target.value)} onClick={(e) => e.stopPropagation()} className="w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md" />
                                             </div>
                                         </li>
-
                                         {filteredStakeholders.length > 0 ? (
-                                            filteredStakeholders.map((user) => (
-                                                <li
-                                                    key={user.id}
-                                                    className="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm"
-                                                    onClick={() => handleStakeholderSelect(user.username)}
-                                                >
-                                                    {user.username}
-                                                </li>
-                                            ))
-                                        ) : (
-                                            <li className="px-3 py-2 text-gray-500 text-sm">
-                                                {isStakeholdersLoading ? 'Loading...' : 'No matching stakeholders found.'}
-                                            </li>
-                                        )}
+                                            filteredStakeholders.map((user) => (<li key={user.id} className="px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm" onClick={() => handleStakeholderSelect(user.username)}> {user.username} </li>))
+                                        ) : (<li className="px-3 py-2 text-gray-500 text-sm"> {isStakeholdersLoading ? 'Loading...' : 'No matching stakeholders found.'} </li>)}
                                     </ul>
                                 </div>
                             )}
@@ -813,89 +728,20 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
             case 'Sub-tag':
                 const genericTabKey = activeTab.toLowerCase().replace('-', '');
                 const genericData = formData[genericTabKey];
-                const parentKey =
-                    activeTab === 'Category' ? 'domain' :
-                        activeTab === 'Sub-category' ? 'category' :
-                            activeTab === 'Term' ? 'domain' :
-                                activeTab === 'Tag' ? 'domain' :
-                                    activeTab === 'Sub-tag' ? 'tag' :
-                                        '';
+                const parentKey = activeTab === 'Category' ? 'domain' : activeTab === 'Sub-category' ? 'category' : activeTab === 'Sub-tag' ? 'tag' : '';
 
                 if (parentKey && !formData[parentKey].name) {
                     return <PlaceholderMessage>Please select a {parentKey} first to add a {activeTab}.</PlaceholderMessage>;
                 }
-
-                const suggestions = {
-                    'Category': categorySuggestions,
-                    'Sub-category': subCategorySuggestions,
-                    'Term': termSuggestions,
-                    'Tag': tagSuggestions,
-                    'Sub-tag': subTagSuggestions,
-                }[activeTab];
-
-                const allData = {
-                    'Category': allCategories,
-                    'Sub-category': allSubCategories,
-                    'Term': allTerms,
-                    'Tag': allTags,
-                    'Sub-tag': allSubTags,
-                }[activeTab];
-
-                const suggestionsRefMap = {
-                    'Category': categorySuggestionsRef,
-                    'Sub-category': subCategorySuggestionsRef,
-                    'Term': termSuggestionsRef,
-                    'Tag': tagSuggestionsRef,
-                    'Sub-tag': subTagSuggestionsRef,
-                };
-
-                const showSuggestionsMap = {
-                    'Category': showCategorySuggestions,
-                    'Sub-category': showSubCategorySuggestions,
-                    'Term': showTermSuggestions,
-                    'Tag': showTagSuggestions,
-                    'Sub-tag': showSubTagSuggestions,
-                };
-
-                const setShowSuggestionsMap = {
-                    'Category': setShowCategorySuggestions,
-                    'Sub-category': setShowSubCategorySuggestions,
-                    'Term': setShowTermSuggestions,
-                    'Tag': setShowTagSuggestions,
-                    'Sub-tag': setShowSubTagSuggestions,
-                };
-
-                const handleNameChangeMap = {
-                    'Category': handleCategoryNameChange,
-                    'Sub-category': handleSubCategoryNameChange,
-                    'Term': handleTermNameChange,
-                    'Tag': handleTagNameChange,
-                    'Sub-tag': handleSubTagNameChange,
-                };
-
-                const handleSuggestionClickMap = {
-                    'Category': handleCategorySuggestionClick,
-                    'Sub-category': handleSubCategorySuggestionClick,
-                    'Term': handleTermSuggestionClick,
-                    'Tag': handleTagSuggestionClick,
-                    'Sub-tag': handleSubTagSuggestionClick,
-                };
-
-                const isLoadingMap = {
-                    'Category': isCategoryLoading,
-                    'Sub-category': isSubCategoryLoading,
-                    'Term': isTermLoading,
-                    'Tag': isTagLoading,
-                    'Sub-tag': isSubTagLoading,
-                };
-
-                const idKeyMap = {
-                    'Category': 'category_id',
-                    'Sub-category': 'sub_category_id',
-                    'Term': 'term_id',
-                    'Tag': 'tag_id',
-                    'Sub-tag': 'sub_tag_id',
-                }
+                const suggestions = { 'Category': categorySuggestions, 'Sub-category': subCategorySuggestions, 'Term': termSuggestions, 'Tag': tagSuggestions, 'Sub-tag': subTagSuggestions, }[activeTab];
+                const allData = { 'Category': allCategories, 'Sub-category': allSubCategories, 'Term': allTerms, 'Tag': allTags, 'Sub-tag': allSubTags, }[activeTab];
+                const suggestionsRefMap = { 'Category': categorySuggestionsRef, 'Sub-category': subCategorySuggestionsRef, 'Term': termSuggestionsRef, 'Tag': tagSuggestionsRef, 'Sub-tag': subTagSuggestionsRef, };
+                const showSuggestionsMap = { 'Category': showCategorySuggestions, 'Sub-category': showSubCategorySuggestions, 'Term': showTermSuggestions, 'Tag': showTagSuggestions, 'Sub-tag': showSubTagSuggestions, };
+                const setShowSuggestionsMap = { 'Category': setShowCategorySuggestions, 'Sub-category': setShowSubCategorySuggestions, 'Term': setShowTermSuggestions, 'Tag': setShowTagSuggestions, 'Sub-tag': setShowSubTagSuggestions, };
+                const handleNameChangeMap = { 'Category': handleCategoryNameChange, 'Sub-category': handleSubCategoryNameChange, 'Term': handleTermNameChange, 'Tag': handleTagNameChange, 'Sub-tag': handleSubTagNameChange, };
+                const handleSuggestionClickMap = { 'Category': handleCategorySuggestionClick, 'Sub-category': handleSubCategorySuggestionClick, 'Term': handleTermSuggestionClick, 'Tag': handleTagSuggestionClick, 'Sub-tag': handleSubTagSuggestionClick, };
+                const isLoadingMap = { 'Category': isCategoryLoading, 'Sub-category': isSubCategoryLoading, 'Term': isTermLoading, 'Tag': isTagLoading, 'Sub-tag': isSubTagLoading, };
+                const idKeyMap = { 'Category': 'category_id', 'Sub-category': 'sub_category_id', 'Term': 'term_id', 'Tag': 'tag_id', 'Sub-tag': 'sub_tag_id', }
 
                 return (
                     <div className="space-y-6 py-8">
@@ -904,86 +750,53 @@ const AddCatalogueModal = ({ isOpen, onClose }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="relative" ref={suggestionsRefMap[activeTab]}>
                                 <label htmlFor={`${genericTabKey}-name`} className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                <input
-                                    type="text"
-                                    id={`${genericTabKey}-name`}
-                                    placeholder={`Enter or select ${genericTabKey}`}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={genericData.name}
-                                    onChange={handleNameChangeMap[activeTab]}
-                                    onFocus={() => { if (allData.length > 0) setShowSuggestionsMap[activeTab](true); }}
-                                    autoComplete="off"
-                                    disabled={parentKey && !formData[parentKey].name}
-                                />
+                                <input id={`${genericTabKey}-name`} type="text" placeholder={`Enter or select ${genericTabKey}`} value={genericData.name} onChange={handleNameChangeMap[activeTab]} onFocus={() => { if (allData.length > 0) setShowSuggestionsMap[activeTab](true); }} autoComplete="off" disabled={parentKey && !formData[parentKey].name}
+                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors.name ? 'border-red-500' : 'border-gray-300'}`} />
                                 {isLoadingMap[activeTab] && <Loader2 className="animate-spin h-5 w-5 text-gray-500 absolute right-2 top-9" />}
+                                {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name}</p>}
                                 {showSuggestionsMap[activeTab] && suggestions.length > 0 && (
                                     <ul className="fixed z-50 w-[26rem] bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto shadow-lg">
-                                        {suggestions.map((item) => (
-                                            <li
-                                                key={item[idKeyMap[activeTab]]}
-                                                className="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                                onClick={() => handleSuggestionClickMap[activeTab](item)}
-                                            >
-                                                {item.name}
-                                            </li>
-                                        ))}
+                                        {suggestions.map((item) => (<li key={item[idKeyMap[activeTab]]} className="px-3 py-2 cursor-pointer hover:bg-gray-100" onClick={() => handleSuggestionClickMap[activeTab](item)}> {item.name} </li>))}
                                     </ul>
                                 )}
                             </div>
                             <div>
                                 <label htmlFor={`${genericTabKey}-desc`} className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <input
-                                    type="text"
-                                    id={`${genericTabKey}-desc`}
-                                    placeholder="Description"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={genericData.desc}
-                                    onChange={(e) => handleInputChange(activeTab, 'desc', e.target.value)}
-                                />
+                                <input id={`${genericTabKey}-desc`} type="text" placeholder="Description" value={genericData.desc} onChange={(e) => handleInputChange(activeTab, 'desc', e.target.value)}
+                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors.desc ? 'border-red-500' : 'border-gray-300'}`} />
+                                {errors.desc && <p className="text-red-600 text-xs mt-1">{errors.desc}</p>}
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label htmlFor={`${genericTabKey}-owner`} className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                                <select
-                                    id={`${genericTabKey}-owner`}
-                                    className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={genericData.owner}
-                                    onChange={(e) => handleInputChange(activeTab, 'owner', e.target.value)}
-                                >
-                                    <option value="">Select</option>
-                                    <option value="Admin">Admin</option>
+                                <select id={`${genericTabKey}-owner`} value={genericData.owner} onChange={(e) => handleInputChange(activeTab, 'owner', e.target.value)}
+                                    className={`w-full px-3 py-2 border bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors.owner ? 'border-red-500' : 'border-gray-300'}`}>
+                                    <option value="">Select</option><option value="Admin">Admin</option>
                                 </select>
+                                {errors.owner && <p className="text-red-600 text-xs mt-1">{errors.owner}</p>}
                             </div>
                             <div>
                                 <label htmlFor={`${genericTabKey}-status`} className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                <select
-                                    id={`${genericTabKey}-status`}
-                                    className="w-full px-3 py-2 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
-                                    value={genericData.status}
-                                    onChange={(e) => handleInputChange(activeTab, 'status', e.target.value)}
-                                >
-                                    <option value="">Select</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
-                                    <option value="Deprecated">Deprecated</option>
+                                <select id={`${genericTabKey}-status`} value={genericData.status} onChange={(e) => handleInputChange(activeTab, 'status', e.target.value)}
+                                    className={`w-full px-3 py-2 border bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors.status ? 'border-red-500' : 'border-gray-300'}`}>
+                                    <option value="">Select</option><option value="Active">Active</option><option value="Inactive">Inactive</option><option value="Deprecated">Deprecated</option>
                                 </select>
+                                {errors.status && <p className="text-red-600 text-xs mt-1">{errors.status}</p>}
                             </div>
                         </div>
                     </div>
                 );
-
             default:
                 return <div className="mt-6 text-center text-gray-500 py-10">Select a tab to begin.</div>;
         }
     };
 
-
+    const handleModalContentClick = (e) => e.stopPropagation();
     if (!isOpen) return null;
 
     const currentIndex = tabs.indexOf(activeTab);
     const isLastTab = currentIndex === tabs.length - 1;
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
             <div onClick={handleModalContentClick} className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
