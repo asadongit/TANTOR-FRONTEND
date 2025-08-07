@@ -28,7 +28,6 @@ const DataCatalogue = () => {
   const [cards, setCards] = useState([
     {
       title: "Database",
-      enabled: true,
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
@@ -37,7 +36,6 @@ const DataCatalogue = () => {
     },
     {
       title: "Schema",
-      enabled: true,
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
@@ -46,7 +44,6 @@ const DataCatalogue = () => {
     },
     {
       title: "Tables",
-      enabled: true,
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
@@ -55,7 +52,6 @@ const DataCatalogue = () => {
     },
     {
       title: "Columns",
-      enabled: true,
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
@@ -303,19 +299,6 @@ const DataCatalogue = () => {
                   >
                     See details
                   </a>
-                  <div className="flex items-center gap-2">
-                    <Toggle
-                      enabled={card.enabled}
-                      onToggle={() => toggleRole(index)}
-                    />
-                    <span
-                      className={`text-sm ${
-                        card.enabled ? "text-[#1a9962]" : "text-gray-400"
-                      }`}
-                    >
-                      {card.enabled ? "Enabled" : "Disabled"}
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>

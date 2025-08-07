@@ -500,7 +500,7 @@ const BusinessCatalogue = () => {
                             ) : (
                                 currentItems.map((item, index) => (
                                     <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
-                                        <td className="p-3 text-gray-700 font-medium">{item.id}</td>
+                                        <td className="p-3 text-gray-700 font-medium">{indexOfFirstItem + index + 1}</td>
                                         <td className="p-3 text-gray-600">{item.domain}</td>
                                         <td className="p-3"><button onClick={() => handleOpenDetailsModal('Categories', item.category.map(c => c.name))} className="text-blue-600 underline">{item.category.length}</button></td>
                                         <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-categories', item.subcategory.map(sc => sc.name))} className="text-blue-600 underline">{item.subcategory.length}</button></td>
