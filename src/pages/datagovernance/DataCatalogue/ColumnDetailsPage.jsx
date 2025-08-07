@@ -577,7 +577,7 @@ function ColumnDetailsPage() {
                                                         currentBusinessItems.map((row, index) => (
                                                             <tr key={index} className="hover:bg-gray-50">
                                                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.id}</td>
-                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 hover:underline cursor-pointer">{row.column}</td>
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.column}</td>
                                                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.domain}</td>
                                                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.category}</td>
                                                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subCategory}</td>

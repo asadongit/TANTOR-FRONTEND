@@ -68,45 +68,44 @@ function Columns() {
         loadData();
     }, [token]);
 
-useEffect(() => {
-    if (allTablesRawData.length > 0) {
-        let dataToProcess = allTablesRawData;
+    useEffect(() => {
+        if (allTablesRawData.length > 0) {
+            let dataToProcess = allTablesRawData;
 
-        // If state is from a TABLE navigation
-        if (
-            navigationState?.type === 'table' &&
-            navigationState?.tableName &&
-            navigationState?.schemaName &&
-            navigationState?.connectionName
-        ) {
-            dataToProcess = allTablesRawData.filter(item =>
-                item.table_name === navigationState.tableName &&
-                item.table_schema === navigationState.schemaName &&
-                item.connection_name === navigationState.connectionName
-            );
-        } 
-        // If state is from a SCHEMA navigation
-        else if (
-            navigationState?.type === 'schema' &&
-            navigationState?.schemaName &&
-            navigationState?.connectionName
-        ) {
-            dataToProcess = allTablesRawData.filter(item =>
-                item.table_schema === navigationState.schemaName &&
-                item.connection_name === navigationState.connectionName
-            );
-        }
-        // NEW: If state is from a DATABASE navigation
-        else if (navigationState?.type === 'database' && navigationState?.connectionName) {
-            dataToProcess = allTablesRawData.filter(item => 
-                item.connection_name === navigationState.connectionName
-            );
-        }
+            // If state is from a TABLE navigation
+            if (
+                navigationState?.type === 'table' &&
+                navigationState?.tableName &&
+                navigationState?.schemaName &&
+                navigationState?.connectionName
+            ) {
+                dataToProcess = allTablesRawData.filter(item =>
+                    item.table_name === navigationState.tableName &&
+                    item.table_schema === navigationState.schemaName &&
+                    item.connection_name === navigationState.connectionName
+                );
+            }
+            // If state is from a SCHEMA navigation
+            else if (
+                navigationState?.type === 'schema' &&
+                navigationState?.schemaName &&
+                navigationState?.connectionName
+            ) {
+                dataToProcess = allTablesRawData.filter(item =>
+                    item.table_schema === navigationState.schemaName &&
+                    item.connection_name === navigationState.connectionName
+                );
+            }
+            else if (navigationState?.type === 'database' && navigationState?.connectionName) {
+                dataToProcess = allTablesRawData.filter(item =>
+                    item.connection_name === navigationState.connectionName
+                );
+            }
 
-        const processedData = processColumnData(dataToProcess);
-        setColumnData(processedData);
-    }
-}, [allTablesRawData, navigationState]);
+            const processedData = processColumnData(dataToProcess);
+            setColumnData(processedData);
+        }
+    }, [allTablesRawData, navigationState]);
 
     const handleRefresh = async () => {
         setColumnData([])
@@ -135,7 +134,7 @@ useEffect(() => {
         setFetchingEditId(column.conn_metadata_id);
         try {
             const rawDataItem = allTablesRawData.find(
-                item => item.conn_metadata_id === column.conn_metadata_id
+                item => item.conn_metadata_id === column.conn_metadata_id && item.column_name === column.name
             );
 
             if (!rawDataItem) {
@@ -248,8 +247,8 @@ useEffect(() => {
             {/* Toast notification */}
             {toast.show && (
                 <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
-                        'bg-red-100 text-red-800 border-l-4 border-red-500'
-                        }`}>
+                    'bg-red-100 text-red-800 border-l-4 border-red-500'
+                    }`}>
                     <Icon
                         icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
                         className="h-5 w-5"
@@ -311,9 +310,7 @@ useEffect(() => {
                                     <td className="p-4">{indexOfFirstItem + index + 1}</td>
                                     <td className="p-4 text-blue-600 underline cursor-pointer"
                                         onClick={() => handleNavigate(column)}>
-
                                         {column.name}
-
                                     </td>
                                     <td className="p-4">{column.diagram}</td>
                                     <td className="p-4">{column.joins}</td>
@@ -327,7 +324,7 @@ useEffect(() => {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="11" className="p-4 text-center">No column data available</td>
+                                    <td colSpan={isUserAuthorized ? 5 : 4} className="p-4 text-center">No column data available</td>
                                 </tr>
                             )}
                         </tbody>
