@@ -1344,15 +1344,15 @@ export default function CDCJobView() {
                   onClick={refreshData}
                   className="flex items-center px-2 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md transition-colors"
                 >
-                  <RefreshCw
+                  {/* <RefreshCw
                     className={`h-4 w-4 mr-1.5 ${isRefreshing ? "animate-spin" : ""
                       }`}
-                  />
+                  /> */}
                 </button>
-                <span className="text-sm text-gray-500">Last updated:</span>
+                {/* <span className="text-sm text-gray-500">Last updated:</span>
                 <span className="text-sm font-medium">
                   {jobData.metrics.lastSyncTime}
-                </span>
+                </span> */}
               </div>
             </div>
           </div>

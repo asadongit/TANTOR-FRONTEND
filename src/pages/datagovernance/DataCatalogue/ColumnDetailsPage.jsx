@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useParams, Link } from 'react-router-dom';
-import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp } from 'lucide-react';
+import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
+import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp, ChevronLeft, FilePenLine } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
+import toast from 'react-hot-toast';
 
 const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
         className={`px-4 py-2 text-md font-medium border-b-2 ${activeTab === label
-                ? 'border-[#8d77ba] text-[#8d77ba]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-[#8d77ba] text-[#8d77ba]'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
     >
         {label}
@@ -17,15 +18,14 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
 );
 
 const InfoPill = ({ label }) => (
-    <span className="bg-[#8e78b7] text-white text-xs font-medium me-2 px-2.5 py-1 rounded-full">
+    <span className="bg-[#8e78b7] text-white text-xs font-medium me-2 px-3 py-2 rounded-full">
         {label}
     </span>
 );
 
-// Pagination Component
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
     if (totalPages <= 1) {
-        return null; // Don't render pagination if there's only one page
+        return null;
     }
 
     return (
@@ -34,7 +34,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
                 Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
             </span>
             <div className="flex items-center">
-                 <button
+                <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                     className="px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -56,9 +56,10 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
 function ColumnDetailsPage() {
     const location = useLocation();
+    const navigate = useNavigate();
     const { columnName } = useParams();
-    const { columnData, allData } = location.state || {};
     const { token, decodedToken } = useAuth();
+    const { columnDetails } = location.state || {};
 
     const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
         ['data steward', 'data owner'].includes(role.toLowerCase())
@@ -81,20 +82,15 @@ function ColumnDetailsPage() {
     const [originalDescription, setOriginalDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    // Access Tab State
     const [accessData, setAccessData] = useState([]);
     const [loadingAccessData, setLoadingAccessData] = useState(false);
     const [accessDataError, setAccessDataError] = useState(null);
     const [expandedRows, setExpandedRows] = useState({});
 
-    // Pagination States
     const [itemsPerPage] = useState(8);
     const [accessCurrentPage, setAccessCurrentPage] = useState(1);
     const [businessCurrentPage, setBusinessCurrentPage] = useState(1);
     const [sampleDataCurrentPage, setSampleDataCurrentPage] = useState(1);
-
-
-    const singleColumn = allData?.find(val => val.column_name === columnData?.name && val.table_name === val.table_name);
 
 
     const getConstraints = (meta) => {
@@ -107,7 +103,7 @@ function ColumnDetailsPage() {
     };
 
     useEffect(() => {
-        if (!columnData) return;
+        if (!columnDetails) return;
 
         const fetchComplianceTags = async () => {
             setLoadingTags(true);
@@ -121,18 +117,15 @@ function ColumnDetailsPage() {
                     },
                     body: JSON.stringify({
                         connection_set: [{
-                            connection_name: singleColumn.connection_name,
-                            table_schema: singleColumn.table_schema,
-                            table_name: singleColumn.table_name,
-                            column: singleColumn.column_name
+                            connection_name: columnDetails.connection_name,
+                            table_schema: columnDetails.table_schema,
+                            table_name: columnDetails.table_name,
+                            column: columnDetails.column_name
                         }]
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch compliance tags');
-                }
-
+                if (!response.ok) throw new Error('Failed to fetch compliance tags');
                 const data = await response.json();
                 setComplianceTags(data.sub_tags?.map(tag => tag.name) || []);
             } catch (error) {
@@ -144,10 +137,10 @@ function ColumnDetailsPage() {
         };
 
         fetchComplianceTags();
-    }, [columnData, token, singleColumn]);
+    }, [columnDetails, token]);
 
     useEffect(() => {
-        if (activeTab !== 'Business' || !singleColumn) return;
+        if (activeTab !== 'Business' || !columnDetails) return;
 
         const fetchBusinessData = async () => {
             setLoadingBusinessData(true);
@@ -155,31 +148,23 @@ function ColumnDetailsPage() {
             try {
                 const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/business_tab`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'accept': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                    },
+                    headers: { 'Content-Type': 'application/json', 'accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
                         connection_set: [{
-                            connection_name: singleColumn.connection_name,
-                            table_schema: singleColumn.table_schema,
-                            table_name: singleColumn.table_name,
-                            column: singleColumn.column_name
+                            connection_name: columnDetails.connection_name,
+                            table_schema: columnDetails.table_schema,
+                            table_name: columnDetails.table_name,
+                            column: columnDetails.column_name
                         }],
                     }),
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
                 const columnBusinessInfo = Object.values(data)[0];
 
-                if (!columnBusinessInfo) {
-                    throw new Error("Business data format from API is incorrect.");
-                }
+                if (!columnBusinessInfo) throw new Error("Business data format from API is incorrect.");
+
                 const tags = {
                     domain: columnBusinessInfo.domain || [],
                     category: columnBusinessInfo.category || [],
@@ -197,44 +182,24 @@ function ColumnDetailsPage() {
                     subTag: tags.subTag?.map(t => t.name) || [],
                 };
                 const newCompositeState = [];
-                const domainNames = schemaForState.domain;
-                const categoryNames = schemaForState.category;
-                const subCategoryNames = schemaForState.subCategory;
-                const termsNames = schemaForState.term;
-                const tagNames = schemaForState.tag;
-                const subTagNames = schemaForState.subTag;
-
-                const maxLength = Math.max(
-                    domainNames.length,
-                    categoryNames.length,
-                    subCategoryNames.length,
-                    termsNames.length,
-                    tagNames.length,
-                    subTagNames.length
-                );
+                const maxLength = Math.max(...Object.values(schemaForState).map(arr => arr.length));
 
                 if (maxLength === 0) {
                     newCompositeState.push({
-                        id: '01',
-                        column: columnBusinessInfo.column_name || columnData.name,
-                        domain: 'N/A',
-                        category: 'N/A',
-                        subCategory: 'N/A',
-                        term: 'N/A',
-                        tag: 'N/A',
-                        subTag: 'N/A',
+                        id: '01', column: columnDetails.column_name, domain: 'N/A', category: 'N/A',
+                        subCategory: 'N/A', term: 'N/A', tag: 'N/A', subTag: 'N/A',
                     });
                 } else {
                     for (let i = 0; i < maxLength; i++) {
                         newCompositeState.push({
                             id: (i + 1).toString().padStart(2, '0'),
-                            column: columnBusinessInfo.column_name || columnData.name,
-                            domain: domainNames[i] || '-',
-                            category: categoryNames[i] || '-',
-                            subCategory: subCategoryNames[i] || '-',
-                            term: termsNames[i] || '-',
-                            tag: tagNames[i] || '-',
-                            subTag: subTagNames[i] || '-',
+                            column: columnDetails.column_name,
+                            domain: schemaForState.domain[i] || '-',
+                            category: schemaForState.category[i] || '-',
+                            subCategory: schemaForState.subCategory[i] || '-',
+                            term: schemaForState.term[i] || '-',
+                            tag: schemaForState.tag[i] || '-',
+                            subTag: schemaForState.subTag[i] || '-',
                         });
                     }
                 }
@@ -249,39 +214,29 @@ function ColumnDetailsPage() {
         };
 
         fetchBusinessData();
-    }, [activeTab, singleColumn, token, columnData.name]);
+    }, [activeTab, columnDetails, token]);
 
     useEffect(() => {
-        if (activeTab !== 'Sample data' || !singleColumn) return;
+        if (activeTab !== 'Sample data' || !columnDetails) return;
 
         const fetchSampleData = async () => {
             setLoadingSampleData(true);
             setSampleDataError(null);
             setSampleData([]);
             setSampleDataCurrentPage(1);
-
             try {
                 const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/columns/sample_data`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
-                        connection_name: singleColumn.connection_name,
-                        table_schema: singleColumn.table_schema,
-                        table_name: singleColumn.table_name
+                        connection_name: columnDetails.connection_name,
+                        table_schema: columnDetails.table_schema,
+                        table_name: columnDetails.table_name
                     })
                 });
-
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch sample data. Status: ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`Failed to fetch sample data. Status: ${response.status}`);
                 const data = await response.json();
                 setSampleData(data || []);
-
             } catch (error) {
                 console.error("Error fetching sample data:", error);
                 setSampleDataError("Failed to fetch sample data.");
@@ -289,12 +244,11 @@ function ColumnDetailsPage() {
                 setLoadingSampleData(false);
             }
         };
-
         fetchSampleData();
-    }, [activeTab, singleColumn, token]);
-    
+    }, [activeTab, columnDetails, token]);
+
     useEffect(() => {
-        if (activeTab !== 'Access' || !singleColumn) return;
+        if (activeTab !== 'Access' || !columnDetails) return;
 
         const fetchAccessData = async () => {
             setLoadingAccessData(true);
@@ -306,27 +260,19 @@ function ColumnDetailsPage() {
             try {
                 const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/access_tab`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
                         connection_set: [{
-                            connection_name: singleColumn.connection_name,
-                            table_schema: singleColumn.table_schema,
-                            table_name: singleColumn.table_name,
-                            column: singleColumn.column_name
+                            connection_name: columnDetails.connection_name,
+                            table_schema: columnDetails.table_schema,
+                            table_name: columnDetails.table_name,
+                            column: columnDetails.column_name
                         }]
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch access data. Status: ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`Failed to fetch access data. Status: ${response.status}`);
                 const data = await response.json();
-                
                 const processedData = [];
                 if (data.role) {
                     for (const [name, users] of Object.entries(data.role)) {
@@ -339,13 +285,11 @@ function ColumnDetailsPage() {
                     }
                 }
                 if (data.subgroup) {
-                     for (const [name, users] of Object.entries(data.subgroup)) {
+                    for (const [name, users] of Object.entries(data.subgroup)) {
                         processedData.push({ type: 'Sub-group', name, users: users || [] });
                     }
                 }
-                
                 setAccessData(processedData);
-
             } catch (error) {
                 console.error("Error fetching access data:", error);
                 setAccessDataError("Failed to load access information.");
@@ -355,15 +299,21 @@ function ColumnDetailsPage() {
         };
 
         fetchAccessData();
-    }, [activeTab, singleColumn, token]);
+    }, [activeTab, columnDetails, token]);
 
     useEffect(() => {
-        if (singleColumn) {
-            const initialDesc = 'Column Description';
+        if (columnDetails) {
+            console.log("column details aaree", columnDetails)
+            const columnTagInfo = columnDetails.tags_column_json?.find(
+                tag => tag.column_name === columnDetails.column_name
+            );
+            const foundDescription = columnTagInfo?.column_description?.[0];
+            const initialDesc = foundDescription || 'Column Description';
+            console.log("initial desc is ", initialDesc)
             setDescription(initialDesc);
             setOriginalDescription(initialDesc);
         }
-    }, [singleColumn]);
+    }, [columnDetails]);
 
     const handleCancelEdit = () => {
         setDescription(originalDescription);
@@ -371,39 +321,62 @@ function ColumnDetailsPage() {
     };
 
     const handleSaveDescription = async () => {
-        if (!singleColumn) {
-            console.error("Column data is not available to save description.");
-            alert("An error occurred. Cannot save description.");
+        if (!columnDetails) return;
+        if (description === originalDescription) return setIsEditingDescription(false);
+        if (description.trim() === '') {
+            toast.error("Description cannot be empty.");
             return;
         }
-        setOriginalDescription(description);
-        setIsEditingDescription(false);
+        const trimmedDescription = description.trim();
+
+        setIsSaving(true);
+        try {
+            const payload = {
+                connection_name: columnDetails.connection_name,
+                table_schema: columnDetails.table_schema,
+                table_name: columnDetails.table_name,
+                column_name: columnDetails.column_name,
+                column_description: trimmedDescription,
+            };
+
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/edit_column_description`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Failed to save description.');
+            }
+
+            setOriginalDescription(trimmedDescription);
+            setIsEditingDescription(false);
+            toast.success("Column description edited!");
+        } catch (error) {
+            console.error("Error saving description:", error);
+            toast.error("Error editing column description.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const toggleRow = (name) => {
-        setExpandedRows(prev => ({
-            ...prev,
-            [name]: !prev[name]
-        }));
+        setExpandedRows(prev => ({ ...prev, [name]: !prev[name] }));
     };
-    
-    // --- Pagination Logic & Handlers ---
-    
-    // Access Tab
+
     const indexOfLastAccessItem = accessCurrentPage * itemsPerPage;
     const indexOfFirstAccessItem = indexOfLastAccessItem - itemsPerPage;
     const currentAccessItems = accessData.slice(indexOfFirstAccessItem, indexOfLastAccessItem);
     const totalAccessPages = Math.ceil(accessData.length / itemsPerPage);
     const handleAccessPageChange = (page) => setAccessCurrentPage(page);
 
-    // Business Tab
     const indexOfLastBusinessItem = businessCurrentPage * itemsPerPage;
     const indexOfFirstBusinessItem = indexOfLastBusinessItem - itemsPerPage;
     const currentBusinessItems = businessData.composite.slice(indexOfFirstBusinessItem, indexOfLastBusinessItem);
     const totalBusinessPages = Math.ceil(businessData.composite.length / itemsPerPage);
     const handleBusinessPageChange = (page) => setBusinessCurrentPage(page);
 
-    // Sample Data Tab
     const indexOfLastSampleDataItem = sampleDataCurrentPage * itemsPerPage;
     const indexOfFirstSampleDataItem = indexOfLastSampleDataItem - itemsPerPage;
     const currentSampleDataItems = sampleData.slice(indexOfFirstSampleDataItem, indexOfLastSampleDataItem);
@@ -411,7 +384,7 @@ function ColumnDetailsPage() {
     const handleSampleDataPageChange = (page) => setSampleDataCurrentPage(page);
 
 
-    if (!columnData || !singleColumn) {
+    if (!columnDetails) {
         return (
             <div className="p-4">
                 Column data not found. Please navigate from the columns list.
@@ -426,7 +399,7 @@ function ColumnDetailsPage() {
         const spacedTitle = title.replace(/([A-Z])/g, ' $1');
         const capitalized = spacedTitle.charAt(0).toUpperCase() + spacedTitle.slice(1);
         return capitalized.replace('Sub Category', 'Sub-category').replace('Sub Tag', 'Sub-tag');
-    }
+    };
 
     const sampleDataHeaders = sampleData.length > 0 ? Object.keys(sampleData[0]) : [];
 
@@ -438,8 +411,11 @@ function ColumnDetailsPage() {
                     <div className="flex items-start gap-4 w-full">
                         <div className="flex justify-between w-full" >
                             <div className="flex items-center gap-2">
+                                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
+                                    <ChevronLeft className="h-6 w-6" />
+                                </button>
                                 <ChartColumn size={24} className="text-[#8d77ba]" />
-                                <h1 className="text-2xl font-bold text-gray-800">{columnData?.name?.toLowerCase()}</h1>
+                                <h1 className="text-xl font-bold text-gray-800">{columnDetails?.column_name}</h1>
                             </div>
                         </div>
                     </div>
@@ -459,7 +435,7 @@ function ColumnDetailsPage() {
                                 <div>
                                     <div className='flex items-center justify-between mb-2'>
                                         <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                                            <Pencil className="h-5 w-5 text-[#8d77ba]" /> Description
+                                            <FilePenLine className="h-5 w-5 text-[#8d77ba]" /> Description
                                         </h3>
                                         {isUserAuthorized && !isEditingDescription && (
                                             <button
@@ -498,7 +474,7 @@ function ColumnDetailsPage() {
                                         </div>
                                     ) : (
                                         <div className="text-gray-600 pl-7 min-h-[2rem]">
-                                            {description ? description : <span className="text-gray-400 italic">No description provided</span>}
+                                            {description}
                                         </div>
                                     )}
                                 </div>
@@ -529,27 +505,27 @@ function ColumnDetailsPage() {
                                             <tbody className="bg-white divide-y divide-gray-200">
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Type</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_TYPE}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_TYPE}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Nullable</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.is_nullable === 'Y' ? 'Yes' : 'No'}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.is_nullable === 'Y' ? 'Yes' : 'No'}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Length</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_LENGTH}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_LENGTH}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Scale</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_SCALE}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_SCALE}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Precision</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{singleColumn.column_metadata.DATA_PRECISION}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_PRECISION}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Constraints</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(singleColumn.column_metadata)}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(columnDetails.column_metadata)}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -564,8 +540,8 @@ function ColumnDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Composite view')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Composite view'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <Layers className="h-4 w-4" />
@@ -574,8 +550,8 @@ function ColumnDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Table Detail View')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Table Detail View'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <TableOfContents className="h-4 w-4" />
@@ -692,7 +668,7 @@ function ColumnDetailsPage() {
                         )}
 
                         {activeTab === 'Access' && (
-                             <div>
+                            <div>
                                 {loadingAccessData && <p className="text-center text-gray-500 p-4">Loading access information...</p>}
                                 {accessDataError && <p className="text-center text-red-600 p-4">Error: {accessDataError}</p>}
                                 {!loadingAccessData && !accessDataError && (
@@ -746,7 +722,7 @@ function ColumnDetailsPage() {
                                                     </tbody>
                                                 </table>
                                             </div>
-                                            <Pagination 
+                                            <Pagination
                                                 currentPage={accessCurrentPage}
                                                 totalPages={totalAccessPages}
                                                 onPageChange={handleAccessPageChange}
@@ -762,17 +738,31 @@ function ColumnDetailsPage() {
                 </div>
 
                 <div className="w-full xl:w-80 flex-shrink-0 space-y-6">
-                    <div className="bg-white p-5 rounded-lg shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Lightbulb className="h-5 w-5 text-purple-400" />  Snapshot</h2>
+                    <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[#8d77ba]"><Lightbulb /></span>
+                            <h3 className="font-normal text-lg">Snapshot</h3>
                         </div>
-                        <div className="mt-4 space-y-3 text-sm">
-                            <div className="flex justify-between"><span className="text-gray-500">Type</span> <span className="font-medium text-gray-800">Column</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Data source</span> <span className="font-medium text-gray-800">{singleColumn.connection_type}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Table</span> <span className="font-medium text-gray-800">{singleColumn.table_name}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Created on</span> <span className="font-medium text-gray-800">{new Date(singleColumn.created_at).toLocaleDateString()}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Last updated</span> <span className="font-medium text-gray-800">{new Date(singleColumn.updated_at).toLocaleDateString()}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Owner</span> <span className="font-medium text-gray-800">{singleColumn.created_by}</span></div>
+
+                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                            <div className="text-gray-500">Type</div>
+                            <div className="font-normal">Column</div>
+                            <div className="text-gray-500">Data source</div>
+                            <div className="font-normal">{columnDetails.connection_type}</div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                            <div className="text-gray-500">Created on</div>
+                            <div className="font-normal">{new Date(columnDetails.created_at).toLocaleDateString()}</div>
+                            <div className="text-gray-500">Last updated</div>
+                            <div className="font-normal">{new Date(columnDetails.updated_at).toLocaleDateString()}</div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                            <div className="text-gray-500">Owner</div>
+                            <div className="font-normal">{columnDetails.created_by}</div>
+                            <div className="text-gray-500">Steward</div>
+                            <div className="font-normal">{columnDetails?.steward || 'Admin'}</div>
                         </div>
                     </div>
                 </div>

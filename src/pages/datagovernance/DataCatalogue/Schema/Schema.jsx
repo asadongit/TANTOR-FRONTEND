@@ -3,9 +3,9 @@ import Breadcrumb from "../../../../components/Breadcrumb.jsx";
 import { Icon } from "@iconify-icon/react";
 import { secureQuery, fetchConnectionDetails } from '../Components/function.js';
 import { useAuth } from "../../../../context/AuthContext.jsx";
-import { useNavigate } from "react-router-dom";
 import SchemaViewScreen from "../Schema/SchemaViewScreen.jsx"
-import { Search } from 'lucide-react';
+import { Search, Database, Columns3 } from 'lucide-react';
+import { useNavigate, useLocation } from "react-router-dom";
 
 function Schema() {
   const [loading, setLoading] = useState(true);
@@ -13,62 +13,84 @@ function Schema() {
   const [schemaViewScreen, setSchemaViewScreen] = useState(false);
   const [schemaForViewScreen, setSchemaForViewScreen] = useState(null);
   const [columnDataPopup, setColumnDataPopup] = useState(false);
-  const [columnData, setColumnData] = useState(null);
+  const [tableDataPopup, setTableDataPopup] = useState(false)
+  const [columnData, setColumnData] = useState({});
+  const [columnId, setColumnId] = useState("")
+  const [tableData, setTableData] = useState({});
+  const [tableId, setTableId] = useState("")
+  const [currentSchema, setCurrentSchema] = useState(null)
   const [value, setValue] = useState("")
 
   const { token } = useAuth();
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
-  
   const navigate = useNavigate();
-  const PREFIX = '/datagovernance/data-catalogue';
+  const { state: navigationState } = useLocation();
+  // MODIFICATION: State to hold all raw data before processing
+  const [allRawData, setAllRawData] = useState([]);
 
   const processSchemaData = (data) => {
     // Group by schema
     const schemaMap = new Map();
+    const columnDataMap = {};
+    const tableDataMap = {};
 
     data.forEach(item => {
       // Unique key for schema
       const schemaKey = `${item.connection_id}_${item.table_schema}`;
-      console.log("item inside processSchemaData ", item)
 
       if (!schemaMap.has(schemaKey)) {
         schemaMap.set(schemaKey, {
           id: `#${item.conn_metadata_id.substring(0, 4)}`,
           connectionName: item.connection_name,
-          // description: 'Schema from ' + item.connection_type,
           schema: item.table_schema,
           description: 'schema description',
           database: item.connection_type,
           owner: item.created_by || 'System',
           tables: 0,
           views: 0,
-          columns: 0,
+          columns: 0, // Initialize columns to 0
           CreatedDate: new Date(item.created_at).toLocaleDateString(),
           lastUpdated: new Date(item.updated_at).toLocaleDateString(),
-          tableSet: new Set(),
-          viewSet: new Set(),
-          columnSet: new Set()
+          tableSet: new Set(), // Still need to count unique tables
         });
       }
 
-
       const entry = schemaMap.get(schemaKey);
+      const groupKey = `${item.connection_name}_${item.table_schema}`;
 
-      // Count tables
+      // Count unique tables
       const tableKey = `${item.table_schema}_${item.table_name}`;
       if (!entry.tableSet.has(tableKey)) {
         entry.tableSet.add(tableKey);
         entry.tables = entry.tableSet.size;
+
+        if (!tableDataMap[groupKey]) {
+          tableDataMap[groupKey] = [];
+        }
+        tableDataMap[groupKey].push({
+          table_name: item.table_name,
+          description: "table description",
+          database: item.connection_type,
+          schema: item.table_schema,
+          owner: item.created_by,
+        });
       }
 
-      //Count columns
-      const columnKey = `${item.table_schema}_${item.column_name}`;
-      if(!entry.columnSet.has(columnKey)) {
-        entry.columnSet.add(columnKey);
-        entry.columns = entry.columnSet.size;
+      // Count EVERY column by incrementing the counter
+      entry.columns++;
+
+      // Populate column data for the popup (all columns)
+      if (!columnDataMap[groupKey]) {
+        columnDataMap[groupKey] = [];
       }
+      columnDataMap[groupKey].push({
+        column_name: item.column_name,
+        column_metadata: item.column_metadata,
+      });
     });
 
+    setColumnData(columnDataMap);
+    setTableData(tableDataMap);
 
     // Convert map to array and format the counts
     return Array.from(schemaMap.values()).map(item => ({
@@ -79,21 +101,14 @@ function Schema() {
     }));
   };
 
-  // Refactored loadData to return result for toast
   const loadData = async () => {
     setLoading(true);
     try {
-      const secureQueryResponse = await secureQuery({
-        user_query: "",
-      }, token);
-
+      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
-
       const allSchemasData = await fetchConnectionDetails(policyIds, token);
-
-      const processedData = processSchemaData(allSchemasData);
-      console.log("processedData ", processedData)
-      setSchemaData(processedData);
+      // MODIFICATION: Store raw data
+      setAllRawData(allSchemasData);
       return { success: true };
     } catch (error) {
       console.error('Error loading schema data:', error);
@@ -107,6 +122,20 @@ function Schema() {
     loadData();
   }, [token]);
 
+  // MODIFICATION: New useEffect to process data after filtering
+  useEffect(() => {
+    if (allRawData.length > 0) {
+      let dataToProcess = allRawData;
+
+      // Filter by database connection if navigated from Database page
+      if (navigationState?.type === 'database' && navigationState?.connectionName) {
+        dataToProcess = allRawData.filter(item => item.connection_name === navigationState.connectionName);
+      }
+
+      const processedData = processSchemaData(dataToProcess);
+      setSchemaData(processedData);
+    }
+  }, [allRawData, navigationState]);
   // Refresh handler with toast
   const handleRefresh = async () => {
     const result = await loadData();
@@ -129,25 +158,42 @@ function Schema() {
   };
 
   const handleSchemaViewScreen = (schema) => {
-    console.log("schema ", schema)
-    setSchemaForViewScreen(schema)
-    setSchemaViewScreen(true)
-  }
+    navigate(`/datagovernance/data-catalogue/schema/${schema.schema}`, {
+      state: { schemaData: schema }
+    });
+  };
 
-  const handleColumnDataPopup = (schema) => {
-    console.log("schema inside handleColumnDataPopup", schema)
-    setColumnData(schema);
-    setColumnDataPopup(true);
-  }
+  const handleNavigateToTables = (schema) => {
+    navigate('/datagovernance/data-catalogue/table', {
+      state: {
+        type: 'schema',
+        schemaName: schema.schema,
+        connectionName: schema.connectionName,
+      }
+    });
+  };
+
+  const handleNavigateToColumns = (schema) => {
+    navigate('/datagovernance/data-catalogue/column', {
+      state: {
+        type: 'schema',
+        schemaName: schema.schema,
+        connectionName: schema.connectionName,
+      }
+    });
+  };
+
+  const filteredSchemaData = schemaData.filter((schema) =>
+    schema.schema.toLowerCase().includes(value.toLowerCase())
+  );
 
   return (
     <div className="p-5">
       {/* Toast notification */}
       {toast.show && (
-        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
-          toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
           'bg-red-100 text-red-800 border-l-4 border-red-500'
-        }`}>
+          }`}>
           <Icon
             icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
             className="h-5 w-5"
@@ -157,14 +203,12 @@ function Schema() {
             onClick={() => setToast({ show: false, message: '', type: '' })}
             className="ml-2 text-gray-500 hover:text-gray-700"
           >
-            <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M18 6L6 18M6 6l12 12"/></svg>
+            <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
       )}
-      <Breadcrumb/>
-      {schemaViewScreen ? (
-        <SchemaViewScreen schema={schemaForViewScreen}/>
-      ) : (
+      <Breadcrumb />
+      {
         <>
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-semibold">Schema</h1>
@@ -214,8 +258,8 @@ function Schema() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.isArray(schemaData) && schemaData.length > 0 ? (
-                    schemaData.map((schema, index) => (
+                  {Array.isArray(filteredSchemaData) && filteredSchemaData.length > 0 ? (
+                    filteredSchemaData.map((schema, index) => (
                       <tr
                         key={schema?.connectionName ?? index}
                         className="border-b"
@@ -231,13 +275,14 @@ function Schema() {
                           {schema.schema}
                         </td>
                         <td className="p-4">{schema.description}</td>
-                        {/* <td className="p-4">{schema.database}</td> */}
                         <td className="p-4">{schema.owner}</td>
-                        <td className="p-4 underline underline-offset-4 text-blue-600">
+                        <td
+                          onClick={() => handleNavigateToTables(schema)}
+                          className="p-4 underline underline-offset-4 text-blue-600 cursor-pointer">
                           {schema.tables}
                         </td>
-                        <td 
-                          onClick={() => handleColumnDataPopup(schema)}
+                        <td
+                          onClick={() => handleNavigateToColumns(schema)}
                           className="p-4 underline underline-offset-4 cursor-pointer text-blue-600">
                           {schema.columns}
                         </td>
@@ -258,34 +303,139 @@ function Schema() {
           )}
 
           {columnDataPopup && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div 
-              className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
-              onClick={() => setColumnDataPopup(false)}
-            ></div>
-          
-            <div className="relative bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 transform transition-all duration-300 ease-out">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <span className="text-lg font-semibold text-gray-900">Column Details</span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Active</span>
-                </div>
-                
-                <button
-                  onClick={() => setColumnDataPopup(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+                onClick={() => setColumnDataPopup(false)}
+              ></div>
 
+              <div className="relative h-[500px] bg-white rounded-lg shadow-2xl mx-4 w-full max-w-5xl transform transition-all duration-300 ease-out flex flex-col max-h-[90vh]">
+
+                <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+                  <div className="flex items-center">
+                    <span className="pr-1 text-[#8d77ba]"><Columns3 /></span>
+                    <span className="text-lg font-semibold text-gray-900 pr-3">Column Details:</span>
+                    <span className="text-md">{currentSchema.schema}</span>
+                  </div>
+                  <button
+                    onClick={() => setColumnDataPopup(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto flex-1 px-7 h-[400px]">
+                  <table className="min-w-full text-sm text-left border border-gray-200 rounded-lg">
+                    <thead className="bg-[#262B46] text-white uppercase text-xs sticky top-0 z-20">
+                      <tr>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Column name</th>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Data type</th>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Length</th>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Precision</th>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Scale</th>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Nullable</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-[#262B46] bg-white">
+                      {columnData[columnId].map((column) => {
+                        const meta = column.column_metadata;
+                        return (
+                          <tr key={column.column_name} className="border-b hover:bg-gray-50">
+                            <td className="px-4 py-2">{column.column_name}</td>
+                            <td className="px-4 py-2">{meta.DATA_TYPE}</td>
+                            <td className="px-4 py-2">{meta.DATA_LENGTH}</td>
+                            <td className="px-4 py-2">{meta.DATA_PRECISION}</td>
+                            <td className="px-4 py-2">{meta.DATA_SCALE}</td>
+                            <td className="px-4 py-2">{meta.is_nullable === 'N' ? 'No' : 'Yes'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="p-4 border-t border-gray-200 flex justify-end bg-white sticky bottom-0 z-10">
+                  <button
+                    onClick={() => setColumnDataPopup(false)}
+                    className="px-4 py-2 text-white bg-[#8d77ba] rounded-md hover:bg-[#7a66a8] transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
           )}
+
+          {tableDataPopup && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+                onClick={() => setTableDataPopup(false)}
+              ></div>
+
+              <div className="relative h-[500px] bg-white rounded-lg shadow-2xl mx-4 w-full max-w-5xl transform transition-all duration-300 ease-out flex flex-col max-h-[90vh]">
+
+                <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+                  <div className="flex items-center">
+                    <span className="pr-1 text-[#8d77ba]"><Database /></span>
+                    <span className="text-lg font-semibold text-gray-900 pr-3"> Schema Details:</span>
+                    <span className="text-md">{currentSchema.schema}</span>
+                  </div>
+                  <button
+                    onClick={() => setTableDataPopup(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto flex-1 px-7">
+                  <table className="min-w-full text-sm text-left border border-gray-200 rounded-lg">
+                    <thead className="bg-[#262B46] text-white uppercase text-xs sticky top-0 z-20">
+                      <tr>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Table name</th>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Description</th>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Database</th>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Schema</th>
+                        <th className="px-4 py-3 font-medium bg-[#262B46]">Owner</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableData[tableId].map((table) => {
+                        return (
+                          <tr className="border-b hover:bg-gray-50">
+                            <td className="px-4 py-2">{table.table_name}</td>
+                            <td className="px-4 py-2">{table.description}</td>
+                            <td className="px-4 py-2">{table.database}</td>
+                            <td className="px-4 py-2">{table.schema}</td>
+                            <td className="px-4 py-2">{table.owner}</td>
+                          </tr>
+                        )
+                      }
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="p-4 border-t border-gray-200 flex justify-end bg-white sticky bottom-0 z-10">
+                  <button
+                    onClick={() => setTableDataPopup(false)}
+                    className="px-4 py-2 text-white bg-[#8d77ba] rounded-md hover:bg-[#7a66a8] transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </>
-      )}
+      }
     </div>
   );
 }

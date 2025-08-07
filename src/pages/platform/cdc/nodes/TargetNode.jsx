@@ -40,6 +40,7 @@ export function TargetNode({ id, data, selected }) {
   const [bulkList, setBulkList] = useState([]);
   const [selectedConnectionObj, setSelectedConnectionObj] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [nodeData, setNodeData] = useState(() => ({
     connection: "",
@@ -54,12 +55,12 @@ export function TargetNode({ id, data, selected }) {
   const { data: schemaCount } = useSchemaCount(selectedConnection);
   const { data: schemas, isLoading: isLoadingSchemas } =
     useSchemas(selectedConnection);
-  const { data: tables } = useTables(
+  const { data: tables, refetch: refetchTables } = useTables(
     selectedConnection,
     selectedSchema,
     selectedMode
   );
-  const { data: bulkTables=[] } = useBulkTables(
+  const { data: bulkTables=[], refetch: refetchBulkTables } = useBulkTables(
     sourceConnection,
     selectedConnection,
     sourceSchema
@@ -254,7 +255,6 @@ export function TargetNode({ id, data, selected }) {
     );
   }, [schemas, schemaSearch]);
 
-  // Filtered tables for subset dropdown
   const filteredSubsetTables = useMemo(() => {
     if (!filteredTables) return [];
     if (!subsetTableSearch) return filteredTables;
@@ -264,6 +264,42 @@ export function TargetNode({ id, data, selected }) {
         .includes(subsetTableSearch.toLowerCase())
     );
   }, [filteredTables, subsetTableSearch]);
+
+  useEffect(() => {
+    const handleTableCreated = (event) => {
+      const { tableName, sourceTable, connectionName, schema, connectionId, pipelineId } = event.detail;
+
+      if (connectionName && selectedConnection === connectionName) {
+        if (schema && (selectedSchema === schema || !selectedSchema)) {
+          if (!selectedSchema) {
+            setSelectedSchema(schema);
+          }
+
+          if (selectedMode === "subset" && sourceTable) {
+            setTimeout(() => {
+              completeMapping(
+                ID,
+                firstSource?.id,
+                tableName,
+                isPipelineNode
+              );
+            }, 500);
+          }
+        }
+      }
+
+      if (refetchTables) refetchTables();
+      if (refetchBulkTables) refetchBulkTables();
+      setSubsetTableSearch("");
+      setSearchTerm("");
+    };
+
+    window.addEventListener('tableCreated', handleTableCreated);
+
+    return () => {
+      window.removeEventListener('tableCreated', handleTableCreated);
+    };
+  }, [refetchTables, refetchBulkTables, selectedConnection, selectedSchema, selectedMode, ID, firstSource, isPipelineNode, completeMapping]);
 
   return (
     <div

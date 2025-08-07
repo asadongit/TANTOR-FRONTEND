@@ -4,6 +4,8 @@ import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../components/Breadcrumb.jsx';
 import AddCatalogueModal from './AddCatalogueModal.jsx';
 import toast, { Toaster } from 'react-hot-toast';
+import { useAuth } from '../../../context/AuthContext.jsx';
+import EditDetailModal from './EditDetailModal.jsx';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfirming }) => {
     if (!isOpen) return null;
@@ -48,9 +50,9 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfi
 
 const metricConfig = [
     { title: 'Domain', apiKey: 'Domain', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
-    { title: 'Term', apiKey: 'Term', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
     { title: 'Category', apiKey: 'Category', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
     { title: 'Sub-category', apiKey: 'Sub Category', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
+    { title: 'Term', apiKey: 'Term', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
     { title: 'Tag', apiKey: 'Tag', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
     { title: 'Sub-tag', apiKey: 'Sub Tag', icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba]/25", iconcolor: "text-[#8d77ba]" },
 ];
@@ -91,12 +93,13 @@ const PaginationSkeleton = () => (
 
 
 const DetailsModal = ({ isOpen, onClose, title, data }) => {
+
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredData = React.useMemo(() => {
         if (!data) return [];
         return data.filter(item =>
-            item.toLowerCase().includes(searchTerm.toLowerCase())
+            item?.toLowerCase().includes(searchTerm?.toLowerCase())
         );
     }, [data, searchTerm]);
 
@@ -169,8 +172,6 @@ const DetailsModal = ({ isOpen, onClose, title, data }) => {
                             </ul>
                         ) : (
                             <div className="text-center py-10 text-gray-500">
-                                <FileQuestion className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                                <h4 className="font-semibold">No Results Found</h4>
                                 <p className="text-sm">
                                     {searchTerm
                                         ? `Your search for "${searchTerm}" did not return any results.`
@@ -196,7 +197,6 @@ const DetailsModal = ({ isOpen, onClose, title, data }) => {
     );
 };
 
-
 const BusinessCatalogue = () => {
 
     const [metricCounts, setMetricCounts] = useState(null);
@@ -209,7 +209,14 @@ const BusinessCatalogue = () => {
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [detailsModal, setDetailsModal] = useState({ isOpen: false, title: '', data: [] });
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [itemToEdit, setItemToEdit] = useState(null);
     const rowsPerPage = 10;
+
+    const { token, decodedToken } = useAuth();
+    const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
+        ['data steward', 'data owner'].includes(role?.toLowerCase())
+    );
 
 
     const fetchCatalogueData = async () => {
@@ -225,6 +232,7 @@ const BusinessCatalogue = () => {
 
 
             setMetricCounts(data.counts);
+
 
 
             const formattedTableData = Object.entries(data.details).map(([id, item]) => ({
@@ -275,13 +283,22 @@ const BusinessCatalogue = () => {
     };
 
     const getStatusBadge = (status) => {
-        const styles = {
-            Active: "px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full",
-            Completed: "px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full",
-            Inactive: "px-2 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full",
-            Pending: "px-2 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full",
-        };
-        return <span className={styles[status] || "px-2 py-1 text-xs font-medium text-gray-800 bg-gray-100 rounded-full"}>{status}</span>;
+        const lowerStatus = status?.toLowerCase();
+        let styles = "px-2 py-1 text-xs font-medium rounded-full ";
+        switch (lowerStatus) {
+            case 'active':
+            case 'completed':
+                styles += "text-green-800 bg-green-100";
+                break;
+            case 'inactive':
+            case 'pending':
+                styles += "text-yellow-800 bg-yellow-100";
+                break;
+            default:
+                styles += "text-gray-800 bg-gray-100";
+                break;
+        }
+        return <span className={styles}>{status}</span>;
     };
 
     const handleOpenDetailsModal = (title, data) => {
@@ -291,14 +308,24 @@ const BusinessCatalogue = () => {
     const handleCloseDetailsModal = () => {
         setDetailsModal({ isOpen: false, title: '', data: [] });
     };
+    
+    const handleOpenEditModal = (item) => {
+        setItemToEdit(item);
+        setIsEditModalOpen(true);
+    };
+
+    const handleCloseEditModal = () => {
+        setIsEditModalOpen(false);
+        setItemToEdit(null);
+    };
 
 
     const filteredAndSortedData = React.useMemo(() => {
         let filtered = tableData.filter(item =>
             Object.values(item).some(val =>
                 Array.isArray(val)
-                    ? val.join(' ').toLowerCase().includes(searchTerm.toLowerCase())
-                    : val.toString().toLowerCase().includes(searchTerm.toLowerCase())
+                    ? val.map(obj => obj.name || '').join(' ').toLowerCase().includes(searchTerm.toLowerCase())
+                    : String(val).toLowerCase().includes(searchTerm.toLowerCase())
             )
         );
 
@@ -395,6 +422,20 @@ const BusinessCatalogue = () => {
         }
     };
 
+    const tableHeaders = [
+        'id', 'domain', 'category', 'subcategory', 'term', 'tag', 'subtag',
+        'description', 'createdBy', 'createdDate', 'updatedDate', 'status'
+    ];
+    if (isUserAuthorized) {
+        tableHeaders.push('Action');
+    }
+
+    const handleAddComplete = () => {
+        setIsAddModalOpen(false);
+        toast.success('Catalogue added successfully!');
+        fetchCatalogueData();
+        setSearchTerm('');
+    };
 
 
     return (
@@ -412,10 +453,12 @@ const BusinessCatalogue = () => {
                     <button onClick={fetchCatalogueData} disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">
                         <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
                     </button>
-                    <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a67a0] transition-colors shadow-sm">
-                        <Plus className="h-5 w-5" />
-                        <span>Add</span>
-                    </button>
+                    {isUserAuthorized && (
+                        <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a67a0] transition-colors shadow-sm">
+                            <Plus className="h-5 w-5" />
+                            <span>Add</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -444,9 +487,9 @@ const BusinessCatalogue = () => {
                     <table className="w-full text-sm">
                         <thead className="bg-gray-800 text-white">
                             <tr>
-                                {['id', 'domain', 'category', 'subcategory', 'term', 'description', 'tag', 'createdBy', 'createdDate', 'updatedDate', 'status', 'Action'].map(key => (
-                                    <th key={key} className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700" onClick={() => handleSort(key)}>
-                                        <span className="inline-flex items-center capitalize">{key.replace(/([A-Z])/g, ' $1')} {getSortIcon(key)}</span>
+                                {tableHeaders.map(key => (
+                                    <th key={key} className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700" onClick={() => key !== 'Action' && handleSort(key)}>
+                                        <span className="inline-flex items-center capitalize">{key.replace(/([A-Z])/g, ' $1')} {key !== 'Action' && getSortIcon(key)}</span>
                                     </th>
                                 ))}
                             </tr>
@@ -457,49 +500,60 @@ const BusinessCatalogue = () => {
                             ) : (
                                 currentItems.map((item, index) => (
                                     <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
-                                        <td className="p-3 text-gray-700 font-medium">{item.id}</td>
+                                        <td className="p-3 text-gray-700 font-medium">{indexOfFirstItem + index + 1}</td>
                                         <td className="p-3 text-gray-600">{item.domain}</td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Categories', item.category)} className="text-blue-600 underline">{item.category.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-categories', item.subcategory)} className="text-blue-600 underline">{item.subcategory.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Terms', item.term)} className="text-blue-600 underline">{item.term.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Categories', item.category.map(c => c.name))} className="text-blue-600 underline">{item.category.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-categories', item.subcategory.map(sc => sc.name))} className="text-blue-600 underline">{item.subcategory.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Terms', item.term.map(t => t.name))} className="text-blue-600 underline">{item.term.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Tags', item.tag.map(tg => tg.name))} className="text-blue-600 underline">{item.tag.length}</button></td>
+                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-Tags', item.subtag.map(st => st.name))} className="text-blue-600 underline">{item.subtag.length}</button></td>
                                         <td className="p-3 text-gray-600 truncate max-w-xs" title={item.description}>{item.description}</td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Tags', item.tag)} className="text-blue-600 underline">{item.tag.length}</button></td>
                                         <td className="p-3 text-gray-600">{item.createdBy}</td>
                                         <td className="p-3 text-gray-600">{item.createdDate}</td>
                                         <td className="p-3 text-gray-600">{item.updatedDate}</td>
                                         <td className="p-3">{getStatusBadge(item.status)}</td>
-                                        <td className="px-6 p-4 text-center whitespace-nowrap">
-                                            <div className="relative">
-                                                <button
-                                                    onClick={() => setActiveMenu(activeMenu === index ? null : index)}
-                                                    className="p-1.5 rounded-full hover:bg-gray-100"
-                                                >
-                                                    <MoreHorizontal className="h-5 w-5" />
-                                                </button>
-                                                {activeMenu === index && (
-                                                    <>
-                                                        <div className="fixed inset-0 z-100" onClick={handleClickOutside} />
-                                                        <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                                                            <div className="flex items-center p-1 gap-1">
-                                                                <button
+                                        {isUserAuthorized && (
+                                            <td className="px-6 p-4 text-center whitespace-nowrap">
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={() => setActiveMenu(activeMenu === index ? null : index)}
+                                                        className="p-1.5 rounded-full hover:bg-gray-100"
+                                                    >
+                                                        <MoreHorizontal className="h-5 w-5" />
+                                                    </button>
+                                                    {activeMenu === index && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
+                                                            <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                                                <div className="flex items-center p-1 gap-1">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            handleOpenEditModal(item);
+                                                                            setActiveMenu(null);
+                                                                        }}
+                                                                        title="Edit Domain Details"
+                                                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            handleOpenDeleteModal(item);
+                                                                            setActiveMenu(null);
+                                                                        }}
+                                                                        title="Delete Domain"
+                                                                        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </button>
 
-                                                                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                                                                >
-                                                                    <Pencil className="h-4 w-4" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleOpenDeleteModal(item)}
-                                                                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </button>
-
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))
                             )}
@@ -528,8 +582,18 @@ const BusinessCatalogue = () => {
 
             </div>
 
-            <AddCatalogueModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
+            <AddCatalogueModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                onAddComplete={handleAddComplete}
+            />
             <DetailsModal isOpen={detailsModal.isOpen} onClose={handleCloseDetailsModal} title={detailsModal.title} data={detailsModal.data} />
+            <EditDetailModal
+                isOpen={isEditModalOpen}
+                onClose={handleCloseEditModal}
+                data={itemToEdit}
+                onEditComplete={fetchCatalogueData}
+            />
             <ConfirmationModal
                 isOpen={isDeleteModalOpen}
                 onClose={handleCloseDeleteModal}

@@ -5,12 +5,15 @@ import { Search, RefreshCcw, ChevronLeft, ChevronRight, Pencil, Table, X, Loader
 import { secureQuery, fetchConnectionDetails } from './Components/function.js';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import Edit from "./Edit.jsx";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 function Tables() {
+  const { token, decodedToken } = useAuth();
+  const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
+    ['data steward', 'data owner'].includes(role?.toLowerCase())
+  );
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
-  const { token } = useAuth();
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [selectedTable, setSelectedTable] = useState(null);
   const [allTablesRawData, setAllTablesRawData] = useState([]);
@@ -22,6 +25,8 @@ function Tables() {
   const [itemsPerPage] = useState(10);
   const [fetchingEditId, setFetchingEditId] = useState(null);
   const navigate = useNavigate();
+  const { state: navigationState } = useLocation();
+  console.log("states in tables are ### ",navigationState)
 
   // --- NEW STATE FOR COLUMN DETAILS MODAL ---
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
@@ -37,16 +42,11 @@ function Tables() {
         tableMap.set(tableKey, {
           id: `#${item.conn_metadata_id.substring(0, 8)}`,
           name: item.table_name,
-          description: `Table description`, // You might want a real description from your API
+          description: item.table_description || 'Table description',
           schema: item.table_schema,
           database: item.connection_type,
           connection_name: item.connection_name,
           owner: item.created_by || 'System',
-          project: item.project || 'default',
-          is_migrated: item.is_migrated,
-          is_purged: item.is_purged,
-          is_virtualization: item.is_virtualization,
-          cdc_enabled: item.cdc_enabled,
           column: 0,
           CreatedDate: new Date(item.created_at).toLocaleDateString(),
           lastUpdated: new Date(item.updated_at).toLocaleDateString(),
@@ -86,9 +86,8 @@ function Tables() {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
       const allTablesData = await fetchConnectionDetails(policyIds, token);
+      // --- MODIFICATION: Set raw data only. Processing is moved to useEffect.
       setAllTablesRawData(allTablesData);
-      const processedData = processTableData(allTablesData);
-      setTableData(processedData);
       return { success: true };
     } catch (error) {
       console.error('Error loading table data:', error);
@@ -97,6 +96,37 @@ function Tables() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [token]);
+
+useEffect(() => {
+    if (allTablesRawData.length > 0) {
+      let dataToProcess = allTablesRawData;
+      
+      // If navigated from Schema page, filter tables by schema name
+      if (
+        navigationState?.type === 'schema' &&
+        navigationState?.schemaName &&
+        navigationState?.connectionName
+      ) {
+        dataToProcess = allTablesRawData.filter(item =>
+          item.table_schema === navigationState.schemaName &&
+          item.connection_name === navigationState.connectionName
+        );
+      }
+      // NEW: If navigated from Database page, filter by connection name
+      else if (navigationState?.type === 'database' && navigationState?.connectionName) {
+        dataToProcess = allTablesRawData.filter(item => 
+          item.connection_name === navigationState.connectionName
+        );
+      }
+      
+      const processedData = processTableData(dataToProcess);
+      setTableData(processedData);
+    }
+  }, [allTablesRawData, navigationState]);
 
   useEffect(() => {
     loadData();
@@ -170,19 +200,22 @@ function Tables() {
     }
   };
 
-  const handleNavigate = (table) => {
+  const handleNavigateToTableDetails = (table) => {
     const columns = getTableColumns(table);
     navigate(`/datagovernance/data-catalogue/table/${table.name}`, {
       state: { tableData: table, columns: columns }
     });
   };
 
-  // --- NEW HANDLER TO OPEN COLUMN MODAL ---
   const handleColumnClick = (table) => {
-    const columns = getTableColumns(table);
-    setSelectedTable(table); // Store the table whose columns are being viewed
-    setCurrentColumns(columns);
-    setIsColumnModalOpen(true);
+    navigate('/datagovernance/data-catalogue/column', {
+      state: {
+        type: 'table',
+        tableName: table.name,
+        schemaName: table.schema,
+        connectionName: table.connection_name,
+      }
+    });
   };
 
   return (
@@ -245,17 +278,19 @@ function Tables() {
                   <th className="text-left px-4 py-1">Schema</th>
                   <th className="text-left px-4 py-1">Owner</th>
                   <th className="text-left px-4 py-1">Columns</th>
-                  <th className="text-left px-4 py-1">Tags</th>
+                  {/* <th className="text-left px-4 py-1">Tags</th> */}
                   <th className="text-left px-4 py-1">Created Date</th>
                   <th className="text-left px-4 py-1">Last Updated</th>
-                  <th className="text-left px-4 whitespace-nowrap py-1">Action</th>
+                  {isUserAuthorized && (
+                    <th className="text-left px-4 whitespace-nowrap py-1">Action</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="text-gray-700">
                 {currentTableData.length > 0 ? currentTableData.map((table, index) => (
                   <tr key={table.id} className="border-b hover:bg-gray-50 text-sm">
                     <td className="p-4">{indexOfFirstItem + index + 1}</td>
-                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleNavigate(table)}>
+                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleNavigateToTableDetails(table)}>
                       {table.name}
                     </td>
                     <td className="p-4 max-w-xs truncate tooltip">{table.name}</td>
@@ -264,21 +299,23 @@ function Tables() {
                     <td className="p-4">{table.schema}</td>
                     <td className="p-4">{table.owner}</td>
                     {/* --- MODIFIED: Added onClick handler to the columns cell --- */}
-                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleColumnClick(table)}>
+                     <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleColumnClick(table)}>
                       {table.column}
                     </td>
-                    <td className="p-4">critical</td>
+                    {/* <td className="p-4">critical</td> */}
                     <td className="p-4">{table.CreatedDate}</td>
                     <td className="p-4">{table.lastUpdated}</td>
-                    <td className="px-6 p-4 text-center whitespace-nowrap">
-                      <button
-                        className="p-1.5 rounded-full hover:bg-gray-100 cursor-pointer disabled:cursor-wait"
-                        onClick={() => handleShowEditPage(table)}
-                        disabled={fetchingEditId === table.id}
-                      >
-                        {fetchingEditId === table.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
-                      </button>
-                    </td>
+                    {isUserAuthorized && (
+                      <td className="px-6 p-4 text-center whitespace-nowrap">
+                        <button
+                          className="p-1.5 rounded-full hover:bg-gray-100 cursor-pointer disabled:cursor-wait"
+                          onClick={() => handleShowEditPage(table)}
+                          disabled={fetchingEditId === table.id}
+                        >
+                          {fetchingEditId === table.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 )) : (
                   <tr>

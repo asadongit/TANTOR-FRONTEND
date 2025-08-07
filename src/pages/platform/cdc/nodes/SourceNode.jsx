@@ -87,6 +87,7 @@ export function SourceNode({ id, data, selected }) {
         op_types: nodeData?.op_types ?? {},
         table_op_types: nodeData?.table_op_types ?? {},
         source_conn_id: nodeData?.source_conn_id ?? null,
+        source_conn_type: nodeData?.source_conn_type ?? null, // Add connection type
         define: data?.define?.[0] ?? null,
       };
 
@@ -130,9 +131,11 @@ export function SourceNode({ id, data, selected }) {
     setSelectedSchema("");
     setSelectedItems([]);
     setSelectedMode("");
+
     setNodeData((prevData) => ({
       ...prevData,
       "source_conn_id": selectedConnection.connection_id,
+      "source_conn_type": selectedConnection.connection_type,
     }));
   };
   const handleSelectSchema = (schemaName) => {
