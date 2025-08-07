@@ -3,6 +3,7 @@ import { Trash2, Plus, ChevronDown, LayoutDashboard } from "lucide-react";
 import { useMonitoringContext } from "./context/monitoringcontext";
 
 import toast from "react-hot-toast";
+import MetricViewer from "./components/MetricViewer";
 
 function MonitoringDashboard() {
   const {
@@ -19,6 +20,7 @@ function MonitoringDashboard() {
   const [pods, setPods] = useState([]);
   const [containers, setContainers] = useState([]);
   const [openDashboard, setOpenDashboard] = useState(false);
+  const [openMetricViewer, setOpenMetricViewer] = useState(false);
   const [dashboardMenuOpen, setDashboardMenuOpen] = useState(false);
   const [currentPodUptime, setCurrentPodUptime] = useState("");
 
@@ -77,6 +79,7 @@ function MonitoringDashboard() {
     }));
     setContainers([]);
     setOpenDashboard(false);
+    setOpenMetricViewer(false);
   };
 
   const handleDashboardSelect = (dashboard) => {
@@ -88,6 +91,7 @@ function MonitoringDashboard() {
     }));
     setDashboardMenuOpen(false);
     setOpenDashboard(false);
+    setOpenMetricViewer(false);
   };
 
   return (
@@ -145,13 +149,14 @@ function MonitoringDashboard() {
               <select
                 className="w-full bg-gray-50 border border-gray-300 text-gray-700 rounded-md py-1.5 pl-3 pr-8 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-purple-500 appearance-none"
                 value={monitoringConfig.pod}
-                onChange={(e) =>
+                onChange={(e) => {
                   setMonitoringConfig((prev) => ({
                     ...prev,
                     pod: e.target.value,
                     container: "",
-                  }))
-                }
+                  }));
+                  setOpenMetricViewer(false);
+                }}
                 disabled={!selectedDashboard}
               >
                 <option value="">Select Pod</option>
@@ -173,12 +178,13 @@ function MonitoringDashboard() {
               <select
                 className="w-full bg-gray-50 border border-gray-300 text-gray-700 rounded-md py-1.5 pl-3 pr-8 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-purple-500 appearance-none"
                 value={monitoringConfig.container}
-                onChange={(e) =>
+                onChange={(e) =>{
                   setMonitoringConfig((prev) => ({
                     ...prev,
                     container: e.target.value,
-                  }))
-                }
+                  }));
+                  setOpenMetricViewer(false);
+                }}
               >
                 <option value="">Select Container</option>
                 {containers.map((c) => (
@@ -193,6 +199,10 @@ function MonitoringDashboard() {
             </div>
           )}
 
+          <div className="text-sm text-gray-600 hover:bg-gray-100 px-4 py-2 font-medium border border-gray-300 rounded-md disabled:cursor-not-allowed disabled:opacity-50">
+              <button className="font-medium" onClick={() => {setOpenMetricViewer(prev => !prev); setOpenDashboard(false);}}>{openMetricViewer ? "Close Metrics" : "Show Metrics" }</button>
+            </div>
+
           {currentPodUptime && (
             <div className="text-sm text-gray-600">
               Pod uptime:{" "}
@@ -204,7 +214,10 @@ function MonitoringDashboard() {
             <div className="w-full">
               <button
                 className="w-full flex items-center justify-between bg-gray-50 hover:bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800 border border-gray-300 rounded-md disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => setOpenDashboard(!openDashboard)}
+                onClick={() => {
+                  setOpenDashboard(!openDashboard);
+                  setOpenMetricViewer(false);
+                }}
                 disabled={!monitoringConfig.container}
               >
                 <div className="flex items-center gap-2">
@@ -281,6 +294,10 @@ function MonitoringDashboard() {
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full overflow-auto">
             {dashboards.find((d) => d.id === selectedDashboard?.id)?.component}
           </div>
+        )}
+
+        {openMetricViewer && monitoringConfig.pod && monitoringConfig.container && (
+          <MetricViewer />
         )}
       </div>
     </div>

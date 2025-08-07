@@ -124,8 +124,11 @@ const fetchLogs = async () => {
               ))}
             </select>
             <button
-              onClick={refreshLogs}
-              className="p-2 text-gray-600 hover:text-indigo-600 transition-colors"
+              onClick={() => refreshLogs()}
+              disabled={isLoading}
+              className={`flex items-center gap-1 px-3 py-2 text-sm border border-gray-300 rounded-md text-gray-600 hover:text-indigo-600 hover:border-indigo-600 transition-all ${
+              isLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
               title="Refresh logs"
             >
               <RefreshCw className="h-5 w-5" />
