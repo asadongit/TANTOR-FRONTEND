@@ -502,7 +502,10 @@ export function TransformationProvider({ children }) {
             fileColumns
               .filter(col => col.name && col.name.trim() !== "")
               .forEach(col => {
-                columnMapping[col.name] = col.datatype;
+                columnMapping[col.name] =
+                  col.datatype === 'custom'
+                    ? (col.customDatatype || 'custom')
+                    : col.datatype;
               });
 
             result.source[sourceKey] = {
