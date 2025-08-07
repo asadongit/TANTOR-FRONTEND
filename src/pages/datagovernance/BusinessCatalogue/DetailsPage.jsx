@@ -82,7 +82,7 @@ const DetailsPage = () => {
         const policyIds = secureQueryResponse.matched_policy_ids || [];
 
         if (policyIds.length === 0) {
-          toast.error("No policy is linked to this user")
+          // toast.error("No policy is linked to this user")
           return;
         }
 

@@ -628,7 +628,7 @@ function TableDetailsPage() {
                                                 <table className="min-w-full">
                                                     <thead>
                                                         <tr className="bg-[#29304a] text-white">
-                                                            {['ID', 'Schema', 'Domain', 'Category', 'Sub-category', 'Tag', 'Sub-tag'].map(header => (
+                                                            {['ID', 'Table', 'Domain', 'Category', 'Sub-category', 'Tag', 'Sub-tag'].map(header => (
                                                                 <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">{header}</th>
                                                             ))}
                                                         </tr>
