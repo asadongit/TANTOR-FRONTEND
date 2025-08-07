@@ -10,7 +10,10 @@ import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 
 function Columns() {
-    const { token } = useAuth();
+    const { token, decodedToken } = useAuth();
+    const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
+        ['data steward', 'data owner'].includes(role?.toLowerCase())
+    );
     const navigate = useNavigate(); // Initialize useNavigate
 
     const [loading, setLoading] = useState(true);
@@ -95,7 +98,7 @@ function Columns() {
         }, 3000);
     };
 
-   const [fetchingEditId, setFetchingEditId] = useState(null);
+    const [fetchingEditId, setFetchingEditId] = useState(null);
     const handleShowEditPage = async (column) => {
         setFetchingEditId(column.conn_metadata_id);
         try {
@@ -153,7 +156,7 @@ function Columns() {
             setFetchingEditId(null);
         }
     };
-    
+
 
     const handlPageSize = (e) => {
         setPageSize(parseInt(e.target.value, 10));
@@ -200,17 +203,17 @@ function Columns() {
     }, [showEditPage]);
 
     const handleNavigate = (column) => {
-    const selectedColumnRawData = allTablesRawData.find(
-        item => item.conn_metadata_id === column.conn_metadata_id && item.column_name === column.name
-    );
-    if (selectedColumnRawData) {
-        navigate(`/datagovernance/data-catalogue/column/${column.name}`, {
-            state: { columnDetails: selectedColumnRawData }
-        });
-    } else {
-        console.error("Raw data for the selected column could not be found.");
-    }
-};
+        const selectedColumnRawData = allTablesRawData.find(
+            item => item.conn_metadata_id === column.conn_metadata_id && item.column_name === column.name
+        );
+        if (selectedColumnRawData) {
+            navigate(`/datagovernance/data-catalogue/column/${column.name}`, {
+                state: { columnDetails: selectedColumnRawData }
+            });
+        } else {
+            console.error("Raw data for the selected column could not be found.");
+        }
+    };
 
     return (
         <div className="p-5">
@@ -269,7 +272,9 @@ function Columns() {
                                 <th className="text-left p-4">Name</th>
                                 <th className="text-left p-4">Diagram</th>
                                 <th className="text-left p-4">Joins</th>
-                                <th className="text-left p-4">Action</th>
+                                {isUserAuthorized && (
+                                    <th className="text-left p-4">Action</th>
+                                )}
                             </tr>
                         </thead>
                         <tbody>
@@ -284,11 +289,13 @@ function Columns() {
                                     </td>
                                     <td className="p-4">{column.diagram}</td>
                                     <td className="p-4">{column.joins}</td>
-                                    <td
-                                        onClick={() => { handleShowEditPage(column) }}
-                                        className="p-4 cursor-pointer">
-                                        <Pencil className="w-4 h-4" />
-                                    </td>
+                                    {isUserAuthorized && (
+                                        <td
+                                            onClick={() => { handleShowEditPage(column) }}
+                                            className="p-4 cursor-pointer">
+                                            <Pencil className="w-4 h-4" />
+                                        </td>
+                                    )}
                                 </tr>
                             )) : (
                                 <tr>

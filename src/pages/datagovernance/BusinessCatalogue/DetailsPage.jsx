@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ArrowUpRight, Lightbulb, FilePenLine } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Breadcrumb from '../../../components/Breadcrumb';
+import { secureQuery } from '../DataCatalogue/Components/function';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../../../context/AuthContext';
+
 
 const DetailsPage = () => {
   const location = useLocation();
   const item = location.state?.glossaryItem;
   const navigate = useNavigate();
+  const { token, decodedToken } = useAuth();
 
 
   console.log("glossary item iss @@@ ", item)
@@ -73,7 +78,15 @@ const DetailsPage = () => {
       setTechnicalError(null);
       setCurrentPage(1);
       try {
-        const payload = { policy_ids: [item.id], asset: [{ asset_id: item.id, domain_id: item.DomainId, asset_type: item.AssetType }] };
+        const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+        const policyIds = secureQueryResponse.matched_policy_ids || [];
+
+        if (policyIds.length === 0) {
+          toast.error("No policy is linked to this user")
+          return;
+        }
+
+        const payload = { policy_ids: policyIds, asset: [{ asset_id: item.id, domain_id: item.DomainId, asset_type: item.AssetType }] };
         const response = await fetch(`${window._env_?.VITE_FAST_API}/business_glossary/overview/technical`, {
           method: 'POST',
           headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
@@ -121,8 +134,8 @@ const DetailsPage = () => {
       AssetType: detailItem.asset_type,
       DomainId: detailItem.domain_id,
       Owner: detailItem.owner,
-      CreatedDate:detailItem.created_date,
-      UpdatedDate:detailItem.updated_date
+      CreatedDate: detailItem.created_date,
+      UpdatedDate: detailItem.updated_date
     };
 
     const urlFriendlyName = detailItem.asset_type?.toLowerCase();
@@ -235,7 +248,7 @@ const DetailsPage = () => {
                         <table className="w-full text-left">
                           <thead className="bg-[#29304a] text-white">
                             <tr>
-                              <th className="p-3 font-medium">S.No.</th>
+                              <th className="p-3 font-medium">Id</th>
                               <th className="p-3 font-medium">Connection</th>
                               <th className="p-3 font-medium">Schema</th>
                               <th className="p-3 font-medium">Table</th>
@@ -246,9 +259,9 @@ const DetailsPage = () => {
                             {currentTechnicalItems.length > 0 ? currentTechnicalItems.map((techItem, index) => (
                               <tr key={techItem.id} className="border-b hover:bg-gray-50">
                                 <td className="p-3 text-gray-600">{indexOfFirstItem + index + 1}</td>
-                                <td className="p-3"><a href="#" className="text-blue-600 hover:underline">{techItem.connection}</a></td>
-                                <td className="p-3"><a href="#" className="text-blue-600 hover:underline">{techItem.schema}</a></td>
-                                <td className="p-3"><a href="#" className="text-blue-600 hover:underline">{techItem.table}</a></td>
+                                <td className="p-3 text-gray-800 ">{techItem.connection}</td>
+                                <td className="p-3 text-gray-800 ">{techItem.schema}</td>
+                                <td className="p-3 text-gray-800 ">{techItem.table}</td>
                                 <td className="p-3 text-gray-800">{techItem.column}</td>
                               </tr>
                             )) : (
