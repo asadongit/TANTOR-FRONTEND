@@ -6,7 +6,7 @@ import { useAuth } from "../../../context/AuthContext.jsx";
 import { ChevronRight, ChevronLeft, Pencil, RefreshCcw, Search } from 'lucide-react';
 import { flushSync } from 'react-dom';
 import Edit from "./Edit.jsx";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate, useLocation } from "react-router-dom";
 
 
 function Columns() {
@@ -14,7 +14,9 @@ function Columns() {
     const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
         ['data steward', 'data owner'].includes(role?.toLowerCase())
     );
-    const navigate = useNavigate(); // Initialize useNavigate
+    const navigate = useNavigate();
+    const { state: navigationState } = useLocation();
+    console.log("states in columns are ### ", navigationState)
 
     const [loading, setLoading] = useState(true);
     const [columnData, setColumnData] = useState([]);
@@ -23,18 +25,14 @@ function Columns() {
     const [refresh, setRefresh] = useState(false);
     const [showEditPage, setShowEditPage] = useState(false);
     const [editColumnDetails, setEditColumnDetails] = useState({});
-
-    // State for the search term
     const [searchTerm, setSearchTerm] = useState('');
-
     const [toast, setToast] = useState({ show: false, message: '', type: '' });
     const [allTablesRawData, setAllTablesRawData] = useState([]);
 
     const processColumnData = (data) => {
         return data.map(item => {
-
             return {
-                conn_metadata_id: item.conn_metadata_id, // Keep the full, unique ID
+                conn_metadata_id: item.conn_metadata_id,
                 id: `#${item.conn_metadata_id.substring(0, 4)}`,
                 name: item.column_name || 'Unnamed',
                 diagram: "Diagram_1",
@@ -42,8 +40,6 @@ function Columns() {
             };
         });
     };
-
-    const [sendingData, setSendingData] = useState({})
 
     const loadData = async (forceResfresh = false) => {
         if (columnData.length > 0 && !forceResfresh) {
@@ -58,10 +54,7 @@ function Columns() {
             const policyIds = secureQueryResponse.matched_policy_ids || [];
 
             const allColumnsData = await fetchConnectionDetails(policyIds, token);
-            setAllTablesRawData(allColumnsData)
-            setSendingData(allColumnsData)
-            const processedData = processColumnData(allColumnsData);
-            setColumnData(processedData);
+            setAllTablesRawData(allColumnsData);
             return { success: true };
         } catch (error) {
             console.error('Error loading column data:', error);
@@ -75,7 +68,46 @@ function Columns() {
         loadData();
     }, [token]);
 
-    // Refresh handler with toast
+useEffect(() => {
+    if (allTablesRawData.length > 0) {
+        let dataToProcess = allTablesRawData;
+
+        // If state is from a TABLE navigation
+        if (
+            navigationState?.type === 'table' &&
+            navigationState?.tableName &&
+            navigationState?.schemaName &&
+            navigationState?.connectionName
+        ) {
+            dataToProcess = allTablesRawData.filter(item =>
+                item.table_name === navigationState.tableName &&
+                item.table_schema === navigationState.schemaName &&
+                item.connection_name === navigationState.connectionName
+            );
+        } 
+        // If state is from a SCHEMA navigation
+        else if (
+            navigationState?.type === 'schema' &&
+            navigationState?.schemaName &&
+            navigationState?.connectionName
+        ) {
+            dataToProcess = allTablesRawData.filter(item =>
+                item.table_schema === navigationState.schemaName &&
+                item.connection_name === navigationState.connectionName
+            );
+        }
+        // NEW: If state is from a DATABASE navigation
+        else if (navigationState?.type === 'database' && navigationState?.connectionName) {
+            dataToProcess = allTablesRawData.filter(item => 
+                item.connection_name === navigationState.connectionName
+            );
+        }
+
+        const processedData = processColumnData(dataToProcess);
+        setColumnData(processedData);
+    }
+}, [allTablesRawData, navigationState]);
+
     const handleRefresh = async () => {
         setColumnData([])
         const result = await loadData(true);
@@ -163,22 +195,18 @@ function Columns() {
         setCurrentPage(1); // Reset to first page when page size changes
     }
 
-    // Handler for search input changes
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
         setCurrentPage(1); // Reset to the first page on a new search
     };
 
-    // Filter column data based on the search term
     const filteredItems = columnData.filter(column =>
         column.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    //Pagination Info
     const itemsPerPage = pageSize;
     const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
 
-    //calculate pagination
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem)
@@ -220,8 +248,8 @@ function Columns() {
             {/* Toast notification */}
             {toast.show && (
                 <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
-                    'bg-red-100 text-red-800 border-l-4 border-red-500'
-                    }`}>
+                        'bg-red-100 text-red-800 border-l-4 border-red-500'
+                        }`}>
                     <Icon
                         icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'}
                         className="h-5 w-5"
@@ -309,41 +337,33 @@ function Columns() {
 
             {/* pagination details */}
             {currentItems.length > 0 && (
-                <div className="pt-3 flex justify-between items-center text-sm">
-                    <div className="text-gray-500">
-                        {currentPage} of {totalPages} results
+                <div className="pt-3 flex justify-between items-center text-sm text-gray-500">
+                    <div>
+                        Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredItems.length)} of {filteredItems.length} Entries
                     </div>
 
-                    <div className="flex gap-3 items-center">
-                        <span className="text-gray-500">Show per page</span>
-                        <select
-                            value={pageSize}
-                            onChange={handlPageSize}
-                            className="p-1 text-gray-500 cursor-pointer">
-                            <option value="10">10</option>
-                            <option value="20">20</option>
-                            <option value="30">30</option>
-                        </select>
-
-                        <div className="flex flex-row text-gray-500 p-1 border gap-x-3 bg-white">
-                            <button
-                                disabled={currentPage === 1}
-                                onClick={() => handlePageBackward(currentPage - 1)}
-                                className="disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-50"
-                            >
-                                <ChevronLeft
-                                    className="w-5 h-5"
-                                />
-                            </button>
-                            <button
-                                disabled={currentPage === totalPages}
-                                onClick={() => handlePageForward(currentPage + 1)}
-                                className="disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-50"
-                            ><ChevronRight className="w-5 h-5" /></button>
-                        </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            disabled={currentPage === 1}
+                            onClick={() => handlePageBackward(currentPage - 1)}
+                            className="p-1 rounded hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <span className="font-medium text-gray-600">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            disabled={currentPage === totalPages}
+                            onClick={() => handlePageForward(currentPage + 1)}
+                            className="p-1 rounded hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
             )}
+
 
             {/* Edit page */}
             {showEditPage && (

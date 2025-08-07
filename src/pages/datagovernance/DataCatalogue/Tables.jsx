@@ -5,7 +5,7 @@ import { Search, RefreshCcw, ChevronLeft, ChevronRight, Pencil, Table, X, Loader
 import { secureQuery, fetchConnectionDetails } from './Components/function.js';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import Edit from "./Edit.jsx";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 function Tables() {
   const { token, decodedToken } = useAuth();
@@ -25,6 +25,8 @@ function Tables() {
   const [itemsPerPage] = useState(10);
   const [fetchingEditId, setFetchingEditId] = useState(null);
   const navigate = useNavigate();
+  const { state: navigationState } = useLocation();
+  console.log("states in tables are ### ",navigationState)
 
   // --- NEW STATE FOR COLUMN DETAILS MODAL ---
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
@@ -84,9 +86,8 @@ function Tables() {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
       const allTablesData = await fetchConnectionDetails(policyIds, token);
+      // --- MODIFICATION: Set raw data only. Processing is moved to useEffect.
       setAllTablesRawData(allTablesData);
-      const processedData = processTableData(allTablesData);
-      setTableData(processedData);
       return { success: true };
     } catch (error) {
       console.error('Error loading table data:', error);
@@ -95,6 +96,37 @@ function Tables() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [token]);
+
+useEffect(() => {
+    if (allTablesRawData.length > 0) {
+      let dataToProcess = allTablesRawData;
+      
+      // If navigated from Schema page, filter tables by schema name
+      if (
+        navigationState?.type === 'schema' &&
+        navigationState?.schemaName &&
+        navigationState?.connectionName
+      ) {
+        dataToProcess = allTablesRawData.filter(item =>
+          item.table_schema === navigationState.schemaName &&
+          item.connection_name === navigationState.connectionName
+        );
+      }
+      // NEW: If navigated from Database page, filter by connection name
+      else if (navigationState?.type === 'database' && navigationState?.connectionName) {
+        dataToProcess = allTablesRawData.filter(item => 
+          item.connection_name === navigationState.connectionName
+        );
+      }
+      
+      const processedData = processTableData(dataToProcess);
+      setTableData(processedData);
+    }
+  }, [allTablesRawData, navigationState]);
 
   useEffect(() => {
     loadData();
@@ -168,19 +200,22 @@ function Tables() {
     }
   };
 
-  const handleNavigate = (table) => {
+  const handleNavigateToTableDetails = (table) => {
     const columns = getTableColumns(table);
     navigate(`/datagovernance/data-catalogue/table/${table.name}`, {
       state: { tableData: table, columns: columns }
     });
   };
 
-  // --- NEW HANDLER TO OPEN COLUMN MODAL ---
   const handleColumnClick = (table) => {
-    const columns = getTableColumns(table);
-    setSelectedTable(table); // Store the table whose columns are being viewed
-    setCurrentColumns(columns);
-    setIsColumnModalOpen(true);
+    navigate('/datagovernance/data-catalogue/column', {
+      state: {
+        type: 'table',
+        tableName: table.name,
+        schemaName: table.schema,
+        connectionName: table.connection_name,
+      }
+    });
   };
 
   return (
@@ -255,7 +290,7 @@ function Tables() {
                 {currentTableData.length > 0 ? currentTableData.map((table, index) => (
                   <tr key={table.id} className="border-b hover:bg-gray-50 text-sm">
                     <td className="p-4">{indexOfFirstItem + index + 1}</td>
-                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleNavigate(table)}>
+                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleNavigateToTableDetails(table)}>
                       {table.name}
                     </td>
                     <td className="p-4 max-w-xs truncate tooltip">{table.name}</td>
@@ -264,7 +299,7 @@ function Tables() {
                     <td className="p-4">{table.schema}</td>
                     <td className="p-4">{table.owner}</td>
                     {/* --- MODIFIED: Added onClick handler to the columns cell --- */}
-                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleColumnClick(table)}>
+                     <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleColumnClick(table)}>
                       {table.column}
                     </td>
                     {/* <td className="p-4">critical</td> */}
