@@ -1349,10 +1349,10 @@ export default function CDCJobView() {
                       }`}
                   /> */}
                 </button>
-                <span className="text-sm text-gray-500">Last updated:</span>
+                {/* <span className="text-sm text-gray-500">Last updated:</span>
                 <span className="text-sm font-medium">
                   {jobData.metrics.lastSyncTime}
-                </span>
+                </span> */}
               </div>
             </div>
           </div>
