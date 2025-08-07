@@ -32,6 +32,8 @@ import Details from '../pages/platform/Details';
 import EditCDC from '../pages/platform/cdc/components/Edit';
 import ViewCDC from '../pages/platform/cdc/components/viewCDC/View'
 
+import KafkaDasboard from '../pages/platform/cdc/KafkaDashboard';
+
 
 export function PlatformRoutes() {
   return (
@@ -65,6 +67,7 @@ export function PlatformRoutes() {
         <Route path="/details" element={<Details />}/>
         <Route path="/reporting/lineItems" element={<LineItemsPage />} />
         <Route path="/transformation" element={<Transformation />} />
+        <Route path="/kafka-dashboard" element={<KafkaDasboard />} />
       </Routes>
   );
 }

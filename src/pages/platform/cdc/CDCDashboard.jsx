@@ -70,11 +70,25 @@ const navigate = useNavigate();
     const encryptedUrl = encodeURIComponent(encrypt(url));
     navigate(`/details?${encryptedUrl}`);
   };
+  const handlekafkaClick = () => {
+    navigate("/kafka-dashboard");
+  };
+
+
   return (
     <div>
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">CDC</h1>
         <div>
+
+           <button
+            type="button"
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+            onClick={handlekafkaClick}
+          >
+            {/* <List className="h-5 w-5" /> */}
+            <h1 className="mb5">Kakfka Dashboard</h1>
+          </button>
           <button
             type="button"
             className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
