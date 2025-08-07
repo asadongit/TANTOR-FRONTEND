@@ -24,7 +24,7 @@ const DatabaseViewScreen = () => {
   const [expandedRows, setExpandedRows] = useState({});
 
   const [isEditing, setIsEditing] = useState(false);
-  const [summaryText, setSummaryText] = useState(`Schema description`);
+  const [summaryText, setSummaryText] = useState(`Database description`);
 
   const [activeTabBusiness, setActiveTabBusiness] = useState("composite-view");
 
@@ -202,7 +202,7 @@ const DatabaseViewScreen = () => {
                   <thead className="bg-[#29304a] text-white">
                     <tr>
                       <th className="text-left p-4">ID</th>
-                      <th className="text-left p-4">Schema</th>
+                      <th className="text-left p-4">Database</th>
                       <th className="text-left p-4">Description</th>
                     </tr>
                   </thead>
@@ -211,7 +211,7 @@ const DatabaseViewScreen = () => {
                       <tr key={idx} className="border-b">
                         <td className="p-4">{idx+1}</td>
                         <td className="p-4">{schema}</td>
-                        <td className="p-4">Schema Description</td>
+                        <td className="p-4">Description</td>
                       </tr>
                     )}
                   </tbody>

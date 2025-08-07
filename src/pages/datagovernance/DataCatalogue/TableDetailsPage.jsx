@@ -399,12 +399,6 @@ function TableDetailsPage() {
     const totalAccessPages = Math.ceil(accessData.length / itemsPerPage);
     const handleAccessPageChange = (page) => setAccessCurrentPage(page);
 
-    const indexOfLastBusinessItem = businessCurrentPage * itemsPerPage;
-    const indexOfFirstBusinessItem = indexOfLastBusinessItem - itemsPerPage;
-    const currentBusinessItems = businessData.composite.slice(indexOfFirstBusinessItem, indexOfLastBusinessItem);
-    const totalBusinessPages = Math.ceil(businessData.composite.length / itemsPerPage);
-    const handleBusinessPageChange = (page) => setBusinessCurrentPage(page);
-
     const indexOfLastSampleDataItem = sampleDataCurrentPage * itemsPerPage;
     const indexOfFirstSampleDataItem = indexOfLastSampleDataItem - itemsPerPage;
     const currentSampleDataItems = sampleData.slice(indexOfFirstSampleDataItem, indexOfLastSampleDataItem);
@@ -624,35 +618,36 @@ function TableDetailsPage() {
                                 {loadingBusinessData ? <div className="text-center p-10">Loading business data...</div>
                                     : businessView === 'Table Detail View' ? (
                                         <>
-                                            <div className="overflow-x-auto rounded-lg shadow">
-                                                <table className="min-w-full">
-                                                    <thead>
-                                                        <tr className="bg-[#29304a] text-white">
-                                                            {['ID', 'Table', 'Domain', 'Category', 'Sub-category', 'Tag', 'Sub-tag'].map(header => (
-                                                                <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">{header}</th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="bg-white divide-y divide-gray-200">
-                                                        {currentBusinessItems && currentBusinessItems.length > 0 ? (
-                                                            currentBusinessItems.map((row, index) => (
-                                                                <tr key={index} className="hover:bg-gray-50">
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.id}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.table}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.domain}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.category}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subCategory}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.tag}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subTag}</td>
+                                            {Object.values(businessData.schema).some(arr => arr.length > 0) ? (
+                                                <div className="overflow-x-auto rounded-lg shadow border">
+                                                    <table className="min-w-full">
+                                                        <tbody className="bg-white divide-y divide-gray-200">
+                                                            {Object.entries(businessData.schema).map(([type, values]) => (
+                                                                <tr key={type} className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4 w-1/3 text-sm font-medium text-gray-500">{formatTitle(type)}</td>
+                                                                    <td className="px-6 py-4 text-sm text-gray-900">
+                                                                        {(() => {
+                                                                            if (!values || values.length === 0) {
+                                                                                return <span className="text-gray-500">N/A</span>;
+                                                                            }
+                                                                            const fullText = values.join(', ');
+                                                                            if (values.length > 3 || fullText.length > 100) {
+                                                                                const truncatedText = values.slice(0, 3).join(', ');
+                                                                                return <span title={fullText}>{`${truncatedText}...`}</span>;
+                                                                            }
+                                                                            return fullText;
+                                                                        })()}
+                                                                    </td>
                                                                 </tr>
-                                                            ))
-                                                        ) : (
-                                                            <tr><td colSpan="7" className="text-center py-10 px-4 text-sm text-gray-500">No detailed business data available.</td></tr>
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                            <Pagination currentPage={businessCurrentPage} totalPages={totalBusinessPages} onPageChange={handleBusinessPageChange} />
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-10 px-4 text-sm text-gray-500">
+                                                    No business data available for this table.
+                                                </div>
+                                            )}
                                         </>
                                     ) : (
                                         <div className="p-1">
