@@ -25,7 +25,6 @@ function Schema() {
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const navigate = useNavigate();
   const { state: navigationState } = useLocation();
-  // MODIFICATION: State to hold all raw data before processing
   const [allRawData, setAllRawData] = useState([]);
 
   const processSchemaData = (data) => {
@@ -43,15 +42,15 @@ function Schema() {
           id: `#${item.conn_metadata_id.substring(0, 4)}`,
           connectionName: item.connection_name,
           schema: item.table_schema,
-          description: 'schema description',
+          description: item.table_schema_description || 'schema description',
           database: item.connection_type,
           owner: item.created_by || 'System',
           tables: 0,
           views: 0,
-          columns: 0, // Initialize columns to 0
+          columns: 0,
           CreatedDate: new Date(item.created_at).toLocaleDateString(),
           lastUpdated: new Date(item.updated_at).toLocaleDateString(),
-          tableSet: new Set(), // Still need to count unique tables
+          tableSet: new Set(),
         });
       }
 
@@ -76,10 +75,8 @@ function Schema() {
         });
       }
 
-      // Count EVERY column by incrementing the counter
       entry.columns++;
 
-      // Populate column data for the popup (all columns)
       if (!columnDataMap[groupKey]) {
         columnDataMap[groupKey] = [];
       }
@@ -92,7 +89,6 @@ function Schema() {
     setColumnData(columnDataMap);
     setTableData(tableDataMap);
 
-    // Convert map to array and format the counts
     return Array.from(schemaMap.values()).map(item => ({
       ...item,
       tables: item.tables.toString().padStart(2, '0'),
@@ -107,7 +103,6 @@ function Schema() {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
       const allSchemasData = await fetchConnectionDetails(policyIds, token);
-      // MODIFICATION: Store raw data
       setAllRawData(allSchemasData);
       return { success: true };
     } catch (error) {
@@ -122,12 +117,10 @@ function Schema() {
     loadData();
   }, [token]);
 
-  // MODIFICATION: New useEffect to process data after filtering
   useEffect(() => {
     if (allRawData.length > 0) {
       let dataToProcess = allRawData;
 
-      // Filter by database connection if navigated from Database page
       if (navigationState?.type === 'database' && navigationState?.connectionName) {
         dataToProcess = allRawData.filter(item => item.connection_name === navigationState.connectionName);
       }
@@ -136,7 +129,6 @@ function Schema() {
       setSchemaData(processedData);
     }
   }, [allRawData, navigationState]);
-  // Refresh handler with toast
   const handleRefresh = async () => {
     const result = await loadData();
     if (result.success) {

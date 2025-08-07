@@ -7,21 +7,26 @@ import {
   ChevronUp,
   ChevronDown,
   Database,
-  FileCheck2
+  FileCheck2,
+  FilePenLine,
+  ChevronLeft
 } from "lucide-react";
 import CompositeViewComponent from "../Schema/CompositeViewComponent";
 import SchemaDetailsViewComponent from "./SchemaDetailsViewComponenet";
 import toast from "react-hot-toast";
 import { useAuth } from "../../../../context/AuthContext";
-import { Pagination } from "@mui/material";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../../components/Breadcrumb";
 
 const SchemaViewScreen = () => {
   const hostnameV1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken } = useAuth();
+  const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("summary");
+  const location = useLocation();
+  const schema = location.state?.schemaData;
+
+  const [activeTab, setActiveTab] = useState('summary');
   const [businessTabResponse, setBusinessTabResponse] = useState([]);
   const [complianceResponse, setComplianceResponse] = useState([]);
   const [loadingBusinessTab, setLoadingBusinessTab] = useState(false);
@@ -33,16 +38,23 @@ const SchemaViewScreen = () => {
   const [expandedRows, setExpandedRows] = useState({});
 
   const [isEditing, setIsEditing] = useState(false);
-  const [summaryText, setSummaryText] = useState(`Schema description`);
+  const [summaryText, setSummaryText] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
 
   const [activeTabBusiness, setActiveTabBusiness] = useState("composite-view");
 
-  const location = useLocation();
-  const schema = location.state?.schemaData;
 
   if (!schema) {
     return <p>Schema data not available.</p>;
   }
+
+  useEffect(() => {
+    if (schema) {
+      const initialDesc = schema.description || 'Schema description';
+      setSummaryText(initialDesc);
+    }
+  }, [schema]);
 
   const fetchDataCatalogueBusiness = async () => {
     if (businessTabResponse.length > 0) {
@@ -179,17 +191,17 @@ const SchemaViewScreen = () => {
 
   const toggleRow = (name) => {
     setExpandedRows(prev => ({
-        ...prev,
-        [name]: !prev[name]
+      ...prev,
+      [name]: !prev[name]
     }));
   };
 
   useEffect(() => {
-    if(activeTab === "business" && businessTabResponse.length === 0) {
+    if (activeTab === "business" && businessTabResponse.length === 0) {
       fetchDataCatalogueBusiness();
-    } else if(activeTab === "access" && accessData.length === 0) {
+    } else if (activeTab === "access" && accessData.length === 0) {
       fetchAccessData();
-    } else if(activeTab === "summary" && complianceResponse.length === 0) {
+    } else if (activeTab === "summary" && complianceResponse.length === 0) {
       fetchDataCatalogueCompliance();
     }
   }, [activeTab]);
@@ -197,6 +209,54 @@ const SchemaViewScreen = () => {
   const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(
     (role) => ["data steward", "data owner"].includes(role.toLowerCase())
   );
+
+  const handleSaveDescription = async () => {
+
+    if (summaryText.trim() === '') {
+      toast.error("Description cannot be empty.");
+      return;
+    }
+    const trimmedDescription = summaryText.trim();
+    setIsSaving(true);
+    try {
+      const response = await fetch(
+        `${hostnameV1}/data_catalogue/edit_schema_description`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "accept": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            connection_name: schema.connectionName,
+            table_schema: schema.schema,
+            schema_description: trimmedDescription,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to save. Status: ${response.status}`);
+      }
+
+      await response.json();
+      toast.success("Description updated successfully!");
+      setIsEditing(false);
+
+    } catch (error) {
+      console.error("Error updating schema description:", error);
+      toast.error("Failed to update description.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setSummaryText(schema.description);
+    setIsEditing(false);
+  };
+
 
   return (
     <div className="p-5">
@@ -207,6 +267,9 @@ const SchemaViewScreen = () => {
           {/* heading */}
           <div className="flex justify-between items-center pb-6">
             <div className="flex items-center gap-2">
+              <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
+                <ChevronLeft className="h-6 w-6" />
+              </button>
               <span className="text-[#8d77ba]"><Database /></span>
               <h1 className="font-medium text-xl">{schema?.schema}</h1>
             </div>
@@ -229,11 +292,10 @@ const SchemaViewScreen = () => {
               onClick={() => {
                 setActiveTab("summary");
               }}
-              className={`cursor-pointer pb-2 ${
-                activeTab === "summary"
-                  ? "text-[#8d77ba] border-b-2 font-medium border-[#8d77ba]"
-                  : "text-gray-500"
-              }`}
+              className={`cursor-pointer pb-2 ${activeTab === "summary"
+                ? "text-[#8d77ba] border-b-2 font-medium border-[#8d77ba]"
+                : "text-gray-500"
+                }`}
             >
               Summary
             </button>
@@ -241,11 +303,10 @@ const SchemaViewScreen = () => {
               onClick={() => {
                 setActiveTab("access");
               }}
-              className={`cursor-pointer pb-2 ${
-                activeTab === "access"
-                  ? "text-[#8d77ba] border-b-2 font-medium border-[#8d77ba]"
-                  : "text-gray-500"
-              }`}
+              className={`cursor-pointer pb-2 ${activeTab === "access"
+                ? "text-[#8d77ba] border-b-2 font-medium border-[#8d77ba]"
+                : "text-gray-500"
+                }`}
             >
               Access
             </button>
@@ -253,11 +314,10 @@ const SchemaViewScreen = () => {
               onClick={() => {
                 setActiveTab("business");
               }}
-              className={`cursor-pointer pb-2 ${
-                activeTab === "business"
-                  ? "text-[#8d77ba] border-b-2 font-medium border-[#8d77ba]"
-                  : "text-gray-500"
-              }`}
+              className={`cursor-pointer pb-2 ${activeTab === "business"
+                ? "text-[#8d77ba] border-b-2 font-medium border-[#8d77ba]"
+                : "text-gray-500"
+                }`}
             >
               Business
             </button>
@@ -265,11 +325,16 @@ const SchemaViewScreen = () => {
 
           {activeTab === "summary" && (
             <>
-              <div className="text-gray-500 pt-5 font-light border-t border-gray-300 relative group">
+              <div className="text-gray-500 pt-5 border-t border-gray-300 relative group">
+                <div className='flex items-center justify-between mb-2'>
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <FilePenLine className="h-5 w-5 text-[#8d77ba]" /> Description
+                  </h3>
+                </div>
                 {!isEditing ? (
                   <>
-                    <p className="whitespace-pre-line">{summaryText}</p>
-                    {isUserAuthorized && (
+                    <p className="text-gray-600 pl-7 min-h-[2rem]">{summaryText}</p>
+                    {!isUserAuthorized && (
                       <button
                         className="absolute top-3 right-3 pt-2 hover:text-gray-600 text-[#8d77ba]"
                         onClick={() => setIsEditing(true)}
@@ -288,16 +353,17 @@ const SchemaViewScreen = () => {
                     />
                     <div className="flex justify-end gap-2">
                       <button
-                        className="px-4 py-1 bg-[#8d77ba] text-white rounded hover:bg-[#7a66a8] text-sm"
-                        onClick={() => setIsEditing(false)}
+                        className="px-4 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                        onClick={handleCancelEdit}
                       >
                         Cancel
                       </button>
                       <button
-                        className="px-4 py-1 bg-[#8d77ba] text-white rounded hover:bg-[#7a66a8] text-sm"
-                        onClick={() => setIsEditing(false)}
+                        className="px-4 py-1.5 text-sm font-medium bg-[#8d77ba] text-white rounded hover:bg-[#7a66a8] disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        onClick={handleSaveDescription}
+                        disabled={isSaving}
                       >
-                        Save
+                        {isSaving ? 'Saving...' : 'Save'}
                       </button>
                     </div>
                   </div>
@@ -307,9 +373,9 @@ const SchemaViewScreen = () => {
               <div className="pt-12">
                 <div className="flex items-center gap-x-2">
                   <span className="text-[#8d77ba]">
-                    <FileCheck2 />
+                    <FileCheck2 className="h-5 w-5 text-[#8d77ba]" />
                   </span>
-                  <span className="font-medium">Compliance</span>
+                  <span className="font-medium text-lg">Compliance</span>
                 </div>
 
                 {loadingComplianceApi ? (
@@ -337,58 +403,58 @@ const SchemaViewScreen = () => {
           )}
 
           {activeTab === "access" && (
-            loadingAccessData ? 
+            loadingAccessData ?
               <div className="pt-7 text-center text-sm text-gray-500 border-t">
                 Loading access api...
               </div> :
-            <div className="overflow-x-auto mt-2 rounded-lg shadow border border-t">
-              <table className="min-w-full">
+              <div className="overflow-x-auto mt-2 rounded-lg shadow border border-t">
+                <table className="min-w-full">
                   <thead className="bg-gray-50">
-                      <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Count</th>
-                      </tr>
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Count</th>
+                    </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                      {accessData.map((item) => (
-                          <React.Fragment key={`${item.type}-${item.name}`}>
-                              <tr className="hover:bg-gray-50">
-                                  <td className="px-6 py-4">
-                                      <button onClick={() => toggleRow(item.name)} className="text-gray-500 hover:text-[#8d77ba] transition-colors">
-                                          {expandedRows[item.name] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                      </button>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.type}</td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.name}</td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.users.length}</td>
-                              </tr>
-                              {expandedRows[item.name] && (
-                                  <tr>
-                                      <td colSpan="4" className="px-6 py-4 bg-purple-50/50">
-                                          <div className="flex items-center flex-wrap gap-2">
-                                              <h4 className="font-semibold text-gray-700 text-sm">Users:</h4>
-                                              {item.users.length > 0 ? (
-                                                  item.users.map(user => (
-                                                      <span key={user} className="bg-purple-100 text-[#8d77ba] text-xs font-semibold px-2.5 py-1 rounded-full">
-                                                          {user}
-                                                      </span>
-                                                  ))
-                                              ) : (
-                                                  <span className="text-gray-500 italic text-sm">
-                                                      No users found in this {item.type.toLowerCase()}.
-                                                  </span>
-                                              )}
-                                          </div>
-                                      </td>
-                                  </tr>
-                              )}
-                          </React.Fragment>
-                      ))}
+                    {accessData.map((item) => (
+                      <React.Fragment key={`${item.type}-${item.name}`}>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <button onClick={() => toggleRow(item.name)} className="text-gray-500 hover:text-[#8d77ba] transition-colors">
+                              {expandedRows[item.name] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.type}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.users.length}</td>
+                        </tr>
+                        {expandedRows[item.name] && (
+                          <tr>
+                            <td colSpan="4" className="px-6 py-4 bg-purple-50/50">
+                              <div className="flex items-center flex-wrap gap-2">
+                                <h4 className="font-semibold text-gray-700 text-sm">Users:</h4>
+                                {item.users.length > 0 ? (
+                                  item.users.map(user => (
+                                    <span key={user} className="bg-purple-100 text-[#8d77ba] text-xs font-semibold px-2.5 py-1 rounded-full">
+                                      {user}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-gray-500 italic text-sm">
+                                    No users found.
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))}
                   </tbody>
-              </table>
-          </div>
+                </table>
+              </div>
           )}
 
           {activeTab === "business" && (
@@ -399,14 +465,13 @@ const SchemaViewScreen = () => {
                     onClick={() => setActiveTabBusiness("composite-view")}
                     className="text-[#8d77ba] pb-2"
                   >
-                    <TableOfContents size={20} />
+                    <Layers size={20} />
                   </button>
                   <button
-                    className={`pb-2 ${
-                      activeTabBusiness === "composite-view"
-                        ? `text-[#8d77ba] border-b-2 border-[#8d77ba] font-semibold`
-                        : `text-gray-500`
-                    }`}
+                    className={`pb-2 ${activeTabBusiness === "composite-view"
+                      ? `text-[#8d77ba] border-b-2 border-[#8d77ba] font-semibold`
+                      : `text-gray-500`
+                      }`}
                     onClick={() => setActiveTabBusiness("composite-view")}
                   >
                     Composite view
@@ -417,17 +482,16 @@ const SchemaViewScreen = () => {
                     onClick={() => setActiveTabBusiness("schema-details")}
                     className="text-[#8d77ba] pb-2"
                   >
-                    <Layers size={20} />
+                    <TableOfContents size={20} />
                   </button>
                   <button
-                    className={`pb-2 ${
-                      activeTabBusiness === "schema-details"
-                        ? `text-[#8d77ba] border-b-2 border-[#8d77ba] font-semibold`
-                        : `text-gray-500`
-                    }`}
+                    className={`pb-2 ${activeTabBusiness === "schema-details"
+                      ? `text-[#8d77ba] border-b-2 border-[#8d77ba] font-semibold`
+                      : `text-gray-500`
+                      }`}
                     onClick={() => setActiveTabBusiness("schema-details")}
                   >
-                    Schema details
+                    Schema detail View
                   </button>
                 </div>
               </div>
