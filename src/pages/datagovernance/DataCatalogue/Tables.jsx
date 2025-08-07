@@ -8,9 +8,12 @@ import Edit from "./Edit.jsx";
 import { useNavigate } from "react-router-dom";
 
 function Tables() {
+  const { token, decodedToken } = useAuth();
+  const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
+    ['data steward', 'data owner'].includes(role?.toLowerCase())
+  );
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
-  const { token } = useAuth();
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [selectedTable, setSelectedTable] = useState(null);
   const [allTablesRawData, setAllTablesRawData] = useState([]);
@@ -243,7 +246,9 @@ function Tables() {
                   {/* <th className="text-left px-4 py-1">Tags</th> */}
                   <th className="text-left px-4 py-1">Created Date</th>
                   <th className="text-left px-4 py-1">Last Updated</th>
-                  <th className="text-left px-4 whitespace-nowrap py-1">Action</th>
+                  {isUserAuthorized && (
+                    <th className="text-left px-4 whitespace-nowrap py-1">Action</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="text-gray-700">
@@ -265,15 +270,17 @@ function Tables() {
                     {/* <td className="p-4">critical</td> */}
                     <td className="p-4">{table.CreatedDate}</td>
                     <td className="p-4">{table.lastUpdated}</td>
-                    <td className="px-6 p-4 text-center whitespace-nowrap">
-                      <button
-                        className="p-1.5 rounded-full hover:bg-gray-100 cursor-pointer disabled:cursor-wait"
-                        onClick={() => handleShowEditPage(table)}
-                        disabled={fetchingEditId === table.id}
-                      >
-                        {fetchingEditId === table.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
-                      </button>
-                    </td>
+                    {isUserAuthorized && (
+                      <td className="px-6 p-4 text-center whitespace-nowrap">
+                        <button
+                          className="p-1.5 rounded-full hover:bg-gray-100 cursor-pointer disabled:cursor-wait"
+                          onClick={() => handleShowEditPage(table)}
+                          disabled={fetchingEditId === table.id}
+                        >
+                          {fetchingEditId === table.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 )) : (
                   <tr>
