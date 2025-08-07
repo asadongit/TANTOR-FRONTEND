@@ -25,7 +25,7 @@ const InfoPill = ({ label }) => (
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
     if (totalPages <= 1) {
-        return null; 
+        return null;
     }
 
     return (
@@ -303,13 +303,13 @@ function ColumnDetailsPage() {
 
     useEffect(() => {
         if (columnDetails) {
-            console.log("column details aaree",columnDetails)
+            console.log("column details aaree", columnDetails)
             const columnTagInfo = columnDetails.tags_column_json?.find(
                 tag => tag.column_name === columnDetails.column_name
             );
             const foundDescription = columnTagInfo?.column_description?.[0];
             const initialDesc = foundDescription || 'Column Description';
-            console.log("initial desc is ",initialDesc)
+            console.log("initial desc is ", initialDesc)
             setDescription(initialDesc);
             setOriginalDescription(initialDesc);
         }
@@ -322,6 +322,12 @@ function ColumnDetailsPage() {
 
     const handleSaveDescription = async () => {
         if (!columnDetails) return;
+        if (description === originalDescription) return setIsEditingDescription(false);
+        if (description.trim() === '') {
+            toast.error("Description cannot be empty.");
+            return;
+        }
+        const trimmedDescription = description.trim();
 
         setIsSaving(true);
         try {
@@ -330,7 +336,7 @@ function ColumnDetailsPage() {
                 table_schema: columnDetails.table_schema,
                 table_name: columnDetails.table_name,
                 column_name: columnDetails.column_name,
-                column_description: description,
+                column_description: trimmedDescription,
             };
 
             const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/edit_column_description`, {
@@ -344,7 +350,7 @@ function ColumnDetailsPage() {
                 throw new Error(errorData.detail || 'Failed to save description.');
             }
 
-            setOriginalDescription(description);
+            setOriginalDescription(trimmedDescription);
             setIsEditingDescription(false);
             toast.success("Column description edited!");
         } catch (error) {

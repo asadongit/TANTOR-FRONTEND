@@ -51,7 +51,7 @@ const BusinessGlossary = () => {
         AssetType: item.asset_type,
         CreatedDate: item.created_date,
         UpdatedDate: item.updated_date,
-        Owner: item.owner
+        Owner: item.owner[0]
       }));
       setGlossaryData(formattedData);
     } catch (e) {
@@ -103,7 +103,7 @@ const BusinessGlossary = () => {
   const filteredData = glossaryData
     .filter(item =>
       Object.values(item).some(val =>
-        val.toString().toLowerCase().includes(searchTerm.toLowerCase())
+        val?.toString().toLowerCase().includes(searchTerm.toLowerCase())
       )
     )
     .sort((a, b) => {

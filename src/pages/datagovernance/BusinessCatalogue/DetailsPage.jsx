@@ -8,6 +8,9 @@ const DetailsPage = () => {
   const item = location.state?.glossaryItem;
   const navigate = useNavigate();
 
+
+  console.log("glossary item iss @@@ ", item)
+
   const [mainTab, setMainTab] = useState('Overview');
   const [activeDetail, setActiveDetail] = useState(null);
 
@@ -116,15 +119,16 @@ const DetailsPage = () => {
       Description: detailItem.description,
       status: detailItem.status,
       AssetType: detailItem.asset_type,
-      DomainId: detailItem.domain_id
+      DomainId: detailItem.domain_id,
+      Owner: detailItem.owner,
+      CreatedDate:detailItem.created_date,
+      UpdatedDate:detailItem.updated_date
     };
 
     const urlFriendlyName = detailItem.asset_type?.toLowerCase();
     const destinationUrl = `/datagovernance/business-catalogue/glossary/${urlFriendlyName}`;
     navigate(destinationUrl, { state: { glossaryItem: glossaryItemForNav } });
   };
-
-  const metadata = { status: item?.status || 'N/A', createdOn: '24-10-2024', lastUpdated: '31-10-2024', owner: 'Abhishek Singh', standard: 'Data source' };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -296,7 +300,7 @@ const DetailsPage = () => {
                 {item.status}
               </div>
               <div className="text-gray-500">Owner</div>
-              <div className="font-normal">{item.owner || 'Admin'}</div>
+              <div className="font-normal">{item.Owner || '-'}</div>
 
             </div>
           </div>
