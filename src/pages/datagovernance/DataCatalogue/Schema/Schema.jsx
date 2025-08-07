@@ -206,7 +206,6 @@ function Schema() {
             <h1 className="text-2xl font-semibold">Schema</h1>
             <div className="flex items-center gap-2">
               <div className="relative w-52">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   value={value}
                   placeholder="Search schema"
@@ -215,16 +214,11 @@ function Schema() {
                 />
               </div>
               <button
-                className="p-0.5 w-10 h-9 rounded-lg border border-gray-400 hover:bg-gray-50 disabled:opacity-50"
                 onClick={handleRefresh}
                 disabled={loading}
+                className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
               >
-                <Icon
-                  icon="material-symbols:autorenew-rounded"
-                  width="24"
-                  height="24"
-                  className={`text-gray-600 pt-0.5 ${loading ? "animate-spin" : ""}`}
-                />
+                <RefreshCcw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>
@@ -235,62 +229,64 @@ function Schema() {
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow overflow-hidden mt-5 text-sm">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-[#29304a] text-white">
-                    <th className="text-left p-4">ID</th>
-                    <th className="text-left p-4">Database</th>
-                    <th className="text-left p-4">Name</th>
-                    <th className="text-left p-4">Description</th>
-                    <th className="text-left p-4">Owner</th>
-                    <th className="text-left p-4">Tables</th>
-                    <th className="text-left p-4">Columns</th>
-                    <th className="text-left p-4">Created Date</th>
-                    <th className="text-left p-4">Last Updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.isArray(filteredSchemaData) && filteredSchemaData.length > 0 ? (
-                    filteredSchemaData.map((schema, index) => (
-                      <tr
-                        key={schema?.connectionName ?? index}
-                        className="border-b"
-                      >
-                        <td className="p-4">{index + 1}</td>
-                        <td className="p-4">{schema.database}</td>
-                        <td
-                          onClick={() => {
-                            handleSchemaViewScreen(schema);
-                          }}
-                          className="p-4 underline underline-offset-4 text-blue-600 cursor-pointer"
-                        >
-                          {schema.schema}
-                        </td>
-                        <td className="p-4">{schema.description}</td>
-                        <td className="p-4">{schema.owner}</td>
-                        <td
-                          onClick={() => handleNavigateToTables(schema)}
-                          className="p-4 underline underline-offset-4 text-blue-600 cursor-pointer">
-                          {schema.tables}
-                        </td>
-                        <td
-                          onClick={() => handleNavigateToColumns(schema)}
-                          className="p-4 underline underline-offset-4 cursor-pointer text-blue-600">
-                          {schema.columns}
-                        </td>
-                        <td className="p-4">{schema.CreatedDate}</td>
-                        <td className="p-4">{schema.lastUpdated}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={9} className="p-4 text-center">
-                        No schema data available
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-[#29304a] text-white">
+                      <th className="text-left p-4">Id</th>
+                      <th className="text-left p-4">Name</th>
+                      <th className="text-left p-4">Description</th>
+                      <th className="text-left p-4">Database</th>
+                      <th className="text-left p-4">Owner</th>
+                      <th className="text-left p-4">Tables</th>
+                      <th className="text-left p-4">Columns</th>
+                      <th className="text-left p-4">Created Date</th>
+                      <th className="text-left p-4">Last Updated Date</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {Array.isArray(filteredSchemaData) && filteredSchemaData.length > 0 ? (
+                      filteredSchemaData.map((schema, index) => (
+                        <tr
+                          key={schema?.connectionName ?? index}
+                          className="border-b"
+                        >
+                          <td className="p-4">{index + 1}</td>
+                          <td
+                            onClick={() => {
+                              handleSchemaViewScreen(schema);
+                            }}
+                            className="p-4 underline underline-offset-4 text-blue-600 cursor-pointer"
+                          >
+                            {schema.schema}
+                          </td>
+                          <td className="p-4">{schema.description}</td>
+                          <td className="p-4">{schema.database}</td>
+                          <td className="p-4">{schema.owner}</td>
+                          <td
+                            onClick={() => handleNavigateToTables(schema)}
+                            className="p-4 underline underline-offset-4 text-blue-600 cursor-pointer">
+                            {schema.tables}
+                          </td>
+                          <td
+                            onClick={() => handleNavigateToColumns(schema)}
+                            className="p-4 underline underline-offset-4 cursor-pointer text-blue-600">
+                            {schema.columns}
+                          </td>
+                          <td className="p-4">{schema.CreatedDate}</td>
+                          <td className="p-4">{schema.lastUpdated}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={9} className="p-4 text-center">
+                          No schema data available
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

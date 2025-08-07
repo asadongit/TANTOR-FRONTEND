@@ -76,7 +76,7 @@ const DatabaseViewScreen = () => {
     }
   };
 
-    const handleCancelEdit = () => {
+  const handleCancelEdit = () => {
     setSummaryText(schema.description);
     setIsEditing(false);
   };
@@ -417,29 +417,26 @@ const DatabaseViewScreen = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
-            <div className="text-gray-500">Connection</div>
-            <div className="font-normal">{connection?.connectionName}</div>
-
-            <div className="text-gray-500">Database</div>
+            <div className="text-gray-500">Data Source</div>
             <div className="font-normal">{connection?.Database}</div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
             <div className="text-gray-500">Created on</div>
             <div className="font-normal">
               {connection?.CreatedDate.replace(/\//g, "-")}
             </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
             <div className="text-gray-500">Last updated</div>
             <div className="font-normal">
               {connection?.updatedDate.replace(/\//g, "-")}
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
             <div className="text-gray-500">Owner</div>
             <div className="font-normal">{connection?.owner}</div>
 
+          </div>
+
+          <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
             <div className="text-gray-500">Steward</div>
             <div className="font-normal">Admin</div>
           </div>

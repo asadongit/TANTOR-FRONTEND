@@ -746,8 +746,8 @@ function ColumnDetailsPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
-                            <div className="text-gray-500">Type</div>
-                            <div className="font-normal">Column</div>
+                            <div className="text-gray-500"> Data Type</div>
+                            <div className="font-normal">{columnDetails?.column_metadata?.DATA_TYPE}</div>
                             <div className="text-gray-500">Data source</div>
                             <div className="font-normal">{columnDetails.connection_type}</div>
                         </div>

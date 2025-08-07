@@ -78,6 +78,7 @@ const Database = () => {
         connectionMap.set(connId, {
           id: item.connection_id, // Using full ID for a more reliable key
           connectionName: item.connection_name,
+          Alias: item.connection_name,
           Database: item.connection_type,
           owner: item.created_by || '',
           Schema: 0,
@@ -265,6 +266,23 @@ const Database = () => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Database</h1>
         <div className="flex items-center gap-2">
+          {isTableView && (
+            <div className="flex justify-end items-center my-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search connections..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="px-4 py-2 border rounded-lg shadow-sm w-80 focus:outline-none focus:ring-2 focus:ring-[#8d77ba]"
+                />
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => {
               setIsTableView(!isTableView);
@@ -272,7 +290,7 @@ const Database = () => {
             }}
             className="text-black border border-gray-300 shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-           {isTableView ? <LayoutGrid className="h-5 w-5" /> : <TableOfContents className="h-5 w-5" />}
+            {isTableView ? <LayoutGrid className="h-5 w-5" /> : <TableOfContents className="h-5 w-5" />}
           </button>
           <button
             onClick={handleRefresh}
@@ -290,7 +308,7 @@ const Database = () => {
         </div>
       ) : !isTableView ? (
         <>
-          <div className="mt-4 overflow-x-auto">
+          <div className="mt-2 overflow-x-auto">
             <div className="flex gap-4 min-w-max">
               {cards.map((card, index) => (
                 <div key={index} className="min-w-[280px] bg-white rounded-lg shadow-sm border border-gray-100">
@@ -349,37 +367,15 @@ const Database = () => {
         </>
       ) : (
         <>
-          {/* NEW: Search Bar */}
-          <div className="flex justify-end items-center my-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search connections..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1); // Reset to first page on new search
-                }}
-                className="px-4 py-2 border rounded-lg shadow-sm w-80 focus:outline-none focus:ring-2 focus:ring-[#8d77ba]"
-              />
-            </div>
-            {dbTypeFilter && (
-              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full">
-                <span className="text-sm font-medium text-gray-700">Filtering by: <strong>{dbTypeFilter}</strong></span>
-                <button onClick={() => setDbTypeFilter(null)} className="p-1 rounded-full hover:bg-gray-200">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </div>
-
           <div className="bg-white rounded-lg shadow text-sm overflow-x-auto mt-5">
             <table className="w-full">
               <thead>
                 <tr className="bg-[#29304a] text-white">
                   <th className="text-left p-4">Id</th>
-                  <th className="text-left p-4">Connection Name</th>
-                  <th className="text-left p-4">Database</th>
+                  <th className="text-left p-4">Name</th>
+                  <th className="text-left p-4">Alias</th>
+                  <th className="text-left p-4">Description</th>
+                  <th className="text-left p-4">Owner</th>
                   <th className="text-left p-4">Schema</th>
                   <th className="text-left p-4">Tables</th>
                   <th className="text-left p-4">Columns</th>
@@ -398,7 +394,9 @@ const Database = () => {
                       className="p-4 underline underline-offset-4 text-blue-600 cursor-pointer">
                       {item.connectionName}
                     </td>
-                    <td className="p-4">{item.Database}</td>
+                    <td className="p-4">{item.Alias}</td>
+                    <td className="p-4">{item.description}</td>
+                    <td className="p-4">{item.owner}</td>
                     <td
                       onClick={() => handleNavigateToSchemas(item)}
                       className="p-4 underline underline-offset-4 text-blue-600 cursor-pointer">
