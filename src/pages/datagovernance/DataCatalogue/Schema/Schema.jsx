@@ -4,7 +4,7 @@ import { Icon } from "@iconify-icon/react";
 import { secureQuery, fetchConnectionDetails } from '../Components/function.js';
 import { useAuth } from "../../../../context/AuthContext.jsx";
 import SchemaViewScreen from "../Schema/SchemaViewScreen.jsx"
-import { Search, Database, Columns3 } from 'lucide-react';
+import { Search, Database, Columns3, RefreshCcw } from 'lucide-react';
 import { useNavigate, useLocation } from "react-router-dom";
 
 function Schema() {
@@ -208,9 +208,9 @@ function Schema() {
               <div className="relative w-52">
                 <input
                   value={value}
-                  placeholder="Search schema"
+                  placeholder="Search schema ..."
                   onChange={(e) => setValue(e.target.value)}
-                  className="border rounded-lg text-sm text-gray-500 p-2 pl-8 w-full"
+                  className="border rounded-lg text-sm text-gray-500 p-2 w-full"
                 />
               </div>
               <button

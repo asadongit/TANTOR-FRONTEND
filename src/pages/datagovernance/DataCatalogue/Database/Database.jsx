@@ -6,10 +6,11 @@ import { useNavigate } from "react-router-dom";
 import CatalogueChart from "../Components/CatalogueTrend.jsx";
 import Hive from "../Components/Icons/Hive.png"
 import Oracle from '../Components/Icons/Oracle.png';
-import Snowflake from '../Components/Icons/Snowflake.png';
+// import Snowflake from '../Components/Icons/Snowflake.png';
 import Postgres from '../Components/Icons/Postgres.png';
 import { secureQuery, fetchConnectionDetails } from '../Components/function.js';
 import { useAuth } from "../../../../context/AuthContext.jsx";
+import MySQL from '../Components/Icons/Mysql.png';
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -45,15 +46,16 @@ const Database = () => {
   const [cards, setCards] = useState([
     { title: "Oracle", icon: Oracle, count: 0 },
     { title: "Postgres", icon: Postgres, count: 0 },
+    { title: "MySQL", icon: MySQL, count: 0 },
     { title: "Hive", icon: Hive, count: 0 },
-    { title: "Snowflake", icon: Snowflake, count: 0 },
+    // { title: "Snowflake", icon: Snowflake, count: 0 },
   ]);
 
   const { token } = useAuth();
   const navigate = useNavigate();
 
   const processConnectionData = (data) => {
-    const counts = { oracle: 0, hive: 0, snowflake: 0, postgres: 0 };
+    const counts = { oracle: 0, hive: 0, postgres: 0, mysql: 0 };
     const uniqueConnections = new Set();
     data.forEach(item => {
       const connKey = `${item.connection_type}_${item.connection_id}`;

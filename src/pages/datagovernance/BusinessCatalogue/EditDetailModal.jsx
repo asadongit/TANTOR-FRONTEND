@@ -491,7 +491,7 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
                         type="button"
                         onClick={handleSaveChanges}
                         disabled={isSaving}
-                        className="px-4 py-2 text-sm font-medium bg-green-600 text-white border border-transparent rounded-md shadow-sm hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed flex items-center justify-center"
+                        className="px-4 py-2 text-sm font-medium bg-[#8d77ba] text-white border border-transparent rounded-md shadow-sm disabled:cursor-not-allowed flex items-center justify-center"
                     >
                         {isSaving ? (
                             <>
