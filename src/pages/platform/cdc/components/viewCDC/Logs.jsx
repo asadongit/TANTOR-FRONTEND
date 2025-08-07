@@ -7,7 +7,7 @@
 //   const [showFilters, setShowFilters] = useState(false);
 //   const [logLevel, setLogLevel] = useState("all");
 //   const [connectorFilter, setConnectorFilter] = useState("all");
-  
+
 
 
 //   return (
@@ -20,7 +20,7 @@
 //           </h3>
 //           <div className="ml-4 hidden md:block">
 //             <div className="flex items-center space-x-3 text-sm">
-//               <span className="flex items-center cursor-pointer hover:bg-gray-50 px-2 py-1 rounded" 
+//               <span className="flex items-center cursor-pointer hover:bg-gray-50 px-2 py-1 rounded"
 //                     onClick={() => setLogLevel(logLevel === "INFO" ? "all" : "INFO")}>
 //                 <span className={`w-2 h-2 rounded-full bg-green-500 mr-1 ${logLevel === "INFO" ? "ring-2 ring-green-200" : ""}`}></span>
 //                 INFO
@@ -39,7 +39,7 @@
 //           </div>
 //         </div>
 //         <div className="flex items-center space-x-2">
-//           <button 
+//           <button
 //             onClick={() => setShowFilters(!showFilters)}
 //             className={`px-3 py-1.5 ${showFilters ? 'bg-indigo-50 text-indigo-700' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'} rounded-md text-sm flex items-center`}
 //           >
@@ -134,18 +134,18 @@
 //                 <label className="text-sm text-gray-600 mb-1 flex items-center">
 //                   <Calendar className="w-4 h-4 mr-1" /> Start Date:
 //                 </label>
-//                 <input 
-//                   type="datetime-local" 
-//                   className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" 
+//                 <input
+//                   type="datetime-local"
+//                   className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
 //                 />
 //               </div>
 //               <div className="flex flex-col flex-1">
 //                 <label className="text-sm text-gray-600 mb-1 flex items-center">
 //                   <Calendar className="w-4 h-4 mr-1" /> End Date:
 //                 </label>
-//                 <input 
-//                   type="datetime-local" 
-//                   className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" 
+//                 <input
+//                   type="datetime-local"
+//                   className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
 //                 />
 //               </div>
 //               <div className="flex items-end">
@@ -250,14 +250,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { 
-  FileText, 
-  Filter, 
-  Clock, 
-  Search, 
-  Calendar, 
-  AlertCircle, 
-  Download, 
+import {
+  FileText,
+  Filter,
+  Clock,
+  Search,
+  Calendar,
+  AlertCircle,
+  Download,
   RefreshCw,
   ToggleLeft,
   ToggleRight
@@ -276,7 +276,7 @@ export default function Logs({ data }) {
   const [endDate, setEndDate] = useState("");
   const [activeConnector, setActiveConnector] = useState("source"); // "source" or "target"
   const logsContainerRef = useRef(null);
-  
+
   const sourceConnectorName = data?.source_connector?.config?.name;
   const targetConnectorName = data?.target_connector?.config?.name;
   const { hostnameV2, token, project } = useAuth();
@@ -285,7 +285,7 @@ export default function Logs({ data }) {
   const getTimeRangeValues = () => {
     const now = new Date();
     const end = now.getTime() * 1000000; // Convert to nanoseconds
-    
+
     let start;
     switch (timeRange) {
       case "15m":
@@ -314,13 +314,13 @@ export default function Logs({ data }) {
       default:
         start = new Date(now - 60 * 60 * 1000).getTime() * 1000000;
     }
-    
+
     return { start, end };
   };
 
   const fetchLokiLogs = async () => {
     const connectorName = activeConnector === "source" ? sourceConnectorName : targetConnectorName;
-    
+
     if (!connectorName) {
       console.error(`No ${activeConnector} connector name provided`);
       return;
@@ -329,7 +329,7 @@ export default function Logs({ data }) {
     setLoading(true);
     try {
       const { start, end } = getTimeRangeValues();
-      
+
       const response = await axios.get(`${hostnameV2}/cdc/logs/loki`, {
         params: {
           connector_name: connectorName,
@@ -338,31 +338,31 @@ export default function Logs({ data }) {
           step: "30s"
         }
       });
-      
+
       if (response.data?.data?.result?.length > 0 && response.data.data.result[0]?.values) {
         const logsData = response.data.data.result[0].values.map((log) => {
           const logMessage = log[1];
-          
+
           // Extract timestamp
           const timestampEndIndex = logMessage.indexOf(']');
           const timestamp = logMessage.substring(1, timestampEndIndex).trim();
-          
+
           // Extract log level
           const remainingMessage = logMessage.substring(timestampEndIndex + 1).trim();
           const firstSpaceIndex = remainingMessage.indexOf(' ');
           const level = firstSpaceIndex > 0 ? remainingMessage.substring(0, firstSpaceIndex) : 'INFO';
-          
+
           // Extract message content
           const message = remainingMessage.substring(firstSpaceIndex + 1).trim();
-          
+
           return {
             timestamp,
             level,
-            connector: activeConnector, 
+            connector: activeConnector,
             message
           };
         });
-        
+
         setLogs(logsData);
       } else {
         console.log(`No logs found for ${activeConnector} connector:`, connectorName);
@@ -381,7 +381,7 @@ export default function Logs({ data }) {
     fetchLokiLogs();
     // Set interval to refresh logs every minute
     const intervalId = setInterval(fetchLokiLogs, 60000);
-    
+
     // Clean up on component unmount
     return () => clearInterval(intervalId);
   }, [activeConnector, timeRange]);
@@ -406,15 +406,15 @@ export default function Logs({ data }) {
   // Export logs to CSV
   const exportLogs = () => {
     if (filteredLogs.length === 0) return;
-    
+
     const headers = ["Timestamp", "Level", "Connector", "Message"];
     const csvContent = [
       headers.join(","),
-      ...filteredLogs.map(log => 
+      ...filteredLogs.map(log =>
         `"${log.timestamp}","${log.level}","${log.connector}","${log.message.replace(/"/g, '""')}"`
       )
     ].join("\n");
-    
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -430,10 +430,10 @@ export default function Logs({ data }) {
   const filteredLogs = logs.filter(log => {
     let matchesLevel = logLevel === "all" || log.level === logLevel;
     let matchesConnector = connectorFilter === "all" || log.connector === connectorFilter;
-    let matchesSearch = searchQuery === "" || 
+    let matchesSearch = searchQuery === "" ||
       log.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.level.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     return matchesLevel && matchesConnector && matchesSearch;
   });
 
@@ -447,7 +447,7 @@ export default function Logs({ data }) {
           </h3>
           <div className="ml-4 hidden md:block">
             <div className="flex items-center space-x-3 text-sm">
-              <span className="flex items-center cursor-pointer hover:bg-gray-50 px-2 py-1 rounded" 
+              <span className="flex items-center cursor-pointer hover:bg-gray-50 px-2 py-1 rounded"
                     onClick={() => setLogLevel(logLevel === "INFO" ? "all" : "INFO")}>
                 <span className={`w-2 h-2 rounded-full bg-green-500 mr-1 ${logLevel === "INFO" ? "ring-2 ring-green-200" : ""}`}></span>
                 INFO
@@ -466,7 +466,7 @@ export default function Logs({ data }) {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <button 
+          <button
             onClick={toggleConnector}
             className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-md text-sm flex items-center"
           >
@@ -482,21 +482,21 @@ export default function Logs({ data }) {
               </>
             )}
           </button>
-          <button 
+          <button
             onClick={() => setShowFilters(!showFilters)}
             className={`px-3 py-1.5 ${showFilters ? 'bg-indigo-50 text-indigo-700' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'} rounded-md text-sm flex items-center`}
           >
             <Filter className="w-4 h-4 mr-1.5" />
             Filters
           </button>
-          <button 
+          <button
             onClick={handleRefresh}
             className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-md text-sm flex items-center"
           >
             <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          <button 
+          <button
             onClick={exportLogs}
             disabled={filteredLogs.length === 0}
             className={`px-3 py-1.5 ${filteredLogs.length === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'} rounded-md text-sm flex items-center`}
@@ -519,7 +519,7 @@ export default function Logs({ data }) {
               onChange={(e) => setConnectorFilter(e.target.value)}
               className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             >
-              <option value="all">All Connectors</option>
+              {/* <option value="all">All Connectors</option> */}
               <option value="source">Source</option>
               <option value="target">Target</option>
             </select>
@@ -574,7 +574,7 @@ export default function Logs({ data }) {
                 placeholder="Search messages..."
                 className="text-sm border-gray-300 rounded-l-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 flex-grow"
               />
-              <button 
+              <button
                 onClick={() => setSearchQuery(document.getElementById('search-logs').value)}
                 className="px-3 py-1.5 bg-[#8e78b7] hover:bg-gray-400 text-white rounded-r-md text-sm flex items-center"
               >
@@ -589,26 +589,26 @@ export default function Logs({ data }) {
                 <label className="text-sm text-gray-600 mb-1 flex items-center">
                   <Calendar className="w-4 h-4 mr-1" /> Start Date:
                 </label>
-                <input 
-                  type="datetime-local" 
+                <input
+                  type="datetime-local"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" 
+                  className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                 />
               </div>
               <div className="flex flex-col flex-1">
                 <label className="text-sm text-gray-600 mb-1 flex items-center">
                   <Calendar className="w-4 h-4 mr-1" /> End Date:
                 </label>
-                <input 
+                <input
                   type="datetime-local"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="text-sm border-gray-300 rounded-md shadow-sm focus:border-[#8e78b7] focus:ring focus:ring-purple-200 focus:ring-opacity-50" 
+                  className="text-sm border-gray-300 rounded-md shadow-sm focus:border-[#8e78b7] focus:ring focus:ring-purple-200 focus:ring-opacity-50"
                 />
               </div>
               <div className="flex items-end">
-                <button 
+                <button
                   onClick={applyCustomDateRange}
                   className="px-4 py-2 bg-[#8e78b7] hover:bg-gray-400 text-white rounded-md text-sm font-medium"
                 >
@@ -627,7 +627,7 @@ export default function Logs({ data }) {
             <span className="ml-2 text-gray-600">Loading logs...</span>
           </div>
         ) : (
-          <div 
+          <div
             ref={logsContainerRef}
             className="overflow-auto flex-grow h-96"
           >
@@ -675,7 +675,7 @@ export default function Logs({ data }) {
             </table>
           </div>
         )}
-        
+
         <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-700">
@@ -688,7 +688,7 @@ export default function Logs({ data }) {
               )}
             </p>
           </div>
-          
+
         </div>
       </div>
     </div>
