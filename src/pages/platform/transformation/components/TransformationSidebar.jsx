@@ -18,7 +18,6 @@ const components = [
 ];
 
 export const TransformationSidebar = () => {
-  console.log("This 2.0")
   const [expanded, setExpanded] = useState(true);
   const { state, dispatch, ACTION_TYPES } = useTransformation();
 
