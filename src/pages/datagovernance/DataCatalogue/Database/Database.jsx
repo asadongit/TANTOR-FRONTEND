@@ -377,7 +377,7 @@ const Database = () => {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan="8" className="p-4 text-center">No data available for the selected filter.</td>
+                    <td colSpan="8" className="p-4 text-center">No data available.</td>
                   </tr>
                 )}
               </tbody>

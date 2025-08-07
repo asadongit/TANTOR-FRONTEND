@@ -1,28 +1,27 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
+
+// Helper function to format titles nicely (e.g., 'sub_category' -> 'Sub-category')
+const formatTitle = (title) => {
+  const formatted = title.replace(/_/g, ' ').replace('terms', 'term');
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+};
 
 const SchemaDetailsViewComponent = ({ tableData, componentInfo, activeTabBusiness }) => {
   const mapTableTags = (data, connectionName, schema) => {
     const connectionKey = `${connectionName}:${schema}`;
     const schemaData = data[connectionKey];
-    
+
     if (!schemaData) {
-      return {
-        domain: [],
-        category: [],
-        sub_category: [],
-        tag: [],
-        sub_tag: [],
-        terms: []
-      };
+      return { domain: [], category: [], sub_category: [], tag: [], sub_tag: [], terms: [] };
     }
 
     const uniqueTags = {
       domain: new Map(),
       category: new Map(),
       sub_category: new Map(),
+      terms: new Map(),
       tag: new Map(),
-      sub_tag: new Map(),
-      terms: new Map()
+      sub_tag: new Map()
     };
 
     Object.values(schemaData).forEach(table => {
@@ -48,129 +47,62 @@ const SchemaDetailsViewComponent = ({ tableData, componentInfo, activeTabBusines
   };
 
   const uniqueTags = useMemo(() => {
-    if (!tableData || !componentInfo) return {
-      domain: [],
-      category: [],
-      sub_category: [],
-      tag: [],
-      sub_tag: [],
-      terms: []
-    };
-    
+    if (!tableData || !componentInfo) {
+      return { domain: [], category: [], sub_category: [], tag: [], sub_tag: [], terms: [] };
+    }
     return mapTableTags(tableData, componentInfo.connectionName, componentInfo.schema);
   }, [tableData, componentInfo]);
 
-  const createTableRows = () => {
-    const rows = [];
-    const maxLength = Math.max(
-      uniqueTags.domain.length,
-      uniqueTags.category.length,
-      uniqueTags.sub_category.length,
-      uniqueTags.terms.length,
-      uniqueTags.tag.length,
-      uniqueTags.sub_tag.length,
-      1 // At least one row for schema info
-    );
 
-    for (let i = 0; i < maxLength; i++) {
-      rows.push({
-        id: i + 1,
-        schema: i === 0 ? componentInfo?.schema || 'N/A' : '',
-        domain: uniqueTags.domain[i]?.name || '',
-        category: uniqueTags.category[i]?.name || '',
-        sub_category: uniqueTags.sub_category[i]?.name || '',
-        term: uniqueTags.terms[i]?.name || '',
-        tag: uniqueTags.tag[i]?.name || '',
-        sub_tag: uniqueTags.sub_tag[i]?.name || ''
-      });
-    }
-
-    return rows;
-  };
-
-  const tableRows = createTableRows();
+  const hasData = useMemo(() => Object.values(uniqueTags).some(arr => arr.length > 0), [uniqueTags]);
 
   return (
     <>
       {activeTabBusiness === "schema-details" && (
-        <div className="bg-white rounded-lg shadow overflow-hidden mt-5 text-sm max-h-96 overflow-y-auto overflow-x-auto">
-          <table className="w-full min-w-max">
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-[#29304a] text-white">
-                <th className="text-left p-4 min-w-[60px]">ID</th>
-                <th className="text-left p-4 min-w-[120px]">Schema</th>
-                <th className="text-left p-4 min-w-[150px]">Domain</th>
-                <th className="text-left p-4 min-w-[150px]">Category</th>
-                <th className="text-left p-4 min-w-[150px]">Sub-category</th>
-                <th className="text-left p-4 min-w-[120px]">Term</th>
-                <th className="text-left p-4 min-w-[180px]">Tag</th>
-                <th className="text-left p-4 min-w-[120px]">Sub-tag</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableRows.length > 0 ? (
-                tableRows.map((row, index) => (
-                  <tr key={index} className="border-b hover:bg-gray-50">
-                    <td className="p-4">{String(row.id).padStart(2, '0')}</td>
-                    <td className="p-4 font-medium">{row.schema}</td>
-                    <td className="p-4">
-                      {row.domain && (
-                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
-                          {row.domain}
-                        </span>
-                      )}
+        <div className="bg-white rounded-lg shadow overflow-hidden mt-5 text-sm max-h-96 overflow-y-auto">
+          {hasData ? (
+            <table className="w-full">
+              <tbody className='divide-y divide-gray-200'>
+                {Object.entries(uniqueTags).map(([type, values]) => (
+                  <tr key={type} className="hover:bg-gray-50">
+                    <td className="p-4 w-1/3 font-medium text-gray-600 align-top">
+                      {formatTitle(type)}
                     </td>
                     <td className="p-4">
-                      {row.category && (
-                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
-                          {row.category}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      {row.sub_category && (
-                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
-                          {row.sub_category}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      {row.term && (
-                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
-                          {row.term}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      {row.tag && (
-                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
-                          {row.tag}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      {row.sub_tag && (
-                        <span className="inline-block px-2 py-1 text-gray-500 rounded-full text-xs">
-                          {row.sub_tag}
-                        </span>
-                      )}
+                      <div className="text-gray-900">
+                        {(() => {
+                          const names = values.map(v => v.name);
+                          if (names.length === 0) {
+                            return <span className="text-gray-500">N/A</span>;
+                          }
+
+                          const fullText = names.join(', ');
+                          if (names.length > 3 || fullText.length > 100) {
+                            const visibleNames = names.slice(0, 3);
+                            return (
+                              <span title={fullText}>
+                                {visibleNames.join(', ')}
+                                <span className="text-gray-500 italic">...</span>
+                              </span>
+                            );
+                          }
+                          return fullText;
+                        })()}
+                      </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr className="border-b">
-                  <td className="p-4 text-center" colSpan="8">
-                    <span className="text-gray-500 italic">No data available</span>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="p-10 text-center">
+              <span className="text-gray-500 italic">No business classifications are available for this schema.</span>
+            </div>
+          )}
         </div>
       )}
     </>
   );
 };
-
 
 export default SchemaDetailsViewComponent;
