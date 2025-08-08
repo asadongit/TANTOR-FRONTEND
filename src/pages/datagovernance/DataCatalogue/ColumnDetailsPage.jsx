@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
-import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp, ChevronLeft, FilePenLine } from 'lucide-react';
+import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FilePenLine } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import toast from 'react-hot-toast';
@@ -9,8 +9,8 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
         className={`px-4 py-2 text-md font-medium border-b-2 ${activeTab === label
-                ? 'border-[#8d77ba] text-[#8d77ba]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-[#8d77ba] text-[#8d77ba]'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
     >
         {label}
@@ -23,30 +23,41 @@ const InfoPill = ({ label }) => (
     </span>
 );
 
-const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+// --- New Pagination Component ---
+const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
     if (totalPages <= 1) {
-        return null;
+        return null; // Don't render pagination if there's only one page or no items
     }
 
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
     return (
-        <div className="flex justify-between items-center mt-4 px-1">
-            <span className="text-sm text-gray-700">
-                Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+        <div className="flex justify-between items-center mt-4 px-1 text-sm text-gray-700">
+            <span>
+                Showing <span className="font-semibold">{startItem}</span> to <span className="font-semibold">{endItem}</span> of <span className="font-semibold">{totalItems}</span> Entries
             </span>
-            <div className="flex items-center">
+            <div className="flex items-center space-x-2">
                 <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Previous Page"
                 >
-                    Previous
+                    <ChevronLeft className="h-5 w-5" />
                 </button>
+
+                <span>
+                    Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+                </span>
+
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="ml-2 px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Next Page"
                 >
-                    Next
+                    <ChevronRight className="h-5 w-5" />
                 </button>
             </div>
         </div>
@@ -434,7 +445,7 @@ function ColumnDetailsPage() {
                                         {isUserAuthorized && !isEditingDescription && (
                                             <button
                                                 onClick={() => setIsEditingDescription(true)}
-                                                className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-[#8d77ba] transition-colors"
+                                                className="p-1 rounded-full hover:bg-gray-100 text-gray-500 [#8d77ba] transition-colors"
                                                 aria-label="Edit description"
                                             >
                                                 <Pencil size={18} />
@@ -534,8 +545,8 @@ function ColumnDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Composite view')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Composite view'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <Layers className="h-4 w-4" />
@@ -544,8 +555,8 @@ function ColumnDetailsPage() {
                                     <button
                                         onClick={() => setBusinessView('Table Detail View')}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Table Detail View'
-                                                ? 'bg-purple-100 text-[#8d77ba]'
-                                                : 'text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-purple-100 text-[#8d77ba]'
+                                            : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <TableOfContents className="h-4 w-4" />
@@ -647,6 +658,8 @@ function ColumnDetailsPage() {
                                             currentPage={sampleDataCurrentPage}
                                             totalPages={totalSampleDataPages}
                                             onPageChange={handleSampleDataPageChange}
+                                            totalItems={sampleData.length}
+                                            itemsPerPage={itemsPerPage}
                                         />
                                     </>
                                 )}
@@ -712,6 +725,8 @@ function ColumnDetailsPage() {
                                                 currentPage={accessCurrentPage}
                                                 totalPages={totalAccessPages}
                                                 onPageChange={handleAccessPageChange}
+                                                totalItems={accessData.length}
+                                                itemsPerPage={itemsPerPage}
                                             />
                                         </>
                                     ) : (
@@ -731,8 +746,8 @@ function ColumnDetailsPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
-                            <div className="text-gray-500">Type</div>
-                            <div className="font-normal">Column</div>
+                            <div className="text-gray-500"> Data Type</div>
+                            <div className="font-normal">{columnDetails?.column_metadata?.DATA_TYPE}</div>
                             <div className="text-gray-500">Data source</div>
                             <div className="font-normal">{columnDetails.connection_type}</div>
                         </div>

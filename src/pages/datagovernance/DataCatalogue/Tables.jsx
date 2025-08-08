@@ -270,19 +270,19 @@ useEffect(() => {
             <table className="w-full">
               <thead>
                 <tr className="bg-[#29304a] text-white">
-                  <th className="text-left px-4 py-1">Id</th>
-                  <th className="text-left px-4 py-1">Name</th>
-                  <th className="text-left px-4 py-1">Alias</th>
-                  <th className="text-left px-4 py-1">Description</th>
-                  <th className="text-left px-4 py-1">Database</th>
-                  <th className="text-left px-4 py-1">Schema</th>
-                  <th className="text-left px-4 py-1">Owner</th>
-                  <th className="text-left px-4 py-1">Columns</th>
-                  {/* <th className="text-left px-4 py-1">Tags</th> */}
-                  <th className="text-left px-4 py-1">Created Date</th>
-                  <th className="text-left px-4 py-1">Last Updated</th>
+                  <th className="text-left px-4 py-2">Id</th>
+                  <th className="text-left px-4 py-2">Name</th>
+                  <th className="text-left px-4 py-2">Alias</th>
+                  <th className="text-left px-4 py-2">Description</th>
+                  <th className="text-left px-4 py-2">Database</th>
+                  <th className="text-left px-4 py-2">Schema</th>
+                  <th className="text-left px-4 py-2">Owner</th>
+                  <th className="text-left px-4 py-2">Columns</th>
+                  {/* <th className="text-left px-4 py-2">Tags</th> */}
+                  <th className="text-left px-4 py-2">Created Date</th>
+                  <th className="text-left px-4 py-2">Last Updated Date</th>
                   {isUserAuthorized && (
-                    <th className="text-left px-4 whitespace-nowrap py-1">Action</th>
+                    <th className="text-left px-4 whitespace-nowrap py-2">Action</th>
                   )}
                 </tr>
               </thead>
