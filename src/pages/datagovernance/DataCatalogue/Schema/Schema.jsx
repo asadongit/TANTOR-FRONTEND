@@ -210,8 +210,9 @@ function Schema() {
                   value={value}
                   placeholder="Search schema ..."
                   onChange={(e) => setValue(e.target.value)}
-                  className="border rounded-lg text-sm text-gray-500 p-2 w-full"
+                  className="pl-10 border rounded-lg text-sm text-gray-500 p-2 w-full"
                 />
+                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
               <button
                 onClick={handleRefresh}

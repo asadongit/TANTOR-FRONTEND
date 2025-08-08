@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Columns3, X, Table, ChevronLeft, ChevronRight, RefreshCcw, TableOfContents, Layers, LayoutGrid } from "lucide-react";
+import { Columns3, X, Table, ChevronLeft, ChevronRight, RefreshCcw, TableOfContents, Layers, LayoutGrid, Search } from "lucide-react";
 import Breadcrumb from "../../../../components/Breadcrumb.jsx";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -279,8 +279,9 @@ const Database = () => {
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="px-4 py-2 border rounded-lg shadow-sm w-80 focus:outline-none focus:ring-2 focus:ring-[#8d77ba]"
+                  className="pl-10 py-2 border rounded-lg shadow-sm w-80 focus:outline-none focus:ring-2 focus:ring-[#8d77ba]"
                 />
+                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
             </div>
           )}
