@@ -42,7 +42,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                     className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Previous Page"
+                    title="Back"
                 >
                     <ChevronLeft className="h-5 w-5" />
                 </button>
@@ -55,7 +55,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
                     className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Next Page"
+                    title="Next"
                 >
                     <ChevronRight className="h-5 w-5" />
                 </button>
@@ -416,7 +416,7 @@ function ColumnDetailsPage() {
                     <div className="flex items-start gap-4 w-full">
                         <div className="flex justify-between w-full" >
                             <div className="flex items-center gap-2">
-                                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
+                                <button title="Back" onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
                                     <ChevronLeft className="h-6 w-6" />
                                 </button>
                                 <ChartColumn size={24} className="text-[#8d77ba]" />
@@ -446,7 +446,7 @@ function ColumnDetailsPage() {
                                             <button
                                                 onClick={() => setIsEditingDescription(true)}
                                                 className="p-1 rounded-full hover:bg-gray-100 text-gray-500 [#8d77ba] transition-colors"
-                                                aria-label="Edit description"
+                                                title="Edit Column Description"
                                             >
                                                 <Pencil size={18} />
                                             </button>

@@ -85,6 +85,7 @@ const MultiSelectDropdown = ({ options, selectedValues, onChange, placeholder, d
           {selectedValues.length > 0 ? (
             selectedValues.map(value => (
               <span
+              title="Close"
                 key={value}
                 className="bg-[#8d77ba] text-white text-xs font-semibold mr-2 px-2.5 py-1 rounded-full flex items-center flex-shrink-0"
               >
@@ -566,8 +567,8 @@ const Edit = ({ onClose, editDetails, type }) => {
       <div className='flex-grow overflow-y-auto'>
         {/* Header */}
         <div className='flex justify-between items-center px-6 py-4 border-b sticky top-0 bg-white z-10'>
-          <div className='flex items-center gap-x-3 text-[#8d77ba]'><Pencil className="w-4 h-4" /><span className='font-semibold'>Edit {type === 'column' ? 'Column' : 'Table'}</span></div>
-          <button onClick={onClose} aria-label="Close" className='text-gray-500 hover:text-gray-600'><CircleX className="w-5 h-5" /></button>
+          <div title="Edit" className='flex items-center gap-x-3 text-[#8d77ba]'><Pencil className="w-4 h-4" /><span className='font-semibold'>Edit {type === 'column' ? 'Column' : 'Table'}</span></div>
+          <button onClick={onClose} title="Close" className='text-gray-500 hover:text-gray-600'><CircleX className="w-5 h-5" /></button>
         </div>
 
         {/* Form Section */}

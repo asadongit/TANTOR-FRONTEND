@@ -147,7 +147,7 @@ const DetailsPage = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <Breadcrumb />
       <div className="flex items-center gap-4 mb-3">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
+        <button title="Back" onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
           <ChevronLeft className="h-6 w-6" />
         </button>
         <h1 className="text-2xl font-bold">{item?.Name}</h1>
@@ -220,7 +220,7 @@ const DetailsPage = () => {
                                       <td className="p-2 text-gray-800">{detailItem.name}</td>
                                       <td className="p-2 text-gray-600">{detailItem.description || 'N/A'}</td>
                                       <td className="p-2">
-                                        <button onClick={() => handleQuickAction(detailItem)} className="p-1.5 hover:bg-gray-200 rounded-full">
+                                        <button title="See Details" onClick={() => handleQuickAction(detailItem)} className="p-1.5 hover:bg-gray-200 rounded-full">
                                           <ArrowUpRight className="h-5 w-5 text-gray-600" />
                                         </button>
                                       </td>
@@ -274,9 +274,9 @@ const DetailsPage = () => {
                         <div className="flex justify-between items-center px-4 py-3">
                           <span className="text-sm text-gray-600">Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, technicalData.length)} of {technicalData.length} results</span>
                           <div className="flex items-center gap-1">
-                            <button onClick={goToPreviousPage} disabled={currentPage === 1} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronLeft className="h-5 w-5" /></button>
+                            <button title="Back" onClick={goToPreviousPage} disabled={currentPage === 1} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronLeft className="h-5 w-5" /></button>
                             <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
-                            <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronRight className="h-5 w-5" /></button>
+                            <button title="Next" onClick={goToNextPage} disabled={currentPage === totalPages} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronRight className="h-5 w-5" /></button>
                           </div>
                         </div>
                       )}

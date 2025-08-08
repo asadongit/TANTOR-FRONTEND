@@ -713,7 +713,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                                     formData.domain.stakeholder.map(username => (
                                         <span key={username} className="bg-[#e4dcf5] text-[#584185] text-sm font-medium px-2.5 py-1 rounded-full flex items-center gap-2">
                                             {username}
-                                            <button type="button" onClick={(e) => { e.stopPropagation(); handleStakeholderRemove(username); }} className="text-[#584185] hover:text-black focus:outline-none"><X className="h-3 w-3" /></button>
+                                            <button type="button" title="Close" onClick={(e) => { e.stopPropagation(); handleStakeholderRemove(username); }} className="text-[#584185] hover:text-black focus:outline-none"><X className="h-3 w-3" /></button>
                                         </span>
                                     ))
                                 ) : (!isStakeholdersLoading && <span className="text-gray-500">Select stakeholders</span>)}
@@ -821,7 +821,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                         <FolderPlus className="h-6 w-6 mr-2 text-[#8e78b7]" />
                         Add catalogue
                     </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                    <button title="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X className="h-6 w-6" />
                     </button>
                 </div>

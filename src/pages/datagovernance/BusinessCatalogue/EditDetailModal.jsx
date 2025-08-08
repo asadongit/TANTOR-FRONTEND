@@ -374,7 +374,7 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
                                 currentData.stakeholder.map(username => (
                                     <span key={username} className="bg-[#e4dcf5] text-[#584185] text-sm font-medium px-2.5 py-1 rounded-full flex items-center gap-2">
                                         {username}
-                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleStakeholderRemove(username); }} className="text-[#584185] hover:text-black">
+                                        <button title="Close" type="button" onClick={(e) => { e.stopPropagation(); handleStakeholderRemove(username); }} className="text-[#584185] hover:text-black">
                                             <X className="h-3 w-3" />
                                         </button>
                                     </span>
@@ -459,7 +459,7 @@ const RowEditStepperModal = ({ isOpen, onClose, rowData, onSaveSuccess }) => {
             <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div className="flex justify-between items-center p-4 border-b">
                     <h2 className="text-lg font-bold text-[#8d77ba]">Edit Catalogue </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="h-6 w-6" /></button>
+                    <button title="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="h-6 w-6" /></button>
                 </div>
                 <div className="p-6 overflow-y-auto">
                     <div className="border-b border-gray-200">
@@ -589,7 +589,7 @@ const EditDetailModal = ({ isOpen, onClose, data, onEditComplete }) => {
                             <Pencil className="h-5 w-5 mr-2 text-[#8e78b7]" />
                             Edit catalogue
                         </h2>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1 rounded-full transition-colors">
+                        <button title="Close" onClick={onClose} className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1 rounded-full transition-colors">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
@@ -620,7 +620,7 @@ const EditDetailModal = ({ isOpen, onClose, data, onEditComplete }) => {
                                             <td className="p-3 text-center">
                                                 <button
                                                     className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 hover:text-blue-600 transition-colors"
-                                                    title="Edit Item"
+                                                    title="Edit"
                                                     onClick={() => handleEditClick(row)}
                                                 >
                                                     <Pencil className="h-4 w-4" />
