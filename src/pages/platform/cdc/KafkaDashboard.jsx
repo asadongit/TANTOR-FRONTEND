@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Activity, Server, Database, Users, RefreshCw, AlertCircle, CheckCircle, Clock, Plus, Trash2, Search } from "lucide-react";
+import { Activity, Server, Database, Users, RefreshCw, AlertCircle, CheckCircle, Clock, Plus, Trash2, Search, ActivityIcon } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 // Modal component
 const Modal = ({ open, onClose, title, children }) => {
@@ -133,6 +134,8 @@ const KafkaDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [initialLoaded, setInitialLoaded] = useState(false);
   const didFetchRef = React.useRef(false);
+
+  const navigate = useNavigate();
 
   // Fetch all Kafka data (APIs)
   const fetchKafkaData = async () => {
@@ -340,6 +343,14 @@ const KafkaDashboard = () => {
             </p>
           </div>
           <div className="flex items-center space-x-4 mt-4 md:mt-0">
+            <button
+              onClick={() => {navigate("/monitoring/kafka")}}
+              // disabled={loading}
+              className="flex items-center space-x-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] transition-colors disabled:opacity-50 shadow-sm"
+            >
+              <ActivityIcon className={`w-4 h-4`} />
+              <span>Show Metrics</span>
+            </button>
             <div className="bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 text-sm text-gray-500 flex items-center">
               <Clock className="w-4 h-4 mr-1.5 text-blue-500" />
               Updated {lastRefresh.toLocaleTimeString()}
