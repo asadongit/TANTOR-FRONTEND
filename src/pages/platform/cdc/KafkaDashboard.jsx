@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Activity, Server, Database, Users, RefreshCw, AlertCircle, CheckCircle, Clock, Plus, Trash2 } from "lucide-react";
+import React, { useEffect, useState, useCallback } from "react";
+import { Activity, Server, Database, Users, RefreshCw, AlertCircle, CheckCircle, Clock, Plus, Trash2, Search } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -128,37 +128,79 @@ const KafkaDashboard = () => {
   const [topicModal, setTopicModal] = useState({ open: false, topic: null });
   const [consumerModal, setConsumerModal] = useState({ open: false, groupId: null });
   const [loadingTopics, setLoadingTopics] = useState(false);
+  const [hasMoreTopics, setHasMoreTopics] = useState(true);
+  const [topicsBatchStart, setTopicsBatchStart] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  const didFetchRef = React.useRef(false);
 
-  const fetchKafkaData = () => {
+  // Fetch all Kafka data (APIs)
+  const fetchKafkaData = async () => {
     setLoading(true);
     setError(null);
-    Promise.all([
-      axios.get(`${hostnameV1}/kafka/brokers`, { headers: { Authorization: `Bearer ${token}` } }),
-      axios.get(`${hostnameV1}/kafka/topics/count`, { headers: { Authorization: `Bearer ${token}` } }),
-      axios.get(`${hostnameV1}/kafka/consumer-groups`, { headers: { Authorization: `Bearer ${token}` } }),
-      axios.get(`${hostnameV1}/kafka/messages/total`, { headers: { Authorization: `Bearer ${token}` } })
-    ])
-      .then(([brokersRes, topicsRes, groupsRes, msgRes]) => {
-        setBrokers(Array.isArray(brokersRes.data?.brokers) ? brokersRes.data.brokers : []);
-        setTopics(Array.isArray(topicsRes.data?.topics) ? topicsRes.data.topics : []);
-        setConsumerGroups(Array.isArray(groupsRes.data?.consumer_groups) ? groupsRes.data.consumer_groups : []);
-        setMessagesTotal(msgRes.data?.total_messages || 0);
-        setLastRefresh(new Date());
-      })
-      .catch(() => setError("Failed to load Kafka data."))
-      .finally(() => setLoading(false));
+    try {
+      const [
+        brokersRes,
+        topicsRes,
+        groupsRes,
+        msgRes
+      ] = await Promise.all([
+        axios.get(`${hostnameV1}/kafka/brokers`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${hostnameV1}/kafka/topics/count`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${hostnameV1}/kafka/consumer-groups`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${hostnameV1}/kafka/messages/total`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      setBrokers(Array.isArray(brokersRes.data?.brokers) ? brokersRes.data.brokers : []);
+      setTopics(Array.isArray(topicsRes.data?.topics) ? topicsRes.data.topics : []);
+      setConsumerGroups(Array.isArray(groupsRes.data?.consumer_groups) ? groupsRes.data.consumer_groups : []);
+      setMessagesTotal(msgRes.data?.total_messages || 0);
+      setLastRefresh(new Date());
+      setInitialLoaded(true);
+    } catch {
+      setError("Failed to load Kafka data.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
     fetchKafkaData();
   }, [hostnameV1, token]);
+
+  useEffect(() => {
+    if (!initialLoaded) return;
+    setLoadingTopics(true);
+    setTopicsDetails([]);
+    setHasMoreTopics(true);
+    setTopicsBatchStart(0);
+
+    const ws = new WebSocket(`${hostnameV1.replace(/^http/, "ws")}/ws/kafka/topics/details`);
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setTopicsDetails(prev => [...prev, ...data.batch]);
+      setTopicsBatchStart(data.end);
+      setHasMoreTopics(data.end < data.total);
+      setLoadingTopics(false);
+    };
+    ws.onerror = () => {
+      setLoadingTopics(false);
+      setHasMoreTopics(false);
+    };
+    ws.onclose = () => {
+      setLoadingTopics(false);
+    };
+    window._kafkaTopicsWS = ws;
+    return () => ws.close();
+  }, [initialLoaded, hostnameV1]);
 
   const refreshData = () => {
     fetchKafkaData();
   };
 
   const getBrokerData = (broker) => ({
-    id: broker.id || broker.broker_id || 'Unknown',
+    id: broker.id || broker.node_id || 'Unknown',
     host: broker.host || 'Unknown',
     port: broker.port || 'Unknown',
     status: broker.status || (broker.host ? 'online' : 'unknown'),
@@ -181,54 +223,14 @@ const KafkaDashboard = () => {
     topics: group.topics || group.subscribed_topics || []
   });
 
-  const fetchTopicsDetails = async () => {
-    setLoadingTopics(true);
-    setError(null);
-    try {
-      const res = await axios.get(`${hostnameV1}/kafka/topics`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      // Assume res.data.topics is the array of detailed topic objects
-      if (Array.isArray(res.data.topics)) {
-        setTopicsDetails(res.data.topics);
-      } else {
-        setTopicsDetails([]);
-      }
-    } catch (err) {
-      setError("Failed to load topics details.");
-      setTopicsDetails([]);
-    } finally {
-      setLoadingTopics(false);
+  const handleTopicsScroll = (e) => {
+    const el = e.target;
+    if (hasMoreTopics && !loadingTopics && el.scrollTop + el.clientHeight >= el.scrollHeight - 50) {
+      setLoadingTopics(true);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "online":
-      case "stable":
-        return "text-green-600 bg-green-100";
-      case "offline":
-      case "rebalancing":
-        return "text-red-600 bg-red-100";
-      case "warning":
-        return "text-yellow-600 bg-yellow-100";
-      default:
-        return "text-gray-600 bg-gray-100";
-    }
-  };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "online":
-      case "stable":
-        return <CheckCircle className="w-4 h-4" />;
-      case "offline":
-      case "rebalancing":
-        return <AlertCircle className="w-4 h-4" />;
-      default:
-        return <Clock className="w-4 h-4" />;
-    }
-  };
 
   const formatNumber = (num) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
@@ -288,15 +290,17 @@ const KafkaDashboard = () => {
     }
   };
 
-  // Helper to get topic details by name
-  const getTopicDetailsByName = (name) => {
-    if (!topicsDetails || !Array.isArray(topicsDetails)) return null;
-    return topicsDetails.find(td => td.name === name || td.topic_name === name) || null;
-  };
+  const filteredTopicsDetails = searchTerm
+    ? topicsDetails.slice(0, topicsBatchStart).filter(
+        details =>
+          details.name &&
+          details.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : topicsDetails.slice(0, topicsBatchStart);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen  flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 text-[#8e78b7] animate-spin mx-auto mb-4" />
           <div className="text-lg text-gray-600">Loading Kafka Dashboard...</div>
@@ -307,7 +311,7 @@ const KafkaDashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
+       <div className="min-h-screen  flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
           <div className="text-lg text-red-600">{error}</div>
@@ -324,22 +328,26 @@ const KafkaDashboard = () => {
 
   // ✅ MAIN DASHBOARD JSX RETURN
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 pb-4 border-b border-gray-200">
           <div>
-            <h1 className="text-3xl font-bold text-[#8e78b7] mb-2">Kafka Dashboard</h1>
-            <p className="text-gray-600">Monitor your Kafka cluster in real-time</p>
+            <h1 className="text-3xl font-medium text-[#8e78b7] mb-1">Kafka Dashboard</h1>
+            <p className="text-gray-500 flex items-center">
+              <Server className="w-4 h-4 mr-2" />
+              Cluster Status: {brokers.filter(b => getBrokerData(b).status === 'online').length} of {brokers.length} brokers online
+            </p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-500">
-              Last updated: {lastRefresh.toLocaleTimeString()}
+          <div className="flex items-center space-x-4 mt-4 md:mt-0">
+            <div className="bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 text-sm text-gray-500 flex items-center">
+              <Clock className="w-4 h-4 mr-1.5 text-blue-500" />
+              Updated {lastRefresh.toLocaleTimeString()}
             </div>
             <button
               onClick={refreshData}
               disabled={loading}
-              className="flex items-center space-x-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a69a5] transition-colors disabled:opacity-50"
+              className="flex items-center space-x-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] transition-colors disabled:opacity-50 shadow-sm"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -348,196 +356,244 @@ const KafkaDashboard = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-[#8e78b7]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Total Brokers</p>
-                <p className="text-2xl font-bold text-[#8e78b7]">{brokers.length}</p>
-                <p className="text-green-600 text-xs mt-1">
-                  {brokers.filter(b => getBrokerData(b).status === 'online').length} online
-                </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Server className="w-6 h-6 text-blue-600" />
               </div>
-              <Server className="w-8 h-8 text-[#8e78b7]" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Total Brokers</h3>
+                <p className="text-sm text-gray-500">{brokers.filter(b => getBrokerData(b).status === 'online').length} online</p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Active Topics</p>
-                <p className="text-2xl font-bold text-blue-600">{topics.length}</p>
-                <p className="text-gray-500 text-xs mt-1">
-                  {topics.reduce((sum, topic) => sum + getTopicData(topic).partitions, 0)} partitions
-                </p>
+          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                <Database className="w-6 h-6 text-indigo-600" />
               </div>
-              <Database className="w-8 h-8 text-blue-500" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Active Topics</h3>
+                <p className="text-sm text-gray-500">{topics.length} topics</p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-emerald-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Consumer Groups</p>
-                <p className="text-2xl font-bold text-emerald-600">{consumerGroups.length}</p>
-                <p className="text-gray-500 text-xs mt-1">
-                  {consumerGroups.reduce((sum, group) => sum + getConsumerGroupData(group).members, 0)} members
-                </p>
+          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+                <Users className="w-6 h-6 text-teal-600" />
               </div>
-              <Users className="w-8 h-8 text-emerald-500" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Consumer Groups</h3>
+                <p className="text-sm text-gray-500">{consumerGroups.reduce((sum, group) => sum + getConsumerGroupData(group).members, 0)} members</p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Total Messages</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {formatNumber(messagesTotal)}
-                </p>
-                <p className="text-gray-500 text-xs mt-1">across all topics</p>
+          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                <Activity className="w-6 h-6 text-amber-600" />
               </div>
-              <Activity className="w-8 h-8 text-orange-500" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Total Messages</h3>
+                <p className="text-sm text-gray-500">{formatNumber(messagesTotal)} across all topics</p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Brokers */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="bg-white rounded-xl shadow-md p-6 xl:col-span-1">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-[#8e78b7] flex items-center">
-                <Server className="w-5 h-5 mr-2" />
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                <Server className="w-5 h-5 mr-2 text-blue-500" />
                 Kafka Brokers
               </h2>
-              <button onClick={() => openModal('broker')} className="flex items-center px-3 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a69a5] text-sm">
-                <Plus className="w-4 h-4 mr-1" /> Create Broker
-              </button>
+              {/* <button onClick={() => openModal('broker')} className="flex items-center px-3 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] text-sm shadow-sm">
+                <Plus className="w-4 h-4 mr-1" /> Add
+              </button> */}
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 scrollbar-thin">
               {brokers.map(broker => {
                 const brokerData = getBrokerData(broker);
                 return (
-                  <div key={brokerData.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div key={brokerData.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors">
                     <div className="flex items-center space-x-3">
-                      <div className={`flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(brokerData.status)}`}>
-                        {getStatusIcon(brokerData.status)}
-                        <span className="ml-1 capitalize">{brokerData.status}</span>
-                      </div>
+                      <div className={`w-2.5 h-2.5 rounded-full ${brokerData.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`}></div>
                       <div>
-                        <div className="font-medium text-gray-900">Broker {brokerData.host}:{brokerData.port}</div>
+                        <div className="font-medium text-gray-900">Broker ID: {brokerData.id}</div>
+                        <div className="text-xs text-gray-500">{brokerData.host}:{brokerData.port}</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-medium text-gray-900">Uptime</div>
-                      <div className="text-sm text-gray-600">{brokerData.uptime}</div>
+                      <div className="text-xs text-gray-500">Uptime</div>
+                      <div className="text-sm font-medium text-gray-900">{brokerData.uptime}</div>
                     </div>
                   </div>
                 );
               })}
+              {brokers.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  <Server className="w-12 h-12 mx-auto opacity-20 mb-3" />
+                  <p>No brokers available</p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Topics */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-[#8e78b7] flex items-center">
-                <Database className="w-5 h-5 mr-2" />
+          <div className="bg-white rounded-xl shadow-md p-6 xl:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                <Database className="w-5 h-5 mr-2 text-indigo-500" />
                 Topics
               </h2>
               <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-500">{topics.length} topics</span>
-                <button onClick={() => openModal('topic')} className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-                  <Plus className="w-4 h-4 mr-1" /> Create Topic
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search topic..."
+                    className="w-64 px-4 py-2 pl-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 text-sm"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
+                  <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
+                </div>
+                <span className="text-sm text-gray-500">{topicsDetails.length} topics</span>
+                <button onClick={() => openModal('topic')} className="flex items-center px-3 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] text-sm shadow-sm">
+                  <Plus className="w-4 h-4 mr-1" /> Add
                 </button>
               </div>
             </div>
-            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {topics.map(topicName => {
-                const details = getTopicDetailsByName(typeof topicName === 'string' ? topicName : topicName.name);
-                return (
-                  <div key={typeof topicName === 'string' ? topicName : topicName.name} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-gray-900 truncate">{typeof topicName === 'string' ? topicName : topicName.name}</h3>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600">{details ? details.size : '--'}</span>
-                        <button
-                          onClick={() => handleDeleteClick('topic', details || topicName)}
-                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Partitions:</span>
-                        <span className="ml-1 font-medium">{details ? details.partitions : '--'}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Replicas:</span>
-                        <span className="ml-1 font-medium">{details ? details.replicas : '--'}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Messages:</span>
-                        <span className="ml-1 font-medium">{details ? formatNumber(details.messages) : '--'}</span>
-                      </div>
+
+            <div
+              className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[350px] overflow-y-auto pr-2 scrollbar-thin"
+              onScroll={handleTopicsScroll}
+            >
+              {filteredTopicsDetails.map(details => (
+                <div
+                  key={details.name}
+                  className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-[#8e78b7] hover:bg-indigo-50/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-gray-900 truncate max-w-[200px]" title={details.name}>{details.name}</h3>
+                    <div className="flex items-center space-x-2">
+                      {/* <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">{details.size || '--'}</span> */}
+                      <button
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        title="Delete topic"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                );
-              })}
-              {topics.length === 0 && <div className="text-gray-400">No topics found.</div>}
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="flex flex-col">
+                      <span className="text-gray-500">Partitions</span>
+                      <span className="font-medium text-gray-900">{details.partitions}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-gray-500">Replicas</span>
+                      <span className="font-medium text-gray-900">{details.replicas}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-gray-500">Messages</span>
+                      <span className="font-medium text-gray-900">{formatNumber(details.messages)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {loadingTopics && (
+                <div className="md:col-span-2 flex justify-center py-6">
+                  <div className="w-8 h-8 border-4 border-[#8e78b7] border-t-[#6b578f] rounded-full animate-spin"></div>
+                </div>
+              )}
+
+              {!loadingTopics && !hasMoreTopics && filteredTopicsDetails.length === 0 && (
+                <div className="md:col-span-2 text-center py-10 text-gray-400">
+                  <Database className="w-12 h-12 mx-auto opacity-20 mb-3" />
+                  <p>No topics found</p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Consumer Groups */}
-          <div className="xl:col-span-2 bg-white rounded-xl shadow-lg p-6">
+          <div className="xl:col-span-3 bg-white rounded-xl shadow-md p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-[#8e78b7] flex items-center">
-                <Users className="w-5 h-5 mr-2" />
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                <Users className="w-5 h-5 mr-2 text-teal-500" />
                 Consumer Groups
               </h2>
-              <button onClick={() => openModal('consumer')} className="flex items-center px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">
-                <Plus className="w-4 h-4 mr-1" /> Create Consumer
+              <button onClick={() => openModal('consumer')} className="flex items-center px-3 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] text-sm shadow-sm">
+                <Plus className="w-4 h-4 mr-1" /> Add
               </button>
             </div>
-            <div className="overflow-x-auto max-h-96 overflow-y-auto pr-2">
+            <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Group ID</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">State</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Members</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Lag</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Topics</th>
+                  <tr>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Group ID</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">State</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Members</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Lag</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Subscribed Topics</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-100">
                   {consumerGroups.map(group => {
                     const groupData = getConsumerGroupData(group);
                     return (
-                      <tr key={groupData.groupId} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => setConsumerModal({ open: true, groupId: groupData.groupId })}>
-                        <td className="py-3 px-4 font-medium text-gray-900 truncate max-w-[200px]">{groupData.groupId}</td>
+                      <tr
+                        key={groupData.groupId}
+                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => setConsumerModal({ open: true, groupId: groupData.groupId })}
+                      >
+                        <td className="py-3 px-4 font-medium text-gray-900 truncate max-w-[200px]" title={groupData.groupId}>{groupData.groupId}</td>
                         <td className="py-3 px-4">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(groupData.state)}`}>
-                            {getStatusIcon(groupData.state)}
-                            <span className="ml-1 capitalize">{groupData.state}</span>
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                            ${groupData.state === 'stable' ? 'bg-green-100 text-green-800' :
+                              groupData.state === 'rebalancing' ? 'bg-yellow-100 text-yellow-800' :
+                              groupData.state === 'offline' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full mr-1.5
+                              ${groupData.state === 'stable' ? 'bg-green-600' :
+                                groupData.state === 'rebalancing' ? 'bg-yellow-600' :
+                                groupData.state === 'offline' ? 'bg-red-600' :
+                                'bg-gray-600'}`}>
+                            </span>
+                            {groupData.state}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-gray-600">{groupData.members}</td>
+                        <td className="py-3 px-4 text-gray-700">{groupData.members}</td>
                         <td className="py-3 px-4">
-                          <span className={`font-medium ${groupData.lag > 100 ? 'text-red-600' : groupData.lag > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
-                            {groupData.lag}
+                          <span className={`font-medium
+                            ${groupData.lag > 1000 ? 'text-red-600' :
+                              groupData.lag > 100 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {formatNumber(groupData.lag)}
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex flex-wrap gap-1">
-                            {groupData.topics.map(topic => (
-                              <span key={topic} className="px-2 py-1 bg-[#8e78b7] bg-opacity-10 text-[#8e78b7] text-xs rounded-full">
+                          <div className="flex flex-wrap gap-1 max-w-md">
+                            {groupData.topics.slice(0, 3).map(topic => (
+                              <span key={topic} className="px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded-full border border-teal-100">
                                 {topic}
                               </span>
                             ))}
+                            {groupData.topics.length > 3 && (
+                              <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-full">
+                                +{groupData.topics.length - 3} more
+                              </span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -545,6 +601,13 @@ const KafkaDashboard = () => {
                   })}
                 </tbody>
               </table>
+
+              {consumerGroups.length === 0 && (
+                <div className="text-center py-10 text-gray-400">
+                  <Users className="w-12 h-12 mx-auto opacity-20 mb-3" />
+                  <p>No consumer groups available</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -563,7 +626,7 @@ const KafkaDashboard = () => {
               <input type="number" required className="mt-1 w-full border rounded px-3 py-2" value={form.port || ''} onChange={e => setForm(f => ({ ...f, port: e.target.value }))} />
             </div>
             {formError && <div className="text-red-500 text-sm">{formError}</div>}
-            <button type="submit" disabled={formLoading} className="w-full bg-[#8e78b7] text-white py-2 rounded-lg hover:bg-[#7a69a5] mt-2">{formLoading ? 'Creating...' : 'Create Broker'}</button>
+            <button type="submit" disabled={formLoading} className="w-full bg-[#8e78b7] text-white py-2 rounded-lg hover:bg-[#6b578f] mt-2">{formLoading ? 'Creating...' : 'Create Broker'}</button>
           </form>
         )}
         {modal.type === 'topic' && (
@@ -581,7 +644,7 @@ const KafkaDashboard = () => {
               <input type="number" min="1" required className="mt-1 w-full border rounded px-3 py-2" value={form.replication_factor || ''} onChange={e => setForm(f => ({ ...f, replication_factor: e.target.value }))} />
             </div>
             {formError && <div className="text-red-500 text-sm">{formError}</div>}
-            <button type="submit" disabled={formLoading} className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 mt-2">{formLoading ? 'Creating...' : 'Create Topic'}</button>
+            <button type="submit" disabled={formLoading} className="w-full bg-[#8e78b7] text-white py-2 rounded-lg hover:bg-[#6b578f] mt-2">{formLoading ? 'Creating...' : 'Create Topic'}</button>
           </form>
         )}
         {modal.type === 'consumer' && (

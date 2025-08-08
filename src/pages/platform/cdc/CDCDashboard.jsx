@@ -87,7 +87,7 @@ const navigate = useNavigate();
             onClick={handlekafkaClick}
           >
             {/* <List className="h-5 w-5" /> */}
-            <h1 className="mb5">Kakfka Dashboard</h1>
+            <h1 className="mb5">Kafka Dashboard</h1>
           </button>
           <button
             type="button"
@@ -112,7 +112,7 @@ const navigate = useNavigate();
           </button>
         </div>
       </div>
-   
+
       <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading}/>
 
       <div className="flex flex-col items-start gap-2.5 m-2">
