@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Activity, Server, Database, Users, RefreshCw, AlertCircle, CheckCircle, Clock, Plus } from "lucide-react";
+import { Activity, Server, Database, Users, RefreshCw, AlertCircle, CheckCircle, Clock, Plus, Trash2 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -37,10 +37,68 @@ const TopicDetailsModal = ({ open, onClose, topicName, hostnameV1, token }) => {
   if (!open) return null;
   return (
     <Modal open={open} onClose={onClose} title={`Topic Details: ${topicName}`}>
+  {loading && (
+    <div className="text-center text-blue-500 font-semibold py-4">Loading...</div>
+  )}
+
+  {error && (
+    <div className="bg-red-100 text-red-700 p-3 rounded-md my-2 text-center font-semibold">
+      {error}
+    </div>
+  )}
+
+  {details && (
+    <div className="space-y-3 text-sm max-h-[60vh] overflow-y-auto font-sans">
+      {Object.entries(details).map(([key, value]) => {
+        // Color coding for some known keys
+        let keyColorClass = "text-sky-600"; // default color
+        if (key.toLowerCase().includes("partition")) keyColorClass = "text-green-600";
+        else if (key.toLowerCase().includes("replication")) keyColorClass = "text-blue-600";
+        else if (key.toLowerCase().includes("config")) keyColorClass = "text-yellow-600";
+        else if (key.toLowerCase().includes("error")) keyColorClass = "text-red-600";
+
+        return (
+          <div key={key} className="flex flex-col md:flex-row md:items-start md:space-x-2 break-words">
+            <span className={`font-semibold capitalize min-w-[150px] ${keyColorClass}`}>
+              {key}:
+            </span>
+            <pre className="whitespace-pre-wrap text-gray-900 flex-1 bg-gray-100 rounded-md p-2 shadow-sm">
+              {typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
+            </pre>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</Modal>
+
+  );
+};
+
+// Add ConsumerGroupDetailsModal
+const ConsumerGroupDetailsModal = ({ open, onClose, groupId, hostnameV1, token }) => {
+  const [details, setDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!open || !groupId) return;
+    setLoading(true);
+    setError(null);
+    setDetails(null);
+    axios.get(`${hostnameV1}/kafka/consumer-groups/${encodeURIComponent(groupId)}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setDetails(res.data))
+      .catch(() => setError('Failed to fetch consumer group details.'))
+      .finally(() => setLoading(false));
+  }, [open, groupId, hostnameV1, token]);
+
+  if (!open) return null;
+  return (
+    <Modal open={open} onClose={onClose} title={`Consumer Group Details: ${groupId}`}>
       {loading && <div className="text-gray-500">Loading...</div>}
       {error && <div className="text-red-500">{error}</div>}
       {details && (
-        <div className="space-y-2 text-sm">
+        <div className="space-y-2 text-sm max-h-[60vh] overflow-y-auto">
           {Object.entries(details).map(([key, value]) => (
             <div key={key}>
               <span className="font-medium text-gray-700">{key}:</span> <span className="text-gray-900">{JSON.stringify(value)}</span>
@@ -56,7 +114,10 @@ const KafkaDashboard = () => {
   const { token, hostnameV1 } = useAuth();
   const [brokers, setBrokers] = useState([]);
   const [topics, setTopics] = useState([]);
+  const [topicsDetails, setTopicsDetails] = useState([]);
   const [consumerGroups, setConsumerGroups] = useState([]);
+  const [consumerGroupsDetails, setConsumerGroupsDetails] = useState([]);
+  const [messagesTotal, setMessagesTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
@@ -65,19 +126,23 @@ const KafkaDashboard = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState(null);
   const [topicModal, setTopicModal] = useState({ open: false, topic: null });
+  const [consumerModal, setConsumerModal] = useState({ open: false, groupId: null });
+  const [loadingTopics, setLoadingTopics] = useState(false);
 
   const fetchKafkaData = () => {
     setLoading(true);
     setError(null);
     Promise.all([
       axios.get(`${hostnameV1}/kafka/brokers`, { headers: { Authorization: `Bearer ${token}` } }),
-      axios.get(`${hostnameV1}/kafka/topics`, { headers: { Authorization: `Bearer ${token}` } }),
-      axios.get(`${hostnameV1}/kafka/consumer-groups`, { headers: { Authorization: `Bearer ${token}` } })
+      axios.get(`${hostnameV1}/kafka/topics/count`, { headers: { Authorization: `Bearer ${token}` } }),
+      axios.get(`${hostnameV1}/kafka/consumer-groups`, { headers: { Authorization: `Bearer ${token}` } }),
+      axios.get(`${hostnameV1}/kafka/messages/total`, { headers: { Authorization: `Bearer ${token}` } })
     ])
-      .then(([brokersRes, topicsRes, groupsRes]) => {
+      .then(([brokersRes, topicsRes, groupsRes, msgRes]) => {
         setBrokers(Array.isArray(brokersRes.data?.brokers) ? brokersRes.data.brokers : []);
         setTopics(Array.isArray(topicsRes.data?.topics) ? topicsRes.data.topics : []);
-        setConsumerGroups(Array.isArray(groupsRes.data) ? groupsRes.data : []);
+        setConsumerGroups(Array.isArray(groupsRes.data?.consumer_groups) ? groupsRes.data.consumer_groups : []);
+        setMessagesTotal(msgRes.data?.total_messages || 0);
         setLastRefresh(new Date());
       })
       .catch(() => setError("Failed to load Kafka data."))
@@ -115,6 +180,27 @@ const KafkaDashboard = () => {
     lag: group.lag || group.total_lag || 0,
     topics: group.topics || group.subscribed_topics || []
   });
+
+  const fetchTopicsDetails = async () => {
+    setLoadingTopics(true);
+    setError(null);
+    try {
+      const res = await axios.get(`${hostnameV1}/kafka/topics`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // Assume res.data.topics is the array of detailed topic objects
+      if (Array.isArray(res.data.topics)) {
+        setTopicsDetails(res.data.topics);
+      } else {
+        setTopicsDetails([]);
+      }
+    } catch (err) {
+      setError("Failed to load topics details.");
+      setTopicsDetails([]);
+    } finally {
+      setLoadingTopics(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -200,6 +286,12 @@ const KafkaDashboard = () => {
     } finally {
       setFormLoading(false);
     }
+  };
+
+  // Helper to get topic details by name
+  const getTopicDetailsByName = (name) => {
+    if (!topicsDetails || !Array.isArray(topicsDetails)) return null;
+    return topicsDetails.find(td => td.name === name || td.topic_name === name) || null;
   };
 
   if (loading) {
@@ -301,7 +393,7 @@ const KafkaDashboard = () => {
               <div>
                 <p className="text-gray-600 text-sm font-medium">Total Messages</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {formatNumber(topics.reduce((sum, topic) => sum + getTopicData(topic).messages, 0))}
+                  {formatNumber(messagesTotal)}
                 </p>
                 <p className="text-gray-500 text-xs mt-1">across all topics</p>
               </div>
@@ -334,8 +426,7 @@ const KafkaDashboard = () => {
                         <span className="ml-1 capitalize">{brokerData.status}</span>
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900">Broker {brokerData.id}</div>
-                        <div className="text-sm text-gray-600">{brokerData.host}:{brokerData.port}</div>
+                        <div className="font-medium text-gray-900">Broker {brokerData.host}:{brokerData.port}</div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -355,17 +446,47 @@ const KafkaDashboard = () => {
                 <Database className="w-5 h-5 mr-2" />
                 Topics
               </h2>
-              <button onClick={() => openModal('topic')} className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-                <Plus className="w-4 h-4 mr-1" /> Create Topic
-              </button>
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-500">{topics.length} topics</span>
+                <button onClick={() => openModal('topic')} className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                  <Plus className="w-4 h-4 mr-1" /> Create Topic
+                </button>
+              </div>
             </div>
             <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {topics.map(topic => (
-                <div key={typeof topic === 'string' ? topic : topic.name} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                  onClick={() => setTopicModal({ open: true, topic: typeof topic === 'string' ? topic : topic.name })}>
-                  <div className="font-medium text-gray-900 truncate">{typeof topic === 'string' ? topic : topic.name}</div>
-                </div>
-              ))}
+              {topics.map(topicName => {
+                const details = getTopicDetailsByName(typeof topicName === 'string' ? topicName : topicName.name);
+                return (
+                  <div key={typeof topicName === 'string' ? topicName : topicName.name} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-gray-900 truncate">{typeof topicName === 'string' ? topicName : topicName.name}</h3>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">{details ? details.size : '--'}</span>
+                        <button
+                          onClick={() => handleDeleteClick('topic', details || topicName)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Partitions:</span>
+                        <span className="ml-1 font-medium">{details ? details.partitions : '--'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Replicas:</span>
+                        <span className="ml-1 font-medium">{details ? details.replicas : '--'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Messages:</span>
+                        <span className="ml-1 font-medium">{details ? formatNumber(details.messages) : '--'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
               {topics.length === 0 && <div className="text-gray-400">No topics found.</div>}
             </div>
           </div>
@@ -381,7 +502,7 @@ const KafkaDashboard = () => {
                 <Plus className="w-4 h-4 mr-1" /> Create Consumer
               </button>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-96 overflow-y-auto pr-2">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
@@ -396,8 +517,8 @@ const KafkaDashboard = () => {
                   {consumerGroups.map(group => {
                     const groupData = getConsumerGroupData(group);
                     return (
-                      <tr key={groupData.groupId} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4 font-medium text-gray-900">{groupData.groupId}</td>
+                      <tr key={groupData.groupId} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => setConsumerModal({ open: true, groupId: groupData.groupId })}>
+                        <td className="py-3 px-4 font-medium text-gray-900 truncate max-w-[200px]">{groupData.groupId}</td>
                         <td className="py-3 px-4">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(groupData.state)}`}>
                             {getStatusIcon(groupData.state)}
@@ -487,6 +608,9 @@ const KafkaDashboard = () => {
 
       {/* Topic Details Modal */}
       <TopicDetailsModal open={topicModal.open} onClose={() => setTopicModal({ open: false, topic: null })} topicName={topicModal.topic} hostnameV1={hostnameV1} token={token} />
+
+      {/* Consumer Group Details Modal */}
+      <ConsumerGroupDetailsModal open={consumerModal.open} onClose={() => setConsumerModal({ open: false, groupId: null })} groupId={consumerModal.groupId} hostnameV1={hostnameV1} token={token} />
     </div>
   );
 };
