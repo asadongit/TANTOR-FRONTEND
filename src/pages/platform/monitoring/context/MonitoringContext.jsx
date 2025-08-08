@@ -1,7 +1,6 @@
 import React, { useContext, useState } from "react";
 import FrontendDashboard from "../dashboards/FrontendDashboard";
 import BackendDashboard from "../dashboards/BackendDashboard";
-import { toast } from "react-toastify";
 
 const MonitoringContext = React.createContext();
 
@@ -37,9 +36,7 @@ export const MonitoringProvider = ({ children }) => {
 
     try {
       const response = await fetch(
-        `${
-          import.meta.env.VITE_MONITORING_URL
-        }/api/datasources/uid/**MONITORING_PROMETHEUS**/resources/api/v1/series?match[]=kube_pod_status_phase{namespace="**MONITORING_NAMESPACE**", pod=~"**POD_PREFIX=${
+        `${import.meta.env.VITE_FAST_API}/monitoring/api/datasources/uid/**MONITORING_PROMETHEUS**/resources/api/v1/series?match[]=kube_pod_status_phase{namespace="**MONITORING_NAMESPACE**", pod=~"**POD_PREFIX=${
           selectedDashboard.name
         }**", phase="Running"}&start=${start}&end=${end}`
       );
@@ -54,9 +51,7 @@ export const MonitoringProvider = ({ children }) => {
     const { start, end } = getTimerangeInSeconds(5);
     try {
       const response = await fetch(
-        `${
-          import.meta.env.VITE_MONITORING_URL
-        }/api/datasources/uid/**MONITORING_PROMETHEUS**/resources/api/v1/series?match[]=kube_pod_container_info{namespace="**MONITORING_NAMESPACE**", pod="${pod}"}&start=${start}&end=${end}`
+        `${import.meta.env.VITE_FAST_API}/monitoring/api/datasources/uid/**MONITORING_PROMETHEUS**/resources/api/v1/series?match[]=kube_pod_container_info{namespace="**MONITORING_NAMESPACE**", pod="${pod}"}&start=${start}&end=${end}`
       );
 
       if (!response.ok) {
@@ -73,9 +68,7 @@ export const MonitoringProvider = ({ children }) => {
   async function getPodUptime({ pod }) {
     try {
       const response = await fetch(
-        `${
-          import.meta.env.VITE_MONITORING_URL
-        }/api/datasources/uid/**MONITORING_PROMETHEUS**/resources/api/v1/query?query=kube_pod_start_time{namespace="**MONITORING_NAMESPACE**",pod="${pod}"}`
+        `${import.meta.env.VITE_FAST_API}/monitoring/api/datasources/uid/**MONITORING_PROMETHEUS**/resources/api/v1/query?query=kube_pod_start_time{namespace="**MONITORING_NAMESPACE**",pod="${pod}"}`
       );
 
       if (!response.ok) throw new Error("Error fetching pod uptime.");
@@ -119,7 +112,7 @@ export const MonitoringProvider = ({ children }) => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_MONITORING_URL}/api/ds/query`,
+        `${import.meta.env.VITE_FAST_API}/monitoring/api/ds/query`,
         {
           method: "POST",
           body: JSON.stringify(body),
@@ -180,7 +173,7 @@ export const MonitoringProvider = ({ children }) => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_MONITORING_URL}/api/ds/query`,
+        `${import.meta.env.VITE_FAST_API}/monitoring/api/ds/query`,
         {
           method: "POST",
           body: JSON.stringify(body),
@@ -214,6 +207,7 @@ export const MonitoringProvider = ({ children }) => {
         dashboards,
         selectedDashboard,
         setSelectedDashboard,
+        getTimerangeInMilliseconds,
       }}
     >
       {children}

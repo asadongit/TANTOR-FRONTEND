@@ -37,7 +37,7 @@ function MonitoringDashboard() {
       } catch (error) {
         console.error(error);
         setPods([]);
-        toast.error(error.message || "Failed to fetch pods");
+        toast.error("Failed to fetch pods");
       }
     };
     fetchPods();
@@ -64,7 +64,7 @@ function MonitoringDashboard() {
         setCurrentPodUptime(`${result.toFixed(2)} hours`);
       } catch (error) {
         console.error("Failed to get pod uptime:", error);
-        toast.error(error.message || "Failed to get pod uptime.");
+        toast.error("Failed to get pod uptime.");
       }
     };
 
@@ -95,9 +95,9 @@ function MonitoringDashboard() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="bg-[#f9fafb] w-full h-full flex flex-col">
       {/* Selector bar */}
-      <div className="bg-white px-4 py-3 shadow-sm border-b border-gray-200">
+      <div className="bg-[#f9fafb] px-4 py-3 shadow-sm border-b border-gray-200">
         <div className="flex flex-wrap items-center gap-3">
           {/* Dashboard selector */}
           <div className="relative min-w-[200px]">

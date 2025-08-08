@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useMonitoringContext } from "../context/monitoringcontext";
 import SingleLineAreaChart from "./SingleLineAreaChart";
 import StatCard from "./StatCard";
-import { RefreshCw } from "lucide-react";
+import { CpuIcon, LucideMemoryStick, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 
 function MetricViewer() {
@@ -11,6 +11,8 @@ function MetricViewer() {
   const [memoryUsage, setMemoryUsage] = useState([]);
   const [statCardData, setStatCardData] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState("");
 
   const fetchPodMetrics = async () => {
     try {
@@ -62,10 +64,14 @@ function MetricViewer() {
       ];
 
       setStatCardData({ cpuStats, memoryStats });
-      toast.success("Metris fetched successfully");
+      toast.success("Metrics fetched successfully");
+      
+      setLastRefreshTimestamp(new Date().toLocaleString());
     } catch (error) {
       console.error(error);
       setCpuUsage([]);
+      setMemoryUsage([]);
+      setStatCardData({ cpuStats: [], memoryStats: [] });
       toast.error(error.message || "Failed to fetch pods");
     } finally {
       setLoading(false);
@@ -75,11 +81,18 @@ function MetricViewer() {
   useEffect(() => {
     if (!monitoringConfig.pod) return;
     fetchPodMetrics();
-  }, []);
+  }, [monitoringConfig.pod]);
 
   return (
-    <div>
-      <div className="flex justify-end mb-4">
+    <div className="bg-[#f9fafb]">
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-gray-500">
+          {lastRefreshTimestamp && (
+            <>
+              Last refreshed: <strong>{lastRefreshTimestamp}</strong>
+            </>
+          )}
+        </p>
         <button
           onClick={fetchPodMetrics}
           disabled={loading}
@@ -95,16 +108,18 @@ function MetricViewer() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 place-items-center">
+      <div className="flex justify-evenly">
         <StatCard
           title="CPU Usage"
           data={statCardData.cpuStats || []}
           unit="cores"
+          icon={<CpuIcon />}
         />
         <StatCard
           title="Memory Usage"
           data={statCardData.memoryStats || []}
           unit="MiB"
+          icon={<LucideMemoryStick />}
         />
       </div>
 
