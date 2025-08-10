@@ -15,7 +15,6 @@ function Tables() {
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
-  const [selectedTable, setSelectedTable] = useState(null);
   const [allTablesRawData, setAllTablesRawData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditPage, setShowEditPage] = useState(false);
@@ -26,11 +25,9 @@ function Tables() {
   const [fetchingEditId, setFetchingEditId] = useState(null);
   const navigate = useNavigate();
   const { state: navigationState } = useLocation();
-  console.log("states in tables are ### ", navigationState)
+  const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
+  const [currentTableForTags, setCurrentTableForTags] = useState(null);
 
-  // --- NEW STATE FOR COLUMN DETAILS MODAL ---
-  const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
-  const [currentColumns, setCurrentColumns] = useState([]);
 
   const processTableData = (data) => {
     const tableMap = new Map();
@@ -50,24 +47,23 @@ function Tables() {
           column: 0,
           CreatedDate: new Date(item.created_at).toLocaleDateString(),
           lastUpdated: new Date(item.updated_at).toLocaleDateString(),
-          selected: false
+          selected: false,
+          tags: new Set()
         });
       }
 
       const entry = tableMap.get(tableKey);
       entry.column++;
+      if (item.compliance_tags && Array.isArray(item.compliance_tags)) {
+        item.compliance_tags.forEach(tag => entry.tags.add(tag));
+      }
     });
 
     return Array.from(tableMap.values()).map(item => ({
       ...item,
-      column: item.column.toString().padStart(2, '0')
+      column: item.column.toString().padStart(2, '0'),
+      tags: Array.from(item.tags)
     }));
-  };
-
-  const getTags = (connectionType) => {
-    const tags = ['Sensitive', 'Critical', 'Internal', 'Public', 'Confidential'];
-    const index = Math.floor(Math.random() * tags.length);
-    return tags[index];
   };
 
   const getTableColumns = (table) => {
@@ -86,7 +82,6 @@ function Tables() {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
       const allTablesData = await fetchConnectionDetails(policyIds, token);
-      // --- MODIFICATION: Set raw data only. Processing is moved to useEffect.
       setAllTablesRawData(allTablesData);
       return { success: true };
     } catch (error) {
@@ -105,7 +100,6 @@ function Tables() {
     if (allTablesRawData.length > 0) {
       let dataToProcess = allTablesRawData;
 
-      // If navigated from Schema page, filter tables by schema name
       if (
         navigationState?.type === 'schema' &&
         navigationState?.schemaName &&
@@ -116,7 +110,6 @@ function Tables() {
           item.connection_name === navigationState.connectionName
         );
       }
-      // NEW: If navigated from Database page, filter by connection name
       else if (navigationState?.type === 'database' && navigationState?.connectionName) {
         dataToProcess = allTablesRawData.filter(item =>
           item.connection_name === navigationState.connectionName
@@ -125,12 +118,10 @@ function Tables() {
 
       const processedData = processTableData(dataToProcess);
       setTableData(processedData);
+    } else {
+      setTableData([]);
     }
   }, [allTablesRawData, navigationState]);
-
-  useEffect(() => {
-    loadData();
-  }, [token]);
 
   const handleRefresh = async () => {
     const result = await loadData();
@@ -218,6 +209,11 @@ function Tables() {
     });
   };
 
+  const handleTagsClick = (table) => {
+    setCurrentTableForTags(table);
+    setIsTagsModalOpen(true);
+  };
+
   return (
     <div className="p-4">
       {toast.show && (
@@ -279,9 +275,9 @@ function Tables() {
                   <th className="text-left px-4 py-2">Schema</th>
                   <th className="text-left px-4 py-2">Owner</th>
                   <th className="text-left px-4 py-2">Columns</th>
-                  {/* <th className="text-left px-4 py-2">Tags</th> */}
+                  <th className="text-left px-4 py-2">Tags</th>
                   <th className="text-left px-4 py-2">Created Date</th>
-                  <th className="text-left px-4 py-2">Last Updated Date</th>
+                  <th className="text-left px-4 py-2">Last Updated</th>
                   {isUserAuthorized && (
                     <th className="text-left px-4 whitespace-nowrap py-2">Action</th>
                   )}
@@ -291,19 +287,32 @@ function Tables() {
                 {currentTableData.length > 0 ? currentTableData.map((table, index) => (
                   <tr key={table.id} className="border-b hover:bg-gray-50 text-sm">
                     <td className="p-4">{indexOfFirstItem + index + 1}</td>
-                    <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleNavigateToTableDetails(table)}>
+                    <td className="p-4 text-blue-600 underline cursor-pointer" title={table.name} onClick={() => handleNavigateToTableDetails(table)}>
                       {table.name}
                     </td>
-                    <td className="p-4 max-w-xs truncate tooltip">{table.name}</td>
-                    <td className="p-4 max-w-xs truncate tooltip">{table.description}</td>
+                    <td className="p-4 max-w-xs truncate whitespace-nowrap" title={table.name}>
+                      {table.name}
+                    </td>
+                    <td className="p-4 max-w-xs truncate whitespace-nowrap">{table.description}</td>
                     <td className="p-4">{table.database}</td>
                     <td className="p-4">{table.schema}</td>
                     <td className="p-4">{table.owner}</td>
-                    {/* --- MODIFIED: Added onClick handler to the columns cell --- */}
                     <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleColumnClick(table)}>
                       {table.column}
                     </td>
-                    {/* <td className="p-4">critical</td> */}
+                    <td className="p-4">
+                      {table.tags && table.tags.length > 0 ? (
+                        <span
+                          className="text-blue-600 underline cursor-pointer font-semibold"
+                          onClick={() => handleTagsClick(table)}
+                          title={`View ${table.tags.length} tags`}
+                        >
+                          {String(table.tags.length).padStart(2, '0')}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">00</span>
+                      )}
+                    </td>
                     <td className="p-4">{table.CreatedDate}</td>
                     <td className="p-4">{table.lastUpdated}</td>
                     {isUserAuthorized && (
@@ -368,6 +377,35 @@ function Tables() {
               editDetails={editDetails}
               type="table"
             />
+          </div>
+        </div>
+      )}
+
+      {isTagsModalOpen && currentTableForTags && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black bg-opacity-30 backdrop-blur-sm" onClick={() => setIsTagsModalOpen(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 z-50 animate-fadeIn">
+            <div className="flex justify-between items-center pb-3 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Compliance Tags for {currentTableForTags.name}
+              </h3>
+              <button onClick={() => setIsTagsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="mt-4">
+              {currentTableForTags.tags.length > 0 ? (
+                <ul className="flex flex-wrap gap-2">
+                  {currentTableForTags.tags.map((tag, index) => (
+                    <li key={index} className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-1 rounded-full">
+                      {tag}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No compliance tags found for this table.</p>
+              )}
+            </div>
           </div>
         </div>
       )}

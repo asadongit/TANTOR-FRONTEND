@@ -528,10 +528,10 @@ function ColumnDetailsPage() {
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Precision</td>
                                                     <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_PRECISION}</td>
                                                 </tr>
-                                                <tr>
+                                                {/* <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Constraints</td>
                                                     <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(columnDetails.column_metadata)}</td>
-                                                </tr>
+                                                </tr> */}
                                             </tbody>
                                         </table>
                                     </div>
