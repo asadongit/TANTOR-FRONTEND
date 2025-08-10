@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 // Helper function to format titles nicely (e.g., 'sub_category' -> 'Sub-category')
 const formatTitle = (title) => {
-  const formatted = title.replace(/_/g, ' ').replace('terms', 'term');
+  const formatted = title.replace(/_/g, ' ');
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 };
 
@@ -12,14 +12,13 @@ const SchemaDetailsViewComponent = ({ tableData, componentInfo, activeTabBusines
     const schemaData = data[connectionKey];
 
     if (!schemaData) {
-      return { domain: [], category: [], sub_category: [], tag: [], sub_tag: [], terms: [] };
+      return { domain: [], category: [], sub_category: [], tag: [], sub_tag: [] };
     }
 
     const uniqueTags = {
       domain: new Map(),
       category: new Map(),
       sub_category: new Map(),
-      terms: new Map(),
       tag: new Map(),
       sub_tag: new Map()
     };
@@ -48,7 +47,7 @@ const SchemaDetailsViewComponent = ({ tableData, componentInfo, activeTabBusines
 
   const uniqueTags = useMemo(() => {
     if (!tableData || !componentInfo) {
-      return { domain: [], category: [], sub_category: [], tag: [], sub_tag: [], terms: [] };
+      return { domain: [], category: [], sub_category: [], tag: [], sub_tag: [] };
     }
     return mapTableTags(tableData, componentInfo.connectionName, componentInfo.schema);
   }, [tableData, componentInfo]);
@@ -96,7 +95,7 @@ const SchemaDetailsViewComponent = ({ tableData, componentInfo, activeTabBusines
             </table>
           ) : (
             <div className="p-10 text-center">
-              <span className="text-gray-500 italic">No business classifications are available for this schema.</span>
+              <span className="text-gray-500 italic">No business data available for this schema.</span>
             </div>
           )}
         </div>

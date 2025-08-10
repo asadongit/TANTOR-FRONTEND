@@ -794,7 +794,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
                 if (!listResult.success) errorMessages.push('list data');
                 setToast({
                     show: true,
-                    message: `Failed to refresh role ${errorMessages.join(' and ')}`,
+                    message: `Failed to refresh policy ${errorMessages.join(' and ')}`,
                     type: 'error'
                 });
             }
@@ -802,7 +802,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
             console.error("Error refreshing data:", error);
             setToast({
                 show: true,
-                message: 'Failed to refresh role data',
+                message: 'Failed to refresh policy data',
                 type: 'error'
             });
         } finally {

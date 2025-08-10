@@ -100,35 +100,29 @@ const CompositeViewComponent = ({ tableData, componentInfo, activeTabBusiness })
               </div>
             </div>
             <div className="w-[50%]">
-              <div className="mt-3 font-medium">Terms</div>
-              <div className="mt-3 text-white">
-                <TagPills tags={uniqueTags.terms} />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex mt-5">
-            <div className="w-[50%]">
               <div className="mt-3 font-medium">Category</div>
               <div className="mt-3 text-white">
                 <TagPills tags={uniqueTags.category} />
               </div>
             </div>
+          </div>
+
+          <div className="flex mt-5">
             <div className="w-[50%]">
               <div className="mt-3 font-medium">Sub-category</div>
               <div className="mt-3 text-white">
                 <TagPills tags={uniqueTags.sub_category} />
               </div>
             </div>
-          </div>
-
-          <div className="flex mt-5">
-            <div className="w-[50%]">
+             <div className="w-[50%]">
               <div className="mt-3 font-medium">Tags</div>
               <div className="mt-3 text-white">
                 <TagPills tags={uniqueTags.tag} />
               </div>
             </div>
+          </div>
+
+          <div className="flex mt-5">
             <div className="w-[50%]">
               <div className="mt-3 font-medium">Sub-tags</div>
               <div className="mt-3 text-white">

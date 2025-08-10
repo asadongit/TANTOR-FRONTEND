@@ -167,7 +167,7 @@ const DatabaseViewScreen = () => {
           {/* heading */}
           <div className="flex justify-between items-center pb-6">
             <div className="flex items-center gap-2">
-              <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
+              <button title="Back" onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
                 <ChevronLeft className="h-6 w-6" />
               </button>
               <span className="text-[#8d77ba]"><Database /></span>
@@ -227,6 +227,7 @@ const DatabaseViewScreen = () => {
                       <button
                         className="absolute top-3 right-3 pt-2 hover:text-gray-600 text-[#8d77ba]"
                         onClick={() => setIsEditing(true)}
+                        title="Edit Connection Description"
                       >
                         <Pencil size={18} />
                       </button>
