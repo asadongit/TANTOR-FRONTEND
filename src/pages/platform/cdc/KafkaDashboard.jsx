@@ -1,5 +1,18 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Activity, Server, Database, Users, RefreshCw, AlertCircle, CheckCircle, Clock, Plus, Trash2, Search, ActivityIcon } from "lucide-react";
+import {
+  Activity,
+  Server,
+  Database,
+  Users,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Plus,
+  Trash2,
+  Search,
+  ActivityIcon,
+} from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -10,7 +23,12 @@ const Modal = ({ open, onClose, title, children }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
       <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md relative">
-        <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl"
+        >
+          &times;
+        </button>
         <h3 className="text-lg font-semibold mb-4 text-[#8e78b7]">{title}</h3>
         {children}
       </div>
@@ -29,55 +47,76 @@ const TopicDetailsModal = ({ open, onClose, topicName, hostnameV1, token }) => {
     setLoading(true);
     setError(null);
     setDetails(null);
-    axios.get(`${hostnameV1}/kafka/topics/${encodeURIComponent(topicName)}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setDetails(res.data))
-      .catch(() => setError('Failed to fetch topic details.'))
+    axios
+      .get(`${hostnameV1}/kafka/topics/${encodeURIComponent(topicName)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setDetails(res.data))
+      .catch(() => setError("Failed to fetch topic details."))
       .finally(() => setLoading(false));
   }, [open, topicName, hostnameV1, token]);
 
   if (!open) return null;
   return (
     <Modal open={open} onClose={onClose} title={`Topic Details: ${topicName}`}>
-  {loading && (
-    <div className="text-center text-blue-500 font-semibold py-4">Loading...</div>
-  )}
+      {loading && (
+        <div className="text-center text-blue-500 font-semibold py-4">
+          Loading...
+        </div>
+      )}
 
-  {error && (
-    <div className="bg-red-100 text-red-700 p-3 rounded-md my-2 text-center font-semibold">
-      {error}
-    </div>
-  )}
+      {error && (
+        <div className="bg-red-100 text-red-700 p-3 rounded-md my-2 text-center font-semibold">
+          {error}
+        </div>
+      )}
 
-  {details && (
-    <div className="space-y-3 text-sm max-h-[60vh] overflow-y-auto font-sans">
-      {Object.entries(details).map(([key, value]) => {
-        // Color coding for some known keys
-        let keyColorClass = "text-sky-600"; // default color
-        if (key.toLowerCase().includes("partition")) keyColorClass = "text-green-600";
-        else if (key.toLowerCase().includes("replication")) keyColorClass = "text-blue-600";
-        else if (key.toLowerCase().includes("config")) keyColorClass = "text-yellow-600";
-        else if (key.toLowerCase().includes("error")) keyColorClass = "text-red-600";
+      {details && (
+        <div className="space-y-3 text-sm max-h-[60vh] overflow-y-auto font-sans">
+          {Object.entries(details).map(([key, value]) => {
+            // Color coding for some known keys
+            let keyColorClass = "text-sky-600"; // default color
+            if (key.toLowerCase().includes("partition"))
+              keyColorClass = "text-green-600";
+            else if (key.toLowerCase().includes("replication"))
+              keyColorClass = "text-blue-600";
+            else if (key.toLowerCase().includes("config"))
+              keyColorClass = "text-yellow-600";
+            else if (key.toLowerCase().includes("error"))
+              keyColorClass = "text-red-600";
 
-        return (
-          <div key={key} className="flex flex-col md:flex-row md:items-start md:space-x-2 break-words">
-            <span className={`font-semibold capitalize min-w-[150px] ${keyColorClass}`}>
-              {key}:
-            </span>
-            <pre className="whitespace-pre-wrap text-gray-900 flex-1 bg-gray-100 rounded-md p-2 shadow-sm">
-              {typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
-            </pre>
-          </div>
-        );
-      })}
-    </div>
-  )}
-</Modal>
-
+            return (
+              <div
+                key={key}
+                className="flex flex-col md:flex-row md:items-start md:space-x-2 break-words"
+              >
+                <span
+                  className={`font-semibold capitalize min-w-[150px] ${keyColorClass}`}
+                >
+                  {key}:
+                </span>
+                <pre className="whitespace-pre-wrap text-gray-900 flex-1 bg-gray-100 rounded-md p-2 shadow-sm">
+                  {typeof value === "object"
+                    ? JSON.stringify(value, null, 2)
+                    : String(value)}
+                </pre>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Modal>
   );
 };
 
 // Add ConsumerGroupDetailsModal
-const ConsumerGroupDetailsModal = ({ open, onClose, groupId, hostnameV1, token }) => {
+const ConsumerGroupDetailsModal = ({
+  open,
+  onClose,
+  groupId,
+  hostnameV1,
+  token,
+}) => {
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -87,24 +126,166 @@ const ConsumerGroupDetailsModal = ({ open, onClose, groupId, hostnameV1, token }
     setLoading(true);
     setError(null);
     setDetails(null);
-    axios.get(`${hostnameV1}/kafka/consumer-groups/${encodeURIComponent(groupId)}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setDetails(res.data))
-      .catch(() => setError('Failed to fetch consumer group details.'))
+    axios
+      .get(
+        `${hostnameV1}/kafka/consumer-groups/${encodeURIComponent(groupId)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      .then((res) => setDetails(res.data))
+      .catch(() => setError("Failed to fetch consumer group details."))
       .finally(() => setLoading(false));
   }, [open, groupId, hostnameV1, token]);
 
   if (!open) return null;
   return (
-    <Modal open={open} onClose={onClose} title={`Consumer Group Details: ${groupId}`}>
-      {loading && <div className="text-gray-500">Loading...</div>}
-      {error && <div className="text-red-500">{error}</div>}
-      {details && (
-        <div className="space-y-2 text-sm max-h-[60vh] overflow-y-auto">
-          {Object.entries(details).map(([key, value]) => (
-            <div key={key}>
-              <span className="font-medium text-gray-700">{key}:</span> <span className="text-gray-900">{JSON.stringify(value)}</span>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Consumer Group Details: ${groupId}`}
+    >
+      {loading && (
+        <div className="space-y-3 py-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center space-x-3 animate-pulse">
+              <div className="h-4 w-32 bg-gray-200 rounded" />
+              <div className="h-4 flex-1 bg-gray-100 rounded" />
             </div>
           ))}
+        </div>
+      )}
+      {error && <div className="text-red-500">{error}</div>}
+      {details && (
+        <div className="space-y-4 text-sm max-h-[60vh] overflow-y-auto font-sans">
+          {/* State */}
+          {details.state && (
+            <div className="flex items-center space-x-2">
+              <span
+                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold
+            ${
+              details.state === "stable"
+                ? "bg-green-100 text-green-800"
+                : details.state === "rebalancing"
+                ? "bg-yellow-100 text-yellow-800"
+                : details.state === "offline"
+                ? "bg-red-100 text-red-800"
+                : "bg-gray-100 text-gray-800"
+            }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full mr-1
+              ${
+                details.state === "stable"
+                  ? "bg-green-600"
+                  : details.state === "rebalancing"
+                  ? "bg-yellow-600"
+                  : details.state === "offline"
+                  ? "bg-red-600"
+                  : "bg-gray-600"
+              }`}
+                ></span>
+                {details.state}
+              </span>
+            </div>
+          )}
+          {/* Members & Lag */}
+          <div className="flex flex-wrap gap-4">
+            {details.members !== undefined && (
+              <div className="flex flex-col">
+                <span className="text-gray-500">Members</span>
+                <span className="font-semibold text-indigo-700 text-lg">
+                  {details.members}
+                </span>
+              </div>
+            )}
+            {details.lag !== undefined && (
+              <div className="flex flex-col">
+                <span className="text-gray-500">Lag</span>
+                <span
+                  className={`font-semibold text-lg
+              ${
+                details.lag > 1000
+                  ? "text-red-600"
+                  : details.lag > 100
+                  ? "text-yellow-600"
+                  : "text-green-600"
+              }`}
+                >
+                  {details.lag}
+                </span>
+              </div>
+            )}
+          </div>
+          {/* Topics */}
+          {details.topics && Array.isArray(details.topics) && (
+            <div>
+              <span className="text-gray-500 font-medium">
+                Subscribed Topics:
+              </span>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {details.topics.map((topic) => (
+                  <span
+                    key={topic}
+                    className="px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded-full border border-teal-100"
+                  >
+                    {topic}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Other fields */}
+          <div className="space-y-2 mt-2">
+            {Object.entries(details)
+              .filter(
+                ([key]) =>
+                  ![
+                    "state",
+                    "members",
+                    "lag",
+                    "topics",
+                    "groupId",
+                    "group_id",
+                  ].includes(key)
+              )
+              .map(([key, value]) => (
+                <div
+                  key={key}
+                  className="flex flex-col md:flex-row md:items-start md:space-x-2 break-words"
+                >
+                  <span className="font-medium text-gray-700 min-w-[120px]">
+                    {key.replace(/_/g, " ")}:
+                  </span>
+                  <span className="text-gray-900 flex-1">
+                    {Array.isArray(value) ? (
+                      value.length === 0 ? (
+                        <span className="text-gray-400">(empty)</span>
+                      ) : typeof value[0] === "object" && value[0] !== null ? (
+                        <pre className="bg-gray-50 rounded p-2 overflow-x-auto">
+                          {JSON.stringify(value, null, 2)}
+                        </pre>
+                      ) : (
+                        value.map((v, i) => (
+                          <span
+                            key={i}
+                            className="inline-block mr-1 px-2 py-0.5 bg-gray-100 rounded text-xs"
+                          >
+                            {typeof v === "object" && v !== null
+                              ? JSON.stringify(v)
+                              : String(v)}
+                          </span>
+                        ))
+                      )
+                    ) : typeof value === "object" && value !== null ? (
+                      <pre className="bg-gray-50 rounded p-2 overflow-x-auto">
+                        {JSON.stringify(value, null, 2)}
+                      </pre>
+                    ) : (
+                      String(value)
+                    )}
+                  </span>
+                </div>
+              ))}
+          </div>
         </div>
       )}
     </Modal>
@@ -127,7 +308,10 @@ const KafkaDashboard = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState(null);
   const [topicModal, setTopicModal] = useState({ open: false, topic: null });
-  const [consumerModal, setConsumerModal] = useState({ open: false, groupId: null });
+  const [consumerModal, setConsumerModal] = useState({
+    open: false,
+    groupId: null,
+  });
   const [loadingTopics, setLoadingTopics] = useState(false);
   const [hasMoreTopics, setHasMoreTopics] = useState(true);
   const [topicsBatchStart, setTopicsBatchStart] = useState(0);
@@ -144,13 +328,12 @@ const KafkaDashboard = () => {
   const currentRows = consumerGroups.slice(indexOfFirstRow, indexOfLastRow);
 
   const handlePrevious = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
   };
 
   const handleNext = () => {
-    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
-
 
   const navigate = useNavigate();
 
@@ -159,20 +342,31 @@ const KafkaDashboard = () => {
     setLoading(true);
     setError(null);
     try {
-      const [
-        brokersRes,
-        topicsRes,
-        groupsRes,
-        msgRes
-      ] = await Promise.all([
-        axios.get(`${hostnameV1}/kafka/brokers`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${hostnameV1}/kafka/topics/count`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${hostnameV1}/kafka/consumer-groups`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${hostnameV1}/kafka/messages/total`, { headers: { Authorization: `Bearer ${token}` } })
+      const [brokersRes, topicsRes, groupsRes, msgRes] = await Promise.all([
+        axios.get(`${hostnameV1}/kafka/brokers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${hostnameV1}/kafka/topics/count`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${hostnameV1}/kafka/consumer-groups`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${hostnameV1}/kafka/messages/total`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
-      setBrokers(Array.isArray(brokersRes.data?.brokers) ? brokersRes.data.brokers : []);
-      setTopics(Array.isArray(topicsRes.data?.topics) ? topicsRes.data.topics : []);
-      setConsumerGroups(Array.isArray(groupsRes.data?.consumer_groups) ? groupsRes.data.consumer_groups : []);
+      setBrokers(
+        Array.isArray(brokersRes.data?.brokers) ? brokersRes.data.brokers : []
+      );
+      setTopics(
+        Array.isArray(topicsRes.data?.topics) ? topicsRes.data.topics : []
+      );
+      setConsumerGroups(
+        Array.isArray(groupsRes.data?.consumer_groups)
+          ? groupsRes.data.consumer_groups
+          : []
+      );
       setMessagesTotal(msgRes.data?.total_messages || 0);
       setLastRefresh(new Date());
       setInitialLoaded(true);
@@ -196,10 +390,12 @@ const KafkaDashboard = () => {
     setHasMoreTopics(true);
     setTopicsBatchStart(0);
 
-    const ws = new WebSocket(`${hostnameV1.replace(/^http/, "ws")}/ws/kafka/topics/details`);
+    const ws = new WebSocket(
+      `${hostnameV1.replace(/^http/, "ws")}/ws/kafka/topics/details`
+    );
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setTopicsDetails(prev => [...prev, ...data.batch]);
+      setTopicsDetails((prev) => [...prev, ...data.batch]);
       setTopicsBatchStart(data.end);
       setHasMoreTopics(data.end < data.total);
       setLoadingTopics(false);
@@ -220,37 +416,39 @@ const KafkaDashboard = () => {
   };
 
   const getBrokerData = (broker) => ({
-    id: broker.id || broker.node_id || 'Unknown',
-    host: broker.host || 'Unknown',
-    port: broker.port || 'Unknown',
-    status: broker.status || (broker.host ? 'online' : 'unknown'),
-    uptime: broker.uptime || 'N/A'
+    id: broker.id || broker.node_id || "Unknown",
+    host: broker.host || "Unknown",
+    port: broker.port || "Unknown",
+    status: broker.status || (broker.host ? "online" : "unknown"),
+    uptime: broker.uptime || "N/A",
   });
 
   const getTopicData = (topic) => ({
-    name: topic.name || topic.topic_name || 'Unknown',
+    name: topic.name || topic.topic_name || "Unknown",
     partitions: topic.partitions || topic.partition_count || 0,
     replicas: topic.replicas || topic.replication_factor || 0,
     messages: topic.messages || topic.message_count || 0,
-    size: topic.size || 'N/A'
+    size: topic.size || "N/A",
   });
 
   const getConsumerGroupData = (group) => ({
-    groupId: group.groupId || group.group_id || 'Unknown',
-    state: group.state || group.status || 'unknown',
+    groupId: group.groupId || group.group_id || "Unknown",
+    state: group.state || group.status || "unknown",
     members: group.members || group.member_count || 0,
     lag: group.lag || group.total_lag || 0,
-    topics: group.topics || group.subscribed_topics || []
+    topics: group.topics || group.subscribed_topics || [],
   });
 
   const handleTopicsScroll = (e) => {
     const el = e.target;
-    if (hasMoreTopics && !loadingTopics && el.scrollTop + el.clientHeight >= el.scrollHeight - 50) {
+    if (
+      hasMoreTopics &&
+      !loadingTopics &&
+      el.scrollTop + el.clientHeight >= el.scrollHeight - 50
+    ) {
       setLoadingTopics(true);
     }
   };
-
-
 
   const formatNumber = (num) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
@@ -272,7 +470,9 @@ const KafkaDashboard = () => {
     setFormLoading(true);
     setFormError(null);
     try {
-      await axios.post(`${hostnameV1}/kafka/brokers`, form, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`${hostnameV1}/kafka/brokers`, form, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       closeModal();
       fetchKafkaData();
     } catch (err) {
@@ -286,7 +486,9 @@ const KafkaDashboard = () => {
     setFormLoading(true);
     setFormError(null);
     try {
-      await axios.post(`${hostnameV1}/kafka/topic`, form, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`${hostnameV1}/kafka/topic`, form, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       closeModal();
       fetchKafkaData();
     } catch (err) {
@@ -300,7 +502,9 @@ const KafkaDashboard = () => {
     setFormLoading(true);
     setFormError(null);
     try {
-      await axios.post(`${hostnameV1}/kafka/consumer-groups`, form, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`${hostnameV1}/kafka/consumer-groups`, form, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       closeModal();
       fetchKafkaData();
     } catch (err) {
@@ -311,11 +515,13 @@ const KafkaDashboard = () => {
   };
 
   const filteredTopicsDetails = searchTerm
-    ? topicsDetails.slice(0, topicsBatchStart).filter(
-        details =>
-          details.name &&
-          details.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+    ? topicsDetails
+        .slice(0, topicsBatchStart)
+        .filter(
+          (details) =>
+            details.name &&
+            details.name.toLowerCase().includes(searchTerm.toLowerCase())
+        )
     : topicsDetails.slice(0, topicsBatchStart);
 
   if (loading) {
@@ -323,7 +529,9 @@ const KafkaDashboard = () => {
       <div className="min-h-screen  flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 text-[#8e78b7] animate-spin mx-auto mb-4" />
-          <div className="text-lg text-gray-600">Loading Kafka Dashboard...</div>
+          <div className="text-lg text-gray-600">
+            Loading Kafka Dashboard...
+          </div>
         </div>
       </div>
     );
@@ -331,7 +539,7 @@ const KafkaDashboard = () => {
 
   if (error) {
     return (
-       <div className="min-h-screen  flex items-center justify-center">
+      <div className="min-h-screen  flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
           <div className="text-lg text-red-600">{error}</div>
@@ -346,11 +554,6 @@ const KafkaDashboard = () => {
     );
   }
 
-
-
-
-
-
   // ✅ MAIN DASHBOARD JSX RETURN
   return (
     <div className="min-h-screen bg-gray-50">
@@ -358,15 +561,24 @@ const KafkaDashboard = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 pb-4 border-b border-gray-200">
           <div>
-            <h1 className="text-3xl font-medium text-[#8e78b7] mb-1">Kafka Dashboard</h1>
+            <h1 className="text-3xl font-medium text-[#8e78b7] mb-1">
+              Kafka Dashboard
+            </h1>
             <p className="text-gray-500 flex items-center">
               <Server className="w-4 h-4 mr-2" />
-              Cluster Status: {brokers.filter(b => getBrokerData(b).status === 'online').length} of {brokers.length} brokers online
+              Cluster Status:{" "}
+              {
+                brokers.filter((b) => getBrokerData(b).status === "online")
+                  .length
+              }{" "}
+              of {brokers.length} brokers online
             </p>
           </div>
           <div className="flex items-center space-x-4 mt-4 md:mt-0">
             <button
-              onClick={() => {navigate("/monitoring/kafka")}}
+              onClick={() => {
+                navigate("/monitoring/kafka");
+              }}
               // disabled={loading}
               className="flex items-center space-x-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] transition-colors disabled:opacity-50 shadow-sm"
             >
@@ -382,7 +594,9 @@ const KafkaDashboard = () => {
               disabled={loading}
               className="flex items-center space-x-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] transition-colors disabled:opacity-50 shadow-sm"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
               <span>Refresh</span>
             </button>
           </div>
@@ -396,8 +610,16 @@ const KafkaDashboard = () => {
                 <Server className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Total Brokers</h3>
-                <p className="text-sm text-gray-500">{brokers.filter(b => getBrokerData(b).status === 'online').length} online</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Total Brokers
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {
+                    brokers.filter((b) => getBrokerData(b).status === "online")
+                      .length
+                  }{" "}
+                  online
+                </p>
               </div>
             </div>
           </div>
@@ -408,7 +630,9 @@ const KafkaDashboard = () => {
                 <Database className="w-6 h-6 text-indigo-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Active Topics</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Active Topics
+                </h3>
                 <p className="text-sm text-gray-500">{topics.length} topics</p>
               </div>
             </div>
@@ -420,8 +644,16 @@ const KafkaDashboard = () => {
                 <Users className="w-6 h-6 text-teal-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Consumer Groups</h3>
-                <p className="text-sm text-gray-500">{consumerGroups.reduce((sum, group) => sum + getConsumerGroupData(group).members, 0)} members</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Consumer Groups
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {consumerGroups.reduce(
+                    (sum, group) => sum + getConsumerGroupData(group).members,
+                    0
+                  )}{" "}
+                  members
+                </p>
               </div>
             </div>
           </div>
@@ -432,8 +664,12 @@ const KafkaDashboard = () => {
                 <Activity className="w-6 h-6 text-amber-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Total Messages</h3>
-                <p className="text-sm text-gray-500">{formatNumber(messagesTotal)} across all topics</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Total Messages
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {formatNumber(messagesTotal)} across all topics
+                </p>
               </div>
             </div>
           </div>
@@ -453,20 +689,35 @@ const KafkaDashboard = () => {
               </button> */}
             </div>
             <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 scrollbar-thin">
-              {brokers.map(broker => {
+              {brokers.map((broker) => {
                 const brokerData = getBrokerData(broker);
                 return (
-                  <div key={brokerData.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors">
+                  <div
+                    key={brokerData.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors"
+                  >
                     <div className="flex items-center space-x-3">
-                      <div className={`w-2.5 h-2.5 rounded-full ${brokerData.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <div
+                        className={`w-2.5 h-2.5 rounded-full ${
+                          brokerData.status === "online"
+                            ? "bg-green-500"
+                            : "bg-red-500"
+                        }`}
+                      ></div>
                       <div>
-                        <div className="font-medium text-gray-900">Broker ID: {brokerData.id}</div>
-                        <div className="text-xs text-gray-500">{brokerData.host}:{brokerData.port}</div>
+                        <div className="font-medium text-gray-900">
+                          Broker ID: {brokerData.id}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {brokerData.host}:{brokerData.port}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-gray-500">Uptime</div>
-                      <div className="text-sm font-medium text-gray-900">{brokerData.uptime}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {brokerData.uptime}
+                      </div>
                     </div>
                   </div>
                 );
@@ -494,12 +745,17 @@ const KafkaDashboard = () => {
                     placeholder="Search topic..."
                     className="w-64 px-4 py-2 pl-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 text-sm"
                     value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
                   <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
                 </div>
-                <span className="text-sm text-gray-500">{topicsDetails.length} topics</span>
-                <button onClick={() => openModal('topic')} className="flex items-center px-3 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] text-sm shadow-sm">
+                <span className="text-sm text-gray-500">
+                  {topicsDetails.length} topics
+                </span>
+                <button
+                  onClick={() => openModal("topic")}
+                  className="flex items-center px-3 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] text-sm shadow-sm"
+                >
                   <Plus className="w-4 h-4 mr-1" /> Add
                 </button>
               </div>
@@ -509,13 +765,18 @@ const KafkaDashboard = () => {
               className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[350px] overflow-y-auto pr-2 scrollbar-thin"
               onScroll={handleTopicsScroll}
             >
-              {filteredTopicsDetails.map(details => (
+              {filteredTopicsDetails.map((details) => (
                 <div
                   key={details.name}
                   className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-[#8e78b7] hover:bg-indigo-50/30 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-900 truncate max-w-[200px]" title={details.name}>{details.name}</h3>
+                    <h3
+                      className="font-medium text-gray-900 truncate max-w-[200px]"
+                      title={details.name}
+                    >
+                      {details.name}
+                    </h3>
                     <div className="flex items-center space-x-2">
                       {/* <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">{details.size || '--'}</span> */}
                       <button
@@ -529,15 +790,21 @@ const KafkaDashboard = () => {
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div className="flex flex-col">
                       <span className="text-gray-500">Partitions</span>
-                      <span className="font-medium text-gray-900">{details.partitions}</span>
+                      <span className="font-medium text-gray-900">
+                        {details.partitions}
+                      </span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-gray-500">Replicas</span>
-                      <span className="font-medium text-gray-900">{details.replicas}</span>
+                      <span className="font-medium text-gray-900">
+                        {details.replicas}
+                      </span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-gray-500">Messages</span>
-                      <span className="font-medium text-gray-900">{formatNumber(details.messages)}</span>
+                      <span className="font-medium text-gray-900">
+                        {formatNumber(details.messages)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -549,193 +816,365 @@ const KafkaDashboard = () => {
                 </div>
               )}
 
-              {!loadingTopics && !hasMoreTopics && filteredTopicsDetails.length === 0 && (
-                <div className="md:col-span-2 text-center py-10 text-gray-400">
-                  <Database className="w-12 h-12 mx-auto opacity-20 mb-3" />
-                  <p>No topics found</p>
-                </div>
-              )}
+              {!loadingTopics &&
+                !hasMoreTopics &&
+                filteredTopicsDetails.length === 0 && (
+                  <div className="md:col-span-2 text-center py-10 text-gray-400">
+                    <Database className="w-12 h-12 mx-auto opacity-20 mb-3" />
+                    <p>No topics found</p>
+                  </div>
+                )}
             </div>
           </div>
 
           {/* Consumer Groups */}
           <div className="xl:col-span-3 bg-white rounded-xl shadow-md p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-          <Users className="w-5 h-5 mr-2 text-teal-500" />
-          Consumer Groups
-        </h2>
-        <button
-          onClick={() => openModal('consumer')}
-          className="flex items-center px-3 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] text-sm shadow-sm"
-        >
-          <Plus className="w-4 h-4 mr-1" /> Add
-        </button>
-      </div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                <Users className="w-5 h-5 mr-2 text-teal-500" />
+                Consumer Groups
+              </h2>
+              <button
+                onClick={() => openModal("consumer")}
+                className="flex items-center px-3 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] text-sm shadow-sm"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add
+              </button>
+            </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Group ID</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">State</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Members</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Lag</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Subscribed Topics</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {currentRows.map(group => {
-              const groupData = getConsumerGroupData(group);
-              return (
-                <tr
-                  key={groupData.groupId}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => setConsumerModal({ open: true, groupId: groupData.groupId })}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                      Group ID
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                      State
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                      Members
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                      Lag
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                      Subscribed Topics
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {currentRows.map((group) => {
+                    const groupData = getConsumerGroupData(group);
+                    return (
+                      <tr
+                        key={groupData.groupId}
+                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() =>
+                          setConsumerModal({
+                            open: true,
+                            groupId: groupData.groupId,
+                          })
+                        }
+                      >
+                        <td
+                          className="py-3 px-4 font-medium text-gray-900 truncate max-w-[200px]"
+                          title={groupData.groupId}
+                        >
+                          {groupData.groupId}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                        ${
+                          groupData.state === "stable"
+                            ? "bg-green-100 text-green-800"
+                            : groupData.state === "rebalancing"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : groupData.state === "offline"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full mr-1.5
+                        ${
+                          groupData.state === "stable"
+                            ? "bg-green-600"
+                            : groupData.state === "rebalancing"
+                            ? "bg-yellow-600"
+                            : groupData.state === "offline"
+                            ? "bg-red-600"
+                            : "bg-gray-600"
+                        }`}
+                            ></span>
+                            {groupData.state}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-gray-700">
+                          {groupData.members}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`font-medium
+                      ${
+                        groupData.lag > 1000
+                          ? "text-red-600"
+                          : groupData.lag > 100
+                          ? "text-yellow-600"
+                          : "text-green-600"
+                      }`}
+                          >
+                            {formatNumber(groupData.lag)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-wrap gap-1 max-w-md">
+                            {groupData.topics.slice(0, 3).map((topic) => (
+                              <span
+                                key={topic}
+                                className="px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded-full border border-teal-100"
+                              >
+                                {topic}
+                              </span>
+                            ))}
+                            {groupData.topics.length > 3 && (
+                              <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-full">
+                                +{groupData.topics.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {consumerGroups.length === 0 && (
+                <div className="text-center py-10 text-gray-400">
+                  <Users className="w-12 h-12 mx-auto opacity-20 mb-3" />
+                  <p>No consumer groups available</p>
+                </div>
+              )}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-end items-center mt-4 space-x-2">
+                <button
+                  onClick={handlePrevious}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
                 >
-                  <td className="py-3 px-4 font-medium text-gray-900 truncate max-w-[200px]" title={groupData.groupId}>
-                    {groupData.groupId}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                        ${groupData.state === 'stable' ? 'bg-green-100 text-green-800' :
-                          groupData.state === 'rebalancing' ? 'bg-yellow-100 text-yellow-800' :
-                          groupData.state === 'offline' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'}`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5
-                        ${groupData.state === 'stable' ? 'bg-green-600' :
-                          groupData.state === 'rebalancing' ? 'bg-yellow-600' :
-                          groupData.state === 'offline' ? 'bg-red-600' :
-                          'bg-gray-600'}`}>
-                      </span>
-                      {groupData.state}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-gray-700">{groupData.members}</td>
-                  <td className="py-3 px-4">
-                    <span className={`font-medium
-                      ${groupData.lag > 1000 ? 'text-red-600' :
-                        groupData.lag > 100 ? 'text-yellow-600' : 'text-green-600'}`}>
-                      {formatNumber(groupData.lag)}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex flex-wrap gap-1 max-w-md">
-                      {groupData.topics.slice(0, 3).map(topic => (
-                        <span key={topic} className="px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded-full border border-teal-100">
-                          {topic}
-                        </span>
-                      ))}
-                      {groupData.topics.length > 3 && (
-                        <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-full">
-                          +{groupData.topics.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        {consumerGroups.length === 0 && (
-          <div className="text-center py-10 text-gray-400">
-            <Users className="w-12 h-12 mx-auto opacity-20 mb-3" />
-            <p>No consumer groups available</p>
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={handleNext}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-end items-center mt-4 space-x-2">
-          <button
-            onClick={handlePrevious}
-            disabled={currentPage === 1}
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <span className="text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={handleNext}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
-      )}
-    </div>
         </div>
       </div>
 
       {/* Modal for Create Broker/Topic/Consumer */}
-      <Modal open={modal.open} onClose={closeModal} title={modal.type === 'broker' ? 'Create Broker' : modal.type === 'topic' ? 'Create Topic' : 'Create Consumer Group'}>
-        {modal.type === 'broker' && (
+      <Modal
+        open={modal.open}
+        onClose={closeModal}
+        title={
+          modal.type === "broker"
+            ? "Create Broker"
+            : modal.type === "topic"
+            ? "Create Topic"
+            : "Create Consumer Group"
+        }
+      >
+        {modal.type === "broker" && (
           <form onSubmit={handleCreateBroker} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Host</label>
-              <input type="text" required className="mt-1 w-full border rounded px-3 py-2" value={form.host || ''} onChange={e => setForm(f => ({ ...f, host: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700">
+                Host
+              </label>
+              <input
+                type="text"
+                required
+                className="mt-1 w-full border rounded px-3 py-2"
+                value={form.host || ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, host: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Port</label>
-              <input type="number" required className="mt-1 w-full border rounded px-3 py-2" value={form.port || ''} onChange={e => setForm(f => ({ ...f, port: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700">
+                Port
+              </label>
+              <input
+                type="number"
+                required
+                className="mt-1 w-full border rounded px-3 py-2"
+                value={form.port || ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, port: e.target.value }))
+                }
+              />
             </div>
-            {formError && <div className="text-red-500 text-sm">{formError}</div>}
-            <button type="submit" disabled={formLoading} className="w-full bg-[#8e78b7] text-white py-2 rounded-lg hover:bg-[#6b578f] mt-2">{formLoading ? 'Creating...' : 'Create Broker'}</button>
+            {formError && (
+              <div className="text-red-500 text-sm">{formError}</div>
+            )}
+            <button
+              type="submit"
+              disabled={formLoading}
+              className="w-full bg-[#8e78b7] text-white py-2 rounded-lg hover:bg-[#6b578f] mt-2"
+            >
+              {formLoading ? "Creating..." : "Create Broker"}
+            </button>
           </form>
         )}
-        {modal.type === 'topic' && (
+        {modal.type === "topic" && (
           <form onSubmit={handleCreateTopic} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Topic Name</label>
-              <input type="text" required className="mt-1 w-full border rounded px-3 py-2" value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700">
+                Topic Name
+              </label>
+              <input
+                type="text"
+                required
+                className="mt-1 w-full border rounded px-3 py-2"
+                value={form.name || ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Partitions</label>
-              <input type="number" min="1" required className="mt-1 w-full border rounded px-3 py-2" value={form.partitions || ''} onChange={e => setForm(f => ({ ...f, partitions: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700">
+                Partitions
+              </label>
+              <input
+                type="number"
+                min="1"
+                required
+                className="mt-1 w-full border rounded px-3 py-2"
+                value={form.partitions || ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, partitions: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Replication Factor</label>
-              <input type="number" min="1" required className="mt-1 w-full border rounded px-3 py-2" value={form.replication_factor || ''} onChange={e => setForm(f => ({ ...f, replication_factor: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700">
+                Replication Factor
+              </label>
+              <input
+                type="number"
+                min="1"
+                required
+                className="mt-1 w-full border rounded px-3 py-2"
+                value={form.replication_factor || ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, replication_factor: e.target.value }))
+                }
+              />
             </div>
-            {formError && <div className="text-red-500 text-sm">{formError}</div>}
-            <button type="submit" disabled={formLoading} className="w-full bg-[#8e78b7] text-white py-2 rounded-lg hover:bg-[#6b578f] mt-2">{formLoading ? 'Creating...' : 'Create Topic'}</button>
+            {formError && (
+              <div className="text-red-500 text-sm">{formError}</div>
+            )}
+            <button
+              type="submit"
+              disabled={formLoading}
+              className="w-full bg-[#8e78b7] text-white py-2 rounded-lg hover:bg-[#6b578f] mt-2"
+            >
+              {formLoading ? "Creating..." : "Create Topic"}
+            </button>
           </form>
         )}
-        {modal.type === 'consumer' && (
+        {modal.type === "consumer" && (
           <form onSubmit={handleCreateConsumer} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Group ID</label>
-              <input type="text" required className="mt-1 w-full border rounded px-3 py-2" value={form.group_id || ''} onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))} />
+              <label className="block text-sm font-medium text-gray-700">
+                Group ID
+              </label>
+              <input
+                type="text"
+                required
+                className="mt-1 w-full border rounded px-3 py-2"
+                value={form.group_id || ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, group_id: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Topics</label>
-              <select multiple className="mt-1 w-full border rounded px-3 py-2" value={form.topics || []} onChange={e => setForm(f => ({ ...f, topics: Array.from(e.target.selectedOptions, o => o.value) }))}>
-                {topics.map(topic => {
+              <label className="block text-sm font-medium text-gray-700">
+                Topics
+              </label>
+              <select
+                multiple
+                className="mt-1 w-full border rounded px-3 py-2"
+                value={form.topics || []}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    topics: Array.from(
+                      e.target.selectedOptions,
+                      (o) => o.value
+                    ),
+                  }))
+                }
+              >
+                {topics.map((topic) => {
                   const topicData = getTopicData(topic);
-                  return <option key={topicData.name} value={topicData.name}>{topicData.name}</option>;
+                  return (
+                    <option key={topicData.name} value={topicData.name}>
+                      {topicData.name}
+                    </option>
+                  );
                 })}
               </select>
-              <span className="text-xs text-gray-400">Hold Ctrl (Windows) or Cmd (Mac) to select multiple topics</span>
+              <span className="text-xs text-gray-400">
+                Hold Ctrl (Windows) or Cmd (Mac) to select multiple topics
+              </span>
             </div>
-            {formError && <div className="text-red-500 text-sm">{formError}</div>}
-            <button type="submit" disabled={formLoading} className="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 mt-2">{formLoading ? 'Creating...' : 'Create Consumer Group'}</button>
+            {formError && (
+              <div className="text-red-500 text-sm">{formError}</div>
+            )}
+            <button
+              type="submit"
+              disabled={formLoading}
+              className="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 mt-2"
+            >
+              {formLoading ? "Creating..." : "Create Consumer Group"}
+            </button>
           </form>
         )}
       </Modal>
 
       {/* Topic Details Modal */}
-      <TopicDetailsModal open={topicModal.open} onClose={() => setTopicModal({ open: false, topic: null })} topicName={topicModal.topic} hostnameV1={hostnameV1} token={token} />
+      <TopicDetailsModal
+        open={topicModal.open}
+        onClose={() => setTopicModal({ open: false, topic: null })}
+        topicName={topicModal.topic}
+        hostnameV1={hostnameV1}
+        token={token}
+      />
 
       {/* Consumer Group Details Modal */}
-      <ConsumerGroupDetailsModal open={consumerModal.open} onClose={() => setConsumerModal({ open: false, groupId: null })} groupId={consumerModal.groupId} hostnameV1={hostnameV1} token={token} />
+      <ConsumerGroupDetailsModal
+        open={consumerModal.open}
+        onClose={() => setConsumerModal({ open: false, groupId: null })}
+        groupId={consumerModal.groupId}
+        hostnameV1={hostnameV1}
+        token={token}
+      />
     </div>
   );
 };
