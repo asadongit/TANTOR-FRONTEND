@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useKafkaMonitoringContext } from "./context/KafkaMonitoringContext";
-import { useMonitoringContext } from "./context/monitoringcontext";
+import { useMonitoringContext } from "./context/MonitoringContext";
 import toast from "react-hot-toast";
 import { GroupedLineChart, KafkaPieChart } from "./components/KafkaCharts";
 import StatCard from "./components/StatCard";
