@@ -34,7 +34,7 @@ import ViewCDC from '../pages/platform/cdc/components/viewCDC/View'
 
 import KafkaDasboard from '../pages/platform/cdc/KafkaDashboard';
 import MonitoringDashboard from '../pages/platform/monitoring/MonitoringDashboard';
-import { MonitoringProvider } from '../pages/platform/monitoring/context/monitoringcontext';
+import { MonitoringProvider } from '../pages/platform/monitoring/context/MonitoringContext';
 import { KafkaMonitoringProvider } from '../pages/platform/monitoring/context/KafkaMonitoringContext';
 import KafkaMonitoring from '../pages/platform/monitoring/KafkaMonitoring';
 
