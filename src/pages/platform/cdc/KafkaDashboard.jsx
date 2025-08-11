@@ -135,6 +135,23 @@ const KafkaDashboard = () => {
   const [initialLoaded, setInitialLoaded] = useState(false);
   const didFetchRef = React.useRef(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  const totalPages = Math.ceil(consumerGroups.length / rowsPerPage);
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = consumerGroups.slice(indexOfFirstRow, indexOfLastRow);
+
+  const handlePrevious = () => {
+    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+  };
+
+  const handleNext = () => {
+    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
+  };
+
+
   const navigate = useNavigate();
 
   // Fetch all Kafka data (APIs)
@@ -269,7 +286,7 @@ const KafkaDashboard = () => {
     setFormLoading(true);
     setFormError(null);
     try {
-      await axios.post(`${hostnameV1}/kafka/topics`, form, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`${hostnameV1}/kafka/topic`, form, { headers: { Authorization: `Bearer ${token}` } });
       closeModal();
       fetchKafkaData();
     } catch (err) {
@@ -328,6 +345,11 @@ const KafkaDashboard = () => {
       </div>
     );
   }
+
+
+
+
+
 
   // ✅ MAIN DASHBOARD JSX RETURN
   return (
@@ -538,89 +560,118 @@ const KafkaDashboard = () => {
 
           {/* Consumer Groups */}
           <div className="xl:col-span-3 bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-                <Users className="w-5 h-5 mr-2 text-teal-500" />
-                Consumer Groups
-              </h2>
-              <button onClick={() => openModal('consumer')} className="flex items-center px-3 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] text-sm shadow-sm">
-                <Plus className="w-4 h-4 mr-1" /> Add
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Group ID</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">State</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Members</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Lag</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Subscribed Topics</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {consumerGroups.map(group => {
-                    const groupData = getConsumerGroupData(group);
-                    return (
-                      <tr
-                        key={groupData.groupId}
-                        className="hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() => setConsumerModal({ open: true, groupId: groupData.groupId })}
-                      >
-                        <td className="py-3 px-4 font-medium text-gray-900 truncate max-w-[200px]" title={groupData.groupId}>{groupData.groupId}</td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                            ${groupData.state === 'stable' ? 'bg-green-100 text-green-800' :
-                              groupData.state === 'rebalancing' ? 'bg-yellow-100 text-yellow-800' :
-                              groupData.state === 'offline' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-800'}`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full mr-1.5
-                              ${groupData.state === 'stable' ? 'bg-green-600' :
-                                groupData.state === 'rebalancing' ? 'bg-yellow-600' :
-                                groupData.state === 'offline' ? 'bg-red-600' :
-                                'bg-gray-600'}`}>
-                            </span>
-                            {groupData.state}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-gray-700">{groupData.members}</td>
-                        <td className="py-3 px-4">
-                          <span className={`font-medium
-                            ${groupData.lag > 1000 ? 'text-red-600' :
-                              groupData.lag > 100 ? 'text-yellow-600' : 'text-green-600'}`}>
-                            {formatNumber(groupData.lag)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-wrap gap-1 max-w-md">
-                            {groupData.topics.slice(0, 3).map(topic => (
-                              <span key={topic} className="px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded-full border border-teal-100">
-                                {topic}
-                              </span>
-                            ))}
-                            {groupData.topics.length > 3 && (
-                              <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-full">
-                                +{groupData.topics.length - 3} more
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+          <Users className="w-5 h-5 mr-2 text-teal-500" />
+          Consumer Groups
+        </h2>
+        <button
+          onClick={() => openModal('consumer')}
+          className="flex items-center px-3 py-1.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#6b578f] text-sm shadow-sm"
+        >
+          <Plus className="w-4 h-4 mr-1" /> Add
+        </button>
+      </div>
 
-              {consumerGroups.length === 0 && (
-                <div className="text-center py-10 text-gray-400">
-                  <Users className="w-12 h-12 mx-auto opacity-20 mb-3" />
-                  <p>No consumer groups available</p>
-                </div>
-              )}
-            </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Group ID</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">State</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Members</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Lag</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">Subscribed Topics</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {currentRows.map(group => {
+              const groupData = getConsumerGroupData(group);
+              return (
+                <tr
+                  key={groupData.groupId}
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => setConsumerModal({ open: true, groupId: groupData.groupId })}
+                >
+                  <td className="py-3 px-4 font-medium text-gray-900 truncate max-w-[200px]" title={groupData.groupId}>
+                    {groupData.groupId}
+                  </td>
+                  <td className="py-3 px-4">
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                        ${groupData.state === 'stable' ? 'bg-green-100 text-green-800' :
+                          groupData.state === 'rebalancing' ? 'bg-yellow-100 text-yellow-800' :
+                          groupData.state === 'offline' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5
+                        ${groupData.state === 'stable' ? 'bg-green-600' :
+                          groupData.state === 'rebalancing' ? 'bg-yellow-600' :
+                          groupData.state === 'offline' ? 'bg-red-600' :
+                          'bg-gray-600'}`}>
+                      </span>
+                      {groupData.state}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-gray-700">{groupData.members}</td>
+                  <td className="py-3 px-4">
+                    <span className={`font-medium
+                      ${groupData.lag > 1000 ? 'text-red-600' :
+                        groupData.lag > 100 ? 'text-yellow-600' : 'text-green-600'}`}>
+                      {formatNumber(groupData.lag)}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex flex-wrap gap-1 max-w-md">
+                      {groupData.topics.slice(0, 3).map(topic => (
+                        <span key={topic} className="px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded-full border border-teal-100">
+                          {topic}
+                        </span>
+                      ))}
+                      {groupData.topics.length > 3 && (
+                        <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-full">
+                          +{groupData.topics.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {consumerGroups.length === 0 && (
+          <div className="text-center py-10 text-gray-400">
+            <Users className="w-12 h-12 mx-auto opacity-20 mb-3" />
+            <p>No consumer groups available</p>
           </div>
+        )}
+      </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-end items-center mt-4 space-x-2">
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
         </div>
       </div>
 
