@@ -341,9 +341,8 @@ function KafkaMonitoring() {
         fetchJvmCpuUsage(),
       ]);
       setLastRefreshTimestamp(new Date().toLocaleString());
-      
       toast.dismiss(loadingToast);
-      toast.success("Metrics Fetch Complete")
+      toast.success("Metrics Fetch Complete");
     } catch (error) {
       toast.dismiss(loadingToast);
       toast.error("Failed to refresh all Kafka metrics.");
@@ -400,22 +399,28 @@ function KafkaMonitoring() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-6">
-        <KafkaPieChart
-          data={diskReadData}
-          title="Disk Read Bytes (MB)"
-          tooltipUnit="MB"
-        />
-        <KafkaPieChart
-          data={diskWriteData}
-          title="Disk Write Bytes (MB)"
-          tooltipUnit="MB"
-        />
-        <KafkaPieChart
-          data={jvmCpuUsagePieChartData}
-          title="JVM CPU Usage (%)"
-          tooltipUnit="CPU seconds"
-        />
+      <div className="flex flex-wrap gap-4 mt-6">
+        <div className="flex-1 min-w-[300px] max-w-[500px]">
+          <KafkaPieChart
+            data={diskReadData}
+            title="Disk Read Bytes (MB)"
+            tooltipUnit="MB"
+          />
+        </div>
+        <div className="flex-1 min-w-[300px] max-w-[500px]">
+          <KafkaPieChart
+            data={diskWriteData}
+            title="Disk Write Bytes (MB)"
+            tooltipUnit="MB"
+          />
+        </div>
+        <div className="flex-1 min-w-[300px] max-w-[500px]">
+          <KafkaPieChart
+            data={jvmCpuUsagePieChartData}
+            title="JVM CPU Usage (%)"
+            tooltipUnit="CPU seconds"
+          />
+        </div>
       </div>
       <div className="mt-8">
         <GroupedLineChart

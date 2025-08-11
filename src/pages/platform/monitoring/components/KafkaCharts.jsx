@@ -21,8 +21,8 @@ export const GroupedLineChart = ({
 }) => {
   const LINES_PER_PAGE = 5;
   const [currentPage, setCurrentPage] = useState(0);
+  const [visibleTopics, setVisibleTopics] = useState([]);
 
-  // Reset page when data changes
   useEffect(() => {
     setCurrentPage(0);
   }, [groupedData]);
@@ -53,9 +53,12 @@ export const GroupedLineChart = ({
     });
 
     const allTopicNames = Object.keys(groupedData).sort();
-
     return { chartData, allTopicNames };
-  }, [JSON.stringify(groupedData)]); // Use JSON.stringify for deep comparison
+  }, [JSON.stringify(groupedData)]);
+
+  useEffect(() => {
+    setVisibleTopics(allTopicNames);
+  }, [allTopicNames]);
 
   const colors = useMemo(
     () => [
@@ -97,15 +100,23 @@ export const GroupedLineChart = ({
   const startIndex = currentPage * LINES_PER_PAGE;
   const endIndex = startIndex + LINES_PER_PAGE;
   const topicsForCurrentPage = allTopicNames.slice(startIndex, endIndex);
-
   const totalPages = Math.ceil(allTopicNames.length / LINES_PER_PAGE);
 
-  const handleNextPage = () => {
-    setCurrentPage((prevPage) => Math.min(prevPage + 1, totalPages - 1));
-  };
+  const handleLegendClick = (o) => {
+    const clickedTopic = o.value;
 
-  const handlePrevPage = () => {
-    setCurrentPage((prevPage) => Math.max(prevPage - 1, 0));
+    // If all are visible, show only clicked
+    if (visibleTopics.length === allTopicNames.length) {
+      setVisibleTopics([clickedTopic]);
+    }
+    // If only clicked one is visible, reset to all
+    else if (visibleTopics.length === 1 && visibleTopics[0] === clickedTopic) {
+      setVisibleTopics(allTopicNames);
+    }
+    // Otherwise show only clicked
+    else {
+      setVisibleTopics([clickedTopic]);
+    }
   };
 
   return (
@@ -117,9 +128,9 @@ export const GroupedLineChart = ({
         {totalPages > 1 && (
           <div className="flex items-center gap-2">
             <button
-              onClick={handlePrevPage}
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 0))}
               disabled={currentPage === 0}
-              className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50"
             >
               Previous
             </button>
@@ -127,25 +138,31 @@ export const GroupedLineChart = ({
               Page {currentPage + 1} of {totalPages}
             </span>
             <button
-              onClick={handleNextPage}
+              onClick={() =>
+                setCurrentPage((p) => Math.min(p + 1, totalPages - 1))
+              }
               disabled={currentPage === totalPages - 1}
-              className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50"
             >
               Next
             </button>
           </div>
+        )}
+        {/* Show All Button */}
+        {visibleTopics.length !== allTopicNames.length && (
+          <button
+            onClick={() => setVisibleTopics(allTopicNames)}
+            className="ml-4 px-3 py-1 bg-indigo-100 text-indigo-600 rounded-md hover:bg-indigo-200"
+          >
+            Show All
+          </button>
         )}
       </div>
       <div className="relative h-96">
         <ResponsiveContainer width="100%" height="100%">
           <RechartsLineChart
             data={chartData}
-            margin={{
-              top: 20,
-              right: 30,
-              left: 20,
-              bottom: 5,
-            }}
+            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
@@ -179,20 +196,22 @@ export const GroupedLineChart = ({
                 })
               }
             />
-            <Legend />
-            {topicsForCurrentPage.map((topicName, index) => (
-              <Line
-                key={`${topicName}-${currentPage}`} // Add currentPage to key for re-render
-                type="monotone"
-                dataKey={topicName}
-                stroke={
-                  colors[allTopicNames.indexOf(topicName) % colors.length]
-                }
-                activeDot={{ r: 8 }}
-                strokeWidth={2}
-                connectNulls={true}
-              />
-            ))}
+            <Legend onClick={handleLegendClick} />
+            {topicsForCurrentPage
+              .filter((topic) => visibleTopics.includes(topic))
+              .map((topicName) => (
+                <Line
+                  key={topicName}
+                  type="monotone"
+                  dataKey={topicName}
+                  stroke={
+                    colors[allTopicNames.indexOf(topicName) % colors.length]
+                  }
+                  activeDot={{ r: 8 }}
+                  strokeWidth={2}
+                  connectNulls={true}
+                />
+              ))}
           </RechartsLineChart>
         </ResponsiveContainer>
       </div>
@@ -268,13 +287,13 @@ export const KafkaPieChart = ({ data, title, tooltipUnit = "" }) => {
   }
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-[350px] flex flex-col">
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-[450px] flex flex-col">
       <h3 className="text-md font-semibold text-gray-800 mb-2">
         {title || "Kafka Instance Disk Read Distribution (MB)"}
       </h3>
       <div className="relative flex-grow min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart 
+          <PieChart
             key={chartKey} // Force re-render when data changes
             margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
           >
