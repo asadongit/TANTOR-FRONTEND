@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, RefreshCw } from 'lucide-react';
-import { useMonitoringContext } from '../context/monitoringcontext';
+import { useMonitoringContext } from '../context/MonitoringContext';
 import toast from "react-hot-toast"; 
 
 const LogsViewer = () => {
