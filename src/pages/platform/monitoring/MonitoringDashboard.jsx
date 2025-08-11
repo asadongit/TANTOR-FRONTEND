@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Trash2, Plus, ChevronDown, LayoutDashboard } from "lucide-react";
-import { useMonitoringContext } from "./context/monitoringcontext";
+import { useMonitoringContext } from "./context/MonitoringContext";
 
 import toast from "react-hot-toast";
 import MetricViewer from "./components/MetricViewer";
