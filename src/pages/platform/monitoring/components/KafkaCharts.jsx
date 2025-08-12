@@ -1,3 +1,4 @@
+import { Skeleton } from "@mui/material";
 import React, { useState, useMemo, useEffect } from "react";
 import {
   LineChart as RechartsLineChart,
@@ -15,10 +16,20 @@ import {
 
 export const GroupedLineChart = ({
   groupedData,
+  loading,
   xAxisLabel,
   yAxisLabel,
   title,
 }) => {
+  if (loading) {
+    console.log("IS LOADING")
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <Skeleton variant="text" width={200} height={30} />
+        <Skeleton variant="rectangular" height={350} sx={{ mt: 2 }} />
+      </div>
+    );
+  }
   const LINES_PER_PAGE = 5;
   const [currentPage, setCurrentPage] = useState(0);
   const [visibleTopics, setVisibleTopics] = useState([]);
@@ -265,7 +276,15 @@ const renderCustomizedLabel = ({
   );
 };
 
-export const KafkaPieChart = ({ data, title, tooltipUnit = "" }) => {
+export const KafkaPieChart = ({ data, loading, title, tooltipUnit = "" }) => {
+   if (loading) {
+    return (
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-[450px] flex flex-col">
+        <Skeleton variant="text" width={200} height={25} />
+        <Skeleton variant="circular" width={150} height={150} sx={{ mt: 4, mx: "auto" }} />
+      </div>
+    );
+  }
   // Force re-render when data changes
   const chartKey = useMemo(() => {
     return JSON.stringify(data);
