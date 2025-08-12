@@ -1,17 +1,34 @@
-
 import { useEffect, useState } from "react";
+import axios from "axios";
+import { toast } from "react-hot-toast";
+import { useAuth } from "../../../../../context/AuthContext";
 import { useWorkflow } from "../../context/WorkflowContext";
+import { useModal } from "../../context/ModalProvider";
+import { useNavigate } from "react-router-dom";
+import { useMigrationData } from "../../../../../hooks/platform/migration";
+import { encrypt } from "../../../../../utils/Crypto";
+import { useDrawerContext } from "../../context/DrawerContext";
 
 const AddTable = ({ data }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [affixType, setAffixType] = useState('prefix'); 
+  const [affixType, setAffixType] = useState('prefix');
   const [affixValue, setAffixValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState(null); 
-
-  const baseTableName = data || '';
+  const [status, setStatus] = useState(null);
 
 
+
+  const baseTableName = data?.table_name || '';
+
+  const { token, decodedToken, hostnameV1, project } = useAuth();
+  const { pipelines, updateData } = useWorkflow();
+  const { openModal, closeModal } = useModal();
+  const { closeDrawer } = useDrawerContext();
+  const navigate = useNavigate();
+  const { refetch } = useMigrationData();
+
+   const pipelineData = Object.values(pipelines)[0]?.data;
+  console.log(pipelineData?.source)
   const getTableName = () => {
     if (affixType === 'prefix') {
       return `${affixValue}${baseTableName}`;
@@ -20,12 +37,73 @@ const AddTable = ({ data }) => {
     }
   };
 
+  const onCreateTable = async ({ tableName, affixType, affixValue, baseTableName }) => {
+    try {
+      const pipelineData = Object.values(pipelines)[0]?.data;
+
+      if (!pipelineData) {
+        throw new Error("No pipeline data found");
+      }
+
+      console.log(pipelineData)
+      const newTableMapping = { [baseTableName]: tableName };
+
+      const payload = {
+        metadata_name: pipelineData?.define?.name || `Metadata_${Date.now()}`,
+        metadata_auto_name: pipelineData?.define?.autoName || true,
+        description: pipelineData?.define?.description || `Created table: ${tableName}`,
+        project: project,
+        created_by: decodedToken?.preferred_username,
+        conn_type: pipelineData?.source?.source_conn_type || pipelineData?.source_conn_type,
+        source_conn_id: pipelineData?.source?.source_conn_id,
+        target_conn_id: pipelineData?.target?.target_conn_id,
+        table_list: [newTableMapping],
+      };
+
+      console.log(payload)
+
+      const response = await axios.post(
+        `${hostnameV1}/ddl-migration`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data) {
+        toast.success("Table created successfully!");
+        closeDrawer("cdc");
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('tableCreated', {
+            detail: {
+              tableName: getTableName(),
+              sourceTable: baseTableName,
+              connectionName: pipelineData?.target?.connection || "",
+              schema: pipelineData?.target?.schema || "",
+              connectionId: pipelineData?.target?.target_conn_id,
+              pipelineId: pipelineData?.pipelineId || ""
+            }
+          }));
+        }, 100);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error creating table:', error);
+      toast.error(`Failed to create table: ${error.response?.data?.detail || error.message}`);
+      throw error;
+    }
+  };
+
   const handleCreateTable = async () => {
     setIsLoading(true);
     setStatus(null);
-    
+
     try {
-      await onCreateTable({ 
+      await onCreateTable({
         tableName: getTableName(),
         affixType,
         affixValue,
@@ -42,7 +120,7 @@ const AddTable = ({ data }) => {
 
   return (
     <div className="w-full">
-      
+
       <div className="space-y-4">
 
         {/* <div>
@@ -51,11 +129,11 @@ const AddTable = ({ data }) => {
             <p className="text-gray-800 font-mono">{baseTableName}</p>
           </div>
         </div> */}
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
           <div className="relative">
-            <button 
+            <button
               onClick={() => setIsOpen(!isOpen)}
               className="w-full bg-white border border-gray-300 rounded-md py-2 px-3 text-left shadow-sm focus:outline-none focus:ring-1 focus:ring-[#8e78b7] focus:border-[#8e78b7]"
             >
@@ -66,7 +144,7 @@ const AddTable = ({ data }) => {
                 </svg>
               </span>
             </button>
-            
+
             {isOpen && (
               <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1">
                 <button
@@ -93,7 +171,7 @@ const AddTable = ({ data }) => {
             )}
           </div>
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             {affixType === 'prefix' ? 'Prefix Value' : 'Suffix Value'}
@@ -106,12 +184,12 @@ const AddTable = ({ data }) => {
             placeholder={affixType === 'prefix' ? "Enter prefix..." : "Enter suffix..."}
           />
         </div>
-        
+
         <div className="mt-4 p-3 bg-gray-50 rounded-md">
           <label className="block text-sm font-medium text-gray-700 mb-1">Table Name:</label>
           <p className="text-sm font-mono font-medium">{getTableName()}</p>
         </div>
-        
+
         <div className="mt-5">
           <button
             onClick={handleCreateTable}
@@ -128,7 +206,7 @@ const AddTable = ({ data }) => {
               </>
             ) : "Create Table"}
           </button>
-          
+
           {status && (
             <div className={`mt-2 text-center text-sm ${status === 'success' ? 'text-green-600' : 'text-red-600'}`}>
               {status === 'success' ? 'Table created successfully!' : 'Error creating table. Please try again.'}
@@ -140,4 +218,4 @@ const AddTable = ({ data }) => {
   );
 };
 
-  export default AddTable;
+export default AddTable;

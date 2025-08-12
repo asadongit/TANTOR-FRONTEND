@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useMonitoringContext } from "../context/monitoringcontext";
+import { useMonitoringContext } from "../context/MonitoringContext";
 import SingleLineAreaChart from "./SingleLineAreaChart";
 import StatCard from "./StatCard";
 import { CpuIcon, LucideMemoryStick, RefreshCw } from "lucide-react";

@@ -11,14 +11,14 @@ const Header = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
   const { decodedToken, logout } = useAuth();
-  const userId = decodedToken?.sub; 
+  const userId = decodedToken?.sub;
   const { data: user, isLoading } = useFetchUser(userId);
 
   const formatDate = (dateString) => {
     const date = dateString ? new Date(dateString) : new Date();
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
-  
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -45,8 +45,8 @@ const Header = () => {
     if (isLoading) return 'T';
 
     const name = user?.name || decodedToken?.preferred_username;
-    if (!name) return 'T'; 
-    
+    if (!name) return 'T';
+
     const nameParts = name.split(' ');
     if (nameParts.length === 1) return nameParts[0].charAt(0).toUpperCase();
     return (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
@@ -100,16 +100,16 @@ const Header = () => {
           <BellIcon className="h-6 w-6 text-gray-600" />
           <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
         </button>
-        
+
         <div className="relative" ref={dropdownRef}>
-          <button 
+          <button
             className="w-10 h-10 bg-gradient-to-br from-[#8e78b7] to-purple-400 rounded-full flex items-center justify-center text-white hover:shadow-md transition-all duration-200 border-2 border-white"
             onClick={toggleProfile}
             aria-label="Open user menu"
           >
             {isLoading ? '...' : getUserInitials()}
           </button>
-          
+
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-20 overflow-hidden">
               {isLoading ? (
@@ -132,49 +132,60 @@ const Header = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-base font-medium text-gray-900 truncate">{user?.name || decodedToken?.preferred_username} </p>
                       <p className="text-sm text-gray-500 truncate">{user?.email || decodedToken?.email}</p>
-                      
+
                       <div className="flex flex-wrap gap-2 mt-2">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPlanBadgeStyle(userPlan)}`}>
                           {getPlanIcon(userPlan)}
                           {userPlan}
                         </span>
-                        
-                                            
-                        {user?.roles || decodedToken?.resource_access?.darch?.roles ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                            <Shield size={12} className="mr-1" />
-                            {user?.roles || decodedToken?.resource_access?.darch?.roles}
-                          </span>
-                        ) : null}
+                        {(() => {
+                          const roles = user?.roles || decodedToken?.resource_access?.darch?.roles;
+                          if (Array.isArray(roles)) {
+                            return roles.map((role, idx) => (
+                              <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                <Shield size={12} className="mr-1" />
+                                {role}
+                              </span>
+                            ));
+                          } else if (roles) {
+                            return (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                <Shield size={12} className="mr-1" />
+                                {roles}
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   </div>
                 </div>
               )}
-              
+
               <div className="py-1">
-                <button 
+                <button
                   className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                   onClick={() => navigate('/dashboard')}
                 >
                   <User size={16} className="mr-3 text-gray-500" />
                   My Profile
                 </button>
-                <button 
+                <button
                   className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                   onClick={() => navigate('/dashboard')}
                 >
                   <Settings size={16} className="mr-3 text-gray-500" />
                   Account Settings
                 </button>
-                <button 
+                <button
                   className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                   onClick={() => navigate('/dashboard')}
                 >
                   <CreditCard size={16} className="mr-3 text-gray-500" />
                   Billing & Plan
                 </button>
-                <button 
+                <button
                   className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                   onClick={() => navigate('/dashboard')}
                 >
@@ -182,7 +193,7 @@ const Header = () => {
                   Help & Support
                 </button>
               </div>
-              
+
               <div className="py-1 border-t border-gray-100 bg-gray-50">
                 {isLoading ? (
                   <div className="px-4 py-2">
@@ -193,7 +204,7 @@ const Header = () => {
                     Member since {formatDate(user?.createdAt)}
                   </div>
                 )}
-                <button 
+                <button
                   className="flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 w-full text-left"
                   onClick={handleLogout}
                 >

@@ -493,25 +493,53 @@ export function TransformationProvider({ children }) {
         if (sourceData) {
           const sourceKey = sourceData.alias || `source_${sourceId}`;
 
-          // Use originally selected columns stored in context
           const originalColumns = state.originalSourceColumns[sourceId] || [];
 
+          if (sourceData.sourceType === "file") {
+            const fileColumns = sourceData.fileColumns || [];
+            const columnMapping = {};
 
-          result.source[sourceKey] = {
-            sourceType: sourceData.connectionType || "unknown",
-            sourceConnName: sourceData.connection || "unknown",
-            sourceConnId: sourceData.connectionId || "",
-            column: originalColumns,
-            ConnectionParameters: {
-              sourceSchema: sourceData.schema || "",
-              sourceTable: sourceData.table || ""
-            },
-            readParameters: {
-              watermarkColumn: "",
-              watermarkColumnDataType: ""
-            },
-            EnableCountLogging: sourceData.enableCountLogging === true
-          };
+            fileColumns
+              .filter(col => col.name && col.name.trim() !== "")
+              .forEach(col => {
+                columnMapping[col.name] =
+                  col.datatype === 'custom'
+                    ? (col.customDatatype || 'custom')
+                    : col.datatype;
+              });
+
+            result.source[sourceKey] = {
+              sourceType: sourceData.fileType?.toLowerCase() || "csv",
+              sourceConnName: "",
+              // sourceConnId: "",
+              column: [columnMapping],
+              ConnectionParameters: {
+                sourceFilePath: sourceData.filePath || "",
+                sourceFileName: sourceData.fileName || "",
+              },
+              readParameters: {
+                watermarkColumn: "",
+                watermarkColumnDataType: ""
+              },
+              EnableCountLogging: sourceData.enableCountLogging === true
+            };
+          } else {
+            result.source[sourceKey] = {
+              sourceType: sourceData.connectionType || "unknown",
+              sourceConnName: sourceData.connection || "unknown",
+              sourceConnId: sourceData.connectionId || "",
+              column: originalColumns,
+              ConnectionParameters: {
+                sourceSchema: sourceData.schema || "",
+                sourceTable: sourceData.table || ""
+              },
+              readParameters: {
+                watermarkColumn: "",
+                watermarkColumnDataType: ""
+              },
+              EnableCountLogging: sourceData.enableCountLogging === true
+            };
+          }
         }
       });
 
@@ -703,25 +731,44 @@ export function useTrackConnections(nodes, edges) {
         case 'source':
           const sourceIndex = sourceNodeIds.get(id);
           if (sourceIndex) {
+            const sourcePayload = {
+              id,
+              data: {
+                dfId: `s_df_${sourceIndex}`,
+                alias: data.alias,
+                enableCountLogging: data.enableCountLogging || false
+              }
+            };
+
+            if (data.sourceType === "file") {
+              sourcePayload.data = {
+                ...sourcePayload.data,
+                sourceType: data.sourceType,
+                fileType: data.fileType,
+                filePath: data.filePath,
+                fileName: data.fileName,
+                fileColumns: data.fileColumns,
+                columns: data.columns
+              };
+            } else {
+              sourcePayload.data = {
+                ...sourcePayload.data,
+                sourceType: data.sourceType || "database",
+                connection: data.connection,
+                connectionId: data.connectionId,
+                connectionType: data.connectionType,
+                schema: data.schema,
+                table: data.table,
+                columns: data.columns,
+                objectType: data.objectType,
+                preProcedures: data.preProcedures,
+                postProcedures: data.postProcedures
+              };
+            }
+
             dispatch({
               type: ACTION_TYPES.ADD_SOURCE,
-              payload: {
-                id,
-                data: {
-                  connection: data.connection,
-                  connectionId: data.connectionId,
-                  connectionType: data.connectionType,
-                  schema: data.schema,
-                  table: data.table,
-                  columns: data.columns,
-                  dfId: `s_df_${sourceIndex}`,
-                  alias: data.alias,
-                  objectType: data.objectType,
-                  preProcedures: data.preProcedures,
-                  postProcedures: data.postProcedures,
-                  enableCountLogging: data.enableCountLogging || false
-                }
-              }
+              payload: sourcePayload
             });
           }
           break;
@@ -768,7 +815,6 @@ export function useTrackConnections(nodes, edges) {
               }
             });
 
-            // IMPORTANT: Also explicitly update the targetToSelectedSourceMap if a selectedSourceId exists
             if (data.selectedSourceId) {
               dispatch({
                 type: ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE,
