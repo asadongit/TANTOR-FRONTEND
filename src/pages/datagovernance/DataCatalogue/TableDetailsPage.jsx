@@ -233,8 +233,19 @@ function TableDetailsPage() {
                     })
                 });
                 if (!response.ok) throw new Error(`Failed to fetch sample data. Status: ${response.status}`);
-                const data = await response.json();
-                setSampleData(data || []);
+                const dataText = await response.text();
+                if (!dataText.trim()) {
+                    setSampleData([]);
+                    setLoadingSampleData(false);
+                    return;
+                }
+                const rows = dataText
+                    .trim()
+                    .split('\n')
+                    .filter(row => row.trim() !== '')
+                    .map(row => JSON.parse(row));
+
+                setSampleData(rows);
             } catch (error) {
                 console.error("Error fetching sample data:", error);
                 setSampleDataError("Failed to fetch sample data.");
@@ -700,7 +711,7 @@ function TableDetailsPage() {
                                                     {currentSampleDataItems.map((row, rowIndex) => (
                                                         <tr key={rowIndex} className="hover:bg-gray-50">
                                                             {sampleDataHeaders.map(header => (
-                                                                <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row[header]}</td>
+                                                                <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 max-w-sm truncate" title={String(row[header] ?? '')}>{row[header]}</td>
                                                             ))}
                                                         </tr>
                                                     ))}
