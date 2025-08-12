@@ -8,6 +8,16 @@ import { Clock, MemoryStick, RefreshCw } from "lucide-react";
 
 function KafkaMonitoring() {
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStates, setLoadingStates] = useState({
+    messagesPerTopic: false,
+    produceRatePerTopic: false,
+    produceReqPerBroker: false,
+    diskRead: false,
+    diskWrite: false,
+    jvmMemory: false,
+    gcTime: false,
+    jvmCpu: false,
+  });
   const { getKafkaMetrics } = useKafkaMonitoringContext();
   const { getTimerangeInMilliseconds } = useMonitoringContext();
 
@@ -23,7 +33,12 @@ function KafkaMonitoring() {
   const [timeSpentInGCChartData, setTimeSpentInGCChartData] = useState([]);
   const [jvmCpuUsagePieChartData, setJvmCpuUsagePieChartData] = useState([]);
 
+  const setLoading = (key, value) => {
+    setLoadingStates((prev) => ({ ...prev, [key]: value }));
+  };
   async function fetchMessagesPerTopic() {
+    setLoading("messagesPerTopic", true);
+
     const expr =
       "sum by(topic) (rate(kafka_server_brokertopicmetrics_bytesoutpersec[1m]))";
 
@@ -60,10 +75,14 @@ function KafkaMonitoring() {
     } catch (error) {
       toast.error("Error fetching messages per topic data.");
       setMessagesPerTopic([]);
+    }finally{
+      setLoading("messagesPerTopic", false);
     }
   }
 
   async function fetchProduceReqRatePerTopic() {
+    setLoading("produceRatePerTopic", true);
+
     const expr =
       "sum by(topic) (rate(kafka_server_brokertopicmetrics_totalproducerequestspersec[1m]))";
 
@@ -100,10 +119,14 @@ function KafkaMonitoring() {
     } catch (error) {
       toast.error(error?.message || "Error fetching produce req rate data.");
       setProduceRatePerTopic([]);
+    }finally{
+      setLoading("produceRatePerTopic", false);
     }
   }
 
   async function fetchProduceReqPerBroker() {
+    setLoading("produceReqPerBroker", true);
+
     const expr =
       "sum by(instance) (rate(kafka_server_brokertopicmetrics_totalproducerequestspersec[1m]))";
 
@@ -140,10 +163,14 @@ function KafkaMonitoring() {
     } catch (error) {
       toast.error("Error fetching messages per topic data.");
       setProduceReqPerBroker([]);
+    }finally{
+      setLoading("produceReqPerBroker", false);
     }
   }
 
   async function fetchDiskReadDataForPieChart() {
+    setLoading("diskRead", true);
+
     const expr =
       "sum by(instance) (kafka_server_kafkaserver_linux_disk_read_bytes)";
 
@@ -176,10 +203,14 @@ function KafkaMonitoring() {
       setDiskReadData(pieChartData);
     } catch (error) {
       toast.error(error?.message || "Error fetching disk read data.");
+    }finally{
+      setLoading("diskRead", false);
     }
   }
 
   async function fetchDiskWriteDataForPieChart() {
+    setLoading("diskWrite", true);
+
     const expr =
       "sum by(instance) (kafka_server_controllerserver_linux_disk_write_bytes)";
 
@@ -212,10 +243,14 @@ function KafkaMonitoring() {
       setDiskWriteData(pieChartData);
     } catch (error) {
       toast.error(error?.message || "Error fetching disk read data.");
+    }finally{
+      setLoading("diskWrite", false);
     }
   }
 
   async function fetchJvmMemoryUsage() {
+    setLoading("jvmMemory", true);
+    
     const expr = "sum by(instance) (jvm_memory_used_bytes)";
 
     const { start, end } = getTimerangeInMilliseconds(0);
@@ -248,10 +283,14 @@ function KafkaMonitoring() {
       setJvmMemoryMemoryUsageData(jvmMemoryData);
     } catch (error) {
       toast.error(error?.message || "Error fetching disk read data.");
+    }finally{
+      setLoading("jvmMemory", false);
     }
   }
 
   async function fetchTimeSpentInGC() {
+    setLoading("gcTime", true);
+
     const expr = "sum without(gc) (rate(jvm_gc_collection_seconds_sum[1m]))";
 
     const { start, end } = getTimerangeInMilliseconds(0);
@@ -285,10 +324,14 @@ function KafkaMonitoring() {
       setTimeSpentInGCChartData(timeSpendInGCData);
     } catch (error) {
       toast.error(error?.message || "Error fetching disk read data.");
+    }finally{
+      setLoading("gcTime", false);
     }
   }
 
   async function fetchJvmCpuUsage() {
+    setLoading("jvmCpu", true);
+    
     const expr = "sum by(instance) (process_cpu_seconds_total)";
 
     const { start, end } = getTimerangeInMilliseconds(0);
@@ -321,14 +364,14 @@ function KafkaMonitoring() {
       setJvmCpuUsagePieChartData(pieChartData);
     } catch (error) {
       toast.error(error?.message || "Error fetching disk read data.");
+    }finally{
+      setLoading("jvmCpu", false);
     }
   }
 
   const fetchData = async () => {
     setIsLoading(true);
     setForceRefresh(true);
-
-    const loadingToast = toast.loading("Loading Metrics...");
     try {
       await Promise.all([
         fetchMessagesPerTopic(),
@@ -341,13 +384,10 @@ function KafkaMonitoring() {
         fetchJvmCpuUsage(),
       ]);
       setLastRefreshTimestamp(new Date().toLocaleString());
-      toast.dismiss(loadingToast);
-      toast.success("Metrics Fetch Complete");
     } catch (error) {
-      toast.dismiss(loadingToast);
       toast.error("Failed to refresh all Kafka metrics.");
     } finally {
-       setForceRefresh(false);
+      setForceRefresh(false);
       setIsLoading(false);
     }
   };
@@ -384,6 +424,34 @@ function KafkaMonitoring() {
           <RefreshCw className="h-5 w-5" />
         </button>
       </div>
+
+          <div className="flex flex-wrap gap-4 mt-6">
+        <div className="flex-1 min-w-[300px] max-w-[500px]">
+          <KafkaPieChart
+            data={diskReadData}
+            loading={loadingStates.diskRead}
+            title="Disk Read Bytes (MB)"
+            tooltipUnit="MB"
+          />
+        </div>
+        <div className="flex-1 min-w-[300px] max-w-[500px]">
+          <KafkaPieChart
+            data={diskWriteData}
+            loading={loadingStates.diskWrite}
+            title="Disk Write Bytes (MB)"
+            tooltipUnit="MB"
+          />
+        </div>
+        <div className="flex-1 min-w-[300px] max-w-[500px]">
+          <KafkaPieChart
+            data={jvmCpuUsagePieChartData}
+            loading={loadingStates.jvmCpu}
+            title="JVM CPU Usage (%)"
+            tooltipUnit="CPU seconds"
+          />
+        </div>
+      </div>
+
       <div className="flex justify-evenly gap-4 mt-10">
         <StatCard
           title="JVM Memory Usage"
@@ -399,44 +467,24 @@ function KafkaMonitoring() {
         />
       </div>
 
-      <div className="flex flex-wrap gap-4 mt-6">
-        <div className="flex-1 min-w-[300px] max-w-[500px]">
-          <KafkaPieChart
-            data={diskReadData}
-            title="Disk Read Bytes (MB)"
-            tooltipUnit="MB"
-          />
-        </div>
-        <div className="flex-1 min-w-[300px] max-w-[500px]">
-          <KafkaPieChart
-            data={diskWriteData}
-            title="Disk Write Bytes (MB)"
-            tooltipUnit="MB"
-          />
-        </div>
-        <div className="flex-1 min-w-[300px] max-w-[500px]">
-          <KafkaPieChart
-            data={jvmCpuUsagePieChartData}
-            title="JVM CPU Usage (%)"
-            tooltipUnit="CPU seconds"
-          />
-        </div>
-      </div>
       <div className="mt-8">
         <GroupedLineChart
           groupedData={messagesPerTopic}
+          loading={loadingStates.messagesPerTopic}
           title="Messages in per topic"
           xAxisLabel="Time"
           yAxisLabel="Messages (Bytes/sec)"
         />
         <GroupedLineChart
           groupedData={produceRatePerTopic}
+          loading={loadingStates.produceRatePerTopic}
           title="Produce request rate per topic"
           xAxisLabel="Time"
           yAxisLabel="Req/s"
         />
         <GroupedLineChart
           groupedData={produceReqPerBroker}
+          loading={loadingStates.produceReqPerBroker}
           title="Produce request per broker"
           xAxisLabel="Time"
           yAxisLabel="Req/s"

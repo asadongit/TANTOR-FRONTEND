@@ -11,7 +11,7 @@ function MetricViewer() {
   const [memoryUsage, setMemoryUsage] = useState([]);
   const [statCardData, setStatCardData] = useState([]);
   const [loading, setLoading] = useState(false);
-  
+
   const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState("");
 
   const fetchPodMetrics = async () => {
@@ -65,7 +65,7 @@ function MetricViewer() {
 
       setStatCardData({ cpuStats, memoryStats });
       toast.success("Metrics fetched successfully");
-      
+
       setLastRefreshTimestamp(new Date().toLocaleString());
     } catch (error) {
       console.error(error);
@@ -101,15 +101,14 @@ function MetricViewer() {
           }`}
           title="Refresh metrics"
         >
-          <RefreshCw
-            className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-          />
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           <span>Refresh</span>
         </button>
       </div>
 
       <div className="flex justify-evenly">
         <StatCard
+          loading={loading}
           title="CPU Usage"
           data={statCardData.cpuStats || []}
           unit="cores"
@@ -117,6 +116,7 @@ function MetricViewer() {
         />
         <StatCard
           title="Memory Usage"
+          loading={loading}
           data={statCardData.memoryStats || []}
           unit="MiB"
           icon={<LucideMemoryStick />}
@@ -125,6 +125,7 @@ function MetricViewer() {
 
       <div className="flex flex-col gap-6 w-full m-4">
         <SingleLineAreaChart
+          loading={loading}
           title="CPU Usage"
           data={cpuUsage}
           unit="cores"
@@ -132,6 +133,7 @@ function MetricViewer() {
         />
         <SingleLineAreaChart
           title="Memory Usage"
+          loading={loading}
           data={memoryUsage}
           unit="MB"
           color="#82ca9d"
