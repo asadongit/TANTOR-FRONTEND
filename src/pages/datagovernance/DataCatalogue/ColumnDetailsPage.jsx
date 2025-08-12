@@ -245,9 +245,24 @@ function ColumnDetailsPage() {
                         table_name: columnDetails.table_name
                     })
                 });
-                if (!response.ok) throw new Error(`Failed to fetch sample data. Status: ${response.status}`);
-                const data = await response.json();
-                setSampleData(data || []);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch sample data. Status: ${response.status}`);
+                }
+                const dataText = await response.text();
+                if (!dataText.trim()) {
+                    setSampleData([]);
+                    setLoadingSampleData(false);
+                    return;
+                }
+                const rows = dataText
+                    .trim()
+                    .split('\n')
+                    .filter(row => row.trim() !== '')
+                    .map(row => JSON.parse(row));
+
+                setSampleData(rows);
+
             } catch (error) {
                 console.error("Error fetching sample data:", error);
                 setSampleDataError("Failed to fetch sample data.");
@@ -255,6 +270,7 @@ function ColumnDetailsPage() {
                 setLoadingSampleData(false);
             }
         };
+
         fetchSampleData();
     }, [activeTab, columnDetails, token]);
 
@@ -645,7 +661,7 @@ function ColumnDetailsPage() {
                                                     {currentSampleDataItems.map((row, rowIndex) => (
                                                         <tr key={rowIndex} className="hover:bg-gray-50">
                                                             {sampleDataHeaders.map(header => (
-                                                                <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                                                <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 max-w-sm truncate" title={String(row[header] ?? '')}>
                                                                     {row[header]}
                                                                 </td>
                                                             ))}
