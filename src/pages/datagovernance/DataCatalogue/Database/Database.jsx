@@ -109,6 +109,67 @@ const Database = () => {
     return Array.from(connectionMap.values());
   };
 
+  const [chartData, setChartData] = useState([]);
+  const [chartDataKeys, setChartDataKeys] = useState([]);
+
+  const fetchTrendData = async (policyIds) => {
+    if (!policyIds || policyIds.length === 0) {
+      setChartData([]);
+      return;
+    }
+    try {
+      const apiUrl = `${window._env_?.VITE_FAST_API}/data_catalogue/database_trend`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ policy_id: policyIds })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const rawTrendData = await response.json();
+      const allDbTypes = new Set();
+      rawTrendData.forEach(dayData => {
+        Object.keys(dayData.connections).forEach(dbType => {
+          if (dbType && dbType !== 'null') { 
+            allDbTypes.add(dbType);
+          }
+        });
+      });
+      const dynamicKeys = Array.from(allDbTypes);
+      setChartDataKeys(dynamicKeys);
+      const formattedData = rawTrendData.map(dayData => {
+
+        const chartPoint = {
+          day: dayData.date, 
+        };
+
+        dynamicKeys.forEach(key => {
+          chartPoint[key] = 0;
+        });
+
+        for (const [dbType, count] of Object.entries(dayData.connections)) {
+          if (dynamicKeys.includes(dbType)) {
+            chartPoint[dbType] = count;
+          }
+        }
+        return chartPoint;
+      });
+
+      setChartData(formattedData.reverse());
+
+    } catch (error) {
+      console.error('Error fetching trend data:', error);
+      setChartData([]); 
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -121,6 +182,7 @@ const Database = () => {
       setConnectionData(processedData);
 
       await fetchRecentAccess(policyIds);
+      await fetchTrendData(policyIds);
       return { success: true };
     } catch (error) {
       console.error('Error loading data:', error);
@@ -216,16 +278,6 @@ const Database = () => {
     });
   };
 
-  const trendData = [
-    { day: '1 day', Database: 20, Schema: 9, Tables: 13, View: 11 },
-    { day: '2 day', Database: 25, Schema: 9, Tables: 17, View: 11 },
-    { day: '3 day', Database: 26, Schema: 17, Tables: 9, View: 8 },
-    { day: '4 day', Database: 27, Schema: 17, Tables: 15, View: 18 },
-    { day: '5 day', Database: 25, Schema: 14, Tables: 13, View: 23 },
-    { day: '6 day', Database: 23, Schema: 20, Tables: 15, View: 16 },
-    { day: '7 day', Database: 21, Schema: 27, Tables: 16, View: 15 },
-  ];
-
   // MODIFICATION: Filter data by type and search term
   const filteredData = connectionData.filter(item => {
     const typeMatch = !dbTypeFilter || item.Database.toLowerCase() === dbTypeFilter.toLowerCase();
@@ -287,7 +339,7 @@ const Database = () => {
           )}
 
           <button
-          title={isTableView ? "Grid View": "List View"}
+            title={isTableView ? "Grid View" : "List View"}
             onClick={() => {
               setIsTableView(!isTableView);
               resetFiltersAndPagination();
@@ -347,8 +399,10 @@ const Database = () => {
               ))}
             </div>
           </div>
-          <div className="grid lg:grid-cols-2 gap-6 mt-10">
-            <CatalogueChart data={trendData} />
+          <div className="grid lg:grid-cols-3 gap-6 mt-10">
+            <div className="lg:col-span-2">
+              <CatalogueChart data={chartData} dataKeys={chartDataKeys} isDatabase={true}/>
+            </div>
             <div className="bg-white p-6 rounded-lg">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-medium">Recent access</h3>
