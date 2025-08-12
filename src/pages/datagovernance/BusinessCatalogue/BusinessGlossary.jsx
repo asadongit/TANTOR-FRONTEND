@@ -178,7 +178,7 @@ const BusinessGlossary = () => {
     return (
       <tr>
         <td colSpan="7" className="text-center p-8 text-gray-500">
-          No results found for your search.
+          No data available to display
         </td>
       </tr>
     );
@@ -262,18 +262,18 @@ const BusinessGlossary = () => {
             onClick={fetchData}
             disabled={isLoading}
             className="text-black border border-gray-300 shadow-sm hover:bg-gray-100 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 flex items-center justify-center dark:bg-white dark:hover:bg-gray-50 focus:outline-none dark:focus:ring-[#8e78b7] disabled:opacity-50"
-            title="Refresh Data"
+            title="Refresh"
           >
             <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4" role="alert">
+      {/* {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4" role="alert">
         <strong className="font-bold">Error: </strong>
         <span className="block sm:inline">{error}</span>
       </div>
-      }
+      } */}
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
@@ -303,13 +303,13 @@ const BusinessGlossary = () => {
             Showing {filteredData.length > 0 ? indexOfFirstItem + 1 : 0} to {Math.min(indexOfLastItem, filteredData.length)} of {filteredData.length} results
           </span>
           <div className="flex items-center gap-1">
-            <button onClick={goToPreviousPage} disabled={currentPage === 1 || isLoading} className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100">
+            <button title="Back" onClick={goToPreviousPage} disabled={currentPage === 1 || isLoading} className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100">
               <ChevronLeft className="h-5 w-5" />
             </button>
             <span className="text-sm text-gray-600 px-2">
               Page {currentPage} of {totalPages > 0 ? totalPages : 1}
             </span>
-            <button onClick={goToNextPage} disabled={currentPage === totalPages || isLoading} className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100">
+            <button title="Next" onClick={goToNextPage} disabled={currentPage === totalPages || isLoading} className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100">
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>

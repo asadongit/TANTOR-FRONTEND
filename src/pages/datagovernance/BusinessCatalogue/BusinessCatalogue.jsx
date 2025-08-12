@@ -15,7 +15,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfi
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200">
+                    <button title="Close" onClick={onClose} className="p-1 rounded-full hover:bg-gray-200">
                         <X className="h-5 w-5 text-gray-600" />
                     </button>
                 </div>
@@ -140,7 +140,7 @@ const DetailsModal = ({ isOpen, onClose, title, data }) => {
                             {data?.length || 0}
                         </span>
                     </h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1 rounded-full transition-colors">
+                    <button title="Close" onClick={onClose} className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1 rounded-full transition-colors">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -450,7 +450,7 @@ const BusinessCatalogue = () => {
                         <input type="text" placeholder="Search catalogue..." className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8d77ba]" value={searchTerm} onChange={handleSearchChange} />
                         <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                     </div>
-                    <button onClick={fetchCatalogueData} disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">
+                    <button title="Refresh" onClick={fetchCatalogueData} disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">
                         <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
                     </button>
                     {isUserAuthorized && (
@@ -518,6 +518,7 @@ const BusinessCatalogue = () => {
                                                     <button
                                                         onClick={() => setActiveMenu(activeMenu === index ? null : index)}
                                                         className="p-1.5 rounded-full hover:bg-gray-100"
+                                                        title="See Actions"
                                                     >
                                                         <MoreHorizontal className="h-5 w-5" />
                                                     </button>
@@ -531,7 +532,7 @@ const BusinessCatalogue = () => {
                                                                             handleOpenEditModal(item);
                                                                             setActiveMenu(null);
                                                                         }}
-                                                                        title="Edit Domain Details"
+                                                                        title="Edit Domain"
                                                                         className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                                                                     >
                                                                         <Pencil className="h-4 w-4" />
@@ -569,11 +570,11 @@ const BusinessCatalogue = () => {
                             Showing {filteredAndSortedData.length > 0 ? indexOfFirstItem + 1 : 0} to {Math.min(indexOfLastItem, filteredAndSortedData.length)} of {filteredAndSortedData.length} results
                         </span>
                         <div className="flex items-center gap-1">
-                            <button onClick={goToPreviousPage} disabled={currentPage === 1} className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100">
+                            <button title="Back" onClick={goToPreviousPage} disabled={currentPage === 1} className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100">
                                 <ChevronLeft className="h-5 w-5" />
                             </button>
                             <span className="text-sm text-gray-600">Page {currentPage} of {totalPages > 0 ? totalPages : 1}</span>
-                            <button onClick={goToNextPage} disabled={currentPage === totalPages || totalPages === 0} className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100">
+                            <button title="Next" onClick={goToNextPage} disabled={currentPage === totalPages || totalPages === 0} className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100">
                                 <ChevronRight className="h-5 w-5" />
                             </button>
                         </div>

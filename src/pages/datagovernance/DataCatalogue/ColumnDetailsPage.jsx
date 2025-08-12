@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
-import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp, ChevronLeft, FilePenLine } from 'lucide-react';
+import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FilePenLine } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import toast from 'react-hot-toast';
@@ -23,30 +23,41 @@ const InfoPill = ({ label }) => (
     </span>
 );
 
-const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+// --- New Pagination Component ---
+const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
     if (totalPages <= 1) {
-        return null;
+        return null; // Don't render pagination if there's only one page or no items
     }
 
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
     return (
-        <div className="flex justify-between items-center mt-4 px-1">
-            <span className="text-sm text-gray-700">
-                Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+        <div className="flex justify-between items-center mt-4 px-1 text-sm text-gray-700">
+            <span>
+                Showing <span className="font-semibold">{startItem}</span> to <span className="font-semibold">{endItem}</span> of <span className="font-semibold">{totalItems}</span> Entries
             </span>
-            <div className="flex items-center">
+            <div className="flex items-center space-x-2">
                 <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Back"
                 >
-                    Previous
+                    <ChevronLeft className="h-5 w-5" />
                 </button>
+
+                <span>
+                    Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+                </span>
+
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="ml-2 px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Next"
                 >
-                    Next
+                    <ChevronRight className="h-5 w-5" />
                 </button>
             </div>
         </div>
@@ -371,12 +382,6 @@ function ColumnDetailsPage() {
     const totalAccessPages = Math.ceil(accessData.length / itemsPerPage);
     const handleAccessPageChange = (page) => setAccessCurrentPage(page);
 
-    const indexOfLastBusinessItem = businessCurrentPage * itemsPerPage;
-    const indexOfFirstBusinessItem = indexOfLastBusinessItem - itemsPerPage;
-    const currentBusinessItems = businessData.composite.slice(indexOfFirstBusinessItem, indexOfLastBusinessItem);
-    const totalBusinessPages = Math.ceil(businessData.composite.length / itemsPerPage);
-    const handleBusinessPageChange = (page) => setBusinessCurrentPage(page);
-
     const indexOfLastSampleDataItem = sampleDataCurrentPage * itemsPerPage;
     const indexOfFirstSampleDataItem = indexOfLastSampleDataItem - itemsPerPage;
     const currentSampleDataItems = sampleData.slice(indexOfFirstSampleDataItem, indexOfLastSampleDataItem);
@@ -411,7 +416,7 @@ function ColumnDetailsPage() {
                     <div className="flex items-start gap-4 w-full">
                         <div className="flex justify-between w-full" >
                             <div className="flex items-center gap-2">
-                                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
+                                <button title="Back" onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
                                     <ChevronLeft className="h-6 w-6" />
                                 </button>
                                 <ChartColumn size={24} className="text-[#8d77ba]" />
@@ -440,8 +445,8 @@ function ColumnDetailsPage() {
                                         {isUserAuthorized && !isEditingDescription && (
                                             <button
                                                 onClick={() => setIsEditingDescription(true)}
-                                                className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-[#8d77ba] transition-colors"
-                                                aria-label="Edit description"
+                                                className="p-1 rounded-full hover:bg-gray-100 text-gray-500 [#8d77ba] transition-colors"
+                                                title="Edit Column Description"
                                             >
                                                 <Pencil size={18} />
                                             </button>
@@ -523,10 +528,10 @@ function ColumnDetailsPage() {
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Precision</td>
                                                     <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_PRECISION}</td>
                                                 </tr>
-                                                <tr>
+                                                {/* <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Constraints</td>
                                                     <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(columnDetails.column_metadata)}</td>
-                                                </tr>
+                                                </tr> */}
                                             </tbody>
                                         </table>
                                     </div>
@@ -563,44 +568,36 @@ function ColumnDetailsPage() {
                                     <div className="text-center p-10">Loading business data...</div>
                                 ) : businessView === 'Table Detail View' ? (
                                     <>
-                                        <div className="overflow-x-auto rounded-lg shadow">
-                                            <table className="min-w-full">
-                                                <thead>
-                                                    <tr className="bg-[#29304a] text-white">
-                                                        {['ID', 'Column', 'Domain', 'Category', 'Sub-category', 'Term', 'Tag', 'Sub-tag'].map(header => (
-                                                            <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">{header}</th>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="bg-white divide-y divide-gray-200">
-                                                    {currentBusinessItems && currentBusinessItems.length > 0 && !(currentBusinessItems.length === 1 && currentBusinessItems[0].domain === 'N/A') ? (
-                                                        currentBusinessItems.map((row, index) => (
-                                                            <tr key={index} className="hover:bg-gray-50">
-                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.id}</td>
-                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 hover:underline cursor-pointer">{row.column}</td>
-                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.domain}</td>
-                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.category}</td>
-                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subCategory}</td>
-                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.term}</td>
-                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.tag}</td>
-                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subTag}</td>
+                                        {Object.values(businessData.schema).some(arr => arr.length > 0) ? (
+                                            <div className="overflow-x-auto rounded-lg shadow border">
+                                                <table className="min-w-full">
+                                                    <tbody className="bg-white divide-y divide-gray-200">
+                                                        {Object.entries(businessData.schema).map(([type, values]) => (
+                                                            <tr key={type} className="hover:bg-gray-50">
+                                                                <td className="px-6 py-4 w-1/3 text-sm font-medium text-gray-500">{formatTitle(type)}</td>
+                                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                                    {(() => {
+                                                                        if (!values || values.length === 0) {
+                                                                            return <span className="text-gray-500">N/A</span>;
+                                                                        }
+                                                                        const fullText = values.join(', ');
+                                                                        if (values.length > 6 || fullText.length > 200) {
+                                                                            const truncatedText = values.slice(0, 3).join(', ');
+                                                                            return <span title={fullText}>{`${truncatedText}...`}</span>;
+                                                                        }
+                                                                        return fullText;
+                                                                    })()}
+                                                                </td>
                                                             </tr>
-                                                        ))
-                                                    ) : (
-                                                        <tr>
-                                                            <td colSpan="8" className="text-center py-10 px-4 text-sm text-gray-500">
-                                                                No business data available for this column.
-                                                            </td>
-                                                        </tr>
-                                                    )}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <Pagination
-                                            currentPage={businessCurrentPage}
-                                            totalPages={totalBusinessPages}
-                                            onPageChange={handleBusinessPageChange}
-                                        />
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-10 px-4 text-sm text-gray-500">
+                                                No business data available for this column.
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
                                     <div className="p-1">
@@ -661,6 +658,8 @@ function ColumnDetailsPage() {
                                             currentPage={sampleDataCurrentPage}
                                             totalPages={totalSampleDataPages}
                                             onPageChange={handleSampleDataPageChange}
+                                            totalItems={sampleData.length}
+                                            itemsPerPage={itemsPerPage}
                                         />
                                     </>
                                 )}
@@ -726,6 +725,8 @@ function ColumnDetailsPage() {
                                                 currentPage={accessCurrentPage}
                                                 totalPages={totalAccessPages}
                                                 onPageChange={handleAccessPageChange}
+                                                totalItems={accessData.length}
+                                                itemsPerPage={itemsPerPage}
                                             />
                                         </>
                                     ) : (
@@ -745,8 +746,8 @@ function ColumnDetailsPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
-                            <div className="text-gray-500">Type</div>
-                            <div className="font-normal">Column</div>
+                            <div className="text-gray-500"> Data Type</div>
+                            <div className="font-normal">{columnDetails?.column_metadata?.DATA_TYPE}</div>
                             <div className="text-gray-500">Data source</div>
                             <div className="font-normal">{columnDetails.connection_type}</div>
                         </div>

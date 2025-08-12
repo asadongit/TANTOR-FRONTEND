@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
-import { Pencil, Lightbulb, Table, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp, ChevronLeft, FilePenLine, Check, X } from 'lucide-react';
+import { Pencil, Lightbulb, Table, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp, ChevronLeft,ChevronRight, FilePenLine, Check, X } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { toast } from 'react-hot-toast';
@@ -23,31 +23,40 @@ const InfoPill = ({ label }) => (
     </span>
 );
 
-// Pagination Component
-const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
     if (totalPages <= 1) {
-        return null; // Don't render pagination if there's only one page
+        return null; // Don't render pagination if there's only one page or no items
     }
 
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
     return (
-        <div className="flex justify-between items-center mt-4 px-1">
-            <span className="text-sm text-gray-700">
-                Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+        <div className="flex justify-between items-center px-1 text-sm text-gray-700">
+            <span>
+                Showing <span className="font-semibold">{startItem}</span> to <span className="font-semibold">{endItem}</span> of <span className="font-semibold">{totalItems}</span> Entries
             </span>
-            <div className="flex items-center">
+            <div className="flex items-center space-x-2">
                 <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="ml-2 px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Back"
                 >
-                    Previous
+                    <ChevronLeft className="h-5 w-5" />
                 </button>
+
+                <span>
+                    Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+                </span>
+
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="ml-2 px-3 py-1 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Next"
                 >
-                    Next
+                    <ChevronRight className="h-5 w-5" />
                 </button>
             </div>
         </div>
@@ -399,12 +408,6 @@ function TableDetailsPage() {
     const totalAccessPages = Math.ceil(accessData.length / itemsPerPage);
     const handleAccessPageChange = (page) => setAccessCurrentPage(page);
 
-    const indexOfLastBusinessItem = businessCurrentPage * itemsPerPage;
-    const indexOfFirstBusinessItem = indexOfLastBusinessItem - itemsPerPage;
-    const currentBusinessItems = businessData.composite.slice(indexOfFirstBusinessItem, indexOfLastBusinessItem);
-    const totalBusinessPages = Math.ceil(businessData.composite.length / itemsPerPage);
-    const handleBusinessPageChange = (page) => setBusinessCurrentPage(page);
-
     const indexOfLastSampleDataItem = sampleDataCurrentPage * itemsPerPage;
     const indexOfFirstSampleDataItem = indexOfLastSampleDataItem - itemsPerPage;
     const currentSampleDataItems = sampleData.slice(indexOfFirstSampleDataItem, indexOfLastSampleDataItem);
@@ -437,10 +440,10 @@ function TableDetailsPage() {
                     <div className="flex items-start gap-4 w-full">
                         <div className="flex justify-between w-full" >
                             <div className="flex items-center gap-2">
-                                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
+                                <button title="Back" onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
                                     <ChevronLeft className="h-6 w-6" />
                                 </button>
-                                <Table size={24} className="text-gray-600" />
+                                <Table size={24} className="text-[#8d77ba]" />
                                 <h1 className="text-2xl font-bold text-gray-800">{tableData?.name?.toLowerCase()}</h1>
                             </div>
                             <div className="flex justify-center flex-col items-center">
@@ -470,8 +473,8 @@ function TableDetailsPage() {
                                         {isUserAuthorized && !isEditingDescription && (
                                             <button
                                                 onClick={() => setIsEditingDescription(true)}
-                                                className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-[#8d77ba] transition-colors"
-                                                aria-label="Edit description"
+                                                className="p-1 rounded-full hover:bg-gray-100 text-[#8d77ba] transition-colors"
+                                                title="Edit Table Description"
                                             >
                                                 <Pencil size={18} />
                                             </button>
@@ -495,7 +498,7 @@ function TableDetailsPage() {
                                         </div>
                                     ) : (
                                         <div className="text-gray-600 pl-7 min-h-[2rem]">
-                                            {description ? description : <span className="text-gray-400">Table Description</span>}
+                                            {description ? description : <span className="text-gray-600">Table Description</span>}
                                         </div>
                                     )}
                                 </div>
@@ -565,14 +568,14 @@ function TableDetailsPage() {
                                                                                     onClick={handleSaveColumnDescription}
                                                                                     disabled={isSavingColumnDesc}
                                                                                     className="text-green-600 hover:text-green-800 disabled:text-gray-300"
-                                                                                    aria-label="Save"
+                                                                                    title="Save"
                                                                                 >
                                                                                     <Check size={20} />
                                                                                 </button>
                                                                                 <button
                                                                                     onClick={handleColumnEditCancel}
                                                                                     className="text-red-500 hover:text-red-700"
-                                                                                    aria-label="Cancel"
+                                                                                    title="Cancel"
                                                                                 >
                                                                                     <X size={20} />
                                                                                 </button>
@@ -581,7 +584,7 @@ function TableDetailsPage() {
                                                                             <button
                                                                                 onClick={() => handleColumnEditClick(col)}
                                                                                 className="text-gray-400 hover:text-gray-600"
-                                                                                aria-label="Edit Column Description"
+                                                                                title="Edit Column Description"
                                                                             >
                                                                                 <Pencil size={16} />
                                                                             </button>
@@ -594,10 +597,12 @@ function TableDetailsPage() {
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <Pagination
+                                       <Pagination
                                             currentPage={summaryColumnsCurrentPage}
                                             totalPages={totalSummaryColumnPages}
                                             onPageChange={handleSummaryColumnPageChange}
+                                            totalItems={pageColumns.length}
+                                            itemsPerPage={itemsPerPage}
                                         />
                                     </>
                                 ) : (
@@ -613,46 +618,47 @@ function TableDetailsPage() {
                             <div>
                                 <div className="flex items-center space-x-2 mb-6">
                                     <button onClick={() => setBusinessView('Composite view')}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Composite view' ? 'bg-purple-100 text-[#8d77ba]' : 'text-gray-600 hover:bg-gray-100'}`} >
-                                        <Layers className="h-4 w-4" /> Composite view
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${businessView === 'Composite view' ? 'bg-purple-100 text-[#8d77ba]' : 'text-gray-600 hover:bg-gray-100'}`} >
+                                        <Layers size={20} /> Composite view
                                     </button>
                                     <button onClick={() => setBusinessView('Table Detail View')}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Table Detail View' ? 'bg-purple-100 text-[#8d77ba]' : 'text-gray-600 hover:bg-gray-100'}`} >
-                                        <TableOfContents className="h-4 w-4" /> Table Detail View
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md  font-medium transition-colors ${businessView === 'Table Detail View' ? 'bg-purple-100 text-[#8d77ba]' : 'text-gray-600 hover:bg-gray-100'}`} >
+                                        <TableOfContents size={20} /> Table Detail View
                                     </button>
                                 </div>
                                 {loadingBusinessData ? <div className="text-center p-10">Loading business data...</div>
                                     : businessView === 'Table Detail View' ? (
                                         <>
-                                            <div className="overflow-x-auto rounded-lg shadow">
-                                                <table className="min-w-full">
-                                                    <thead>
-                                                        <tr className="bg-[#29304a] text-white">
-                                                            {['ID', 'Table', 'Domain', 'Category', 'Sub-category', 'Tag', 'Sub-tag'].map(header => (
-                                                                <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">{header}</th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="bg-white divide-y divide-gray-200">
-                                                        {currentBusinessItems && currentBusinessItems.length > 0 ? (
-                                                            currentBusinessItems.map((row, index) => (
-                                                                <tr key={index} className="hover:bg-gray-50">
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.id}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 hover:underline cursor-pointer">{row.table}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.domain}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.category}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subCategory}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.tag}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.subTag}</td>
+                                            {Object.values(businessData.schema).some(arr => arr.length > 0) ? (
+                                                <div className="overflow-x-auto rounded-lg shadow border">
+                                                    <table className="min-w-full">
+                                                        <tbody className="bg-white divide-y divide-gray-200">
+                                                            {Object.entries(businessData.schema).map(([type, values]) => (
+                                                                <tr key={type} className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4 w-1/3 text-sm font-medium text-gray-500">{formatTitle(type)}</td>
+                                                                    <td className="px-6 py-4 text-sm text-gray-900">
+                                                                        {(() => {
+                                                                            if (!values || values.length === 0) {
+                                                                                return <span className="text-gray-500">N/A</span>;
+                                                                            }
+                                                                            const fullText = values.join(', ');
+                                                                            if (values.length > 3 || fullText.length > 100) {
+                                                                                const truncatedText = values.slice(0, 3).join(', ');
+                                                                                return <span title={fullText}>{`${truncatedText}...`}</span>;
+                                                                            }
+                                                                            return fullText;
+                                                                        })()}
+                                                                    </td>
                                                                 </tr>
-                                                            ))
-                                                        ) : (
-                                                            <tr><td colSpan="7" className="text-center py-10 px-4 text-sm text-gray-500">No detailed business data available.</td></tr>
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                            <Pagination currentPage={businessCurrentPage} totalPages={totalBusinessPages} onPageChange={handleBusinessPageChange} />
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-10 px-4 text-sm text-gray-500">
+                                                    No business data available for this table.
+                                                </div>
+                                            )}
                                         </>
                                     ) : (
                                         <div className="p-1">
@@ -701,7 +707,13 @@ function TableDetailsPage() {
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <Pagination currentPage={sampleDataCurrentPage} totalPages={totalSampleDataPages} onPageChange={handleSampleDataPageChange} />
+                                        <Pagination
+                                            currentPage={sampleDataCurrentPage}
+                                            totalPages={totalSampleDataPages}
+                                            onPageChange={handleSampleDataPageChange}
+                                            totalItems={sampleData.length}
+                                            itemsPerPage={itemsPerPage}
+                                        />
                                     </>
                                 )}
                             </div>
@@ -758,7 +770,13 @@ function TableDetailsPage() {
                                                     </tbody>
                                                 </table>
                                             </div>
-                                            <Pagination currentPage={accessCurrentPage} totalPages={totalAccessPages} onPageChange={handleAccessPageChange} />
+                                            <Pagination
+                                                currentPage={accessCurrentPage}
+                                                totalPages={totalAccessPages}
+                                                onPageChange={handleAccessPageChange}
+                                                totalItems={accessData.length}
+                                                itemsPerPage={itemsPerPage}
+                                            />
                                         </>
                                     ) : (
                                         <p className="text-center text-gray-500 mt-4 p-4">No access information is available for this table.</p>

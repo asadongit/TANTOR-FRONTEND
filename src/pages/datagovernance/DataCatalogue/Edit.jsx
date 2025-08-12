@@ -85,6 +85,7 @@ const MultiSelectDropdown = ({ options, selectedValues, onChange, placeholder, d
           {selectedValues.length > 0 ? (
             selectedValues.map(value => (
               <span
+              title="Close"
                 key={value}
                 className="bg-[#8d77ba] text-white text-xs font-semibold mr-2 px-2.5 py-1 rounded-full flex items-center flex-shrink-0"
               >
@@ -155,13 +156,16 @@ const Edit = ({ onClose, editDetails, type }) => {
   const { decodedToken } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // States for dropdown options
   const [domains, setDomains] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [tags, setTags] = useState([]);
   const [subTags, setSubTags] = useState([]);
   const [terms, setTerms] = useState([]);
+  const [topUsers, setTopUsers] = useState([]); // New state for top users
 
+  // States for selected values
   const [selectedDomains, setSelectedDomains] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedSubCategories, setSelectedSubCategories] = useState([]);
@@ -169,18 +173,51 @@ const Edit = ({ onClose, editDetails, type }) => {
   const [selectedSubTags, setSelectedSubTags] = useState([]);
   const [selectedTerms, setSelectedTerms] = useState([]);
 
+  // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isLoadingSubCategories, setIsLoadingSubCategories] = useState(false);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
   const [isLoadingSubTags, setIsLoadingSubTags] = useState(false);
   const [isLoadingTerms, setIsLoadingTerms] = useState(false);
+  const [isLoadingTopUsers, setIsLoadingTopUsers] = useState(false); // New loading state for top users
 
   const [saveError, setSaveError] = useState('');
 
   const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
     ['data steward', 'data owner'].includes(role.toLowerCase())
   );
+  
+  useEffect(() => {
+    const fetchTopUsers = async () => {
+        if (type !== 'table' || !editDetails?.connection_set?.[0]) {
+            return;
+        }
+        setIsLoadingTopUsers(true);
+        const { connection_name, table_schema, table_name } = editDetails.connection_set[0];
+        const fullTableName = `${connection_name}.${table_schema}.${table_name}`;
+        const endpoint = `${window._env_?.VITE_FAST_API}/get_users_by_tablename/${fullTableName}`;
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'GET',
+                headers: { 'accept': 'application/json' }
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            setTopUsers(data || []);
+        } catch (error) {
+            console.error('Error fetching top users:', error);
+            setTopUsers([]);
+        } finally {
+            setIsLoadingTopUsers(false);
+        }
+    };
+
+    fetchTopUsers();
+  }, [editDetails, type]); 
 
   const fetchDomains = useCallback(() =>
     fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/domain`, {
@@ -373,7 +410,6 @@ const Edit = ({ onClose, editDetails, type }) => {
               dependentFetches.push(fetchSubCategories(selectedDomainIds, selectedCategoryIds));
             }
             if (selectedTagIds.length > 0) {
-              // UPDATED: Pass both domain and tag IDs when fetching sub-tags on initialization
               dependentFetches.push(fetchSubTags(selectedDomainIds, selectedTagIds));
             }
           }
@@ -408,7 +444,6 @@ const Edit = ({ onClose, editDetails, type }) => {
     }
   };
 
-  // UPDATED: Check for selectedDomains before fetching sub-tags
   const handleOpenSubTags = () => {
     if (subTags.length === 0 && !isLoadingSubTags && selectedDomains.length > 0 && selectedTags.length > 0) {
       fetchSubTags(selectedDomains, selectedTags);
@@ -423,7 +458,6 @@ const Edit = ({ onClose, editDetails, type }) => {
 
   const handleDomainChange = (newValues) => {
     setSelectedDomains(newValues);
-    // Reset all dependent fields
     setSelectedCategories([]);
     setSelectedSubCategories([]);
     setSelectedTags([]);
@@ -438,14 +472,12 @@ const Edit = ({ onClose, editDetails, type }) => {
 
   const handleCategoryChange = (newValues) => {
     setSelectedCategories(newValues);
-    // Reset dependent sub-category field
     setSelectedSubCategories([]);
     setSubCategories([]);
   };
 
   const handleTagChange = (newValues) => {
     setSelectedTags(newValues);
-    // Reset dependent sub-tag field
     setSelectedSubTags([]);
     setSubTags([]);
   };
@@ -535,12 +567,40 @@ const Edit = ({ onClose, editDetails, type }) => {
       <div className='flex-grow overflow-y-auto'>
         {/* Header */}
         <div className='flex justify-between items-center px-6 py-4 border-b sticky top-0 bg-white z-10'>
-          <div className='flex items-center gap-x-3 text-[#8d77ba]'><Pencil className="w-4 h-4" /><span className='font-semibold'>Edit {type === 'column' ? 'Column' : 'Table'}</span></div>
-          <button onClick={onClose} aria-label="Close" className='text-gray-500 hover:text-gray-600'><CircleX className="w-5 h-5" /></button>
+          <div title="Edit" className='flex items-center gap-x-3 text-[#8d77ba]'><Pencil className="w-4 h-4" /><span className='font-semibold'>Edit {type === 'column' ? 'Column' : 'Table'}</span></div>
+          <button onClick={onClose} title="Close" className='text-gray-500 hover:text-gray-600'><CircleX className="w-5 h-5" /></button>
         </div>
 
         {/* Form Section */}
         <div className='flex flex-col items-start gap-5 p-6 pt-2 text-sm'>
+        
+          {/* Top Users Section - Renders only for 'table' type */}
+          {type === 'table' && (
+            <div className={formSectionClass}>
+              <div className='font-medium'>Top Users</div>
+              <div className='w-full'>
+                {isLoadingTopUsers ? (
+                  <div className="flex items-center justify-center text-gray-500">
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    <span>Loading users...</span>
+                  </div>
+                ) : topUsers.length > 0 ? (
+                  <div className="max-h-32 overflow-y-auto hide-scrollbar">
+                    <ul className="divide-y divide-gray-200">
+                      {topUsers.map((user, index) => (
+                        <li key={index} className="py-2 flex items-center">
+                          <span className="text-gray-500">{user?.toUpperCase()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="text-gray-500 py-2">No top users found.</div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* DOMAIN */}
           <div className={formSectionClass}>
             <div className='flex justify-between items-center mb-2'>
