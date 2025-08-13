@@ -23,7 +23,6 @@ const InfoPill = ({ label }) => (
     </span>
 );
 
-// --- New Pagination Component ---
 const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
     if (totalPages <= 1) {
         return null; // Don't render pagination if there's only one page or no items
@@ -104,7 +103,7 @@ function ColumnDetailsPage() {
     const [sampleDataCurrentPage, setSampleDataCurrentPage] = useState(1);
 
 
-  const getConstraints = (details) => {
+    const getConstraints = (details) => {
         if (!details || !details.column_name || !details.column_metadata) {
             return 'N/A';
         }
@@ -290,13 +289,20 @@ function ColumnDetailsPage() {
                     setLoadingSampleData(false);
                     return;
                 }
-                const rows = dataText
+
+                const allRows = dataText
                     .trim()
                     .split('\n')
                     .filter(row => row.trim() !== '')
                     .map(row => JSON.parse(row));
 
-                setSampleData(rows);
+                const targetColumnName = columnDetails.column_name;
+
+                const columnSpecificData = allRows.map(row => ({
+                    [targetColumnName]: row[targetColumnName] !== undefined ? row[targetColumnName] : null
+                }));
+
+                setSampleData(columnSpecificData);
 
             } catch (error) {
                 console.error("Error fetching sample data:", error);
@@ -697,7 +703,7 @@ function ColumnDetailsPage() {
                                                         <tr key={rowIndex} className="hover:bg-gray-50">
                                                             {sampleDataHeaders.map(header => (
                                                                 <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 max-w-sm truncate" title={String(row[header] ?? '')}>
-                                                                    {row[header]}
+                                                                    {String(row[header] ?? 'N/A')}
                                                                 </td>
                                                             ))}
                                                         </tr>

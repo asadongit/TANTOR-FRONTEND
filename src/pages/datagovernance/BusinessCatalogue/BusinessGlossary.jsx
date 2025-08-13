@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, RefreshCcw, ArrowUpRight, Download } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, RefreshCcw, ArrowUpRight, Download, X } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb.jsx';
 import { useNavigate } from 'react-router-dom';
-
+import { toast } from 'react-hot-toast';
 
 const SkeletonRow = () => (
   <tr className="border-b animate-pulse">
@@ -20,7 +20,6 @@ const SkeletonRow = () => (
   </tr>
 );
 
-
 const BusinessGlossary = () => {
   const [glossaryData, setGlossaryData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,7 +31,7 @@ const BusinessGlossary = () => {
 
   const navigate = useNavigate();
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isRefresh = false) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -54,9 +53,13 @@ const BusinessGlossary = () => {
         Owner: item.owner[0]
       }));
       setGlossaryData(formattedData);
+      if (isRefresh) {
+        toast.success('Data refreshed successfully!');
+      }
     } catch (e) {
       console.error("Failed to fetch business glossary data:", e);
       setError('Failed to load data. Please try again.');
+      toast.error('Failed to load data.');
     } finally {
       setIsLoading(false);
     }
@@ -151,6 +154,15 @@ const BusinessGlossary = () => {
           </td>
         </tr>
       );
+    }
+    if (error) {
+      return (
+        <tr>
+          <td colSpan="7" className="text-center p-8 text-red-500">
+            Failed to load Data
+          </td>
+        </tr>
+      )
     }
 
     if (currentItems.length > 0) {
@@ -249,6 +261,15 @@ const BusinessGlossary = () => {
               onChange={handleSearchChange}
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            {searchTerm && (
+              <button
+                title="Clear search"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
           <button
             onClick={handleDownload}
@@ -259,7 +280,7 @@ const BusinessGlossary = () => {
             <Download className="h-5 w-5" />
           </button>
           <button
-            onClick={fetchData}
+            onClick={() => fetchData(true)}
             disabled={isLoading}
             className="text-black border border-gray-300 shadow-sm hover:bg-gray-100 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 flex items-center justify-center dark:bg-white dark:hover:bg-gray-50 focus:outline-none dark:focus:ring-[#8e78b7] disabled:opacity-50"
             title="Refresh"
@@ -269,18 +290,15 @@ const BusinessGlossary = () => {
         </div>
       </div>
 
-      {/* {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4" role="alert">
-        <strong className="font-bold">Error: </strong>
-        <span className="block sm:inline">{error}</span>
-      </div>
-      } */}
-
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-[#29304a] text-white">
-                {['id', 'Name', 'Description', 'status', 'Domain', 'AssetType'].map(key => (
+                <th className="text-left p-4 whitespace-nowrap">
+                  <span className="inline-flex items-center">Id</span>
+                </th>
+                {['Name', 'Description', 'status', 'Domain', 'AssetType'].map(key => (
                   <th key={key} className="text-left p-4 cursor-pointer hover:bg-[#3a4563] whitespace-nowrap" onClick={() => handleSort(key)}>
                     <span className="inline-flex items-center">
                       {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str?.toUpperCase())} {getSortIcon(key)}
