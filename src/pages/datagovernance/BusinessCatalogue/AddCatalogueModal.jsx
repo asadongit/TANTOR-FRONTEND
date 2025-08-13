@@ -476,10 +476,12 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
         const value = e.target.value;
 
         setFormData(prev => {
+            const updatedDomain = { ...prev.domain, id: null, name: value };
+
             if (!value) {
                 return {
                     ...prev,
-                    domain: initialFormData.domain,
+                    domain: updatedDomain,
                     category: initialFormData.category,
                     subcategory: initialFormData.subcategory,
                     term: initialFormData.term,
@@ -487,7 +489,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                     subtag: initialFormData.subtag,
                 };
             }
-            return { ...prev, domain: { ...prev.domain, id: null, name: value } };
+            return { ...prev, domain: updatedDomain };
         });
 
         if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
@@ -515,14 +517,16 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
         const value = e.target.value;
 
         setFormData(prev => {
+            const updatedCategory = { ...prev.category, id: null, name: value };
+
             if (!value) {
                 return {
                     ...prev,
-                    category: initialFormData.category,
+                    category: updatedCategory,
                     subcategory: initialFormData.subcategory,
                 };
             }
-            return { ...prev, category: { ...prev.category, id: null, name: value } };
+            return { ...prev, category: updatedCategory };
         });
 
         if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
@@ -548,11 +552,12 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
     };
     const handleSubCategoryNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, subcategory: { ...prev.subcategory, id: null, name: value } }));
+        setFormData(prev => ({
+            ...prev,
+            subcategory: { ...prev.subcategory, id: null, name: value }
+        }));
         if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
-        if (!value) {
-            setFormData(prev => ({ ...prev, subcategory: initialFormData.subcategory }));
-        }
+
         if (value && allSubCategories.length > 0) {
             const filtered = allSubCategories.filter(sc => sc.name.toLowerCase().includes(value.toLowerCase()));
             setSubCategorySuggestions(filtered);
@@ -574,11 +579,12 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
     };
     const handleTermNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, term: { ...prev.term, id: null, name: value } }));
+        setFormData(prev => ({
+            ...prev,
+            term: { ...prev.term, id: null, name: value }
+        }));
         if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
-        if (!value) {
-            setFormData(prev => ({ ...prev, term: initialFormData.term }));
-        }
+
         if (value && allTerms.length > 0) {
             const filtered = allTerms.filter(t => t.name.toLowerCase().includes(value.toLowerCase()));
             setTermSuggestions(filtered);
@@ -602,14 +608,16 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
         const value = e.target.value;
 
         setFormData(prev => {
+            const updatedTag = { ...prev.tag, id: null, name: value };
+
             if (!value) {
                 return {
                     ...prev,
-                    tag: initialFormData.tag,
+                    tag: updatedTag,
                     subtag: initialFormData.subtag,
                 };
             }
-            return { ...prev, tag: { ...prev.tag, id: null, name: value } };
+            return { ...prev, tag: updatedTag };
         });
 
         if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
@@ -635,11 +643,12 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
     };
     const handleSubTagNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, subtag: { ...prev.subtag, id: null, name: value } }));
+        setFormData(prev => ({
+            ...prev,
+            subtag: { ...prev.subtag, id: null, name: value }
+        }));
         if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
-        if (!value) {
-            setFormData(prev => ({ ...prev, subtag: initialFormData.subtag }));
-        }
+
         if (value && allSubTags.length > 0) {
             const filtered = allSubTags.filter(st => st.name.toLowerCase().includes(value.toLowerCase()));
             setSubTagSuggestions(filtered);
@@ -648,6 +657,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
             setShowSubTagSuggestions(false);
         }
     };
+
     const handleSubTagSuggestionClick = (subtag) => {
         setFormData(prev => ({
             ...prev,
