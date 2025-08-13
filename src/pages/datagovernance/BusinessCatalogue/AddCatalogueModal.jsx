@@ -62,6 +62,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
 
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState(null);
+    const [errorTabs, setErrorTabs] = useState({});
 
     const tabs = ['Domain', 'Category', 'Sub-category', 'Term', 'Tag', 'Sub-tag'];
 
@@ -69,6 +70,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
         if (isOpen) {
             setFormData(initialFormData);
             setActiveTab('Domain');
+            setErrorTabs({});
             setError(null);
             setSaveError(null);
             setDomainSuggestions([]);
@@ -292,14 +294,22 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
         const allErrors = {};
         let firstErrorTab = null;
 
-        const isAnythingEntered = tabs.some(tab => {
-            const tabKey = tab.toLowerCase().replace('-', '');
-            return formData[tabKey]?.name?.trim();
-        });
+        const isTabDirty = (tabKey) => {
+            const data = formData[tabKey];
+            if (!data) return false;
+            return data.name?.trim() ||
+                (data.description || data.desc)?.trim() ||
+                data.owner ||
+                data.status ||
+                (tabKey === 'domain' && data.stakeholder?.length > 0);
+        };
+
+        const isAnythingEntered = tabs.some(tab => isTabDirty(tab.toLowerCase().replace('-', '')));
 
         if (!isAnythingEntered) {
             setSaveError("Nothing to save. Please fill out at least one form tab.");
             setErrors({});
+            setErrorTabs({}); // --- ADD THIS LINE ---
             return false;
         }
 
@@ -308,7 +318,11 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
             const data = formData[tabKey];
             const tabErrors = {};
 
-            if (data?.name?.trim()) {
+            if (isTabDirty(tabKey)) {
+                if (!data.name?.trim()) {
+                    tabErrors.name = 'Name is required.';
+                }
+
                 if (tabKey === 'domain') {
                     if (!data.description?.trim()) tabErrors.description = 'Description is required.';
                     if (!data.stakeholder || data.stakeholder.length === 0) {
@@ -330,6 +344,14 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
             }
         }
 
+        // --- ADD THIS BLOCK to set which tabs have errors ---
+        const newErrorTabs = Object.keys(allErrors).reduce((acc, key) => {
+            acc[key.replace('_', '')] = true;
+            return acc;
+        }, {});
+        setErrorTabs(newErrorTabs);
+        // --- END OF NEW BLOCK ---
+
         if (firstErrorTab) {
             setActiveTab(firstErrorTab);
             setErrors(allErrors[firstErrorTab.toLowerCase().replace('-', '')]);
@@ -341,6 +363,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
         setSaveError(null);
         return true;
     };
+    // --- END OF MODIFIED FUNCTION ---
 
     const handleSave = async () => {
         if (!validateForms()) {
@@ -354,7 +377,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
             if (!data.name || !data.status) return null;
 
             const ownerAsArray = data.owner ? [data.owner] : [];
-             const creatorArray = [decodedToken?.preferred_username]
+            const creatorArray = [decodedToken?.preferred_username]
 
             const standardObject = {
                 name: data.name,
@@ -451,11 +474,24 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
 
     const handleDomainNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, domain: { ...prev.domain, id: null, name: value } }));
+
+        setFormData(prev => {
+            if (!value) {
+                return {
+                    ...prev,
+                    domain: initialFormData.domain,
+                    category: initialFormData.category,
+                    subcategory: initialFormData.subcategory,
+                    term: initialFormData.term,
+                    tag: initialFormData.tag,
+                    subtag: initialFormData.subtag,
+                };
+            }
+            return { ...prev, domain: { ...prev.domain, id: null, name: value } };
+        });
+
         if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
-        if (!value) {
-            setFormData(prev => ({ ...prev, domain: initialFormData.domain }));
-        }
+
         if (value) {
             const filtered = allDomains.filter(d => d.name.toLowerCase().includes(value.toLowerCase()));
             setDomainSuggestions(filtered);
@@ -477,11 +513,20 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
     };
     const handleCategoryNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, category: { ...prev.category, id: null, name: value } }));
+
+        setFormData(prev => {
+            if (!value) {
+                return {
+                    ...prev,
+                    category: initialFormData.category,
+                    subcategory: initialFormData.subcategory,
+                };
+            }
+            return { ...prev, category: { ...prev.category, id: null, name: value } };
+        });
+
         if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
-        if (!value) {
-            setFormData(prev => ({ ...prev, category: initialFormData.category }));
-        }
+
         if (value && allCategories.length > 0) {
             const filtered = allCategories.filter(c => c.name.toLowerCase().includes(value.toLowerCase()));
             setCategorySuggestions(filtered);
@@ -555,11 +600,20 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
     };
     const handleTagNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({ ...prev, tag: { ...prev.tag, id: null, name: value } }));
+
+        setFormData(prev => {
+            if (!value) {
+                return {
+                    ...prev,
+                    tag: initialFormData.tag,
+                    subtag: initialFormData.subtag,
+                };
+            }
+            return { ...prev, tag: { ...prev.tag, id: null, name: value } };
+        });
+
         if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
-        if (!value) {
-            setFormData(prev => ({ ...prev, tag: initialFormData.tag }));
-        }
+
         if (value && allTags.length > 0) {
             const filtered = allTags.filter(t => t.name.toLowerCase().includes(value.toLowerCase()));
             setTagSuggestions(filtered);
@@ -830,18 +884,24 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                 <div className="p-6 overflow-y-auto">
                     <div className="border-b border-gray-200">
                         <nav className="-mb-px flex space-x-8 overflow-x-auto">
-                            {tabs.map(tab => (
-                                <button
-                                    key={tab}
-                                    onClick={() => handleTabChange(tab)}
-                                    className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-md focus:outline-none ${activeTab === tab
-                                        ? 'border-[#8e78b7] text-[#8e78b7]'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                >
-                                    {tab}
-                                </button>
-                            ))}
+                            {tabs.map(tab => {
+                                const tabKey = tab.toLowerCase().replace('-', '');
+                                return (
+                                    <button
+                                        key={tab}
+                                        onClick={() => handleTabChange(tab)}
+                                        className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-md focus:outline-none flex items-center ${activeTab === tab
+                                            ? 'border-[#8e78b7] text-[#8e78b7]'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                            }`}
+                                    >
+                                        {tab}
+                                        {errorTabs[tabKey] && (
+                                            <span className="ml-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </nav>
                     </div>
                     {renderFormContent()}
