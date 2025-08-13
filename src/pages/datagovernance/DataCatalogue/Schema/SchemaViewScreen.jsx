@@ -334,7 +334,7 @@ const SchemaViewScreen = () => {
                 {!isEditing ? (
                   <>
                     <p className="text-gray-600 pl-7 min-h-[2rem]">{summaryText}</p>
-                    {!isUserAuthorized && (
+                    {isUserAuthorized && (
                       <button
                         title="Edit Schema Description"
                         className="absolute top-3 right-3 pt-2 hover:text-gray-600 text-[#8d77ba]"

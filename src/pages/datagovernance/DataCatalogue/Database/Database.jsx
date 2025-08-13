@@ -124,7 +124,7 @@ const Database = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ policy_id: policyIds })
       });
@@ -137,7 +137,7 @@ const Database = () => {
       const allDbTypes = new Set();
       rawTrendData.forEach(dayData => {
         Object.keys(dayData.connections).forEach(dbType => {
-          if (dbType && dbType !== 'null') { 
+          if (dbType && dbType !== 'null') {
             allDbTypes.add(dbType);
           }
         });
@@ -147,7 +147,7 @@ const Database = () => {
       const formattedData = rawTrendData.map(dayData => {
 
         const chartPoint = {
-          day: dayData.date, 
+          day: dayData.date,
         };
 
         dynamicKeys.forEach(key => {
@@ -166,7 +166,7 @@ const Database = () => {
 
     } catch (error) {
       console.error('Error fetching trend data:', error);
-      setChartData([]); 
+      setChartData([]);
     }
   };
 
@@ -214,26 +214,37 @@ const Database = () => {
 
   useEffect(() => {
     if (!allRawData || allRawData.length === 0) return;
-    const schemaMap = {};
+    const connectionSchemaMap = new Map();
+
     allRawData.forEach((item) => {
-      const key = `${item.connection_name}__${item.connection_type}`;
-      if (!schemaMap[key]) {
-        schemaMap[key] = new Set();
+      const connectionName = item.connection_name;
+
+      if (!connectionSchemaMap.has(connectionName)) {
+        connectionSchemaMap.set(connectionName, new Map());
       }
-      schemaMap[key].add(item.table_schema);
+      const schemaMap = connectionSchemaMap.get(connectionName);
+
+      if (!schemaMap.has(item.table_schema)) {
+        schemaMap.set(item.table_schema, item.table_schema_description);
+      }
     });
-    const result = Object.entries(schemaMap).map(([key, schemaSet]) => {
-      const [connection_name] = key.split("__");
+
+    const result = Array.from(connectionSchemaMap.entries()).map(([connectionName, schemaMap]) => {
+      const schemasWithDescriptions = Array.from(schemaMap.entries()).map(([name, description]) => ({
+        name: name,
+        description: description || 'Schema Description'
+      }));
+
       return {
-        [connection_name]: {
-          schemas: Array.from(schemaSet),
+        [connectionName]: {
+          schemas: schemasWithDescriptions,
         }
       };
     });
+
     setSchemaData(result);
   }, [allRawData]);
 
-  // NEW: Helper function to reset filters and pagination
   const resetFiltersAndPagination = () => {
     setDbTypeFilter(null);
     setSearchTerm('');
