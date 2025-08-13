@@ -104,14 +104,49 @@ function ColumnDetailsPage() {
     const [sampleDataCurrentPage, setSampleDataCurrentPage] = useState(1);
 
 
-    const getConstraints = (meta) => {
-        if (!meta) return 'N/A';
-        const constraints = [];
-        if (meta.is_nullable === 'N') {
-            constraints.push('NOT NULL');
+  const getConstraints = (details) => {
+        if (!details || !details.column_name || !details.column_metadata) {
+            return 'N/A';
         }
-        return constraints.length > 0 ? constraints.join(', ') : '-';
+
+        const { column_metadata, constraint_json, column_name } = details;
+        const constraintSet = new Set();
+        const constraintTypeMap = {
+            'P': 'PRIMARY KEY',
+            'U': 'UNIQUE',
+            'C': 'CHECK',
+            'R': 'FOREIGN KEY'
+        };
+
+        if (column_metadata.is_nullable === 'N' || column_metadata.is_nullable === 'NO') {
+            constraintSet.add('NOT NULL');
+        }
+        if (constraint_json && Array.isArray(constraint_json)) {
+            constraint_json
+                .filter(c =>
+                    c.column_name &&
+                    typeof c.column_name === 'string' &&
+                    c.column_name.trim().toLowerCase() === column_name.trim().toLowerCase()
+                )
+                .forEach(constraint => {
+                    const type = constraint.constraint_type;
+                    if (type && typeof type === 'string') {
+                        const trimmedType = type.trim();
+                        const fullTypeName = constraintTypeMap[trimmedType.toUpperCase()] || trimmedType;
+                        constraintSet.add(fullTypeName);
+                    }
+                });
+        }
+        if (column_metadata.COLUMN_KEY && typeof column_metadata.COLUMN_KEY === 'string') {
+            if (column_metadata.COLUMN_KEY.toUpperCase().includes('PRI')) {
+                constraintSet.add('PRIMARY KEY');
+            }
+        }
+
+        const allConstraints = Array.from(constraintSet);
+        return allConstraints.length > 0 ? allConstraints.join(', ') : '-';
     };
+
 
     useEffect(() => {
         if (!columnDetails) return;
@@ -544,10 +579,10 @@ function ColumnDetailsPage() {
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Precision</td>
                                                     <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_PRECISION}</td>
                                                 </tr>
-                                                {/* <tr>
+                                                <tr>
                                                     <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Constraints</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(columnDetails.column_metadata)}</td>
-                                                </tr> */}
+                                                    <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(columnDetails)}</td>
+                                                </tr>
                                             </tbody>
                                         </table>
                                     </div>

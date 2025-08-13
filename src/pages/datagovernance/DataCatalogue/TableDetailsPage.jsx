@@ -90,7 +90,10 @@ function TableDetailsPage() {
 
     // Business Tab State
     const [businessView, setBusinessView] = useState('Composite view');
-    const [businessData, setBusinessData] = useState({ composite: [], schema: {} });
+    const [businessData, setBusinessData] = useState({
+        composite: [],
+        schema: { domain: [], category: [], subCategory: [], tag: [], subTag: [] }
+    });
     const [loadingBusinessData, setLoadingBusinessData] = useState(true);
 
     // Sample Data State
@@ -207,7 +210,10 @@ function TableDetailsPage() {
                 setBusinessData({ schema: schemaForState, composite: newCompositeState });
             } catch (error) {
                 console.error('Error fetching business data:', error);
-                setBusinessData({ composite: [], schema: {} });
+                setBusinessData({
+                    composite: [],
+                    schema: { domain: [], category: [], subCategory: [], tag: [], subTag: [] }
+                });
             } finally {
                 setLoadingBusinessData(false);
             }
@@ -608,7 +614,7 @@ function TableDetailsPage() {
                                                 </tbody>
                                             </table>
                                         </div>
-                                       <Pagination
+                                        <Pagination
                                             currentPage={summaryColumnsCurrentPage}
                                             totalPages={totalSummaryColumnPages}
                                             onPageChange={handleSummaryColumnPageChange}
@@ -674,7 +680,7 @@ function TableDetailsPage() {
                                     ) : (
                                         <div className="p-1">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                                {Object.keys(businessData.schema).length > 0 && Object.values(businessData.schema).some(pills => pills.length > 0) ?
+                                                {Object.values(businessData.schema).some(pills => pills.length > 0) ? (
                                                     Object.entries(businessData.schema).map(([title, pills]) => (
                                                         <div key={title}>
                                                             <h3 className="text-base font-semibold text-gray-700 mb-3 capitalize">{formatTitle(title)}</h3>
@@ -682,7 +688,17 @@ function TableDetailsPage() {
                                                                 {pills.length > 0 ? pills.map(item => <InfoPill key={item} label={item} />) : <InfoPill label="N/A" />}
                                                             </div>
                                                         </div>
-                                                    )) : <p className="text-gray-500">No business data available.</p>}
+                                                    ))
+                                                ) : (
+                                                    Object.keys(businessData.schema).map(title => (
+                                                        <div key={title}>
+                                                            <h3 className="text-base font-semibold text-gray-700 mb-3 capitalize">{formatTitle(title)}</h3>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                <InfoPill label="N/A" />
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
                                             </div>
                                         </div>
                                     )}
