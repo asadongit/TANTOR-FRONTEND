@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, List, RefreshCcw, Plus, X, Copy, FileQuestion, Trash2, MoreHorizontal, Pencil, AlertTriangle } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../components/Breadcrumb.jsx';
 import AddCatalogueModal from './AddCatalogueModal.jsx';
-import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../../context/AuthContext.jsx';
 import EditDetailModal from './EditDetailModal.jsx';
+import { toast } from 'react-hot-toast';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfirming }) => {
     if (!isOpen) return null;
@@ -219,7 +219,7 @@ const BusinessCatalogue = () => {
     );
 
 
-    const fetchCatalogueData = async () => {
+    const fetchCatalogueData = useCallback(async (isRefresh = false) => {
         setIsLoading(true);
         setError(null);
         try {
@@ -250,14 +250,17 @@ const BusinessCatalogue = () => {
                 status: item.Status
             }));
             setTableData(formattedTableData);
-
+            if (isRefresh) {
+                toast.success('Data refreshed successfully!');
+            }
         } catch (err) {
             setError(err.message);
+            toast.error('Failed to load data.');
             console.error("Failed to fetch catalogue data:", err);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchCatalogueData();
@@ -308,7 +311,7 @@ const BusinessCatalogue = () => {
     const handleCloseDetailsModal = () => {
         setDetailsModal({ isOpen: false, title: '', data: [] });
     };
-    
+
     const handleOpenEditModal = (item) => {
         setItemToEdit(item);
         setIsEditModalOpen(true);
@@ -447,10 +450,25 @@ const BusinessCatalogue = () => {
                 <h1 className="text-2xl font-semibold text-gray-800">Business Catalogue</h1>
                 <div className="flex items-center gap-2">
                     <div className="relative">
-                        <input type="text" placeholder="Search catalogue..." className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8d77ba]" value={searchTerm} onChange={handleSearchChange} />
-                        <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search catalogue..."
+                            className="w-[300px] rounded-lg border border-gray-300 py-2 pl-10 pr-10 focus:outline-none focus:ring-2 focus:ring-[#8d77ba]"
+                            value={searchTerm}
+                            onChange={handleSearchChange}
+                        />
+                        {searchTerm && (
+                            <button
+                                title="Clear search"
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        )}
                     </div>
-                    <button title="Refresh" onClick={fetchCatalogueData} disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">
+                    <button title="Refresh" onClick={() => fetchCatalogueData(true)} disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">
                         <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
                     </button>
                     {isUserAuthorized && (
@@ -488,8 +506,15 @@ const BusinessCatalogue = () => {
                         <thead className="bg-gray-800 text-white">
                             <tr>
                                 {tableHeaders.map(key => (
-                                    <th key={key} className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700" onClick={() => key !== 'Action' && handleSort(key)}>
-                                        <span className="inline-flex items-center capitalize">{key.replace(/([A-Z])/g, ' $1')} {key !== 'Action' && getSortIcon(key)}</span>
+                                    <th
+                                        key={key}
+                                        className={`text-left p-3 font-semibold tracking-wider ${key !== 'Action' && key !== 'id' ? 'cursor-pointer hover:bg-gray-700' : ''}`}
+                                        onClick={() => key !== 'Action' && key !== 'id' && handleSort(key)}
+                                    >
+                                        <span className="inline-flex items-center capitalize">
+                                            {key.replace(/([A-Z])/g, ' $1')}
+                                            {key !== 'Action' && key !== 'id' && getSortIcon(key)}
+                                        </span>
                                     </th>
                                 ))}
                             </tr>
@@ -497,7 +522,7 @@ const BusinessCatalogue = () => {
                         <tbody>
                             {isLoading ? (
                                 Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} />)
-                            ) : (
+                            ) : currentItems.length > 0 ? (
                                 currentItems.map((item, index) => (
                                     <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
                                         <td className="p-3 text-gray-700 font-medium">{indexOfFirstItem + index + 1}</td>
@@ -557,6 +582,12 @@ const BusinessCatalogue = () => {
                                         )}
                                     </tr>
                                 ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={tableHeaders.length} className="text-center p-6 text-gray-500">
+                                        No results found
+                                    </td>
+                                </tr>
                             )}
                         </tbody>
                     </table>
