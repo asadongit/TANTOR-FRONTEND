@@ -354,12 +354,14 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
             if (!data.name || !data.status) return null;
 
             const ownerAsArray = data.owner ? [data.owner] : [];
+             const creatorArray = [decodedToken?.preferred_username]
 
             const standardObject = {
                 name: data.name,
                 description: data.desc || data.description || '',
                 status: data.status,
                 owner: ownerAsArray,
+                creator: creatorArray
             };
 
             const validParentIds = Object.entries(parentIds).reduce((acc, [key, value]) => {
