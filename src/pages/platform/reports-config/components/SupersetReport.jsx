@@ -97,7 +97,7 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
           }}
         >
           {/* Block clicks on top header area */}
-          <div
+          {/* <div
             style={{
               position: "absolute",
               top: "0",
@@ -114,7 +114,7 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
               e.preventDefault();
               e.stopPropagation();
             }}
-          />
+          /> */}
           
           {/* Block clicks on left sidebar/menu area */}
           <div
