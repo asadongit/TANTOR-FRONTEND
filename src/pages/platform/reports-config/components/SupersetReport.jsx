@@ -85,17 +85,97 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
           </div>
         )}
 
-        {/* Clean iframe container for embedded view */}
+        {/* Iframe container with click-blocking overlays */}
         <div
           style={{
             width: "100%",
             height: "calc(100% - 56px)",
-            marginTop: "56px",
+            marginTop: "1px",
             border: "none",
             overflow: "hidden",
             position: "relative"
           }}
         >
+          {/* Block clicks on top header area */}
+          <div
+            style={{
+              position: "absolute",
+              top: "0",
+              left: "0",
+              right: "0",
+              height: "80px", // Adjust based on your Superset header height
+              backgroundColor: "transparent",
+              zIndex: 100,
+              pointerEvents: "auto",
+              cursor: "not-allowed"
+            }}
+            title="Header navigation is disabled"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
+          
+          {/* Block clicks on left sidebar/menu area */}
+          <div
+            style={{
+              position: "absolute",
+              top: "80px",
+              left: "0",
+              width: "60px", // Adjust based on sidebar width
+              height: "calc(100% - 80px)",
+              backgroundColor: "transparent",
+              zIndex: 100,
+              pointerEvents: "auto",
+              cursor: "not-allowed"
+            }}
+            title="Navigation is disabled"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
+          
+          {/* Block clicks on right side menu/settings area */}
+          {/* <div
+            style={{
+              position: "absolute",
+              top: "0",
+              right: "0",
+              width: "100px", // Covers settings, user menu, etc.
+              height: "120px",
+              backgroundColor: "transparent",
+              zIndex: 100,
+              pointerEvents: "auto",
+              cursor: "not-allowed"
+            }}
+            title="Settings and navigation are disabled"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          /> */}
+          
+          {/* Block clicks on dashboard title/breadcrumb area */}
+          {/* <div
+            style={{
+              position: "absolute",
+              top: "80px",
+              left: "60px",
+              right: "100px",
+              height: "40px", // Height of title/breadcrumb area
+              backgroundColor: "transparent",
+              zIndex: 100,
+              pointerEvents: "auto",
+              cursor: "not-allowed"
+            }}
+            title="Dashboard navigation is disabled"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          /> */}
+
           <iframe
             ref={iframeRef}
             style={{
@@ -106,7 +186,7 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
             }}
             onLoad={handleIframeLoad}
             onError={handleIframeError}
-            sandbox="allow-same-origin allow-scripts allow-forms allow-top-navigation-by-user-activation"
+            sandbox="allow-same-origin allow-scripts allow-forms"
             title="Superset Dashboard"
           />
         </div>
