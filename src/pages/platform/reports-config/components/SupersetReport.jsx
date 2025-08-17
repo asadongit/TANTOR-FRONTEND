@@ -297,188 +297,6 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
     if (iframeRef.current && iframeRef.current.src !== 'about:blank') {
       setLoading(false);
       
-      // Inject CSS and JS to disable navigation clicks
-      try {
-        const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow.document;
-        if (iframeDoc) {
-          // Remove existing injected styles
-          const existingStyle = iframeDoc.getElementById('disable-superset-navigation');
-          if (existingStyle) {
-            existingStyle.remove();
-          }
-
-          // Inject CSS to disable navigation elements
-          const style = iframeDoc.createElement('style');
-          style.id = 'disable-superset-navigation';
-          style.textContent = `
-            /* Disable clicks on navigation elements */
-            .navbar-brand,
-            .navbar-brand img,
-            .navbar-brand span,
-            .nav.navbar-nav li a,
-            .navbar-nav .dropdown-toggle,
-            .navbar-right .dropdown,
-            .navbar-right .dropdown-toggle,
-            .user-menu,
-            .settings-menu,
-            .menu-hover,
-            .dropdown.language-picker,
-            [data-test="navbar"] a,
-            [data-test="navbar"] button,
-            .ant-dropdown-trigger,
-            .dashboard-header .header-with-actions .button-container button,
-            .dashboard-header .header-with-actions .dropdown,
-            
-            /* Disable logo and main navigation links */
-            a[href="/superset/welcome/"],
-            a[href="/dashboard/list/"],
-            a[href="/chart/list/"],
-            a[href="/tablemodelview/list/"],
-            
-            /* Disable user profile and settings */
-            .fa-user,
-            .fa-cog,
-            .fa-question-circle,
-            .fa-info-circle,
-            
-            /* Disable any navigation buttons in header */
-            .header button,
-            .navbar button,
-            .ant-btn:not(.dashboard-component button):not(.slice-container button)
-            {
-              pointer-events: none !important;
-              cursor: not-allowed !important;
-              opacity: 0.6 !important;
-              user-select: none !important;
-            }
-
-            /* Add overlay to block header clicks */
-            .navbar::after,
-            [data-test="navbar"]::after {
-              content: '';
-              position: absolute;
-              top: 0;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              z-index: 9999;
-              pointer-events: auto;
-              cursor: not-allowed;
-              background: transparent;
-            }
-
-            /* Keep dashboard functionality intact */
-            .dashboard-content,
-            .dashboard-content *,
-            .slice-container,
-            .slice-container *,
-            .dashboard-grid,
-            .dashboard-grid *,
-            .chart-container,
-            .chart-container *,
-            .filter-container,
-            .filter-container *,
-            .dashboard-component,
-            .dashboard-component * {
-              pointer-events: auto !important;
-              cursor: inherit !important;
-              opacity: 1 !important;
-            }
-
-            /* Disable specific navigation elements but keep them visible */
-            .navbar-brand:hover,
-            .nav.navbar-nav li:hover {
-              background-color: transparent !important;
-              text-decoration: none !important;
-            }
-          `;
-          
-          iframeDoc.head.appendChild(style);
-
-          // Inject JavaScript to prevent navigation clicks
-          const script = iframeDoc.createElement('script');
-          script.textContent = `
-            (function() {
-              // Function to disable navigation clicks
-              function disableNavigation() {
-                // Disable all navigation links
-                const navElements = document.querySelectorAll(
-                  '.navbar-brand, .navbar-brand *, .nav.navbar-nav a, .navbar-right a, .dropdown-toggle, ' +
-                  '[data-test="navbar"] a, [data-test="navbar"] button, .user-menu, .settings-menu'
-                );
-                
-                navElements.forEach(function(element) {
-                  element.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                  }, true);
-                  
-                  element.addEventListener('mousedown', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                  }, true);
-                });
-
-                // Block any attempts to navigate away from current dashboard
-                const currentPath = window.location.pathname;
-                
-                // Override window.location changes
-                const originalPushState = history.pushState;
-                const originalReplaceState = history.replaceState;
-                
-                history.pushState = function(state, title, url) {
-                  if (url && !url.includes(currentPath) && !url.includes('standalone=true')) {
-                    console.log('Navigation blocked:', url);
-                    return;
-                  }
-                  return originalPushState.apply(history, arguments);
-                };
-                
-                history.replaceState = function(state, title, url) {
-                  if (url && !url.includes(currentPath) && !url.includes('standalone=true')) {
-                    console.log('Navigation blocked:', url);
-                    return;
-                  }
-                  return originalReplaceState.apply(history, arguments);
-                };
-              }
-
-              // Run immediately and after any dynamic content loads
-              disableNavigation();
-              
-              // Re-run when DOM changes (for dynamic content)
-              const observer = new MutationObserver(function(mutations) {
-                disableNavigation();
-              });
-              
-              observer.observe(document.body, {
-                childList: true,
-                subtree: true
-              });
-
-              // Re-run on route changes
-              window.addEventListener('popstate', disableNavigation);
-              
-              // Block keyboard shortcuts that might trigger navigation
-              document.addEventListener('keydown', function(e) {
-                // Block Ctrl+T, Ctrl+N, etc.
-                if (e.ctrlKey && (e.key === 't' || e.key === 'n' || e.key === 'w')) {
-                  e.preventDefault();
-                  return false;
-                }
-              });
-            })();
-          `;
-          
-          iframeDoc.head.appendChild(script);
-        }
-      } catch (err) {
-        // Cross-origin iframe, can't inject CSS/JS
-        console.log('Cannot inject CSS/JS into iframe (cross-origin)');
-      }
-      
       // Check if iframe shows login page (indicates auth failed)
       try {
         const iframeSrc = iframeRef.current.src;
@@ -514,7 +332,6 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
       <div className="bg-white rounded-lg shadow-2xl" style={{
         width: "95vw",
         height: "90vh",
-        marginTop: "1px",
         overflow: "hidden",
         position: "relative"
       }}>
@@ -609,7 +426,6 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
               backgroundColor: '#f8f9fa'
             }}
           />
-        
         </div>
       </div>
     </div>
