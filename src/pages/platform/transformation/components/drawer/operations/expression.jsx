@@ -283,6 +283,19 @@ const ExpressionOperationFields = ({
       ...transformation.params,
       datatype
     });
+
+    if (
+      transformation.target_column &&
+      transformation.target_column[0] &&
+      typeof onAddNewTargetColumn === "function"
+    ) {
+      onAddNewTargetColumn(
+        transformation.target_column[0],
+        transformation.source_dataframe,
+        "expression",
+        datatype
+      );
+    }
   };
 
   const handleExpressionChange = (code) => {
