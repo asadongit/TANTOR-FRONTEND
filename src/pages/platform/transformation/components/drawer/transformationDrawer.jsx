@@ -13,6 +13,7 @@ import RestrictColumnsOperationFields, { getRestrictColumnsParams } from "./oper
 import TypecastOperationFields, { getTypecastParams } from "./operations/typecast";
 import SortOperationFields, { getSortParams } from "./operations/sort";
 import RankingOperationFields, { getRankingParams } from "./operations/ranking";
+import ExpressionOperationFields, { getExpressionParams, validatePySparkExpression } from "./operations/expression";
 
 const transformationOperations = [
 	{
@@ -61,6 +62,10 @@ const transformationOperations = [
 	{
 		id: "ranking",
 		name: "Ranking"
+	},
+	{
+		id: "expression",
+		name: "Expression"
 	}
 ];
 
@@ -271,17 +276,14 @@ const TransformationItem = memo(({
           {...commonProps}
           onAddNewTargetColumn={onAddNewTargetColumn}
         />;
-      default:
-        return <DefaultColumnSelectionFields
-          transformation={transformation}
-          sourceCols={sourceCols}
-          targetCols={targetCols}
-          openDropdowns={openDropdowns}
-          toggleDropdown={toggleDropdown}
-          handleSelectAllColumns={handleSelectAllColumns}
-          handleColumnSelection={handleColumnSelection}
-          dropdownRefs={dropdownRefs}
+	  case 'expression':
+		return <ExpressionOperationFields
+          {...commonProps}
+          onAddNewTargetColumn={onAddNewTargetColumn}
+          setTransformationValidity={setTransformationValidity}
         />;
+      default:
+        return null;
     }
   };
 
@@ -332,123 +334,6 @@ const TransformationItem = memo(({
   return true;
 });
 
-const DefaultColumnSelectionFields = memo(({
-  transformation,
-  sourceCols,
-  targetCols,
-  openDropdowns,
-  toggleDropdown,
-  handleSelectAllColumns,
-  handleColumnSelection,
-  dropdownRefs
-}) => {
-  const sourceDropdownKey = `${transformation.id}-source`;
-  const targetDropdownKey = `${transformation.id}-target`;
-  const isSourceDropdownOpen = openDropdowns[sourceDropdownKey] || false;
-  const isTargetDropdownOpen = openDropdowns[targetDropdownKey] || false;
-
-  return (
-    <div className="grid grid-cols-2 gap-4 items-center">
-      <div className="relative" ref={el => dropdownRefs.current[sourceDropdownKey] = el}>
-        <label className="text-xs text-gray-600 block mb-1">Source Columns</label>
-        <button
-          className="w-full p-2 text-black text-sm border border-gray-300 rounded bg-white flex justify-between items-center"
-          onClick={() => toggleDropdown(transformation.id, 'source')}
-        >
-          {transformation.source_column.length === 0 ? (
-            <span className="text-gray-400">Select columns</span>
-          ) : (
-            <span className="truncate">
-              {transformation.source_column.length} column(s) selected
-            </span>
-          )}
-          <ChevronDown className={`w-4 h-4 transition-transform ${isSourceDropdownOpen ? 'transform rotate-180' : ''}`} />
-        </button>
-
-        {isSourceDropdownOpen && (
-          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-            <div className="p-2 border-b border-gray-200">
-              <label className="flex items-center text-sm">
-                <input
-                  type="checkbox"
-                  className="mr-2"
-                  checked={transformation.source_column.length === sourceCols.length && sourceCols.length > 0}
-                  onChange={(e) => handleSelectAllColumns(transformation.id, 'source', sourceCols, e.target.checked)}
-                />
-                Select All
-              </label>
-            </div>
-            <div className="py-1">
-              {sourceCols.map((column, idx) => (
-                <label key={idx} className="flex items-center px-3 py-2 hover:bg-gray-100">
-                  <input
-                    type="checkbox"
-                    className="mr-2"
-                    checked={transformation.source_column.includes(column)}
-                    onChange={(e) => handleColumnSelection(transformation.id, 'source', column, e.target.checked)}
-                  />
-                  <span className="text-sm">{column}</span>
-                </label>
-              ))}
-              {sourceCols.length === 0 && (
-                <div className="px-3 py-2 text-gray-500 text-sm">No columns available</div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="relative" ref={el => dropdownRefs.current[targetDropdownKey] = el}>
-        <label className="text-xs text-gray-600 block mb-1">Target Columns</label>
-        <button
-          className="w-full p-2 text-black text-sm border border-gray-300 rounded bg-white flex justify-between items-center"
-          onClick={() => toggleDropdown(transformation.id, 'target')}
-        >
-          {transformation.target_column.length === 0 ? (
-            <span className="text-gray-400">Select columns</span>
-          ) : (
-            <span className="truncate">
-              {transformation.target_column.length} column(s) selected
-            </span>
-          )}
-          <ChevronDown className={`w-4 h-4 transition-transform ${isTargetDropdownOpen ? 'transform rotate-180' : ''}`} />
-        </button>
-
-        {isTargetDropdownOpen && (
-          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-            <div className="p-2 border-b border-gray-200">
-              <label className="flex items-center text-sm">
-                <input
-                  type="checkbox"
-                  className="mr-2"
-                  checked={transformation.target_column.length === targetCols.length && targetCols.length > 0}
-                  onChange={(e) => handleSelectAllColumns(transformation.id, 'target', targetCols, e.target.checked)}
-                />
-                Select All
-              </label>
-            </div>
-            <div className="py-1">
-              {targetCols.map((column, idx) => (
-                <label key={idx} className="flex items-center px-3 py-2 hover:bg-gray-100">
-                  <input
-                    type="checkbox"
-                    className="mr-2"
-                    checked={transformation.target_column.includes(column)}
-                    onChange={(e) => handleColumnSelection(transformation.id, 'target', column, e.target.checked)}
-                  />
-                  <span className="text-sm">{column}</span>
-                </label>
-              ))}
-              {targetCols.length === 0 && (
-                <div className="px-3 py-2 text-gray-500 text-sm">No columns available</div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-});
 
 export const TransformationDrawer = ({
 	isOpen,
@@ -904,6 +789,13 @@ export const TransformationDrawer = ({
 			};
 			transformation_operator = "";
 			break;
+		case "expression":
+			params = {
+			exp: "",
+			datatype: "string"
+			};
+			transformation_operator = "";
+			break;
 		}
 
 		return {
@@ -1052,6 +944,9 @@ export const TransformationDrawer = ({
 			transformations.forEach(t => {
 				if (t.transformation_operation === "string") {
 					updated[t.id] = validateStringTransformation(t);
+				} else if (t.transformation_operation === "expression") {
+					const validation = validatePySparkExpression(t.params?.exp || "");
+					updated[t.id] = validation.isValid;
 				}
 			});
 			return updated;
@@ -1062,18 +957,27 @@ export const TransformationDrawer = ({
 	const handleSave = useCallback(() => {
 		// Validate all transformations before saving
 		let allValid = true;
+		let invalidReason = "";
+
 		for (let i = 0; i < transformations.length; i++) {
 			const t = transformations[i];
 			if (
 				(t.transformation_operation === "arithmetic" && transformationsValidity[t.id] === false) ||
-				(t.transformation_operation === "string" && transformationsValidity[t.id] === false)
+				(t.transformation_operation === "string" && transformationsValidity[t.id] === false) ||
+				(t.transformation_operation === "expression" && transformationsValidity[t.id] === false)
 			) {
 				allValid = false;
+				if (t.transformation_operation === "expression") {
+					invalidReason = "Expression contains potentially unsafe code patterns.";
+				} else {
+					invalidReason = "Please fill all required fields before applying transformations.";
+				}
 				break;
 			}
 		}
+
 		if (!allValid) {
-			alert("Please fill all required fields before applying transformations.");
+			alert(invalidReason);
 			return;
 		}
 
@@ -1127,10 +1031,8 @@ export const TransformationDrawer = ({
 						drop_right_dataframe_collist: joinParams.drop_right_dataframe_collist
 					};
 
-					// Remove the automatic restrict columns transformation creation
-					// The joins component handles column dropping internally
 					result.push(transformationData);
-					return; // Skip the default result.push at the end
+					return;
 				case 'filter':
 					transformationData.params = getFilterParams(t);
 					break;
@@ -1149,6 +1051,9 @@ export const TransformationDrawer = ({
 				case 'ranking':
 					transformationData.params = getRankingParams(t);
 					break;
+				case 'expression':
+					transformationData.params = getExpressionParams(t);
+					break;
 				default:
 					transformationData.params = {};
 			}
@@ -1156,7 +1061,7 @@ export const TransformationDrawer = ({
 			result.push(transformationData);
 		});
 
-		// console.log("Saving transformations:", result);
+		console.log("Saving transformations:", result);
 
 		if (activeNode && activeNode.data && activeNode.data.onDataChange) {
 			activeNode.data.onDataChange({
@@ -1284,8 +1189,8 @@ export const TransformationDrawer = ({
 	}, [setDataframeColumns, syncDataframeColumnsFromNodes]);
 
 	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic", givendatatype = "NUMBER", oldColumnName = null, restrictedColumns = null, restrictType = null) => {
-//   console.log("operation type is ====>", operationType);
-//   console.log("given datatype is  =====>", givendatatype);
+  //   console.log("operation type is ====>", operationType);
+  //   console.log("given datatype is  =====>", givendatatype);
   const actualDfId = dataframeId;
 
   let datatype = "NUMBER";
@@ -1303,6 +1208,8 @@ export const TransformationDrawer = ({
     datatype = "NUMBER";
   } else if (operationType === "ranking") {
     datatype = "NUMBER";
+  } else if (operationType === "expression") {
+    datatype = givendatatype;
   }
 
   // Handle restrict columns operation
@@ -1780,7 +1687,8 @@ useEffect(() => {
 						className="px-5 py-2 bg-[#8E77BB] border border-[#8E77BB] rounded-md text-sm text-white hover:bg-[#7d68a5] transition-colors"
 						disabled={!isDataLoaded || !columnsLoaded || transformations.some(t =>
 							(t.transformation_operation === "arithmetic" && transformationsValidity[t.id] === false) ||
-							(t.transformation_operation === "string" && transformationsValidity[t.id] === false)
+							(t.transformation_operation === "string" && transformationsValidity[t.id] === false) ||
+							(t.transformation_operation === "expression" && transformationsValidity[t.id] === false)
 						)}
 					>
 						Apply
@@ -1790,7 +1698,6 @@ useEffect(() => {
 		</>
 	);
 };
-
 
 
 

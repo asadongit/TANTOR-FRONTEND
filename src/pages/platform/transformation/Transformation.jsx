@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -588,6 +588,16 @@ function Transformation() {
     );
   };
 
+  const filteredTransformationData = useMemo(() => {
+    if (!searchTerm.trim()) return transformationData;
+    const q = searchTerm.toLowerCase();
+    return transformationData.filter(row =>
+      Object.values(row || {}).some(val =>
+        String(val ?? '').toLowerCase().includes(q)
+      )
+    );
+  }, [searchTerm, transformationData]);
+
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
@@ -711,7 +721,7 @@ function Transformation() {
 
       <DataTable
         columns={columns}
-        data={transformationData}
+        data={filteredTransformationData}
         actions={actions}
         isLoading={isLoading}
         isError={false}
