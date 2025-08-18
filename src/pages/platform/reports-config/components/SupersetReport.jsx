@@ -186,7 +186,7 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
             }}
             onLoad={handleIframeLoad}
             onError={handleIframeError}
-            sandbox="allow-same-origin allow-scripts allow-forms"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
             title="Superset Dashboard"
           />
         </div>
