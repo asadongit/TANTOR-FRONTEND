@@ -398,6 +398,7 @@ export const TransformationDrawer = ({
 				case "typecast":
 				case "date":
 				case "ranking":
+				case "expression":
 					if (t.target_column && t.target_column.length > 0) {
 						t.target_column.forEach(targetCol => {
 							const colName = getColName(targetCol);
@@ -1283,14 +1284,12 @@ export const TransformationDrawer = ({
       }
     }
 
-    // Trigger event for any other components that need to update
     setTimeout(() => {
       window.dispatchEvent(new Event("tantor-columns-updated"));
     }, 10);
     return;
   }
 
-  // For rename operations, we need to replace the old column with the new one
   if (operationType === "rename" && oldColumnName) {
     // Update local state - replace old column with new one
     setDataframeColumns(prev => {
@@ -1335,11 +1334,8 @@ export const TransformationDrawer = ({
       }
     }
   } else {
-    // For other operations, add the column normally
-    // Update local state first for immediate UI update - use correct datatype
     appendColumnToDataframe(dataframeId, columnName, datatype);
 
-    // --- BEGIN: Always update the actual source node's columns (edit & create flow) ---
     if (window.allNodes && Array.isArray(window.allNodes)) {
       const reactNode = window.allNodes.find(n =>
         (n.data?.alias === dataframeId) || (n.id === dataframeId)
@@ -1359,9 +1355,6 @@ export const TransformationDrawer = ({
         }
       }
     }
-    // --- END: Always update the actual source node's columns (edit & create flow) ---
-
-    // Update replayed columns in edit mode to include the new column - use correct datatype
     if (isEditMode && window.replayedDataframeColumns) {
       if (!window.replayedDataframeColumns[dataframeId]) {
         window.replayedDataframeColumns[dataframeId] = [];
@@ -1392,9 +1385,6 @@ export const TransformationDrawer = ({
   }, 10);
 }, [appendColumnToDataframe, setDataframeColumns, isEditMode]);
 
-// ...existing code...
-
-// Enhance the useEffect for handling tantor-columns-updated event
 useEffect(() => {
   const handler = (event) => {
     if (isOpen) {
@@ -1444,7 +1434,6 @@ useEffect(() => {
   return () => window.removeEventListener("tantor-columns-updated", handler);
 }, [isOpen, syncDataframeColumnsFromNodes, isEditMode]);
 
-// ...existing code...
 
 	// Prefill transformations for edit flow
 	useEffect(() => {
@@ -1514,6 +1503,12 @@ useEffect(() => {
 						};
 					}
 				}
+				if (op.transformation_operation === "expression") {
+					params = {
+						exp: typeof params.exp === "string" ? params.exp : "",
+						datatype: params.datatype || "string"
+					};
+				}
 				return {
 					...op,
 					id: op.id || `transformation_${idx + 1}`,
@@ -1523,7 +1518,7 @@ useEffect(() => {
 					transformation_operation: op.transformation_operation || "",
 					transformation_operator: op.transformation_operator || "",
 					source_dataframe: op.source_dataframe || activeNode.data.alias || "",
-					transformation_order: idx + 1, // <-- Ensure order is set
+					transformation_order: idx + 1,
 				};
 			});
 
