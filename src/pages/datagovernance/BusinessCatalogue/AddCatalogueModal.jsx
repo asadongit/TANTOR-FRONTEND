@@ -377,7 +377,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
             if (!data.name || !data.status) return null;
 
             const ownerAsArray = data.owner ? [data.owner] : [];
-            const creatorArray = [decodedToken?.preferred_username]
+            const creatorArray = decodedToken?.resource_access?.darch?.roles
 
             const standardObject = {
                 name: data.name,
