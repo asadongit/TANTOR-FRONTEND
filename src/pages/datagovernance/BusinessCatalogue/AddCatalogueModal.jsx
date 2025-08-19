@@ -3,7 +3,7 @@ import { X, FolderPlus, Loader2, Search, Plus, Trash2, Edit3 } from 'lucide-reac
 import { useAuth } from '../../../context/AuthContext';
 import toast, { Toaster } from 'react-hot-toast';
 
-const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
+const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
     const { token, decodedToken } = useAuth();
     const [activeTab, setActiveTab] = useState('Domain');
 
@@ -71,17 +71,90 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
 
     const tabs = ['Domain', 'Category', 'Sub-category', 'Term', 'Tag', 'Sub-tag'];
 
+    const isEditMode = !!editData;
+
+    const fetchAndPrefillData = async () => {
+        if (!editData) return;
+        setIsLoading(true);
+        try {
+            const payload = {
+                domain_id: [parseInt(editData.id, 10)],
+                category_id: editData.category.map(c => c.id),
+                sub_category_id: editData.subcategory.map(sc => sc.id),
+                tag_id: editData.tag.map(t => t.id),
+                sub_tag_id: editData.subtag.map(st => st.id),
+                term_id: editData.term.map(t => t.id)
+            };
+
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/data_prefill`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error('Failed to fetch data for editing.');
+
+            const data = await response.json();
+
+            const domainData = data.domain[0];
+            const mappedData = {
+                domain: {
+                    id: domainData.domain_id,
+                    name: domainData.name,
+                    description: domainData.description || '',
+                    owner: domainData.owner?.[0] || '',
+                    stakeholder: domainData.stakeholder || [],
+                    status: domainData.status || ''
+                },
+                category: data.category.map(c => ({
+                    id: c.category_id, name: c.name, desc: c.description || '',
+                    owner: c.owner?.[0] || '', status: c.status || ''
+                })),
+                subcategory: data.sub_category.map(sc => ({
+                    id: sc.sub_category_id, name: sc.name, desc: sc.description || '',
+                    owner: sc.owner?.[0] || '', status: sc.status || '', category_name: sc.category_name
+                })),
+                term: data.term.map(t => ({
+                    id: t.term_id, name: t.name, desc: t.description || '',
+                    owner: t.owner?.[0] || '', status: t.status || ''
+                })),
+                tag: data.tag.map(tg => ({
+                    id: tg.tag_id, name: tg.name, desc: tg.description || '',
+                    owner: tg.owner?.[0] || '', status: tg.status || ''
+                })),
+                subtag: data.sub_tag.map(st => ({
+                    id: st.sub_tag_id, name: st.name, desc: st.description || '',
+                    owner: st.owner?.[0] || '', status: st.status || '', tag_name: st.tag_name
+                }))
+            };
+            setFormData(mappedData);
+
+        } catch (err) {
+            toast.error(err.message);
+            console.error("Failed to prefill data:", err);
+            onClose(); 
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (isOpen) {
-            setFormData(initialFormData);
-            setActiveTab('Domain');
-            setActiveItemIndex(0);
-            setErrorTabs({});
-            setError(null);
-            setSaveError(null);
-            setErrors({});
+            console.log("edit dataat is @@@@ ", editData)
+            if (isEditMode) {
+                setActiveTab('Domain');
+                fetchAndPrefillData();
+            } else {
+                setFormData(initialFormData);
+                setActiveTab('Domain');
+                setActiveItemIndex(0);
+                setErrorTabs({});
+                setErrors({});
+                setError(null);
+                setSaveError(null);
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, , editData]);
 
     useEffect(() => {
         if (isOpen) {
@@ -476,7 +549,11 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
         }
 
         try {
-            const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/add_new_entry`, {
+            const endpoint = isEditMode
+                ? `${window._env_?.VITE_FAST_API}/data_catalogue/add_new`
+                : `${window._env_?.VITE_FAST_API}/data_catalogue/add_new_entry`;
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -489,13 +566,13 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                 const errorData = await response.json().catch(() => ({ detail: 'An unexpected error occurred.' }));
                 throw new Error(errorData.detail || `Server responded with status: ${response.status}`);
             }
-
-            if (onAddComplete) {
-                onAddComplete();
+            if (onComplete) {
+                onComplete();
             } else {
-                toast.success('Catalogue added successfully!');
+                toast.success('Catalogue saved successfully!');
                 onClose();
             }
+
         } catch (err) {
             console.error("Failed to save catalogue:", err);
             setSaveError(err.message);
@@ -538,10 +615,29 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
 
 
     const removeItem = (tabKey, index) => {
-        setFormData(prev => ({
-            ...prev,
-            [tabKey]: prev[tabKey].filter((_, i) => i !== index)
-        }));
+        const itemToRemove = formData[tabKey][index];
+
+        setFormData(prev => {
+            const newState = { ...prev };
+
+            newState[tabKey] = prev[tabKey].filter((_, i) => i !== index);
+
+            if (tabKey === 'category' && itemToRemove?.name) {
+                const removedCategoryName = itemToRemove.name;
+                newState.subcategory = prev.subcategory.filter(
+                    subcat => subcat.category_name !== removedCategoryName
+                );
+            }
+            if (tabKey === 'tag' && itemToRemove?.name) {
+                const removedTagName = itemToRemove.name;
+                newState.subtag = prev.subtag.filter(
+                    subtag => subtag.tag_name !== removedTagName
+                );
+            }
+
+            return newState;
+        });
+
         if (activeItemIndex >= formData[tabKey].length - 1) {
             setActiveItemIndex(Math.max(0, formData[tabKey].length - 2));
         }
@@ -749,6 +845,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                                 placeholder="Enter or select domain name"
                                 value={formData.domain.name}
                                 onChange={handleDomainNameChange}
+                                disabled={isEditMode}
                                 onFocus={() => setShowSuggestions(true)}
                                 autoComplete="off"
                                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
@@ -979,7 +1076,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
 
 
         return (
-            <div className="space-y-6 py-8">
+            <div className="space-y-4 py-4">
                 {error && <div className="text-red-600 bg-red-100 p-3 rounded-md mb-4">{error}</div>}
 
                 {Object.keys(parentDataFor[activeTab]).length > 0 && (
@@ -988,7 +1085,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
 
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium text-gray-900">
-                        {activeTab} Items ({items.length})
+                        {activeTab} ({items.length})
                     </h3>
                     <button
                         type="button"
@@ -1013,7 +1110,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                     <div className="space-y-4">
                         {/* Item tabs */}
                         <div className="border-b border-gray-200">
-                            <nav className="-mb-px flex space-x-4 overflow-x-auto">
+                            <nav className="-mb-px flex space-x-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                 {items.map((item, index) => (
                                     <button
                                         key={index}
@@ -1027,18 +1124,16 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                                         {errors[index] && (
                                             <span className="ml-2 w-2 h-2 bg-red-500 rounded-full"></span>
                                         )}
-                                        {items.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    removeItem(tabKey, index);
-                                                }}
-                                                className="ml-2 text-gray-400 hover:text-red-500"
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </button>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeItem(tabKey, index);
+                                            }}
+                                            className="ml-2 text-gray-400 hover:text-red-500"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
                                     </button>
                                 ))}
                             </nav>
@@ -1047,7 +1142,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                         {/* Current item form */}
                         {items[activeItemIndex] && (
                             <div className="space-y-6">
-                              
+
                                 {activeTab === 'Sub-category' && (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
@@ -1179,16 +1274,22 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                 <div className="flex justify-between items-center p-4 border-b border-gray-200">
                     <h2 className="text-lg font-semibold text-gray-900 flex items-center">
                         <FolderPlus className="h-6 w-6 mr-2 text-[#8e78b7]" />
-                        Add catalogue
+                        {isEditMode ? 'Edit Catalogue' : 'Add Catalogue'}
                     </h2>
                     <button title="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X className="h-6 w-6" />
                     </button>
                 </div>
 
-                <div className="p-6 overflow-y-auto">
+                <div className="px-6 py-4 overflow-y-auto relative">
+                    {isLoading && isEditMode && (
+                        <div className="absolute inset-0 bg-white z-20 flex flex-col justify-center items-center rounded-b-lg">
+                            <Loader2 className="h-10 w-10 animate-spin text-[#8e78b7]" />
+                            <p className="mt-4 text-lg text-gray-700 font-medium">Loading Data...</p>
+                        </div>
+                    )}
                     <div className="border-b border-gray-200">
-                        <nav className="-mb-px flex space-x-8 overflow-x-auto">
+                        <nav className="-mb-px flex space-x-6 overflow-x-auto">
                             {tabs.map(tab => {
                                 const tabKey = tab.toLowerCase().replace('-', '');
                                 return (
@@ -1239,7 +1340,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onAddComplete }) => {
                             className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-green-600 text-white border border-transparent rounded-md shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSaving && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
-                            {isSaving ? 'Saving...' : 'Save & Exit'}
+                            {isSaving ? 'Saving...' : (isEditMode ? 'Update & Exit' : 'Save & Exit')}
                         </button>
                         {!isLastTab && (
                             <button type="button" onClick={handleNext} className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] border border-transparent rounded-md shadow-sm hover:bg-[#7a67a0]">
