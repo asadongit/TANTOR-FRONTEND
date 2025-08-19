@@ -340,7 +340,7 @@ function Cleaning({ query, formData, setFormData }) {
               <option value="log">Log Transformation</option>
               <option value="sqrt">Square root transformation</option>
               <option value="yeojohnson">Yeo-Johnson</option>
-              <option value="exp">Exponential Transformation</option>
+              {/* <option value="exp">Exponential Transformation</option> */}
               <option value="rank">Rank</option>
             </select>
           </div>
