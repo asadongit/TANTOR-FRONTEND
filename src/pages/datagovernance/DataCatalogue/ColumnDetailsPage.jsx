@@ -4,6 +4,7 @@ import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, Ch
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import toast from 'react-hot-toast';
+import { fetchConnectionDetails, secureQuery } from './Components/function.js';
 
 const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
@@ -25,7 +26,7 @@ const InfoPill = ({ label }) => (
 
 const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
     if (totalPages <= 1) {
-        return null; // Don't render pagination if there's only one page or no items
+        return null;
     }
 
     const startItem = (currentPage - 1) * itemsPerPage + 1;
@@ -45,11 +46,9 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
                 >
                     <ChevronLeft className="h-5 w-5" />
                 </button>
-
                 <span>
                     Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
                 </span>
-
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
@@ -63,13 +62,13 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
     );
 };
 
-
 function ColumnDetailsPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const { columnName } = useParams();
     const { token, decodedToken } = useAuth();
     const { columnDetails } = location.state || {};
+    const hostnameV1 = window._env_?.VITE_FAST_API;
 
     const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
         ['data steward', 'data owner'].includes(role.toLowerCase())
@@ -78,30 +77,24 @@ function ColumnDetailsPage() {
     const [activeTab, setActiveTab] = useState('Summary');
     const [complianceTags, setComplianceTags] = useState([]);
     const [loadingTags, setLoadingTags] = useState(true);
-
     const [businessView, setBusinessView] = useState('Composite view');
     const [businessData, setBusinessData] = useState({ composite: [], schema: {} });
     const [loadingBusinessData, setLoadingBusinessData] = useState(true);
-
     const [sampleData, setSampleData] = useState([]);
     const [loadingSampleData, setLoadingSampleData] = useState(false);
     const [sampleDataError, setSampleDataError] = useState(null);
-
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [description, setDescription] = useState('');
-    const [originalDescription, setOriginalDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-
     const [accessData, setAccessData] = useState([]);
     const [loadingAccessData, setLoadingAccessData] = useState(false);
     const [accessDataError, setAccessDataError] = useState(null);
     const [expandedRows, setExpandedRows] = useState({});
-
+    const [loading, setLoading] = useState(true);
     const [itemsPerPage] = useState(8);
     const [accessCurrentPage, setAccessCurrentPage] = useState(1);
     const [businessCurrentPage, setBusinessCurrentPage] = useState(1);
     const [sampleDataCurrentPage, setSampleDataCurrentPage] = useState(1);
-
 
     const getConstraints = (details) => {
         if (!details || !details.column_name || !details.column_metadata) {
@@ -146,6 +139,64 @@ function ColumnDetailsPage() {
         return allConstraints.length > 0 ? allConstraints.join(', ') : '-';
     };
 
+    const fetchColumnData = async () => {
+        if (!columnDetails) return;
+        try {
+            setLoading(true);
+            const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+            const policyIds = secureQueryResponse.matched_policy_ids || [];
+            const allConnectionsData = await fetchConnectionDetails(policyIds, token);
+
+            const currentTableData = allConnectionsData.find(
+                item => item.connection_name === columnDetails.connection_name &&
+                    item.table_schema === columnDetails.table_schema &&
+                    item.table_name === columnDetails.table_name
+            );
+
+            if (currentTableData) {
+                const columnTagInfo = currentTableData.tags_column_json?.find(
+                    tag => tag.column_name === columnDetails.column_name
+                );
+                const foundDescription = columnTagInfo?.column_description?.[0] || 'Column Description';
+                setDescription(foundDescription);
+            }
+        } catch (error) {
+            console.error('Error fetching column data:', error);
+            toast.error('Failed to load column data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const refetchColumnData = async () => {
+        if (!columnDetails) return;
+        try {
+            const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+            const policyIds = secureQueryResponse.matched_policy_ids || [];
+            const allConnectionsData = await fetchConnectionDetails(policyIds, token);
+
+            const currentTableData = allConnectionsData.find(
+                item => item.connection_name === columnDetails.connection_name &&
+                    item.table_schema === columnDetails.table_schema &&
+                    item.table_name === columnDetails.table_name
+            );
+
+            if (currentTableData) {
+                const columnTagInfo = currentTableData.tags_column_json?.find(
+                    tag => tag.column_name === columnDetails.column_name
+                );
+                const foundDescription = columnTagInfo?.column_description?.[0] || 'Column Description';
+                setDescription(foundDescription);
+            }
+        } catch (error) {
+            console.error('Error refetching column data:', error);
+            toast.error('Failed to refresh column data');
+        }
+    };
+
+    useEffect(() => {
+        fetchColumnData();
+    }, [columnDetails, token]);
 
     useEffect(() => {
         if (!columnDetails) return;
@@ -153,7 +204,7 @@ function ColumnDetailsPage() {
         const fetchComplianceTags = async () => {
             setLoadingTags(true);
             try {
-                const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/compliance_tags`, {
+                const response = await fetch(`${hostnameV1}/data_catalogue/compliance_tags`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -191,7 +242,7 @@ function ColumnDetailsPage() {
             setLoadingBusinessData(true);
             setBusinessCurrentPage(1);
             try {
-                const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/business_tab`, {
+                const response = await fetch(`${hostnameV1}/data_catalogue/business_tab`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
@@ -249,7 +300,6 @@ function ColumnDetailsPage() {
                     }
                 }
                 setBusinessData({ schema: schemaForState, composite: newCompositeState });
-
             } catch (error) {
                 console.error('Error fetching business data:', error);
                 setBusinessData({ composite: [], schema: {} });
@@ -270,7 +320,7 @@ function ColumnDetailsPage() {
             setSampleData([]);
             setSampleDataCurrentPage(1);
             try {
-                const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/columns/sample_data`, {
+                const response = await fetch(`${hostnameV1}/data_catalogue/columns/sample_data`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
@@ -303,7 +353,6 @@ function ColumnDetailsPage() {
                 }));
 
                 setSampleData(columnSpecificData);
-
             } catch (error) {
                 console.error("Error fetching sample data:", error);
                 setSampleDataError("Failed to fetch sample data.");
@@ -326,7 +375,7 @@ function ColumnDetailsPage() {
             setAccessCurrentPage(1);
 
             try {
-                const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/access_tab`, {
+                const response = await fetch(`${hostnameV1}/data_catalogue/access_tab`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'accept': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
@@ -369,28 +418,16 @@ function ColumnDetailsPage() {
         fetchAccessData();
     }, [activeTab, columnDetails, token]);
 
-    useEffect(() => {
-        if (columnDetails) {
-            console.log("column details aaree", columnDetails)
-            const columnTagInfo = columnDetails.tags_column_json?.find(
-                tag => tag.column_name === columnDetails.column_name
-            );
-            const foundDescription = columnTagInfo?.column_description?.[0];
-            const initialDesc = foundDescription || 'Column Description';
-            console.log("initial desc is ", initialDesc)
-            setDescription(initialDesc);
-            setOriginalDescription(initialDesc);
-        }
-    }, [columnDetails]);
-
     const handleCancelEdit = () => {
-        setDescription(originalDescription);
         setIsEditingDescription(false);
+        refetchColumnData(); 
     };
 
     const handleSaveDescription = async () => {
-        if (!columnDetails) return;
-        if (description === originalDescription) return setIsEditingDescription(false);
+        if (!columnDetails) {
+            toast.error("Column data is not available.");
+            return;
+        }
         if (description.trim() === '') {
             toast.error("Description cannot be empty.");
             return;
@@ -398,6 +435,7 @@ function ColumnDetailsPage() {
         const trimmedDescription = description.trim();
 
         setIsSaving(true);
+        setIsEditingDescription(false);
         try {
             const payload = {
                 connection_name: columnDetails.connection_name,
@@ -408,7 +446,7 @@ function ColumnDetailsPage() {
                 roles: decodedToken?.resource_access?.darch?.roles || []
             };
 
-            const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/edit_column_description`, {
+            const response = await fetch(`${hostnameV1}/data_catalogue/edit_column_description`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload),
@@ -416,15 +454,16 @@ function ColumnDetailsPage() {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                await refetchColumnData();
                 throw new Error(errorData.detail || 'Failed to save description.');
             }
 
-            setOriginalDescription(trimmedDescription);
-            setIsEditingDescription(false);
-            toast.success("Column description edited!");
+            const successData = await response.json();
+            toast.success(successData.message || "Description updated successfully!");
+            await refetchColumnData();
         } catch (error) {
             console.error("Error saving description:", error);
-            toast.error("Error editing column description.");
+            toast.error(error.message || "Failed to update column description.");
         } finally {
             setIsSaving(false);
         }
@@ -445,7 +484,6 @@ function ColumnDetailsPage() {
     const currentSampleDataItems = sampleData.slice(indexOfFirstSampleDataItem, indexOfLastSampleDataItem);
     const totalSampleDataPages = Math.ceil(sampleData.length / itemsPerPage);
     const handleSampleDataPageChange = (page) => setSampleDataCurrentPage(page);
-
 
     if (!columnDetails) {
         return (
@@ -469,363 +507,375 @@ function ColumnDetailsPage() {
     return (
         <div className="p-4 bg-gray-50 min-h-screen">
             <Breadcrumb />
-            <div className="mt-2 flex flex-col xl:flex-row gap-8">
-                <div className="flex-grow bg-white px-6 pt-6 pb-10 rounded-lg shadow-sm min-w-0">
-                    <div className="flex items-start gap-4 w-full">
-                        <div className="flex justify-between w-full" >
-                            <div className="flex items-center gap-2">
-                                <button title="Back" onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
-                                    <ChevronLeft className="h-6 w-6" />
-                                </button>
-                                <ChartColumn size={24} className="text-[#8d77ba]" />
-                                <h1 className="text-xl font-bold text-gray-800">{columnDetails?.column_name}</h1>
+            {loading ? (
+                <div className="flex justify-center items-center h-64">
+                    <div className="text-center">
+                        <div className="text-lg text-gray-500">Loading...</div>
+                    </div>
+                </div>
+            ) : (
+                <div className="mt-2 flex flex-col xl:flex-row gap-8">
+                    <div className="flex-grow bg-white px-6 pt-6 pb-10 rounded-lg shadow-sm min-w-0">
+                        <div className="flex items-start gap-4 w-full">
+                            <div className="flex justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                    <button title="Back" onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
+                                        <ChevronLeft className="h-6 w-6" />
+                                    </button>
+                                    <ChartColumn size={24} className="text-[#8d77ba]" />
+                                    <h1 className="text-xl font-bold text-gray-800">{columnDetails?.column_name}</h1>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="border-b border-gray-200 mt-4">
-                        <nav className="-mb-px flex space-x-10 text-md overflow-x-auto">
-                            {tabs.map(tab => (
-                                <Tab key={tab} label={tab} activeTab={activeTab} setActiveTab={setActiveTab} />
-                            ))}
-                        </nav>
-                    </div>
+                        <div className="border-b border-gray-200 mt-4">
+                            <nav className="-mb-px flex space-x-10 text-md overflow-x-auto">
+                                {tabs.map(tab => (
+                                    <Tab key={tab} label={tab} activeTab={activeTab} setActiveTab={setActiveTab} />
+                                ))}
+                            </nav>
+                        </div>
 
-                    <div className="mt-5">
-                        {activeTab === 'Summary' && (
-                            <div className="space-y-4">
-                                {/* Description Section */}
-                                <div>
-                                    <div className='flex items-center justify-between mb-2'>
-                                        <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                                            <FilePenLine className="h-5 w-5 text-[#8d77ba]" /> Description
-                                        </h3>
-                                        {isUserAuthorized && !isEditingDescription && (
-                                            <button
-                                                onClick={() => setIsEditingDescription(true)}
-                                                className="p-1 rounded-full hover:bg-gray-100 text-gray-500 [#8d77ba] transition-colors"
-                                                title="Edit Column Description"
-                                            >
-                                                <Pencil size={18} />
-                                            </button>
+                        <div className="mt-5">
+                            {activeTab === 'Summary' && (
+                                <div className="space-y-4">
+                                    {/* Description Section */}
+                                    <div>
+                                        <div className='flex items-center justify-between mb-2'>
+                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                                <FilePenLine className="h-5 w-5 text-[#8d77ba]" /> Description
+                                            </h3>
+                                            {isUserAuthorized && !isEditingDescription && (
+                                                <button
+                                                    onClick={() => setIsEditingDescription(true)}
+                                                    className="p-1 rounded-full hover:bg-gray-100 text-gray-500 [#8d77ba] transition-colors"
+                                                    title="Edit Column Description"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+                                            )}
+                                        </div>
+                                        {isEditingDescription ? (
+                                            <div>
+                                                <textarea
+                                                    value={description}
+                                                    onChange={(e) => setDescription(e.target.value)}
+                                                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-200 focus:border-[#8d77ba] transition"
+                                                    rows="4"
+                                                    placeholder="Enter column description..."
+                                                />
+                                                <div className="flex justify-end gap-2 mt-2">
+                                                    <button
+                                                        onClick={handleCancelEdit}
+                                                        className="px-4 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        onClick={handleSaveDescription}
+                                                        disabled={isSaving}
+                                                        className="px-4 py-1.5 text-sm font-medium text-white bg-[#8d77ba] rounded-md hover:bg-[#7a68a5] disabled:bg-purple-300 disabled:cursor-not-allowed transition-colors"
+                                                    >
+                                                        {isSaving ? 'Saving...' : 'Save'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : isSaving ? (
+                                            <div className="text-gray-600 pl-7 min-h-[2rem]">
+                                                Saving description...
+                                            </div>
+                                        ) : (
+                                            <div className="text-gray-600 pl-7 min-h-[2rem]">
+                                                {description}
+                                            </div>
                                         )}
                                     </div>
-                                    {isEditingDescription ? (
-                                        <div>
-                                            <textarea
-                                                value={description}
-                                                onChange={(e) => setDescription(e.target.value)}
-                                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-200 focus:border-[#8d77ba] transition"
-                                                rows="4"
-                                                placeholder="Enter column description..."
-                                            />
-                                            <div className="flex justify-end gap-2 mt-2">
-                                                <button
-                                                    onClick={handleCancelEdit}
-                                                    className="px-4 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    onClick={handleSaveDescription}
-                                                    disabled={isSaving}
-                                                    className="px-4 py-1.5 text-sm font-medium text-white bg-[#8d77ba] rounded-md hover:bg-[#7a68a5] disabled:bg-purple-300 disabled:cursor-not-allowed transition-colors"
-                                                >
-                                                    {isSaving ? 'Saving...' : 'Save'}
-                                                </button>
-                                            </div>
+
+                                    {/* Compliance Section */}
+                                    <div>
+                                        <div className='flex items-center gap-2 mb-3'>
+                                            <FileCheck2 className="h-5 w-5 text-[#8d77ba]" />
+                                            <h3 className="text-lg font-semibold text-gray-800">Compliance</h3>
                                         </div>
+                                        <div className="pl-7">
+                                            {loadingTags ? (
+                                                <InfoPill label="Loading..." />
+                                            ) : complianceTags.length > 0 ? (
+                                                complianceTags.map((tag, index) => (
+                                                    <InfoPill key={index} label={tag} />
+                                                ))
+                                            ) : (
+                                                <InfoPill label="N/A" />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Technical Details Section */}
+                                    <div>
+                                        <div className="overflow-x-auto rounded-lg shadow border mt-8">
+                                            <table className="min-w-full">
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Type</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_TYPE}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Nullable</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.is_nullable === 'Y' ? 'Yes' : 'No'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Length</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_LENGTH}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Scale</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_SCALE}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Precision</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_PRECISION}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Constraints</td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(columnDetails)}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'Business' && (
+                                <div>
+                                    <div className="flex items-center space-x-2 mb-6">
+                                        <button
+                                            onClick={() => setBusinessView('Composite view')}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Composite view'
+                                                ? 'bg-purple-100 text-[#8d77ba]'
+                                                : 'text-gray-600 hover:bg-gray-100'
+                                                }`}
+                                        >
+                                            <Layers className="h-4 w-4" />
+                                            Composite view
+                                        </button>
+                                        <button
+                                            onClick={() => setBusinessView('Table Detail View')}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Table Detail View'
+                                                ? 'bg-purple-100 text-[#8d77ba]'
+                                                : 'text-gray-600 hover:bg-gray-100'
+                                                }`}
+                                        >
+                                            <TableOfContents className="h-4 w-4" />
+                                            Table Detail View
+                                        </button>
+                                    </div>
+
+                                    {loadingBusinessData ? (
+                                        <div className="text-center p-10">Loading business data...</div>
+                                    ) : businessView === 'Table Detail View' ? (
+                                        <>
+                                            {Object.values(businessData.schema).some(arr => arr.length > 0) ? (
+                                                <div className="overflow-x-auto rounded-lg shadow border">
+                                                    <table className="min-w-full">
+                                                        <tbody className="bg-white divide-y divide-gray-200">
+                                                            {Object.entries(businessData.schema).map(([type, values]) => (
+                                                                <tr key={type} className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4 w-1/3 text-sm font-medium text-gray-500">{formatTitle(type)}</td>
+                                                                    <td className="px-6 py-4 text-sm text-gray-900">
+                                                                        {(() => {
+                                                                            if (!values || values.length === 0) {
+                                                                                return <span className="text-gray-500">N/A</span>;
+                                                                            }
+                                                                            const fullText = values.join(', ');
+                                                                            if (values.length > 6 || fullText.length > 200) {
+                                                                                const truncatedText = values.slice(0, 3).join(', ');
+                                                                                return <span title={fullText}>{`${truncatedText}...`}</span>;
+                                                                            }
+                                                                            return fullText;
+                                                                        })()}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-10 px-4 text-sm text-gray-500">
+                                                    No business data available for this column.
+                                                </div>
+                                            )}
+                                        </>
                                     ) : (
-                                        <div className="text-gray-600 pl-7 min-h-[2rem]">
-                                            {description}
+                                        <div className="p-1">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                                                {Object.keys(businessData.schema).length > 0 ?
+                                                    Object.entries(businessData.schema).map(([title, pills]) => (
+                                                        <div key={title}>
+                                                            <h3 className="text-base font-semibold text-gray-700 mb-3 capitalize">{formatTitle(title)}</h3>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {pills.length > 0 ? (
+                                                                    pills.map(item => <InfoPill key={item} label={item} />)
+                                                                ) : (
+                                                                    <InfoPill label="N/A" />
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )) : <p className="text-gray-500">No business data available.</p>}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
+                            )}
 
-                                {/* Compliance Section */}
+                            {activeTab === 'Sample data' && (
                                 <div>
-                                    <div className='flex items-center gap-2 mb-3'>
-                                        <FileCheck2 className="h-5 w-5 text-[#8d77ba]" />
-                                        <h3 className="text-lg font-semibold text-gray-800">Compliance</h3>
-                                    </div>
-                                    <div className="pl-7">
-                                        {loadingTags ? (
-                                            <InfoPill label="Loading..." />
-                                        ) : complianceTags.length > 0 ? (
-                                            complianceTags.map((tag, index) => (
-                                                <InfoPill key={index} label={tag} />
-                                            ))
-                                        ) : (
-                                            <InfoPill label="N/A" />
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Technical Details Section */}
-                                <div>
-                                    <div className="overflow-x-auto rounded-lg shadow border mt-8">
-                                        <table className="min-w-full">
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Type</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_TYPE}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Nullable</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.is_nullable === 'Y' ? 'Yes' : 'No'}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Length</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_LENGTH}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Scale</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_SCALE}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Data Precision</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{columnDetails.column_metadata.DATA_PRECISION}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-4 py-3 w-1/3 text-sm font-medium text-gray-500">Constraints</td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{getConstraints(columnDetails)}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'Business' && (
-                            <div>
-                                <div className="flex items-center space-x-2 mb-6">
-                                    <button
-                                        onClick={() => setBusinessView('Composite view')}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Composite view'
-                                            ? 'bg-purple-100 text-[#8d77ba]'
-                                            : 'text-gray-600 hover:bg-gray-100'
-                                            }`}
-                                    >
-                                        <Layers className="h-4 w-4" />
-                                        Composite view
-                                    </button>
-                                    <button
-                                        onClick={() => setBusinessView('Table Detail View')}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${businessView === 'Table Detail View'
-                                            ? 'bg-purple-100 text-[#8d77ba]'
-                                            : 'text-gray-600 hover:bg-gray-100'
-                                            }`}
-                                    >
-                                        <TableOfContents className="h-4 w-4" />
-                                        Table Detail View
-                                    </button>
-                                </div>
-
-                                {loadingBusinessData ? (
-                                    <div className="text-center p-10">Loading business data...</div>
-                                ) : businessView === 'Table Detail View' ? (
-                                    <>
-                                        {Object.values(businessData.schema).some(arr => arr.length > 0) ? (
-                                            <div className="overflow-x-auto rounded-lg shadow border">
+                                    {loadingSampleData && <p className="text-gray-500">Loading sample data...</p>}
+                                    {sampleDataError && <p className="text-red-600">Error: {sampleDataError}</p>}
+                                    {!loadingSampleData && !sampleDataError && sampleData.length === 0 && (
+                                        <p className="text-gray-500">No sample data is available for this column.</p>
+                                    )}
+                                    {!loadingSampleData && !sampleDataError && sampleData.length > 0 && (
+                                        <>
+                                            <div className="overflow-x-auto mt-2 rounded-lg shadow">
                                                 <table className="min-w-full">
+                                                    <thead>
+                                                        <tr className="bg-[#29304a] text-white">
+                                                            {sampleDataHeaders.map(header => (
+                                                                <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">
+                                                                    {header.replace(/_/g, ' ')}
+                                                                </th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
                                                     <tbody className="bg-white divide-y divide-gray-200">
-                                                        {Object.entries(businessData.schema).map(([type, values]) => (
-                                                            <tr key={type} className="hover:bg-gray-50">
-                                                                <td className="px-6 py-4 w-1/3 text-sm font-medium text-gray-500">{formatTitle(type)}</td>
-                                                                <td className="px-6 py-4 text-sm text-gray-900">
-                                                                    {(() => {
-                                                                        if (!values || values.length === 0) {
-                                                                            return <span className="text-gray-500">N/A</span>;
-                                                                        }
-                                                                        const fullText = values.join(', ');
-                                                                        if (values.length > 6 || fullText.length > 200) {
-                                                                            const truncatedText = values.slice(0, 3).join(', ');
-                                                                            return <span title={fullText}>{`${truncatedText}...`}</span>;
-                                                                        }
-                                                                        return fullText;
-                                                                    })()}
-                                                                </td>
+                                                        {currentSampleDataItems.map((row, rowIndex) => (
+                                                            <tr key={rowIndex} className="hover:bg-gray-50">
+                                                                {sampleDataHeaders.map(header => (
+                                                                    <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 max-w-sm truncate" title={String(row[header] ?? '')}>
+                                                                        {String(row[header] ?? 'N/A')}
+                                                                    </td>
+                                                                ))}
                                                             </tr>
                                                         ))}
                                                     </tbody>
                                                 </table>
                                             </div>
-                                        ) : (
-                                            <div className="text-center py-10 px-4 text-sm text-gray-500">
-                                                No business data available for this column.
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="p-1">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                            {Object.keys(businessData.schema).length > 0 ?
-                                                Object.entries(businessData.schema).map(([title, pills]) => (
-                                                    <div key={title}>
-                                                        <h3 className="text-base font-semibold text-gray-700 mb-3 capitalize">{formatTitle(title)}</h3>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {pills.length > 0 ? (
-                                                                pills.map(item => <InfoPill key={item} label={item} />)
-                                                            ) : (
-                                                                <InfoPill label="N/A" />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )) : <p className="text-gray-500">No business data available.</p>}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {activeTab === 'Sample data' && (
-                            <div>
-                                {loadingSampleData && <p className="text-gray-500">Loading sample data...</p>}
-                                {sampleDataError && <p className="text-red-600">Error: {sampleDataError}</p>}
-                                {!loadingSampleData && !sampleDataError && sampleData.length === 0 && (
-                                    <p className="text-gray-500">No sample data is available for this table.</p>
-                                )}
-                                {!loadingSampleData && !sampleDataError && sampleData.length > 0 && (
-                                    <>
-                                        <div className="overflow-x-auto mt-2 rounded-lg shadow">
-                                            <table className="min-w-full">
-                                                <thead>
-                                                    <tr className="bg-[#29304a] text-white">
-                                                        {sampleDataHeaders.map(header => (
-                                                            <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">
-                                                                {header.replace(/_/g, ' ')}
-                                                            </th>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="bg-white divide-y divide-gray-200">
-                                                    {currentSampleDataItems.map((row, rowIndex) => (
-                                                        <tr key={rowIndex} className="hover:bg-gray-50">
-                                                            {sampleDataHeaders.map(header => (
-                                                                <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 max-w-sm truncate" title={String(row[header] ?? '')}>
-                                                                    {String(row[header] ?? 'N/A')}
-                                                                </td>
-                                                            ))}
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <Pagination
-                                            currentPage={sampleDataCurrentPage}
-                                            totalPages={totalSampleDataPages}
-                                            onPageChange={handleSampleDataPageChange}
-                                            totalItems={sampleData.length}
-                                            itemsPerPage={itemsPerPage}
-                                        />
-                                    </>
-                                )}
-                            </div>
-                        )}
-
-                        {activeTab === 'Access' && (
-                            <div>
-                                {loadingAccessData && <p className="text-center text-gray-500 p-4">Loading access information...</p>}
-                                {accessDataError && <p className="text-center text-red-600 p-4">Error: {accessDataError}</p>}
-                                {!loadingAccessData && !accessDataError && (
-                                    accessData.length > 0 ? (
-                                        <>
-                                            <div className="overflow-x-auto mt-2 rounded-lg shadow border">
-                                                <table className="min-w-full">
-                                                    <thead className="bg-gray-50">
-                                                        <tr>
-                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
-                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Count</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="bg-white divide-y divide-gray-200">
-                                                        {currentAccessItems.map((item) => (
-                                                            <React.Fragment key={`${item.type}-${item.name}`}>
-                                                                <tr className="hover:bg-gray-50">
-                                                                    <td className="px-6 py-4">
-                                                                        <button onClick={() => toggleRow(item.name)} className="text-gray-500 hover:text-[#8d77ba] transition-colors">
-                                                                            {expandedRows[item.name] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                                                        </button>
-                                                                    </td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.type}</td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.name}</td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.users.length}</td>
-                                                                </tr>
-                                                                {expandedRows[item.name] && (
-                                                                    <tr>
-                                                                        <td colSpan="4" className="px-6 py-4 bg-purple-50/50">
-                                                                            <div className="flex items-center flex-wrap gap-2">
-                                                                                <h4 className="font-semibold text-gray-700 text-sm">Users:</h4>
-                                                                                {item.users.length > 0 ? (
-                                                                                    item.users.map(user => (
-                                                                                        <span key={user} className="bg-purple-100 text-[#8d77ba] text-xs font-semibold px-2.5 py-1 rounded-full">
-                                                                                            {user}
-                                                                                        </span>
-                                                                                    ))
-                                                                                ) : (
-                                                                                    <span className="text-gray-500 italic text-sm">
-                                                                                        No users found in this {item.type.toLowerCase()}.
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                )}
-                                                            </React.Fragment>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
                                             <Pagination
-                                                currentPage={accessCurrentPage}
-                                                totalPages={totalAccessPages}
-                                                onPageChange={handleAccessPageChange}
-                                                totalItems={accessData.length}
+                                                currentPage={sampleDataCurrentPage}
+                                                totalPages={totalSampleDataPages}
+                                                onPageChange={handleSampleDataPageChange}
+                                                totalItems={sampleData.length}
                                                 itemsPerPage={itemsPerPage}
                                             />
                                         </>
-                                    ) : (
-                                        <p className="text-center text-gray-500 mt-4 p-4">No access information is available for this column.</p>
-                                    )
-                                )}
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'Access' && (
+                                <div>
+                                    {loadingAccessData && <p className="text-center text-gray-500 p-4">Loading access information...</p>}
+                                    {accessDataError && <p className="text-center text-red-600 p-4">Error: {accessDataError}</p>}
+                                    {!loadingAccessData && !accessDataError && (
+                                        accessData.length > 0 ? (
+                                            <>
+                                                <div className="overflow-x-auto mt-2 rounded-lg shadow border">
+                                                    <table className="min-w-full">
+                                                        <thead className="bg-gray-50">
+                                                            <tr>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Count</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="bg-white divide-y divide-gray-200">
+                                                            {currentAccessItems.map((item) => (
+                                                                <React.Fragment key={`${item.type}-${item.name}`}>
+                                                                    <tr className="hover:bg-gray-50">
+                                                                        <td className="px-6 py-4">
+                                                                            <button onClick={() => toggleRow(item.name)} className="text-gray-500 hover:text-[#8d77ba] transition-colors">
+                                                                                {expandedRows[item.name] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                                            </button>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.type}</td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.name}</td>
+                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.users.length}</td>
+                                                                    </tr>
+                                                                    {expandedRows[item.name] && (
+                                                                        <tr>
+                                                                            <td colSpan="4" className="px-6 py-4 bg-purple-50/50">
+                                                                                <div className="flex items-center flex-wrap gap-2">
+                                                                                    <h4 className="font-semibold text-gray-700 text-sm">Users:</h4>
+                                                                                    {item.users.length > 0 ? (
+                                                                                        item.users.map(user => (
+                                                                                            <span key={user} className="bg-purple-100 text-[#8d77ba] text-xs font-semibold px-2.5 py-1 rounded-full">
+                                                                                                {user}
+                                                                                            </span>
+                                                                                        ))
+                                                                                    ) : (
+                                                                                        <span className="text-gray-500 italic text-sm">
+                                                                                            No users found in this {item.type.toLowerCase()}.
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                </React.Fragment>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <Pagination
+                                                    currentPage={accessCurrentPage}
+                                                    totalPages={totalAccessPages}
+                                                    onPageChange={handleAccessPageChange}
+                                                    totalItems={accessData.length}
+                                                    itemsPerPage={itemsPerPage}
+                                                />
+                                            </>
+                                        ) : (
+                                            <p className="text-center text-gray-500 mt-4 p-4">No access information is available for this column.</p>
+                                        )
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="w-full xl:w-80 flex-shrink-0 space-y-6">
+                        <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[#8d77ba]"><Lightbulb /></span>
+                                <h3 className="font-normal text-lg">Snapshot</h3>
                             </div>
-                        )}
-                    </div>
-                </div>
 
-                <div className="w-full xl:w-80 flex-shrink-0 space-y-6">
-                    <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[#8d77ba]"><Lightbulb /></span>
-                            <h3 className="font-normal text-lg">Snapshot</h3>
-                        </div>
+                            <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                                <div className="text-gray-500">Data Type</div>
+                                <div className="font-normal">{columnDetails?.column_metadata?.DATA_TYPE}</div>
+                                <div className="text-gray-500">Data source</div>
+                                <div className="font-normal">{columnDetails.connection_type}</div>
+                            </div>
 
-                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
-                            <div className="text-gray-500"> Data Type</div>
-                            <div className="font-normal">{columnDetails?.column_metadata?.DATA_TYPE}</div>
-                            <div className="text-gray-500">Data source</div>
-                            <div className="font-normal">{columnDetails.connection_type}</div>
-                        </div>
+                            <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                                <div className="text-gray-500">Created on</div>
+                                <div className="font-normal">{new Date(columnDetails.created_at).toLocaleDateString()}</div>
+                                <div className="text-gray-500">Last updated</div>
+                                <div className="font-normal">{new Date(columnDetails.updated_at).toLocaleDateString()}</div>
+                            </div>
 
-                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
-                            <div className="text-gray-500">Created on</div>
-                            <div className="font-normal">{new Date(columnDetails.created_at).toLocaleDateString()}</div>
-                            <div className="text-gray-500">Last updated</div>
-                            <div className="font-normal">{new Date(columnDetails.updated_at).toLocaleDateString()}</div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
-                            <div className="text-gray-500">Owner</div>
-                            <div className="font-normal">{columnDetails.created_by}</div>
-                            <div className="text-gray-500">Steward</div>
-                            <div className="font-normal">{columnDetails?.steward || 'Admin'}</div>
+                            <div className="grid grid-cols-2 gap-y-4 border-b pb-3 pt-7">
+                                <div className="text-gray-500">Owner</div>
+                                <div className="font-normal">{columnDetails.created_by}</div>
+                                <div className="text-gray-500">Steward</div>
+                                <div className="font-normal">{columnDetails?.steward || 'Admin'}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

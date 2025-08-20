@@ -261,7 +261,7 @@ const DataCatalogue = () => {
         if (!connectionSchemaMap.has(key)) {
           connectionSchemaMap.set(key, {
             connectionName: item.connection_name,
-            Database: item.connection_name,
+            Database: item.connection_type,
             Schema: item.table_schema,
             Tables: new Set(),
             Columns: 0, 
