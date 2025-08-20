@@ -18,6 +18,8 @@ const Header = () => {
   const [stewardNotifications, setStewardNotifications] = useState(null);
   const [descriptionNotifications, setDescriptionNotifications] = useState(null);
   const [ownerNotifications, setOwnerNotifications] = useState(null);
+  const [tableLinkageNotifications, setTableLinkageNotifications] = useState(null);
+  const [columnLinkageNotifications, setColumnLinkageNotifications] = useState(null);
 
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -64,6 +66,8 @@ const Header = () => {
       const data = await response.json();
       setStewardNotifications(data.business_catalogue);
       setDescriptionNotifications(data.description);
+      setTableLinkageNotifications(data['table linkage']);
+      setColumnLinkageNotifications(data['column linkage']);
       setLastFetched(Date.now());
     } catch (error) {
       console.error('Error fetching steward notifications:', error);
@@ -219,8 +223,12 @@ const Header = () => {
     fetchStewardNotifications(true);
   };
 
-  const hasNotifications = (isDataSteward && ((stewardNotifications && Object.keys(stewardNotifications).length > 0) || (descriptionNotifications && descriptionNotifications.length > 0))) ||
-    (isDataOwner && ownerNotifications && ownerNotifications.length > 0);
+  const hasNotifications = (isDataSteward && (
+    (stewardNotifications && Object.keys(stewardNotifications).length > 0) ||
+    (descriptionNotifications && descriptionNotifications.length > 0) ||
+    (tableLinkageNotifications && tableLinkageNotifications.length > 0) ||
+    (columnLinkageNotifications && columnLinkageNotifications.length > 0)
+  )) || (isDataOwner && ownerNotifications && ownerNotifications.length > 0);
 
 
   return (
@@ -260,55 +268,53 @@ const Header = () => {
                     {isDataSteward && stewardNotifications && Object.entries(stewardNotifications).map(([domainId, notificationDetails]) => {
                       const domainName = notificationDetails.Domain?.[0]?.name;
                       const message = `New business catalogue entry '${domainName}' requires approval.`;
-
                       return (
-                        <div key={`steward-notification-${domainId}`} className="px-4 py-3 hover:bg-gray-50">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="text-sm text-gray-900">
-                                {message}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => handleViewDetails('business_catalogue', domainId, notificationDetails)}
-                              className="text-[#8e78b7] ml-2 flex-shrink-0"
-                              title="View details"
-                            >
-                              <ChevronRight className='text-[#8e78b7]' size={20} />
-                            </button>
-                          </div>
+                        <div key={`steward-${domainId}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
+                          <p className="text-sm text-gray-900 flex-1">{message}</p>
+                          <button onClick={() => handleViewDetails('business_catalogue', domainId, notificationDetails)} className="text-[#8e78b7] ml-2 flex-shrink-0" title="View details">
+                            <ChevronRight className='text-[#8e78b7]' size={20} />
+                          </button>
                         </div>
                       );
                     })}
                     {isDataSteward && descriptionNotifications && descriptionNotifications.map((desc, index) => (
-                      <div key={`desc-notification-${index}`} className="px-4 py-3 hover:bg-gray-50">
-                        <div className="flex justify-between items-center">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900 truncate" title={desc}>
-                              {desc}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => handleViewDetails('description', index, desc)}
-                            className="text-[#8e78b7] ml-2 flex-shrink-0"
-                            title="View details"
-                          >
-                            <ChevronRight className='text-[#8e78b7]' size={20} />
-                          </button>
-                        </div>
+                      <div key={`desc-${index}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
+                        <p className="text-sm text-gray-900 truncate flex-1" title={desc}>{desc}</p>
+                        <button onClick={() => handleViewDetails('description', index, desc)} className="text-[#8e78b7] ml-2 flex-shrink-0" title="View details">
+                          <ChevronRight className='text-[#8e78b7]' size={20} />
+                        </button>
                       </div>
                     ))}
 
+                    {isDataSteward && tableLinkageNotifications && tableLinkageNotifications.map((n, index) => {
+                      const message = `Catalogue linkage to ${n.connection}.${n.schema}.${n.tables} requires approval.`;
+                      return (
+                        <div key={`table-link-${index}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
+                          <p className="text-sm text-gray-900 flex-1">{message}</p>
+                          <button onClick={() => handleViewDetails('table_linkage', index, n)} className="text-[#8e78b7] ml-2 flex-shrink-0" title="View details">
+                            <ChevronRight className='text-[#8e78b7]' size={20} />
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {isDataSteward && columnLinkageNotifications && columnLinkageNotifications.map((n, index) => {
+                      const message = `Catalogue linkage to ${n.connection}.${n.schema}.${n.table}.${n.columns} requires approval.`;
+                      return (
+                        <div key={`column-link-${index}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
+                          <p className="text-sm text-gray-900 flex-1">{message}</p>
+                          <button onClick={() => handleViewDetails('column_linkage', index, n)} className="text-[#8e78b7] ml-2 flex-shrink-0" title="View details">
+                            <ChevronRight className='text-[#8e78b7]' size={20} />
+                          </button>
+                        </div>
+                      );
+                    })}
 
                     {isDataOwner && ownerNotifications && ownerNotifications.map((notification) => (
                       <div key={notification.domain_id} className="px-4 py-3 hover:bg-gray-50 flex items-start justify-between">
                         <div className="flex items-start flex-grow mr-2">
                           <div className="flex-shrink-0 mt-1">
-                            {notification.status_approval === 'Approved' ? (
-                              <CheckCircle className="h-5 w-5 text-green-500" />
-                            ) : (
-                              <XCircle className="h-5 w-5 text-red-500" />
-                            )}
+                            {notification.status_approval === 'Approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
                           </div>
                           <div className="ml-3">
                             <p className="text-sm text-gray-900">
@@ -320,14 +326,7 @@ const Header = () => {
                             </p>
                           </div>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMarkAsViewed(notification.domain_id);
-                          }}
-                          className="p-1 text-gray-400 hover:text-gray-700 rounded-full flex-shrink-0"
-                          aria-label="Dismiss notification"
-                        >
+                        <button onClick={(e) => { e.stopPropagation(); handleMarkAsViewed(notification.domain_id); }} className="p-1 text-gray-400 hover:text-gray-700 rounded-full flex-shrink-0" aria-label="Dismiss notification">
                           <X size={16} />
                         </button>
                       </div>
@@ -339,14 +338,9 @@ const Header = () => {
           </div>
 
           <div className="relative" ref={dropdownRef}>
-            <button
-              className="w-10 h-10 bg-gradient-to-br from-[#8e78b7] to-purple-400 rounded-full flex items-center justify-center text-white hover:shadow-md transition-all duration-200 border-2 border-white"
-              onClick={toggleProfile}
-              aria-label="Open user menu"
-            >
+            <button className="w-10 h-10 bg-gradient-to-br from-[#8e78b7] to-purple-400 rounded-full flex items-center justify-center text-white hover:shadow-md transition-all duration-200 border-2 border-white" onClick={toggleProfile} aria-label="Open user menu">
               {isLoading ? '...' : getUserInitials()}
             </button>
-
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-20 overflow-hidden">
                 {isLoading ? (
