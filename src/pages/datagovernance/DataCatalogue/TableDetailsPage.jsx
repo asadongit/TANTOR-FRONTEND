@@ -331,7 +331,8 @@ function TableDetailsPage() {
                     connection_name: tableData.connection_name,
                     table_schema: tableData.schema,
                     table_name: tableData.name,
-                    table_description: trimmedDescription
+                    table_description: trimmedDescription,
+                    roles: decodedToken?.resource_access?.darch?.roles || []
                 })
             });
             if (!response.ok) throw new Error("Failed to save description.");
@@ -376,7 +377,8 @@ function TableDetailsPage() {
                     table_schema: tableData.schema,
                     table_name: tableData.name,
                     column_name: editingColumnName,
-                    column_description: trimmedDescription
+                    column_description: trimmedDescription,
+                    roles: decodedToken?.resource_access?.darch?.roles || []
                 })
             });
             if (!response.ok) {

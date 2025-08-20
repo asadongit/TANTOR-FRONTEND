@@ -38,6 +38,7 @@ const DatabaseViewScreen = () => {
   const [isSavingSchemaDesc, setIsSavingSchemaDesc] = useState(false);
 
   const [activeTabBusiness, setActiveTabBusiness] = useState("composite-view");
+  const [savingSchemaName, setSavingSchemaName] = useState(null);
 
   const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(
     (role) => ["data steward", "data owner"].includes(role.toLowerCase())
@@ -49,7 +50,7 @@ const DatabaseViewScreen = () => {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
       const allConnectionsData = await fetchConnectionDetails(policyIds, token);
-      console.log("all connections data @@@",allConnectionsData)
+      console.log("all connections data @@@", allConnectionsData)
 
       const currentConnectionData = allConnectionsData.find(
         item => item.connection_name === connectionName
@@ -80,7 +81,7 @@ const DatabaseViewScreen = () => {
           if (!existingSchema) {
             connectionSchemas[item.connection_name].schemas.push({
               name: item.table_schema,
-              description: item.table_schema_description || 'No description provided.'
+              description: item.table_schema_description || 'Schema description'
             });
           }
         }
@@ -145,7 +146,7 @@ const DatabaseViewScreen = () => {
           if (!existingSchema) {
             connectionSchemas[item.connection_name].schemas.push({
               name: item.table_schema,
-              description: item.table_schema_description || 'No description provided.'
+              description: item.table_schema_description || 'Schema description'
             });
           }
         }
@@ -177,6 +178,7 @@ const DatabaseViewScreen = () => {
     }
     const trimmedDescription = summaryText.trim();
     setIsSaving(true);
+    setIsEditing(false);
     try {
       const response = await fetch(
         `${hostnameV1}/data_catalogue/edit_connection_description`,
@@ -190,24 +192,27 @@ const DatabaseViewScreen = () => {
           body: JSON.stringify({
             connection_name: connection.connectionName,
             description: trimmedDescription,
+            roles: decodedToken?.resource_access?.darch?.roles || []
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to save. Status: ${response.status}`);
+        const errorData = await response.json();
+        await refetchConnectionData();
+        throw new Error(
+          errorData.detail || `Failed to save. Status: ${response.status}`
+        );
       }
 
-      await response.json();
-      toast.success("Description updated successfully!");
-      setIsEditing(false);
+      const successData = await response.json();
+      toast.success(successData.message || "Description updated successfully!");
 
-      // Refetch connection data to get updated description
       await refetchConnectionData();
 
     } catch (error) {
       console.error("Error updating connection description:", error);
-      toast.error("Failed to update description.");
+      toast.error(error.message);
     } finally {
       setIsSaving(false);
     }
@@ -236,9 +241,12 @@ const DatabaseViewScreen = () => {
       return;
     }
 
-    setIsSavingSchemaDesc(true);
+    const schemaToSave = editingSchemaName;
     const trimmedDescription = editedSchemaDescription.trim();
 
+    setIsSavingSchemaDesc(true);
+    setSavingSchemaName(schemaToSave);
+    handleSchemaEditCancel();
     try {
       const response = await fetch(`${hostnameV1}/data_catalogue/edit_schema_description`, {
         method: 'PATCH',
@@ -249,8 +257,9 @@ const DatabaseViewScreen = () => {
         },
         body: JSON.stringify({
           connection_name: connectionName,
-          table_schema: editingSchemaName,
+          table_schema: schemaToSave,
           schema_description: trimmedDescription,
+          roles: decodedToken?.resource_access?.darch?.roles || []
         })
       });
 
@@ -260,16 +269,15 @@ const DatabaseViewScreen = () => {
       }
 
       toast.success("Schema description updated!");
-      handleSchemaEditCancel();
-
-      // Refetch schema data to get updated descriptions
       await refetchSchemaData();
 
     } catch (error) {
       console.error("Error saving schema description:", error);
       toast.error(error.message || "An error occurred.");
+      await refetchSchemaData();
     } finally {
       setIsSavingSchemaDesc(false);
+      setSavingSchemaName(null);
     }
   };
 
@@ -415,18 +423,24 @@ const DatabaseViewScreen = () => {
                     </h3>
                   </div>
                   {!isEditing ? (
-                    <>
-                      <p className="text-gray-600 pl-7 min-h-[2rem]">{summaryText}</p>
-                      {isUserAuthorized && (
-                        <button
-                          className="absolute top-3 right-3 pt-2 hover:text-gray-600 text-[#8d77ba]"
-                          onClick={() => setIsEditing(true)}
-                          title="Edit Connection Description"
-                        >
-                          <Pencil size={18} />
-                        </button>
-                      )}
-                    </>
+                    isSaving ? (
+                      <div className="text-gray-500 pl-7 min-h-[2rem]">
+                        Saving description...
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-gray-600 pl-7 min-h-[2rem]">{summaryText}</p>
+                        {isUserAuthorized && (
+                          <button
+                            className="absolute top-3 right-3 pt-2 hover:text-gray-600 text-[#8d77ba]"
+                            onClick={() => setIsEditing(true)}
+                            title="Edit Connection Description"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                        )}
+                      </>
+                    )
                   ) : (
                     <div className="flex flex-col gap-2">
                       <textarea
@@ -482,10 +496,13 @@ const DatabaseViewScreen = () => {
                                     onChange={(e) => setEditedSchemaDescription(e.target.value)}
                                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-purple-400"
                                     autoFocus
+                                    disabled={isSavingSchemaDesc}
                                   />
+                                ) : savingSchemaName === schemaItem.name ? (
+                                  <span className="text-gray-500 italic">Saving...</span>
                                 ) : (
                                   <span className="truncate">
-                                    {schemaItem.description || 'No description provided.'}
+                                    {schemaItem.description || 'Schema Description.'}
                                   </span>
                                 )}
                               </td>
@@ -503,7 +520,8 @@ const DatabaseViewScreen = () => {
                                       </button>
                                       <button
                                         onClick={handleSchemaEditCancel}
-                                        className="text-red-500 hover:text-red-700"
+                                        disabled={isSavingSchemaDesc}
+                                        className="text-red-500 hover:text-red-700 disabled:text-gray-300"
                                         title="Cancel"
                                       >
                                         <X size={20} />
@@ -512,8 +530,9 @@ const DatabaseViewScreen = () => {
                                   ) : (
                                     <button
                                       onClick={() => handleSchemaEditClick(schemaItem)}
-                                      className="text-gray-400 hover:text-gray-600"
+                                      className="text-[#8d77ba]"
                                       title="Edit Schema Description"
+                                      disabled={savingSchemaName !== null}
                                     >
                                       <Pencil size={16} />
                                     </button>

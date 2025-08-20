@@ -3,7 +3,7 @@ import { BellIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import {
   LogOut, Settings, User, HelpCircle, Shield, CreditCard, Crown, Building,
-  ChevronRight, RefreshCcw, CheckCircle, XCircle, X // 1. Imported the 'X' icon
+  ChevronRight, RefreshCcw, CheckCircle, XCircle, X
 } from 'lucide-react';
 import Logo from '../assets/Tantor.svg';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +16,7 @@ const Header = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const [stewardNotifications, setStewardNotifications] = useState(null);
+  const [descriptionNotifications, setDescriptionNotifications] = useState(null);
   const [ownerNotifications, setOwnerNotifications] = useState(null);
 
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -62,6 +63,7 @@ const Header = () => {
       });
       const data = await response.json();
       setStewardNotifications(data.business_catalogue);
+      setDescriptionNotifications(data.description);
       setLastFetched(Date.now());
     } catch (error) {
       console.error('Error fetching steward notifications:', error);
@@ -201,8 +203,8 @@ const Header = () => {
 
   const userPlan = user?.plan || 'Pro';
 
-  const handleViewDetails = (domainId, notificationDetails) => {
-    setSelectedNotification({ id: domainId, details: notificationDetails });
+  const handleViewDetails = (type, id, details) => {
+    setSelectedNotification({ type, id, details });
     setIsDetailModalOpen(true);
     setIsNotificationsOpen(false);
   };
@@ -217,7 +219,7 @@ const Header = () => {
     fetchStewardNotifications(true);
   };
 
-  const hasNotifications = (isDataSteward && stewardNotifications && Object.keys(stewardNotifications).length > 0) ||
+  const hasNotifications = (isDataSteward && ((stewardNotifications && Object.keys(stewardNotifications).length > 0) || (descriptionNotifications && descriptionNotifications.length > 0))) ||
     (isDataOwner && ownerNotifications && ownerNotifications.length > 0);
 
 
@@ -257,11 +259,6 @@ const Header = () => {
                   <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
                     {isDataSteward && stewardNotifications && Object.entries(stewardNotifications).map(([domainId, notificationDetails]) => {
                       const domainName = notificationDetails.Domain?.[0]?.name;
-                      const totalItems = Object.values(notificationDetails).reduce((count, items) => count + (Array.isArray(items) ? items.length : 0), 0);
-                      // const message = domainName
-                      //   ? `Request for '${domainName}' has ${totalItems} item(s) awaiting approval.`
-                      //   : `${totalItems} new business catalogue item(s) require approval.`;
-
                       const message = `New business catalogue entry '${domainName}' requires approval.`;
 
                       return (
@@ -273,7 +270,7 @@ const Header = () => {
                               </p>
                             </div>
                             <button
-                              onClick={() => handleViewDetails(domainId, notificationDetails)}
+                              onClick={() => handleViewDetails('business_catalogue', domainId, notificationDetails)}
                               className="text-[#8e78b7] ml-2 flex-shrink-0"
                               title="View details"
                             >
@@ -283,6 +280,25 @@ const Header = () => {
                         </div>
                       );
                     })}
+                    {isDataSteward && descriptionNotifications && descriptionNotifications.map((desc, index) => (
+                      <div key={`desc-notification-${index}`} className="px-4 py-3 hover:bg-gray-50">
+                        <div className="flex justify-between items-center">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-900 truncate" title={desc}>
+                              {desc}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleViewDetails('description', index, desc)}
+                            className="text-[#8e78b7] ml-2 flex-shrink-0"
+                            title="View details"
+                          >
+                            <ChevronRight className='text-[#8e78b7]' size={20} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
 
                     {isDataOwner && ownerNotifications && ownerNotifications.map((notification) => (
                       <div key={notification.domain_id} className="px-4 py-3 hover:bg-gray-50 flex items-start justify-between">

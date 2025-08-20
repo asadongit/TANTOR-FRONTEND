@@ -405,6 +405,7 @@ function ColumnDetailsPage() {
                 table_name: columnDetails.table_name,
                 column_name: columnDetails.column_name,
                 column_description: trimmedDescription,
+                roles: decodedToken?.resource_access?.darch?.roles || []
             };
 
             const response = await fetch(`${window._env_?.VITE_FAST_API}/data_catalogue/edit_column_description`, {
