@@ -75,47 +75,92 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
         }
     }, [isOpen, linkageData, token]);
 
-
     useEffect(() => {
         setActiveNestedTabIndex(0);
     }, [activeTab]);
 
     if (!isOpen || !details) return null;
 
-    const constructPayload = (status, reason = null) => {
-        const idMap = {
-            'Domain': 'domain_id', 'Category': 'category_id', 'Sub-Category': 'sub_category_id',
-            'Term': 'term_id', 'Tag': 'tag_id', 'Sub-Tag': 'sub_tag_id'
-        };
-        const approvalData = { status_approval: status };
-        if (reason) approvalData.reason = reason;
+    const constructFinalPayload = (status, reason = null) => {
+        let payload = {};
+        const statusInPayload = status.toLowerCase();
 
-        Object.keys(businessCatalogueData).forEach(key => {
-            const payloadKey = idMap[key];
-            const items = businessCatalogueData[key];
-            if (payloadKey && Array.isArray(items) && items.length > 0) {
-                approvalData[payloadKey] = items.map(item => item.id).filter(id => id != null);
+        switch (type) {
+            case 'business_catalogue': {
+                const idMap = {
+                    'Domain': 'domain_id', 'Category': 'category_id', 'Sub-Category': 'sub_category_id',
+                    'Term': 'term_id', 'Tag': 'tag_id', 'Sub-Tag': 'sub_tag_id'
+                };
+                const approvalData = { status_approval: statusInPayload };
+                if (reason) approvalData.reason = reason;
+
+                Object.keys(businessCatalogueData).forEach(key => {
+                    const payloadKey = idMap[key];
+                    const items = businessCatalogueData[key];
+                    if (payloadKey && Array.isArray(items) && items.length > 0) {
+                        approvalData[payloadKey] = items.map(item => item.id).filter(id => id != null);
+                    }
+                });
+                payload.business_catalogue = [approvalData];
+                break;
             }
-        });
-        return { approval: [approvalData] };
+
+            case 'description': {
+                const descData = { desc: descriptionData, status_approval: statusInPayload };
+                if (reason) descData.reason = reason;
+                payload.descriptions = [descData];
+                break;
+            }
+
+            case 'table_linkage':
+            case 'column_linkage': {
+                const dataCatObject = {
+                    connection: linkageData.connection,
+                    schema: linkageData.schema,
+                    table: linkageData.table,
+                    status_approval: statusInPayload,
+                    domain_id: linkageData.domain_id?.flat() || [],
+                    category_id: linkageData.category_id?.flat() || [],
+                    sub_category_id: linkageData.sub_category_id?.flat() || [],
+                    term_id: linkageData.term_id?.flat() || [],
+                    tag_id: linkageData.tag_id?.flat() || [],
+                    sub_tag_id: linkageData.sub_tag_id?.flat() || [],
+                };
+
+                if (type === 'column_linkage') {
+                    dataCatObject.column = linkageData.columns;
+                }
+
+                if (reason) dataCatObject.reason = reason;
+                payload.data_catalogue = [dataCatObject];
+                break;
+            }
+
+            default:
+                throw new Error("Invalid notification type for approval action.");
+        }
+
+        return payload;
     };
 
-    const handleBusinessCatalogueAction = async (status, reason = null) => {
+    const handleAction = async (status, reason = null) => {
         setIsProcessing(true);
         setError(null);
-        const payload = constructPayload(status, reason);
         try {
+            const payload = constructFinalPayload(status, reason);
             const response = await fetch(`${window._env_?.VITE_FAST_API}/notifications/approved`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload),
             });
+
             if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                throw new Error(errorData?.message || `API Error: ${response.statusText}`);
+                const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
+                throw new Error(errorData?.message || `Failed to perform ${status} action.`);
             }
+
             const data = await response.json();
-            toast.success(data.message || `${status} action successful.`);
+            toast.success(data.message || `Request has been ${status.toLowerCase()}.`);
             onActionSuccess();
             onClose();
         } catch (err) {
@@ -126,39 +171,9 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
         }
     };
 
-    const handleDescriptionAction = (status) => {
-        if (status === 'Rejected' && !rejectionReason.trim()) {
-            setError('A reason is required for rejection.');
-            return;
-        }
-        setIsProcessing(true);
-        console.log(`Simulating '${status}' action for description:`, { description: descriptionData, reason: rejectionReason });
-        setTimeout(() => {
-            toast.success(`Request has been ${status.toLowerCase()}.`);
-            setIsProcessing(false);
-            onClose();
-        }, 500);
-    };
-
-    // Placeholder action for linkage notifications
-    const handleLinkageAction = (status) => {
-        if (status === 'Rejected' && !rejectionReason.trim()) {
-            setError('A reason is required for rejection.');
-            return;
-        }
-        setIsProcessing(true);
-        console.log(`Simulating '${status}' action for ${type}:`, { details: linkageData, reason: rejectionReason });
-        setTimeout(() => {
-            toast.success(`Request has been ${status.toLowerCase()}.`);
-            setIsProcessing(false);
-            onClose();
-        }, 500);
-    };
 
     const handleApprove = () => {
-        if (type === 'business_catalogue') handleBusinessCatalogueAction('Approved');
-        else if (type === 'description') handleDescriptionAction('Approved');
-        else if (type === 'table_linkage' || type === 'column_linkage') handleLinkageAction('Approved');
+        handleAction('Approved');
     };
 
     const handleConfirmReject = () => {
@@ -166,9 +181,7 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
             setError('A reason is required for rejection.');
             return;
         }
-        if (type === 'business_catalogue') handleBusinessCatalogueAction('Rejected', rejectionReason);
-        else if (type === 'description') handleDescriptionAction('Rejected');
-        else if (type === 'table_linkage' || type === 'column_linkage') handleLinkageAction('Rejected');
+        handleAction('Rejected', rejectionReason);
     };
 
     const renderDetailItem = (item, itemType) => (
@@ -216,9 +229,6 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
     const renderLinkageContent = () => {
         if (isFetchingDetails) {
             return <div className="py-12 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8e78b7]"></div></div>;
-        }
-        if (error && !isRejecting) {
-            return <div className="py-12 text-center text-red-600"><AlertTriangle className="mx-auto h-10 w-10" /><p className="mt-2">{error}</p></div>;
         }
         if (!linkageDetails) {
             return <div className="py-12 text-center text-gray-500"><AlertTriangle className="mx-auto h-10 w-10 text-gray-400" /><p className="mt-2">No details available.</p></div>;
