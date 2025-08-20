@@ -11,14 +11,12 @@ const Toggle = ({ enabled, onToggle }) => {
   return (
     <div
       onClick={onToggle}
-      className={`relative inline-flex h-5 w-10 cursor-pointer rounded-full transition-colors ease-in-out duration-200 ${
-        enabled ? "bg-[#1a9962]" : "bg-gray-200"
-      }`}
+      className={`relative inline-flex h-5 w-10 cursor-pointer rounded-full transition-colors ease-in-out duration-200 ${enabled ? "bg-[#1a9962]" : "bg-gray-200"
+        }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ease-in-out duration-200 m-0.5 ${
-          enabled ? "translate-x-5" : "translate-x-0"
-        }`}
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ease-in-out duration-200 m-0.5 ${enabled ? "translate-x-5" : "translate-x-0"
+          }`}
       />
     </div>
   );
@@ -28,7 +26,6 @@ const DataCatalogue = () => {
   const [cards, setCards] = useState([
     {
       title: "Database",
-      enabled: true,
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
@@ -37,7 +34,6 @@ const DataCatalogue = () => {
     },
     {
       title: "Schema",
-      enabled: true,
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
@@ -46,7 +42,6 @@ const DataCatalogue = () => {
     },
     {
       title: "Tables",
-      enabled: true,
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
@@ -55,7 +50,6 @@ const DataCatalogue = () => {
     },
     {
       title: "Columns",
-      enabled: true,
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
@@ -66,15 +60,8 @@ const DataCatalogue = () => {
 
   const navigate = useNavigate();
 
-  const trendData = [
-    { day: "1 day", Database: 20, Schema: 9, Tables: 13, Columns: 11 },
-    { day: "2 day", Database: 25, Schema: 9, Tables: 17, Columns: 11 },
-    { day: "3 day", Database: 26, Schema: 17, Tables: 9, Columns: 8 },
-    { day: "4 day", Database: 27, Schema: 17, Tables: 15, Columns: 18 },
-    { day: "5 day", Database: 25, Schema: 14, Tables: 13, Columns: 23 },
-    { day: "6 day", Database: 23, Schema: 20, Tables: 15, Columns: 16 },
-    { day: "7 day", Database: 21, Schema: 27, Tables: 16, Columns: 15 },
-  ];
+  const [trendData, setTrendData] = useState([]);
+  const [trendDataKeys, setTrendDataKeys] = useState(['Database', 'Schema', 'Tables', 'Columns']);
 
   const { token } = useAuth();
   const [userPolicies, setUserPolicies] = useState([]);
@@ -150,6 +137,45 @@ const DataCatalogue = () => {
     }
   };
 
+  const fetchTrendData = async (policyIds) => {
+    if (!policyIds || policyIds.length === 0) {
+      setTrendData([]);
+      return;
+    }
+    try {
+      const apiUrl = `${window._env_?.VITE_FAST_API}/data_catalogue/catalogue_trend`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ policy_id: policyIds })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const rawData = await response.json();
+
+      const formattedData = rawData.map(item => ({
+        day: item.date,
+        Database: parseInt(item.connection_count, 10) || 0,
+        Schema: parseInt(item.schema_count, 10) || 0,
+        Tables: parseInt(item.table_count, 10) || 0,
+        Columns: parseInt(item.column_count, 10) || 0,
+      }));
+
+      setTrendData(formattedData.reverse());
+
+    } catch (error) {
+      console.error('Error fetching catalogue trend data:', error);
+      setTrendData([]);
+    }
+  };
+
+
   useEffect(() => {
     let isMounted = true;
 
@@ -171,32 +197,30 @@ const DataCatalogue = () => {
         const policyIds = result.matched_policy_ids || [];
         setUserPolicies(policyIds);
 
+        await Promise.all([
+          fetchRecentAccess(policyIds),
+          fetchTrendData(policyIds)
+        ]);
+
         const unfetchedPolicyIds = policyIds.filter(
           (id) => !fetchedPoliciesRef.current.has(id)
         );
 
-        if (unfetchedPolicyIds.length === 0) {
-          console.log("All policies already fetched, skipping catalog calls");
-          setIsLoading(false);
-          return;
+        if (unfetchedPolicyIds.length > 0) {
+            const connectionDetails = await fetchConnectionDetails(unfetchedPolicyIds);
+            if (isMounted && connectionDetails) {
+                setCatalogData((prevCatalogs) => {
+                    const newCatalogs = [...prevCatalogs, ...connectionDetails];
+                    updateCatalogCounts(newCatalogs);
+                    updateTableData(newCatalogs);
+                    return newCatalogs;
+                });
+            }
+        } else {
+            updateCatalogCounts(catalogData);
+            updateTableData(catalogData);
         }
 
-        console.log(`Fetching connection details for ${unfetchedPolicyIds.length} policies`);
-        const connectionDetails = await fetchConnectionDetails(unfetchedPolicyIds);
-
-        if (!isMounted) return;
-
-        if (connectionDetails) {
-          setCatalogData((prevCatalogs) => {
-            const newCatalogs = [...prevCatalogs, ...connectionDetails];
-            updateCatalogCounts(newCatalogs);
-            updateTableData(newCatalogs);
-            return newCatalogs;
-          });
-        }
-
-        // Fetch recent access data
-        await fetchRecentAccess(policyIds);
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -240,14 +264,14 @@ const DataCatalogue = () => {
             Database: item.connection_name,
             Schema: item.table_schema,
             Tables: new Set(),
-            Columns: [],
+            Columns: 0, 
             CreatedDate: item.created_at,
             updatedDate: item.updated_at,
           });
         }
         const conn = connectionSchemaMap.get(key);
         if (item.table_name) conn.Tables.add(item.table_name);
-        if (item.column_name) conn.Columns.push(item.column_name);
+        if (item.column_name) conn.Columns += 1; 
       });
 
       const newTableData = Array.from(connectionSchemaMap.entries()).map(([key, data], index) => ({
@@ -256,7 +280,7 @@ const DataCatalogue = () => {
         Database: data.Database,
         Schema: data.Schema,
         Tables: data.Tables.size.toString(),
-        Columns: data.Columns.length.toString(),
+        Columns: data.Columns.toString(),
         CreatedDate: new Date(data.CreatedDate).toLocaleDateString(),
         updatedDate: new Date(data.updatedDate).toLocaleDateString(),
       }));
@@ -271,8 +295,16 @@ const DataCatalogue = () => {
     };
   }, [token]);
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p className="text-lg text-gray-600">Loading ...</p>
+      </div>
+    );
+  }
+
   return (
-    <div>
+    <div className="p-4">
       <Breadcrumb />
       <h1 className="text-2xl font-semibold">Data Catalogue</h1>
       <div className="mt-4">
@@ -303,19 +335,6 @@ const DataCatalogue = () => {
                   >
                     See details
                   </a>
-                  <div className="flex items-center gap-2">
-                    <Toggle
-                      enabled={card.enabled}
-                      onToggle={() => toggleRole(index)}
-                    />
-                    <span
-                      className={`text-sm ${
-                        card.enabled ? "text-[#1a9962]" : "text-gray-400"
-                      }`}
-                    >
-                      {card.enabled ? "Enabled" : "Disabled"}
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -323,8 +342,10 @@ const DataCatalogue = () => {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6 mt-10">
-        <CatalogueChart data={trendData} />
+      <div className="grid lg:grid-cols-3 gap-6 mt-10">
+        <div className="lg:col-span-2">
+         <CatalogueChart data={trendData} dataKeys={trendDataKeys} isDatabase={false} />
+        </div>
 
         <div className="bg-white p-6 rounded-lg">
           <div className="flex items-center justify-between mb-6">
@@ -369,11 +390,7 @@ const DataCatalogue = () => {
             </tr>
           </thead>
           <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan="8" className="p-4 text-center">Loading data...</td>
-              </tr>
-            ) : tableData.length > 0 ? (
+            {tableData.length > 0 ? (
               tableData.map((item, index) => (
                 <tr key={index} className="border-b">
                   <td className="p-4">{item.id}</td>

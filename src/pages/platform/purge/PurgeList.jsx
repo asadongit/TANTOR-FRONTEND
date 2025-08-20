@@ -73,12 +73,18 @@ const {token, hostnameV1}= useAuth()
     {
       label: "Edit",
       icon: <Pencil size={16} />,
-      onClick: (row) => console.log("Edit clicked for", row),
+      onClick: (row) => {
+        // Navigate to edit/canvas page and pass ui_json for node pre-population
+        navigate("/PurgeCanvas", { state: { ui_json: row.ui_json, purgeId: row.id } });
+      },
     },
     {
       label: "Delete",
       icon: <Trash2 size={16} />,
-      onClick: (row) => console.log("Delete clicked for", row),
+      onClick: (row) => {
+        setPurgeToDelete(row);
+        setShowDeleteModal(true);
+      },
     },
     {
       label: "Run",
@@ -88,7 +94,6 @@ const {token, hostnameV1}= useAuth()
           const response = await axios.get(`${hostnameV1}/purges/manualtrigger/${row.purge_name}`, {
             headers: {Authorization: `Bearer ${token}`},
           });
-          // console.log("Purge Run Response:", response.data);
           toast.success("Purge triggered successfully!");
         } catch (error) {
           console.error("Failed to trigger Purge:", error);
@@ -116,6 +121,26 @@ const {token, hostnameV1}= useAuth()
     { label: "Action", sortable: false },
 
     ]
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+const [purgeToDelete, setPurgeToDelete] = useState(null);
+
+const handleDeletePurge = async () => {
+  if (!purgeToDelete) return;
+  try {
+    await axios.delete(`${hostnameV1}/purges/${purgeToDelete.purge_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    toast.success("Purge deleted successfully!");
+    setShowDeleteModal(false);
+    setPurgeToDelete(null);
+    refetchPurges();
+  } catch (error) {
+    toast.error("Failed to delete Purge.");
+    setShowDeleteModal(false);
+    setPurgeToDelete(null);
+  }
+};
+
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -138,6 +163,28 @@ const {token, hostnameV1}= useAuth()
         isLoading={isPurgeLoading}
         isError={purgeError}
         refetch={refetchPurges}/>
+        {showDeleteModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+      <h2 className="text-lg font-semibold mb-4">Delete Purge</h2>
+      <p className="mb-6">Are you sure you want to delete this purge?</p>
+      <div className="flex justify-end gap-4">
+        <button
+          className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+          onClick={() => setShowDeleteModal(false)}
+        >
+          Cancel
+        </button>
+        <button
+          className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+          onClick={handleDeletePurge}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };

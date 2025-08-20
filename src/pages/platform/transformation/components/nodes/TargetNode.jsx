@@ -63,6 +63,10 @@ export const TargetNode = ({ id, data }) => {
   const [preProcedureSearch, setPreProcedureSearch] = useState("");
   const [postProcedureSearch, setPostProcedureSearch] = useState("");
 
+  const [enableCountLogging, setEnableCountLogging] = useState(false);
+  // Add a ref to track restoration
+  const hasRestoredEnableCountLogging = useRef(false);
+
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
   const tableDropdownRef = useRef(null);
@@ -876,6 +880,13 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
+    // FIXED: Initialize enableCountLogging from data during restoration
+    if (typeof data.enableCountLogging === 'boolean' && !hasRestoredEnableCountLogging.current) {
+      setEnableCountLogging(data.enableCountLogging);
+      hasRestoredEnableCountLogging.current = true;
+      hasUpdated = true;
+    }
+
     if (data.targetMapping && Object.keys(data.targetMapping).length > 0) {
       setTargetMapping(data.targetMapping);
 
@@ -942,7 +953,8 @@ export const TargetNode = ({ id, data }) => {
     data.objectType,
     data.loadType,
     data.loadStrategy,
-    data.selectedSourceId
+    data.selectedSourceId,
+    data.enableCountLogging // Keep this dependency for proper restoration
   ]);
 
   useEffect(() => {
@@ -1053,7 +1065,19 @@ export const TargetNode = ({ id, data }) => {
     }
   }, [data.preProcedures, data.postProcedures, dispatch, ACTION_TYPES, id, alias]);
 
+  // FIX: Only update enableCountLogging if value is different and not restoring
   useEffect(() => {
+    // Expose the setter function to allow external updates
+    data.setEnableCountLogging = setEnableCountLogging;
+
+    if (
+      typeof data.enableCountLogging === 'boolean' &&
+      enableCountLogging !== data.enableCountLogging &&
+      !data._isRestoring
+    ) {
+      setEnableCountLogging(data.enableCountLogging);
+    }
+
     const enrichedPreProcedures = selectedPreProcedures
       .filter(p => p.procedure)
       .map(p => {
@@ -1126,11 +1150,12 @@ export const TargetNode = ({ id, data }) => {
       objectType: selectedObjectType,
       preProcedures: enrichedPreProcedures,
       postProcedures: enrichedPostProcedures,
+      enableCountLogging: enableCountLogging,
     });
   }, [
     selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
     tables, alias, columnMapping, targetMapping, selectedSourceForMapping,
-    selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings
+    selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging
   ]);
 
   const connectionDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";
@@ -1458,6 +1483,50 @@ export const TargetNode = ({ id, data }) => {
                           <option value="overwrite">Overwrite</option>
                         </select>
                       </div>
+                    </div>
+
+                    {/* Add Count Logging checkbox after Load Strategy - FIXED */}
+                    <div className="mt-2">
+                      <label className="flex items-center text-xs font-semibold text-black">
+                        <input
+                          type="checkbox"
+                          className="mr-1.5 h-3.5 w-3.5"
+                          checked={enableCountLogging}
+                          onChange={(e) => {
+                            const newValue = e.target.checked;
+                            setEnableCountLogging(newValue);
+
+                            // FIXED: Immediately update the data through onDataChange with the actual node reference
+                            if (data.onDataChange) {
+                              data.onDataChange({ enableCountLogging: newValue });
+                            }
+
+                            // FIXED: Update the actual node data in window.allNodes if available
+                            if (window.allNodes) {
+                              const nodeIndex = window.allNodes.findIndex(n => n.id === id);
+                              if (nodeIndex !== -1) {
+                                window.allNodes[nodeIndex].data.enableCountLogging = newValue;
+                              }
+                            }
+
+                            // Update context immediately for JSON generation
+                            dispatch({
+                              type: ACTION_TYPES.UPDATE_TARGET,
+                              payload: {
+                                id: id,
+                                data: { enableCountLogging: newValue }
+                              }
+                            });
+
+                            // Trigger sidebar update
+                            window.allNodesLastUpdate = Date.now();
+                            if (window.triggerSidebarUpdate) {
+                              window.triggerSidebarUpdate();
+                            }
+                          }}
+                        />
+                        <span>Enable Count Logging</span>
+                      </label>
                     </div>
                   </>
                 )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -6,6 +6,7 @@ import axios from 'axios';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from '../../../context/AuthContext';
 import DataTable from '../../../components/DataTable';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -173,13 +174,11 @@ function Transformation() {
 
 
   const MovementChart = () => {
-    const chartData = dashboardData.movementgraph || [];
+    const [currentPage, setCurrentPage] = useState(0);
 
-    const colors = {
-      total: '#ff5555',
-      success: '#55aa55',
-      failed: '#5555aa'
-    };
+    const chartData = (dashboardData.movementgraph || [])
+      .slice()
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     if (!chartData.length) {
       return (
@@ -195,93 +194,103 @@ function Transformation() {
       );
     }
 
+    const daysPerPage = 5;
+    const totalPages = Math.ceil(chartData.length / daysPerPage);
+
+    const paginatedData = chartData
+      .slice()
+      .reverse()
+      .slice(currentPage * daysPerPage, (currentPage + 1) * daysPerPage)
+      .reverse();
+
+    const formattedData = paginatedData.map(item => ({
+      ...item,
+      shortDate: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }));
+
+    const getDateRange = () => {
+      if (paginatedData.length === 0) return "No data";
+
+      const firstDate = new Date(paginatedData[0].date).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric'
+      });
+      const lastDate = new Date(paginatedData[paginatedData.length - 1].date).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric'
+      });
+
+      return `${firstDate} - ${lastDate}`;
+    };
+
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex items-center gap-2 mb-4">
-          <Icon icon="material-symbols:trending-up" className="w-5 h-5 text-[#8d77ba]" />
-          <h3 className="text-lg font-semibold text-gray-800">Movement</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Icon icon="material-symbols:trending-up" className="w-5 h-5 text-[#8d77ba]" />
+            <h3 className="text-lg font-semibold text-gray-800">Movement</h3>
+            <span className="text-sm text-gray-500 ml-2">({getDateRange()})</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1))}
+              disabled={currentPage >= totalPages - 1}
+              className={`p-1 rounded-md ${
+                currentPage >= totalPages - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+              title="View older data"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="text-xs text-gray-500 min-w-[40px] text-center">
+              {totalPages > 0 ? `${totalPages - currentPage}/${totalPages}` : '0/0'}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 0))}
+              disabled={currentPage <= 0}
+              className={`p-1 rounded-md ${
+                currentPage <= 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+              title="View newer data"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        <div className="relative h-64 mb-4">
-          <svg className="w-full h-full" viewBox="0 0 400 200">
-            {[30, 25, 20, 15, 10, 5].map((value, index) => (
-              <g key={value}>
-                <text x="15" y={30 + index * 25} className="text-xs fill-gray-500" textAnchor="middle">
-                  {value}
-                </text>
-                <line x1="25" y1={30 + index * 25} x2="370" y2={30 + index * 25} stroke="#f0f0f0" strokeWidth="1" />
-              </g>
-            ))}
-
-            {chartData.map((item, index) => (
-              <text key={index} x={50 + index * 50} y="190" className="text-xs fill-gray-500" textAnchor="middle">
-                {new Date(item.date).getDate()}
-              </text>
-            ))}
-
-            <polyline
-              points={chartData.map((item, index) => `${50 + index * 50},${180 - (item.total * 5)}`).join(' ')}
-              fill="none"
-              stroke={colors.total}
-              strokeWidth="2"
-            />
-            {chartData.map((item, index) => (
-              <circle
-                key={`total-${index}`}
-                cx={50 + index * 50}
-                cy={180 - (item.total * 5)}
-                r="3"
-                fill={colors.total}
+        <div className="h-[350px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={formattedData} margin={{ top: 5, right: 20, left: 10, bottom: 25 }}>
+              {/* <CartesianGrid strokeDasharray="3 3" /> */}
+              <XAxis
+                dataKey="shortDate"
+                tickMargin={10}
+                padding={{ left: 10, right: 10 }}
+              >
+                <Label value="Date" offset={-20} position="insideBottom" />
+              </XAxis>
+              <YAxis
+                tickMargin={10}
+                domain={['auto', 'auto']}
+              >
+                <Label value="No of transformations" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle' }} />
+              </YAxis>
+              <Tooltip contentStyle={{ backgroundColor: 'white', borderRadius: '4px' }} />
+              <Legend
+                verticalAlign="top"
+                height={36}
+                align="right"
+                iconType="circle"
+                wrapperStyle={{
+                  paddingTop: 5,
+                  paddingBottom: 20,
+                  lineHeight: '24px'
+                }}
+                formatter={(value) => <span style={{ color: 'rgba(0, 0, 0, 0.87)', fontSize: '13px', marginTop: '5px' }}>{value}</span>}
               />
-            ))}
-
-            <polyline
-              points={chartData.map((item, index) => `${50 + index * 50},${180 - (item.success * 5)}`).join(' ')}
-              fill="none"
-              stroke={colors.success}
-              strokeWidth="2"
-            />
-            {chartData.map((item, index) => (
-              <circle
-                key={`success-${index}`}
-                cx={50 + index * 50}
-                cy={180 - (item.success * 5)}
-                r="3"
-                fill={colors.success}
-              />
-            ))}
-
-            <polyline
-              points={chartData.map((item, index) => `${50 + index * 50},${180 - (item.failed * 5)}`).join(' ')}
-              fill="none"
-              stroke={colors.failed}
-              strokeWidth="2"
-            />
-            {chartData.map((item, index) => (
-              <circle
-                key={`failed-${index}`}
-                cx={50 + index * 50}
-                cy={180 - (item.failed * 5)}
-                r="3"
-                fill={colors.failed}
-              />
-            ))}
-          </svg>
-        </div>
-
-        <div className="flex flex-wrap gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.total }}></div>
-            <span className="text-gray-600">Total</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.success }}></div>
-            <span className="text-gray-600">Success</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.failed }}></div>
-            <span className="text-gray-600">Failed</span>
-          </div>
+              <Line type="monotone" dataKey="total" stroke="#ff5555" name="Total" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="success" stroke="#55aa55" name="Success" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="failed" stroke="#5555aa" name="Failed" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
     );
@@ -579,6 +588,16 @@ function Transformation() {
     );
   };
 
+  const filteredTransformationData = useMemo(() => {
+    if (!searchTerm.trim()) return transformationData;
+    const q = searchTerm.toLowerCase();
+    return transformationData.filter(row =>
+      Object.values(row || {}).some(val =>
+        String(val ?? '').toLowerCase().includes(q)
+      )
+    );
+  }, [searchTerm, transformationData]);
+
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
@@ -620,7 +639,7 @@ function Transformation() {
           </div>
 
           <button
-            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
+            className="p-2 px-2 rounded-lg border border-gray-400 hover:bg-gray-50"
             onClick={handleRefresh}
             title="Refresh data"
             disabled={isLoading}
@@ -702,7 +721,7 @@ function Transformation() {
 
       <DataTable
         columns={columns}
-        data={transformationData}
+        data={filteredTransformationData}
         actions={actions}
         isLoading={isLoading}
         isError={false}

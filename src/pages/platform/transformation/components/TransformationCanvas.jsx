@@ -82,12 +82,40 @@ function TransformationCanvasContent() {
         setIsEditMode(true);
         setEditTransformationId(transformationId);
 
-        // Restore nodes and edges from edit flow data
         const restoredData = restoreNodesAndEdgesFromEditData(editFlowData, setNodes, setEdges, nodeIdRef);
 
-        // Set nodes and edges in a single batch to prevent multiple renders
         setNodes(restoredData.nodes);
         setEdges(restoredData.edges);
+
+        if (editFlowData.properties) {
+          // console.log("Restoring global properties:", editFlowData.properties);
+          dispatch({
+            type: ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES,
+            payload: editFlowData.properties
+          });
+        } else {
+          // console.log("No global properties found, determining from nodes");
+          const sourceAndTargetNodes = restoredData.nodes.filter(
+            node => node.type === 'source' || node.type === 'target'
+          );
+
+          const allNodesWithCountLogging = sourceAndTargetNodes.every(
+            node => node.data && node.data.enableCountLogging === true
+          );
+
+          dispatch({
+            type: ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES,
+            payload: {
+              logging: {
+                isLoggingEnabled: true,
+                isLoggingEnabledForEachDataset: allNodesWithCountLogging
+              },
+              email: {
+                isEmailEnabled: false // Default value
+              }
+            }
+          });
+        }
 
         // Clear session storage after restoring
         sessionStorage.removeItem('editMode');
@@ -407,10 +435,29 @@ function TransformationCanvasContent() {
         return;
       }
 
-
+      // FIXED: Force update of transformation context with current node states before generating JSON
+      nodes.forEach(node => {
+        if (node.type === 'source' && typeof node.data.enableCountLogging === 'boolean') {
+          dispatch({
+            type: ACTION_TYPES.UPDATE_SOURCE,
+            payload: {
+              id: node.id,
+              data: { enableCountLogging: node.data.enableCountLogging }
+            }
+          });
+        } else if (node.type === 'target' && typeof node.data.enableCountLogging === 'boolean') {
+          dispatch({
+            type: ACTION_TYPES.UPDATE_TARGET,
+            payload: {
+              id: node.id,
+              data: { enableCountLogging: node.data.enableCountLogging }
+            }
+          });
+        }
+      });
 
       // Wait for state update before generating JSON
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       setIsSaving(true);
       const transformationData = generateTransformationJson();
@@ -539,8 +586,7 @@ function TransformationCanvasContent() {
 
       const editFlowData = prepareEditFlowData(nodes, edges, nodeIdRef.current);
 
-
-
+      // console.log("Edit :", editFlowData);
 
       const payload = {
         transformation_name: defineNode.data.name,
@@ -558,7 +604,7 @@ function TransformationCanvasContent() {
         }
       };
 
-      console.log("Payload with edit flow data:", payload);
+      console.log("Payload:", payload);
 
       const isUpdate = isEditMode && editTransformationId;
       const url = isUpdate
@@ -580,6 +626,17 @@ function TransformationCanvasContent() {
         throw new Error(errorData.detail || `Failed to ${isUpdate ? 'update' : 'save'} transformation`);
       }
 
+      if (transformationData.properties && transformationData.properties.logging) {
+        try {
+          localStorage.setItem(
+            `countLogging_${defineNode.data.name}`,
+            JSON.stringify(transformationData.properties.logging)
+          );
+        } catch (e) {
+          console.warn("Failed to store count logging settings:", e);
+        }
+      }
+
       toast.success(`Transformation ${isUpdate ? 'updated' : 'saved'} successfully!`, {
         duration: 3000,
         position: "top-center",
@@ -598,7 +655,7 @@ function TransformationCanvasContent() {
     } finally {
       setIsSaving(false);
     }
-  }, [generateTransformationJson, nodes, edges, navigate, hostname, token, decodedToken, project, nodeIdRef, isEditMode, editTransformationId]);
+  }, [generateTransformationJson, nodes, edges, navigate, hostname, token, decodedToken, project, nodeIdRef, isEditMode, editTransformationId, dispatch, ACTION_TYPES]);
 
  const handleNewFlow = useCallback(() => {
   // Reset the context state

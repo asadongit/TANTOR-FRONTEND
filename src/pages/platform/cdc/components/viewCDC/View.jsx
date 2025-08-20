@@ -1344,15 +1344,15 @@ export default function CDCJobView() {
                   onClick={refreshData}
                   className="flex items-center px-2 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md transition-colors"
                 >
-                  <RefreshCw
+                  {/* <RefreshCw
                     className={`h-4 w-4 mr-1.5 ${isRefreshing ? "animate-spin" : ""
                       }`}
-                  />
+                  /> */}
                 </button>
-                <span className="text-sm text-gray-500">Last updated:</span>
+                {/* <span className="text-sm text-gray-500">Last updated:</span>
                 <span className="text-sm font-medium">
                   {jobData.metrics.lastSyncTime}
-                </span>
+                </span> */}
               </div>
             </div>
           </div>
@@ -1450,16 +1450,16 @@ export default function CDCJobView() {
         {activeTab === "configurations" && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-800 flex items-center">
+              <h3 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
                 <History className="w-5 h-5 mr-2 text-indigo-600" />
                 Configuration Version History
               </h3>
-              <div className="flex space-x-2">
+              {/* <div className="flex space-x-2">
                 <button className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-md text-sm flex items-center">
                   <Plus className="w-4 h-4 mr-1.5" />
                   New Configuration
                 </button>
-              </div>
+              </div> */}
             </div>
 
             <div className="mb-6">
@@ -1485,9 +1485,9 @@ export default function CDCJobView() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        {/* <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
                           Actions
-                        </th>
+                        </th> */}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -1510,26 +1510,26 @@ export default function CDCJobView() {
                               </span>
                             ) : (
                               <span
-                                onClick={() =>
-                                  handleActivateConfig({
-                                    source_connector_id: config.config_id,
-                                  })
-                                }
-                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 cursor-pointer transition-all duration-300 hover:bg-green-50 hover:text-green-700 active:scale-95 active:ring-2 active:ring-green-300 relative group"
+                                // onClick={() =>
+                                //   handleActivateConfig({
+                                //     source_connector_id: config.config_id,
+                                //   })
+                                // }
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
                               >
                                 <span className="group-hover:opacity-0 transition-opacity duration-200">
                                   Inactive
                                 </span>
-                                <span className="absolute left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                {/* <span className="absolute left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                   Activate?
-                                </span>
+                                </span> */}
                               </span>
                             )}
                           </td>
 
-                          <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                          {/* <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                             <div className="flex justify-end space-x-2">
-                              {/* <button
+                              <button
                                 className="text-gray-600 hover:text-gray-900"
                                 title="Clone Configuration"
                               >
@@ -1546,7 +1546,7 @@ export default function CDCJobView() {
                                 title="Clone Configuration"
                               >
                                 <Copy className="w-4 h-4" />
-                              </button> */}
+                              </button>
                               <button
                                 className="text-red-600 hover:text-gray-900"
                                 title="Clone Configuration"
@@ -1554,7 +1554,7 @@ export default function CDCJobView() {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
-                          </td>
+                          </td> */}
                         </tr>
                       ))}
                     </tbody>
@@ -1586,9 +1586,9 @@ export default function CDCJobView() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        {/* <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
                           Actions
-                        </th>
+                        </th> */}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -1612,25 +1612,28 @@ export default function CDCJobView() {
                               </span>
                             ) : (
                               <span
-                                onClick={() =>
-                                  handleActivateConfig({
-                                    target_connector_id: config.config_id,
-                                  })
-                                }
-                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 cursor-pointer transition-all duration-300 hover:bg-green-50 hover:text-green-700 active:scale-95 active:ring-2 active:ring-green-300 relative group"
+                                // onClick={() =>
+                                //   handleActivateConfig({
+                                //     target_connector_id: config.config_id,
+                                //   })
+                                // }
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
+
+                                // className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 cursor-pointer transition-all duration-300 hover:bg-green-50 hover:text-green-700 active:scale-95 active:ring-2 active:ring-green-300 relative group"
+
                               >
                                 <span className="group-hover:opacity-0 transition-opacity duration-200">
                                   Inactive
                                 </span>
-                                <span className="absolute left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                {/* <span className="absolute left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                   Activate?
-                                </span>
+                                </span> */}
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                          {/* <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                             <div className="flex justify-end space-x-2">
-                              {/* <button
+                              <button
                                 className="text-gray-600 hover:text-gray-900"
                                 title="Clone Configuration"
                               >
@@ -1647,7 +1650,7 @@ export default function CDCJobView() {
                                 title="Clone Configuration"
                               >
                                 <Copy className="w-4 h-4" />
-                              </button> */}
+                              </button>
                               <button
                                 className="text-red-600 hover:text-gray-900"
                                 title="Clone Configuration"
@@ -1655,7 +1658,7 @@ export default function CDCJobView() {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
-                          </td>
+                          </td> */}
                         </tr>
                       ))}
                     </tbody>

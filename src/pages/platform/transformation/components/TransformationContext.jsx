@@ -16,6 +16,15 @@ const initialState = {
   originalSourceColumns: {}, // New property to store original selections
   preservedTargetMappings: {}, // New property to maintain target mappings across edit sessions
   sourceOriginalColumns: {}, // <-- Add this for original columns per source node
+  properties: {
+    logging: {
+      isLoggingEnabled: true,
+      isLoggingEnabledForEachDataset: false
+    },
+    email: {
+      isEmailEnabled: false
+    }
+  },
 };
 
 const ACTION_TYPES = {
@@ -41,6 +50,7 @@ const ACTION_TYPES = {
   PRESERVE_TARGET_MAPPING: 'PRESERVE_TARGET_MAPPING', // New action type
   RESTORE_TARGET_MAPPINGS: 'RESTORE_TARGET_MAPPINGS', // New action type
   SET_SOURCE_ORIGINAL_COLUMNS: 'SET_SOURCE_ORIGINAL_COLUMNS', // <-- Add new action type
+  UPDATE_GLOBAL_PROPERTIES: 'UPDATE_GLOBAL_PROPERTIES',
 };
 
 function transformationReducer(state, action) {
@@ -61,22 +71,38 @@ function transformationReducer(state, action) {
           ...state.sources,
           [action.payload.id]: {
             ...action.payload.data,
-            alias: action.payload.data.alias
+            alias: action.payload.data.alias,
+            enableCountLogging: action.payload.data.enableCountLogging || false
           }
         }
       };
 
     case ACTION_TYPES.UPDATE_SOURCE:
-      return {
+      const updatedSourceState = {
         ...state,
         sources: {
           ...state.sources,
           [action.payload.id]: {
             ...state.sources[action.payload.id],
-            ...action.payload.data
+            ...action.payload.data,
+            // FIXED: Ensure enableCountLogging is properly updated and preserved
+            enableCountLogging: typeof action.payload.data.enableCountLogging === 'boolean'
+              ? action.payload.data.enableCountLogging
+              : (state.sources[action.payload.id]?.enableCountLogging || false)
           }
         }
       };
+
+      // Trigger a sidebar update notification
+      if (typeof action.payload.data.enableCountLogging === 'boolean') {
+        setTimeout(() => {
+          if (window.triggerSidebarUpdate) {
+            window.triggerSidebarUpdate();
+          }
+        }, 0);
+      }
+
+      return updatedSourceState;
 
     case ACTION_TYPES.REMOVE_SOURCE:
       const { [action.payload]: _, ...remainingSources } = state.sources;
@@ -137,17 +163,32 @@ function transformationReducer(state, action) {
         state.preservedTargetMappings[action.payload.id] = {...newTargetMapping};
       }
 
-      return {
+      const updatedTargetState = {
         ...state,
         targets: {
           ...state.targets,
           [action.payload.id]: {
             ...state.targets[action.payload.id],
             ...action.payload.data,
-            targetMapping: newTargetMapping
+            targetMapping: newTargetMapping,
+            // FIXED: Ensure enableCountLogging is properly updated and preserved
+            enableCountLogging: typeof action.payload.data.enableCountLogging === 'boolean'
+              ? action.payload.data.enableCountLogging
+              : (state.targets[action.payload.id]?.enableCountLogging || false)
           }
         }
       };
+
+      // Trigger a sidebar update notification
+      if (typeof action.payload.data.enableCountLogging === 'boolean') {
+        setTimeout(() => {
+          if (window.triggerSidebarUpdate) {
+            window.triggerSidebarUpdate();
+          }
+        }, 0);
+      }
+
+      return updatedTargetState;
 
     case ACTION_TYPES.REMOVE_TARGET:
       const { [action.payload]: ___, ...remainingTargets } = state.targets;
@@ -331,8 +372,17 @@ function transformationReducer(state, action) {
       };
     }
 
+    case ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES:
+      // console.log("Updating global properties:", action.payload);
+      return {
+        ...state,
+        properties: {
+          ...state.properties,
+          ...action.payload
+        }
+      };
+
     case ACTION_TYPES.RESET:
-      // Explicitly remove any target mappings from localStorage to ensure fresh state
       Object.keys(state.targets).forEach(targetId => {
         try {
           window.localStorage.removeItem(`targetMapping_${targetId}`);
@@ -344,7 +394,6 @@ function transformationReducer(state, action) {
         }
       });
 
-      // Also clear all preserved mappings to prevent them from reappearing
       if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
       if (window.targetMappingsDebug) window.targetMappingsDebug = {};
 
@@ -415,9 +464,14 @@ export function TransformationProvider({ children }) {
       description: state.define.description || "",
       source: {},
       target: {},
-      logging:{
-        isLoggingEnabled :true,
-        isLoggingEnabledForEachDataset: false
+      properties: {
+        logging: {
+          isLoggingEnabled: true,
+          isLoggingEnabledForEachDataset: state.properties?.logging?.isLoggingEnabledForEachDataset || false
+        },
+        email: {
+          isEmailEnabled: state.properties?.email?.isEmailEnabled || false
+        }
       },
       procedureExecution: state.procedureExecution,
       transformation: {}
@@ -439,24 +493,53 @@ export function TransformationProvider({ children }) {
         if (sourceData) {
           const sourceKey = sourceData.alias || `source_${sourceId}`;
 
-          // Use originally selected columns stored in context
           const originalColumns = state.originalSourceColumns[sourceId] || [];
 
-          result.source[sourceKey] = {
-            sourceType: sourceData.connectionType || "unknown",
-            sourceConnName: sourceData.connection || "unknown",
-            sourceConnId: sourceData.connectionId || "",
-            column: originalColumns,
-            ConnectionParameters: {
-              sourceSchema: sourceData.schema || "",
-              sourceTable: sourceData.table || ""
-            },
-            readParameters: {
-              watermarkColumn: "",
-              watermarkColumnDataType: ""
-            },
-            EnableCountLogging: false
-          };
+          if (sourceData.sourceType === "file") {
+            const fileColumns = sourceData.fileColumns || [];
+            const columnMapping = {};
+
+            fileColumns
+              .filter(col => col.name && col.name.trim() !== "")
+              .forEach(col => {
+                columnMapping[col.name] =
+                  col.datatype === 'custom'
+                    ? (col.customDatatype || 'custom')
+                    : col.datatype;
+              });
+
+            result.source[sourceKey] = {
+              sourceType: sourceData.fileType?.toLowerCase() || "csv",
+              sourceConnName: "",
+              // sourceConnId: "",
+              column: [columnMapping],
+              ConnectionParameters: {
+                sourceFilePath: sourceData.filePath || "",
+                sourceFileName: sourceData.fileName || "",
+              },
+              readParameters: {
+                watermarkColumn: "",
+                watermarkColumnDataType: ""
+              },
+              EnableCountLogging: sourceData.enableCountLogging === true
+            };
+          } else {
+            result.source[sourceKey] = {
+              sourceType: sourceData.connectionType || "unknown",
+              sourceConnName: sourceData.connection || "unknown",
+              sourceConnId: sourceData.connectionId || "",
+              column: originalColumns,
+              ConnectionParameters: {
+                sourceSchema: sourceData.schema || "",
+                sourceTable: sourceData.table || ""
+              },
+              readParameters: {
+                watermarkColumn: "",
+                watermarkColumnDataType: ""
+              },
+              EnableCountLogging: sourceData.enableCountLogging === true
+            };
+          }
         }
       });
 
@@ -497,7 +580,7 @@ export function TransformationProvider({ children }) {
               targetTable: targetData.table || "",
               loadStrategy: targetData.loadStrategy || ""
             },
-            EnableCountLogging: false,
+            EnableCountLogging: targetData.enableCountLogging || false,
             targetMapping: targetData.targetMapping || {}
           };
         }
@@ -648,24 +731,44 @@ export function useTrackConnections(nodes, edges) {
         case 'source':
           const sourceIndex = sourceNodeIds.get(id);
           if (sourceIndex) {
+            const sourcePayload = {
+              id,
+              data: {
+                dfId: `s_df_${sourceIndex}`,
+                alias: data.alias,
+                enableCountLogging: data.enableCountLogging || false
+              }
+            };
+
+            if (data.sourceType === "file") {
+              sourcePayload.data = {
+                ...sourcePayload.data,
+                sourceType: data.sourceType,
+                fileType: data.fileType,
+                filePath: data.filePath,
+                fileName: data.fileName,
+                fileColumns: data.fileColumns,
+                columns: data.columns
+              };
+            } else {
+              sourcePayload.data = {
+                ...sourcePayload.data,
+                sourceType: data.sourceType || "database",
+                connection: data.connection,
+                connectionId: data.connectionId,
+                connectionType: data.connectionType,
+                schema: data.schema,
+                table: data.table,
+                columns: data.columns,
+                objectType: data.objectType,
+                preProcedures: data.preProcedures,
+                postProcedures: data.postProcedures
+              };
+            }
+
             dispatch({
               type: ACTION_TYPES.ADD_SOURCE,
-              payload: {
-                id,
-                data: {
-                  connection: data.connection,
-                  connectionId: data.connectionId,
-                  connectionType: data.connectionType,
-                  schema: data.schema,
-                  table: data.table,
-                  columns: data.columns,
-                  dfId: `s_df_${sourceIndex}`,
-                  alias: data.alias,
-                  objectType: data.objectType,
-                  preProcedures: data.preProcedures,
-                  postProcedures: data.postProcedures
-                }
-              }
+              payload: sourcePayload
             });
           }
           break;
@@ -706,12 +809,12 @@ export function useTrackConnections(nodes, edges) {
                   selectedSourceId: data.selectedSourceId,
                   objectType: data.objectType,
                   preProcedures: data.preProcedures,
-                  postProcedures: data.postProcedures
+                  postProcedures: data.postProcedures,
+                  enableCountLogging: data.enableCountLogging || false
                 }
               }
             });
 
-            // IMPORTANT: Also explicitly update the targetToSelectedSourceMap if a selectedSourceId exists
             if (data.selectedSourceId) {
               dispatch({
                 type: ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE,
