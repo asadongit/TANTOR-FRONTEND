@@ -163,7 +163,8 @@ const ConfigEditorModal = ({
       'tasks.max',
       'schema.history.internal.kafka.bootstrap.servers',
       'topic.prefix',
-      'schema.history.internal.kafka.topic'
+      'schema.history.internal.kafka.topic',
+      'decimal.handling.mode'
     ]),
     target: new Set([
       'connector.class',
