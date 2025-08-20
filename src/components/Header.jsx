@@ -61,7 +61,7 @@ const Header = () => {
         }
       });
       const data = await response.json();
-      setStewardNotifications(data);
+      setStewardNotifications(data.business_catalogue);
       setLastFetched(Date.now());
     } catch (error) {
       console.error('Error fetching steward notifications:', error);
@@ -255,28 +255,33 @@ const Header = () => {
                   <div className="px-4 py-4 text-center"><p className="text-sm text-gray-500">No new notifications.</p></div>
                 ) : (
                   <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-                    {isDataSteward && stewardNotifications && Object.entries(stewardNotifications).map(([domainId, notification]) => {
-                      if (notification.Domain && notification.Domain.length > 0) {
-                        return notification.Domain.map((domain, index) => (
-                          <div key={`domain-${domainId}-${index}`} className="px-4 py-3 hover:bg-gray-50">
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <p className="text-sm text-gray-900">
-                                  New business catalogue entry '{domain.name}' requires approval.
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => handleViewDetails(domainId, notification)}
-                                className="text-[#8e78b7] ml-2 flex-shrink-0"
-                                title={`View details`}
-                              >
-                                <ChevronRight className='text-[#8e78b7]' size={20} />
-                              </button>
+                    {isDataSteward && stewardNotifications && Object.entries(stewardNotifications).map(([domainId, notificationDetails]) => {
+                      const domainName = notificationDetails.Domain?.[0]?.name;
+                      const totalItems = Object.values(notificationDetails).reduce((count, items) => count + (Array.isArray(items) ? items.length : 0), 0);
+                      // const message = domainName
+                      //   ? `Request for '${domainName}' has ${totalItems} item(s) awaiting approval.`
+                      //   : `${totalItems} new business catalogue item(s) require approval.`;
+
+                      const message = `New business catalogue entry '${domainName}' requires approval.`;
+
+                      return (
+                        <div key={`steward-notification-${domainId}`} className="px-4 py-3 hover:bg-gray-50">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-sm text-gray-900">
+                                {message}
+                              </p>
                             </div>
+                            <button
+                              onClick={() => handleViewDetails(domainId, notificationDetails)}
+                              className="text-[#8e78b7] ml-2 flex-shrink-0"
+                              title="View details"
+                            >
+                              <ChevronRight className='text-[#8e78b7]' size={20} />
+                            </button>
                           </div>
-                        ));
-                      }
-                      return null;
+                        </div>
+                      );
                     })}
 
                     {isDataOwner && ownerNotifications && ownerNotifications.map((notification) => (
