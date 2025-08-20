@@ -251,7 +251,7 @@ const Header = () => {
             </button>
 
             {isNotificationsOpen && (isDataSteward || isDataOwner) && (
-              <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-20 overflow-hidden">
+              <div className="absolute right-0 mt-2 w-[30rem] bg-white rounded-lg shadow-xl border border-gray-200 z-20 overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                   <h3 className="font-medium text-gray-900">Notifications</h3>
                   <button onClick={handleRefresh} className="text-xs text-[#8e78b7] flex items-center" disabled={isRefreshing}>
@@ -264,7 +264,7 @@ const Header = () => {
                 ) : !hasNotifications ? (
                   <div className="px-4 py-4 text-center"><p className="text-sm text-gray-500">No new notifications.</p></div>
                 ) : (
-                  <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+                  <div className="divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
                     {isDataSteward && stewardNotifications && Object.entries(stewardNotifications).map(([domainId, notificationDetails]) => {
                       const domainName = notificationDetails.Domain?.[0]?.name;
                       const message = `New business catalogue entry '${domainName}' requires approval.`;
