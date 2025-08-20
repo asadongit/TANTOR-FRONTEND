@@ -337,10 +337,10 @@ function Cleaning({ query, formData, setFormData }) {
             <label className="block text-xs font-medium text-gray-600 mb-1">Strategy</label>
             <select name="skewness_strategy" value={formData.skewness_strategy} onChange={handleInputChange} className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
               <option value="boxcox">Boxcox</option>
-              <option value="log-transformation">Log Transformation</option>
-              <option value="square-root-transformation">Square root transformation</option>
-              <option value="yeo-johnson">Yeo-Johnson</option>
-              <option value="exponential-transformation">Exponential Transformation</option>
+              <option value="log">Log Transformation</option>
+              <option value="sqrt">Square root transformation</option>
+              <option value="yeojohnson">Yeo-Johnson</option>
+              {/* <option value="exp">Exponential Transformation</option> */}
               <option value="rank">Rank</option>
             </select>
           </div>
