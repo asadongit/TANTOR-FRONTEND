@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback,useMemo } from "react";
 import PropTypes from "prop-types";
 import { Position } from "reactflow";
 import { Minus, X } from "lucide-react";
@@ -10,14 +10,14 @@ import { useModal } from "../../context/ModalProvider";
 import { useWorkflow } from "../../context/WorkflowContext";
 import { useAuth } from "../../../../../context/AuthContext";
 
-export function SchedulerNode({ id, data, selected}) { 
+export function SchedulerNode({ id, data, selected}) {
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id; 
   const { token, decodedToken, project, hostnameV2 } = useAuth();
   const navigate = useNavigate();
   const { openModal, closeModal } = useModal();
-  const { updatePipelineData, deletePipeline, pipelines, setNodes, nodes, edges, getEnhancedNodeData } = useWorkflow();
+  const { updatePipelineData, deletePipeline, pipelines, setNodes } = useWorkflow();
   
   const [selectedOption, setSelectedOption] = useState("manual");
   const [intervalType, setIntervalType] = useState("hours");
@@ -26,42 +26,6 @@ export function SchedulerNode({ id, data, selected}) {
   const [scheduleColumn, setScheduleColumn] = useState("");
   const [startDateTime, setStartDateTime] = useState("");
   const [endDateTime, setEndDateTime] = useState("");
-
-  // Initialize node with pre-populated data in edit mode
-  useEffect(() => {
-    if (data?.scheduler && Object.keys(data.scheduler).length > 0) {
-      const schedulerData = data.scheduler;
-      
-      // Pre-populate scheduler options
-      if (schedulerData.mode) {
-        setSelectedOption(schedulerData.mode);
-      }
-      
-      if (schedulerData.column) {
-        setScheduleColumn(schedulerData.column);
-      }
-      
-      if (schedulerData.startDateTime) {
-        setStartDateTime(schedulerData.startDateTime);
-      }
-      
-      if (schedulerData.endDateTime) {
-        setEndDateTime(schedulerData.endDateTime);
-      }
-      
-      if (schedulerData.intervalType) {
-        setIntervalType(schedulerData.intervalType);
-      }
-      
-      if (schedulerData.intervalValue) {
-        setIntervalValue(schedulerData.intervalValue);
-      }
-      
-      if (schedulerData.frequency) {
-        setFrequency(schedulerData.frequency);
-      }
-    }
-  }, [data?.scheduler]);
   
   const availableColumns = useMemo(() => {
     const sourceColumns = data?.source?.columns || [];
@@ -158,9 +122,6 @@ export function SchedulerNode({ id, data, selected}) {
       endDateTime
     };
 
-    // Use the enhanced node data function for better data storage
-    const allNodeData = getEnhancedNodeData();
-    
     const finalPayload = {
       project: project,
       created_by: decodedToken.preferred_username,
@@ -177,10 +138,10 @@ export function SchedulerNode({ id, data, selected}) {
       target_conn_type: pipelineData.target?.type,
       migration_list: pipelineData.target?.bulk_list || [],
       op_types: pipelineData.source?.op_types || {},
-      scheduler: schedulerData,
-      ui_json: allNodeData
+      scheduler: schedulerData
     };
-
+    
+    // console.log("Final Payload:", finalPayload);
     
     try {
       const response = await fetch(`${hostnameV2}/create-migration`, {
