@@ -91,8 +91,10 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
                     'Domain': 'domain_id', 'Category': 'category_id', 'Sub-Category': 'sub_category_id',
                     'Term': 'term_id', 'Tag': 'tag_id', 'Sub-Tag': 'sub_tag_id'
                 };
-                const approvalData = { status_approval: statusInPayload };
-                if (reason) approvalData.reason = reason;
+                const approvalData = {
+                    status_approval: statusInPayload,
+                    reason: reason || ""
+                };
 
                 Object.keys(businessCatalogueData).forEach(key => {
                     const payloadKey = idMap[key];
@@ -106,8 +108,11 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
             }
 
             case 'description': {
-                const descData = { desc: descriptionData, status_approval: statusInPayload };
-                if (reason) descData.reason = reason;
+                const descData = {
+                    desc: descriptionData,
+                    status_approval: statusInPayload,
+                    reason: reason || ""
+                };
                 payload.descriptions = [descData];
                 break;
             }
@@ -125,13 +130,13 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
                     term_id: linkageData.term_id?.flat() || [],
                     tag_id: linkageData.tag_id?.flat() || [],
                     sub_tag_id: linkageData.sub_tag_id?.flat() || [],
+                    reason: reason || ""
                 };
 
                 if (type === 'column_linkage') {
                     dataCatObject.column = linkageData.columns;
                 }
 
-                if (reason) dataCatObject.reason = reason;
                 payload.data_catalogue = [dataCatObject];
                 break;
             }

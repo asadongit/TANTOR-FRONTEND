@@ -79,11 +79,11 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         try {
             const payload = {
                 domain_id: [parseInt(editData.id, 10)],
-                category_id: editData.category.map(c => c.id),
-                sub_category_id: editData.subcategory.map(sc => sc.id),
-                tag_id: editData.tag.map(t => t.id),
-                sub_tag_id: editData.subtag.map(st => st.id),
-                term_id: editData.term.map(t => t.id)
+                category_id: editData.category?.map(c => c.id),
+                sub_category_id: editData.subcategory?.map(sc => sc.id),
+                tag_id: editData.tag?.map(t => t.id),
+                sub_tag_id: editData.subtag?.map(st => st.id),
+                term_id: editData.term?.map(t => t.id)
             };
 
             const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/data_prefill`, {
@@ -96,6 +96,10 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
 
             const data = await response.json();
 
+            if (!data.domain || data.domain.length === 0) {
+                throw new Error("Prefill data is incomplete: Domain information is missing.");
+            }
+
             const domainData = data.domain[0];
             const mappedData = {
                 domain: {
@@ -106,33 +110,33 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                     stakeholder: domainData.stakeholder || [],
                     status: domainData.status || ''
                 },
-                category: data.category.map(c => ({
+                category: data.category?.map(c => ({
                     id: c.category_id, name: c.name, desc: c.description || '',
                     owner: c.owner?.[0] || '', status: c.status || ''
-                })),
-                subcategory: data.sub_category.map(sc => ({
+                })) || [],
+                subcategory: data.sub_category?.map(sc => ({
                     id: sc.sub_category_id, name: sc.name, desc: sc.description || '',
                     owner: sc.owner?.[0] || '', status: sc.status || '', category_name: sc.category_name
-                })),
-                term: data.term.map(t => ({
+                })) || [],
+                term: data.term?.map(t => ({
                     id: t.term_id, name: t.name, desc: t.description || '',
                     owner: t.owner?.[0] || '', status: t.status || ''
-                })),
-                tag: data.tag.map(tg => ({
+                })) || [],
+                tag: data.tag?.map(tg => ({
                     id: tg.tag_id, name: tg.name, desc: tg.description || '',
                     owner: tg.owner?.[0] || '', status: tg.status || ''
-                })),
-                subtag: data.sub_tag.map(st => ({
+                })) || [],
+                subtag: data.sub_tag?.map(st => ({
                     id: st.sub_tag_id, name: st.name, desc: st.description || '',
                     owner: st.owner?.[0] || '', status: st.status || '', tag_name: st.tag_name
-                }))
+                })) || []
             };
             setFormData(mappedData);
 
         } catch (err) {
             toast.error(err.message);
             console.error("Failed to prefill data:", err);
-            onClose(); 
+            onClose();
         } finally {
             setIsLoading(false);
         }

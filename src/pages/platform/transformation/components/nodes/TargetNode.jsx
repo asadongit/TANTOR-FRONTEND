@@ -1174,7 +1174,7 @@ export const TargetNode = ({ id, data }) => {
       <Handle type="target" position={Position.Left} style={{ width: 10, height: 10 }} />
 
       <div className="flex items-center space-x-3 mb-3">
-        <Database className="w-5 h-5 text-[#96CF7B]" />
+        <Database className="w-5 h-5 text-[#8E77BB]" />
         <h3 className="text-black font-medium">Target</h3>
       </div>
 
