@@ -257,7 +257,8 @@ const SchemaViewScreen = () => {
             connection_name: schema.connectionName,
             table_schema: schema.schema,
             schema_description: trimmedDescription,
-            roles: decodedToken?.resource_access?.darch?.roles || []
+            roles: decodedToken?.resource_access?.darch?.roles || [],
+            owner: decodedToken?.preferred_username
           }),
         }
       );
