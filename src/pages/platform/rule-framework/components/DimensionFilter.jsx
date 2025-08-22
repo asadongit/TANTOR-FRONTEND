@@ -461,7 +461,7 @@ const DimensionFilter = ({ setIsOpen, onApply, factId, updateNodeData, nodeData 
         <div className="p-3 border-t flex justify-end gap-3">
           <button
             onClick={handleSkip}
-            className="px-4 py-2 bg-[#8E77BB] text-white rounded hover:bg-opacity-90 text-sm font-medium"
+            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm text-black font-medium"
           >
             Skip
           </button>

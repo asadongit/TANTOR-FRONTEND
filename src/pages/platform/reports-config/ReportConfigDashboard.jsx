@@ -25,6 +25,7 @@ import SupersetReport from './components/SupersetReport';
 import toast from "react-hot-toast";
 import ReportSummaryComponent from "./components/ReportSummaryComponent";
 import {CardGrid} from "../../../components/ReportingCardGrid"
+import Breadcrumb from "../../../components/Breadcrumb";
 
 const ReportConfigDashboard = () => {
   // const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
@@ -493,6 +494,7 @@ const ReportConfigDashboard = () => {
 
   return (
     <div className="p-6">
+      <Breadcrumb title="Platform" link={"/"} />
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Reports</h1>
         <div className="flex items-center">
