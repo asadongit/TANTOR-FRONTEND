@@ -443,7 +443,8 @@ function ColumnDetailsPage() {
                 table_name: columnDetails.table_name,
                 column_name: columnDetails.column_name,
                 column_description: trimmedDescription,
-                roles: decodedToken?.resource_access?.darch?.roles || []
+                roles: decodedToken?.resource_access?.darch?.roles || [],
+                owner: decodedToken?.preferred_username
             };
 
             const response = await fetch(`${hostnameV1}/data_catalogue/edit_column_description`, {

@@ -192,7 +192,8 @@ const DatabaseViewScreen = () => {
           body: JSON.stringify({
             connection_name: connection.connectionName,
             description: trimmedDescription,
-            roles: decodedToken?.resource_access?.darch?.roles || []
+            roles: decodedToken?.resource_access?.darch?.roles || [],
+            owner: decodedToken?.preferred_username
           }),
         }
       );
@@ -259,7 +260,8 @@ const DatabaseViewScreen = () => {
           connection_name: connectionName,
           table_schema: schemaToSave,
           schema_description: trimmedDescription,
-          roles: decodedToken?.resource_access?.darch?.roles || []
+          roles: decodedToken?.resource_access?.darch?.roles || [],
+          owner: decodedToken?.preferred_username
         })
       });
 
