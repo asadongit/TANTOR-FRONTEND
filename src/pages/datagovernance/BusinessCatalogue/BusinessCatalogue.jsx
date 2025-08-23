@@ -90,7 +90,110 @@ const PaginationSkeleton = () => (
     </div>
 );
 
+const DetailsModal = ({ isOpen, onClose, title, data }) => {
 
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredData = React.useMemo(() => {
+        if (!data) return [];
+        return data.filter(item =>
+            item?.toLowerCase().includes(searchTerm?.toLowerCase())
+        );
+    }, [data, searchTerm]);
+
+
+    useEffect(() => {
+        const handleEsc = (event) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => {
+            window.removeEventListener('keydown', handleEsc);
+        };
+    }, [onClose]);
+
+
+    useEffect(() => {
+        if (!isOpen) {
+            setSearchTerm('');
+        }
+    }, [isOpen]);
+
+    return (
+        <div
+            className={`fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            onClick={onClose}
+        >
+            <div
+                className={`bg-white rounded-xl shadow-2xl w-full max-w-lg m-4 transform transition-all duration-300 ease-in-out ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex justify-between items-center p-4 border-b bg-gray-50 rounded-t-xl">
+                    <h3 className="text-lg font-semibold text-gray-800">
+                        {title}
+                        <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+                            {data?.length || 0}
+                        </span>
+                    </h3>
+                    <button title="Close" onClick={onClose} className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1 rounded-full transition-colors">
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                {/* Content & Search */}
+                <div className="p-5">
+                    <div className="relative mb-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder={`Search in ${title}...`}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8d77ba]"
+                        />
+                    </div>
+
+                    <div className="max-h-[50vh] overflow-y-auto pr-2">
+                        {filteredData.length > 0 ? (
+                            <ul className="space-y-2">
+                                {filteredData.map((item, index) => (
+                                    <li
+                                        key={index}
+                                        className="flex justify-between items-center bg-gray-100 p-2.5 rounded-md text-gray-800 group"
+                                    >
+                                        <span className="break-all">{item}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="text-center py-10 text-gray-500">
+                                <p className="text-sm">
+                                    {searchTerm
+                                        ? `Your search for "${searchTerm}" did not return any results.`
+                                        : 'There are no items to display.'
+                                    }
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end p-4 border-t bg-gray-50 rounded-b-xl">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const BusinessCatalogue = () => {
 
@@ -428,11 +531,57 @@ const BusinessCatalogue = () => {
                                     <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
                                         <td className="p-3 text-gray-700 font-medium">{indexOfFirstItem + index + 1}</td>
                                         <td className="p-3 text-gray-600">{item.domain}</td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Categories', item.category.map(c => c.name))} className="text-blue-600 underline">{item.category.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-categories', item.subcategory.map(sc => sc.name))} className="text-blue-600 underline">{item.subcategory.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Terms', item.term.map(t => t.name))} className="text-blue-600 underline">{item.term.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Tags', item.tag.map(tg => tg.name))} className="text-blue-600 underline">{item.tag.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-Tags', item.subtag.map(st => st.name))} className="text-blue-600 underline">{item.subtag.length}</button></td>
+
+                                        <td className="p-3">
+                                            {item.category.length > 0 ? (
+                                                <button onClick={() => handleOpenDetailsModal('Categories', item.category.map(c => c.name))} className="text-blue-600 underline">
+                                                    {item.category.length}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-600">0</span>
+                                            )}
+                                        </td>
+
+                                        <td className="p-3">
+                                            {item.subcategory.length > 0 ? (
+                                                <button onClick={() => handleOpenDetailsModal('Sub-categories', item.subcategory.map(sc => sc.name))} className="text-blue-600 underline">
+                                                    {item.subcategory.length}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-600">0</span>
+                                            )}
+                                        </td>
+
+                                        <td className="p-3">
+                                            {item.term.length > 0 ? (
+                                                <button onClick={() => handleOpenDetailsModal('Terms', item.term.map(t => t.name))} className="text-blue-600 underline">
+                                                    {item.term.length}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-600">0</span>
+                                            )}
+                                        </td>
+
+                                        <td className="p-3">
+                                            {item.tag.length > 0 ? (
+                                                <button onClick={() => handleOpenDetailsModal('Tags', item.tag.map(tg => tg.name))} className="text-blue-600 underline">
+                                                    {item.tag.length}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-600">0</span>
+                                            )}
+                                        </td>
+
+                                        <td className="p-3">
+                                            {item.subtag.length > 0 ? (
+                                                <button onClick={() => handleOpenDetailsModal('Sub-Tags', item.subtag.map(st => st.name))} className="text-blue-600 underline">
+                                                    {item.subtag.length}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-600">0</span>
+                                            )}
+                                        </td>
+
                                         <td className="p-3 text-gray-600 truncate max-w-xs" title={item.description}>{item.description}</td>
                                         <td className="p-3 text-gray-600">{item.createdBy}</td>
                                         <td className="p-3 text-gray-600">{item.createdDate}</td>
@@ -473,7 +622,6 @@ const BusinessCatalogue = () => {
                                                                     >
                                                                         <Trash2 className="h-4 w-4" />
                                                                     </button>
-
                                                                 </div>
                                                             </div>
                                                         </>
@@ -515,11 +663,7 @@ const BusinessCatalogue = () => {
 
             </div>
 
-            {/* <AddCatalogueModal
-                isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
-                onAddComplete={handleAddComplete}
-            /> */}
+            <DetailsModal isOpen={detailsModal.isOpen} onClose={handleCloseDetailsModal} title={detailsModal.title} data={detailsModal.data} />
             <AddCatalogueModal
                 isOpen={isAddModalOpen}
                 onClose={() => {

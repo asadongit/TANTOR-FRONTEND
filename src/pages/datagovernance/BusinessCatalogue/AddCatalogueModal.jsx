@@ -69,9 +69,85 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
     const [isOwnersLoading, setIsOwnersLoading] = useState(false);
     const [errors, setErrors] = useState({});
 
-    const tabs = ['Domain', 'Category', 'Sub-category', 'Term', 'Tag', 'Sub-tag'];
+    const [isNextEnabled, setIsNextEnabled] = useState(false);
+    const [isSaveEnabled, setIsSaveEnabled] = useState(false);
 
+    const tabs = ['Domain', 'Category', 'Sub-category', 'Term', 'Tag', 'Sub-tag'];
     const isEditMode = !!editData;
+
+    const isNameDuplicate = (tabKey, name, currentIndex) => {
+        const items = formData[tabKey];
+        if (!items || !name) return false;
+        return items.some(
+            (item, index) =>
+                index !== currentIndex && item.name?.trim().toLowerCase() === name.trim().toLowerCase()
+        );
+    };
+
+    const isEntireFormValid = () => {
+        const isTabDirty = (tabKey) => {
+            if (tabKey === 'domain') {
+                const data = formData.domain;
+                return !!(data.name?.trim() || data.description?.trim() || data.owner || data.status || data.stakeholder?.length > 0);
+            }
+            return formData[tabKey] && formData[tabKey].length > 0;
+        };
+
+        if (!tabs.some(tab => isTabDirty(tab.toLowerCase().replace('-', '')))) return false;
+
+        if (isTabDirty('domain')) {
+            const { name, description, owner, stakeholder, status } = formData.domain;
+            if (!(name?.trim() && description?.trim() && owner && status && stakeholder?.length > 0)) {
+                return false;
+            }
+        }
+
+        for (const tab of tabs.slice(1)) {
+            const tabKey = tab.toLowerCase().replace('-', '');
+            const items = formData[tabKey];
+            if (items && items.length > 0) {
+                const names = items.map(item => item.name?.trim().toLowerCase());
+                if (new Set(names).size !== names.length) {
+                    return false;
+                }
+
+                const isThisTabValid = items.every(item => {
+                    let isItemValid = !!(item.name?.trim() && item.desc?.trim() && item.owner && item.status);
+                    if (tabKey === 'subcategory') isItemValid = isItemValid && !!item.category_name;
+                    if (tabKey === 'subtag') isItemValid = isItemValid && !!item.tag_name;
+                    return isItemValid;
+                });
+                if (!isThisTabValid) return false;
+            }
+        }
+        return true;
+    };
+
+    const validateCurrentTab = () => {
+        const tabKey = activeTab.toLowerCase().replace('-', '');
+        if (tabKey === 'domain') {
+            const { name, description, owner, stakeholder, status } = formData.domain;
+            return !!(name?.trim() && description?.trim() && owner && status && stakeholder?.length > 0);
+        } else {
+            const items = formData[tabKey];
+            if (!items || items.length === 0) return true;
+            const names = items.map(item => item.name?.trim().toLowerCase());
+            if (new Set(names).size !== names.length) {
+                return false;
+            }
+            return items.every(item => {
+                let isItemValid = !!(item.name?.trim() && item.desc?.trim() && item.owner && item.status);
+                if (tabKey === 'subcategory') isItemValid = isItemValid && !!item.category_name;
+                if (tabKey === 'subtag') isItemValid = isItemValid && !!item.tag_name;
+                return isItemValid;
+            });
+        }
+    };
+
+    useEffect(() => {
+        setIsNextEnabled(validateCurrentTab());
+        setIsSaveEnabled(isEntireFormValid());
+    }, [formData, activeTab]);
 
     const fetchAndPrefillData = async () => {
         if (!editData) return;
@@ -390,7 +466,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Validation
+
     const validateForms = () => {
         const allErrors = {};
         let firstErrorTab = null;
@@ -404,54 +480,43 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
             }
         };
 
-        const isAnythingEntered = tabs.some(tab => isTabDirty(tab.toLowerCase().replace('-', '')));
-
-        if (!isAnythingEntered) {
+        if (!tabs.some(tab => isTabDirty(tab.toLowerCase().replace('-', '')))) {
             setSaveError("Nothing to save. Please fill out at least one form tab.");
-            setErrors({});
-            setErrorTabs({});
             return false;
         }
 
-        // Validate domain
         if (isTabDirty('domain')) {
             const tabErrors = {};
             const data = formData.domain;
-
             if (!data.name?.trim()) tabErrors.name = 'Name is required.';
             if (!data.description?.trim()) tabErrors.description = 'Description is required.';
             if (!data.stakeholder || data.stakeholder.length === 0) tabErrors.stakeholder = 'At least one stakeholder is required.';
             if (!data.owner) tabErrors.owner = 'Owner must be selected.';
             if (!data.status) tabErrors.status = 'Status must be selected.';
-
             if (Object.keys(tabErrors).length > 0) {
                 allErrors.domain = tabErrors;
                 if (!firstErrorTab) firstErrorTab = 'Domain';
             }
         }
 
-        // Validate other tabs
         for (const tab of tabs.slice(1)) {
             const tabKey = tab.toLowerCase().replace('-', '');
             const data = formData[tabKey];
-
             if (data && data.length > 0) {
                 const tabErrors = {};
-
                 for (let i = 0; i < data.length; i++) {
                     const item = data[i];
                     const itemErrors = {};
-
                     if (!item.name?.trim()) itemErrors.name = 'Name is required.';
+
+                    const isDuplicate = data.some((otherItem, j) => i !== j && otherItem.name?.trim().toLowerCase() === item.name?.trim().toLowerCase());
+                    if (isDuplicate) itemErrors.name = 'This name already exists in this tab.';
+
                     if (!item.desc?.trim()) itemErrors.desc = 'Description is required.';
                     if (!item.owner) itemErrors.owner = 'Owner must be selected.';
                     if (!item.status) itemErrors.status = 'Status must be selected.';
-
-                    if (Object.keys(itemErrors).length > 0) {
-                        tabErrors[i] = itemErrors;
-                    }
+                    if (Object.keys(itemErrors).length > 0) tabErrors[i] = itemErrors;
                 }
-
                 if (Object.keys(tabErrors).length > 0) {
                     allErrors[tabKey] = tabErrors;
                     if (!firstErrorTab) firstErrorTab = tab;
@@ -459,11 +524,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
             }
         }
 
-        const newErrorTabs = Object.keys(allErrors).reduce((acc, key) => {
-            acc[key.replace('_', '')] = true;
-            return acc;
-        }, {});
-        setErrorTabs(newErrorTabs);
+        setErrorTabs(Object.keys(allErrors).reduce((acc, key) => ({ ...acc, [key.replace('_', '')]: true }), {}));
 
         if (firstErrorTab) {
             setActiveTab(firstErrorTab);
@@ -479,7 +540,6 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
 
     const handleSave = async () => {
         if (!validateForms()) return;
-
         setIsSaving(true);
         setSaveError(null);
 
@@ -585,17 +645,26 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         }
     };
 
+
     const isLastItemIncomplete = (tabKey) => {
         const items = formData[tabKey];
-        if (items.length === 0) return false;
+        if (items.length === 0) {
+            return false;
+        }
 
         const lastItem = items[items.length - 1];
+        const lastIndex = items.length - 1;
+
         if (!lastItem.name?.trim() || !lastItem.desc?.trim() || !lastItem.owner || !lastItem.status) {
             return true;
         }
 
         if (tabKey === 'subcategory' && !lastItem.category_name) return true;
         if (tabKey === 'subtag' && !lastItem.tag_name) return true;
+
+        if (isNameDuplicate(tabKey, lastItem.name, lastIndex)) {
+            return true;
+        }
 
         return false;
     };
@@ -661,6 +730,39 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                 [index]: { ...prev[index], [field]: undefined }
             }));
         }
+    };
+
+    const handleMultiItemNameChange = (e, index, tabKey, allItems, setSuggestions, showSuggestions) => {
+        const value = e.target.value;
+        updateItem(tabKey, index, 'name', value);
+        updateItem(tabKey, index, 'id', null);
+
+        if (isNameDuplicate(tabKey, value, index)) {
+            setErrors(prev => ({ ...prev, [index]: { ...prev[index], name: 'This name already exists.' } }));
+        } else {
+            if (errors[index]?.name === 'This name already exists.') {
+                setErrors(prev => ({ ...prev, [index]: { ...prev[index], name: undefined } }));
+            }
+        }
+
+        if (value && allItems.length > 0) {
+            const filtered = allItems.filter(item => item.name.toLowerCase().includes(value.toLowerCase()));
+            setSuggestions(filtered);
+            showSuggestions(true);
+        } else {
+            showSuggestions(false);
+        }
+    };
+
+    const handleMultiItemSuggestionClick = (item, index, tabKey, idField, showSuggestions) => {
+        if (isNameDuplicate(tabKey, item.name, index)) {
+            toast.error(`Cannot select "${item.name}" as it already exists in this tab.`);
+            showSuggestions(false);
+            return;
+        }
+        updateItem(tabKey, index, 'id', item[idField]);
+        updateItem(tabKey, index, 'name', item.name);
+        showSuggestions(false);
     };
 
     const handleTabChange = (newTab) => {
@@ -746,32 +848,6 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         .filter(user => !formData.domain.stakeholder.includes(user.username))
         .filter(user => user.username.toLowerCase().includes(stakeholderSearchTerm.toLowerCase()));
 
-    const createSuggestionHandlers = (tabKey, allDataKey, suggestionsKey, showSuggestionsKey, setShowSuggestionsFunc, setSuggestionsFunc) => {
-        const handleNameChange = (e, index) => {
-            const value = e.target.value;
-            updateItem(tabKey, index, 'name', value);
-            updateItem(tabKey, index, 'id', null);
-
-            if (value && window[allDataKey] && window[allDataKey].length > 0) {
-                const filtered = window[allDataKey].filter(item =>
-                    item.name.toLowerCase().includes(value.toLowerCase())
-                );
-                setSuggestionsFunc(filtered);
-                setShowSuggestionsFunc(true);
-            } else {
-                setShowSuggestionsFunc(false);
-            }
-        };
-
-        const handleSuggestionClick = (item, index, idField) => {
-            updateItem(tabKey, index, 'id', item[idField]);
-            updateItem(tabKey, index, 'name', item.name);
-            setShowSuggestionsFunc(false);
-        };
-
-        return { handleNameChange, handleSuggestionClick };
-    };
-
     const ParentHierarchy = ({ data }) => {
         const MAX_DISPLAY_ITEMS = 2;
         const formatValue = (value) => {
@@ -811,30 +887,6 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         );
     };
 
-
-    const handleMultiItemNameChange = (e, index, tabKey, allItems, setSuggestions, showSuggestions) => {
-        const value = e.target.value;
-        updateItem(tabKey, index, 'name', value);
-        updateItem(tabKey, index, 'id', null);
-
-        if (value && allItems.length > 0) {
-            const filtered = allItems.filter(item =>
-                item.name.toLowerCase().includes(value.toLowerCase())
-            );
-            setSuggestions(filtered);
-            showSuggestions(true);
-        } else {
-            showSuggestions(false);
-        }
-    };
-
-    const handleMultiItemSuggestionClick = (item, index, tabKey, idField, showSuggestions) => {
-        updateItem(tabKey, index, 'id', item[idField]);
-        updateItem(tabKey, index, 'name', item.name);
-        showSuggestions(false);
-    };
-
-    // Render form content
     const renderFormContent = () => {
         if (activeTab === 'Domain') {
             return (
@@ -1125,9 +1177,9 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                                             }`}
                                     >
                                         {item.name || `${activeTab} ${index + 1}`}
-                                        {errors[index] && (
+                                        {/* {errors[index] && (
                                             <span className="ml-2 w-2 h-2 bg-red-500 rounded-full"></span>
-                                        )}
+                                        )} */}
                                         <button
                                             type="button"
                                             onClick={(e) => {
@@ -1299,7 +1351,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                                 return (
                                     <button
                                         key={tab}
-                                        onClick={() => handleTabChange(tab)}
+                                        // onClick={() => handleTabChange(tab)}
                                         className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-md focus:outline-none flex items-center ${activeTab === tab
                                             ? 'border-[#8e78b7] text-[#8e78b7]'
                                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -1340,14 +1392,20 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                         <button
                             type="button"
                             onClick={handleSave}
-                            disabled={isSaving}
+                            disabled={isSaving || !isSaveEnabled}
                             className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-green-600 text-white border border-transparent rounded-md shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSaving && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
                             {isSaving ? 'Saving...' : (isEditMode ? 'Update & Exit' : 'Save & Exit')}
                         </button>
                         {!isLastTab && (
-                            <button type="button" onClick={handleNext} className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] border border-transparent rounded-md shadow-sm hover:bg-[#7a67a0]">
+                            <button
+                                type="button"
+                                onClick={handleNext}
+                                disabled={!isNextEnabled}
+                                className={`px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] border border-transparent rounded-md shadow-sm ${!isNextEnabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#7a67a0]'
+                                    }`}
+                            >
                                 Next
                             </button>
                         )}
