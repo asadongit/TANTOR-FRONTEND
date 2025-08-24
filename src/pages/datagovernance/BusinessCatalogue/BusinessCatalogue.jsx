@@ -413,7 +413,7 @@ const BusinessCatalogue = () => {
                 throw new Error(result.detail || `HTTP error! Status: ${response.status}`);
             }
 
-            toast.success('Domain deleted successfully!');
+            toast.success(result.message || 'Domain deleted successfully!');
             handleCloseDeleteModal();
             await fetchCatalogueData();
 
