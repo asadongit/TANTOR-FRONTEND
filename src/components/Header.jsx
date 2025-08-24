@@ -412,7 +412,7 @@ const Header = () => {
                       );
                     })}
                     {isDataOwner && ownerTableLinkage?.map((n, i) => {
-                      const status = n.catalogue_linkage_table.status_approval[0]?.toLowerCase();
+                      const status = n.catalogue_linkage_table?.status_approval?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const message = `Your entry for Catalogue linkage to ${n.connection_name}.${n.table_schema}.${n.table_name} has been ${status}.`;
                       const reasonText = n.catalogue_linkage_table.reason?.join(', ');
@@ -428,7 +428,7 @@ const Header = () => {
                     })}
                     {isDataOwner && ownerColumnLinkage?.flatMap((n, i) =>
                       n.catalogue_linkage_column.map((link, j) => {
-                        const status = link.status_approval[0]?.toLowerCase();
+                        const status = link.status_approval?.toLowerCase();
                         const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                         const message = `Your entry for Catalogue linkage to ${n.connection_name}.${n.table_schema}.${n.table_name}.${link.column_name[0]} has been ${status}.`;
                         const reasonText = link.reason?.join(', ');
@@ -444,7 +444,7 @@ const Header = () => {
                       })
                     )}
                     {isDataOwner && ownerSchemaDescriptions?.map((n, i) => {
-                      const status = n.description_data.status_approval[0]?.toLowerCase();
+                      const status = n.description_data.status_approval?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const desc = n.description_data.pre_approval_description[0];
                       const target = `${n.connection_name}.${n.table_schema}`;
@@ -459,7 +459,7 @@ const Header = () => {
                       );
                     })}
                     {isDataOwner && ownerTableDescriptions?.map((n, i) => {
-                      const status = n.description_data.status_approval[0]?.toLowerCase();
+                      const status = n.description_data.status_approval?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const desc = n.description_data.pre_approval_description[0];
                       const target = `${n.connection_name}.${n.table_schema}.${n.table_name}`;
@@ -474,7 +474,7 @@ const Header = () => {
                       );
                     })}
                     {isDataOwner && ownerColumnDescriptions?.map((n, i) => {
-                      const status = n.column_data.status_approval[0]?.toLowerCase();
+                      const status = n.column_data.status_approval?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const desc = n.column_data.pre_approval_description[0];
                       const target = `${n.connection_name}.${n.table_schema}.${n.table_name}.${n.column_data.column_name}`;
