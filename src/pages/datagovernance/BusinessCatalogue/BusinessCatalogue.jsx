@@ -314,12 +314,6 @@ const BusinessCatalogue = () => {
         setItemToEdit(item);
         setIsAddModalOpen(true);
     };
-    const handleEditComplete = () => {
-        setIsAddModalOpen(false);
-        setItemToEdit(null);
-        toast.success('Catalogue updated successfully!');
-        fetchCatalogueData();
-    };
 
     const handleCloseEditModal = () => {
         setIsEditModalOpen(false);
@@ -399,7 +393,9 @@ const BusinessCatalogue = () => {
             const payload = {
                 id_set: [{
                     domain_id: [parseInt(itemToDelete.id, 10)]
-                }]
+                }],
+                roles: decodedToken?.resource_access?.darch?.roles || [],
+                owner: decodedToken?.preferred_username
             };
 
             const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/dashboard/delete_element`, {
@@ -417,7 +413,7 @@ const BusinessCatalogue = () => {
                 throw new Error(result.detail || `HTTP error! Status: ${response.status}`);
             }
 
-            toast.success('Domain deleted successfully!');
+            toast.success(result.message || 'Domain deleted successfully!');
             handleCloseDeleteModal();
             await fetchCatalogueData();
 
@@ -437,9 +433,22 @@ const BusinessCatalogue = () => {
         tableHeaders.push('Action');
     }
 
-    const handleAddComplete = () => {
+    const handleEditComplete = (responseData) => {
         setIsAddModalOpen(false);
-        toast.success('Catalogue added successfully!');
+        setItemToEdit(null);
+
+        const message = responseData?.status_message?.[0] || 'Catalogue updated successfully!';
+        toast.success(message);
+
+        fetchCatalogueData();
+    };
+
+    const handleAddComplete = (responseData) => {
+        setIsAddModalOpen(false);
+
+        const message = responseData?.status_message?.[0] || 'Catalogue added successfully!';
+        toast.success(message);
+
         fetchCatalogueData();
         setSearchTerm('');
     };
