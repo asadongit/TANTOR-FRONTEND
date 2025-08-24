@@ -341,7 +341,7 @@ const Header = () => {
                   <div className="divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
                     {isDataSteward && stewardNotifications && Object.entries(stewardNotifications).map(([domainId, notificationDetails]) => {
                       const domainName = notificationDetails.Domain?.[0]?.name;
-                      const message = `New business catalogue entry '${domainName}' requires approval.`;
+                      const message = `Business catalogue entry '${domainName}' requires approval.`;
                       return (
                         <div key={`steward-${domainId}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
                           <p className="text-sm text-gray-900 flex-1">{message}</p>
