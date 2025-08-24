@@ -140,6 +140,14 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
                 payload.data_catalogue = [dataCatObject];
                 break;
             }
+            case 'deletion': {
+                payload.delete_business_catalogue = [{
+                    status_approval: statusInPayload,
+                    reason: reason || "",
+                    domain_id: [details.domain_id]
+                }];
+                break;
+            }
 
             default:
                 throw new Error("Invalid notification type for approval action.");
@@ -175,7 +183,6 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
             setIsProcessing(false);
         }
     };
-
 
     const handleApprove = () => {
         handleAction('Approved');
@@ -276,6 +283,22 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
                     </>)}
                     {type === 'description' && (<div className="py-4"><h4 className="text-sm font-medium text-gray-500 mb-2">DESCRIPTION APPROVAL</h4><div className="p-4 bg-gray-50 rounded-lg border"><p className="text-md text-gray-800">{descriptionData}</p></div></div>)}
                     {(type === 'table_linkage' || type === 'column_linkage') && renderLinkageContent()}
+
+                    {type === 'deletion' && (
+                        <div className="py-4">
+                            <h4 className="text-sm font-medium text-gray-500 mb-2">DELETION APPROVAL</h4>
+                            <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 flex items-start gap-3">
+                                <AlertTriangle className="h-6 w-6 text-yellow-500 flex-shrink-0 mt-1" />
+                                <div>
+                                    <p className="text-md text-yellow-900">
+                                        You are requested to approve the deletion of the Business Catalogue entry:
+                                        <strong className="block mt-2 text-lg">"{details.domain_name}"</strong>.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {isRejecting && (<div className="mt-2 p-5 bg-orange-50 border border-orange-200 rounded-lg"><label htmlFor="rejectionReason" className="block text-sm font-medium text-orange-800 mb-2"><AlertTriangle size={18} className="inline mr-1" /> Reason for Rejection <span className="text-red-500">*</span></label><div className="mt-1"><textarea rows={3} name="rejectionReason" id="rejectionReason" className="px-3 py-2 shadow-sm focus:ring-orange-500 focus:border-orange-500 block w-full sm:text-sm border border-orange-300 rounded-md bg-white" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Provide a clear reason for rejecting this request..." disabled={isProcessing} /></div></div>)}
                     {error && !isFetchingDetails && (<div className="mt-4 p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm flex items-start gap-3"><AlertTriangle size={20} className="flex-shrink-0 mt-0.5" /><span>{error}</span></div>)}
                 </div>

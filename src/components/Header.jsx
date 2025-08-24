@@ -19,6 +19,7 @@ const Header = () => {
   const [descriptionNotifications, setDescriptionNotifications] = useState(null);
   const [tableLinkageNotifications, setTableLinkageNotifications] = useState(null);
   const [columnLinkageNotifications, setColumnLinkageNotifications] = useState(null);
+  const [deletionNotifications, setDeletionNotifications] = useState(null); // <-- ADDED: State for deletion notifications
 
   const [ownerBusinessCatalogue, setOwnerBusinessCatalogue] = useState(null);
   const [ownerColumnLinkage, setOwnerColumnLinkage] = useState(null);
@@ -74,6 +75,7 @@ const Header = () => {
       setDescriptionNotifications(data.description);
       setTableLinkageNotifications(data['table linkage']);
       setColumnLinkageNotifications(data['column linkage']);
+      setDeletionNotifications(data.deletions || []);
       setLastFetched(Date.now());
     } catch (error) {
       console.error('Error fetching steward notifications:', error);
@@ -275,7 +277,8 @@ const Header = () => {
     (stewardNotifications && Object.keys(stewardNotifications).length > 0) ||
     (descriptionNotifications && descriptionNotifications.length > 0) ||
     (tableLinkageNotifications && tableLinkageNotifications.length > 0) ||
-    (columnLinkageNotifications && columnLinkageNotifications.length > 0)
+    (columnLinkageNotifications && columnLinkageNotifications.length > 0) ||
+    (deletionNotifications && deletionNotifications.length > 0) 
   );
 
   const hasOwnerNotifications = (
@@ -341,7 +344,7 @@ const Header = () => {
                   <div className="divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
                     {isDataSteward && stewardNotifications && Object.entries(stewardNotifications).map(([domainId, notificationDetails]) => {
                       const domainName = notificationDetails.Domain?.[0]?.name;
-                      const message = `New business catalogue entry '${domainName}' requires approval.`;
+                      const message = `Business catalogue entry '${domainName}' requires approval.`;
                       return (
                         <div key={`steward-${domainId}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
                           <p className="text-sm text-gray-900 flex-1">{message}</p>
@@ -351,7 +354,7 @@ const Header = () => {
                         </div>
                       );
                     })}
-                     {isDataSteward && descriptionNotifications?.map((desc, index) => (
+                    {isDataSteward && descriptionNotifications?.map((desc, index) => (
                       <div key={`desc-${index}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
                         <p className="text-sm text-gray-900 truncate flex-1" title={desc}>{desc}</p>
                         <button onClick={() => handleViewDetails('description', index, desc)} className="text-[#8e78b7] ml-2 flex-shrink-0" title="View details">
@@ -381,7 +384,17 @@ const Header = () => {
                         </div>
                       );
                     })}
-
+                    {isDataSteward && deletionNotifications?.map((n, index) => {
+                      const message = `Deletion of Catalogue Entry "${n.domain_name}" requires approval.`;
+                      return (
+                        <div key={`deletion-${n.domain_id}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
+                          <p className="text-sm text-gray-900 flex-1">{message}</p>
+                          <button onClick={() => handleViewDetails('deletion', n.domain_id, n)} className="text-[#8e78b7] ml-2 flex-shrink-0" title="View details">
+                            <ChevronRight className='text-[#8e78b7]' size={20} />
+                          </button>
+                        </div>
+                      );
+                    })}
 
                     {isDataOwner && ownerBusinessCatalogue?.map((n, i) => {
                       const status = n.status_approval?.toLowerCase();
@@ -399,7 +412,7 @@ const Header = () => {
                       );
                     })}
                     {isDataOwner && ownerTableLinkage?.map((n, i) => {
-                      const status = n.catalogue_linkage_table.status_approval[0]?.toLowerCase();
+                      const status = n.catalogue_linkage_table?.status_approval?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const message = `Your entry for Catalogue linkage to ${n.connection_name}.${n.table_schema}.${n.table_name} has been ${status}.`;
                       const reasonText = n.catalogue_linkage_table.reason?.join(', ');
@@ -415,7 +428,7 @@ const Header = () => {
                     })}
                     {isDataOwner && ownerColumnLinkage?.flatMap((n, i) =>
                       n.catalogue_linkage_column.map((link, j) => {
-                        const status = link.status_approval[0]?.toLowerCase();
+                        const status = link.status_approval?.toLowerCase();
                         const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                         const message = `Your entry for Catalogue linkage to ${n.connection_name}.${n.table_schema}.${n.table_name}.${link.column_name[0]} has been ${status}.`;
                         const reasonText = link.reason?.join(', ');
@@ -431,51 +444,50 @@ const Header = () => {
                       })
                     )}
                     {isDataOwner && ownerSchemaDescriptions?.map((n, i) => {
-                      const status = n.description_data.status_approval[0]?.toLowerCase();
+                      const status = n.description_data.status_approval?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const desc = n.description_data.pre_approval_description[0];
                       const target = `${n.connection_name}.${n.table_schema}`;
                       const message = `Entry for schema description: "${desc}" has been ${status} for ${target}.`;
                       return (
-                        <OwnerNotificationItem 
-                          key={`owner-sd-${i}`} 
-                          icon={icon} 
-                          message={message} 
+                        <OwnerNotificationItem
+                          key={`owner-sd-${i}`}
+                          icon={icon}
+                          message={message}
                           onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('schema_description', n, i); }}
                         />
                       );
                     })}
                     {isDataOwner && ownerTableDescriptions?.map((n, i) => {
-                      const status = n.description_data.status_approval[0]?.toLowerCase();
+                      const status = n.description_data.status_approval?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const desc = n.description_data.pre_approval_description[0];
                       const target = `${n.connection_name}.${n.table_schema}.${n.table_name}`;
                       const message = `Entry for table description: "${desc}" has been ${status} for ${target}.`;
                       return (
-                         <OwnerNotificationItem 
-                           key={`owner-td-${i}`} 
-                           icon={icon} 
-                           message={message} 
-                           onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('table_description', n, i); }}
-                         />
+                        <OwnerNotificationItem
+                          key={`owner-td-${i}`}
+                          icon={icon}
+                          message={message}
+                          onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('table_description', n, i); }}
+                        />
                       );
                     })}
                     {isDataOwner && ownerColumnDescriptions?.map((n, i) => {
-                      const status = n.column_data.status_approval[0]?.toLowerCase();
+                      const status = n.column_data.status_approval?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const desc = n.column_data.pre_approval_description[0];
                       const target = `${n.connection_name}.${n.table_schema}.${n.table_name}.${n.column_data.column_name}`;
                       const message = `Entry for column description: "${desc}" has been ${status} for ${target}.`;
                       return (
-                        <OwnerNotificationItem 
-                          key={`owner-cd-${i}`} 
-                          icon={icon} 
-                          message={message} 
+                        <OwnerNotificationItem
+                          key={`owner-cd-${i}`}
+                          icon={icon}
+                          message={message}
                           onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('column_description', n, i); }}
                         />
                       );
                     })}
-
                   </div>
                 )}
               </div>
@@ -486,7 +498,7 @@ const Header = () => {
             <button className="w-10 h-10 bg-gradient-to-br from-[#8e78b7] to-purple-400 rounded-full flex items-center justify-center text-white hover:shadow-md transition-all duration-200 border-2 border-white" onClick={toggleProfile} aria-label="Open user menu">
               {isLoading ? '...' : getUserInitials()}
             </button>
-             {isProfileOpen && (
+            {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-20 overflow-hidden">
                 {isLoading ? (
                   <div className="px-4 py-3 border-b border-gray-100">
