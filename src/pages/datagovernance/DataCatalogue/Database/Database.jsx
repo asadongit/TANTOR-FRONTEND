@@ -518,7 +518,7 @@ const Database = () => {
               <div className="flex items-center gap-1">
                 <button
                   title="Back"
-                  className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
+                  className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
                 >
@@ -529,7 +529,7 @@ const Database = () => {
                 </span>
                 <button
                   title="Next"
-                  className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
+                  className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
                 >
