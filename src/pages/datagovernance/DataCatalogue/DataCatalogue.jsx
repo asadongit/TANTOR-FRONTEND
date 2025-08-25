@@ -70,6 +70,8 @@ const DataCatalogue = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [recentAccess, setRecentAccess] = useState([]);
   const fetchedPoliciesRef = useRef(new Set());
+  const [showTooltip, setShowTooltip] = useState(false);
+
 
   const toggleRole = (index) => {
     const newCards = [...cards];
@@ -207,18 +209,18 @@ const DataCatalogue = () => {
         );
 
         if (unfetchedPolicyIds.length > 0) {
-            const connectionDetails = await fetchConnectionDetails(unfetchedPolicyIds);
-            if (isMounted && connectionDetails) {
-                setCatalogData((prevCatalogs) => {
-                    const newCatalogs = [...prevCatalogs, ...connectionDetails];
-                    updateCatalogCounts(newCatalogs);
-                    updateTableData(newCatalogs);
-                    return newCatalogs;
-                });
-            }
+          const connectionDetails = await fetchConnectionDetails(unfetchedPolicyIds);
+          if (isMounted && connectionDetails) {
+            setCatalogData((prevCatalogs) => {
+              const newCatalogs = [...prevCatalogs, ...connectionDetails];
+              updateCatalogCounts(newCatalogs);
+              updateTableData(newCatalogs);
+              return newCatalogs;
+            });
+          }
         } else {
-            updateCatalogCounts(catalogData);
-            updateTableData(catalogData);
+          updateCatalogCounts(catalogData);
+          updateTableData(catalogData);
         }
 
       } catch (error) {
@@ -264,14 +266,14 @@ const DataCatalogue = () => {
             Database: item.connection_type,
             Schema: item.table_schema,
             Tables: new Set(),
-            Columns: 0, 
+            Columns: 0,
             CreatedDate: item.created_at,
             updatedDate: item.updated_at,
           });
         }
         const conn = connectionSchemaMap.get(key);
         if (item.table_name) conn.Tables.add(item.table_name);
-        if (item.column_name) conn.Columns += 1; 
+        if (item.column_name) conn.Columns += 1;
       });
 
       const newTableData = Array.from(connectionSchemaMap.entries()).map(([key, data], index) => ({
@@ -344,29 +346,34 @@ const DataCatalogue = () => {
 
       <div className="grid lg:grid-cols-3 gap-6 mt-10">
         <div className="lg:col-span-2">
-         <CatalogueChart data={trendData} dataKeys={trendDataKeys} isDatabase={false} />
+          <CatalogueChart data={trendData} dataKeys={trendDataKeys} isDatabase={false} />
         </div>
 
         <div className="bg-white p-6 rounded-lg">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-medium">Recent access</h3>
-            <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center">
-              <span className="text-gray-600 text-sm">i</span>
+            <div
+              className="relative"
+              onMouseEnter={() => setShowTooltip(true)}
+              onMouseLeave={() => setShowTooltip(false)}
+            >
+              <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center cursor-help">
+                <span className="text-gray-600 text-sm">i</span>
+              </div>
+              {showTooltip && (
+                <div className="absolute bottom-full right-0 mb-2 w-64 px-3 py-2 text-sm text-white bg-gray-800 rounded-lg shadow-lg z-10">
+                  A list of connections you have recently accessed.
+                  <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800"></div>
+                </div>
+              )}
             </div>
           </div>
           <div className="space-y-4">
-            {recentAccess.length > 0 ? (
-              recentAccess.map((item, index) => (
-                <div
-                  key={index}
-                  className="pb-4 border-b border-gray-100 last:border-0"
-                >
-                  <span className="text-gray-600">
-                    {index + 1}. {item}
-                  </span>
-                </div>
-              ))
-            ) : (
+            {recentAccess.length > 0 ? recentAccess.map((item, index) => (
+              <div key={index} className="pb-4 border-b border-gray-100 last:border-0">
+                <span className="text-gray-600">{index + 1}. {item}</span>
+              </div>
+            )) : (
               <div className="pb-4 border-b border-gray-100">
                 <span className="text-gray-500">No recent access data available</span>
               </div>

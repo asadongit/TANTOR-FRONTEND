@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Columns3, X, Table, ChevronLeft, ChevronRight, RefreshCcw, TableOfContents, Layers, LayoutGrid, Search } from "lucide-react";
+import { Columns3, X, Table, ChevronLeft, ChevronRight, RefreshCcw, TableOfContents, Layers, LayoutGrid, Search, Info } from "lucide-react";
 import Breadcrumb from "../../../../components/Breadcrumb.jsx";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -311,6 +311,9 @@ const Database = () => {
     }
   };
 
+  const [showTooltip, setShowTooltip] = useState(false);
+
+
   return (
     <div className="p-4">
       <style>{rotateAnimation}</style>
@@ -412,13 +415,25 @@ const Database = () => {
           </div>
           <div className="grid lg:grid-cols-3 gap-6 mt-10">
             <div className="lg:col-span-2">
-              <CatalogueChart data={chartData} dataKeys={chartDataKeys} isDatabase={true}/>
+              <CatalogueChart data={chartData} dataKeys={chartDataKeys} isDatabase={true} />
             </div>
             <div className="bg-white p-6 rounded-lg">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-medium">Recent access</h3>
-                <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center">
-                  <span className="text-gray-600 text-sm">i</span>
+                <div
+                  className="relative"
+                  onMouseEnter={() => setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+                >
+                  <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center cursor-help">
+                    <span className="text-gray-600 text-sm">i</span>
+                  </div>
+                  {showTooltip && (
+                    <div className="absolute bottom-full right-0 mb-2 w-64 px-3 py-2 text-sm text-white bg-gray-800 rounded-lg shadow-lg z-10">
+                      A list of connections you have recently accessed.
+                      <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800"></div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="space-y-4">
