@@ -9,7 +9,8 @@ import {
   Database,
   FileCheck2,
   FilePenLine,
-  ChevronLeft
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import CompositeViewComponent from "../Schema/CompositeViewComponent";
 import SchemaDetailsViewComponent from "./SchemaDetailsViewComponenet";
@@ -18,6 +19,45 @@ import { useAuth } from "../../../../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../../components/Breadcrumb";
 import { fetchConnectionDetails, secureQuery } from '../Components/function';
+
+const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
+  if (!totalItems || totalPages <= 1) {
+    return null;
+  }
+
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  return (
+    <div className="flex justify-between items-center p-2 text-sm text-gray-700 border-t">
+      <span>
+        Showing <span className="font-semibold">{startItem}</span> to <span className="font-semibold">{endItem}</span> of <span className="font-semibold">{totalItems}</span> Entries
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Back"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <span className="px-3 py-1 font-medium">
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Next"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 
 const SchemaViewScreen = () => {
   const hostnameV1 = window._env_?.VITE_FAST_API;
@@ -44,6 +84,11 @@ const SchemaViewScreen = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const [activeTabBusiness, setActiveTabBusiness] = useState("composite-view");
+
+  // Pagination State
+  const [accessCurrentPage, setAccessCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+
 
   if (!schema) {
     return <p>Schema data not available.</p>;
@@ -156,6 +201,7 @@ const SchemaViewScreen = () => {
 
   const fetchAccessData = async () => {
     setLoadingAccessData(true);
+    setAccessCurrentPage(1); // Reset page on new fetch
 
     try {
       const response = await fetch(
@@ -287,6 +333,18 @@ const SchemaViewScreen = () => {
   const handleCancelEdit = () => {
     setSummaryText(schemaData.description || 'Schema description');
     setIsEditing(false);
+  };
+
+  // Pagination Logic for Access Data
+  const indexOfLastAccessItem = accessCurrentPage * itemsPerPage;
+  const indexOfFirstAccessItem = indexOfLastAccessItem - itemsPerPage;
+  const currentAccessItems = accessData.slice(indexOfFirstAccessItem, indexOfLastAccessItem);
+  const totalAccessPages = Math.ceil(accessData.length / itemsPerPage);
+
+  const handleAccessPageChange = (page) => {
+    if (page > 0 && page <= totalAccessPages) {
+      setAccessCurrentPage(page);
+    }
   };
 
   return (
@@ -443,9 +501,9 @@ const SchemaViewScreen = () => {
           {activeTab === "access" && (
             loadingAccessData ?
               <div className="pt-7 text-center text-sm text-gray-500 border-t">
-                Loading access api...
+                Loading access information...
               </div> :
-              <div className="overflow-x-auto mt-2 rounded-lg shadow border border-t">
+              <div className="overflow-hidden mt-2 rounded-lg shadow border">
                 <table className="min-w-full">
                   <thead className="bg-gray-50">
                     <tr>
@@ -456,7 +514,7 @@ const SchemaViewScreen = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {accessData.map((item) => (
+                    {currentAccessItems.map((item) => (
                       <React.Fragment key={`${item.type}-${item.name}`}>
                         <tr className="hover:bg-gray-50">
                           <td className="px-6 py-4">
@@ -492,6 +550,13 @@ const SchemaViewScreen = () => {
                     ))}
                   </tbody>
                 </table>
+                <Pagination
+                  currentPage={accessCurrentPage}
+                  totalPages={totalAccessPages}
+                  onPageChange={handleAccessPageChange}
+                  totalItems={accessData.length}
+                  itemsPerPage={itemsPerPage}
+                />
               </div>
           )}
 
