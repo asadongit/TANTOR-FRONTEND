@@ -10,8 +10,8 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
         className={`px-4 py-2 text-md font-medium border-b-2 ${activeTab === label
-            ? 'border-[#8d77ba] text-[#8d77ba]'
-            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-[#8d77ba] text-[#8d77ba]'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
     >
         {label}
@@ -25,7 +25,7 @@ const InfoPill = ({ label }) => (
 );
 
 const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
-    if (totalPages <= 1) {
+    if (!totalItems || totalPages <= 1) {
         return null;
     }
 
@@ -33,26 +33,26 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
     return (
-        <div className="flex justify-between items-center px-1 text-sm text-gray-700">
+        <div className="flex justify-between items-center p-2 text-sm text-gray-700 border-t">
             <span>
                 Showing <span className="font-semibold">{startItem}</span> to <span className="font-semibold">{endItem}</span> of <span className="font-semibold">{totalItems}</span> Entries
             </span>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-1">
                 <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Back"
                 >
                     <ChevronLeft className="h-5 w-5" />
                 </button>
-                <span>
-                    Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+                <span className="px-3 py-1 font-medium">
+                    Page {currentPage} of {totalPages}
                 </span>
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Next"
                 >
                     <ChevronRight className="h-5 w-5" />
@@ -61,6 +61,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
         </div>
     );
 };
+
 
 function TableDetailsPage() {
     const navigate = useNavigate();
@@ -79,6 +80,7 @@ function TableDetailsPage() {
     // Table Description State
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [description, setDescription] = useState('');
+    const [originalDescription, setOriginalDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     // Column Description State
@@ -138,6 +140,7 @@ function TableDetailsPage() {
                     description: currentTableData.table_description || 'Table Description'
                 };
                 setDescription(updatedTableData.description);
+                setOriginalDescription(updatedTableData.description); // Set original description
 
                 const updatedColumns = columns.map(col => {
                     const columnTagInfo = currentTableData.tags_column_json?.find(
@@ -177,6 +180,7 @@ function TableDetailsPage() {
                     description: currentTableData.table_description || 'Table Description'
                 };
                 setDescription(updatedTableData.description);
+                setOriginalDescription(updatedTableData.description); // Set original description on refetch
 
                 const updatedColumns = pageColumns.map(col => {
                     const columnTagInfo = currentTableData.tags_column_json?.find(
@@ -377,7 +381,7 @@ function TableDetailsPage() {
     }, [activeTab, tableData, token]);
 
     const handleCancelEdit = () => {
-        setDescription(tableData?.description || 'Table Description');
+        setDescription(originalDescription);
         setIsEditingDescription(false);
     };
 
@@ -614,86 +618,84 @@ function TableDetailsPage() {
 
                                     {/* Columns Table */}
                                     {pageColumns && pageColumns.length > 0 ? (
-                                        <>
-                                            <div className="overflow-x-auto rounded-lg shadow border">
-                                                <table className="min-w-full">
-                                                    <thead>
-                                                        <tr className="bg-[#29304a] text-white">
-                                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">ID</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Name</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Description</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Classification</th>
-                                                            {isUserAuthorized && (
-                                                                <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Action</th>
-                                                            )}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="bg-white divide-y divide-gray-200">
-                                                        {currentSummaryColumns.map((col, index) => {
-                                                            const isEditingThisRow = editingColumnName === col.column_name;
-                                                            const columnTagInfo = col.tags_column_json?.find(tagInfo => tagInfo.column_name === col.column_name);
-                                                            const colDescription = columnTagInfo?.column_description?.[0] || 'Column Description';
+                                        <div className="overflow-hidden rounded-lg shadow border">
+                                            <table className="min-w-full">
+                                                <thead>
+                                                    <tr className="bg-[#29304a] text-white">
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">ID</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Name</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Description</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Classification</th>
+                                                        {isUserAuthorized && (
+                                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">Action</th>
+                                                        )}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {currentSummaryColumns.map((col, index) => {
+                                                        const isEditingThisRow = editingColumnName === col.column_name;
+                                                        const columnTagInfo = col.tags_column_json?.find(tagInfo => tagInfo.column_name === col.column_name);
+                                                        const colDescription = columnTagInfo?.column_description?.[0] || 'Column Description';
 
-                                                            return (
-                                                                <tr key={col.column_name}>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{indexOfFirstSummaryColumn + index + 1}</td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{col.column_name}</td>
-                                                                    <td className="px-4 py-3 text-sm text-gray-500 max-w-xs">
+                                                        return (
+                                                            <tr key={col.column_name}>
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{indexOfFirstSummaryColumn + index + 1}</td>
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{col.column_name}</td>
+                                                                <td className="px-4 py-3 text-sm text-gray-500 max-w-xs">
+                                                                    {isEditingThisRow ? (
+                                                                        <input
+                                                                            type="text"
+                                                                            value={editedColumnDescription}
+                                                                            onChange={(e) => setEditedColumnDescription(e.target.value)}
+                                                                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-purple-400"
+                                                                            autoFocus
+                                                                            disabled={isSavingColumnDesc}
+                                                                        />
+                                                                    ) : savingColumnName === col.column_name ? (
+                                                                        <span className="text-gray-500 italic">Saving...</span>
+                                                                    ) : (
+                                                                        <span className="truncate">{colDescription}</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Classification</td>
+                                                                {isUserAuthorized && (
+                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
                                                                         {isEditingThisRow ? (
-                                                                            <input
-                                                                                type="text"
-                                                                                value={editedColumnDescription}
-                                                                                onChange={(e) => setEditedColumnDescription(e.target.value)}
-                                                                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-purple-400"
-                                                                                autoFocus
-                                                                                disabled={isSavingColumnDesc}
-                                                                            />
-                                                                        ) : savingColumnName === col.column_name ? (
-                                                                            <span className="text-gray-500 italic">Saving...</span>
+                                                                            <div className="flex items-center gap-3">
+                                                                                <button
+                                                                                    onClick={handleSaveColumnDescription}
+                                                                                    disabled={isSavingColumnDesc}
+                                                                                    className="text-green-600 hover:text-green-800 disabled:text-gray-300"
+                                                                                    title="Save"
+                                                                                >
+                                                                                    <Check size={20} />
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={handleColumnEditCancel}
+                                                                                    disabled={isSavingColumnDesc}
+                                                                                    className="text-red-500 hover:text-red-700 disabled:text-gray-300"
+                                                                                    title="Cancel"
+                                                                                >
+                                                                                    <X size={20} />
+                                                                                </button>
+                                                                            </div>
                                                                         ) : (
-                                                                            <span className="truncate">{colDescription}</span>
+                                                                            <button
+                                                                                onClick={() => handleColumnEditClick(col)}
+                                                                                className="text-gray-400 hover:text-gray-600"
+                                                                                title="Edit Column Description"
+                                                                                disabled={savingColumnName !== null}
+                                                                            >
+                                                                                <Pencil size={16} />
+                                                                            </button>
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">Classification</td>
-                                                                    {isUserAuthorized && (
-                                                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                                                                            {isEditingThisRow ? (
-                                                                                <div className="flex items-center gap-3">
-                                                                                    <button
-                                                                                        onClick={handleSaveColumnDescription}
-                                                                                        disabled={isSavingColumnDesc}
-                                                                                        className="text-green-600 hover:text-green-800 disabled:text-gray-300"
-                                                                                        title="Save"
-                                                                                    >
-                                                                                        <Check size={20} />
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={handleColumnEditCancel}
-                                                                                        disabled={isSavingColumnDesc}
-                                                                                        className="text-red-500 hover:text-red-700 disabled:text-gray-300"
-                                                                                        title="Cancel"
-                                                                                    >
-                                                                                        <X size={20} />
-                                                                                    </button>
-                                                                                </div>
-                                                                            ) : (
-                                                                                <button
-                                                                                    onClick={() => handleColumnEditClick(col)}
-                                                                                    className="text-gray-400 hover:text-gray-600"
-                                                                                    title="Edit Column Description"
-                                                                                    disabled={savingColumnName !== null}
-                                                                                >
-                                                                                    <Pencil size={16} />
-                                                                                </button>
-                                                                            )}
-                                                                        </td>
-                                                                    )}
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                                                )}
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
                                             <Pagination
                                                 currentPage={summaryColumnsCurrentPage}
                                                 totalPages={totalSummaryColumnPages}
@@ -701,7 +703,7 @@ function TableDetailsPage() {
                                                 totalItems={pageColumns.length}
                                                 itemsPerPage={itemsPerPage}
                                             />
-                                        </>
+                                        </div>
                                     ) : (
                                         <div className="mt-6 border rounded-lg p-10 text-center bg-gray-50">
                                             <h3 className="text-lg font-medium text-gray-900">No Columns Found</h3>
@@ -787,33 +789,35 @@ function TableDetailsPage() {
 
                             {activeTab === 'Sample data' && (
                                 <div>
-                                    {loadingSampleData && <p className="text-gray-500">Loading sample data...</p>}
-                                    {sampleDataError && <p className="text-red-600">Error: {sampleDataError}</p>}
+                                    {loadingSampleData && <p className="text-gray-500 text-center p-4">Loading sample data...</p>}
+                                    {sampleDataError && <p className="text-red-600 text-center p-4">Error: {sampleDataError}</p>}
+                                    
                                     {!loadingSampleData && !sampleDataError && sampleData.length === 0 && (
-                                        <p className="text-gray-500">No sample data is available for this table.</p>
+                                        <div className="mt-6 border rounded-lg p-10 text-center bg-gray-50">
+                                            <h3 className="text-lg font-medium text-gray-900">No Sample Data</h3>
+                                        </div>
                                     )}
+
                                     {!loadingSampleData && !sampleDataError && sampleData.length > 0 && (
-                                        <>
-                                            <div className="overflow-x-auto mt-2 rounded-lg shadow">
-                                                <table className="min-w-full">
-                                                    <thead>
-                                                        <tr className="bg-[#29304a] text-white">
+                                        <div className="overflow-hidden mt-2 rounded-lg shadow border">
+                                            <table className="min-w-full">
+                                                <thead>
+                                                    <tr className="bg-[#29304a] text-white">
+                                                        {sampleDataHeaders.map(header => (
+                                                            <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">{header.replace(/_/g, ' ')}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {currentSampleDataItems.map((row, rowIndex) => (
+                                                        <tr key={rowIndex} className="hover:bg-gray-50">
                                                             {sampleDataHeaders.map(header => (
-                                                                <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">{header.replace(/_/g, ' ')}</th>
+                                                                <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 max-w-sm truncate" title={String(row[header] ?? 'N/A')}>{String(row[header] ?? 'N/A')}</td>
                                                             ))}
                                                         </tr>
-                                                    </thead>
-                                                    <tbody className="bg-white divide-y divide-gray-200">
-                                                        {currentSampleDataItems.map((row, rowIndex) => (
-                                                            <tr key={rowIndex} className="hover:bg-gray-50">
-                                                                {sampleDataHeaders.map(header => (
-                                                                    <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 max-w-sm truncate" title={String(row[header] ?? '')}>{row[header]}</td>
-                                                                ))}
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                             <Pagination
                                                 currentPage={sampleDataCurrentPage}
                                                 totalPages={totalSampleDataPages}
@@ -821,7 +825,7 @@ function TableDetailsPage() {
                                                 totalItems={sampleData.length}
                                                 itemsPerPage={itemsPerPage}
                                             />
-                                        </>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -832,51 +836,49 @@ function TableDetailsPage() {
                                     {accessDataError && <p className="text-center text-red-600 p-4">Error: {accessDataError}</p>}
                                     {!loadingAccessData && !accessDataError && (
                                         accessData.length > 0 ? (
-                                            <>
-                                                <div className="overflow-x-auto mt-2 rounded-lg shadow border">
-                                                    <table className="min-w-full">
-                                                        <thead className="bg-gray-50">
-                                                            <tr>
-                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
-                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Count</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="bg-white divide-y divide-gray-200">
-                                                            {currentAccessItems.map((item) => (
-                                                                <React.Fragment key={`${item.type}-${item.name}`}>
-                                                                    <tr className="hover:bg-gray-50">
-                                                                        <td className="px-6 py-4">
-                                                                            <button onClick={() => toggleRow(item.name)} className="text-gray-500 hover:text-[#8d77ba] transition-colors">
-                                                                                {expandedRows[item.name] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                                                            </button>
+                                            <div className="overflow-hidden mt-2 rounded-lg shadow border">
+                                                <table className="min-w-full">
+                                                    <thead className="bg-gray-50">
+                                                        <tr>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Count</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-gray-200">
+                                                        {currentAccessItems.map((item) => (
+                                                            <React.Fragment key={`${item.type}-${item.name}`}>
+                                                                <tr className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4">
+                                                                        <button onClick={() => toggleRow(item.name)} className="text-gray-500 hover:text-[#8d77ba] transition-colors">
+                                                                            {expandedRows[item.name] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                                        </button>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.type}</td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.name}</td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.users.length}</td>
+                                                                </tr>
+                                                                {expandedRows[item.name] && (
+                                                                    <tr>
+                                                                        <td colSpan="4" className="px-6 py-4 bg-purple-50/50">
+                                                                            <div className="flex items-center flex-wrap gap-2">
+                                                                                <h4 className="font-semibold text-gray-700 text-sm">Users:</h4>
+                                                                                {item.users.length > 0 ? (
+                                                                                    item.users.map(user => (
+                                                                                        <span key={user} className="bg-purple-100 text-[#8d77ba] text-xs font-semibold px-2.5 py-1 rounded-full">{user}</span>
+                                                                                    ))
+                                                                                ) : (
+                                                                                    <span className="text-gray-500 italic text-sm">No users found in this {item.type.toLowerCase()}.</span>
+                                                                                )}
+                                                                            </div>
                                                                         </td>
-                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.type}</td>
-                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.name}</td>
-                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.users.length}</td>
                                                                     </tr>
-                                                                    {expandedRows[item.name] && (
-                                                                        <tr>
-                                                                            <td colSpan="4" className="px-6 py-4 bg-purple-50/50">
-                                                                                <div className="flex items-center flex-wrap gap-2">
-                                                                                    <h4 className="font-semibold text-gray-700 text-sm">Users:</h4>
-                                                                                    {item.users.length > 0 ? (
-                                                                                        item.users.map(user => (
-                                                                                            <span key={user} className="bg-purple-100 text-[#8d77ba] text-xs font-semibold px-2.5 py-1 rounded-full">{user}</span>
-                                                                                        ))
-                                                                                    ) : (
-                                                                                        <span className="text-gray-500 italic text-sm">No users found in this {item.type.toLowerCase()}.</span>
-                                                                                    )}
-                                                                                </div>
-                                                                            </td>
-                                                                        </tr>
-                                                                    )}
-                                                                </React.Fragment>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
+                                                                )}
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                                 <Pagination
                                                     currentPage={accessCurrentPage}
                                                     totalPages={totalAccessPages}
@@ -884,7 +886,7 @@ function TableDetailsPage() {
                                                     totalItems={accessData.length}
                                                     itemsPerPage={itemsPerPage}
                                                 />
-                                            </>
+                                            </div>
                                         ) : (
                                             <p className="text-center text-gray-500 mt-4 p-4">No access information is available for this table.</p>
                                         )

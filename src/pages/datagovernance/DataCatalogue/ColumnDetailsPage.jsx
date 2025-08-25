@@ -25,7 +25,7 @@ const InfoPill = ({ label }) => (
 );
 
 const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
-    if (totalPages <= 1) {
+    if (!totalItems || totalPages <= 1) {
         return null;
     }
 
@@ -33,26 +33,26 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
     return (
-        <div className="flex justify-between items-center mt-4 px-1 text-sm text-gray-700">
+        <div className="flex justify-between items-center p-2 text-sm text-gray-700 border-t">
             <span>
                 Showing <span className="font-semibold">{startItem}</span> to <span className="font-semibold">{endItem}</span> of <span className="font-semibold">{totalItems}</span> Entries
             </span>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-1">
                 <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Back"
                 >
                     <ChevronLeft className="h-5 w-5" />
                 </button>
-                <span>
-                    Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+                <span className="px-3 py-1 font-medium">
+                    Page {currentPage} of {totalPages}
                 </span>
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Next"
                 >
                     <ChevronRight className="h-5 w-5" />
@@ -85,6 +85,7 @@ function ColumnDetailsPage() {
     const [sampleDataError, setSampleDataError] = useState(null);
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [description, setDescription] = useState('');
+    const [originalDescription, setOriginalDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [accessData, setAccessData] = useState([]);
     const [loadingAccessData, setLoadingAccessData] = useState(false);
@@ -159,6 +160,7 @@ function ColumnDetailsPage() {
                 );
                 const foundDescription = columnTagInfo?.column_description?.[0] || 'Column Description';
                 setDescription(foundDescription);
+                setOriginalDescription(foundDescription);
             }
         } catch (error) {
             console.error('Error fetching column data:', error);
@@ -187,6 +189,7 @@ function ColumnDetailsPage() {
                 );
                 const foundDescription = columnTagInfo?.column_description?.[0] || 'Column Description';
                 setDescription(foundDescription);
+                setOriginalDescription(foundDescription);
             }
         } catch (error) {
             console.error('Error refetching column data:', error);
@@ -420,7 +423,7 @@ function ColumnDetailsPage() {
 
     const handleCancelEdit = () => {
         setIsEditingDescription(false);
-        refetchColumnData(); 
+        setDescription(originalDescription);
     };
 
     const handleSaveDescription = async () => {
@@ -737,31 +740,29 @@ function ColumnDetailsPage() {
                                         <p className="text-gray-500">No sample data is available for this column.</p>
                                     )}
                                     {!loadingSampleData && !sampleDataError && sampleData.length > 0 && (
-                                        <>
-                                            <div className="overflow-x-auto mt-2 rounded-lg shadow">
-                                                <table className="min-w-full">
-                                                    <thead>
-                                                        <tr className="bg-[#29304a] text-white">
+                                        <div className="overflow-hidden mt-2 rounded-lg shadow border">
+                                            <table className="min-w-full">
+                                                <thead>
+                                                    <tr className="bg-[#29304a] text-white">
+                                                        {sampleDataHeaders.map(header => (
+                                                            <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">
+                                                                {header.replace(/_/g, ' ')}
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {currentSampleDataItems.map((row, rowIndex) => (
+                                                        <tr key={rowIndex} className="hover:bg-gray-50">
                                                             {sampleDataHeaders.map(header => (
-                                                                <th key={header} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider">
-                                                                    {header.replace(/_/g, ' ')}
-                                                                </th>
+                                                                <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 max-w-sm truncate" title={String(row[header] ?? '')}>
+                                                                    {String(row[header] ?? 'N/A')}
+                                                                </td>
                                                             ))}
                                                         </tr>
-                                                    </thead>
-                                                    <tbody className="bg-white divide-y divide-gray-200">
-                                                        {currentSampleDataItems.map((row, rowIndex) => (
-                                                            <tr key={rowIndex} className="hover:bg-gray-50">
-                                                                {sampleDataHeaders.map(header => (
-                                                                    <td key={`${rowIndex}-${header}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 max-w-sm truncate" title={String(row[header] ?? '')}>
-                                                                        {String(row[header] ?? 'N/A')}
-                                                                    </td>
-                                                                ))}
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                             <Pagination
                                                 currentPage={sampleDataCurrentPage}
                                                 totalPages={totalSampleDataPages}
@@ -769,7 +770,7 @@ function ColumnDetailsPage() {
                                                 totalItems={sampleData.length}
                                                 itemsPerPage={itemsPerPage}
                                             />
-                                        </>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -780,55 +781,53 @@ function ColumnDetailsPage() {
                                     {accessDataError && <p className="text-center text-red-600 p-4">Error: {accessDataError}</p>}
                                     {!loadingAccessData && !accessDataError && (
                                         accessData.length > 0 ? (
-                                            <>
-                                                <div className="overflow-x-auto mt-2 rounded-lg shadow border">
-                                                    <table className="min-w-full">
-                                                        <thead className="bg-gray-50">
-                                                            <tr>
-                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
-                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Count</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="bg-white divide-y divide-gray-200">
-                                                            {currentAccessItems.map((item) => (
-                                                                <React.Fragment key={`${item.type}-${item.name}`}>
-                                                                    <tr className="hover:bg-gray-50">
-                                                                        <td className="px-6 py-4">
-                                                                            <button onClick={() => toggleRow(item.name)} className="text-gray-500 hover:text-[#8d77ba] transition-colors">
-                                                                                {expandedRows[item.name] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                                                            </button>
-                                                                        </td>
-                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.type}</td>
-                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.name}</td>
-                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.users.length}</td>
-                                                                    </tr>
-                                                                    {expandedRows[item.name] && (
-                                                                        <tr>
-                                                                            <td colSpan="4" className="px-6 py-4 bg-purple-50/50">
-                                                                                <div className="flex items-center flex-wrap gap-2">
-                                                                                    <h4 className="font-semibold text-gray-700 text-sm">Users:</h4>
-                                                                                    {item.users.length > 0 ? (
-                                                                                        item.users.map(user => (
-                                                                                            <span key={user} className="bg-purple-100 text-[#8d77ba] text-xs font-semibold px-2.5 py-1 rounded-full">
-                                                                                                {user}
-                                                                                            </span>
-                                                                                        ))
-                                                                                    ) : (
-                                                                                        <span className="text-gray-500 italic text-sm">
-                                                                                            No users found in this {item.type.toLowerCase()}.
+                                            <div className="overflow-hidden mt-2 rounded-lg shadow border">
+                                                <table className="min-w-full">
+                                                    <thead className="bg-gray-50">
+                                                        <tr>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Count</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-gray-200">
+                                                        {currentAccessItems.map((item) => (
+                                                            <React.Fragment key={`${item.type}-${item.name}`}>
+                                                                <tr className="hover:bg-gray-50">
+                                                                    <td className="px-6 py-4">
+                                                                        <button onClick={() => toggleRow(item.name)} className="text-gray-500 hover:text-[#8d77ba] transition-colors">
+                                                                            {expandedRows[item.name] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                                                        </button>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.type}</td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.name}</td>
+                                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.users.length}</td>
+                                                                </tr>
+                                                                {expandedRows[item.name] && (
+                                                                    <tr>
+                                                                        <td colSpan="4" className="px-6 py-4 bg-purple-50/50">
+                                                                            <div className="flex items-center flex-wrap gap-2">
+                                                                                <h4 className="font-semibold text-gray-700 text-sm">Users:</h4>
+                                                                                {item.users.length > 0 ? (
+                                                                                    item.users.map(user => (
+                                                                                        <span key={user} className="bg-purple-100 text-[#8d77ba] text-xs font-semibold px-2.5 py-1 rounded-full">
+                                                                                            {user}
                                                                                         </span>
-                                                                                    )}
-                                                                                </div>
-                                                                            </td>
-                                                                        </tr>
-                                                                    )}
-                                                                </React.Fragment>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
+                                                                                    ))
+                                                                                ) : (
+                                                                                    <span className="text-gray-500 italic text-sm">
+                                                                                        No users found in this {item.type.toLowerCase()}.
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                )}
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                                 <Pagination
                                                     currentPage={accessCurrentPage}
                                                     totalPages={totalAccessPages}
@@ -836,7 +835,7 @@ function ColumnDetailsPage() {
                                                     totalItems={accessData.length}
                                                     itemsPerPage={itemsPerPage}
                                                 />
-                                            </>
+                                            </div>
                                         ) : (
                                             <p className="text-center text-gray-500 mt-4 p-4">No access information is available for this column.</p>
                                         )
