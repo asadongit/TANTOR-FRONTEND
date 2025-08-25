@@ -264,14 +264,31 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
       return;
     }
 
+    const excludedKeysForTest = [
+      "created_by",
+      "pool_type",
+      "status",
+      "project",
+      "created_at",
+      "updated_at",
+      "is_deleted",
+      "table_count",
+      "connection_id",
+    ];
+    if (isEditMode) {
+      excludedKeysForTest.push("is_viewed");
+    }
+
     const filteredFormData = Object.fromEntries(
       Object.entries(formData).filter(
         ([key, value]) =>
-          !["created_by", "pool_type", "status", "project","created_at","updated_at","is_deleted","table_count","connection_id"].includes(key) && value !== null
+          !excludedKeysForTest.includes(key) &&
+          value !== null &&
+          value !== undefined
       )
     );
-    setIsTesting(true);
 
+    setIsTesting(true);
     try {
       const response = await fetch(`${hostnameV1}/test-connection`, {
         method: "POST",
@@ -326,10 +343,17 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
       return;
     }
 
+    const excludedKeysForUpdate = [
+      "created_at", "updated_at", "is_deleted", "table_count", "connection_id",
+    ];
+    if (isEditMode) {
+      excludedKeysForUpdate.push("is_viewed");
+    }
+
     const filteredFormData = Object.fromEntries(
       Object.entries(formData).filter(
         ([key, value]) =>
-          !["created_at", "updated_at", "is_deleted", "table_count", "connection_id"].includes(key) && value !== null
+           !excludedKeysForUpdate.includes(key) && value !== null
       )
     );
 
