@@ -4,7 +4,7 @@ import { Icon } from "@iconify-icon/react";
 import { secureQuery, fetchConnectionDetails } from '../Components/function.js';
 import { useAuth } from "../../../../context/AuthContext.jsx";
 import SchemaViewScreen from "../Schema/SchemaViewScreen.jsx"
-import { Search, Database, Columns3, RefreshCcw } from 'lucide-react';
+import { Search, Database, Columns3, RefreshCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate, useLocation } from "react-router-dom";
 
 function Schema() {
@@ -26,6 +26,9 @@ function Schema() {
   const navigate = useNavigate();
   const { state: navigationState } = useLocation();
   const [allRawData, setAllRawData] = useState([]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   const processSchemaData = (data) => {
     // Group by schema
@@ -175,9 +178,19 @@ function Schema() {
     });
   };
 
+  const handleSearchChange = (e) => {
+    setValue(e.target.value);
+    setCurrentPage(1);
+  };
+
   const filteredSchemaData = schemaData.filter((schema) =>
     schema.schema.toLowerCase().includes(value.toLowerCase())
   );
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentSchemaData = filteredSchemaData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredSchemaData.length / itemsPerPage);
 
   return (
     <div className="p-5">
@@ -209,7 +222,7 @@ function Schema() {
                 <input
                   value={value}
                   placeholder="Search schema ..."
-                  onChange={(e) => setValue(e.target.value)}
+                  onChange={handleSearchChange}
                   className="pl-10 border rounded-lg text-sm text-gray-500 p-2 w-full"
                 />
                 <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
@@ -247,13 +260,13 @@ function Schema() {
                     </tr>
                   </thead>
                   <tbody>
-                    {Array.isArray(filteredSchemaData) && filteredSchemaData.length > 0 ? (
-                      filteredSchemaData.map((schema, index) => (
+                    {Array.isArray(currentSchemaData) && currentSchemaData.length > 0 ? (
+                      currentSchemaData.map((schema, index) => (
                         <tr
-                          key={schema?.connectionName ?? index}
+                          key={schema?.connectionName + schema.schema ?? index}
                           className="border-b"
                         >
-                          <td className="p-4">{index + 1}</td>
+                          <td className="p-4">{indexOfFirstItem + index + 1}</td>
                           <td
                             onClick={() => {
                               handleSchemaViewScreen(schema);
@@ -288,6 +301,32 @@ function Schema() {
                     )}
                   </tbody>
                 </table>
+              </div>
+              <div className="flex justify-between items-center px-4 py-3 border-t">
+                <span className="text-sm text-gray-600">
+                  Showing {filteredSchemaData.length > 0 ? indexOfFirstItem + 1 : 0} to {Math.min(indexOfLastItem, filteredSchemaData.length)} of {filteredSchemaData.length} Entries
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    title="Back"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages > 0 ? totalPages : 1}
+                  </span>
+                  <button
+                    title="Next"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className="p-2 rounded-lg disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-100"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </div>
           )}
