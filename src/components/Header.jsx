@@ -3,7 +3,7 @@ import { BellIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import {
   LogOut, Settings, User, HelpCircle, Shield, CreditCard, Crown, Building,
-  ChevronRight, RefreshCcw, CheckCircle, XCircle, X
+  ChevronRight, RefreshCcw, CheckCircle, XCircle, X, Info
 } from 'lucide-react';
 import Logo from '../assets/Tantor.svg';
 import { useAuth } from '../context/AuthContext';
@@ -19,7 +19,7 @@ const Header = () => {
   const [descriptionNotifications, setDescriptionNotifications] = useState(null);
   const [tableLinkageNotifications, setTableLinkageNotifications] = useState(null);
   const [columnLinkageNotifications, setColumnLinkageNotifications] = useState(null);
-  const [deletionNotifications, setDeletionNotifications] = useState(null); // <-- ADDED: State for deletion notifications
+  const [deletionNotifications, setDeletionNotifications] = useState(null);
 
   const [ownerBusinessCatalogue, setOwnerBusinessCatalogue] = useState(null);
   const [ownerColumnLinkage, setOwnerColumnLinkage] = useState(null);
@@ -27,11 +27,12 @@ const Header = () => {
   const [ownerSchemaDescriptions, setOwnerSchemaDescriptions] = useState(null);
   const [ownerTableDescriptions, setOwnerTableDescriptions] = useState(null);
   const [ownerColumnDescriptions, setOwnerColumnDescriptions] = useState(null);
+  const [ownerDeletions, setOwnerDeletions] = useState(null);
+  const [ownerConnectionDescriptions, setOwnerConnectionDescriptions] = useState(null);
 
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastFetched, setLastFetched] = useState(null);
-
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
 
@@ -108,6 +109,8 @@ const Header = () => {
       setOwnerSchemaDescriptions(result['schema descriptions'] || []);
       setOwnerTableDescriptions(result['table descriptions'] || []);
       setOwnerColumnDescriptions(result['column descriptions'] || []);
+      setOwnerConnectionDescriptions(result['connection descriptions'] || []);
+      setOwnerDeletions(result.deletions || []);
       setLastFetched(Date.now());
     } catch (error) {
       console.error('Error fetching data owner notifications:', error);
@@ -124,19 +127,28 @@ const Header = () => {
       user: [decodedToken?.preferred_username],
       id_set: [],
       catalogue: [],
-      descriptions: []
+      descriptions: [],
+      deletions: []
     };
 
     switch (type) {
       case 'business_catalogue':
         payload.id_set.push({ domain_id: [notification.domain_id], category_id: [], sub_category_id: [], tag_id: [], sub_tag_id: [], term_id: [] });
         break;
+
+      case 'deletion':
+        payload.deletions.push({ domain_id: [notification.domain_id] });
+        break;
+
       case 'table_linkage':
         payload.catalogue.push({ connection_name: notification.connection_name, table_schema: notification.table_schema, table_name: notification.table_name, column_name: null });
         break;
       case 'column_linkage':
         const link = notification.catalogue_linkage_column[subIndex];
         payload.catalogue.push({ connection_name: notification.connection_name, table_schema: notification.table_schema, table_name: notification.table_name, column_name: link.column_name[0] });
+        break;
+      case 'connection_description':
+        payload.descriptions.push({ connection_name: notification.connection_name, table_schema: null, table_name: null, column_name: null });
         break;
       case 'schema_description':
         payload.descriptions.push({ connection_name: notification.connection_name, table_schema: notification.table_schema, table_name: null, column_name: null });
@@ -175,10 +187,12 @@ const Header = () => {
 
     switch (type) {
       case 'business_catalogue': setOwnerBusinessCatalogue(filterByIndex); break;
+      case 'deletion': setOwnerDeletions(filterByIndex); break;
       case 'table_linkage': setOwnerTableLinkage(filterByIndex); break;
       case 'schema_description': setOwnerSchemaDescriptions(filterByIndex); break;
       case 'table_description': setOwnerTableDescriptions(filterByIndex); break;
       case 'column_description': setOwnerColumnDescriptions(filterByIndex); break;
+      case 'connection_description': setOwnerConnectionDescriptions(filterByIndex); break;
       case 'column_linkage':
         setOwnerColumnLinkage(prev => {
           const newState = JSON.parse(JSON.stringify(prev));
@@ -278,7 +292,7 @@ const Header = () => {
     (descriptionNotifications && descriptionNotifications.length > 0) ||
     (tableLinkageNotifications && tableLinkageNotifications.length > 0) ||
     (columnLinkageNotifications && columnLinkageNotifications.length > 0) ||
-    (deletionNotifications && deletionNotifications.length > 0) 
+    (deletionNotifications && deletionNotifications.length > 0)
   );
 
   const hasOwnerNotifications = (
@@ -287,17 +301,19 @@ const Header = () => {
     (ownerTableLinkage && ownerTableLinkage.length > 0) ||
     (ownerSchemaDescriptions && ownerSchemaDescriptions.length > 0) ||
     (ownerTableDescriptions && ownerTableDescriptions.length > 0) ||
-    (ownerColumnDescriptions && ownerColumnDescriptions.length > 0)
+    (ownerColumnDescriptions && ownerColumnDescriptions.length > 0) ||
+    (ownerConnectionDescriptions && ownerConnectionDescriptions.length > 0) ||
+    (ownerDeletions && ownerDeletions.length > 0)
   );
 
   const hasNotifications = (isDataSteward && hasStewardNotifications) || (isDataOwner && hasOwnerNotifications);
 
   const OwnerNotificationItem = ({ icon, message, reason, onDismiss }) => (
     <div className="px-4 py-3 hover:bg-gray-50 flex items-start justify-between">
-      <div className="flex items-start flex-grow mr-2">
+      <div className="flex items-start flex-grow mr-2 min-w-0">
         <div className="flex-shrink-0 mt-1">{icon}</div>
         <div className="ml-3">
-          <p className="text-sm text-gray-900">{message}</p>
+          <p className="text-sm text-gray-900 break-words">{message}</p>
           {reason && <span className="block text-xs text-gray-500 mt-1">Reason: {reason}</span>}
         </div>
       </div>
@@ -384,7 +400,7 @@ const Header = () => {
                         </div>
                       );
                     })}
-                    {isDataSteward && deletionNotifications?.map((n, index) => {
+                    {isDataSteward && deletionNotifications?.map((n) => {
                       const message = `Deletion of Catalogue Entry "${n.domain_name}" requires approval.`;
                       return (
                         <div key={`deletion-${n.domain_id}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
@@ -412,7 +428,7 @@ const Header = () => {
                       );
                     })}
                     {isDataOwner && ownerTableLinkage?.map((n, i) => {
-                      const status = n.catalogue_linkage_table?.status_approval?.toLowerCase();
+                      const status = n.catalogue_linkage_table?.status_approval[0]?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const message = `Your entry for Catalogue linkage to ${n.connection_name}.${n.table_schema}.${n.table_name} has been ${status}.`;
                       const reasonText = n.catalogue_linkage_table.reason?.join(', ');
@@ -428,7 +444,7 @@ const Header = () => {
                     })}
                     {isDataOwner && ownerColumnLinkage?.flatMap((n, i) =>
                       n.catalogue_linkage_column.map((link, j) => {
-                        const status = link.status_approval?.toLowerCase();
+                        const status = link.status_approval[0]?.toLowerCase();
                         const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                         const message = `Your entry for Catalogue linkage to ${n.connection_name}.${n.table_schema}.${n.table_name}.${link.column_name[0]} has been ${status}.`;
                         const reasonText = link.reason?.join(', ');
@@ -443,47 +459,80 @@ const Header = () => {
                         );
                       })
                     )}
+                    {isDataOwner && ownerDeletions?.map((n, i) => {
+                      const status = n.delete_approval?.status_approval[0]?.toLowerCase();
+                      const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
+                      const message = `Deletion of Catalogue Entry "${n.domain_name}" has been ${status}.`;
+                      const reasonText = n.delete_approval?.reason[0];
+                      return (
+                        <OwnerNotificationItem
+                          key={`owner-del-${n.domain_id}`}
+                          icon={icon}
+                          message={message}
+                          reason={status === 'rejected' ? (reasonText || '-') : null}
+                          onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('deletion', n, i); }}
+                        />
+                      );
+                    })}
+                    {isDataOwner && ownerConnectionDescriptions?.map((n, i) => {
+                      const message = `Description update for connection "${n.connection_name}" has been submitted.`;
+                      return (
+                        <OwnerNotificationItem
+                          key={`owner-conn-desc-${i}`}
+                          icon={<Info className="h-5 w-5 text-blue-500" />}
+                          message={message}
+                          reason={n.reason || '-'}
+                          onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('connection_description', n, i); }}
+                        />
+                      );
+                    })}
                     {isDataOwner && ownerSchemaDescriptions?.map((n, i) => {
-                      const status = n.description_data.status_approval?.toLowerCase();
+                      const status = n.description_data.status_approval[0]?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const desc = n.description_data.pre_approval_description[0];
                       const target = `${n.connection_name}.${n.table_schema}`;
-                      const message = `Entry for schema description: "${desc}" has been ${status} for ${target}.`;
+                      const message = `Your description "${desc}" for schema ${target} has been ${status}.`;
+                      const reasonText = n.description_data.reason?.join(', ');
                       return (
                         <OwnerNotificationItem
                           key={`owner-sd-${i}`}
                           icon={icon}
                           message={message}
+                          reason={status === 'rejected' ? (reasonText || '-') : null}
                           onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('schema_description', n, i); }}
                         />
                       );
                     })}
                     {isDataOwner && ownerTableDescriptions?.map((n, i) => {
-                      const status = n.description_data.status_approval?.toLowerCase();
+                      const status = n.description_data.status_approval[0]?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const desc = n.description_data.pre_approval_description[0];
                       const target = `${n.connection_name}.${n.table_schema}.${n.table_name}`;
-                      const message = `Entry for table description: "${desc}" has been ${status} for ${target}.`;
+                      const message = `Your description "${desc}" for table ${target} has been ${status}.`;
+                      const reasonText = n.description_data.reason?.join(', ');
                       return (
                         <OwnerNotificationItem
                           key={`owner-td-${i}`}
                           icon={icon}
                           message={message}
+                          reason={status === 'rejected' ? (reasonText || '-') : null}
                           onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('table_description', n, i); }}
                         />
                       );
                     })}
                     {isDataOwner && ownerColumnDescriptions?.map((n, i) => {
-                      const status = n.column_data.status_approval?.toLowerCase();
+                      const status = n.column_data.status_approval[0]?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const desc = n.column_data.pre_approval_description[0];
                       const target = `${n.connection_name}.${n.table_schema}.${n.table_name}.${n.column_data.column_name}`;
-                      const message = `Entry for column description: "${desc}" has been ${status} for ${target}.`;
+                      const message = `Your description "${desc}" for column ${target} has been ${status}.`;
+                      const reasonText = n.column_data.reason?.join(', ');
                       return (
                         <OwnerNotificationItem
                           key={`owner-cd-${i}`}
                           icon={icon}
                           message={message}
+                          reason={status === 'rejected' ? (reasonText || '-') : null}
                           onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('column_description', n, i); }}
                         />
                       );
