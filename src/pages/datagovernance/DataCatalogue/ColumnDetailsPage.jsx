@@ -85,6 +85,7 @@ function ColumnDetailsPage() {
     const [sampleDataError, setSampleDataError] = useState(null);
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [description, setDescription] = useState('');
+    const [originalDescription, setOriginalDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [accessData, setAccessData] = useState([]);
     const [loadingAccessData, setLoadingAccessData] = useState(false);
@@ -159,6 +160,7 @@ function ColumnDetailsPage() {
                 );
                 const foundDescription = columnTagInfo?.column_description?.[0] || 'Column Description';
                 setDescription(foundDescription);
+                setOriginalDescription(foundDescription);
             }
         } catch (error) {
             console.error('Error fetching column data:', error);
@@ -187,6 +189,7 @@ function ColumnDetailsPage() {
                 );
                 const foundDescription = columnTagInfo?.column_description?.[0] || 'Column Description';
                 setDescription(foundDescription);
+                setOriginalDescription(foundDescription);
             }
         } catch (error) {
             console.error('Error refetching column data:', error);
@@ -420,7 +423,7 @@ function ColumnDetailsPage() {
 
     const handleCancelEdit = () => {
         setIsEditingDescription(false);
-        refetchColumnData(); 
+        setDescription(originalDescription);
     };
 
     const handleSaveDescription = async () => {

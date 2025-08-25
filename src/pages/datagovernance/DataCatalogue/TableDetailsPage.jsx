@@ -10,8 +10,8 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
         className={`px-4 py-2 text-md font-medium border-b-2 ${activeTab === label
-            ? 'border-[#8d77ba] text-[#8d77ba]'
-            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-[#8d77ba] text-[#8d77ba]'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
     >
         {label}
@@ -79,6 +79,7 @@ function TableDetailsPage() {
     // Table Description State
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [description, setDescription] = useState('');
+    const [originalDescription, setOriginalDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     // Column Description State
@@ -138,6 +139,7 @@ function TableDetailsPage() {
                     description: currentTableData.table_description || 'Table Description'
                 };
                 setDescription(updatedTableData.description);
+                setOriginalDescription(updatedTableData.description); // Set original description
 
                 const updatedColumns = columns.map(col => {
                     const columnTagInfo = currentTableData.tags_column_json?.find(
@@ -177,6 +179,7 @@ function TableDetailsPage() {
                     description: currentTableData.table_description || 'Table Description'
                 };
                 setDescription(updatedTableData.description);
+                setOriginalDescription(updatedTableData.description); // Set original description on refetch
 
                 const updatedColumns = pageColumns.map(col => {
                     const columnTagInfo = currentTableData.tags_column_json?.find(
@@ -377,7 +380,7 @@ function TableDetailsPage() {
     }, [activeTab, tableData, token]);
 
     const handleCancelEdit = () => {
-        setDescription(tableData?.description || 'Table Description');
+        setDescription(originalDescription);
         setIsEditingDescription(false);
     };
 
@@ -711,7 +714,7 @@ function TableDetailsPage() {
                                 </div>
                             )}
 
-                            {activeTab === 'Business' && (
+                           {activeTab === 'Business' && (
                                 <div>
                                     <div className="flex items-center space-x-2 mb-6">
                                         <button onClick={() => setBusinessView('Composite view')}
@@ -895,7 +898,7 @@ function TableDetailsPage() {
                     </div>
 
                     <div className="w-full xl:w-80 flex-shrink-0 space-y-6">
-                        <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
+                       <div className="bg-white p-5 rounded-lg shadow-sm text-sm">
                             <div className="flex items-center gap-2">
                                 <span className="text-[#8d77ba]"><Lightbulb /></span>
                                 <h3 className="font-normal text-lg">Snapshot</h3>

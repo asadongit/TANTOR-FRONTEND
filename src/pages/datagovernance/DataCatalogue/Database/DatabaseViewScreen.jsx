@@ -270,7 +270,8 @@ const DatabaseViewScreen = () => {
         throw new Error(errorData.detail || "Failed to update schema description.");
       }
 
-      toast.success("Schema description updated!");
+      const successData = await response.json();
+      toast.success(successData.message || "Description updated successfully!");
       await refetchSchemaData();
 
     } catch (error) {
