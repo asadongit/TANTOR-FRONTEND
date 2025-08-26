@@ -124,6 +124,7 @@ function Tables() {
   }, [allTablesRawData, navigationState]);
 
   const handleRefresh = async () => {
+    setSearchTerm("")
     const result = await loadData();
     if (result.success) {
       setToast({ show: true, message: 'Table data refreshed successfully', type: 'success' });

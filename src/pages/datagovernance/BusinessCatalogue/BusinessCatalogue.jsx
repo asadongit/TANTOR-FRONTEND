@@ -481,7 +481,12 @@ const BusinessCatalogue = () => {
                             </button>
                         )}
                     </div>
-                    <button title="Refresh" onClick={() => fetchCatalogueData(true)} disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">
+                    <button title="Refresh"
+                        onClick={() => {
+                            setSearchTerm('');
+                            fetchCatalogueData(true);
+                        }}
+                        disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">
                         <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
                     </button>
                     {isUserAuthorized && (
