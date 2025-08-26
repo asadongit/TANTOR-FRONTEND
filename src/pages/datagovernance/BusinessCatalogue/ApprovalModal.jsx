@@ -159,25 +159,54 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
     const handleAction = async (status, reason = null) => {
         setIsProcessing(true);
         setError(null);
+
         try {
             const payload = constructFinalPayload(status, reason);
+
+            console.log("status is @@", status)
+            if (status?.toLowerCase() === 'approved') {
+                console.log("Status is approved. Calling data steward API...");
+                const stewardResponse = await fetch(`${window._env_?.VITE_FAST_API}/data_steward/approved`, {
+                    method: 'POST',
+                    headers: {
+                        'accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!stewardResponse.ok) {
+                    const errorData = await stewardResponse.json().catch(() => ({
+                        message: `Data Steward API Error: ${stewardResponse.statusText}`
+                    }));
+                    throw new Error(errorData?.message || 'Failed to update the data steward.');
+                }
+                console.log("Data steward API call successful.");
+            }
+
             const response = await fetch(`${window._env_?.VITE_FAST_API}/notifications/approved`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
+                const errorData = await response.json().catch(() => ({
+                    message: `Notifications API Error: ${response.statusText}`
+                }));
                 throw new Error(errorData?.message || `Failed to perform ${status} action.`);
             }
-
             const data = await response.json();
             toast.success(data.message || `Request has been ${status.toLowerCase()}.`);
             onActionSuccess();
             onClose();
+
         } catch (err) {
-            console.error(`Error during ${status} action:`, err);
+            console.error(`Error during '${status}' action:`, err);
             setError(err.message);
         } finally {
             setIsProcessing(false);
