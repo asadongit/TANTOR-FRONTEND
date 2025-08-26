@@ -71,7 +71,7 @@ const navigate = useNavigate();
     navigate(`/details?${encryptedUrl}`);
   };
   const handlekafkaClick = () => {
-    navigate("/kafka-dashboard");
+    navigate("/cdc/kafka-dashboard");
   };
 
 
