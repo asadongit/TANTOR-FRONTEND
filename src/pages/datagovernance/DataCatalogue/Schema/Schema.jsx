@@ -133,6 +133,7 @@ function Schema() {
     }
   }, [allRawData, navigationState]);
   const handleRefresh = async () => {
+    setValue('');
     const result = await loadData();
     if (result.success) {
       setToast({

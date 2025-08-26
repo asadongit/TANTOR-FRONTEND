@@ -108,6 +108,7 @@ function Columns() {
     }, [allTablesRawData, navigationState]);
 
     const handleRefresh = async () => {
+        setSearchTerm("")
         setColumnData([])
         const result = await loadData(true);
         if (result.success) {
