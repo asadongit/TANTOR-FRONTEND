@@ -1189,14 +1189,21 @@ export const TargetNode = ({ id, data }) => {
       preProcedures: enrichedPreProcedures,
       postProcedures: enrichedPostProcedures,
       enableCountLogging: enableCountLogging,
-      // include SCD selections for SCD1/SCD2
-      scdConfig
+      // FIXED: Always include current SCD config in data changes
+      scdConfig: {
+        primaryKeys: scdConfig.primaryKeys || [],
+        surrogateKey: scdConfig.surrogateKey || "",
+        checksumColumns: scdConfig.checksumColumns || [],
+        changeType: scdConfig.checksumColumns?.length ? (scdConfig.changeType || "checksum") : ""
+      }
     });
   }, [
     selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
     tables, alias, columnMapping, targetMapping, selectedSourceForMapping,
     selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings,
-    enableCountLogging, scdConfig
+    enableCountLogging,
+    // FIXED: Add scdConfig as dependency to ensure updates trigger data changes
+    scdConfig, scdConfig.primaryKeys, scdConfig.surrogateKey, scdConfig.checksumColumns, scdConfig.changeType
   ]);
 
   const connectionDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";
