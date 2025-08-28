@@ -146,13 +146,13 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
       let finalPreProcedures = node.data.preProcedures || [];
       let finalPostProcedures = node.data.postProcedures || [];
 
+      // Update existing procedures' mappings from latest context
       if (latestPreProcedures.length > 0) {
         finalPreProcedures = finalPreProcedures.map(proc => {
           const latestProc = latestPreProcedures.find(p =>
             p.procedureItemId === proc.procedureItemId &&
             p.procedureType === proc.procedureType
           );
-
           if (latestProc) {
             return {
               ...proc,
@@ -171,7 +171,6 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
             p.procedureItemId === proc.procedureItemId &&
             p.procedureType === proc.procedureType
           );
-
           if (latestProc) {
             return {
               ...proc,
@@ -184,21 +183,55 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
         });
       }
 
+      // NEW: Add any newly added procedures from procedureExecution that do not exist in node.data yet
+      const existingPreKeys = new Set(
+        (finalPreProcedures || []).map(proc => `${proc.procedureType || 'pre'}_${proc.procedureItemId}`)
+      );
+      const existingPostKeys = new Set(
+        (finalPostProcedures || []).map(proc => `${proc.procedureType || 'post'}_${proc.procedureItemId}`)
+      );
+
+      // Helper to normalize a procedureExecution entry into node.data shape
+      const toNodeProc = (p, fallbackType) => ({
+        procedure_name: p.ProcName,
+        procedure_parameter: Array.isArray(p.procedure_parameter) ? p.procedure_parameter : [],
+        parameterMapping: p.parameterMapping || {},
+        originalParameterMapping: p.originalParameterMapping || p.parameterMapping || {},
+        procedureItemId: p.procedureItemId,
+        procedureType: p.procedureType || fallbackType,
+      });
+
+      // Merge missing pre procedures
+      latestPreProcedures.forEach(p => {
+        const key = `${p.procedureType || 'pre'}_${p.procedureItemId}`;
+        if (!existingPreKeys.has(key)) {
+          finalPreProcedures = [
+            ...finalPreProcedures,
+            toNodeProc(p, (p.EventType && p.EventType.toLowerCase().includes('before')) ? 'pre' : 'pre')
+          ];
+          existingPreKeys.add(key);
+        }
+      });
+
+      // Merge missing post procedures
+      latestPostProcedures.forEach(p => {
+        const key = `${p.procedureType || 'post'}_${p.procedureItemId}`;
+        if (!existingPostKeys.has(key)) {
+          finalPostProcedures = [
+            ...finalPostProcedures,
+            toNodeProc(p, (p.EventType && p.EventType.toLowerCase().includes('after')) ? 'post' : 'post')
+          ];
+          existingPostKeys.add(key);
+        }
+      });
+
       // FIXED: Get the most current enableCountLogging value from multiple sources
       let currentEnableCountLogging = false;
-
       if (node.type === 'source') {
-        // For source nodes, check context first, then node data
-        currentEnableCountLogging = contextSources[node.id]?.enableCountLogging ??
-                                   node.data.enableCountLogging ??
-                                   false;
+        currentEnableCountLogging = contextSources[node.id]?.enableCountLogging ?? node.data.enableCountLogging ?? false;
       } else if (node.type === 'target') {
-        // For target nodes, check context first, then node data
-        currentEnableCountLogging = contextTargets[node.id]?.enableCountLogging ??
-                                   node.data.enableCountLogging ??
-                                   false;
+        currentEnableCountLogging = contextTargets[node.id]?.enableCountLogging ?? node.data.enableCountLogging ?? false;
       } else {
-        // For other node types, use node data
         currentEnableCountLogging = node.data.enableCountLogging ?? false;
       }
 
@@ -222,6 +255,17 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
         }
         else if (node.data && node.data.targetMapping) {
           finalTargetMapping = { ...node.data.targetMapping };
+        }
+      }
+
+      let finalScdConfig;
+      if (node.type === 'target') {
+        if (contextTargets[node.id]?.scdConfig) {
+          finalScdConfig = { ...contextTargets[node.id].scdConfig };
+        } else if (node.data?.scdConfig) {
+          finalScdConfig = { ...node.data.scdConfig };
+        } else {
+          finalScdConfig = { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" };
         }
       }
 
@@ -266,6 +310,8 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
           loadType: node.data.loadType,
           loadStrategy: node.data.loadStrategy,
           targetMapping: node.type === 'target' ? finalTargetMapping : undefined,
+          // NEW: include latest SCD config in edit-flow data for targets
+          scdConfig: node.type === 'target' ? finalScdConfig : undefined,
           selectedSourceId: node.type === 'target' ? finalSelectedSourceId : node.data.selectedSourceId,
           name: node.data.name,
           description: node.data.description,

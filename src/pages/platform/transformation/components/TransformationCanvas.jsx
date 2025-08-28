@@ -88,7 +88,6 @@ function TransformationCanvasContent() {
         setEdges(restoredData.edges);
 
         if (editFlowData.properties) {
-          // console.log("Restoring global properties:", editFlowData.properties);
           dispatch({
             type: ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES,
             payload: editFlowData.properties
