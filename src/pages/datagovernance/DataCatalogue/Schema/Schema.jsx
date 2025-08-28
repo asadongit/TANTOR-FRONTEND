@@ -276,8 +276,8 @@ function Schema() {
                           >
                             {schema.schema}
                           </td>
-                          <td className="p-4">{schema.description}</td>
-                          <td className="p-4">{schema.database}</td>
+                          <td className="p-4 max-w-xs truncate whitespace-nowrap">{schema.description}</td>
+                          <td className="p-4 max-w-xs truncate whitespace-nowrap">{schema.connectionName}</td>
                           <td className="p-4">{schema.owner}</td>
                           <td
                             onClick={() => handleNavigateToTables(schema)}
