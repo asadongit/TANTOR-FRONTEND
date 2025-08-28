@@ -66,6 +66,8 @@ export const TargetNode = ({ id, data }) => {
   const [enableCountLogging, setEnableCountLogging] = useState(false);
   // Add a ref to track restoration
   const hasRestoredEnableCountLogging = useRef(false);
+  // Add a ref to track restoration for loadType
+  const hasRestoredLoadType = useRef(false);
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -892,12 +894,15 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    if (data.loadType && loadType !== data.loadType) {
+    // FIXED: Only update loadType once during restoration and prevent constant changes
+    if (data.loadType && !hasRestoredLoadType.current) {
       setLoadType(data.loadType);
+      hasRestoredLoadType.current = true;
       hasUpdated = true;
     }
 
-    if (data.loadStrategy && loadStrategy !== data.loadStrategy) {
+    // FIXED: Only update loadStrategy once during restoration
+    if (data.loadStrategy && loadStrategy !== data.loadStrategy && !hasRestoredLoadType.current) {
       setLoadStrategy(data.loadStrategy);
       hasUpdated = true;
     }
@@ -982,8 +987,8 @@ export const TargetNode = ({ id, data }) => {
     data.table,
     data.alias,
     data.objectType,
-    data.loadType,
-    data.loadStrategy,
+    data.loadType, // Keep this but now protected by hasRestoredLoadType ref
+    data.loadStrategy, // Keep this but now protected by hasRestoredLoadType ref
     data.selectedSourceId,
     data.enableCountLogging, // Keep this dependency for proper restoration
     data.scdConfig
