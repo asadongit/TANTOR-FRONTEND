@@ -295,7 +295,7 @@ function Tables() {
                       {table.name}
                     </td>
                     <td className="p-4 max-w-xs truncate whitespace-nowrap">{table.description}</td>
-                    <td className="p-4">{table.database}</td>
+                    <td className="p-4 max-w-xs truncate whitespace-nowrap">{table.connection_name}</td>
                     <td className="p-4">{table.schema}</td>
                     <td className="p-4">{table.owner}</td>
                     <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleColumnClick(table)}>
