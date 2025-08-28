@@ -368,7 +368,7 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
           <button
             className="mr-4 text-white bg-[#8e78b7] hover:bg-[#a583e3] focus:outline-none focus:ring-2 focus:ring-[#a583e3] dark:focus:ring-[#7d7d7d] rounded-md text-sm px-5 py-2.5 shadow-lg transition duration-200 ease-in-out"
             onClick={() => {
-              window.open("https://visualization.app.translab.io/", "_blank");
+              window.open(SUPERSET_URL, "_blank");
             }}
           >
             Edit Report
