@@ -70,6 +70,12 @@ export const TargetNode = ({ id, data }) => {
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
   const tableDropdownRef = useRef(null);
+  const [scdConfig, setScdConfig] = useState({
+    primaryKeys: [],
+    surrogateKey: "",
+    checksumColumns: [],
+    changeType: ""
+  });
 
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
@@ -460,6 +466,14 @@ export const TargetNode = ({ id, data }) => {
         targetMapping,
         setTargetMapping: handleSetTargetMapping,
         sourceColumnOptions: sourceColumnOptionsForMapping,
+        // pass SCD context to drawer
+        loadType,
+        scdConfig,
+        setScdConfig: (cfg) => {
+          setScdConfig(cfg);
+          if (typeof data.onDataChange === "function") data.onDataChange({ scdConfig: cfg });
+          dispatch({ type: ACTION_TYPES.UPDATE_TARGET, payload: { id, data: { scdConfig: cfg } } });
+        },
       });
     }
   };
@@ -526,6 +540,14 @@ export const TargetNode = ({ id, data }) => {
           }));
         },
         sourceColumnOptions: enhancedSourceColumnOptions,
+        // pass SCD context to drawer
+        loadType,
+        scdConfig,
+        setScdConfig: (cfg) => {
+          setScdConfig(cfg);
+          if (typeof data.onDataChange === "function") data.onDataChange({ scdConfig: cfg });
+          dispatch({ type: ACTION_TYPES.UPDATE_TARGET, payload: { id, data: { scdConfig: cfg } } });
+        },
       });
     }
   };
@@ -880,10 +902,19 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    // FIXED: Initialize enableCountLogging from data during restoration
     if (typeof data.enableCountLogging === 'boolean' && !hasRestoredEnableCountLogging.current) {
       setEnableCountLogging(data.enableCountLogging);
       hasRestoredEnableCountLogging.current = true;
+    }
+
+    // restore SCD selections
+    if (data.scdConfig && JSON.stringify(data.scdConfig) !== JSON.stringify(scdConfig)) {
+      setScdConfig({
+        primaryKeys: data.scdConfig.primaryKeys || [],
+        surrogateKey: data.scdConfig.surrogateKey || "",
+        checksumColumns: data.scdConfig.checksumColumns || [],
+        changeType: data.scdConfig.checksumColumns?.length ? (data.scdConfig.changeType || "checksum") : ""
+      });
       hasUpdated = true;
     }
 
@@ -954,7 +985,8 @@ export const TargetNode = ({ id, data }) => {
     data.loadType,
     data.loadStrategy,
     data.selectedSourceId,
-    data.enableCountLogging // Keep this dependency for proper restoration
+    data.enableCountLogging, // Keep this dependency for proper restoration
+    data.scdConfig
   ]);
 
   useEffect(() => {
@@ -1065,7 +1097,8 @@ export const TargetNode = ({ id, data }) => {
     }
   }, [data.preProcedures, data.postProcedures, dispatch, ACTION_TYPES, id, alias]);
 
-  // FIX: Only update enableCountLogging if value is different and not restoring
+
+
   useEffect(() => {
     // Expose the setter function to allow external updates
     data.setEnableCountLogging = setEnableCountLogging;
@@ -1151,11 +1184,14 @@ export const TargetNode = ({ id, data }) => {
       preProcedures: enrichedPreProcedures,
       postProcedures: enrichedPostProcedures,
       enableCountLogging: enableCountLogging,
+      // include SCD selections for SCD1/SCD2
+      scdConfig
     });
   }, [
     selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
     tables, alias, columnMapping, targetMapping, selectedSourceForMapping,
-    selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging
+    selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings,
+    enableCountLogging, scdConfig
   ]);
 
   const connectionDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";
@@ -1466,6 +1502,9 @@ export const TargetNode = ({ id, data }) => {
                           onChange={(e) => setLoadType(e.target.value)}
                         >
                           <option value="FullLoad">Full Load</option>
+                          <option value="SCD1">SCD1</option>
+                          <option value="SCD2">SCD2</option>
+
                         </select>
                       </div>
                     </div>
