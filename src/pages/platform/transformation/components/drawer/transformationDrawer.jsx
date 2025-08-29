@@ -1370,6 +1370,33 @@ export const TransformationDrawer = ({
     }
   }
 
+  // FIXED: After adding/updating columns, notify all connected target nodes to refresh their SCD configurations
+  if (window.allNodes && window.allEdges) {
+    // Find all target nodes that might be connected to this dataframe
+    const targetNodes = window.allNodes.filter(n => n.type === 'target');
+
+    targetNodes.forEach(targetNode => {
+      // Check if this target is connected to the source that was updated
+      const isConnected = window.allEdges.some(edge => {
+        const sourceNode = window.allNodes.find(n => n.id === edge.source);
+        return edge.target === targetNode.id &&
+               sourceNode &&
+               (sourceNode.data?.alias === dataframeId || sourceNode.id === dataframeId);
+      });
+
+      if (isConnected && targetNode.data?.scdConfig) {
+        // Trigger target node to refresh its SCD config validation
+        if (targetNode.data.onDataChange) {
+          targetNode.data.onDataChange({
+            scdConfig: targetNode.data.scdConfig,
+            _refreshScdConfig: true,
+            _timestamp: Date.now()
+          });
+        }
+      }
+    });
+  }
+
   // Dispatch a detailed event with all information about the new column
   setTimeout(() => {
     window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
@@ -1379,7 +1406,9 @@ export const TransformationDrawer = ({
         columnType: datatype,
         operationType: operationType,
         timestamp: Date.now(),
-        isNewColumn: true
+        isNewColumn: true,
+        // FIXED: Add flag to indicate SCD configs should be refreshed
+        refreshScdConfigs: true
       }
     }));
   }, 10);
