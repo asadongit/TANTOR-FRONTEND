@@ -484,6 +484,7 @@ const BusinessCatalogue = () => {
                     <button title="Refresh"
                         onClick={() => {
                             setSearchTerm('');
+                            setSortConfig({ key: null, direction: 'asc' }); 
                             fetchCatalogueData(true);
                         }}
                         disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">

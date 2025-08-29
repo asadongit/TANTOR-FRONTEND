@@ -282,6 +282,7 @@ const BusinessGlossary = () => {
           <button
             onClick={() => {
               setSearchTerm('');
+              setSortConfig({ key: null, direction: 'asc' });
               fetchData(true);
             }}
             disabled={isLoading}
