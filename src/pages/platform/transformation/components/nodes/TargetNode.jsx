@@ -461,21 +461,102 @@ export const TargetNode = ({ id, data }) => {
     return uniqueCols.map(col => ({ value: col, label: col }));
   }, [selectedSourceNode, getAllSourceColumns]);
 
+  // FIXED: Add effect to handle column updates and SCD config refresh
+  useEffect(() => {
+    const handleColumnUpdate = (event) => {
+      const details = event.detail || {};
+
+      // If this event indicates SCD configs should be refreshed
+      if (details.refreshScdConfigs && details.sourceId) {
+        // Check if this target is connected to the updated source
+        const isConnected = window.allEdges?.some(edge => {
+          const sourceNode = window.allNodes?.find(n => n.id === edge.source);
+          return edge.target === id &&
+                 sourceNode &&
+                 (sourceNode.data?.alias === details.sourceId || sourceNode.id === details.sourceId);
+        });
+
+        if (isConnected) {
+          // Validate current SCD config against available columns
+          const currentTargetColumns = getAllTargetColumns();
+          const currentSourceColumns = getAllSourceColumns();
+          const allAvailableColumns = [...new Set([...currentTargetColumns, ...currentSourceColumns])];
+
+          setScdConfig(prevConfig => {
+            const validatedConfig = {
+              primaryKeys: prevConfig.primaryKeys.filter(pk => allAvailableColumns.includes(pk)),
+              surrogateKey: allAvailableColumns.includes(prevConfig.surrogateKey) ? prevConfig.surrogateKey : "",
+              checksumColumns: prevConfig.checksumColumns.filter(chk => allAvailableColumns.includes(chk)),
+              changeType: prevConfig.changeType
+            };
+
+            // Reset changeType if no valid checksum columns
+            if (validatedConfig.checksumColumns.length === 0) {
+              validatedConfig.changeType = "";
+            }
+
+            // Update context and node data with validated config
+            if (typeof data.onDataChange === "function") {
+              data.onDataChange({ scdConfig: validatedConfig });
+            }
+
+            dispatch({
+              type: ACTION_TYPES.UPDATE_TARGET,
+              payload: { id, data: { scdConfig: validatedConfig } }
+            });
+
+            return validatedConfig;
+          });
+        }
+      }
+    };
+
+    window.addEventListener("tantor-columns-updated", handleColumnUpdate);
+    return () => window.removeEventListener("tantor-columns-updated", handleColumnUpdate);
+  }, [id, getAllTargetColumns, getAllSourceColumns, data.onDataChange, dispatch, ACTION_TYPES]);
+
   const handleSlideClick = () => {
     if (window.openTargetMappingDrawer) {
+      // FIXED: Ensure current SCD config is passed with all available columns
+      const currentTargetColumns = getAllTargetColumns();
+      const currentSourceColumns = getAllSourceColumns();
+      const allAvailableColumns = [...new Set([...currentTargetColumns, ...currentSourceColumns])];
+
       window.openTargetMappingDrawer(id, {
         getAllTargetColumns,
         targetMapping,
         setTargetMapping: handleSetTargetMapping,
         sourceColumnOptions: sourceColumnOptionsForMapping,
-        // pass SCD context to drawer
+        // pass SCD context to drawer with validated config
         loadType,
-        scdConfig,
-        setScdConfig: (cfg) => {
-          setScdConfig(cfg);
-          if (typeof data.onDataChange === "function") data.onDataChange({ scdConfig: cfg });
-          dispatch({ type: ACTION_TYPES.UPDATE_TARGET, payload: { id, data: { scdConfig: cfg } } });
+        scdConfig: {
+          ...scdConfig,
+          // Ensure all SCD config values are valid against current columns
+          primaryKeys: scdConfig.primaryKeys.filter(pk => allAvailableColumns.includes(pk)),
+          surrogateKey: allAvailableColumns.includes(scdConfig.surrogateKey) ? scdConfig.surrogateKey : "",
+          checksumColumns: scdConfig.checksumColumns.filter(chk => allAvailableColumns.includes(chk)),
+          changeType: scdConfig.checksumColumns.filter(chk => allAvailableColumns.includes(chk)).length > 0 ? scdConfig.changeType : ""
         },
+        setScdConfig: (cfg) => {
+          // FIXED: Validate incoming SCD config
+          const validatedCfg = {
+            primaryKeys: Array.isArray(cfg.primaryKeys) ? cfg.primaryKeys.filter(pk => allAvailableColumns.includes(pk)) : [],
+            surrogateKey: allAvailableColumns.includes(cfg.surrogateKey) ? cfg.surrogateKey : "",
+            checksumColumns: Array.isArray(cfg.checksumColumns) ? cfg.checksumColumns.filter(chk => allAvailableColumns.includes(chk)) : [],
+            changeType: cfg.changeType || ""
+          };
+
+          // Reset changeType if no valid checksum columns
+          if (validatedCfg.checksumColumns.length === 0) {
+            validatedCfg.changeType = "";
+          }
+
+          setScdConfig(validatedCfg);
+          if (typeof data.onDataChange === "function") data.onDataChange({ scdConfig: validatedCfg });
+          dispatch({ type: ACTION_TYPES.UPDATE_TARGET, payload: { id, data: { scdConfig: validatedCfg } } });
+        },
+        // FIXED: Pass all available columns for SCD config validation
+        allAvailableColumns
       });
     }
   };
@@ -527,6 +608,10 @@ export const TargetNode = ({ id, data }) => {
       label: col
     }));
 
+    // FIXED: Get all available columns for SCD validation
+    const currentTargetColumns = getAllTargetColumns();
+    const allAvailableColumns = [...new Set([...currentTargetColumns, ...allAvailableSourceColumns])];
+
     if (window.openTargetMappingDrawer) {
       window.openTargetMappingDrawer(id, {
         getAllTargetColumns,
@@ -542,14 +627,36 @@ export const TargetNode = ({ id, data }) => {
           }));
         },
         sourceColumnOptions: enhancedSourceColumnOptions,
-        // pass SCD context to drawer
+        // pass SCD context to drawer with proper validation
         loadType,
-        scdConfig,
-        setScdConfig: (cfg) => {
-          setScdConfig(cfg);
-          if (typeof data.onDataChange === "function") data.onDataChange({ scdConfig: cfg });
-          dispatch({ type: ACTION_TYPES.UPDATE_TARGET, payload: { id, data: { scdConfig: cfg } } });
+        scdConfig: {
+          ...scdConfig,
+          // Ensure all SCD config values are valid against current columns
+          primaryKeys: scdConfig.primaryKeys.filter(pk => allAvailableColumns.includes(pk)),
+          surrogateKey: allAvailableColumns.includes(scdConfig.surrogateKey) ? scdConfig.surrogateKey : "",
+          checksumColumns: scdConfig.checksumColumns.filter(chk => allAvailableColumns.includes(chk)),
+          changeType: scdConfig.checksumColumns.filter(chk => allAvailableColumns.includes(chk)).length > 0 ? scdConfig.changeType : ""
         },
+        setScdConfig: (cfg) => {
+          // FIXED: Validate incoming SCD config
+          const validatedCfg = {
+            primaryKeys: Array.isArray(cfg.primaryKeys) ? cfg.primaryKeys.filter(pk => allAvailableColumns.includes(pk)) : [],
+            surrogateKey: allAvailableColumns.includes(cfg.surrogateKey) ? cfg.surrogateKey : "",
+            checksumColumns: Array.isArray(cfg.checksumColumns) ? cfg.checksumColumns.filter(chk => allAvailableColumns.includes(chk)) : [],
+            changeType: cfg.changeType || ""
+          };
+
+          // Reset changeType if no valid checksum columns
+          if (validatedCfg.checksumColumns.length === 0) {
+            validatedCfg.changeType = "";
+          }
+
+          setScdConfig(validatedCfg);
+          if (typeof data.onDataChange === "function") data.onDataChange({ scdConfig: validatedCfg });
+          dispatch({ type: ACTION_TYPES.UPDATE_TARGET, payload: { id, data: { scdConfig: validatedCfg } } });
+        },
+        // FIXED: Pass all available columns for SCD config validation
+        allAvailableColumns
       });
     }
   };
@@ -1189,12 +1296,12 @@ export const TargetNode = ({ id, data }) => {
       preProcedures: enrichedPreProcedures,
       postProcedures: enrichedPostProcedures,
       enableCountLogging: enableCountLogging,
-      // FIXED: Always include current SCD config in data changes
+      // FIXED: Always include validated SCD config in data changes
       scdConfig: {
-        primaryKeys: scdConfig.primaryKeys || [],
+        primaryKeys: Array.isArray(scdConfig.primaryKeys) ? scdConfig.primaryKeys : [],
         surrogateKey: scdConfig.surrogateKey || "",
-        checksumColumns: scdConfig.checksumColumns || [],
-        changeType: scdConfig.checksumColumns?.length ? (scdConfig.changeType || "checksum") : ""
+        checksumColumns: Array.isArray(scdConfig.checksumColumns) ? scdConfig.checksumColumns : [],
+        changeType: scdConfig.changeType || ""
       }
     });
   }, [
@@ -1202,8 +1309,12 @@ export const TargetNode = ({ id, data }) => {
     tables, alias, columnMapping, targetMapping, selectedSourceForMapping,
     selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings,
     enableCountLogging,
-    // FIXED: Add scdConfig as dependency to ensure updates trigger data changes
-    scdConfig, scdConfig.primaryKeys, scdConfig.surrogateKey, scdConfig.checksumColumns, scdConfig.changeType
+    // FIXED: Ensure all SCD config fields trigger updates
+    scdConfig,
+    JSON.stringify(scdConfig.primaryKeys),
+    scdConfig.surrogateKey,
+    JSON.stringify(scdConfig.checksumColumns),
+    scdConfig.changeType
   ]);
 
   const connectionDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";

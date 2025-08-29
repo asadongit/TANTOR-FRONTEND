@@ -163,6 +163,17 @@ function transformationReducer(state, action) {
         state.preservedTargetMappings[action.payload.id] = { ...newTargetMapping };
       }
 
+      // FIXED: Ensure SCD config is properly preserved and updated
+      const currentScdConfig = state.targets[action.payload.id]?.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" };
+      const newScdConfig = action.payload.data.scdConfig !== undefined
+        ? {
+            primaryKeys: Array.isArray(action.payload.data.scdConfig.primaryKeys) ? action.payload.data.scdConfig.primaryKeys : [],
+            surrogateKey: action.payload.data.scdConfig.surrogateKey || "",
+            checksumColumns: Array.isArray(action.payload.data.scdConfig.checksumColumns) ? action.payload.data.scdConfig.checksumColumns : [],
+            changeType: action.payload.data.scdConfig.changeType || ""
+          }
+        : currentScdConfig;
+
       const updatedTargetState = {
         ...state,
         targets: {
@@ -174,10 +185,8 @@ function transformationReducer(state, action) {
             enableCountLogging: typeof action.payload.data.enableCountLogging === 'boolean'
               ? action.payload.data.enableCountLogging
               : (state.targets[action.payload.id]?.enableCountLogging || false),
-            // NEW: update SCD config
-            scdConfig: action.payload.data.scdConfig !== undefined
-              ? action.payload.data.scdConfig
-              : (state.targets[action.payload.id]?.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" })
+            // FIXED: Always update SCD config properly
+            scdConfig: newScdConfig
           }
         }
       };
