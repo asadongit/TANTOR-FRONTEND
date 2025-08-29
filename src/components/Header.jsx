@@ -274,7 +274,7 @@ const Header = () => {
   const handleViewDetails = (type, id, details) => {
     setSelectedNotification({ type, id, details });
     setIsDetailModalOpen(true);
-    setIsNotificationsOpen(false);
+    // setIsNotificationsOpen(false);
   };
 
   const handleCloseModal = () => {

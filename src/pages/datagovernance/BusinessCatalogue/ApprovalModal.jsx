@@ -295,7 +295,7 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 p-4" onClick={onClose} onMouseDown={(e) => e.stopPropagation()}>
             <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col transform transition-all overflow-hidden">
                 <div className="flex justify-between items-center px-6 py-4 border-b">
                     <div>
