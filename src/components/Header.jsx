@@ -413,7 +413,7 @@ const Header = () => {
                     })}
 
                     {isDataOwner && ownerBusinessCatalogue?.map((n, i) => {
-                      const status = n.status_approval?.toLowerCase();
+                      const status = n.status_approval?.[0]?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       let message = `Your entry '${n.domain_name}' has been ${status}`;
                       if (status === 'approved') message += ` with status ${n.status}`;
@@ -428,10 +428,10 @@ const Header = () => {
                       );
                     })}
                     {isDataOwner && ownerTableLinkage?.map((n, i) => {
-                      const status = n.catalogue_linkage_table?.status_approval[0]?.toLowerCase();
+                      const status = n.catalogue_linkage_table?.[0]?.status_approval[0]?.toLowerCase();
                       const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
                       const message = `Your entry for Catalogue linkage to ${n.connection_name}.${n.table_schema}.${n.table_name} has been ${status}.`;
-                      const reasonText = n.catalogue_linkage_table.reason?.join(', ');
+                      const reasonText = n.catalogue_linkage_table?.[0]?.reason?.join(', ');
                       return (
                         <OwnerNotificationItem
                           key={`owner-tl-${i}`}
@@ -475,13 +475,18 @@ const Header = () => {
                       );
                     })}
                     {isDataOwner && ownerConnectionDescriptions?.map((n, i) => {
-                      const message = `Description update for connection "${n.connection_name}" has been submitted.`;
+                      const status = n.status_approval?.[0]?.toLowerCase();
+                      const icon = status === 'approved'
+                        ? <CheckCircle className="h-5 w-5 text-green-500" />
+                        : <XCircle className="h-5 w-5 text-red-500" />;
+                      const message = `Your description "${n.pre_approval_description}" for connection "${n.connection_name}" has been ${status}.`;
+
                       return (
                         <OwnerNotificationItem
                           key={`owner-conn-desc-${i}`}
-                          icon={<Info className="h-5 w-5 text-blue-500" />}
+                          icon={icon}
                           message={message}
-                          reason={n.reason || '-'}
+                          reason={status === 'rejected' ? (n.reason || '-') : null}
                           onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('connection_description', n, i); }}
                         />
                       );
