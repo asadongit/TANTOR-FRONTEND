@@ -66,6 +66,8 @@ export const TargetNode = ({ id, data }) => {
   const [enableCountLogging, setEnableCountLogging] = useState(false);
   // Add a ref to track restoration
   const hasRestoredEnableCountLogging = useRef(false);
+  // Add a ref to track restoration for loadType
+  const hasRestoredLoadType = useRef(false);
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
@@ -892,12 +894,15 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    if (data.loadType && loadType !== data.loadType) {
+    // FIXED: Only update loadType once during restoration and prevent constant changes
+    if (data.loadType && !hasRestoredLoadType.current) {
       setLoadType(data.loadType);
+      hasRestoredLoadType.current = true;
       hasUpdated = true;
     }
 
-    if (data.loadStrategy && loadStrategy !== data.loadStrategy) {
+    // FIXED: Only update loadStrategy once during restoration
+    if (data.loadStrategy && loadStrategy !== data.loadStrategy && !hasRestoredLoadType.current) {
       setLoadStrategy(data.loadStrategy);
       hasUpdated = true;
     }
@@ -982,8 +987,8 @@ export const TargetNode = ({ id, data }) => {
     data.table,
     data.alias,
     data.objectType,
-    data.loadType,
-    data.loadStrategy,
+    data.loadType, // Keep this but now protected by hasRestoredLoadType ref
+    data.loadStrategy, // Keep this but now protected by hasRestoredLoadType ref
     data.selectedSourceId,
     data.enableCountLogging, // Keep this dependency for proper restoration
     data.scdConfig
@@ -1184,14 +1189,21 @@ export const TargetNode = ({ id, data }) => {
       preProcedures: enrichedPreProcedures,
       postProcedures: enrichedPostProcedures,
       enableCountLogging: enableCountLogging,
-      // include SCD selections for SCD1/SCD2
-      scdConfig
+      // FIXED: Always include current SCD config in data changes
+      scdConfig: {
+        primaryKeys: scdConfig.primaryKeys || [],
+        surrogateKey: scdConfig.surrogateKey || "",
+        checksumColumns: scdConfig.checksumColumns || [],
+        changeType: scdConfig.checksumColumns?.length ? (scdConfig.changeType || "checksum") : ""
+      }
     });
   }, [
     selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
     tables, alias, columnMapping, targetMapping, selectedSourceForMapping,
     selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings,
-    enableCountLogging, scdConfig
+    enableCountLogging,
+    // FIXED: Add scdConfig as dependency to ensure updates trigger data changes
+    scdConfig, scdConfig.primaryKeys, scdConfig.surrogateKey, scdConfig.checksumColumns, scdConfig.changeType
   ]);
 
   const connectionDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";
