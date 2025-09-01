@@ -39,55 +39,60 @@ const TargetMappingDrawer = ({
         });
     }, [scdConfig]);
 
+    // --- PATCH: Always sync SCD config to parent/context on PK/SK/CHK change ---
+    // Helper to persist SCD config to parent/context/localStorage
+    const persistScdConfig = useCallback((nextScd) => {
+        const toPersist = {
+            primaryKeys: nextScd.primaryKeys || [],
+            surrogateKey: nextScd.surrogateKey || "",
+            checksumColumns: nextScd.checksumColumns || [],
+            changeType: (nextScd.checksumColumns?.length ? (nextScd.changeType || "checksum") : "")
+        };
+
+        // Save to localStorage
+        try {
+            window.localStorage.setItem(`scd_config_${nodeId}`, JSON.stringify(toPersist));
+        } catch {}
+
+        // Update parent SCD config
+        setScdConfig(toPersist);
+
+        // Update target node data and context
+        try {
+            const allNodes = window.allNodes || [];
+            const targetNode = allNodes.find(n => n.id === nodeId);
+            if (targetNode?.data?.onDataChange) {
+                targetNode.data.onDataChange({ scdConfig: toPersist });
+            }
+            // Force transformation context update
+            if (window.transformationContext) {
+                const { dispatch, ACTION_TYPES } = window.transformationContext;
+                if (dispatch && ACTION_TYPES) {
+                    dispatch({
+                        type: ACTION_TYPES.UPDATE_TARGET,
+                        payload: {
+                            id: nodeId,
+                            data: { scdConfig: toPersist }
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error("Error updating SCD config:", error);
+        }
+    }, [nodeId, setScdConfig]);
+    // --- END PATCH ---
+
     const togglePk = useCallback((col) => {
         setLocalScd(prev => {
             const set = new Set(prev.primaryKeys || []);
             set.has(col) ? set.delete(col) : set.add(col);
             const next = { ...prev, primaryKeys: [...set] };
-
-            const toPersist = {
-                primaryKeys: next.primaryKeys || [],
-                surrogateKey: next.surrogateKey || "",
-                checksumColumns: next.checksumColumns || [],
-                changeType: (next.checksumColumns?.length ? (next.changeType || "checksum") : "")
-            };
-
-            // FIXED: Immediate synchronization with all systems
-            try {
-                window.localStorage.setItem(`scd_config_${nodeId}`, JSON.stringify(toPersist));
-            } catch {}
-
-            // Update the parent component's SCD config immediately
-            setScdConfig(toPersist);
-
-            // FIXED: Update target node data immediately and force context update
-            try {
-                const allNodes = window.allNodes || [];
-                const targetNode = allNodes.find(n => n.id === nodeId);
-                if (targetNode?.data?.onDataChange) {
-                    targetNode.data.onDataChange({ scdConfig: toPersist });
-                }
-
-                // Force transformation context update
-                if (window.transformationContext) {
-                    const { dispatch, ACTION_TYPES } = window.transformationContext;
-                    if (dispatch && ACTION_TYPES) {
-                        dispatch({
-                            type: ACTION_TYPES.UPDATE_TARGET,
-                            payload: {
-                                id: nodeId,
-                                data: { scdConfig: toPersist }
-                            }
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error("Error updating SCD config:", error);
-            }
-
+            persistScdConfig(next); // PATCH: always persist SCD config
             return next;
         });
-    }, [nodeId, setScdConfig]);
+    }, [persistScdConfig]);
 
     const toggleSk = useCallback((col) => {
         setLocalScd(prev => {
@@ -95,50 +100,10 @@ const TargetMappingDrawer = ({
                 ...prev,
                 surrogateKey: prev.surrogateKey === col ? "" : col
             };
-
-            const toPersist = {
-                primaryKeys: next.primaryKeys || [],
-                surrogateKey: next.surrogateKey || "",
-                checksumColumns: next.checksumColumns || [],
-                changeType: (next.checksumColumns?.length ? (next.changeType || "checksum") : "")
-            };
-
-            // FIXED: Immediate synchronization with all systems
-            try {
-                window.localStorage.setItem(`scd_config_${nodeId}`, JSON.stringify(toPersist));
-            } catch {}
-
-            // Update the parent component's SCD config immediately
-            setScdConfig(toPersist);
-
-            // FIXED: Update target node data immediately and force context update
-            try {
-                const allNodes = window.allNodes || [];
-                const targetNode = allNodes.find(n => n.id === nodeId);
-                if (targetNode?.data?.onDataChange) {
-                    targetNode.data.onDataChange({ scdConfig: toPersist });
-                }
-
-                // Force transformation context update
-                if (window.transformationContext) {
-                    const { dispatch, ACTION_TYPES } = window.transformationContext;
-                    if (dispatch && ACTION_TYPES) {
-                        dispatch({
-                            type: ACTION_TYPES.UPDATE_TARGET,
-                            payload: {
-                                id: nodeId,
-                                data: { scdConfig: toPersist }
-                            }
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error("Error updating SCD config:", error);
-            }
-
+            persistScdConfig(next); // PATCH: always persist SCD config
             return next;
         });
-    }, [nodeId, setScdConfig]);
+    }, [persistScdConfig]);
 
     const toggleChk = useCallback((col) => {
         setLocalScd(prev => {
@@ -146,50 +111,10 @@ const TargetMappingDrawer = ({
             set.has(col) ? set.delete(col) : set.add(col);
             const arr = [...set];
             const next = { ...prev, checksumColumns: arr, changeType: arr.length ? (prev.changeType || "checksum") : "" };
-
-            const toPersist = {
-                primaryKeys: next.primaryKeys || [],
-                surrogateKey: next.surrogateKey || "",
-                checksumColumns: next.checksumColumns || [],
-                changeType: (next.checksumColumns?.length ? (next.changeType || "checksum") : "")
-            };
-
-            // FIXED: Immediate synchronization with all systems
-            try {
-                window.localStorage.setItem(`scd_config_${nodeId}`, JSON.stringify(toPersist));
-            } catch {}
-
-            // Update the parent component's SCD config immediately
-            setScdConfig(toPersist);
-
-            // FIXED: Update target node data immediately and force context update
-            try {
-                const allNodes = window.allNodes || [];
-                const targetNode = allNodes.find(n => n.id === nodeId);
-                if (targetNode?.data?.onDataChange) {
-                    targetNode.data.onDataChange({ scdConfig: toPersist });
-                }
-
-                // Force transformation context update
-                if (window.transformationContext) {
-                    const { dispatch, ACTION_TYPES } = window.transformationContext;
-                    if (dispatch && ACTION_TYPES) {
-                        dispatch({
-                            type: ACTION_TYPES.UPDATE_TARGET,
-                            payload: {
-                                id: nodeId,
-                                data: { scdConfig: toPersist }
-                            }
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error("Error updating SCD config:", error);
-            }
-
+            persistScdConfig(next); // PATCH: always persist SCD config
             return next;
         });
-    }, [nodeId, setScdConfig]);
+    }, [persistScdConfig]);
 
     // Function to collect all available source columns from window.allNodes
     const refreshSourceColumns = useCallback(() => {
@@ -343,22 +268,8 @@ const TargetMappingDrawer = ({
 
     }, [getAllTargetColumns, nodeId, localMapping]);
 
-    const handleConfirmMapping = useCallback(() => {
-        const hasAnyMapping = Object.values(localMapping).some(val => val && val.trim() !== "");
-        if (!hasAnyMapping) {
-            setShowConfirmModal(true);
-            return;
-        }
-        finalizeMappingAndClose();
-    }, [localMapping]);
-
-    const finalizeMappingAndClose = useCallback(() => {
-        window.localStorage.setItem(`targetMappingConfirmed_${nodeId}`, "true");
-        window.localStorage.setItem(`targetMapping_${nodeId}`, JSON.stringify(localMapping));
-
-        setTargetMapping(localMapping);
-
-        // FIXED: Ensure final SCD config persistence
+    // Add this new function to explicitly persist SCD config
+    const forcePersistScdConfig = useCallback(() => {
         const finalScdConfig = {
             primaryKeys: localScd.primaryKeys || [],
             surrogateKey: localScd.surrogateKey || "",
@@ -366,11 +277,61 @@ const TargetMappingDrawer = ({
             changeType: (localScd.checksumColumns?.length ? (localScd.changeType || "checksum") : "")
         };
 
+        // Save to localStorage
         try {
             window.localStorage.setItem(`scd_config_${nodeId}`, JSON.stringify(finalScdConfig));
-        } catch { }
+        } catch {}
 
+        // Update parent SCD config
         setScdConfig(finalScdConfig);
+
+        // Update target node data and context immediately
+        try {
+            const allNodes = window.allNodes || [];
+            const targetNode = allNodes.find(n => n.id === nodeId);
+            if (targetNode?.data?.onDataChange) {
+                targetNode.data.onDataChange({ scdConfig: finalScdConfig });
+            }
+
+            // Force transformation context update
+            if (window.transformationContext) {
+                const { dispatch, ACTION_TYPES } = window.transformationContext;
+                if (dispatch && ACTION_TYPES) {
+                    dispatch({
+                        type: ACTION_TYPES.UPDATE_TARGET,
+                        payload: {
+                            id: nodeId,
+                            data: { scdConfig: finalScdConfig }
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error updating SCD config:", error);
+        }
+
+        return finalScdConfig;
+    }, [nodeId, localScd, setScdConfig]);
+
+    // FIXED: Move finalizeMappingAndClose before handleConfirmMapping to avoid reference error
+    const finalizeMappingAndClose = useCallback(() => {
+        window.localStorage.setItem(`targetMappingConfirmed_${nodeId}`, "true");
+        window.localStorage.setItem(`targetMapping_${nodeId}`, JSON.stringify(localMapping));
+
+        setTargetMapping(localMapping);
+
+        // Force persist SCD config regardless of mapping changes
+        let finalScdConfig;
+        if (isSCD) {
+            finalScdConfig = forcePersistScdConfig();
+        } else {
+            finalScdConfig = {
+                primaryKeys: [],
+                surrogateKey: "",
+                checksumColumns: [],
+                changeType: ""
+            };
+        }
 
         // FIXED: Final update to target node and context with both mapping and SCD config
         const allNodes = window.allNodes || [];
@@ -381,7 +342,7 @@ const TargetMappingDrawer = ({
                 scdConfig: finalScdConfig
             });
 
-            // FIXED: Force final context update
+            // FIXED: Force final context update with both mapping and SCD data
             if (window.transformationContext) {
                 const { dispatch, ACTION_TYPES } = window.transformationContext;
                 if (dispatch && ACTION_TYPES) {
@@ -407,9 +368,27 @@ const TargetMappingDrawer = ({
         }
 
         onClose();
-    }, [localMapping, nodeId, setTargetMapping, onClose, localScd, setScdConfig]);
+    }, [localMapping, nodeId, setTargetMapping, onClose, isSCD, forcePersistScdConfig]);
+
+    const handleConfirmMapping = useCallback(() => {
+        // Force persist SCD config even if no mapping changes
+        if (isSCD) {
+            forcePersistScdConfig();
+        }
+
+        const hasAnyMapping = Object.values(localMapping).some(val => val && val.trim() !== "");
+        if (!hasAnyMapping) {
+            setShowConfirmModal(true);
+            return;
+        }
+        finalizeMappingAndClose();
+    }, [localMapping, isSCD, forcePersistScdConfig, finalizeMappingAndClose]);
 
     const handleModalConfirm = () => {
+        // Also ensure SCD config is persisted in modal confirm
+        if (isSCD) {
+            forcePersistScdConfig();
+        }
         finalizeMappingAndClose();
         setShowConfirmModal(false);
     };
