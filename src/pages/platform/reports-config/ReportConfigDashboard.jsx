@@ -33,6 +33,7 @@ const ReportConfigDashboard = () => {
   const { token, hostnameV1 } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [currentEmbedId, setCurrentEmbedId] = useState('');
+  const [currentDashboardId, setCurrentDashboardId] = useState('');
   const [currentReportData, setCurrentReportData] = useState({});
   const [isReportSummaryOpen, setIsReportSummaryOpen] = useState(false);
   const [cards, setCards] = useState([]);
@@ -110,7 +111,8 @@ const ReportConfigDashboard = () => {
         const reportId = row.report_id;
         const reportType = row.report_type;
         const reportFileName = row.report_name;
-        const embedID = row.embed_id
+        const embedID = row.embed_id;
+        const dashboardId = row.dashboard_id;
 
         // ----------- SUPERSET CODE START -----------
         if ((reportType || "").toUpperCase() === "LIST" || (reportType || "").toUpperCase() === "DASHBOARD") {
@@ -120,7 +122,9 @@ const ReportConfigDashboard = () => {
             return;
           }
 
+          console.log("Current dashboard id ==> ", dashboardId)
           setCurrentEmbedId(embedID);
+          setCurrentDashboardId(dashboardId);
           setShowModal(true);
           return;
         }
@@ -450,6 +454,7 @@ const ReportConfigDashboard = () => {
         showModal={showModal}
         setShowModal={setShowModal}
         currentReportName={currentEmbedId}
+        dashboardId={currentDashboardId}
       />
 
       <ReportSummaryComponent
