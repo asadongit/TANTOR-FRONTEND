@@ -101,8 +101,6 @@ const ConfigEditorModal = ({
   const updateConnectorConfig = async () => {
     try {
       const connector_name = configData?.name;
-      console.log("connector_name:", connector_name);
-      console.log("configType:", configType);
       const response = await axios.patch(
         `${hostnameV2}/cdc/${cdcId}/update-connector`,
         {
@@ -118,7 +116,6 @@ const ConfigEditorModal = ({
       );
 
       toast.success("Connector updated successfully!");
-      console.log("Response:", response.data);
       return response.data;
     } catch (error) {
       toast.error("Error updating connector!");

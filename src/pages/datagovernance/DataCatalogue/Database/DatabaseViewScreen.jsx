@@ -1,10 +1,48 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../../components/Breadcrumb";
-import { ChevronDown, ChevronUp, Database, Lightbulb, Pencil, ChevronLeft, FilePenLine, Check, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Database, Lightbulb, Pencil, ChevronLeft, FilePenLine, Check, X, ChevronRight } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
 import { fetchConnectionDetails, secureQuery } from '../Components/function.js';
+
+const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
+  if (!totalItems || totalPages <= 1) {
+    return null;
+  }
+
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  return (
+    <div className="flex justify-between items-center p-2 text-sm text-gray-700 border-t">
+      <span>
+        Showing <span className="font-semibold">{startItem}</span> to <span className="font-semibold">{endItem}</span> of <span className="font-semibold">{totalItems}</span> Entries
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Back"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <span className="px-3 py-1 font-medium">
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Next"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const DatabaseViewScreen = () => {
   const navigate = useNavigate();
@@ -38,6 +76,14 @@ const DatabaseViewScreen = () => {
   const [isSavingSchemaDesc, setIsSavingSchemaDesc] = useState(false);
 
   const [activeTabBusiness, setActiveTabBusiness] = useState("composite-view");
+  const [savingSchemaName, setSavingSchemaName] = useState(null);
+
+  const [schemaCurrentPage, setSchemaCurrentPage] = useState(1);
+  const [schemaItemsPerPage] = useState(5);
+
+  const [accessCurrentPage, setAccessCurrentPage] = useState(1);
+  const [accessItemsPerPage] = useState(5);
+
 
   const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(
     (role) => ["data steward", "data owner"].includes(role.toLowerCase())
@@ -49,7 +95,6 @@ const DatabaseViewScreen = () => {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
       const allConnectionsData = await fetchConnectionDetails(policyIds, token);
-      console.log("all connections data @@@",allConnectionsData)
 
       const currentConnectionData = allConnectionsData.find(
         item => item.connection_name === connectionName
@@ -80,7 +125,7 @@ const DatabaseViewScreen = () => {
           if (!existingSchema) {
             connectionSchemas[item.connection_name].schemas.push({
               name: item.table_schema,
-              description: item.table_schema_description || 'No description provided.'
+              description: item.table_schema_description || 'Schema description'
             });
           }
         }
@@ -145,7 +190,7 @@ const DatabaseViewScreen = () => {
           if (!existingSchema) {
             connectionSchemas[item.connection_name].schemas.push({
               name: item.table_schema,
-              description: item.table_schema_description || 'No description provided.'
+              description: item.table_schema_description || 'Schema description'
             });
           }
         }
@@ -163,13 +208,6 @@ const DatabaseViewScreen = () => {
     fetchAllData();
   }, [connectionName, token]);
 
-  // useEffect(() => {
-  //   if (connectionData) {
-  //     const initialDesc = connectionData.description || 'Connection description';
-  //     setSummaryText(initialDesc);
-  //   }
-  // }, [connectionData]);
-
   const handleSaveConnectionDescription = async () => {
     if (summaryText.trim() === '') {
       toast.error("Description cannot be empty.");
@@ -177,6 +215,7 @@ const DatabaseViewScreen = () => {
     }
     const trimmedDescription = summaryText.trim();
     setIsSaving(true);
+    setIsEditing(false);
     try {
       const response = await fetch(
         `${hostnameV1}/data_catalogue/edit_connection_description`,
@@ -190,24 +229,28 @@ const DatabaseViewScreen = () => {
           body: JSON.stringify({
             connection_name: connection.connectionName,
             description: trimmedDescription,
+            roles: decodedToken?.resource_access?.darch?.roles || [],
+            owner: decodedToken?.preferred_username
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to save. Status: ${response.status}`);
+        const errorData = await response.json();
+        await refetchConnectionData();
+        throw new Error(
+          errorData.detail || `Failed to save. Status: ${response.status}`
+        );
       }
 
-      await response.json();
-      toast.success("Description updated successfully!");
-      setIsEditing(false);
+      const successData = await response.json();
+      toast.success(successData.message || "Description updated successfully!");
 
-      // Refetch connection data to get updated description
       await refetchConnectionData();
 
     } catch (error) {
       console.error("Error updating connection description:", error);
-      toast.error("Failed to update description.");
+      toast.error(error.message);
     } finally {
       setIsSaving(false);
     }
@@ -236,9 +279,12 @@ const DatabaseViewScreen = () => {
       return;
     }
 
-    setIsSavingSchemaDesc(true);
+    const schemaToSave = editingSchemaName;
     const trimmedDescription = editedSchemaDescription.trim();
 
+    setIsSavingSchemaDesc(true);
+    setSavingSchemaName(schemaToSave);
+    handleSchemaEditCancel();
     try {
       const response = await fetch(`${hostnameV1}/data_catalogue/edit_schema_description`, {
         method: 'PATCH',
@@ -249,8 +295,10 @@ const DatabaseViewScreen = () => {
         },
         body: JSON.stringify({
           connection_name: connectionName,
-          table_schema: editingSchemaName,
+          table_schema: schemaToSave,
           schema_description: trimmedDescription,
+          roles: decodedToken?.resource_access?.darch?.roles || [],
+          owner: decodedToken?.preferred_username
         })
       });
 
@@ -259,23 +307,23 @@ const DatabaseViewScreen = () => {
         throw new Error(errorData.detail || "Failed to update schema description.");
       }
 
-      toast.success("Schema description updated!");
-      handleSchemaEditCancel();
-
-      // Refetch schema data to get updated descriptions
+      const successData = await response.json();
+      toast.success(successData.message || "Description updated successfully!");
       await refetchSchemaData();
 
     } catch (error) {
       console.error("Error saving schema description:", error);
       toast.error(error.message || "An error occurred.");
+      await refetchSchemaData();
     } finally {
       setIsSavingSchemaDesc(false);
+      setSavingSchemaName(null);
     }
   };
 
   const fetchAccessData = async () => {
     setLoadingAccessData(true);
-
+    setAccessCurrentPage(1); 
     try {
       const response = await fetch(
         `${window._env_?.VITE_FAST_API}/data_catalogue/access_tab`,
@@ -344,6 +392,31 @@ const DatabaseViewScreen = () => {
     }));
   };
 
+  // Schema pagination logic
+  const schemaTotalItems = schemaList.length;
+  const schemaTotalPages = Math.ceil(schemaTotalItems / schemaItemsPerPage);
+  const schemaIndexOfLastItem = schemaCurrentPage * schemaItemsPerPage;
+  const schemaIndexOfFirstItem = schemaIndexOfLastItem - schemaItemsPerPage;
+  const currentSchemaItems = schemaList.slice(schemaIndexOfFirstItem, schemaIndexOfLastItem);
+
+  const handleSchemaPageChange = (newPage) => {
+    if (newPage > 0 && newPage <= schemaTotalPages) {
+      setSchemaCurrentPage(newPage);
+    }
+  };
+
+  const accessTotalItems = accessData.length;
+  const accessTotalPages = Math.ceil(accessTotalItems / accessItemsPerPage);
+  const accessIndexOfLastItem = accessCurrentPage * accessItemsPerPage;
+  const accessIndexOfFirstItem = accessIndexOfLastItem - accessItemsPerPage;
+  const currentAccessItems = accessData.slice(accessIndexOfFirstItem, accessIndexOfLastItem);
+
+  const handleAccessPageChange = (newPage) => {
+    if (newPage > 0 && newPage <= accessTotalPages) {
+      setAccessCurrentPage(newPage);
+    }
+  };
+
   return (
     <div className="p-4">
       <Breadcrumb />
@@ -355,7 +428,6 @@ const DatabaseViewScreen = () => {
         </div>
       ) : (
         <div className="flex gap-4 mt-10">
-          {/* main div */}
           {/* main div */}
           <div className="bg-white w-[70%] h-full p-5">
             {/* heading */}
@@ -415,18 +487,24 @@ const DatabaseViewScreen = () => {
                     </h3>
                   </div>
                   {!isEditing ? (
-                    <>
-                      <p className="text-gray-600 pl-7 min-h-[2rem]">{summaryText}</p>
-                      {isUserAuthorized && (
-                        <button
-                          className="absolute top-3 right-3 pt-2 hover:text-gray-600 text-[#8d77ba]"
-                          onClick={() => setIsEditing(true)}
-                          title="Edit Connection Description"
-                        >
-                          <Pencil size={18} />
-                        </button>
-                      )}
-                    </>
+                    isSaving ? (
+                      <div className="text-gray-500 pl-7 min-h-[2rem]">
+                        Saving description...
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-gray-600 pl-7 min-h-[2rem]">{summaryText}</p>
+                        {isUserAuthorized && (
+                          <button
+                            className="absolute top-3 right-3 pt-2 hover:text-gray-600 text-[#8d77ba]"
+                            onClick={() => setIsEditing(true)}
+                            title="Edit Connection Description"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                        )}
+                      </>
+                    )
                   ) : (
                     <div className="flex flex-col gap-2">
                       <textarea
@@ -454,7 +532,7 @@ const DatabaseViewScreen = () => {
                   )}
                 </div>
 
-                <div className="bg-white rounded-lg shadow overflow-hidden mt-10 text-sm">
+                <div className="bg-white rounded-lg shadow overflow-hidden mt-10 text-sm border">
                   <table className="w-full">
                     <thead className="bg-[#29304a] text-white">
                       <tr>
@@ -467,12 +545,12 @@ const DatabaseViewScreen = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {schemaList.length > 0 ? (
-                        schemaList.map((schemaItem, idx) => {
+                      {currentSchemaItems.length > 0 ? (
+                        currentSchemaItems.map((schemaItem, idx) => {
                           const isEditingThisRow = editingSchemaName === schemaItem.name;
                           return (
                             <tr key={idx} className="border-b hover:bg-gray-50 transition-colors">
-                              <td className="p-4">{idx + 1}</td>
+                              <td className="p-4">{schemaIndexOfFirstItem + idx + 1}</td>
                               <td className="p-4 font-medium text-gray-800">{schemaItem.name}</td>
                               <td className="p-4 text-gray-600 max-w-xs">
                                 {isEditingThisRow ? (
@@ -482,10 +560,13 @@ const DatabaseViewScreen = () => {
                                     onChange={(e) => setEditedSchemaDescription(e.target.value)}
                                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-purple-400"
                                     autoFocus
+                                    disabled={isSavingSchemaDesc}
                                   />
+                                ) : savingSchemaName === schemaItem.name ? (
+                                  <span className="text-gray-500 italic">Saving...</span>
                                 ) : (
                                   <span className="truncate">
-                                    {schemaItem.description || 'No description provided.'}
+                                    {schemaItem.description || 'Schema Description.'}
                                   </span>
                                 )}
                               </td>
@@ -503,7 +584,8 @@ const DatabaseViewScreen = () => {
                                       </button>
                                       <button
                                         onClick={handleSchemaEditCancel}
-                                        className="text-red-500 hover:text-red-700"
+                                        disabled={isSavingSchemaDesc}
+                                        className="text-red-500 hover:text-red-700 disabled:text-gray-300"
                                         title="Cancel"
                                       >
                                         <X size={20} />
@@ -512,8 +594,9 @@ const DatabaseViewScreen = () => {
                                   ) : (
                                     <button
                                       onClick={() => handleSchemaEditClick(schemaItem)}
-                                      className="text-gray-400 hover:text-gray-600"
+                                      className="text-[#8d77ba]"
                                       title="Edit Schema Description"
+                                      disabled={savingSchemaName !== null}
                                     >
                                       <Pencil size={16} />
                                     </button>
@@ -532,6 +615,13 @@ const DatabaseViewScreen = () => {
                       )}
                     </tbody>
                   </table>
+                  <Pagination
+                    currentPage={schemaCurrentPage}
+                    totalPages={schemaTotalPages}
+                    onPageChange={handleSchemaPageChange}
+                    totalItems={schemaTotalItems}
+                    itemsPerPage={schemaItemsPerPage}
+                  />
                 </div>
               </>
             )}
@@ -539,9 +629,9 @@ const DatabaseViewScreen = () => {
             {activeTab === "access" && (
               loadingAccessData ?
                 <div className="pt-7 text-center text-sm text-gray-500 border-t">
-                  Loading access api...
+                  Loading access information ...
                 </div> :
-                <div className="overflow-x-auto mt-2 rounded-lg shadow border border-t">
+                <div className="overflow-hidden mt-2 rounded-lg shadow border">
                   <table className="min-w-full">
                     <thead className="bg-gray-50">
                       <tr>
@@ -552,7 +642,7 @@ const DatabaseViewScreen = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {accessData.map((item) => (
+                      {currentAccessItems.map((item) => (
                         <React.Fragment key={`${item.type}-${item.name}`}>
                           <tr className="hover:bg-gray-50">
                             <td className="px-6 py-4">
@@ -588,6 +678,13 @@ const DatabaseViewScreen = () => {
                       ))}
                     </tbody>
                   </table>
+                  <Pagination
+                    currentPage={accessCurrentPage}
+                    totalPages={accessTotalPages}
+                    onPageChange={handleAccessPageChange}
+                    totalItems={accessTotalItems}
+                    itemsPerPage={accessItemsPerPage}
+                  />
                 </div>
             )}
           </div>

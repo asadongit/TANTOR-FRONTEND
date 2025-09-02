@@ -230,7 +230,6 @@ const TransformationItem = memo(({
           );
           if (colObj && colObj.datatype) {
             const t = colObj.datatype.toLowerCase();
-			// console.log(t)
             if (t.includes("char") || t.includes("varchar2") || t.includes("string")) {
               operatorOptions = FILTER_OPERATORS.filter(op => (op.id === "==" || op.id === "!="));
               selectedColType = "string";
@@ -471,7 +470,6 @@ export const TransformationDrawer = ({
 					(node.type === "source" && (node.data?.alias === dfId || node.id === dfId))
 				);
 				if (sourceNode && typeof sourceNode.data.onDataChange === "function" && dfCols[dfId]?.length > 0) {
-					// console.log(`Updating source node ${dfId} with replayed columns during replay`);
 					sourceNode.data.onDataChange({ columns: [...dfCols[dfId]] });
 				}
 			});
@@ -526,7 +524,6 @@ export const TransformationDrawer = ({
 					);
 					if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
 						sourceNode.data.onDataChange({ columns: [...window.replayedDataframeColumns[dfId]] });
-						// console.log(`Updated source node ${dfId} with replayed columns:`, window.replayedDataframeColumns[dfId]);
 					}
 				}
 			});
@@ -1062,8 +1059,6 @@ export const TransformationDrawer = ({
 			result.push(transformationData);
 		});
 
-		console.log("Saving transformations:", result);
-
 		if (activeNode && activeNode.data && activeNode.data.onDataChange) {
 			activeNode.data.onDataChange({
 				transformations: result,
@@ -1190,8 +1185,6 @@ export const TransformationDrawer = ({
 	}, [setDataframeColumns, syncDataframeColumnsFromNodes]);
 
 	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic", givendatatype = "NUMBER", oldColumnName = null, restrictedColumns = null, restrictType = null) => {
-  //   console.log("operation type is ====>", operationType);
-  //   console.log("given datatype is  =====>", givendatatype);
   const actualDfId = dataframeId;
 
   let datatype = "NUMBER";
@@ -1370,6 +1363,33 @@ export const TransformationDrawer = ({
     }
   }
 
+  // FIXED: After adding/updating columns, notify all connected target nodes to refresh their SCD configurations
+  if (window.allNodes && window.allEdges) {
+    // Find all target nodes that might be connected to this dataframe
+    const targetNodes = window.allNodes.filter(n => n.type === 'target');
+
+    targetNodes.forEach(targetNode => {
+      // Check if this target is connected to the source that was updated
+      const isConnected = window.allEdges.some(edge => {
+        const sourceNode = window.allNodes.find(n => n.id === edge.source);
+        return edge.target === targetNode.id &&
+               sourceNode &&
+               (sourceNode.data?.alias === dataframeId || sourceNode.id === dataframeId);
+      });
+
+      if (isConnected && targetNode.data?.scdConfig) {
+        // Trigger target node to refresh its SCD config validation
+        if (targetNode.data.onDataChange) {
+          targetNode.data.onDataChange({
+            scdConfig: targetNode.data.scdConfig,
+            _refreshScdConfig: true,
+            _timestamp: Date.now()
+          });
+        }
+      }
+    });
+  }
+
   // Dispatch a detailed event with all information about the new column
   setTimeout(() => {
     window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
@@ -1379,7 +1399,9 @@ export const TransformationDrawer = ({
         columnType: datatype,
         operationType: operationType,
         timestamp: Date.now(),
-        isNewColumn: true
+        isNewColumn: true,
+        // FIXED: Add flag to indicate SCD configs should be refreshed
+        refreshScdConfigs: true
       }
     }));
   }, 10);

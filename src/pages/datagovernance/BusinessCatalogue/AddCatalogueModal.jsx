@@ -69,9 +69,85 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
     const [isOwnersLoading, setIsOwnersLoading] = useState(false);
     const [errors, setErrors] = useState({});
 
-    const tabs = ['Domain', 'Category', 'Sub-category', 'Term', 'Tag', 'Sub-tag'];
+    const [isNextEnabled, setIsNextEnabled] = useState(false);
+    const [isSaveEnabled, setIsSaveEnabled] = useState(false);
 
+    const tabs = ['Domain', 'Category', 'Sub-category', 'Term', 'Tag', 'Sub-tag'];
     const isEditMode = !!editData;
+
+    const isNameDuplicate = (tabKey, name, currentIndex) => {
+        const items = formData[tabKey];
+        if (!items || !name) return false;
+        return items.some(
+            (item, index) =>
+                index !== currentIndex && item.name?.trim().toLowerCase() === name.trim().toLowerCase()
+        );
+    };
+
+    const isEntireFormValid = () => {
+        const isTabDirty = (tabKey) => {
+            if (tabKey === 'domain') {
+                const data = formData.domain;
+                return !!(data.name?.trim() || data.description?.trim() || data.owner || data.status || data.stakeholder?.length > 0);
+            }
+            return formData[tabKey] && formData[tabKey].length > 0;
+        };
+
+        if (!tabs.some(tab => isTabDirty(tab.toLowerCase().replace('-', '')))) return false;
+
+        if (isTabDirty('domain')) {
+            const { name, description, owner, stakeholder, status } = formData.domain;
+            if (!(name?.trim() && description?.trim() && owner && status && stakeholder?.length > 0)) {
+                return false;
+            }
+        }
+
+        for (const tab of tabs.slice(1)) {
+            const tabKey = tab.toLowerCase().replace('-', '');
+            const items = formData[tabKey];
+            if (items && items.length > 0) {
+                const names = items.map(item => item.name?.trim().toLowerCase());
+                if (new Set(names).size !== names.length) {
+                    return false;
+                }
+
+                const isThisTabValid = items.every(item => {
+                    let isItemValid = !!(item.name?.trim() && item.desc?.trim() && item.owner && item.status);
+                    if (tabKey === 'subcategory') isItemValid = isItemValid && !!item.category_name;
+                    if (tabKey === 'subtag') isItemValid = isItemValid && !!item.tag_name;
+                    return isItemValid;
+                });
+                if (!isThisTabValid) return false;
+            }
+        }
+        return true;
+    };
+
+    const validateCurrentTab = () => {
+        const tabKey = activeTab.toLowerCase().replace('-', '');
+        if (tabKey === 'domain') {
+            const { name, description, owner, stakeholder, status } = formData.domain;
+            return !!(name?.trim() && description?.trim() && owner && status && stakeholder?.length > 0);
+        } else {
+            const items = formData[tabKey];
+            if (!items || items.length === 0) return true;
+            const names = items.map(item => item.name?.trim().toLowerCase());
+            if (new Set(names).size !== names.length) {
+                return false;
+            }
+            return items.every(item => {
+                let isItemValid = !!(item.name?.trim() && item.desc?.trim() && item.owner && item.status);
+                if (tabKey === 'subcategory') isItemValid = isItemValid && !!item.category_name;
+                if (tabKey === 'subtag') isItemValid = isItemValid && !!item.tag_name;
+                return isItemValid;
+            });
+        }
+    };
+
+    useEffect(() => {
+        setIsNextEnabled(validateCurrentTab());
+        setIsSaveEnabled(isEntireFormValid());
+    }, [formData, activeTab]);
 
     const fetchAndPrefillData = async () => {
         if (!editData) return;
@@ -79,11 +155,11 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         try {
             const payload = {
                 domain_id: [parseInt(editData.id, 10)],
-                category_id: editData.category.map(c => c.id),
-                sub_category_id: editData.subcategory.map(sc => sc.id),
-                tag_id: editData.tag.map(t => t.id),
-                sub_tag_id: editData.subtag.map(st => st.id),
-                term_id: editData.term.map(t => t.id)
+                category_id: editData.category?.map(c => c.id),
+                sub_category_id: editData.subcategory?.map(sc => sc.id),
+                tag_id: editData.tag?.map(t => t.id),
+                sub_tag_id: editData.subtag?.map(st => st.id),
+                term_id: editData.term?.map(t => t.id)
             };
 
             const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/data_prefill`, {
@@ -96,6 +172,10 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
 
             const data = await response.json();
 
+            if (!data.domain || data.domain.length === 0) {
+                throw new Error("Prefill data is incomplete: Domain information is missing.");
+            }
+
             const domainData = data.domain[0];
             const mappedData = {
                 domain: {
@@ -106,33 +186,33 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                     stakeholder: domainData.stakeholder || [],
                     status: domainData.status || ''
                 },
-                category: data.category.map(c => ({
+                category: data.category?.map(c => ({
                     id: c.category_id, name: c.name, desc: c.description || '',
                     owner: c.owner?.[0] || '', status: c.status || ''
-                })),
-                subcategory: data.sub_category.map(sc => ({
+                })) || [],
+                subcategory: data.sub_category?.map(sc => ({
                     id: sc.sub_category_id, name: sc.name, desc: sc.description || '',
                     owner: sc.owner?.[0] || '', status: sc.status || '', category_name: sc.category_name
-                })),
-                term: data.term.map(t => ({
+                })) || [],
+                term: data.term?.map(t => ({
                     id: t.term_id, name: t.name, desc: t.description || '',
                     owner: t.owner?.[0] || '', status: t.status || ''
-                })),
-                tag: data.tag.map(tg => ({
+                })) || [],
+                tag: data.tag?.map(tg => ({
                     id: tg.tag_id, name: tg.name, desc: tg.description || '',
                     owner: tg.owner?.[0] || '', status: tg.status || ''
-                })),
-                subtag: data.sub_tag.map(st => ({
+                })) || [],
+                subtag: data.sub_tag?.map(st => ({
                     id: st.sub_tag_id, name: st.name, desc: st.description || '',
                     owner: st.owner?.[0] || '', status: st.status || '', tag_name: st.tag_name
-                }))
+                })) || []
             };
             setFormData(mappedData);
 
         } catch (err) {
             toast.error(err.message);
             console.error("Failed to prefill data:", err);
-            onClose(); 
+            onClose();
         } finally {
             setIsLoading(false);
         }
@@ -140,7 +220,6 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
 
     useEffect(() => {
         if (isOpen) {
-            console.log("edit dataat is @@@@ ", editData)
             if (isEditMode) {
                 setActiveTab('Domain');
                 fetchAndPrefillData();
@@ -386,7 +465,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Validation
+
     const validateForms = () => {
         const allErrors = {};
         let firstErrorTab = null;
@@ -400,54 +479,43 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
             }
         };
 
-        const isAnythingEntered = tabs.some(tab => isTabDirty(tab.toLowerCase().replace('-', '')));
-
-        if (!isAnythingEntered) {
+        if (!tabs.some(tab => isTabDirty(tab.toLowerCase().replace('-', '')))) {
             setSaveError("Nothing to save. Please fill out at least one form tab.");
-            setErrors({});
-            setErrorTabs({});
             return false;
         }
 
-        // Validate domain
         if (isTabDirty('domain')) {
             const tabErrors = {};
             const data = formData.domain;
-
             if (!data.name?.trim()) tabErrors.name = 'Name is required.';
             if (!data.description?.trim()) tabErrors.description = 'Description is required.';
             if (!data.stakeholder || data.stakeholder.length === 0) tabErrors.stakeholder = 'At least one stakeholder is required.';
             if (!data.owner) tabErrors.owner = 'Owner must be selected.';
             if (!data.status) tabErrors.status = 'Status must be selected.';
-
             if (Object.keys(tabErrors).length > 0) {
                 allErrors.domain = tabErrors;
                 if (!firstErrorTab) firstErrorTab = 'Domain';
             }
         }
 
-        // Validate other tabs
         for (const tab of tabs.slice(1)) {
             const tabKey = tab.toLowerCase().replace('-', '');
             const data = formData[tabKey];
-
             if (data && data.length > 0) {
                 const tabErrors = {};
-
                 for (let i = 0; i < data.length; i++) {
                     const item = data[i];
                     const itemErrors = {};
-
                     if (!item.name?.trim()) itemErrors.name = 'Name is required.';
+
+                    const isDuplicate = data.some((otherItem, j) => i !== j && otherItem.name?.trim().toLowerCase() === item.name?.trim().toLowerCase());
+                    if (isDuplicate) itemErrors.name = 'This name already exists in this tab.';
+
                     if (!item.desc?.trim()) itemErrors.desc = 'Description is required.';
                     if (!item.owner) itemErrors.owner = 'Owner must be selected.';
                     if (!item.status) itemErrors.status = 'Status must be selected.';
-
-                    if (Object.keys(itemErrors).length > 0) {
-                        tabErrors[i] = itemErrors;
-                    }
+                    if (Object.keys(itemErrors).length > 0) tabErrors[i] = itemErrors;
                 }
-
                 if (Object.keys(tabErrors).length > 0) {
                     allErrors[tabKey] = tabErrors;
                     if (!firstErrorTab) firstErrorTab = tab;
@@ -455,11 +523,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
             }
         }
 
-        const newErrorTabs = Object.keys(allErrors).reduce((acc, key) => {
-            acc[key.replace('_', '')] = true;
-            return acc;
-        }, {});
-        setErrorTabs(newErrorTabs);
+        setErrorTabs(Object.keys(allErrors).reduce((acc, key) => ({ ...acc, [key.replace('_', '')]: true }), {}));
 
         if (firstErrorTab) {
             setActiveTab(firstErrorTab);
@@ -475,7 +539,6 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
 
     const handleSave = async () => {
         if (!validateForms()) return;
-
         setIsSaving(true);
         setSaveError(null);
 
@@ -562,14 +625,16 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                 body: JSON.stringify(payload)
             });
 
+            const responseData = await response.json().catch(() => ({ detail: 'An unexpected error occurred.' }));
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ detail: 'An unexpected error occurred.' }));
-                throw new Error(errorData.detail || `Server responded with status: ${response.status}`);
+                throw new Error(responseData.detail || `Server responded with status: ${response.status}`);
             }
             if (onComplete) {
-                onComplete();
+                onComplete(responseData);
             } else {
-                toast.success('Catalogue saved successfully!');
+                const toastMessage = responseData.status_message?.[0] || 'Catalogue saved successfully!';
+
+                toast.success(toastMessage);
                 onClose();
             }
 
@@ -581,17 +646,26 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         }
     };
 
+
     const isLastItemIncomplete = (tabKey) => {
         const items = formData[tabKey];
-        if (items.length === 0) return false;
+        if (items.length === 0) {
+            return false;
+        }
 
         const lastItem = items[items.length - 1];
+        const lastIndex = items.length - 1;
+
         if (!lastItem.name?.trim() || !lastItem.desc?.trim() || !lastItem.owner || !lastItem.status) {
             return true;
         }
 
         if (tabKey === 'subcategory' && !lastItem.category_name) return true;
         if (tabKey === 'subtag' && !lastItem.tag_name) return true;
+
+        if (isNameDuplicate(tabKey, lastItem.name, lastIndex)) {
+            return true;
+        }
 
         return false;
     };
@@ -659,6 +733,75 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         }
     };
 
+    const handleMultiItemNameChange = (e, index, tabKey, allItems, setSuggestions, showSuggestions) => {
+        const value = e.target.value;
+        updateItem(tabKey, index, 'name', value);
+        updateItem(tabKey, index, 'id', null);
+
+        if (isNameDuplicate(tabKey, value, index)) {
+            setErrors(prev => ({ ...prev, [index]: { ...prev[index], name: 'This name already exists.' } }));
+        } else {
+            if (errors[index]?.name === 'This name already exists.') {
+                setErrors(prev => ({ ...prev, [index]: { ...prev[index], name: undefined } }));
+            }
+        }
+
+        if (value && allItems.length > 0) {
+            let filteredSuggestions = allItems;
+
+            if (tabKey === 'subcategory') {
+                const parentCategoryName = formData.subcategory[index]?.category_name;
+                if (parentCategoryName) {
+                    const parentCategory = formData.category.find(cat => cat.name === parentCategoryName);
+                    const parentCategoryId = parentCategory?.id;
+
+                    if (parentCategoryId) {
+                        filteredSuggestions = filteredSuggestions.filter(
+                            (item) => item.category_id === parentCategoryId
+                        );
+                    } else {
+                        filteredSuggestions = [];
+                    }
+                }
+            }
+
+            if (tabKey === 'subtag') {
+                const parentTagName = formData.subtag[index]?.tag_name;
+                if (parentTagName) {
+                    const parentTag = formData.tag.find(tag => tag.name === parentTagName);
+                    const parentTagId = parentTag?.id;
+
+                    if (parentTagId) {
+                        filteredSuggestions = filteredSuggestions.filter(
+                            (item) => item.tag_id === parentTagId
+                        );
+                    } else {
+                        filteredSuggestions = [];
+                    }
+                }
+            }
+            const finalSuggestions = filteredSuggestions.filter(item =>
+                item.name.toLowerCase().startsWith(value.toLowerCase())
+            );
+
+            setSuggestions(finalSuggestions);
+            showSuggestions(true);
+        } else {
+            showSuggestions(false);
+        }
+    };
+
+    const handleMultiItemSuggestionClick = (item, index, tabKey, idField, showSuggestions) => {
+        if (isNameDuplicate(tabKey, item.name, index)) {
+            toast.error(`Cannot select "${item.name}" as it already used.`);
+            showSuggestions(false);
+            return;
+        }
+        updateItem(tabKey, index, 'id', item[idField]);
+        updateItem(tabKey, index, 'name', item.name);
+        showSuggestions(false);
+    };
+
     const handleTabChange = (newTab) => {
         setActiveTab(newTab);
         setActiveItemIndex(0);
@@ -668,7 +811,29 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
     };
 
     const handleNext = () => {
+        const oldTabKey = activeTab.toLowerCase().replace('-', '');
         const currentIndex = tabs.indexOf(activeTab);
+        let updatedFormData = { ...formData };
+
+        if (oldTabKey === 'category') {
+            const validCategoryNames = new Set(
+                formData.category.map(cat => cat.name?.trim()).filter(Boolean)
+            );
+            updatedFormData.subcategory = formData.subcategory.filter(subcat =>
+                validCategoryNames.has(subcat.category_name)
+            );
+        }
+
+        if (oldTabKey === 'tag') {
+            const validTagNames = new Set(
+                formData.tag.map(tag => tag.name?.trim()).filter(Boolean)
+            );
+            updatedFormData.subtag = formData.subtag.filter(subtag =>
+                validTagNames.has(subtag.tag_name)
+            );
+        }
+
+        setFormData(updatedFormData);
         if (currentIndex < tabs.length - 1) {
             handleTabChange(tabs[currentIndex + 1]);
         }
@@ -683,15 +848,33 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
 
     const handleDomainNameChange = (e) => {
         const value = e.target.value;
-        setFormData(prev => ({
-            ...prev,
-            domain: { ...prev.domain, id: null, name: value }
-        }));
+        setFormData(prev => {
+            if (prev.domain.id) {
+                return {
+                    ...prev,
+                    domain: {
+                        ...prev.domain,
+                        id: null,
+                        name: value,
+                    },
+                    category: [],
+                    subcategory: [],
+                    term: [],
+                    tag: [],
+                    subtag: [],
+                };
+            }
+
+            return {
+                ...prev,
+                domain: { ...prev.domain, id: null, name: value }
+            };
+        });
 
         if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
 
         if (value) {
-            const filtered = allDomains.filter(d => d.name.toLowerCase().includes(value.toLowerCase()));
+            const filtered = allDomains.filter(d => d.name.toLowerCase().startsWith(value.toLowerCase()));
             setDomainSuggestions(filtered);
             setShowSuggestions(true);
         } else {
@@ -700,14 +883,32 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
     };
 
     const handleSuggestionClick = (domain) => {
-        setFormData(prev => ({
-            ...prev,
-            domain: {
-                ...prev.domain,
-                id: domain.domain_id,
-                name: domain.name,
+        setFormData(prev => {
+            if (prev.domain.id !== domain.domain_id) {
+                return {
+                    ...prev,
+                    domain: {
+                        ...prev.domain,
+                        id: domain.domain_id,
+                        name: domain.name,
+                    },
+                    category: [],
+                    subcategory: [],
+                    term: [],
+                    tag: [],
+                    subtag: [],
+                };
             }
-        }));
+
+            return {
+                ...prev,
+                domain: {
+                    ...prev.domain,
+                    id: domain.domain_id,
+                    name: domain.name,
+                }
+            };
+        });
         setShowSuggestions(false);
     };
 
@@ -741,32 +942,6 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
     const filteredStakeholders = stakeholders
         .filter(user => !formData.domain.stakeholder.includes(user.username))
         .filter(user => user.username.toLowerCase().includes(stakeholderSearchTerm.toLowerCase()));
-
-    const createSuggestionHandlers = (tabKey, allDataKey, suggestionsKey, showSuggestionsKey, setShowSuggestionsFunc, setSuggestionsFunc) => {
-        const handleNameChange = (e, index) => {
-            const value = e.target.value;
-            updateItem(tabKey, index, 'name', value);
-            updateItem(tabKey, index, 'id', null);
-
-            if (value && window[allDataKey] && window[allDataKey].length > 0) {
-                const filtered = window[allDataKey].filter(item =>
-                    item.name.toLowerCase().includes(value.toLowerCase())
-                );
-                setSuggestionsFunc(filtered);
-                setShowSuggestionsFunc(true);
-            } else {
-                setShowSuggestionsFunc(false);
-            }
-        };
-
-        const handleSuggestionClick = (item, index, idField) => {
-            updateItem(tabKey, index, 'id', item[idField]);
-            updateItem(tabKey, index, 'name', item.name);
-            setShowSuggestionsFunc(false);
-        };
-
-        return { handleNameChange, handleSuggestionClick };
-    };
 
     const ParentHierarchy = ({ data }) => {
         const MAX_DISPLAY_ITEMS = 2;
@@ -807,30 +982,6 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         );
     };
 
-
-    const handleMultiItemNameChange = (e, index, tabKey, allItems, setSuggestions, showSuggestions) => {
-        const value = e.target.value;
-        updateItem(tabKey, index, 'name', value);
-        updateItem(tabKey, index, 'id', null);
-
-        if (value && allItems.length > 0) {
-            const filtered = allItems.filter(item =>
-                item.name.toLowerCase().includes(value.toLowerCase())
-            );
-            setSuggestions(filtered);
-            showSuggestions(true);
-        } else {
-            showSuggestions(false);
-        }
-    };
-
-    const handleMultiItemSuggestionClick = (item, index, tabKey, idField, showSuggestions) => {
-        updateItem(tabKey, index, 'id', item[idField]);
-        updateItem(tabKey, index, 'name', item.name);
-        showSuggestions(false);
-    };
-
-    // Render form content
     const renderFormContent = () => {
         if (activeTab === 'Domain') {
             return (
@@ -846,7 +997,6 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                                 value={formData.domain.name}
                                 onChange={handleDomainNameChange}
                                 disabled={isEditMode}
-                                onFocus={() => setShowSuggestions(true)}
                                 autoComplete="off"
                                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
                             />
@@ -972,56 +1122,11 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         const items = formData[tabKey] || [];
 
         const suggestionConfig = {
-            category: {
-                allItems: allCategories,
-                suggestions: categorySuggestions,
-                setSuggestions: setCategorySuggestions,
-                showSuggestions: showCategorySuggestions,
-                setShowSuggestions: setShowCategorySuggestions,
-                suggestionsRef: categorySuggestionsRef,
-                idField: 'category_id',
-                isLoading: isCategoryLoading
-            },
-            subcategory: {
-                allItems: allSubCategories,
-                suggestions: subCategorySuggestions,
-                setSuggestions: setSubCategorySuggestions,
-                showSuggestions: showSubCategorySuggestions,
-                setShowSuggestions: setShowSubCategorySuggestions,
-                suggestionsRef: subCategorySuggestionsRef,
-                idField: 'sub_category_id',
-                isLoading: isSubCategoryLoading
-            },
-            term: {
-                allItems: allTerms,
-                suggestions: termSuggestions,
-                setSuggestions: setTermSuggestions,
-                showSuggestions: showTermSuggestions,
-                setShowSuggestions: setShowTermSuggestions,
-                suggestionsRef: termSuggestionsRef,
-                idField: 'term_id',
-                isLoading: isTermLoading
-            },
-            tag: {
-                allItems: allTags,
-                suggestions: tagSuggestions,
-                setSuggestions: setTagSuggestions,
-                showSuggestions: showTagSuggestions,
-                setShowSuggestions: setShowTagSuggestions,
-                suggestionsRef: tagSuggestionsRef,
-                idField: 'tag_id',
-                isLoading: isTagLoading
-            },
-            subtag: {
-                allItems: allSubTags,
-                suggestions: subTagSuggestions,
-                setSuggestions: setSubTagSuggestions,
-                showSuggestions: showSubTagSuggestions,
-                setShowSuggestions: setShowSubTagSuggestions,
-                suggestionsRef: subTagSuggestionsRef,
-                idField: 'sub_tag_id',
-                isLoading: isSubTagLoading
-            },
+            category: { allItems: allCategories, suggestions: categorySuggestions, setSuggestions: setCategorySuggestions, showSuggestions: showCategorySuggestions, setShowSuggestions: setShowCategorySuggestions, suggestionsRef: categorySuggestionsRef, idField: 'category_id', isLoading: isCategoryLoading },
+            subcategory: { allItems: allSubCategories, suggestions: subCategorySuggestions, setSuggestions: setSubCategorySuggestions, showSuggestions: showSubCategorySuggestions, setShowSuggestions: setShowSubCategorySuggestions, suggestionsRef: subCategorySuggestionsRef, idField: 'sub_category_id', isLoading: isSubCategoryLoading },
+            term: { allItems: allTerms, suggestions: termSuggestions, setSuggestions: setTermSuggestions, showSuggestions: showTermSuggestions, setShowSuggestions: setShowTermSuggestions, suggestionsRef: termSuggestionsRef, idField: 'term_id', isLoading: isTermLoading },
+            tag: { allItems: allTags, suggestions: tagSuggestions, setSuggestions: setTagSuggestions, showSuggestions: showTagSuggestions, setShowSuggestions: setShowTagSuggestions, suggestionsRef: tagSuggestionsRef, idField: 'tag_id', isLoading: isTagLoading },
+            subtag: { allItems: allSubTags, suggestions: subTagSuggestions, setSuggestions: setSubTagSuggestions, showSuggestions: showSubTagSuggestions, setShowSuggestions: setShowSubTagSuggestions, suggestionsRef: subTagSuggestionsRef, idField: 'sub_tag_id', isLoading: isSubTagLoading },
         };
 
         const currentConfig = suggestionConfig[tabKey];
@@ -1037,8 +1142,8 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
         if (!parentRequirements[activeTab]()) {
             let message = '';
             if (activeTab === 'Category') message = 'Please select a domain first to add categories.';
-            else if (activeTab === 'Sub-category') message = 'Please select a domain and add categories first.';
-            else if (activeTab === 'Sub-tag') message = 'Please add tags first to create sub-tags.';
+            else if (activeTab === 'Sub-category') message = 'Please select a domain and add at least one category first.';
+            else if (activeTab === 'Sub-tag') message = 'Please add at least one tag first to create sub-tags.';
 
             return (
                 <div className="py-16 text-center text-gray-500 bg-gray-50 rounded-md mt-4">
@@ -1050,57 +1155,37 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
 
         const parentDataFor = {
             'Category': { domain: formData.domain.name },
-            'Sub-category': {
-                domain: formData.domain.name,
-                category: formData.category.map(cat => cat.name).filter(Boolean)
-            },
-            'Term': {
-                domain: formData.domain.name,
-                category: formData.category.map(cat => cat.name).filter(Boolean),
-                subcategory: formData.subcategory.map(subcat => subcat.name).filter(Boolean)
-            },
-            'Tag': {
-                domain: formData.domain.name,
-                category: formData.category.map(cat => cat.name).filter(Boolean),
-                subcategory: formData.subcategory.map(subcat => subcat.name).filter(Boolean),
-                term: formData.term.map(term => term.name).filter(Boolean)
-            },
-            'Sub-tag': {
-                domain: formData.domain.name,
-                category: formData.category.map(cat => cat.name).filter(Boolean),
-                subcategory: formData.subcategory.map(subcat => subcat.name).filter(Boolean),
-                term: formData.term.map(term => term.name).filter(Boolean),
-                tag: formData.tag.map(t => t.name).filter(Boolean)
-            }
+            'Sub-category': { domain: formData.domain.name, category: formData.category.map(cat => cat.name).filter(Boolean) },
+            'Term': { domain: formData.domain.name, category: formData.category.map(cat => cat.name).filter(Boolean), subcategory: formData.subcategory.map(subcat => subcat.name).filter(Boolean) },
+            'Tag': { domain: formData.domain.name, category: formData.category.map(cat => cat.name).filter(Boolean), subcategory: formData.subcategory.map(subcat => subcat.name).filter(Boolean), term: formData.term.map(term => term.name).filter(Boolean) },
+            'Sub-tag': { domain: formData.domain.name, category: formData.category.map(cat => cat.name).filter(Boolean), subcategory: formData.subcategory.map(subcat => subcat.name).filter(Boolean), term: formData.term.map(term => term.name).filter(Boolean), tag: formData.tag.map(t => t.name).filter(Boolean) }
         };
 
+        const currentItem = items[activeItemIndex];
+        let isParentSelected = true;
+        if (activeTab === 'Sub-category') {
+            isParentSelected = !!currentItem?.category_name;
+        } else if (activeTab === 'Sub-tag') {
+            isParentSelected = !!currentItem?.tag_name;
+        }
 
         return (
             <div className="space-y-4 py-4">
                 {error && <div className="text-red-600 bg-red-100 p-3 rounded-md mb-4">{error}</div>}
-
                 {Object.keys(parentDataFor[activeTab]).length > 0 && (
                     <ParentHierarchy data={parentDataFor[activeTab]} />
                 )}
-
                 <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium text-gray-900">
-                        {activeTab} ({items.length})
-                    </h3>
+                    <h3 className="text-lg font-medium text-gray-900">{activeTab} ({items.length})</h3>
                     <button
                         type="button"
                         onClick={() => addNewItem(tabKey)}
                         disabled={isLastItemIncomplete(tabKey)}
-                        className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-[#8e78b7] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8e78b7] ${isLastItemIncomplete(tabKey)
-                            ? 'opacity-50 cursor-not-allowed'
-                            : 'hover:bg-[#7a67a0]'
-                            }`}
+                        className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-[#8e78b7] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8e78b7] ${isLastItemIncomplete(tabKey) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#7a67a0]'}`}
                     >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add {activeTab}
+                        <Plus className="h-4 w-4 mr-1" /> Add {activeTab}
                     </button>
                 </div>
-
                 {items.length === 0 ? (
                     <div className="py-12 text-center text-gray-500 bg-gray-50 rounded-md">
                         <p className="font-medium">No {activeTab.toLowerCase()} items added yet.</p>
@@ -1108,28 +1193,18 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {/* Item tabs */}
                         <div className="border-b border-gray-200">
                             <nav className="-mb-px flex space-x-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                 {items.map((item, index) => (
                                     <button
                                         key={index}
                                         onClick={() => setActiveItemIndex(index)}
-                                        className={`whitespace-nowrap pb-2 px-1 border-b-2 font-medium text-sm focus:outline-none flex items-center ${activeItemIndex === index
-                                            ? 'border-[#8e78b7] text-[#8e78b7]'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                            }`}
+                                        className={`whitespace-nowrap pb-2 px-1 border-b-2 font-medium text-sm focus:outline-none flex items-center ${activeItemIndex === index ? 'border-[#8e78b7] text-[#8e78b7]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                                     >
                                         {item.name || `${activeTab} ${index + 1}`}
-                                        {errors[index] && (
-                                            <span className="ml-2 w-2 h-2 bg-red-500 rounded-full"></span>
-                                        )}
                                         <button
                                             type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                removeItem(tabKey, index);
-                                            }}
+                                            onClick={(e) => { e.stopPropagation(); removeItem(tabKey, index); }}
                                             className="ml-2 text-gray-400 hover:text-red-500"
                                         >
                                             <X className="h-3 w-3" />
@@ -1138,39 +1213,34 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                                 ))}
                             </nav>
                         </div>
-
-                        {/* Current item form */}
                         {items[activeItemIndex] && (
-                            <div className="space-y-6">
-
+                            <div className="space-y-6 pt-4">
                                 {activeTab === 'Sub-category' && (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
                                         <select
                                             value={items[activeItemIndex].category_name || ''}
                                             onChange={(e) => updateItem(tabKey, activeItemIndex, 'category_name', e.target.value)}
-                                            className="w-full px-3 py-2 border bg-white rounded-md"
+                                            className="w-full px-3 py-2 border bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] border-gray-300"
                                         >
                                             <option value="">Select Category</option>
                                             {formData.category.map((cat) => (
-                                                cat.name && <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                                cat.name && <option key={cat.id || cat.name} value={cat.name}>{cat.name}</option>
                                             ))}
                                         </select>
                                     </div>
                                 )}
-
-                                {/* Tag selection for subtags */}
                                 {activeTab === 'Sub-tag' && (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Parent Tag</label>
                                         <select
                                             value={items[activeItemIndex].tag_name || ''}
                                             onChange={(e) => updateItem(tabKey, activeItemIndex, 'tag_name', e.target.value)}
-                                            className="w-full px-3 py-2 border bg-white rounded-md"
+                                            className="w-full px-3 py-2 border bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] border-gray-300"
                                         >
                                             <option value="">Select Tag</option>
                                             {formData.tag.map((tag) => (
-                                                tag.name && <option key={tag.id} value={tag.name}>{tag.name}</option>
+                                                tag.name && <option key={tag.id || tag.name} value={tag.name}>{tag.name}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -1185,13 +1255,12 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                                                 placeholder={`Enter ${activeTab.toLowerCase()} name`}
                                                 value={items[activeItemIndex].name || ''}
                                                 onChange={(e) => handleMultiItemNameChange(e, activeItemIndex, tabKey, currentConfig.allItems, currentConfig.setSuggestions, currentConfig.setShowSuggestions)}
-                                                onFocus={() => currentConfig?.setShowSuggestions(true)}
                                                 autoComplete="off"
-                                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors[activeItemIndex]?.name ? 'border-red-500' : 'border-gray-300'}`}
+                                                disabled={!isParentSelected}
+                                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] disabled:bg-gray-100 disabled:cursor-not-allowed ${errors[activeItemIndex]?.name ? 'border-red-500' : 'border-gray-300'}`}
                                             />
                                             {currentConfig?.isLoading && <Loader2 className="animate-spin h-5 w-5 text-gray-500 absolute right-2 top-9" />}
                                             {errors[activeItemIndex]?.name && <p className="text-red-600 text-xs mt-1">{errors[activeItemIndex].name}</p>}
-
                                             {currentConfig?.showSuggestions && currentConfig?.suggestions.length > 0 && (
                                                 <ul className="absolute z-50 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto shadow-lg">
                                                     {currentConfig.suggestions.map((item, idx) => (
@@ -1210,12 +1279,10 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                                             placeholder="Description"
                                             value={items[activeItemIndex].desc || ''}
                                             onChange={(e) => updateItem(tabKey, activeItemIndex, 'desc', e.target.value)}
-                                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors[activeItemIndex]?.desc ? 'border-red-500' : 'border-gray-300'
-                                                }`}
+                                            disabled={!isParentSelected}
+                                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] disabled:bg-gray-100 disabled:cursor-not-allowed ${errors[activeItemIndex]?.desc ? 'border-red-500' : 'border-gray-300'}`}
                                         />
-                                        {errors[activeItemIndex]?.desc && (
-                                            <p className="text-red-600 text-xs mt-1">{errors[activeItemIndex].desc}</p>
-                                        )}
+                                        {errors[activeItemIndex]?.desc && (<p className="text-red-600 text-xs mt-1">{errors[activeItemIndex].desc}</p>)}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1224,34 +1291,28 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                                         <select
                                             value={items[activeItemIndex].owner || ''}
                                             onChange={(e) => updateItem(tabKey, activeItemIndex, 'owner', e.target.value)}
-                                            className={`w-full px-3 py-2 border bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors[activeItemIndex]?.owner ? 'border-red-500' : 'border-gray-300'
-                                                }`}
+                                            disabled={!isParentSelected}
+                                            className={`w-full px-3 py-2 border bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] disabled:bg-gray-100 disabled:cursor-not-allowed ${errors[activeItemIndex]?.owner ? 'border-red-500' : 'border-gray-300'}`}
                                         >
                                             <option value="">{isOwnersLoading ? 'Loading...' : 'Select'}</option>
-                                            {owners.map(owner => (
-                                                <option key={owner} value={owner}>{owner}</option>
-                                            ))}
+                                            {owners.map(owner => (<option key={owner} value={owner}>{owner}</option>))}
                                         </select>
-                                        {errors[activeItemIndex]?.owner && (
-                                            <p className="text-red-600 text-xs mt-1">{errors[activeItemIndex].owner}</p>
-                                        )}
+                                        {errors[activeItemIndex]?.owner && (<p className="text-red-600 text-xs mt-1">{errors[activeItemIndex].owner}</p>)}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                                         <select
                                             value={items[activeItemIndex].status || ''}
                                             onChange={(e) => updateItem(tabKey, activeItemIndex, 'status', e.target.value)}
-                                            className={`w-full px-3 py-2 border bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] ${errors[activeItemIndex]?.status ? 'border-red-500' : 'border-gray-300'
-                                                }`}
+                                            disabled={!isParentSelected}
+                                            className={`w-full px-3 py-2 border bg-white rounded-md focus:outline-none focus:ring-1 focus:ring-[#8e78b7] disabled:bg-gray-100 disabled:cursor-not-allowed ${errors[activeItemIndex]?.status ? 'border-red-500' : 'border-gray-300'}`}
                                         >
                                             <option value="">Select</option>
                                             <option value="Active">Active</option>
                                             <option value="Inactive">Inactive</option>
                                             <option value="Deprecated">Deprecated</option>
                                         </select>
-                                        {errors[activeItemIndex]?.status && (
-                                            <p className="text-red-600 text-xs mt-1">{errors[activeItemIndex].status}</p>
-                                        )}
+                                        {errors[activeItemIndex]?.status && (<p className="text-red-600 text-xs mt-1">{errors[activeItemIndex].status}</p>)}
                                     </div>
                                 </div>
                             </div>
@@ -1295,7 +1356,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                                 return (
                                     <button
                                         key={tab}
-                                        onClick={() => handleTabChange(tab)}
+                                        // onClick={() => handleTabChange(tab)}
                                         className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-md focus:outline-none flex items-center ${activeTab === tab
                                             ? 'border-[#8e78b7] text-[#8e78b7]'
                                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -1336,14 +1397,20 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
                         <button
                             type="button"
                             onClick={handleSave}
-                            disabled={isSaving}
+                            disabled={isSaving || !isSaveEnabled}
                             className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium bg-green-600 text-white border border-transparent rounded-md shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSaving && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
                             {isSaving ? 'Saving...' : (isEditMode ? 'Update & Exit' : 'Save & Exit')}
                         </button>
                         {!isLastTab && (
-                            <button type="button" onClick={handleNext} className="px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] border border-transparent rounded-md shadow-sm hover:bg-[#7a67a0]">
+                            <button
+                                type="button"
+                                onClick={handleNext}
+                                disabled={!isNextEnabled}
+                                className={`px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] border border-transparent rounded-md shadow-sm ${!isNextEnabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#7a67a0]'
+                                    }`}
+                            >
                                 Next
                             </button>
                         )}

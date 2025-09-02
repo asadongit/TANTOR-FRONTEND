@@ -9,7 +9,8 @@ import {
   Database,
   FileCheck2,
   FilePenLine,
-  ChevronLeft
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import CompositeViewComponent from "../Schema/CompositeViewComponent";
 import SchemaDetailsViewComponent from "./SchemaDetailsViewComponenet";
@@ -17,6 +18,46 @@ import toast from "react-hot-toast";
 import { useAuth } from "../../../../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../../components/Breadcrumb";
+import { fetchConnectionDetails, secureQuery } from '../Components/function';
+
+const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
+  if (!totalItems || totalPages <= 1) {
+    return null;
+  }
+
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  return (
+    <div className="flex justify-between items-center p-2 text-sm text-gray-700 border-t">
+      <span>
+        Showing <span className="font-semibold">{startItem}</span> to <span className="font-semibold">{endItem}</span> of <span className="font-semibold">{totalItems}</span> Entries
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Back"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <span className="px-3 py-1 font-medium">
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Next"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 
 const SchemaViewScreen = () => {
   const hostnameV1 = window._env_?.VITE_FAST_API;
@@ -37,24 +78,52 @@ const SchemaViewScreen = () => {
   const [loadingAccessData, setLoadingAccessData] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
 
+  const [schemaData, setSchemaData] = useState(schema);
   const [isEditing, setIsEditing] = useState(false);
   const [summaryText, setSummaryText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-
   const [activeTabBusiness, setActiveTabBusiness] = useState("composite-view");
+
+  // Pagination State
+  const [accessCurrentPage, setAccessCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
 
 
   if (!schema) {
     return <p>Schema data not available.</p>;
   }
 
+  const refetchSchemaData = async () => {
+    try {
+      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+      const policyIds = secureQueryResponse.matched_policy_ids || [];
+      const allConnectionsData = await fetchConnectionDetails(policyIds, token);
+
+      const currentSchemaData = allConnectionsData.find(
+        item => item.connection_name === schema.connectionName &&
+          item.table_schema === schema.schema
+      );
+
+      if (currentSchemaData) {
+        const updatedSchemaData = {
+          ...schemaData,
+          description: currentSchemaData.table_schema_description || 'Schema description'
+        };
+        setSchemaData(updatedSchemaData);
+        setSummaryText(currentSchemaData.table_schema_description || 'Schema description');
+      }
+    } catch (error) {
+      console.error('Error refetching schema data:', error);
+    }
+  };
+
   useEffect(() => {
-    if (schema) {
-      const initialDesc = schema.description || 'Schema description';
+    if (schemaData) {
+      const initialDesc = schemaData.description || 'Schema description';
       setSummaryText(initialDesc);
     }
-  }, [schema]);
+  }, [schemaData]);
 
   const fetchDataCatalogueBusiness = async () => {
     if (businessTabResponse.length > 0) {
@@ -132,6 +201,7 @@ const SchemaViewScreen = () => {
 
   const fetchAccessData = async () => {
     setLoadingAccessData(true);
+    setAccessCurrentPage(1); // Reset page on new fetch
 
     try {
       const response = await fetch(
@@ -211,13 +281,14 @@ const SchemaViewScreen = () => {
   );
 
   const handleSaveDescription = async () => {
-
     if (summaryText.trim() === '') {
       toast.error("Description cannot be empty.");
       return;
     }
     const trimmedDescription = summaryText.trim();
     setIsSaving(true);
+    setIsEditing(false);
+
     try {
       const response = await fetch(
         `${hostnameV1}/data_catalogue/edit_schema_description`,
@@ -232,31 +303,49 @@ const SchemaViewScreen = () => {
             connection_name: schema.connectionName,
             table_schema: schema.schema,
             schema_description: trimmedDescription,
+            roles: decodedToken?.resource_access?.darch?.roles || [],
+            owner: decodedToken?.preferred_username
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to save. Status: ${response.status}`);
+        const errorData = await response.json();
+        await refetchSchemaData();
+        throw new Error(
+          errorData.detail || `Failed to save. Status: ${response.status}`
+        );
       }
 
-      await response.json();
-      toast.success("Description updated successfully!");
-      setIsEditing(false);
+      const successData = await response.json();
+      toast.success(successData.message || "Description updated successfully!");
+
+      await refetchSchemaData();
 
     } catch (error) {
       console.error("Error updating schema description:", error);
-      toast.error("Failed to update description.");
+      toast.error(error.message);
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleCancelEdit = () => {
-    setSummaryText(schema.description);
+    setSummaryText(schemaData.description || 'Schema description');
     setIsEditing(false);
   };
 
+  // Pagination Logic for Access Data
+  const indexOfLastAccessItem = accessCurrentPage * itemsPerPage;
+  const indexOfFirstAccessItem = indexOfLastAccessItem - itemsPerPage;
+  const currentAccessItems = accessData.slice(indexOfFirstAccessItem, indexOfLastAccessItem);
+  const totalAccessPages = Math.ceil(accessData.length / itemsPerPage);
+
+  const handleAccessPageChange = (page) => {
+    if (page > 0 && page <= totalAccessPages) {
+      setAccessCurrentPage(page);
+    }
+  };
 
   return (
     <div className="p-5">
@@ -332,18 +421,24 @@ const SchemaViewScreen = () => {
                   </h3>
                 </div>
                 {!isEditing ? (
-                  <>
-                    <p className="text-gray-600 pl-7 min-h-[2rem]">{summaryText}</p>
-                    {isUserAuthorized && (
-                      <button
-                        title="Edit Schema Description"
-                        className="absolute top-3 right-3 pt-2 hover:text-gray-600 text-[#8d77ba]"
-                        onClick={() => setIsEditing(true)}
-                      >
-                        <Pencil size={18} />
-                      </button>
-                    )}
-                  </>
+                  isSaving ? (
+                    <div className="text-gray-500 pl-7 min-h-[2rem]">
+                      Saving description...
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-gray-600 pl-7 min-h-[2rem]">{summaryText}</p>
+                      {isUserAuthorized && (
+                        <button
+                          className="absolute top-3 right-3 pt-2 hover:text-gray-600 text-[#8d77ba]"
+                          onClick={() => setIsEditing(true)}
+                          title="Edit Schema Description"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                      )}
+                    </>
+                  )
                 ) : (
                   <div className="flex flex-col gap-2">
                     <textarea
@@ -406,9 +501,9 @@ const SchemaViewScreen = () => {
           {activeTab === "access" && (
             loadingAccessData ?
               <div className="pt-7 text-center text-sm text-gray-500 border-t">
-                Loading access api...
+                Loading access information...
               </div> :
-              <div className="overflow-x-auto mt-2 rounded-lg shadow border border-t">
+              <div className="overflow-hidden mt-2 rounded-lg shadow border">
                 <table className="min-w-full">
                   <thead className="bg-gray-50">
                     <tr>
@@ -419,7 +514,7 @@ const SchemaViewScreen = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {accessData.map((item) => (
+                    {currentAccessItems.map((item) => (
                       <React.Fragment key={`${item.type}-${item.name}`}>
                         <tr className="hover:bg-gray-50">
                           <td className="px-6 py-4">
@@ -455,6 +550,13 @@ const SchemaViewScreen = () => {
                     ))}
                   </tbody>
                 </table>
+                <Pagination
+                  currentPage={accessCurrentPage}
+                  totalPages={totalAccessPages}
+                  onPageChange={handleAccessPageChange}
+                  totalItems={accessData.length}
+                  itemsPerPage={itemsPerPage}
+                />
               </div>
           )}
 

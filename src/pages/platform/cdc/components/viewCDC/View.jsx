@@ -233,7 +233,6 @@ export default function CDCJobView() {
               headers: { accept: "application/json" },
             }
           );
-          console.log("Metrics response:", metricsResponse);
           setMetrics(metricsResponse.data);
         } catch (error) {
           console.error("Error fetching metrics:", error);
@@ -259,23 +258,6 @@ export default function CDCJobView() {
         setTargetConfigs(targetConfigs || []);
         const connectorName = sourceConfigs[0]?.config?.config?.["topic.prefix"];
         setselectedConnectorName(connectorName)
-
-        // if (connectorName) {
-        //   try {
-        //     const metricsResponse = await axios.get(
-        //       `${hostnameV2}/cdc/debezium-metrics`,
-        //       {
-        //         params: { connector_name: connectorName },
-        //         headers: { accept: "application/json" },
-        //       }
-        //     );
-        //     console.log("metricsr response is  =====>", metricsResponse)
-        //     setMetrics(metricsResponse.data);
-        //   } catch (error) {
-        //     console.error("Error fetching metrics:", error);
-        //     // toast.error("Failed to fetch metrics data");
-        //   }
-        // }
 
         if (
           !data?.source_connector?.config?.name ||
@@ -384,7 +366,6 @@ export default function CDCJobView() {
 
           setLogs(logsData);
         } else {
-          console.log("No logs found for connector:", connectorName);
           setLogs([]);
         }
       } catch (error) {
@@ -404,16 +385,6 @@ export default function CDCJobView() {
     };
   }, [cdcId, data]);
 
-  useEffect(() => {
-    if (data) {
-      try {
-        console.log("CDC config data:", data);
-      } catch (error) {
-        console.error("Error fetching job data:", error);
-      }
-    }
-  }, [data]);
-
   const refreshData = () => {
     setIsRefreshing(true);
     setTimeout(() => {
@@ -422,7 +393,6 @@ export default function CDCJobView() {
   };
 
   const handleRestartTask = async (taskId) => {
-    console.log(`Restarting task ${taskId}`);
 
     if (jobData) {
       let connectorName = '';
@@ -474,8 +444,6 @@ export default function CDCJobView() {
   };
 
   const handleAdhocSnapshot = async () => {
-    console.log("Adhoc snapshot triggered");
-
     setIsAdhocLoading(true);
 
     try {
@@ -489,7 +457,6 @@ export default function CDCJobView() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Adhoc snapshot response:", data);
         toast.success(data.message || "Adhoc snapshot triggered successfully");
       } else {
         const errorData = await response.json();

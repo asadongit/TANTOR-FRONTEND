@@ -250,7 +250,7 @@ function KafkaMonitoring() {
 
   async function fetchJvmMemoryUsage() {
     setLoading("jvmMemory", true);
-    
+
     const expr = "sum by(instance) (jvm_memory_used_bytes)";
 
     const { start, end } = getTimerangeInMilliseconds(0);
@@ -331,7 +331,7 @@ function KafkaMonitoring() {
 
   async function fetchJvmCpuUsage() {
     setLoading("jvmCpu", true);
-    
+
     const expr = "sum by(instance) (process_cpu_seconds_total)";
 
     const { start, end } = getTimerangeInMilliseconds(0);
@@ -402,15 +402,15 @@ function KafkaMonitoring() {
 
   return (
     <div className="bg-[#f9fafbce]">
-      <h1 className="text-2xl font-semibold">Kafka Monitoring</h1>
+      <h1 className="text-2xl font-semibold">Graphs</h1>
       <div className="flex justify-between items-center mt-4">
         {/* Always render the paragraph, but conditionally render the text inside */}
         <p className="text-sm text-gray-500">
-          {lastRefreshTimestamp && (
+          {/* {lastRefreshTimestamp && (
             <>
               Last refreshed: <strong>{lastRefreshTimestamp}</strong>
             </>
-          )}
+          )} */}
         </p>
         <button
           onClick={handleRefresh}

@@ -38,7 +38,6 @@ export const ContextViewProvider = ({ children }) => {
        const [userCheckedColumns, setUserCheckedColumns] = useState([]);
 
        useEffect(() => {
-        console.log(`Context ==== UserSelection => `, userSelections);
        }, [userSelections])
     return (
         <StateContext.Provider

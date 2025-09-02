@@ -25,7 +25,6 @@ import { useToast } from "../context/ToastContext";
       e.stopPropagation();
       if (!disabled) {
         setIsOpen((prev) => !prev);
-        console.log("Toggling isOpen to:", !isOpen);
       }
     };
 
@@ -33,7 +32,6 @@ import { useToast } from "../context/ToastContext";
       onChange({ target: { value: option } });
       setIsOpen(false);
       setSearchTerm("");
-      console.log("Selected option:", option);
     };
 
     return (
@@ -126,7 +124,6 @@ export function ConnectionNode({ id, onSave }) {
     try {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
-      console.log("secureQuery policyIds (initial):", fetchedPolicyIds);
       setPolicyIds(fetchedPolicyIds);
 
       if (fetchedPolicyIds.length === 0) {
@@ -143,7 +140,6 @@ export function ConnectionNode({ id, onSave }) {
         body: JSON.stringify({ matched_policy_ids: fetchedPolicyIds }),
       });
 
-      console.log("Connections response status:", response.status);
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Fetch error:", errorText);
@@ -151,9 +147,7 @@ export function ConnectionNode({ id, onSave }) {
       }
 
       const connectionsData = await response.json();
-      console.log("Connections API response data:", connectionsData);
       const names = connectionsData.map((item) => item.connection_name);
-      console.log("Formatted connections:", names);
       setConnections(names);
     } catch (error) {
       console.error("Error fetching connections:", error);
@@ -198,7 +192,6 @@ export function ConnectionNode({ id, onSave }) {
         }),
       });
 
-      console.log("Schemas response status:", response.status);
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Fetch error:", errorText);
@@ -206,10 +199,8 @@ export function ConnectionNode({ id, onSave }) {
       }
 
       const data = await response.json();
-      console.log("Schemas API response data:", data);
       const connectionData = data.find((item) => item[conn]);
       const schemaList = connectionData ? connectionData[conn] : [];
-      console.log("Formatted schemas:", schemaList);
       setSchemas(schemaList);
     } catch (error) {
       console.error("Error fetching schema data:", error);
@@ -247,7 +238,6 @@ export function ConnectionNode({ id, onSave }) {
         }),
       });
 
-      console.log("Tables response status:", response.status);
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Fetch error:", errorText);
@@ -255,7 +245,6 @@ export function ConnectionNode({ id, onSave }) {
       }
 
       const data = await response.json();
-      console.log("Tables API response data:", data);
 
       if (!data || !data.schemas || !Array.isArray(data.schemas)) {
         console.error("Invalid response structure:", data);
@@ -330,7 +319,6 @@ export function ConnectionNode({ id, onSave }) {
         }),
       });
 
-      console.log("Columns response status:", allowedColumnsResponse.status);
       if (!allowedColumnsResponse.ok) {
         const errorText = await allowedColumnsResponse.text();
         console.error("Fetch error:", errorText);
@@ -338,7 +326,6 @@ export function ConnectionNode({ id, onSave }) {
       }
 
       const allowedColumnsData = await allowedColumnsResponse.json();
-      console.log("Columns API response data:", allowedColumnsData);
 
       if (!allowedColumnsData || !allowedColumnsData.columns) {
         console.error("Invalid response structure:", allowedColumnsData);
@@ -353,7 +340,6 @@ export function ConnectionNode({ id, onSave }) {
           item.schema.toLowerCase() === selectedSchema.toLowerCase() &&
           item.table_name.toLowerCase() === table.toLowerCase()
       );
-      console.log("Filtered columnData:", columnData);
 
       const formattedColumns = columnData && columnData.columns
         ? columnData.columns.map((item) => ({
@@ -361,7 +347,6 @@ export function ConnectionNode({ id, onSave }) {
             datatype: item.metadata?.DATA_TYPE || "unknown",
           }))
         : [];
-      console.log("Formatted columns:", formattedColumns);
 
       setAllowedColumns(formattedColumns);
       setColumnData(formattedColumns);

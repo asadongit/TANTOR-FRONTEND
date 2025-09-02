@@ -14,8 +14,6 @@ const DetailsPage = () => {
   const { token, decodedToken } = useAuth();
 
 
-  console.log("glossary item iss @@@ ", item)
-
   const [mainTab, setMainTab] = useState('Overview');
   const [activeDetail, setActiveDetail] = useState(null);
 
@@ -36,7 +34,8 @@ const DetailsPage = () => {
       setIsOverviewLoading(true);
       setOverviewError(null);
       try {
-        const payload = { asset: [{ asset_id: item.id, domain_id: item.DomainId, asset_type: item.AssetType }] };
+        const DomainId = Array.isArray(item?.DomainId) ? item.DomainId[0] : item?.DomainId;
+        const payload = { asset: [{ asset_id: item.id, domain_id: DomainId, asset_type: item.AssetType }] };
         const response = await fetch(`${window._env_?.VITE_FAST_API}/business_glossary/overview`, {
           method: 'POST',
           headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },

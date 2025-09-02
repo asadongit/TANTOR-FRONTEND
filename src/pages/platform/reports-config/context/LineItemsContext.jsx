@@ -46,10 +46,8 @@ export const LineItemsProvider = ({ children, reportData }) => {
           },
         });
 
-        if(response.status === 404){
-          console.log("No Line Item JSON available");
-        }
-        else if (!response.ok) {
+
+        if (!response.ok) {
           const errorData = await response.json().catch(() => null);
           throw new Error(errorData?.detail || "Error occured trying to fetch existing line items JSON.");
         }else{
@@ -108,7 +106,6 @@ export const LineItemsProvider = ({ children, reportData }) => {
           
         if (response.ok) {
           const data = await response.text();
-          console.log(response);
           
           setLineItemsHtml(data);
         } else {
@@ -116,7 +113,6 @@ export const LineItemsProvider = ({ children, reportData }) => {
           throw new Error(errorData?.detail || `Error fetching line items for report: ${reportName}`);
         }
       } catch (error) {
-        console.log(error);
         toast.error("Error occured when trying to fetch Line Items.");
         navigate("/config/report");
       }

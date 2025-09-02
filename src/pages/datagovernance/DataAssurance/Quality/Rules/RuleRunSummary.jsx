@@ -231,7 +231,6 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, isLoadin
     };
 
     const handleEdit = (rule) =>{
-        console.log("edit rule is ",rule)
         const selectedIds = selectedRules.map(item => item.id);
         const data = {
         rules: [rule]

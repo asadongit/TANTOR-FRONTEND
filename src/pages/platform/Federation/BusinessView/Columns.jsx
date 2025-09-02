@@ -14,7 +14,6 @@ export function Columns({ id, columnName, dataType, toggleModal }) {
 
 
   useEffect(() => {
-    console.log("id isss =======>", id)
     setColumnSettings((prev) => {
       const defaultSettings = {
         output: "No",
@@ -52,8 +51,6 @@ export function Columns({ id, columnName, dataType, toggleModal }) {
   };
 
   const handleSave = () => {
-    console.log("Saving settings for column:", columnSettings[id][columnName]);
-    console.log("whole column setting is =====>", columnSettings);
     toggleModal(false);
   };
 

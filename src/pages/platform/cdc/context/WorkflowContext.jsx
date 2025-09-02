@@ -64,10 +64,8 @@ export const WorkflowProvider = ({ children }) => {
 
   const updatePipelineData = (pipelineId, nodeType, nodeData) => {   
     setPipelines((prevPipelines) => {
-      console.log("Previous pipelines:", prevPipelines);
       
       if (!prevPipelines[pipelineId]) {
-        console.log("Pipeline not found:", pipelineId);
         return prevPipelines;
       }
 
@@ -336,12 +334,13 @@ export const WorkflowProvider = ({ children }) => {
     const key = isPipelineMode ? ID : `${sourceId}-${ID}`;
 
     const validUpdateKeys = ["schedule", "whereCondition"];
+    if (!updatedData || typeof updatedData !== 'object') {
+      console.warn("updateBulkMappings: updatedData is not a valid object", updatedData);
+      return;
+    }
     const keysToUpdate = Object.keys(updatedData);
 
     if (!keysToUpdate.every((key) => validUpdateKeys.includes(key))) {
-      console.log(
-        "Invalid keys in update. Only 'schedule' and 'whereCondition' can be updated."
-      );
       return;
     }
 
@@ -359,7 +358,7 @@ export const WorkflowProvider = ({ children }) => {
           return mapping;
         });
       } else {
-        console.log("Mapping key", key, "not found.");
+        console.error("Mapping key", key, "not found.");
       }
 
       return updatedMappings;

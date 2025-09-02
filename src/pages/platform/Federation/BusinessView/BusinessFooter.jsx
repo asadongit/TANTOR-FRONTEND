@@ -26,13 +26,11 @@ export function BusinessFooter() {
   };
 
   const getSelectFields = (columnSettings, hasOperation) => {
-    console.log("hasOperation is =====>", hasOperation);
 
     const selectedViews = hasOperation
       ? { Union: columnSettings.Union }
       : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
-    console.log("selected views column settings ====>", selectedViews);
 
     return Object.entries(selectedViews || {}).flatMap(([view, columns]) =>
       Object.entries(columns).flatMap(([colName, colProps]) => {
@@ -62,7 +60,6 @@ export function BusinessFooter() {
   const [colDefs, setColumnDefs] = useState([]);
 
   const helperPreviewData = async (cleanApiPayload) => {
-    console.log("CALLING API VIA PAYLOAD =====>", cleanApiPayload);
 
     try {
       const response = await fetch(
@@ -96,7 +93,6 @@ export function BusinessFooter() {
           setError("Table is empty");
           setRowData([]);
         } else {
-          console.log("Parsed Data Array:", data);
           setLoading(false);
           const columns = Object.keys(data[0]);
           setColumnDefs(columns);
@@ -162,14 +158,10 @@ export function BusinessFooter() {
     }
   };
 
-  useEffect(() => {
-    console.log("PAYLOAD IS $$$$$$$$$$$$$", finalPayload);
-  }, [finalPayload]);
 
   const fetchPreviewData = async (payload = null, filterData = null) => {
     setIsFilterModalOpen(false);
 
-    console.log("filterdata is ====>", filterData);
 
     let apiPayload = payload || finalPayload;
 
@@ -178,7 +170,6 @@ export function BusinessFooter() {
     }
 
     const isSkipCondition = !payload && !filterData;
-    console.log("skip condition is ====>", isSkipCondition);
 
     apiPayload = { ...apiPayload, skip_filter: isSkipCondition };
 
@@ -186,8 +177,6 @@ export function BusinessFooter() {
     if (isSkipCondition) {
       delete apiPayloadForApi.filter_data;
     }
-
-    console.log("FILTER API PAYLOAD ==> ", apiPayloadForApi);
 
     const connections = connectionPayload.map(item => item.selectedConnection);
     const views = viewPayload.map(item => item.view);
@@ -239,13 +228,7 @@ export function BusinessFooter() {
     aggregateColumns = [...aggregateColumns];
     sortColumns = [...sortColumns];
 
-    console.log("Select Columns:", selectColumns);
-    console.log("Group By Columns:", groupByColumns);
-    console.log("Aggregate Columns:", aggregateColumns);
-    console.log("Sort Columns:", sortColumns);
-
     if (modalState.queryType === "Regular") {
-      console.log("modalstate querytype is ====>", modalState.queryType);
       const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
 
       if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
@@ -294,7 +277,6 @@ export function BusinessFooter() {
       setLoading(true);
       setRowData([]);
 
-      console.log("source is newwwwwwww =====>", source);
 
       const groupByArray = Object.entries(source).flatMap(([view, columns]) =>
         Object.entries(columns)
@@ -302,7 +284,6 @@ export function BusinessFooter() {
           .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
       );
 
-      console.log("group by array new is =====>", groupByArray);
 
       let orderBy = [];
       Object.keys(source).forEach(table => {
@@ -325,11 +306,7 @@ export function BusinessFooter() {
         return hasOperation ? `${col.key} ${sortOrder}` : `${col.table}.${col.key} ${sortOrder}`;
       });
 
-      console.log("order by is ====>", { order_by: finalOrderBy });
-
       const selectFields = getSelectFields(columnSettings, hasOperation);
-
-      console.log("selected fields areeee =========>", selectFields);
 
       const updatedPayload = {
         ...apiPayloadForApi,
@@ -339,7 +316,6 @@ export function BusinessFooter() {
         metadata,
       };
 
-      console.log("Updated final payload for API is ===>", updatedPayload);
 
       handleFinalPayload({
         ...apiPayload,
@@ -407,11 +383,6 @@ export function BusinessFooter() {
         aggregateColumns = [...aggregateColumns];
         sortColumns = [...sortColumns];
 
-        console.log("Select Columns:", selectColumns);
-        console.log("Group By Columns:", groupByColumns);
-        console.log("Aggregate Columns:", aggregateColumns);
-        console.log("Sort Columns:", sortColumns);
-
         if (Object.keys(finalPayload).length > 0) {
           setPreview(true);
           setLoading(true);
@@ -422,8 +393,6 @@ export function BusinessFooter() {
               .filter(([col, settings]) => settings.groupBy === "Yes")
               .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
           );
-
-          console.log("group by array new is =====>", groupByArray);
 
           let orderBy = [];
           Object.keys(source).forEach(table => {
@@ -446,8 +415,6 @@ export function BusinessFooter() {
             return hasOperation ? `${col.key} ${sortOrder}` : `${col.table}.${col.key} ${sortOrder}`;
           });
 
-          console.log("order by is ====>", { order_by: finalOrderBy });
-
           const selectFields = getSelectFields(columnSettings, hasOperation);
 
           const updatedPayload = {
@@ -457,8 +424,6 @@ export function BusinessFooter() {
             select_fields: selectFields,
             metadata,
           };
-
-          console.log("Updated final payload for API is ===>", updatedPayload);
 
           handleFinalPayload(updatedPayload);
           helperPreviewData(updatedPayload);
@@ -483,7 +448,6 @@ export function BusinessFooter() {
   };
 
   const handleSaveView = async (params) => {
-    console.log("view name entered is =======>", params);
     const { newViewName } = params;
 
     finalPayload["view_name"] = newViewName.toLowerCase();
@@ -495,7 +459,6 @@ export function BusinessFooter() {
       delete finalPayload.skip_filter;
     }
 
-    console.log("final payload fainally is =======>", finalPayload);
 
     const viewExistsResponse = await fetch(
       `${hostnameV2}/view-exists/${newViewName}`,
@@ -520,7 +483,6 @@ export function BusinessFooter() {
       return null;
     }
     const viewExists = await viewExistsResponse.json();
-    console.log("viewExists ===> ", viewExists);
     if (viewExists["result"]) {
       setToast({
         show: true,
@@ -554,7 +516,6 @@ export function BusinessFooter() {
     const data = await response.json();
 
     if (response.status == 200) {
-      console.log("Save View Result ==> ", data);
       setToast({
         show: true,
         message: "View Saved Successfully.",

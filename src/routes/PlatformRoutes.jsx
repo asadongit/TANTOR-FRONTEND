@@ -32,11 +32,9 @@ import Details from '../pages/platform/Details';
 import EditCDC from '../pages/platform/cdc/components/Edit';
 import ViewCDC from '../pages/platform/cdc/components/viewCDC/View'
 
-import KafkaDasboard from '../pages/platform/cdc/KafkaDashboard';
+import KafkaDashboard from '../pages/platform/cdc/kafkaDashboard/KafkaDashboard';
 import MonitoringDashboard from '../pages/platform/monitoring/MonitoringDashboard';
 import { MonitoringProvider } from '../pages/platform/monitoring/context/MonitoringContext';
-import { KafkaMonitoringProvider } from '../pages/platform/monitoring/context/KafkaMonitoringContext';
-import KafkaMonitoring from '../pages/platform/monitoring/KafkaMonitoring';
 
 
 export function PlatformRoutes() {
@@ -71,19 +69,12 @@ export function PlatformRoutes() {
         <Route path="/details" element={<Details />}/>
         <Route path="/reporting/lineItems" element={<LineItemsPage />} />
         <Route path="/transformation" element={<Transformation />} />
-        <Route path="/kafka-dashboard" element={<KafkaDasboard />} />
+        <Route path="/cdc/kafka-dashboard" element={<KafkaDashboard />} />
         <Route path="/monitoring" element={
           <MonitoringProvider>
             <MonitoringDashboard />
           </MonitoringProvider>
           } />
-        <Route path='/monitoring/kafka' element={
-          <MonitoringProvider>
-            <KafkaMonitoringProvider>
-              <KafkaMonitoring />
-            </KafkaMonitoringProvider>
-          </MonitoringProvider>
-        }/>
       </Routes>
   );
 }

@@ -25,7 +25,7 @@ import {
 } from "../../hooks/DataFetch";
 import AutoComplete from "../../components/AutoComplete";
 export function TargetNode({ id, data, selected }) {
-  // console.log("TARGET DATA",data) 
+  // ...existing code...
   const [loading, setLoading] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
@@ -86,56 +86,124 @@ export function TargetNode({ id, data, selected }) {
     editMode,
   } = useWorkflow();
 
-  useEffect(() => {
-    let sourceArray = isPipelineNode
-      ? pipelines?.[ID]?.data?.source
-      : data?.source;
-    const firstSource = isPipelineNode
-      ? sourceArray
-      : Array.isArray(sourceArray)
-      ? sourceArray[0]
-      : sourceArray;
-         
-    if (firstSource) {
-      setSourceConnection(firstSource?.connection || "");
-      setSourceSchema(firstSource?.schema);
-      
-      // Always use live source data for bulkList, regardless of edit mode
-      const currentSourceTables = firstSource?.bulk_list || [];
-      console.log("TargetNode currentSourceTables from pipeline:", currentSourceTables);
-      
-      // Always update bulkList with live data
-      setBulkList(currentSourceTables);
-      
-      // In edit mode, we need to handle existing mappings
-      if (data?.target && Object.keys(data.target).length > 0) {
-        // We're in edit mode - check if we have existing mappings
-        const savedMappings = data.target?.bulk_list || [];
-        console.log("TargetNode savedMappings:", savedMappings);
-        
-        if (savedMappings.length > 0) {
-          // Filter saved mappings to only include those that still exist in new source selections
-          const validMappings = savedMappings.filter(mapping => {
-            const sourceTable = typeof mapping === 'object' ? mapping.source_table : mapping;
-            return currentSourceTables.includes(sourceTable);
-          });
-          
-          console.log("Valid mappings after source change:", validMappings);
-          setSelectedItems(validMappings);
-        } else {
-          // No saved mappings, start fresh
-          setSelectedItems([]);
-        }
-      } else {
-        // Not in edit mode - start fresh
-        setSelectedItems([]);
-      }
-      
-      setSelectedMode(firstSource?.mode || "bulk");
-    } else {
-      console.log("=== TargetNode firstSource is null/undefined ===");
+
+
+useEffect(() => {
+  // Defensive: always check for target data first
+  if (data?.target && typeof data.target === 'object' && Object.keys(data.target || {}).length > 0) {
+    const targetData = data.target;
+    
+    // Extract first source from target if available
+    let firstSource = null;
+    if (Array.isArray(targetData.source) && targetData.source.length > 0) {
+      firstSource = targetData.source[0];
+    } else if (targetData.source && typeof targetData.source === 'object') {
+      firstSource = targetData.source;
     }
-  }, [pipelines, pipelineId, data?.source, isPipelineNode, data?.target]);
+    
+    // Pre-populate connection
+    if (targetData.connection) {
+      setSelectedConnection(targetData.connection);
+    }
+    
+    // Pre-populate schema
+    if (targetData.schema) {
+      setSelectedSchema(targetData.schema);
+    }
+    
+    // Pre-populate mode FIRST
+    if (targetData.mode) {
+      setSelectedMode(targetData.mode);
+    }
+    
+    // Set source connection and schema for bulkTables fetch
+    if (firstSource) {
+      setSourceConnection(firstSource.connection || "");
+      setSourceSchema(firstSource.schema || "");
+      
+      // Set bulk list from source
+      if (firstSource.bulk_list && Array.isArray(firstSource.bulk_list)) {
+        setBulkList(firstSource.bulk_list);
+      }
+    }
+    
+    // Pre-populate connection object if available
+    if (targetData.target_conn_id) {
+      const connectionObj = safeConnections?.find(conn => 
+        conn.connection_id === targetData.target_conn_id || 
+        conn.connection_name === targetData.connection
+      );
+      if (connectionObj) {
+        setSelectedConnectionObj(connectionObj);
+      }
+    }
+    
+    // Handle bulk_list mappings - use existing addBulkMapping function
+    if (Array.isArray(targetData.bulk_list) && targetData.bulk_list.length > 0) {
+      if (typeof targetData.bulk_list[0] === 'object') {
+        // If bulk_list contains mapping objects, restore them using addBulkMapping
+        setSelectedItems(targetData.bulk_list);
+        
+        // Use a timeout to ensure the context is ready
+        setTimeout(() => {
+          targetData.bulk_list.forEach(mapping => {
+            if (mapping && mapping.source_table && mapping.target_table) {
+              addBulkMapping(
+                firstSource?.id || null,
+                ID,
+                {
+                  source_table: mapping.source_table,
+                  target_table: mapping.target_table,
+                  schedule: mapping.schedule || {},
+                  whereCondition: mapping.whereCondition || "",
+                  source_columns: mapping.source_columns || [],
+                },
+                isPipelineNode
+              );
+            }
+          });
+        }, 100);
+        
+      } else {
+        // If bulk_list contains just table names
+        setSelectedItems(targetData.bulk_list);
+      }
+    }
+    
+    // Pre-populate node data
+    setNodeData(targetData);
+  }
+}, [data?.target, data?.source, safeConnections, isPipelineNode, ID, addBulkMapping]);
+
+
+
+// Also add this useEffect to handle bulk mappings initialization
+useEffect(() => {
+  // Initialize bulk mappings when we have all required data
+  if (selectedConnection && selectedSchema && selectedMode === "bulk" && bulkList.length > 0) {
+    const key = isPipelineNode ? ID : constructedKey;
+    
+    // Check if bulk mappings already exist for this key
+    if (!bulkMappings[key] && data?.target?.bulk_list) {
+      // Initialize from saved data
+      if (Array.isArray(data.target.bulk_list) && typeof data.target.bulk_list[0] === 'object') {
+        updateBulkMappings(key, data.target.bulk_list);
+      }
+    }
+  }
+}, [selectedConnection, selectedSchema, selectedMode, bulkList, data?.target?.bulk_list]);
+
+// Update the handleSelectSchema function to preserve existing mappings:
+const handleSelectSchema = (schemaName) => {
+  setSelectedSchema(schemaName || "");
+  setLoading(true);
+  
+  // Don't clear selectedItems if we're in edit mode with existing data
+  if (!data?.target?.bulk_list) {
+    setSelectedItems([]);
+  }
+};
+
 
   // Monitor source data changes specifically
   useEffect(() => {    
@@ -151,11 +219,11 @@ export function TargetNode({ id, data, selected }) {
       
       // Update bulkList if source tables have changed
       if (JSON.stringify(sourceTables) !== JSON.stringify(bulkList)) {
-        console.log("Source tables changed, updating bulkList");
+  // ...existing code...
         setBulkList(sourceTables);
       }
     } else {
-      console.log("No source data found in pipeline");
+  // ...existing code...
     }
   }, [pipelines?.[ID]?.data?.source, data?.source, isPipelineNode, ID, bulkList]);
 
@@ -286,9 +354,7 @@ export function TargetNode({ id, data, selected }) {
         bulk_list: selectedItems, // Keep the full mapping objects
       };
       
-      console.log("=== TargetNode handleOkClick ===");
-      console.log("Updated node data:", updatedNodeData);
-      console.log("Selected items:", selectedItems);
+  // ...existing code...
       
       updateData(ID, isPipelineNode, "target", updatedNodeData);
     }
@@ -331,31 +397,33 @@ export function TargetNode({ id, data, selected }) {
     }
   };
 
-  useEffect(() => {
-    if (selectedConnection && selectedSchema && ID) {
-      const key = isPipelineNode ? ID : constructedKey;
-      const updatedNodeData = {
-        connection: selectedConnection,
-        schema: selectedSchema,
-        mode: selectedMode,
-        bulk_list:
-          selectedMode === "bulk" ? bulkMappings[key] : pipelineMappings[key],
-        target_conn_id: nodeData?.target_conn_id,
-        type: nodeData?.type,
-        source: data?.source?.[0],
-        define: data?.source?.[0]?.define,
-      };
-      setNodeData(updatedNodeData);
-
-      updateData(ID, isPipelineNode, "target", updatedNodeData);
-    }
-  }, [
-    selectedConnection,
-    selectedSchema,
-    selectedItems,
-    bulkMappings,
-    pipelineMappings,
-  ]);
+useEffect(() => {
+  if (selectedConnection && selectedSchema && ID) {
+    const key = isPipelineNode ? ID : constructedKey;
+    const updatedNodeData = {
+      connection: selectedConnection,
+      schema: selectedSchema,
+      mode: selectedMode,
+      bulk_list: selectedMode === "bulk" ? 
+        (bulkMappings[key] || selectedItems) : // Use existing mappings if available
+        (pipelineMappings[key] || selectedItems),
+      target_conn_id: nodeData?.target_conn_id,
+      type: nodeData?.type,
+      source: data?.source?.[0],
+      define: data?.source?.[0]?.define,
+    };
+    
+    setNodeData(updatedNodeData);
+    updateData(ID, isPipelineNode, "target", updatedNodeData);
+  }
+}, [
+  selectedConnection,
+  selectedSchema,
+  selectedMode,
+  bulkMappings,
+  pipelineMappings,
+  // Remove selectedItems from dependencies to prevent clearing
+]);
 
   const [openSections, setOpenSections] = useState({});
 

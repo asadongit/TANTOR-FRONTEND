@@ -84,8 +84,6 @@ export const MonitoringProvider = ({ children }) => {
       const now = Date.now() / 1000;
 
       const uptimeInSeconds = now - podStartTime;
-
-      console.log("Pod uptime in hours:", uptimeInSeconds / 3600);
       return uptimeInSeconds / 3600;
     } catch (error) {
       console.error(error);

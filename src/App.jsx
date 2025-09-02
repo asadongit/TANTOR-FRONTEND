@@ -36,6 +36,7 @@ import {
 import TantorLogin from "./pages/login";
 import { BusinessHeader } from "./pages/platform/Federation/BusinessView/BusinessHeader";
 import TransformationCanvas from "./pages/platform/transformation/components/TransformationCanvas";
+import { DatabotProvider } from "./hooks/dataGovernance/DatabotContext";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
@@ -64,6 +65,7 @@ function App() {
               <Route
                 path="/*"
                 element={
+                  <DatabotProvider>
                   <div className="min-h-screen bg-gray-50">
                     <Header />
                     <Chatbot />
@@ -95,6 +97,7 @@ function App() {
                       </main>
                     </div>
                   </div>
+                  </DatabotProvider>
                 }
               />
 
@@ -190,7 +193,7 @@ function App() {
                                     </ReactFlowProvider>
                                   </div>
                                 </div>
-                                {/* <WelcomeModal /> */}
+                                <WelcomeModal />
                               </div>
                             </PurgeContextProvider>
                           </ContextProvider>

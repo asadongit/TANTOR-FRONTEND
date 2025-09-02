@@ -66,10 +66,18 @@ export const TargetNode = ({ id, data }) => {
   const [enableCountLogging, setEnableCountLogging] = useState(false);
   // Add a ref to track restoration
   const hasRestoredEnableCountLogging = useRef(false);
+  // Add a ref to track restoration for loadType
+  const hasRestoredLoadType = useRef(false);
 
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
   const tableDropdownRef = useRef(null);
+  const [scdConfig, setScdConfig] = useState({
+    primaryKeys: [],
+    surrogateKey: "",
+    checksumColumns: [],
+    changeType: ""
+  });
 
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
@@ -385,7 +393,6 @@ export const TargetNode = ({ id, data }) => {
 
   const handleSetTargetMapping = useCallback((newMapping) => {
     if (JSON.stringify(newMapping) !== JSON.stringify(targetMapping)) {
-      // console.log("Target Node - Setting new target mapping:", newMapping);
       setTargetMapping(newMapping);
       if (typeof data.onDataChange === "function") {
         data.onDataChange({ targetMapping: newMapping });
@@ -453,13 +460,102 @@ export const TargetNode = ({ id, data }) => {
     return uniqueCols.map(col => ({ value: col, label: col }));
   }, [selectedSourceNode, getAllSourceColumns]);
 
+  // FIXED: Add effect to handle column updates and SCD config refresh
+  useEffect(() => {
+    const handleColumnUpdate = (event) => {
+      const details = event.detail || {};
+
+      // If this event indicates SCD configs should be refreshed
+      if (details.refreshScdConfigs && details.sourceId) {
+        // Check if this target is connected to the updated source
+        const isConnected = window.allEdges?.some(edge => {
+          const sourceNode = window.allNodes?.find(n => n.id === edge.source);
+          return edge.target === id &&
+                 sourceNode &&
+                 (sourceNode.data?.alias === details.sourceId || sourceNode.id === details.sourceId);
+        });
+
+        if (isConnected) {
+          // Validate current SCD config against available columns
+          const currentTargetColumns = getAllTargetColumns();
+          const currentSourceColumns = getAllSourceColumns();
+          const allAvailableColumns = [...new Set([...currentTargetColumns, ...currentSourceColumns])];
+
+          setScdConfig(prevConfig => {
+            const validatedConfig = {
+              primaryKeys: prevConfig.primaryKeys.filter(pk => allAvailableColumns.includes(pk)),
+              surrogateKey: allAvailableColumns.includes(prevConfig.surrogateKey) ? prevConfig.surrogateKey : "",
+              checksumColumns: prevConfig.checksumColumns.filter(chk => allAvailableColumns.includes(chk)),
+              changeType: prevConfig.changeType
+            };
+
+            // Reset changeType if no valid checksum columns
+            if (validatedConfig.checksumColumns.length === 0) {
+              validatedConfig.changeType = "";
+            }
+
+            // Update context and node data with validated config
+            if (typeof data.onDataChange === "function") {
+              data.onDataChange({ scdConfig: validatedConfig });
+            }
+
+            dispatch({
+              type: ACTION_TYPES.UPDATE_TARGET,
+              payload: { id, data: { scdConfig: validatedConfig } }
+            });
+
+            return validatedConfig;
+          });
+        }
+      }
+    };
+
+    window.addEventListener("tantor-columns-updated", handleColumnUpdate);
+    return () => window.removeEventListener("tantor-columns-updated", handleColumnUpdate);
+  }, [id, getAllTargetColumns, getAllSourceColumns, data.onDataChange, dispatch, ACTION_TYPES]);
+
   const handleSlideClick = () => {
     if (window.openTargetMappingDrawer) {
+      // FIXED: Ensure current SCD config is passed with all available columns
+      const currentTargetColumns = getAllTargetColumns();
+      const currentSourceColumns = getAllSourceColumns();
+      const allAvailableColumns = [...new Set([...currentTargetColumns, ...currentSourceColumns])];
+
       window.openTargetMappingDrawer(id, {
         getAllTargetColumns,
         targetMapping,
         setTargetMapping: handleSetTargetMapping,
         sourceColumnOptions: sourceColumnOptionsForMapping,
+        // pass SCD context to drawer with validated config
+        loadType,
+        scdConfig: {
+          ...scdConfig,
+          // Ensure all SCD config values are valid against current columns
+          primaryKeys: scdConfig.primaryKeys.filter(pk => allAvailableColumns.includes(pk)),
+          surrogateKey: allAvailableColumns.includes(scdConfig.surrogateKey) ? scdConfig.surrogateKey : "",
+          checksumColumns: scdConfig.checksumColumns.filter(chk => allAvailableColumns.includes(chk)),
+          changeType: scdConfig.checksumColumns.filter(chk => allAvailableColumns.includes(chk)).length > 0 ? scdConfig.changeType : ""
+        },
+        setScdConfig: (cfg) => {
+          // FIXED: Validate incoming SCD config
+          const validatedCfg = {
+            primaryKeys: Array.isArray(cfg.primaryKeys) ? cfg.primaryKeys.filter(pk => allAvailableColumns.includes(pk)) : [],
+            surrogateKey: allAvailableColumns.includes(cfg.surrogateKey) ? cfg.surrogateKey : "",
+            checksumColumns: Array.isArray(cfg.checksumColumns) ? cfg.checksumColumns.filter(chk => allAvailableColumns.includes(chk)) : [],
+            changeType: cfg.changeType || ""
+          };
+
+          // Reset changeType if no valid checksum columns
+          if (validatedCfg.checksumColumns.length === 0) {
+            validatedCfg.changeType = "";
+          }
+
+          setScdConfig(validatedCfg);
+          if (typeof data.onDataChange === "function") data.onDataChange({ scdConfig: validatedCfg });
+          dispatch({ type: ACTION_TYPES.UPDATE_TARGET, payload: { id, data: { scdConfig: validatedCfg } } });
+        },
+        // FIXED: Pass all available columns for SCD config validation
+        allAvailableColumns
       });
     }
   };
@@ -511,6 +607,10 @@ export const TargetNode = ({ id, data }) => {
       label: col
     }));
 
+    // FIXED: Get all available columns for SCD validation
+    const currentTargetColumns = getAllTargetColumns();
+    const allAvailableColumns = [...new Set([...currentTargetColumns, ...allAvailableSourceColumns])];
+
     if (window.openTargetMappingDrawer) {
       window.openTargetMappingDrawer(id, {
         getAllTargetColumns,
@@ -526,6 +626,36 @@ export const TargetNode = ({ id, data }) => {
           }));
         },
         sourceColumnOptions: enhancedSourceColumnOptions,
+        // pass SCD context to drawer with proper validation
+        loadType,
+        scdConfig: {
+          ...scdConfig,
+          // Ensure all SCD config values are valid against current columns
+          primaryKeys: scdConfig.primaryKeys.filter(pk => allAvailableColumns.includes(pk)),
+          surrogateKey: allAvailableColumns.includes(scdConfig.surrogateKey) ? scdConfig.surrogateKey : "",
+          checksumColumns: scdConfig.checksumColumns.filter(chk => allAvailableColumns.includes(chk)),
+          changeType: scdConfig.checksumColumns.filter(chk => allAvailableColumns.includes(chk)).length > 0 ? scdConfig.changeType : ""
+        },
+        setScdConfig: (cfg) => {
+          // FIXED: Validate incoming SCD config
+          const validatedCfg = {
+            primaryKeys: Array.isArray(cfg.primaryKeys) ? cfg.primaryKeys.filter(pk => allAvailableColumns.includes(pk)) : [],
+            surrogateKey: allAvailableColumns.includes(cfg.surrogateKey) ? cfg.surrogateKey : "",
+            checksumColumns: Array.isArray(cfg.checksumColumns) ? cfg.checksumColumns.filter(chk => allAvailableColumns.includes(chk)) : [],
+            changeType: cfg.changeType || ""
+          };
+
+          // Reset changeType if no valid checksum columns
+          if (validatedCfg.checksumColumns.length === 0) {
+            validatedCfg.changeType = "";
+          }
+
+          setScdConfig(validatedCfg);
+          if (typeof data.onDataChange === "function") data.onDataChange({ scdConfig: validatedCfg });
+          dispatch({ type: ACTION_TYPES.UPDATE_TARGET, payload: { id, data: { scdConfig: validatedCfg } } });
+        },
+        // FIXED: Pass all available columns for SCD config validation
+        allAvailableColumns
       });
     }
   };
@@ -716,13 +846,6 @@ export const TargetNode = ({ id, data }) => {
                           procedure.originalParameterMapping?.[param.name] ||
                           "";
         initialMapping[param.name] = paramValue;
-
-        // console.log(`Target Node - Parameter ${param.name}:`, {
-        //   fromStored: storedMapping[param.name],
-        //   fromProcedure: procedure.parameterMapping?.[param.name],
-        //   fromOriginal: procedure.originalParameterMapping?.[param.name],
-        //   finalValue: paramValue
-        // });
       });
     }
 
@@ -870,20 +993,32 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    if (data.loadType && loadType !== data.loadType) {
+    // FIXED: Only update loadType once during restoration and prevent constant changes
+    if (data.loadType && !hasRestoredLoadType.current) {
       setLoadType(data.loadType);
+      hasRestoredLoadType.current = true;
       hasUpdated = true;
     }
 
-    if (data.loadStrategy && loadStrategy !== data.loadStrategy) {
+    // FIXED: Only update loadStrategy once during restoration
+    if (data.loadStrategy && loadStrategy !== data.loadStrategy && !hasRestoredLoadType.current) {
       setLoadStrategy(data.loadStrategy);
       hasUpdated = true;
     }
 
-    // FIXED: Initialize enableCountLogging from data during restoration
     if (typeof data.enableCountLogging === 'boolean' && !hasRestoredEnableCountLogging.current) {
       setEnableCountLogging(data.enableCountLogging);
       hasRestoredEnableCountLogging.current = true;
+    }
+
+    // restore SCD selections
+    if (data.scdConfig && JSON.stringify(data.scdConfig) !== JSON.stringify(scdConfig)) {
+      setScdConfig({
+        primaryKeys: data.scdConfig.primaryKeys || [],
+        surrogateKey: data.scdConfig.surrogateKey || "",
+        checksumColumns: data.scdConfig.checksumColumns || [],
+        changeType: data.scdConfig.checksumColumns?.length ? (data.scdConfig.changeType || "checksum") : ""
+      });
       hasUpdated = true;
     }
 
@@ -940,9 +1075,6 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    // if (hasUpdated) {
-    //   console.log("Target node data restored:", data);
-    // }
   }, [
     data.connection,
     data.connectionId,
@@ -951,17 +1083,17 @@ export const TargetNode = ({ id, data }) => {
     data.table,
     data.alias,
     data.objectType,
-    data.loadType,
-    data.loadStrategy,
+    data.loadType, // Keep this but now protected by hasRestoredLoadType ref
+    data.loadStrategy, // Keep this but now protected by hasRestoredLoadType ref
     data.selectedSourceId,
-    data.enableCountLogging // Keep this dependency for proper restoration
+    data.enableCountLogging, // Keep this dependency for proper restoration
+    data.scdConfig
   ]);
 
   useEffect(() => {
 
 
     if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0) {
-      // console.log("Target Node - Restoring pre-procedures parameter mappings:", data.preProcedures);
 
       const initialPreMappings = {};
       data.preProcedures.forEach((procData, index) => {
@@ -972,12 +1104,6 @@ export const TargetNode = ({ id, data }) => {
 
         if (Object.keys(parameterMapping).length > 0) {
           initialPreMappings[mappingKey] = parameterMapping;
-
-          // console.log("Target Node - Restored pre-procedure mapping:", {
-          //   mappingKey,
-          //   parameterMapping,
-          //   procedureName: procData.procedure_name
-          // });
 
           const procedureJSON = {
             "EventType": "BeforeTargetWrite",
@@ -1013,7 +1139,6 @@ export const TargetNode = ({ id, data }) => {
     }
 
     if (data.postProcedures && Array.isArray(data.postProcedures) && data.postProcedures.length > 0) {
-      // console.log("Target Node - Restoring post-procedures parameter mappings:", data.postProcedures);
 
       const initialPostMappings = {};
       data.postProcedures.forEach((procData, index) => {
@@ -1024,12 +1149,6 @@ export const TargetNode = ({ id, data }) => {
 
         if (Object.keys(parameterMapping).length > 0) {
           initialPostMappings[mappingKey] = parameterMapping;
-
-          // console.log("Target Node - Restored post-procedure mapping:", {
-          //   mappingKey,
-          //   parameterMapping,
-          //   procedureName: procData.procedure_name
-          // });
 
           const procedureJSON = {
             "EventType": "AfterTargetWrite",
@@ -1065,7 +1184,8 @@ export const TargetNode = ({ id, data }) => {
     }
   }, [data.preProcedures, data.postProcedures, dispatch, ACTION_TYPES, id, alias]);
 
-  // FIX: Only update enableCountLogging if value is different and not restoring
+
+
   useEffect(() => {
     // Expose the setter function to allow external updates
     data.setEnableCountLogging = setEnableCountLogging;
@@ -1151,11 +1271,25 @@ export const TargetNode = ({ id, data }) => {
       preProcedures: enrichedPreProcedures,
       postProcedures: enrichedPostProcedures,
       enableCountLogging: enableCountLogging,
+      // FIXED: Always include validated SCD config in data changes
+      scdConfig: {
+        primaryKeys: Array.isArray(scdConfig.primaryKeys) ? scdConfig.primaryKeys : [],
+        surrogateKey: scdConfig.surrogateKey || "",
+        checksumColumns: Array.isArray(scdConfig.checksumColumns) ? scdConfig.checksumColumns : [],
+        changeType: scdConfig.changeType || ""
+      }
     });
   }, [
     selectedConnection, selectedSchema, selectedTable, loadType, loadStrategy,
     tables, alias, columnMapping, targetMapping, selectedSourceForMapping,
-    selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging
+    selectedObjectType, selectedPreProcedures, selectedPostProcedures, storedParameterMappings,
+    enableCountLogging,
+    // FIXED: Ensure all SCD config fields trigger updates
+    scdConfig,
+    JSON.stringify(scdConfig.primaryKeys),
+    scdConfig.surrogateKey,
+    JSON.stringify(scdConfig.checksumColumns),
+    scdConfig.changeType
   ]);
 
   const connectionDropdownClasses = "w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8";
@@ -1174,7 +1308,7 @@ export const TargetNode = ({ id, data }) => {
       <Handle type="target" position={Position.Left} style={{ width: 10, height: 10 }} />
 
       <div className="flex items-center space-x-3 mb-3">
-        <Database className="w-5 h-5 text-[#96CF7B]" />
+        <Database className="w-5 h-5 text-[#8E77BB]" />
         <h3 className="text-black font-medium">Target</h3>
       </div>
 
@@ -1466,6 +1600,9 @@ export const TargetNode = ({ id, data }) => {
                           onChange={(e) => setLoadType(e.target.value)}
                         >
                           <option value="FullLoad">Full Load</option>
+                          <option value="SCD1">SCD1</option>
+                          <option value="SCD2">SCD2</option>
+
                         </select>
                       </div>
                     </div>
