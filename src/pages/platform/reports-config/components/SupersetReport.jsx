@@ -205,8 +205,6 @@ import { X } from "lucide-react";
 const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  console.log("REPORT NAME ==> ", currentReportName);
-
   const SUPERSET_URL = window._env_?.VITE_REPORTING_DASHBOARD_URL;
 
   const USERNAME = window._env_?.VITE_REPORTING_DASHBOARD_USERNAME;
@@ -274,7 +272,6 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
         }
       );
 
-      console.log("Guest token response:", response.data);
       return response.data.token;
     } catch (error) {
       console.error("Error fetching guest token:", error);
@@ -290,12 +287,6 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
     if (!showModal || !currentReportName || !containerRef.current) return;
 
     containerRef.current.innerHTML = "";
-
-    console.log({
-      SUPERSET_URL,
-      containerREFF: containerRef.current,
-      currentReportName,
-    });
 
     const embedDashboardInstance = async () => {
       try {

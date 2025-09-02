@@ -22,7 +22,6 @@ import { useModal } from "../../context/ModalProvider";
 import * as XLSX from "xlsx";
 
 export function TargetNode({ id, data, selected }) {
-  // console.log("TARGET---DATAAA---", data);
   const { token, decodedToken, hostnameV1, project } = useAuth();
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
@@ -299,14 +298,6 @@ export function TargetNode({ id, data, selected }) {
       updateData(ID, isPipelineNode, "target", updatedNodeData);
     }
   }, [selectedConnection, selectedSchema, filteredTables, bulkList]);
-
-  const handleItemSelection = (checked, tableName) => {
-    console.log("Selection changed:", checked, tableName);
-  };
-
-  const openDrawer = (category, action, id, pipelineId, tableData) => {
-    console.log("Opening drawer:", category, action, id, pipelineId, tableData);
-  };
 
   const handleSave = () => {
     handleDDLValidation();

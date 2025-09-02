@@ -863,7 +863,6 @@ function Step2({ data, onBack, onNext, step2Data, edit = false, fromRuleRunSumma
 
   const handleNextClick = () => {
     const json = generateResultJson();
-    console.log(json);
     setStepData(prev => ({ ...prev, step2: json }));
     onNext(json);
   };

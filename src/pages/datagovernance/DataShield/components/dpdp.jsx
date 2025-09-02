@@ -47,7 +47,6 @@ export default function DPDP() {
 
     const [componentsModal, setComponentsModal] = useState(false);
     const toggleSelect = (name, id) => {
-        console.log("id is ====>", id)
         if (id == 0) {
             setComponentsModal(true)
         }

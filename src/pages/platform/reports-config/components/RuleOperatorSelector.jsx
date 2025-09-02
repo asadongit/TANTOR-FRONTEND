@@ -156,8 +156,6 @@ export default function RuleSelector() {
         (m.name && (!m.parameterName && m.parameterOperator))
       )
     );
-
-    console.log("invalidMetrics ==> ", invalidMetrics);
     
     if(invalidMetrics.length > 0){
       return toast.error("Invalid metric configuration")

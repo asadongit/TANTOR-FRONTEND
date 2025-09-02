@@ -56,7 +56,6 @@ function EditGroup({ showModal, setShowModal, groupData, onGroupEdited }) {
       }
 
       const data = await response.json();
-      console.log("Group updated successfully:", data);
 
       // Close modal
       setShowModal(false);

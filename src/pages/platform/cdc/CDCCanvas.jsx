@@ -65,15 +65,11 @@ const Canvas = () => {
       try {
         const parsed = typeof nodeJson === "string" ? JSON.parse(nodeJson) : nodeJson;
         
-        console.log("Loading nodeJson data:", parsed);
-        
         // If nodeJson contains both nodes and edges
         if (parsed.nodes && parsed.edges) {
-          console.log("Setting nodes and edges from nodeJson");
           
           // If there's pipelineData, use it to enhance the node data
           if (parsed.pipelineData) {
-            console.log("Found pipelineData, enhancing node data");
             const enhancedNodes = parsed.nodes.map(node => ({
               ...node,
               data: {
@@ -92,20 +88,14 @@ const Canvas = () => {
           
           setEdges(parsed.edges);
         } else if (parsed.nodes) {
-          // If nodeJson contains only nodes
-          console.log("Setting only nodes from nodeJson");
           setNodes(parsed.nodes);
         } else {
-          // If nodeJson is the nodes array directly
-          console.log("Setting nodes array directly from nodeJson");
           setNodes(parsed);
         }
         
         // Fit view after nodes are loaded
         setTimeout(() => {
           fitView({ padding: 0.2, duration: 800 });
-          // Log the loaded nodes to understand their structure
-          console.log("Loaded nodes:", parsed.nodes || parsed);
         }, 100);
       } catch (error) {
         console.error("Error parsing nodeJson:", error);

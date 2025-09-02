@@ -226,7 +226,6 @@ const handleSubmit = useCallback(async () => {
       }
     });
 
-    console.log("Submission successful:", response.data);
     toast.success(`Migration (${migrationScope}) submitted successfully!`);
     
   } catch (error) {

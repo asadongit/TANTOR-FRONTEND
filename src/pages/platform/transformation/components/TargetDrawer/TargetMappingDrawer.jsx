@@ -410,11 +410,6 @@ const TargetMappingDrawer = ({
         });
     }, [nodeId]);
 
-    // useEffect(() => {
-    //     if (initialMappingReceived) {
-    //         console.log(`Target mapping updated for node ${nodeId}:`, localMapping);
-    //     }
-    // }, [localMapping, nodeId, initialMappingReceived]);
 
     // Use both sourceColumnOptions prop and our internal state for mapping
     const allSourceColumnsForMapping = useMemo(() => {

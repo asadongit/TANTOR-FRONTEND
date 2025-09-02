@@ -260,7 +260,7 @@ function Group() {
       });
 
       setTableData(transformedData);
-      console.log("Fetched group list data:", transformedData);
+
       return { success: true };
     } catch (error) {
       console.error("Error fetching group list:", error);
@@ -329,7 +329,6 @@ function Group() {
   };
 
   const handleSave = async (result) => {
-    console.log('Group creation result:', result);
 
     if (result.success) {
       try {

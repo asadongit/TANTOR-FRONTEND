@@ -54,7 +54,6 @@ const ReportConfigDashboard = () => {
       try {
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
-        console.log("policy ids are =====>", policyIds)
 
         const response = await fetch(`${hostnameV1}/ispublished`, {
           method: 'POST',
@@ -94,8 +93,7 @@ const ReportConfigDashboard = () => {
 
         setCards(mappedCards);
       } catch (err) {
-        console.log("error ", err.message)
-        // setError(err.message);
+        console.error("error ", err.message)
       } finally {
 
       }
@@ -116,8 +114,6 @@ const ReportConfigDashboard = () => {
 
         // ----------- SUPERSET CODE START -----------
         if ((reportType || "").toUpperCase() === "LIST" || (reportType || "").toUpperCase() === "DASHBOARD") {
-          console.log("REPORT TYPE ==> ", reportType);
-          console.log("Embed id:", embedID);
           
           if(!embedID){
             toast.error("Dashboard not configured!");
@@ -129,7 +125,6 @@ const ReportConfigDashboard = () => {
           return;
         }
          else if ((reportType || "").toUpperCase() === "GRID" || (reportType || "").toUpperCase() === "HYBRID") {
-          console.log("REPORT TYPE ==> ", reportType);
             const reportFolder = window._env_?.VITE_REPORTING_REPORT_FOLDER;
             const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
@@ -145,94 +140,12 @@ const ReportConfigDashboard = () => {
             toast.error("Invalid Report Type provided.");
             return;
           }
-        // ----------- SUPERSET CODE END -----------
-
-        // ------------- BIRT CODE START -----------------
-        // if ((reportType || "").toUpperCase() === "LIST") {
-        //     const reportFolder = window._env_?.VITE_REPORTING_REPORT_FOLDER;
-        //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-
-        //     window.open(
-        //       `${window._env_?.VITE_REPORTING_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-        //         window._env_?.VITE_REPORTING_EXPORT_FORMAT
-        //       }`,
-        //       "_blank"
-        //     );
-        //     return;
-        //   }
-        //   else if ((reportType || "").toUpperCase() === "GRID") {
-        //     const reportFolder = window._env_?.VITE_REPORTING_REPORT_FOLDER;
-        //     const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-
-        //     window.open(
-        //       `${window._env_?.VITE_REPORTING_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-        //         window._env_?.VITE_REPORTING_EXPORT_FORMAT
-        //       }`,
-        //       "_blank"
-        //     );
-        //     return;
-        //   }
-        //   else{
-        //     toast.error("Invalid Report Type selected.");
-        //     return;
-        //   }
-        // ------------- BIRT CODE END -----------------
-
-
-        // const headers = {
-        //   "Content-Type": "application/json",
-        //   authorization: `Bearer ${token}`,
-        // };
-
-        // if ((reportType || "").toUpperCase() !== "LIST") {
-        //   try {
-        //     const response = await fetch(
-        //       `${hostnameV1}/lineItems/reports/${reportId}/exists`,
-        //       { headers }
-        //     );
-
-        //     if (!response.ok)
-        //       return toast.error(
-        //         "ERROR OCCURED TRYING TO CHECK IF REPORT EXISTS."
-        //       );
-
-        //     const data = await response.json();
-
-        //     if (data.isExists === false)
-        //       return toast.error(`Report isn't generated yet.`);
-        //   } catch (error) {
-        //     console.log(error);
-        //     toast.error("Error occured.");
-        //   }
-        // }
-
-        // try {
-        //   const redirectResponse = await fetch(
-        //     `${window._env_?.VITE_REPORTING_BACKEND_API
-        //     }/templates/generate?report-id=${reportId}&report-name=${reportFileName}&report-type=${reportType}`
-        //   );
-        //   if (!redirectResponse.ok)
-        //     return toast.error("ERROR OCCURED TRYING TO GENERATE REPORT.");
-
-        //   console.log("Redirect Response: ", redirectResponse);
-        //   const redirectPath = await redirectResponse.text();
-        //   window.open(
-        //     `${window._env_?.VITE_REPORTING_API
-        //     }/frameset?__report=${redirectPath}&__format=${window._env_?.VITE_REPORTING_EXPORT_FORMAT
-        //     }`,
-        //     "_blank"
-        //   );
-        // } catch (error) {
-        //   console.log(error);
-        //   toast.error("Error occured trying to generate report.");
-        // }
       },
     },
     {
       label: "Edit",
       icon: <Pencil size={16} />,
       onClick: (row) => {
-        console.log("Edit clicked for", row)
         navigate(`/config/report/lineItems`, {
           state: {
             reportId: row.report_id,
@@ -245,57 +158,6 @@ const ReportConfigDashboard = () => {
       },
       show: (row) => {return ["GRID", "HYBRID"].includes(row.report_type.toUpperCase())}
     },
-    // {
-    //   label: "Display",
-    //   icon: <Eye size={16} />,
-    //   onClick: (row) => {
-    //     console.log("Display clicked for", row);
-    //     (async () => {
-    //       const reportId = row.report_id;
-    //       console.log(row.report_type.toLowerCase())
-    //       if(row.report_type.toLowerCase() !== "grid" && row.report_type.toLowerCase() !== "hybrid"){
-    //         toast.error("Only Grid/Hybrid reports config can be displayed.");
-    //         return;
-    //       }
-
-    //       try{
-    //         const response = await fetch(`${hostnameV1}/lineItems/reports/json?report_id=${reportId}`, {
-    //           headers: {
-    //             "Content-Type": "application/json",
-    //             Authorization: `Bearer ${token}`,
-    //           },
-    //         });
-  
-    //         if (!response.ok) {
-    //           const errorData = await response.json().catch(() => null);
-    //           throw new Error(errorData?.detail || "Failed to fetch report config.");
-    //         }
-  
-    //         const data = await response.json();
-    //         setCurrentReportData({
-    //           "reportName": row.report_name,
-    //           "lineItemsConfig": data
-    //         });
-    //         setIsReportSummaryOpen(true);
-    //       }catch(error){
-    //         console.error(error);
-    //         toast.error(error.message);
-    //       }
-
-    //   })();
-    //   },
-    //   show: (row) => {return ["GRID", "HYBRID"].includes(row.report_type.toUpperCase())}
-    // },
-    // {
-    //   label: "Delete",
-    //   icon: <Trash2 size={16} />,
-    //   onClick: (row) => console.log("Delete clicked for", row),
-    // },
-    // {
-    //   label: "Run",
-    //   icon: <Play size={16} fill="currentColor" />,
-    //   onClick: (row) => console.log("Run clicked for", row),
-    // },
   ];
 
   const [reportsData, setReportsData] = useState([]);
@@ -322,8 +184,6 @@ const ReportConfigDashboard = () => {
 
       if (policyIds.length == 0)
         return;
-
-      console.log("policy ids are =====>", policyIds)
 
       const response = await fetch(`${hostnameV1}/reportdetails`, {
         method: 'POST',
@@ -408,8 +268,6 @@ const ReportConfigDashboard = () => {
 
         if (policyIds.length == 0)
           return;
-
-        console.log("policy ids are =====>", policyIds)
 
         const response = await fetch(`${hostnameV1}/reportsgraph`, {
           method: 'POST',

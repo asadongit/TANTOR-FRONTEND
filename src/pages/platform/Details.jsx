@@ -93,7 +93,6 @@ const Details = () => {
 
   const getColumnConfiguration = useCallback((type) => {
     const resolvedType = columnAliases[type] || type;
-    console.log("Resolved Type",resolvedType)
     return [
       ...columnConfigurations.common,
       ...(columnConfigurations[resolvedType] || []),

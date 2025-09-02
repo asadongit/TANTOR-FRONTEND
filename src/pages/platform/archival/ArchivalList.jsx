@@ -92,7 +92,6 @@ const ArchivalList = () => {
     const [deleteModal, setDeleteModal] = useState({ open: false, migrationId: null });
 
 const handleDeleteClick = (row) => {
-  console.log("Delete clicked for row:", row);
   setDeleteModal({ open: true, migrationId: row.migration_id });
 };
 
@@ -143,7 +142,6 @@ const handleEditClick = async (row) => {
             const response = await axios.get(`${hostnameV1}/migrations/manualtrigger/${row.workflow_name}`, {
               headers: {Authorization: `Bearer ${token}`},
             });
-            // console.log("Migration Run Response:", response.data);
             toast.success("Migration triggered successfully!");
             refetchArchival();
           } catch (error) {
@@ -154,11 +152,6 @@ const handleEditClick = async (row) => {
       },
     ];
 
-//     useEffect(() => {
-//   if (archivalData.length > 0) {
-//     console.log("First row:", archivalData[0]);
-//   }
-// }, [archivalData]);
 
   return (
     <div className="p-6">

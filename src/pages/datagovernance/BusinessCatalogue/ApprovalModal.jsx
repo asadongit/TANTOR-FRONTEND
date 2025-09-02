@@ -163,9 +163,7 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
         try {
             const payload = constructFinalPayload(status, reason);
 
-            console.log("status is @@", status)
             if (status?.toLowerCase() === 'approved') {
-                console.log("Status is approved. Calling data steward API...");
                 const stewardResponse = await fetch(`${window._env_?.VITE_FAST_API}/data_steward/approved`, {
                     method: 'POST',
                     headers: {
@@ -182,7 +180,6 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
                     }));
                     throw new Error(errorData?.message || 'Failed to update the data steward.');
                 }
-                console.log("Data steward API call successful.");
             }
 
             const response = await fetch(`${window._env_?.VITE_FAST_API}/notifications/approved`, {
