@@ -28,9 +28,6 @@ const Databot = () => {
     setIsExpanded(!isExpanded)
   }
 
-
-  console.log("relationshipResponse ", relationshipResponse)
-
   return (
     <div className="flex justify-between bg-gray-50"
       style={{ height: "calc(100vh - 5rem)" }}>
