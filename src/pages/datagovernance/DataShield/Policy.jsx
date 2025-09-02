@@ -177,7 +177,6 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
                 throw new Error('Failed to delete policy');
             }
             const data = await response.json();
-            console.log(data.message);
             setToast({
                 show: true,
                 message: 'Policy deleted successfully',
@@ -726,7 +725,6 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
                 throw new Error('Failed to update policy status');
             }
             const data = await response.json();
-            console.log(data.message);
             return true;
         } catch (error) {
             console.error('Error updating policy status:', error);

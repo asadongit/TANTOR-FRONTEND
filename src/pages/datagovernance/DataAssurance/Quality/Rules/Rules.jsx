@@ -226,7 +226,6 @@ const Rules = () => {
 
   const handleQuickAction = (action, item) => {
     if (action === 'Run') {
-      console.log(`Running rule: ${item.id}`);
       setShowRunSummary(false);
     } else if (action === 'Edit') {
       handleActionClick('Edit', item, tableData.findIndex(i => i.id === item.id));
@@ -237,7 +236,6 @@ const Rules = () => {
   };
 
   const handleScheduleSelected = (item, isScheduleForId = false) => {
-    console.log("item for schedule #######", item)
     let idsToSchedule = [];
 
     if (isScheduleForId) {
@@ -562,8 +560,6 @@ const Rules = () => {
           type: 'error',
         });
       }
-    } else {
-      console.log(`${action} action for item at index ${index}:`, item);
     }
   };
 

@@ -118,7 +118,6 @@ const TimeTransformationComponent = ({
       ...rule,
       filters: rule.filters ? [...rule.filters] : [],
     };
-    console.log(filterColName);
     const newFilter = {
       id: filterColId,
       name: filterColName,

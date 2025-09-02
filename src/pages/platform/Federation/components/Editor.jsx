@@ -58,7 +58,6 @@ export default function Editor() {
         setConnectionsLoading(true);
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
-        console.log("secureQuery policyIds (initial):", fetchedPolicyIds);
         setPolicyIds(fetchedPolicyIds);
 
         if (fetchedPolicyIds.length === 0) {
@@ -438,7 +437,6 @@ export default function Editor() {
           throw new Error(`Failed to fetch schemas: ${errorText}`);
         }
         const data = await response.json();
-        console.log("Schemas API response data:", data);
         const connectionData = data.find(item => item[connection]);
         const schemaNames = connectionData ? connectionData[connection] : [];
         setSchemas((prevSchemas) => ({
@@ -484,7 +482,6 @@ export default function Editor() {
           }),
         });
 
-        console.log("Tables response status:", response.status);
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Fetch error:", errorText);
@@ -492,12 +489,10 @@ export default function Editor() {
         }
 
         const data = await response.json();
-        console.log("Tables API response data:", data);
 
         const tableData = data.schemas.find(
           (item) => item.connection_name.toLowerCase() === connection.toLowerCase() && item.schema.toLowerCase() === schema.toLowerCase()
         );
-        console.log("Filtered tableData:", tableData);
 
         const tableNames = tableData && tableData.tables ? tableData.tables : [];
         setTables((prevTables) => ({
@@ -544,7 +539,6 @@ export default function Editor() {
           }),
         });
 
-        console.log("Columns response status:", response.status);
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Fetch error:", errorText);
@@ -552,7 +546,6 @@ export default function Editor() {
         }
 
         const data = await response.json();
-        console.log("Columns API response data:", data);
 
         if (!data || !data.columns || !Array.isArray(data.columns)) {
           console.error("Invalid response structure:", data);
@@ -565,7 +558,6 @@ export default function Editor() {
             item.schema.toLowerCase() === schema.toLowerCase() &&
             item.table_name.toLowerCase() === table.toLowerCase()
         );
-        console.log("Filtered columnData:", columnData);
 
         const formattedColumns = columnData && columnData.columns
           ? columnData.columns.map((item) => ({
@@ -574,7 +566,6 @@ export default function Editor() {
             metadata: item.metadata,
           }))
           : [];
-        console.log("Formatted columns:", formattedColumns);
 
         setColumns((prevColumns) => ({
           ...prevColumns,

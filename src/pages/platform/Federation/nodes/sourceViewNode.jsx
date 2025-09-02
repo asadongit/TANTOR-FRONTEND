@@ -130,12 +130,10 @@ export function SourceViewNode({ id, onSave }) {
 
   const handleViewChange = (e) => {
     setSelectedColumns([])
-    console.log("selected view $$$$$$$$$$$$", selectedView)
     setColumnSettings(prevSettings => {
       const updatedSettings = { ...prevSettings };
       delete updatedSettings[selectedView];
 
-      console.log("Updated column settings:", updatedSettings);
       return updatedSettings;
     });
     setSelectedView(e.target.value.toLowerCase())
@@ -145,12 +143,10 @@ export function SourceViewNode({ id, onSave }) {
   }
 
   const fetchColumnsForView = async (viewName) => {
-    console.log("inside fetch column ", viewName)
     if (columnsForViews[viewName]) return;
     const temp = {
       "view_names": [viewName]
     }
-    console.log("viewnames aree ===>", temp)
     try {
       const response = await fetch(`${hostnameV1}/fetch_view_columns`, {
         method: "POST",
@@ -162,7 +158,6 @@ export function SourceViewNode({ id, onSave }) {
       });
       const data = await response.json();
       if (data && data.result) {
-        console.log("columns are ===>", data.result[viewName])
         setColumnData(data.result[viewName])
         const columnNames = data.result[viewName].map(col => col.column_name);
         setColumnsForViews(prevState => ({
@@ -182,7 +177,6 @@ export function SourceViewNode({ id, onSave }) {
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
 
   const handleColumnChange = (column) => {
-    console.log("SELECTED COLUMN IS ====>", column)
     setSelectedColumns((prev) => {
       if (prev.includes(column)) {
         setColumnSettings((prevSettings) => {
@@ -224,7 +218,6 @@ export function SourceViewNode({ id, onSave }) {
 
 
   const handleSelectAllChange = (isChecked) => {
-    console.log("SELECT ALL CALLED")
     if (isChecked && columnsForViews[selectedView]) {
       setSelectedColumns(columnsForViews[selectedView]);
       setSelectedColumnsOrder(columnsForViews[selectedView]);
@@ -264,21 +257,6 @@ export function SourceViewNode({ id, onSave }) {
 
   const isAllSelected = selectedColumns.length === (columnsForViews[selectedView]?.length || 0);
 
-  // --------------------------------------------->
-  // useEffect(() => {
-  //   console.log("CHECKING PROBLEM FOR DUPLICATE",selectedColumnsOrder );
-
-  //   if (selectedView && columnSettings[selectedView]) {
-  //     const columnsWithOutputYes = selectedColumnsOrder.filter(
-  //       (column) => columnSettings[selectedView][column]?.output === "Yes"
-  //     );
-
-  //     // Ensure unique values in selectedColumns
-  //     setSelectedColumns((prev) => [...new Set(columnsWithOutputYes)]);
-  //   }
-  // }, [columnSettings, selectedView, selectedColumnsOrder]);
-  // ------------------------------------------------>
-
   useEffect(() => {
     if (selectedView && columnSettings[selectedView]) {
       const columnsWithOutputOrAggregate = Object.keys(columnSettings[selectedView]).filter(
@@ -296,14 +274,7 @@ export function SourceViewNode({ id, onSave }) {
 
   const handleSave = () => {
 
-    console.log("MY PREVIOUS VIEWWW IS ==========>", previousView)
-
-    // if (selectedColumns.length === 0) {
-    //   toast.error("Select atleast one column");
-    //   return;
-    // }
     if (!finalPayload.operation && previousView != selectedView) {
-      console.log("URR VIEW IS CHANGEDDD")
       handleFinalPayload((prevData) => ({
         ...prevData,
         joins: prevData?.joins?.filter(
@@ -318,8 +289,6 @@ export function SourceViewNode({ id, onSave }) {
       setColumnSettings(updatedSettings);
     }
 
-
-    console.log("vcolumn data is&&&&&&&&&&&&&&&&&", columnData)
     if (selectedView) {
       const view = selectedView;
       const newPayload = {
@@ -342,7 +311,6 @@ export function SourceViewNode({ id, onSave }) {
         updatedPayloads.push(newPayload);
       }
 
-      console.log("view payload is ===>", updatedPayloads)
       handleViewPayload(updatedPayloads);
       onSave?.(newPayload);
     }
@@ -402,7 +370,6 @@ export function SourceViewNode({ id, onSave }) {
       delete updatedSettings[selectedView];
       delete updatedSettings["Union"]
 
-      console.log("Updated column settings:", updatedSettings);
       return updatedSettings;
     });
 
@@ -413,14 +380,12 @@ export function SourceViewNode({ id, onSave }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const toggleModal = (value) => {
-    console.log("toggle model ")
     setIsModalOpen(value);
   };
 
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
 
   const toggleEditorModal = (value) => {
-    console.log("toggle model ")
     setIsEditorModalOpen(value);
   };
 

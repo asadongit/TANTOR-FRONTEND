@@ -33,7 +33,6 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
     
   useEffect(() => {
     if (drawerState.isOpen && drawerState.selectedTable) {
-      console.log("Drawer state ==>> ", drawerState);
       const node = nodes.find(n => n.id === drawerState.nodeId);
       
       const currentSelectedColumnName = node?.data?.currentSelectedTable || "";

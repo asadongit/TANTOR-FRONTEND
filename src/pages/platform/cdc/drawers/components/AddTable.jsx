@@ -28,7 +28,6 @@ const AddTable = ({ data }) => {
   const { refetch } = useMigrationData();
 
    const pipelineData = Object.values(pipelines)[0]?.data;
-  console.log(pipelineData?.source)
   const getTableName = () => {
     if (affixType === 'prefix') {
       return `${affixValue}${baseTableName}`;
@@ -44,8 +43,6 @@ const AddTable = ({ data }) => {
       if (!pipelineData) {
         throw new Error("No pipeline data found");
       }
-
-      console.log(pipelineData)
       const newTableMapping = { [baseTableName]: tableName };
 
       const payload = {
@@ -59,8 +56,6 @@ const AddTable = ({ data }) => {
         target_conn_id: pipelineData?.target?.target_conn_id,
         table_list: [newTableMapping],
       };
-
-      console.log(payload)
 
       const response = await axios.post(
         `${hostnameV1}/ddl-migration`,

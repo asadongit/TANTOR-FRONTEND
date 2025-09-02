@@ -178,10 +178,6 @@ const TableDrawer = ({ nodes, setNodes }) => {
     setQueryMode(mode);
   };
 
-  const addCondition = () => {
-    console.log("Add condition");
-  };
-
   const handleCheckboxChange = (index) => {
     setSelectedRows((prev) => prev.includes(index) ? prev.filter((i) => i != index) : [...prev, index])
   }

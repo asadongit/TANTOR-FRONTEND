@@ -99,7 +99,6 @@ const RuleDashboard = () => {
       label: "View",
       icon: <EyeIcon size={16} />,
       onClick: (row) => {
-        console.log("View clicked for", row);
         const ruleId = row.id;
         if (!ruleId) {
           toast.error("Rule ID not provided.");
@@ -158,22 +157,11 @@ const RuleDashboard = () => {
       label: "Edit",
       icon: <Pencil size={16} />,
       onClick: (row) => {
-        console.log("Edit clicked for", row);
         navigate("/config/rule/edit-rule", {
           state: { mode: "EDIT", ruleData: { ...row } },
         });
       },
     },
-    // {
-    //   label: "Delete",
-    //   icon: <Trash2 size={16} />,
-    //   onClick: (row) => console.log("Delete clicked for", row),
-    // },
-    // {
-    //   label: "Run",
-    //   icon: <Play size={16} fill="currentColor" />,
-    //   onClick: (row) => console.log("Run clicked for", row),
-    // },
   ];
 
   const columns = [

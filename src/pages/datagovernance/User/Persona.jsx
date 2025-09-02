@@ -65,7 +65,6 @@ function Persona() {
   ];
 
   const handleSave = () => {
-    console.log("Form Data:", formData);
     setShowModal(false);
   };
 
@@ -81,9 +80,7 @@ function Persona() {
         return response.json();
       })
       .then((data) => {
-        console.log("API Data:", data);
         const processedData = processPersonaData(data);
-        console.log("Processed Data:", processedData);
         setPersona(processedData);
       })
       .catch((error) => {

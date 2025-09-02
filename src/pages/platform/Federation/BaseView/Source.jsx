@@ -88,7 +88,6 @@ export default function Source() {
       }
     });
 
-    console.log("Order By Columns ==>> ", orderByColumns);
     return {
       groupByColumns,
       aggregateColumns,
@@ -211,14 +210,9 @@ export default function Source() {
   const handleOk = async (params) => {
     const { settings, viewType, userCheckedColumns, userSelections } = params;
 
-    console.log("SETTINGS ==>> ", settings);
     if (!validateColumns(userCheckedColumns, settings)) return null;
 
     const columnSettings = processColumnSettings(settings, userCheckedColumns);
-    console.log(
-      "Sorted Order By Columns ===>>> ",
-      columnSettings.orderByColumns
-    );
     if (modalState.queryType === "Regular") {
       if (!validateAggregateAndGroupBy(userCheckedColumns, columnSettings))
         return null;
@@ -235,8 +229,6 @@ export default function Source() {
 
     const filterModalColumns = [...params.apiColumns];
 
-    console.log("filterModalColumns ==>> ", filterModalColumns);
-
     await Promise.all([
       setUserSelections((prev) => {
         const newSelections = new Map(prev);
@@ -248,7 +240,6 @@ export default function Source() {
       }),
       setFilterModalColumns(filterModalColumns),
     ]);
-    console.log(modalState.queryType);
     if (modalState.queryType === "Regular") return setIsFilterModalOpen(true);
 
     fetchPreviewData(apiPayload, null);
@@ -305,8 +296,6 @@ export default function Source() {
     const cleanApiPayload = { ...apiPayload };
     delete cleanApiPayload.skip_filter;
 
-    console.log("FILTER API PAYLOAD ==> ", cleanApiPayload);
-
     try {
       const response = await fetch(
         `${hostnameV2}/generate-base-view?execute_query=true`,
@@ -335,7 +324,6 @@ export default function Source() {
             }
           }, []);
 
-        console.log("DATA ==> ", data);
         setPreviewData(data);
         setShowPreview(true);
         setToast({
@@ -361,7 +349,6 @@ export default function Source() {
         return null;
       }
     } catch (error) {
-      console.log("Error executing query:", error);
       setToast({
         show: true,
         message: "Failed to execute query",
@@ -400,8 +387,6 @@ export default function Source() {
       delete apiPayload.skip_filter;
     }
 
-    console.log("SAVE VIEW API PAYLOAD ==> ", apiPayload);
-
     try {
       const viewExistsResponse = await fetch(
         `${hostnameV2}/view-exists/${encodeURIComponent(newViewName)}`,
@@ -427,7 +412,6 @@ export default function Source() {
       }
 
       const viewExists = await viewExistsResponse.json();
-      console.log("viewExists ===> ", viewExists);
 
       if (viewExists.result) {
         setToast({
@@ -469,7 +453,6 @@ export default function Source() {
       }
 
       const data = await response.json();
-      console.log("Save View Result ==> ", data);
 
       setShowPreview(false);
       setToast({

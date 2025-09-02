@@ -71,7 +71,6 @@ export const getActionConfigurations = ({ token, project, hostnameV2, navigate }
             const response = await axios.get(`${hostnameV2}/cdc/trigger/${row.cdc_id}`, {
               headers: {Authorization: `Bearer ${token}`},
             });
-            console.log("CDC Run Response:", response.data);
             toast.success("CDC triggered successfully!");
           } catch (error) {
             console.error("Failed to trigger CDC:", error);

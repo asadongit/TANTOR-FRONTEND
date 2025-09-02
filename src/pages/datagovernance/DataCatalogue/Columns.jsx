@@ -16,7 +16,6 @@ function Columns() {
     );
     const navigate = useNavigate();
     const { state: navigationState } = useLocation();
-    console.log("states in columns are ### ", navigationState)
 
     const [loading, setLoading] = useState(true);
     const [columnData, setColumnData] = useState([]);
@@ -239,7 +238,7 @@ function Columns() {
                 state: { columnDetails: selectedColumnRawData }
             });
         } else {
-            console.error("Raw data for the selected column could not be found.");
+            console.error("Raw data could not be found.");
         }
     };
 
@@ -344,7 +343,7 @@ function Columns() {
 
                     <div className="flex items-center gap-2">
                         <button
-                        title="Back"
+                            title="Back"
                             disabled={currentPage === 1}
                             onClick={() => handlePageBackward(currentPage - 1)}
                             className="p-1 rounded hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
@@ -355,7 +354,7 @@ function Columns() {
                             Page {currentPage} of {totalPages}
                         </span>
                         <button
-                        title="Next"
+                            title="Next"
                             disabled={currentPage === totalPages}
                             onClick={() => handlePageForward(currentPage + 1)}
                             className="p-1 rounded hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
