@@ -1,5 +1,5 @@
 import { Route } from 'react-router-dom';
-import Databot from '../pages/datagovernance/Databot';
+import Databot from '../pages/datagovernance/Databot/Databot';
 import Reports from '../pages/datagovernance/Reports';
 import Import from '../pages/datagovernance/Import';
 import CustomAddition from '../pages/datagovernance/CustomAddition';
