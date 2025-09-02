@@ -220,7 +220,6 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
 
     useEffect(() => {
         if (isOpen) {
-            console.log("edit dataat is @@@@ ", editData)
             if (isEditMode) {
                 setActiveTab('Domain');
                 fetchAndPrefillData();

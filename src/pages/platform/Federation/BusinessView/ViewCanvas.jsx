@@ -41,7 +41,6 @@ export function ViewCanvas() {
   const onConnect = (params) => {
     const { source, target } = params;
     handleConsolidationPayload({ source, target })
-    console.log("Connecting:", { source, target });
     setEdges((eds) => addEdge(params, eds));
   };
 

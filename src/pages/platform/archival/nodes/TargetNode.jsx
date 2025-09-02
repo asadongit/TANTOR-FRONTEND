@@ -207,11 +207,9 @@ export function TargetNode({ id, data }) {
 
   const handleCancel = () => {
     setSelectedItems([]);
-    console.log("Selection reset.");
   };
 
   const handleOk = () => {
-    console.log("Selected items:", selectedItems);
     // setShowAlert(true);
 
     // // Hide the alert after 3 seconds

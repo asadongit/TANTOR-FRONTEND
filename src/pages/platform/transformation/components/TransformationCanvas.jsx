@@ -77,7 +77,6 @@ function TransformationCanvasContent() {
     if (editMode === 'true' && editFlowDataStr && transformationId) {
       try {
         const editFlowData = JSON.parse(editFlowDataStr);
-        // console.log("Starting edit mode restoration...", editFlowData);
 
         setIsEditMode(true);
         setEditTransformationId(transformationId);
@@ -93,7 +92,6 @@ function TransformationCanvasContent() {
             payload: editFlowData.properties
           });
         } else {
-          // console.log("No global properties found, determining from nodes");
           const sourceAndTargetNodes = restoredData.nodes.filter(
             node => node.type === 'source' || node.type === 'target'
           );
@@ -174,9 +172,7 @@ function TransformationCanvasContent() {
         data: {
           ...node.data,
           onDataChange: (newData) => {
-            // Skip updates if the node is being restored
             if (node.data._isRestoring) {
-              // console.log('Skipping update during restoration for node:', node.id);
               return;
             }
 
@@ -585,8 +581,6 @@ function TransformationCanvasContent() {
 
       const editFlowData = prepareEditFlowData(nodes, edges, nodeIdRef.current);
 
-      // console.log("Edit :", editFlowData);
-
       const payload = {
         transformation_name: defineNode.data.name,
         description: defineNode.data.description || "No description provided",
@@ -602,8 +596,6 @@ function TransformationCanvasContent() {
           edit_flow: editFlowData
         }
       };
-
-      console.log("Payload:", payload);
 
       const isUpdate = isEditMode && editTransformationId;
       const url = isUpdate
@@ -683,8 +675,6 @@ function TransformationCanvasContent() {
   // Remove all identified keys
   keysToRemove.forEach(key => localStorage.removeItem(key));
 
-  // console.log("Flow reset - cleared all target mapping data");
-
   // Also clear debug variables if they exist
   if (window.targetMappingsDebug) window.targetMappingsDebug = {};
   if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
@@ -739,14 +729,6 @@ const handleCancel = useCallback(() => {
               const n = window.allNodes.find(n => n.id === srcId);
               return n && n.type === 'transformation';
             });
-
-          // For each transformation, ensure its columns are updated
-          transformationNodeIds.forEach(transId => {
-            const transNode = window.allNodes.find(n => n.id === transId);
-            if (transNode && transNode.data && Array.isArray(transNode.data.transformations)) {
-              // console.log(`Ensuring transformation columns for node ${transId} are up-to-date`);
-            }
-          });
 
           // Trigger a global refresh event for all components to update their columns
           window.dispatchEvent(new CustomEvent("tantor-refresh-all-columns", {
@@ -1002,8 +984,6 @@ const handleCancel = useCallback(() => {
   }, [edges, activeTransformationNodeId, setNodes]);
 
   const handleTransformationApply = useCallback((transformationNodeId, transformations) => {
-    // console.log('Applying transformations:', transformations);
-
     setNodes(prevNodes => {
       const outgoingEdges = edges.filter(edge => edge.source === transformationNodeId);
       const targetNodeIds = outgoingEdges

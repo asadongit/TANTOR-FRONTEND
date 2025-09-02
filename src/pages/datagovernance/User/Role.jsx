@@ -268,7 +268,6 @@ const Role = () => {
   };
 
   const handleSave = async (result) => {
-    console.log('Role creation result:', result);
 
     if (result.success) {
       try {
@@ -305,7 +304,6 @@ const Role = () => {
   };
 
   const handleEditSave = async (data) => {
-    console.log('Role updated:', data);
     try {
       await refreshAllData();
       setToast({

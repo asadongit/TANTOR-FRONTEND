@@ -305,41 +305,6 @@ function DataLineageFlow() {
         )}
       </div>
 
-      {/* <div className="absolute top-4 left-4 bg-white p-4 rounded-lg shadow-lg border">
-        <h3 className="text-lg font-bold mb-2">Data Lineage Visualization</h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4" style={{ background: '#22D3EE', borderRadius: '50%' }}></div>
-            <span>Data Sources</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4" style={{ background: '#EF4444', borderRadius: '50%' }}></div>
-            <span>Transformations</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4" style={{ background: '#10B981', borderRadius: '50%' }}></div>
-            <span>Outputs (Hidden)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4" style={{ background: '#8B5CF6', borderRadius: '50%' }}></div>
-            <span>Discovered Upstream</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4" style={{ background: '#F59E0B', borderRadius: '50%' }}></div>
-            <span>Discovered Downstream</span>
-          </div>
-        </div>
-        <div className="mt-4 pt-2 border-t border-gray-200">
-          <h4 className="font-medium mb-2">Instructions:</h4>
-          <div className="space-y-1 text-xs">
-            <p>1. Click any node to open its remote.</p>
-            <p>2. Use ▶ to discover downstream lineage.</p>
-            <p>3. Use ◀ to discover upstream lineage.</p>
-            <p>4. Use ↻ to reset the entire view.</p>
-          </div>
-        </div>
-      </div> */}
-
       {selectedNodeId && selectedNode && (
         <div className="absolute bottom-4 left-4 bg-white p-4 rounded-lg shadow-lg border max-w-sm">
           <h4 className="font-bold mb-2">Selected Node Details</h4>

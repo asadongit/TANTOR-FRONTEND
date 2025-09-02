@@ -383,7 +383,6 @@ function transformationReducer(state, action) {
     }
 
     case ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES:
-      // console.log("Updating global properties:", action.payload);
       return {
         ...state,
         properties: {
@@ -407,7 +406,6 @@ function transformationReducer(state, action) {
       if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
       if (window.targetMappingsDebug) window.targetMappingsDebug = {};
 
-      // console.log("TransformationContext fully reset");
       return initialState;
 
     default:
@@ -859,7 +857,6 @@ export function useTrackConnections(nodes, edges) {
                   sourceNodeId: data.selectedSourceId
                 }
               });
-              // console.log(`Restored target mapping relationship: Target ${id} -> Source ${data.selectedSourceId}`);
             }
           }
           break;

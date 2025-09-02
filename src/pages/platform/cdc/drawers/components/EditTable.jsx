@@ -38,7 +38,6 @@ const EditTable = ({ data }) => {
     const selectedColumnNames = Object.keys(selectedColumns).filter(
       (col) => selectedColumns[col]
     );
-    console.log("Selected Columns:", selectedColumnNames);
   };
   return (
     <div className="space-y-4">

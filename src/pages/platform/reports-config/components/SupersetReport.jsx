@@ -202,10 +202,8 @@ import { embedDashboard } from "@superset-ui/embedded-sdk";
 import axios from "axios";
 import { X } from "lucide-react";
 
-const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
+const SupersetReport = ({ showModal, setShowModal, currentReportName, dashboardId }) => {
   const [isLoading, setIsLoading] = useState(false);
-
-  console.log("REPORT NAME ==> ", currentReportName);
 
   const SUPERSET_URL = window._env_?.VITE_REPORTING_DASHBOARD_URL;
 
@@ -274,7 +272,6 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
         }
       );
 
-      console.log("Guest token response:", response.data);
       return response.data.token;
     } catch (error) {
       console.error("Error fetching guest token:", error);
@@ -290,12 +287,6 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
     if (!showModal || !currentReportName || !containerRef.current) return;
 
     containerRef.current.innerHTML = "";
-
-    console.log({
-      SUPERSET_URL,
-      containerREFF: containerRef.current,
-      currentReportName,
-    });
 
     const embedDashboardInstance = async () => {
       try {
@@ -368,7 +359,7 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName }) => {
           <button
             className="mr-4 text-white bg-[#8e78b7] hover:bg-[#a583e3] focus:outline-none focus:ring-2 focus:ring-[#a583e3] dark:focus:ring-[#7d7d7d] rounded-md text-sm px-5 py-2.5 shadow-lg transition duration-200 ease-in-out"
             onClick={() => {
-              window.open(SUPERSET_URL, "_blank");
+              window.open(`${SUPERSET_URL}/superset/dashboard/${dashboardId}`, "_blank");
             }}
           >
             Edit Report

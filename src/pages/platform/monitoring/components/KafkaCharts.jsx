@@ -22,7 +22,6 @@ export const GroupedLineChart = ({
   title,
 }) => {
   if (loading) {
-    console.log("IS LOADING")
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <Skeleton variant="text" width={200} height={30} />

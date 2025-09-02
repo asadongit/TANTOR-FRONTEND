@@ -134,7 +134,6 @@ export const prepareEditFlowData = (nodes, edges, nodeIdCounter) => {
     email: { isEmailEnabled: false }
   };
 
-  // console.log("Preparing edit flow data with global properties:", globalProperties);
 
   return {
     nodes: nodes.map(node => {
@@ -464,7 +463,6 @@ export const restoreFlowFromEditData = (editFlowData) => {
 
       onDataChange: (newData) => {
 
-        // console.log('Immediate onDataChange called during restoration:', newData);
       },
     }
   }));
@@ -506,7 +504,6 @@ export const restoreNodesAndEdgesFromEditData = (editFlowData, setNodes, setEdge
         ...node.data,
 
         onDataChange: (newData) => {
-          // console.log('Fast onDataChange called during restoration:', newData);
         },
         _isRestoring: true,
         transformations: node.data.transformations || [],

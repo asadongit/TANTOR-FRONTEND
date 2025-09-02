@@ -4,7 +4,6 @@ import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../components/Breadcrumb.jsx';
 import AddCatalogueModal from './AddCatalogueModal.jsx';
 import { useAuth } from '../../../context/AuthContext.jsx';
-import EditDetailModal from './EditDetailModal.jsx';
 import { toast } from 'react-hot-toast';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfirming }) => {

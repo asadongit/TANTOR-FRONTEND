@@ -441,8 +441,6 @@ export const SourceNode = ({ id, data }) => {
         procedureMapping: procedureJSON
       }
     });
-
-    // console.log("Applied Procedure Mapping:", procedureJSON);
     closeParametersModal();
   };
 
