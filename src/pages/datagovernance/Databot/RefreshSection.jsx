@@ -12,7 +12,9 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
   const [schemaResp, setSchemaResp] = useState([]);
   const [loading, setLoading] = useState(false);
 
-	const { handleSelectedConnectionGlobal,
+	const { 
+    databot,
+    handleSelectedConnectionGlobal,
     selectedConnectionGlobal,
     handleSelectedSchemaGlobal,
     selectedSchemaGlobal,
@@ -20,7 +22,7 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
     handleIsRefreshed,
     isRefreshed
      } = useDatabotContext();
-  
+      
   const { getSchemaDetails, refreshDatabotAPI } = useDatabotAPI();
 
   const uniqueConnections = Array.from(
@@ -48,8 +50,9 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
   }, [selectedConnectionGlobal])
 
 	return (
-		<div ref={dropdownRef} className="flex items-center space-x-2 p-2 px-3 rounded-lg">
-			<>
+		<div ref={dropdownRef} className="flex items-center rounded-lg px-6 p-4">
+			<div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg">
+        <>
 			<span className="text-gray-600 font-medium">Connection</span>
 
 			<div className="relative">
@@ -140,8 +143,7 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
 
 			<button 
         disabled={(secureQueryLoading || connectionsLoading || schemaLoading || selectedConnectionGlobal.length === 0
-          || selectedSchemaGlobal.length === 0
-        )}
+          || selectedSchemaGlobal.length === 0 || databot.is_loading)}
         onClick={async () => {
           setLoading(true);
           handleIsRefreshed(false);
@@ -151,7 +153,7 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
           handleIsRefreshed(refreshSuccess);
           setLoading(false)
         }}
-        className="p-2 rounded-lg
+        className="p-2 rounded-lg bg-white
           disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200"
         >
         {!loading ? 
@@ -162,6 +164,7 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
         <div className="w-4 h-4 border-2 border-[#8d77ba]/30 border-t-[#8d77ba] rounded-full animate-spin"></div>
         }
 			</button>
+      </div>
 
 		</div>
 	)

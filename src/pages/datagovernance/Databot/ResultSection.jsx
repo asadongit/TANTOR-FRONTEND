@@ -10,7 +10,7 @@ const ResultSection = () => {
 
   return (
     <div className="">
-      <div className="p-6">
+      <div className="px-6 py-3">
 
         <div className='flex justify-between items-center gap-5 w-full'>
           <div className='flex items-center border rounded-lg'>
@@ -71,7 +71,7 @@ const ResultSection = () => {
             <button 
               onClick={() => switchTab("dependency")}
                 className={`${activeTab === "dependency" ? `bg-purple-200 text-[#8d77ba]` : `hover:text-[#8d77ba] text-gray-500 hover:bg-purple-200 `}
-                flex border-r p-2 px-4 gap-2`}>
+                flex border-r p-2 px-4 gap-2 rounded-lg`}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <mask id="mask0_337_7973" style={{maskType: "alpha"}} maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
                 <rect width="24" height="24" fill="currentColor"/>
