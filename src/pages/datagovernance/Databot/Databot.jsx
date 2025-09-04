@@ -230,8 +230,8 @@ const Databot = () => {
         </div> : 
 
         <>
-          <div className='w-full flex flex-col gap-2'>
-            <div className='mb-2'>
+          <div className='w-full flex flex-col bg-white'>
+            <div className=''>
               <RefreshSection 
                 secureQueryLoading={secureQueryLoading} 
                 connectionsLoading={connectionsLoading}
@@ -240,13 +240,16 @@ const Databot = () => {
                 connections={connections}/>
             </div>
 
-            <div className='flex-1 bg-white rounded-md'>
+            <div className=' bg-white rounded-md'>
               <ResultSection />
             </div>
           </div>
 
           <div className='bg-white ml-2 border-white rounded-md'>
-            <DatabotChatSection setIsResultScreen={setIsResultScreen}/>
+            <DatabotChatSection 
+              setIsResultScreen={setIsResultScreen}
+              setQuery={setQuery}
+            />
           </div>
         </>
       }
