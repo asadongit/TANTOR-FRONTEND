@@ -1,32 +1,84 @@
 import { Bot, PanelRightClose, MessageSquare, Paperclip, 
   Mic, ArrowRight, PanelLeftClose, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDatabotContext } from '../../../hooks/dataGovernance/DatabotContext';
 import ResultSection from './ResultSection';
 import DatabotChatSection from './DatabotChatSection';
 import { useAuth } from '../../../context/AuthContext';
-// import { useRelationship } from '../../../hooks/dataGovernance/Databot/useRelationship';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import RefreshSection from './RefreshSection';
+import { useDatabotAPI } from '../../../hooks/dataGovernance/Databot/useDatabotAPI';
+import toast from 'react-hot-toast';
 
 const Databot = () => {
   const { token } = useAuth();
 
+  const dropdownRef = useRef(null);
+  const { triggerNewQuestion, resetChat, handlePolicyIdsGlobal, isRefreshed, handleFirstSelectedTab, firstSelectedTab } = useDatabotContext();
+
+  const { secureQueryLoading,
+    getSecureQuery, 
+    connectionsLoading,
+    schemaLoading,
+    getConnectionDetails } = useDatabotAPI();
+
+  const tabbedSection = ["relationship", "lineage", "impact", "dependency"];
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState(tabbedSection[0]);
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [isResultScreen, setIsResultScreen] = useState(false);
   const [query, setQuery] = useState("");
+  const [connections, setConnections] = useState([])
 
-  const { relationshipResponse, 
-    triggerNewQuestion, 
-    resetChat } = useDatabotContext();
+  const handleSelect = (option) => {
+    setSelectedTab(option);
+    handleFirstSelectedTab(option)
+    setIsOpen(false);
+  };
 
+  
+  const getConnectionSchemaDetails = async () => {
+    const policyId = await getSecureQuery();
+    handlePolicyIdsGlobal(policyId?.matched_policy_ids);
+
+    const connectionsResp = await getConnectionDetails(policyId?.matched_policy_ids);
+    setConnections(connectionsResp);
+  }
+
+  const didRun = useRef(false);
+
+  useEffect(() => {
+    if (didRun.current) return;
+
+    didRun.current = true;
+    toast("Connections are being fetched, Please wait!");
+    getConnectionSchemaDetails()
+  }, [])
 
   const handleQueryChange = (e) => {
     const value = e.target.value
     setQuery(value)
   }
 
-  const handleExpand = () => {
-    setIsExpanded(!isExpanded)
-  }
+  // Included in V2
+  // const handleExpand = () => {
+  //   setIsExpanded(!isExpanded)
+  // }
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <div className="flex justify-between bg-gray-50"
@@ -77,51 +129,120 @@ const Databot = () => {
       } */}
 
       {!isResultScreen ? 
-        <div className="flex-1 bg-gradient-to-t from-[#8d77ba]/30 via-white to-white flex flex-col justify-center items-center text-center overflow-hidden">
-          <div className="w-16 h-16 flex items-center justify-center bg-[#8d77ba] text-white rounded-full shadow mb-4">
-            <Bot size={32} />
+        <div className="flex-1 relative bg-gradient-to-t from-[#8d77ba]/30 via-white to-white 
+          flex flex-col justify-center items-center text-center overflow-hidden">
+
+          {/* connection and schema name */}
+          <div className="absolute top-4 right-6">
+            <RefreshSection 
+              secureQueryLoading={secureQueryLoading} 
+              connectionsLoading={connectionsLoading}
+              schemaLoading={schemaLoading}
+              dropdownRef={dropdownRef}
+              connections={connections}/>
           </div>
 
-          <h1 className="text-3xl font-semibold text-gray-800">Databot</h1>
-          <p className="text-[#8d77ba] mt-1">Turn your data into instant answers.</p>
+          {/* Databot */}
+          <div className='flex flex-col justify-center items-center text-center'>
+            <div className="w-16 h-16 flex items-center justify-center bg-[#8d77ba] text-white rounded-full shadow mb-4">
+              <Bot size={32} />
+            </div>
 
-          {/* Input */}
-          <div className="flex items-center w-full max-w-2xl mt-8 px-4 py-2
-            bg-white border border-gray-200 rounded-full shadow-sm focus-within:ring-2 focus-within:ring-[#8d77ba]">
-            <input
-              type="text"
+            <h1 className="text-3xl font-semibold text-gray-800">Databot</h1>
+            <p className="text-[#8d77ba] mt-1">Turn your data into instant answers.</p>
+
+            {/* Input */}
+           <div className="w-[700px] mt-8 px-4 py-2
+            bg-white border border-gray-200 rounded-lg shadow-sm 
+            focus-within:ring-2 focus-within:ring-[#8d77ba]">
+            <textarea
+              disabled={!isRefreshed}
               value={query}
               onChange={(e) => handleQueryChange(e)}
               placeholder="Ask Anything"
-              className="flex-1 outline-none text-lg text-gray-700 placeholder-gray-400"
+              className="w-full h-32 p-3 outline-none text-lg text-gray-700 placeholder-gray-400
+              disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 resize-none"
             />
 
-            {/* Included in V2 */}
-            {/* <button className="p-2 text-gray-500 hover:text-[#8d77ba]">
-              <Paperclip size={22} />
-            </button>
-            <button className="p-2 text-gray-500 hover:text-[#8d77ba]">
-              <Mic size={22} />
-            </button> */}
 
-            <button 
-              disabled={query.length === 0}
-              onClick={async () => 
-              {
-                resetChat()
-                triggerNewQuestion(query, "relationship")
-                setIsResultScreen(true)
-              }}
-              className="p-2 text-white disabled:bg-opacity-50 disabled:cursor-not-allowed
-                bg-[#8d77ba] hover:bg-[#7a66a8] rounded-xl ml-2">
-              <ArrowRight size={22} />
-            </button>
+              {/* Included in V2 */}
+              {/* <button className="p-2 text-gray-500 hover:text-[#8d77ba]">
+                <Paperclip size={22} />
+              </button>
+              <button className="p-2 text-gray-500 hover:text-[#8d77ba]">
+                <Mic size={22} />
+              </button> */}
+
+              <div className='flex justify-between mt-2'>
+                <div ref={dropdownRef} className="relative w-36">
+                  <button
+                    disabled={query.length === 0}
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="w-full flex justify-between items-center px-3 py-2 bg-white border 
+                      border-gray-300 rounded-lg shadow-sm text-gray-700 hover:bg-gray-50 
+                      focus:outline-none focus:ring-2 focus:ring-[#8d77ba] 
+                      disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                  >
+                    <span className="text-sm capitalize">{selectedTab}</span>
+                    <ChevronDown
+                      size={18}
+                      className={`transform transition-transform ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {isOpen && (
+                    <ul
+                      className="absolute left-0 mt-1 w-full bg-white border border-gray-200 
+                        rounded-lg shadow-lg max-h-40 overflow-y-auto z-10 text-sm"
+                    >
+                      {tabbedSection.map((option, i) => (
+                        <li
+                          key={i}
+                          onClick={() => {
+                            handleSelect(option)
+                          }}
+                          className="px-3 py-2 cursor-pointer capitalize hover:bg-[#f2f0f8] text-gray-700"
+                        >
+                          {option}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <button 
+                  disabled={query.length === 0}
+                  onClick={async () => 
+                  {
+                    resetChat()
+                    triggerNewQuestion(query, selectedTab)
+                    setIsResultScreen(true)
+                  }}
+                  className="p-2 text-white disabled:bg-opacity-50 disabled:cursor-not-allowed
+                    bg-[#8d77ba] hover:bg-[#7a66a8] rounded-xl ml-2">
+                  <ArrowRight size={22} />
+              </button>
+              </div>
+            </div>
           </div>
         </div> : 
 
         <>
-          <div className='flex-1 bg-white border-white rounded-md'>
-            <ResultSection />
+          <div className='w-full flex flex-col gap-2'>
+            <div className='mb-2'>
+              <RefreshSection 
+                secureQueryLoading={secureQueryLoading} 
+                connectionsLoading={connectionsLoading}
+                schemaLoading={schemaLoading}
+                dropdownRef={dropdownRef}
+                connections={connections}/>
+            </div>
+
+            <div className='flex-1 bg-white rounded-md'>
+              <ResultSection />
+            </div>
           </div>
 
           <div className='bg-white ml-2 border-white rounded-md'>

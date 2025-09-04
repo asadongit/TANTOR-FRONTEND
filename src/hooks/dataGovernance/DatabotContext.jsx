@@ -42,82 +42,6 @@ export const DatabotProvider = ({ children }) => {
     }));
   };
 
-  const triggerNewQuestion = async (ques, curr_tab) => {
-    // State update for question
-    setDatabot((prev) => ({
-      ...prev,
-      curr_input: ques,
-      is_loading: true,
-      queries: [
-        ...prev.queries,
-        {
-          q: ques,
-          a: null,
-        },
-      ],
-      result: { 
-        relationship: {},
-        lineage: {},
-        impact: {},
-        dependency: {},
-      },
-    }));
-
-    // API call
-    let resp;
-    if(curr_tab === "relationship") {
-      resp = await getRelationshipAPI(ques);
-
-    } else if(curr_tab === "lineage") {
-      resp = await getLineageAPI(ques);
-
-    } else if(curr_tab === "impact") {
-      resp = await getImpactAPI(ques);
-
-    } else if(curr_tab === "dependency") {
-      resp = await getDependencyAPI(ques);
-    }
-    console.log(`Q: ${ques} has ans: ${resp}`);
-
-    // State update for ans and result
-    setDatabot((prev) => ({
-      ...prev,
-      is_loading: false,
-      curr_tab: resp?.metadata?.tool,
-      queries: prev?.queries?.map((query) =>
-        query.q === ques
-          ? {
-              q: ques,
-              a: resp?.explanation,
-            }
-          : query
-      ),
-      result: {
-        ...prev.result,
-        [resp?.metadata?.tool]: {
-          tables: resp?.metadata?.entities?.tables,
-          img: resp?.graph_b64,
-          errCode: resp?.metadata?.err_code,
-          errMsg: resp?.metadata?.err_msg,
-        },
-      },
-    }));
-  };
-
-  // const createNewChat = (val, ans) => {
-  //   setDatabot((prev) => ({
-  //     ...prev,
-  //     chats: prev.chats.map((chat) =>
-  //       chat.id === prev.activeChatId
-  //         ? {
-  //             ...chat,
-  //             // curr_input: val,
-  //             queries: [...chat.queries, { ques: val, ans }],
-  //           }
-  //         : chat
-  //     ),
-  //   }));
-  // };
 
   const setRelationshipResultGlobal = (resp, ques) => {
     setDatabot((prev) => ({
@@ -215,6 +139,94 @@ export const DatabotProvider = ({ children }) => {
     }))
   }
 
+  // Connection and schema
+  const [selectedConnectionGlobal, setSelectedConnectionGlobal] = useState("");
+  const handleSelectedConnectionGlobal = (val) => {
+    setSelectedConnectionGlobal(val)
+  }
+
+  const [selectedSchemaGlobal, setSelectedSchemaGlobal] = useState("");
+  const handleSelectedSchemaGlobal = (val) => {
+    setSelectedSchemaGlobal(val)
+  }
+
+  const [policyIdsGlobal, setPolicyIds] = useState([]);
+  const handlePolicyIdsGlobal = (val) => {
+    setPolicyIds(val)
+  }
+
+  const [isRefreshed, setIsRefreshed] = useState(false);
+  const handleIsRefreshed = (val) => {
+    setIsRefreshed(val);
+  }
+
+  const [firstSelectedTab, setFirstSelectedTab] = useState("");
+  const handleFirstSelectedTab = (tab) => {
+    setFirstSelectedTab(tab)
+  }
+
+  const triggerNewQuestion = async (ques, curr_tab) => {
+    // State update for question
+    setDatabot((prev) => ({
+      ...prev,
+      curr_input: ques,
+      curr_tab: curr_tab,
+      is_loading: true,
+      queries: [
+        ...prev.queries,
+        {
+          q: ques,
+          a: null,
+        },
+      ],
+      result: { 
+        relationship: {},
+        lineage: {},
+        impact: {},
+        dependency: {},
+      },
+    }));
+
+    // API call
+    let resp;
+    if(curr_tab === "relationship") {
+      resp = await getRelationshipAPI(ques, selectedConnectionGlobal, selectedSchemaGlobal);
+
+    } else if(curr_tab === "lineage") {
+      resp = await getLineageAPI(ques, selectedConnectionGlobal, selectedSchemaGlobal);
+
+    } else if(curr_tab === "impact") {
+      resp = await getImpactAPI(ques, selectedConnectionGlobal, selectedSchemaGlobal);
+
+    } else if(curr_tab === "dependency") {
+      resp = await getDependencyAPI(ques, selectedConnectionGlobal, selectedSchemaGlobal);
+    }
+
+    // State update for ans and result
+    setDatabot((prev) => ({
+      ...prev,
+      is_loading: false,
+      curr_tab: resp?.metadata?.tool,
+      queries: prev?.queries?.map((query) =>
+        query.q === ques
+          ? {
+              q: ques,
+              a: resp?.explanation,
+            }
+          : query
+      ),
+      result: {
+        ...prev.result,
+        [resp?.metadata?.tool]: {
+          tables: resp?.metadata?.entities?.tables,
+          img: resp?.graph_b64,
+          errCode: resp?.metadata?.err_code,
+          errMsg: resp?.metadata?.err_msg,
+        },
+      },
+    }));
+  };
+
   const [relationshipResponse, setRelationshipResponse] = useState([]);
   const handleRelationshipResponse = (res) => {
     setRelationshipResponse(res);
@@ -240,6 +252,16 @@ export const DatabotProvider = ({ children }) => {
         triggerNewQuestion,
         switchTab,
         resetChat,
+        selectedConnectionGlobal,
+        handleSelectedConnectionGlobal,
+        selectedSchemaGlobal,
+        handleSelectedSchemaGlobal,
+        policyIdsGlobal,
+        handlePolicyIdsGlobal,
+        isRefreshed,
+        handleIsRefreshed,
+        firstSelectedTab,
+        handleFirstSelectedTab
       }}
     >
       {children}

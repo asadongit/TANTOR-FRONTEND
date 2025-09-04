@@ -7,10 +7,12 @@ function capitalizeFirstLetter(val) {
     return String(val).charAt(0).toUpperCase() + String(val).slice(1);
 }
 
-const ResultTab = ({tab_name='relationship'}) => {
+const ResultTab = ({activeTab}) => {
 
   const { databot, 
     setRelationshipResultGlobal,
+    selectedConnectionGlobal,
+    selectedSchemaGlobal,
     setlineageResultGlobal, 
     setImpactResultGlobal, 
     setDependencyResultGlobal } = useDatabotContext();
@@ -23,21 +25,21 @@ const ResultTab = ({tab_name='relationship'}) => {
   const hasIrrelevant = databot.queries.some(item => item.a === "Irrelevant query!");
 
   const fetchResults = async () => {
-    if(databot.curr_input && hasIrrelevant && Object.keys(databot?.result[tab_name]).length === 0) {
-      if(tab_name === "relationship") {
-        const resp = await getRelationshipAPI(databot.curr_input); 
+    if(databot.curr_input && hasIrrelevant && Object.keys(databot?.result[activeTab]).length === 0) {
+      if(activeTab === "relationship") {
+        const resp = await getRelationshipAPI(databot.curr_input, selectedConnectionGlobal, selectedSchemaGlobal); 
         setRelationshipResultGlobal(resp, databot.curr_input);
 
-      } else if (tab_name === "lineage") {
-        const resp = await getLineageAPI(databot.curr_input); 
+      } else if (activeTab === "lineage") {
+        const resp = await getLineageAPI(databot.curr_input, selectedConnectionGlobal, selectedSchemaGlobal); 
         setlineageResultGlobal(resp, databot.curr_input);
 
-      } else if(tab_name === "impact") {
-        const resp = await getImpactAPI(databot.curr_input); 
+      } else if(activeTab === "impact") {
+        const resp = await getImpactAPI(databot.curr_input, selectedConnectionGlobal, selectedSchemaGlobal); 
         setImpactResultGlobal(resp, databot.curr_input);
 
-      } else if(tab_name === "dependency") {
-        const resp = await getDependencyAPI(databot.curr_input);
+      } else if(activeTab === "dependency") {
+        const resp = await getDependencyAPI(databot.curr_input, selectedConnectionGlobal, selectedSchemaGlobal);
         setDependencyResultGlobal(resp, databot.curr_input)
       }
     }
@@ -45,30 +47,27 @@ const ResultTab = ({tab_name='relationship'}) => {
 
   useEffect(() => {
     fetchResults();
-  }, [tab_name, databot.curr_input]);
+  }, [activeTab, databot.curr_input]);
   
   return (
-    <div className="p-4 pt-8">
+    <div className="p-4 pt-8 bg-white w-full">
       {loading 
       ? <div className="flex justify-center items-center h-40">
           <span className="text-[#8d77ba] animate-pulse">Loading...</span>
         </div>
       : <>
         <h1 className="text-xl">
-          {capitalizeFirstLetter(tab_name)} View
+          {capitalizeFirstLetter(activeTab)} View
         </h1>
-        {/* <div>
-          {capitalizeFirstLetter(tab_name)} View for {databot.result[tab_name]?.tables?.join(" & ")}
-        </div> */}
 
-        {databot?.result[tab_name]?.errMsg?.length > 0
+        {databot?.result[activeTab]?.errMsg?.length > 0
         ? <>
           <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-400 text-red-700 flex items-center gap-3 shadow-sm">
             <span className="font-mono font-bold text-sm bg-red-100 text-red-700 px-2 py-1 rounded">
-              {databot.result[tab_name].errCode}
+              {databot.result[activeTab].errCode}
             </span>
             <span className="text-sm">
-              {databot.result[tab_name].errMsg}
+              {databot.result[activeTab].errMsg}
             </span>
           </div>
 
@@ -79,10 +78,10 @@ const ResultTab = ({tab_name='relationship'}) => {
           </div>
           </>
 
-        : databot?.result[tab_name]?.img ?
+        : databot?.result[activeTab]?.img ?
           <div>
             <img
-              src={`data:image/svg+xml;base64,${databot?.result[tab_name]?.img}`}
+              src={`data:image/svg+xml;base64,${databot?.result[activeTab]?.img}`}
               alt="Graph"
               className="w-full h-auto pt-5"
             />
