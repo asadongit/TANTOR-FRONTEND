@@ -613,7 +613,7 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
 
         try {
             const endpoint = isEditMode
-                ? `${window._env_?.VITE_FAST_API}/data_catalogue/add_new`
+                ? `${window._env_?.VITE_FAST_API}/data_catalogue/add_new_entry`
                 : `${window._env_?.VITE_FAST_API}/data_catalogue/add_new_entry`;
 
             const response = await fetch(endpoint, {
