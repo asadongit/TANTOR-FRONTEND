@@ -50,7 +50,7 @@ const ResultTab = ({activeTab}) => {
   }, [activeTab, databot.curr_input]);
   
   return (
-    <div className="p-4 pt-8 bg-white w-full">
+    <div className="p-4 pt-8 bg-white w-full h-auto overflow-auto">
       {loading 
       ? <div className="flex justify-center items-center h-40">
           <span className="text-[#8d77ba] animate-pulse">Loading...</span>
@@ -79,11 +79,11 @@ const ResultTab = ({activeTab}) => {
           </>
 
         : databot?.result[activeTab]?.img ?
-          <div>
+          <div className="w-full pt-5">
             <img
               src={`data:image/svg+xml;base64,${databot?.result[activeTab]?.img}`}
               alt="Graph"
-              className="w-auto h-auto pt-5"
+              className="max-w-full h-auto object-contain"
             />
           </div> :
 

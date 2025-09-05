@@ -240,9 +240,7 @@ const Databot = () => {
                 connections={connections}/>
             </div>
 
-            <div className=' bg-white rounded-md'>
               <ResultSection />
-            </div>
           </div>
 
           <div className='bg-white ml-2 border-white rounded-md'>

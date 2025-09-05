@@ -1,14 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { useDatabotAPI } from "./Databot/useDatabotAPI";
+import { TOOL_NAMES } from "./Databot/constants";
 
 const DatabotContext = createContext();
-
-export const TOOL_NAMES = {
-  RELATIONSHIP: 'relationship',
-  LINEAGE: 'lineage',
-  IMPACT: 'impact',
-  DEPENDENCY: 'dependency'
-}
 
 export const DatabotProvider = ({ children }) => {
   const { getRelationshipAPI, getLineageAPI, 
