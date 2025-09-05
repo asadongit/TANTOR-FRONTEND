@@ -161,7 +161,7 @@ export const useDatabotAPI = () => {
     } catch (err) {
       console.error("Error: ", err);
       setLoading(false);
-      return err;
+      return null;
 
     } finally {
       setLoading(false);
@@ -191,7 +191,7 @@ export const useDatabotAPI = () => {
     } catch (err) {
       console.error("Error: ", err);
       setLoading(false);
-      return err;
+      return null;
 
     } finally {
       setLoading(false);
@@ -221,7 +221,7 @@ export const useDatabotAPI = () => {
     } catch (err) {
       console.error("Error: ", err);
       setLoading(false);
-      return err;
+      return null;
 
     } finally {
       setLoading(false);
@@ -261,7 +261,7 @@ export const useDatabotAPI = () => {
       console.error("Error: ", err);
       setLoading(false);
       toast.error("Refresh was unsuccessful. Try again!")
-      return err;
+      return null;
 
     } finally {
       setLoading(false);

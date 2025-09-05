@@ -140,10 +140,10 @@ const DatabotChatSection = ({setIsResultScreen, setQuery}) => {
                           )
                         }}
                       />
-                    ) : isLoading ? (
+                    ) : (isLoading && i === (databot.queries.length - 1)) ? (
                       <span className="animate-pulse text-gray-400">Thinking...</span>
                     ) : (
-                      <span className="animate-pulse text-gray-400">No response, please try again.</span>
+                      <span className="text-gray-400">No response, please try again.</span>
                     )
                   }
                 </div>
