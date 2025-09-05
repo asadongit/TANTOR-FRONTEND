@@ -10,7 +10,8 @@ const ResultSection = () => {
 
   return (
     <div className="">
-      <div className="px-6 py-3">
+      <div className="px-6 py-3"
+        style={{ height: "calc(100vh - 5rem)" }}>
 
         <div className='flex justify-between items-center gap-5 w-full'>
           <div className='flex items-center border rounded-lg'>

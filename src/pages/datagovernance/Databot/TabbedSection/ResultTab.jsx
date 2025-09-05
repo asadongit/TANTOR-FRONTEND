@@ -83,7 +83,7 @@ const ResultTab = ({activeTab}) => {
             <img
               src={`data:image/svg+xml;base64,${databot?.result[activeTab]?.img}`}
               alt="Graph"
-              className="w-full h-auto pt-5"
+              className="w-auto h-auto pt-5"
             />
           </div> :
 

@@ -3,6 +3,13 @@ import { useDatabotAPI } from "./Databot/useDatabotAPI";
 
 const DatabotContext = createContext();
 
+export const TOOL_NAMES = {
+  RELATIONSHIP: 'relationship',
+  LINEAGE: 'lineage',
+  IMPACT: 'impact',
+  DEPENDENCY: 'dependency'
+}
+
 export const DatabotProvider = ({ children }) => {
   const { getRelationshipAPI, getLineageAPI, 
     getImpactAPI, getDependencyAPI } = useDatabotAPI();
@@ -46,7 +53,7 @@ export const DatabotProvider = ({ children }) => {
   const setRelationshipResultGlobal = (resp, ques) => {
     setDatabot((prev) => ({
       ...prev,
-      curr_tab: resp?.metadata?.tool,
+      curr_tab: resp?.metadata?.tool || TOOL_NAMES.RELATIONSHIP,
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
@@ -70,7 +77,7 @@ export const DatabotProvider = ({ children }) => {
   const setlineageResultGlobal = (resp, ques) => {
     setDatabot((prev) => ({
       ...prev,
-      curr_tab: resp?.metadata?.tool,
+      curr_tab: resp?.metadata?.tool || TOOL_NAMES.LINEAGE,
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
@@ -94,7 +101,7 @@ export const DatabotProvider = ({ children }) => {
   const setImpactResultGlobal = (resp, ques) => {
     setDatabot((prev) => ({
       ...prev,
-      curr_tab: resp?.metadata?.tool,
+      curr_tab: resp?.metadata?.tool || TOOL_NAMES.IMPACT,
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
@@ -118,7 +125,7 @@ export const DatabotProvider = ({ children }) => {
   const setDependencyResultGlobal = (resp, ques) => {
     setDatabot((prev) => ({
       ...prev,
-      curr_tab: resp?.metadata?.tool,
+      curr_tab: resp?.metadata?.tool || TOOL_NAMES.DEPENDENCY,
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
@@ -206,7 +213,7 @@ export const DatabotProvider = ({ children }) => {
     setDatabot((prev) => ({
       ...prev,
       is_loading: false,
-      curr_tab: resp?.metadata?.tool,
+      curr_tab: resp?.metadata?.tool || prev.curr_tab,
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
@@ -217,7 +224,7 @@ export const DatabotProvider = ({ children }) => {
       ),
       result: {
         ...prev.result,
-        [resp?.metadata?.tool]: {
+        [resp?.metadata?.tool || prev.curr_tab]: {
           tables: resp?.metadata?.entities?.tables,
           img: resp?.graph_b64,
           errCode: resp?.metadata?.err_code,
