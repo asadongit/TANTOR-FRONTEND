@@ -197,13 +197,41 @@ function Lineage() {
 
   const handleConnectionsOpen = async () => { if (policyIds.length > 0 && connectionOptions.length === 0) { setIsConnectionsLoading(true); try { const response = await fetch(`${API_BASE_URL}/get_connection_type`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'accept': 'application/json' }, body: JSON.stringify({ matched_policy_ids: policyIds }), }); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); const data = await response.json(); setConnectionOptions(data); } catch (error) { console.error("Error fetching connection types:", error); } finally { setIsConnectionsLoading(false); } } };
   const handleDatabaseOpen = async () => { if (selectedConnections.length > 0 && databaseOptions.length === 0) { setIsDatabaseLoading(true); try { const response = await fetch(`${API_BASE_URL}/get_connection_name`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'accept': 'application/json' }, body: JSON.stringify({ matched_policy_ids: policyIds, connection_type: selectedConnections, }), }); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); const data = await response.json(); setDatabaseOptions(data); } catch (error) { console.error("Error fetching databases:", error); } finally { setIsDatabaseLoading(false); } } };
-  const handleSchemaOpen = async () => { if (selectedDatabases.length > 0 && schemaOptions.length === 0) { setIsSchemaLoading(true); try { const response = await fetch(`${API_BASE_URL}/get_schema_name`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'accept': 'application/json' }, body: JSON.stringify({ matched_policy_ids: policyIds, connection_name: selectedDatabases, }), }); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); const data = await response.json(); const allSchemas = data.flatMap(obj => Object.values(obj)).flat(); setSchemaOptions([...new Set(allSchemas)]); } catch (error) { console.error("Error fetching schemas:", error); } finally { setIsSchemaLoading(false); } } };
 
+  const handleSchemaOpen = async () => {
+    if (selectedDatabases.length > 0 && schemaOptions.length === 0) {
+      setIsSchemaLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/get_schema_name`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
+          body: JSON.stringify({
+            matched_policy_ids: policyIds,
+            connection_name: selectedDatabases,
+          }),
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+
+        const allSchemas = data.flatMap(dbSchemaObject =>
+          Object.entries(dbSchemaObject).flatMap(([dbName, schemaArray]) =>
+            schemaArray.map(schemaName => `${dbName}.${schemaName}`)
+          )
+        );
+        setSchemaOptions([...new Set(allSchemas)]);
+
+      } catch (error) {
+        console.error("Error fetching schemas:", error);
+      } finally {
+        setIsSchemaLoading(false);
+      }
+    }
+  };
   const fetchTableData = async () => {
     if (policyIds.length === 0 || selectedTypes.length === 0 || selectedSchemas.length === 0) return;
     setIsTableLoading(true); setTableData([]); setCurrentPage(1);
     try {
-      const payload = { matched_policy_ids: policyIds, connection: selectedConnections, database: selectedDatabases, schema: selectedSchemas, type: selectedTypes.map(t => t.toLowerCase().slice(0, -1)) };
+      const payload = { matched_policy_ids: policyIds, connection: selectedConnections, database: selectedDatabases, database_schema: selectedSchemas, type: selectedTypes.map(t => t.toLowerCase().slice(0, -1)) };
       const response = await fetch(`${API_BASE_URL}/table`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'accept': 'application/json' }, body: JSON.stringify(payload), });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
@@ -240,7 +268,7 @@ function Lineage() {
   const handleTypesToggle = createToggleHandler(setSelectedTypes);
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen font-sans">
+    <div className="p-6 bg-gray-50 min-h-screen">
       <Breadcrumb />
       <main className="mt-6">
         <div className="p-6 pb-8 bg-white rounded-lg shadow mb-5">
