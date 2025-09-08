@@ -48,6 +48,7 @@ export const DatabotProvider = ({ children }) => {
     setDatabot((prev) => ({
       ...prev,
       curr_tab: resp?.metadata?.tool || TOOL_NAMES.RELATIONSHIP,
+      suggested_tool: resp?.metadata?.suggested_tool || "",
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
@@ -72,6 +73,7 @@ export const DatabotProvider = ({ children }) => {
     setDatabot((prev) => ({
       ...prev,
       curr_tab: resp?.metadata?.tool || TOOL_NAMES.LINEAGE,
+      suggested_tool: resp?.metadata?.suggested_tool || "",
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
@@ -96,6 +98,7 @@ export const DatabotProvider = ({ children }) => {
     setDatabot((prev) => ({
       ...prev,
       curr_tab: resp?.metadata?.tool || TOOL_NAMES.IMPACT,
+      suggested_tool: resp?.metadata?.suggested_tool || "",
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
@@ -120,6 +123,7 @@ export const DatabotProvider = ({ children }) => {
     setDatabot((prev) => ({
       ...prev,
       curr_tab: resp?.metadata?.tool || TOOL_NAMES.DEPENDENCY,
+      suggested_tool: resp?.metadata?.suggested_tool || "",
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
@@ -208,6 +212,7 @@ export const DatabotProvider = ({ children }) => {
       ...prev,
       is_loading: false,
       curr_tab: resp?.metadata?.tool || prev.curr_tab,
+      suggested_tool: resp?.metadata?.suggested_tool,
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
