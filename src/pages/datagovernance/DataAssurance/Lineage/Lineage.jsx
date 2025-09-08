@@ -7,6 +7,21 @@ import DataLineageFlow from './DataLineageFlow';
 
 const API_BASE_URL = `${window._env_?.VITE_FAST_API}/data_lineage`;
 
+// Helper function to truncate text and show tooltip
+const TruncatedText = ({ text, maxLength = 20, className = "" }) => {
+  const truncated = text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  const needsTooltip = text.length > maxLength;
+
+  return (
+    <span
+      className={className}
+      title={needsTooltip ? text : ''}
+    >
+      {truncated}
+    </span>
+  );
+};
+
 const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) => {
   if (!totalItems || totalPages <= 1) return null;
   const startItem = (currentPage - 1) * itemsPerPage + 1;
@@ -120,6 +135,7 @@ const LineageTable = ({
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Database</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Schema</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Type</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Lineage</th>
             </tr>
           </thead>
@@ -127,10 +143,19 @@ const LineageTable = ({
             {paginatedData.map((item, index) => (
               <tr key={`${item.name}-${index}`} className="hover:bg-gray-50">
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.connection}</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.database}</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.schema}</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <TruncatedText text={item.connection} maxLength={15} />
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <TruncatedText text={item.database} maxLength={15} />
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <TruncatedText text={item.schema} maxLength={15} />
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <TruncatedText text={item.name} maxLength={20} />
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.type}</td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm">
                   <button
                     onClick={() => toggleLineageItem(item)}
@@ -254,7 +279,7 @@ function EnhancedLineage() {
     }
   };
 
-const handleSchemaOpen = async () => {
+  const handleSchemaOpen = async () => {
     if (selectedDatabases.length > 0 && schemaOptions.length === 0) {
       setIsSchemaLoading(true);
       try {
@@ -308,6 +333,7 @@ const handleSchemaOpen = async () => {
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
+
       const tables = (data.tables || []).map(item => ({
         connection: item.connection_type,
         database: item.connection_name,
@@ -323,7 +349,36 @@ const handleSchemaOpen = async () => {
         name: `${item.table_name}.${item.column_name}`,
         type: 'Column'
       }));
-      setTableData([...tables, ...columns]);
+
+      const views = (data.views || []).map(item => {
+        const connection = item.connection_type.length === 1 ?
+          item.connection_type[0] :
+          item.connection_type.join(' + ');
+
+        const database = item.connection_name.length === 1 ?
+          item.connection_name[0] :
+          item.connection_name.join(' + ');
+
+        const schema = item.table_schema.length === 1 ? 
+          (item.table_schema[0].split('.')[1] || item.table_schema[0]) :
+          item.table_schema.join(' + ');
+
+        return {
+          connection,
+          database,
+          schema,
+          name: item.view_name,
+          type: 'View',
+          viewMetadata: {
+            connection_type: item.connection_type,
+            connection_name: item.connection_name,
+            table_schema: item.table_schema,
+            table_name: item.table_name
+          }
+        };
+      });
+
+      setTableData([...tables, ...columns, ...views]);
     } catch (error) {
       console.error("Error fetching table data:", error);
       setTableData([]);
@@ -398,7 +453,11 @@ const handleSchemaOpen = async () => {
   };
 
   const handleTableNavigation = (direction) => {
-    if (direction === 'next' && currentTableIndex < selectedItemsForVisualization.length - 1) {
+    const displayableItems = selectedItemsForVisualization.filter(item =>
+      item.type === 'Table' || item.type === 'View'
+    );
+
+    if (direction === 'next' && currentTableIndex < displayableItems.length - 1) {
       setCurrentTableIndex(prev => prev + 1);
     } else if (direction === 'prev' && currentTableIndex > 0) {
       setCurrentTableIndex(prev => prev - 1);
@@ -458,7 +517,7 @@ const handleSchemaOpen = async () => {
     );
   }
 
- return (
+  return (
     <DataLineageFlow
       selectedItems={selectedItemsForVisualization}
       currentTableIndex={currentTableIndex}

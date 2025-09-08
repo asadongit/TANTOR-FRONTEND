@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, Table, Minimize2, Maximize2 } from 'lucide-react';
+import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, Table, Minimize2, Maximize2, Layers } from 'lucide-react';
 import {
   ReactFlow,
   MiniMap,
@@ -65,13 +65,22 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
 
-  const displayableTableItems = useMemo(() => {
-    return selectedItems.filter(item => item.type === 'Table');
+  const displayableItems = useMemo(() => {
+    return selectedItems.filter(item => item.type === 'Table' || item.type === 'View');
   }, [selectedItems]);
 
-  const NODE_SIZE = 120;
+  const NODE_SIZE = 80;
 
-  const generateNodesAndEdges = (tableItem) => {
+  const generateNodesAndEdges = (item) => {
+    if (item.type === 'Table') {
+      return generateTableNodesAndEdges(item);
+    } else if (item.type === 'View') {
+      return generateViewNodesAndEdges(item);
+    }
+    return { nodes: [], edges: [] };
+  };
+
+  const generateTableNodesAndEdges = (tableItem) => {
     const schemaNode = {
       id: `${tableItem.schema}-schema`,
       type: 'default',
@@ -91,7 +100,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '14px',
+        fontSize: '8px',
         fontWeight: 'bold',
         textAlign: 'center'
       }
@@ -116,7 +125,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '14px',
+        fontSize: '8px',
         fontWeight: 'bold',
         textAlign: 'center'
       }
@@ -136,24 +145,172 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     };
   };
 
-  const currentTable = displayableTableItems[currentTableIndex];
-  const { nodes: initialNodes, edges: initialEdges } = currentTable ?
-    generateNodesAndEdges(currentTable) :
+  const generateViewNodesAndEdges = (viewItem) => {
+    if (!viewItem.viewMetadata) {
+      return generateTableNodesAndEdges(viewItem);
+    }
+
+    const { table_name, table_schema } = viewItem.viewMetadata;
+    const nodes = [];
+    const edges = [];
+    
+    const schemaGroups = {};
+    table_name.forEach((tableName, index) => {
+      const schemaKey = table_schema[index] || table_schema[0];
+      const schemaName = schemaKey.split('.')[1] || schemaKey;
+      
+      if (!schemaGroups[schemaName]) {
+        schemaGroups[schemaName] = [];
+      }
+      schemaGroups[schemaName].push({
+        name: tableName,
+        fullSchema: schemaKey
+      });
+    });
+
+    let schemaIndex = 0;
+    const schemaPositions = {};
+    
+    Object.entries(schemaGroups).forEach(([schemaName, tables]) => {
+      const schemaY = 100 + (schemaIndex * 200);
+      const schemaX = 100;
+      
+      const schemaNodeId = `${schemaName}-schema-${schemaIndex}`;
+      schemaPositions[schemaName] = { x: schemaX, y: schemaY };
+      
+      const schemaNode = {
+        id: schemaNodeId,
+        type: 'default',
+        position: { x: schemaX, y: schemaY },
+        data: {
+          label: `S\n${schemaName}`,
+          type: 'schema',
+          description: `Schema: ${schemaName}`
+        },
+        style: {
+          background: '#3B82F6',
+          color: 'white',
+          border: '3px solid #1D4ED8',
+          borderRadius: '50%',
+          width: NODE_SIZE,
+          height: NODE_SIZE,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '8px',
+          fontWeight: 'bold',
+          textAlign: 'center'
+        }
+      };
+      nodes.push(schemaNode);
+
+      tables.forEach((table, tableIndex) => {
+        const tableY = schemaY + ((tableIndex - Math.floor(tables.length / 2)) * 80);
+        const tableX = schemaX + 250;
+        
+        const tableNodeId = `${table.name}-table-${schemaIndex}-${tableIndex}`;
+        const tableNode = {
+          id: tableNodeId,
+          type: 'default',
+          position: { x: tableX, y: tableY },
+          data: {
+            label: `T\n${table.name}`,
+            type: 'table',
+            description: `Table: ${table.name}`
+          },
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: '3px solid #DC2626',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '8px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+        nodes.push(tableNode);
+
+        const schemaToTableEdge = {
+          id: `${schemaNodeId}-${tableNodeId}`,
+          source: schemaNodeId,
+          target: tableNodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#6B7280', strokeWidth: 2 }
+        };
+        edges.push(schemaToTableEdge);
+      });
+
+      schemaIndex++;
+    });
+
+    const viewX = 600;
+    const viewY = 100 + (Object.keys(schemaGroups).length - 1) * 100;
+    
+    const viewNodeId = `${viewItem.name}-view`;
+    const viewNode = {
+      id: viewNodeId,
+      type: 'default',
+      position: { x: viewX, y: viewY },
+      data: {
+        label: `V\n${viewItem.name}`,
+        type: 'view',
+        description: `View: ${viewItem.name}`
+      },
+      style: {
+        background: '#10B981',
+        color: 'white',
+        border: '3px solid #059669',
+        borderRadius: '50%',
+        width: NODE_SIZE,
+        height: NODE_SIZE,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '8px',
+        fontWeight: 'bold',
+        textAlign: 'center'
+      }
+    };
+    nodes.push(viewNode);
+
+    nodes.forEach(node => {
+      if (node.data.type === 'table') {
+        const tableToViewEdge = {
+          id: `${node.id}-${viewNodeId}`,
+          source: node.id,
+          target: viewNodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#10B981', strokeWidth: 2 }
+        };
+        edges.push(tableToViewEdge);
+      }
+    });
+
+    return { nodes, edges };
+  };
+
+  const currentItem = displayableItems[currentTableIndex];
+  const { nodes: initialNodes, edges: initialEdges } = currentItem ?
+    generateNodesAndEdges(currentItem) :
     { nodes: [], edges: [] };
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // Update nodes and edges when table changes
   useEffect(() => {
-    if (currentTable) {
-      const { nodes: newNodes, edges: newEdges } = generateNodesAndEdges(currentTable);
+    if (currentItem) {
+      const { nodes: newNodes, edges: newEdges } = generateNodesAndEdges(currentItem);
       setNodes(newNodes);
       setEdges(newEdges);
       setExpandedNodes(new Set());
       setSelectedNodeId(null);
     }
-  }, [currentTable, setNodes, setEdges]);
+  }, [currentItem, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
@@ -184,12 +341,11 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       }
     };
 
-    // Mock data for additional nodes
     const mockData = {
       [`${nodeId}-forward`]: {
         nodes: [{
           id: `${nodeId}-downstream-1`,
-          position: { x: 700, y: 150 },
+          position: { x: 800, y: 150 },
           data: { label: 'VIEW\nREPORT_V', type: 'view', description: 'Report View' },
           style: { ...nodeStyles.transform, width: NODE_SIZE, height: NODE_SIZE, fontSize: '12px' }
         }],
@@ -251,8 +407,8 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   };
 
   const handleReset = () => {
-    if (currentTable) {
-      const { nodes: resetNodes, edges: resetEdges } = generateNodesAndEdges(currentTable);
+    if (currentItem) {
+      const { nodes: resetNodes, edges: resetEdges } = generateNodesAndEdges(currentItem);
       setNodes(resetNodes);
       setEdges(resetEdges);
       setExpandedNodes(new Set());
@@ -269,12 +425,12 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
   const selectedNode = nodes.find(node => node.id === selectedNodeId);
 
-  if (!currentTable) {
+  if (!currentItem) {
     return (
       <div className="w-full h-full bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-600">No Table Selected</h2>
-          <p className="text-gray-500">Please select tables from the lineage page first.</p>
+          <h2 className="text-2xl font-bold text-gray-600">No Items Selected</h2>
+          <p className="text-gray-500">Please select tables or views from the lineage page first.</p>
         </div>
       </div>
     );
@@ -292,31 +448,36 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <Table className="h-6 w-6 text-gray-700" />
+            {currentItem?.type === 'View' ? (
+              <Layers className="h-6 w-6 text-gray-700" />
+            ) : (
+              <Table className="h-6 w-6 text-gray-700" />
+            )}
             <span className="text-lg font-semibold text-gray-800">
-              {currentTable?.name || 'Loading...'}
+              {currentItem?.name || 'Loading...'} 
+              {/* ({currentItem?.type}) */}
             </span>
           </div>
 
           <div className="flex items-center gap-4">
-            {displayableTableItems.length > 1 && (
+            {displayableItems.length > 1 && (
               <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => onNavigate('prev')}
                   disabled={currentTableIndex === 0}
                   className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Previous Table"
+                  title="Previous Item"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <span className="text-sm font-medium text-gray-700 px-3">
-                  Table {currentTableIndex + 1} of {displayableTableItems.length}
+                  Item {currentTableIndex + 1} of {displayableItems.length}
                 </span>
                 <button
                   onClick={() => onNavigate('next')}
-                  disabled={currentTableIndex === displayableTableItems.length - 1}
+                  disabled={currentTableIndex === displayableItems.length - 1}
                   className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Next Table"
+                  title="Next Item"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -360,4 +521,5 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     </div>
   );
 };
+
 export default DataLineageFlow;
