@@ -10,31 +10,35 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
   const [schemaData, setSchemaData] = useState([]);
   const [tableData, setTableData] = useState([]);
   const [columnData, setColumnData] = useState([]);
+  const [viewData, setViewData] = useState([]);
 
   const [selectedConnections, setSelectedConnections] = useState(initialData.selectedConnections || []);
   const [selectedSchemas, setSelectedSchemas] = useState(initialData.selectedSchemas || []);
   const [selectedTables, setSelectedTables] = useState(initialData.selectedTables || []);
   const [selectedColumns, setSelectedColumns] = useState(initialData.selectedColumns || []);
+  const [selectedViews, setSelectedViews] = useState(initialData.selectedViews || []);
 
   const [connectionSearch, setConnectionSearch] = useState('');
   const [schemaSearch, setSchemaSearch] = useState('');
   const [tableSearch, setTableSearch] = useState('');
   const [columnSearch, setColumnSearch] = useState('');
+  const [viewSearch, setViewSearch] = useState('');
 
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [loadingSchemas, setLoadingSchemas] = useState(false);
   const [loadingTables, setLoadingTables] = useState(false);
   const [loadingColumns, setLoadingColumns] = useState(false);
+  const [loadingViews, setLoadingViews] = useState(false);
 
   const [openDropdown, setOpenDropdown] = useState(null);
-
 
   useEffect(() => {
     const stepData = {
       selectedConnections,
       selectedSchemas,
       selectedTables,
-      selectedColumns
+      selectedColumns,
+      selectedViews
     };
 
     onDataChange(stepData);
@@ -53,14 +57,15 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
         });
       }
     }
-  }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns]);
+  }, [selectedConnections, selectedSchemas, selectedTables, selectedColumns, selectedViews]);
 
   useEffect(() => {
     setSelectedConnections(initialData.selectedConnections || []);
     setSelectedSchemas(initialData.selectedSchemas || []);
     setSelectedTables(initialData.selectedTables || []);
     setSelectedColumns(initialData.selectedColumns || []);
-  }, [initialData.selectedConnections, initialData.selectedSchemas, initialData.selectedTables, initialData.selectedColumns]);
+    setSelectedViews(initialData.selectedViews || []);
+  }, [initialData]);
 
   useEffect(() => {
     const fetchConnections = async () => {
@@ -187,6 +192,34 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
     }
   };
 
+  const fetchViews = async () => {
+    if (selectedColumns.length === 0 || !token) {
+      return;
+    }
+    setLoadingViews(true);
+    try {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/datapolicy/views`, {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(selectedColumns)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setViewData(data);
+    } catch (error) {
+      console.error('Error fetching views:', error);
+    } finally {
+      setLoadingViews(false);
+    }
+  };
+
+
   const getUnique = (arr) => [...new Set(arr)];
 
   const connectionOptions = getUnique(connectionData);
@@ -215,30 +248,35 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
     col.toLowerCase().includes(columnSearch.toLowerCase())
   );
 
-  const handleSelection = (setter, resetList = [], dataSetter = null) => (value) => {
+  const viewOptions = getUnique(viewData);
+  const filteredViews = viewOptions.filter(v =>
+    v.toLowerCase().includes(viewSearch.toLowerCase())
+  );
+
+  const handleSelection = (setter, resetList = [], dataSetters = []) => (value) => {
     setter(prev => {
       const newSelection = prev.includes(value)
         ? prev.filter(item => item !== value)
         : [...prev, value];
 
-      if (dataSetter) {
-        dataSetter([]);
-      }
+      const setters = Array.isArray(dataSetters) ? dataSetters : [dataSetters];
+      setters.forEach(ds => ds && ds([]));
+
       return newSelection;
     });
     resetList.forEach(reset => reset([]));
     setIsStep3Modified(true);
   };
 
-  const handleSelectAll = (options, setter, resetList = [], dataSetter = null) => {
+  const handleSelectAll = (options, setter, resetList = [], dataSetters = []) => {
     setter(prev => {
       const newSelection = options.every(option => prev.includes(option))
         ? []
         : [...new Set([...prev, ...options])];
 
-      if (dataSetter) {
-        dataSetter([]);
-      }
+      const setters = Array.isArray(dataSetters) ? dataSetters : [dataSetters];
+      setters.forEach(ds => ds && ds([]));
+
       return newSelection;
     });
     resetList.forEach(reset => reset([]));
@@ -255,14 +293,64 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
         fetchTables();
       } else if (newDropdown === 'Column' && selectedTables.length > 0 && columnData.length === 0) {
         fetchColumns();
+      } else if (newDropdown === 'View' && selectedColumns.length > 0 && viewData.length === 0) {
+        fetchViews();
       }
       return newDropdown;
     });
   };
 
-  const renderSearchableSelect = (label, options, selectedValues, searchValue, setSearchValue, loading, resetList = [], dataSetter = null) => {
+  const renderSearchableSelect = (label, options, selectedValues, searchValue, setSearchValue, loading, resetList = [], dataSetters = []) => {
     const allFilteredSelected = options.length > 0 && options.every(option => selectedValues.includes(option));
     const someFilteredSelected = options.some(option => selectedValues.includes(option)) && !allFilteredSelected;
+
+    const handleItemClick = (option) => {
+      let selectionHandler;
+      switch (label) {
+        case 'Connection':
+          selectionHandler = handleSelection(setSelectedConnections, resetList, dataSetters);
+          break;
+        case 'Schema':
+          selectionHandler = handleSelection(setSelectedSchemas, resetList, dataSetters);
+          break;
+        case 'Table':
+          selectionHandler = handleSelection(setSelectedTables, resetList, dataSetters);
+          break;
+        case 'Column':
+          selectionHandler = handleSelection(setSelectedColumns, resetList, dataSetters);
+          break;
+        case 'View':
+          selectionHandler = handleSelection(setSelectedViews, resetList, dataSetters);
+          break;
+        default:
+          return;
+      }
+      selectionHandler(option);
+    };
+
+    const handleSelectAllClick = () => {
+      let selectAllHandler;
+      switch (label) {
+        case 'Connection':
+          selectAllHandler = (val) => setSelectedConnections(val);
+          break;
+        case 'Schema':
+          selectAllHandler = (val) => setSelectedSchemas(val);
+          break;
+        case 'Table':
+          selectAllHandler = (val) => setSelectedTables(val);
+          break;
+        case 'Column':
+          selectAllHandler = (val) => setSelectedColumns(val);
+          break;
+        case 'View':
+          selectAllHandler = (val) => setSelectedViews(val);
+          break;
+        default:
+          return;
+      }
+      handleSelectAll(options, selectAllHandler, resetList, dataSetters);
+    };
 
     return (
       <div className="relative" ref={openDropdown === label ? dropdownRef : null}>
@@ -279,14 +367,14 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
           </span>
         </div>
         <style jsx>{`
-                    .no-scrollbar {
-                        -ms-overflow-style: none; /* IE and Edge */
-                        scrollbar-width: none; /* Firefox */
-                    }
-                    .no-scrollbar::-webkit-scrollbar {
-                        display: none; /* Chrome, Safari, and Opera */
-                    }
-                `}</style>
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+        `}</style>
         {openDropdown === label && (
           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
             <div className="sticky top-0 bg-white z-10">
@@ -299,18 +387,13 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
                   onChange={(e) => setSearchValue(e.target.value)}
                 />
                 {options.length > 0 && (
-                  <div className="flex items-center p-2 border-b border-gray-200 hover:bg-gray-100 cursor-pointer">
+                  <div className="flex items-center p-2 border-b border-gray-200 hover:bg-gray-100 cursor-pointer" onClick={handleSelectAllClick}>
                     <input
                       type="checkbox"
                       checked={allFilteredSelected}
                       ref={el => el && (el.indeterminate = someFilteredSelected)}
-                      onChange={() => handleSelectAll(options, (val) => {
-                        if (label === 'Connection') setSelectedConnections(val);
-                        else if (label === 'Schema') setSelectedSchemas(val);
-                        else if (label === 'Table') setSelectedTables(val);
-                        else if (label === 'Column') setSelectedColumns(val);
-                      }, resetList, dataSetter)}
-                      className="mr-2"
+                      readOnly
+                      className="mr-2 pointer-events-none"
                     />
                     <span className="font-medium">Select All</span>
                   </div>
@@ -329,12 +412,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
                 <div
                   key={option}
                   className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
-                  onClick={() => {
-                    if (label === 'Connection') handleSelection(setSelectedConnections, resetList, dataSetter)(option);
-                    else if (label === 'Schema') handleSelection(setSelectedSchemas, resetList, dataSetter)(option);
-                    else if (label === 'Table') handleSelection(setSelectedTables, resetList, dataSetter)(option);
-                    else if (label === 'Column') handleSelection(setSelectedColumns, resetList, dataSetter)(option);
-                  }}
+                  onClick={() => handleItemClick(option)}
                 >
                   <input
                     type="checkbox"
@@ -416,7 +494,7 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
   return (
     <div>
       <h3 className="text-lg font-medium text-gray-700 mb-2">{name}</h3>
-      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {renderSearchableSelect(
           'Connection',
           filteredConnections,
@@ -424,8 +502,8 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
           connectionSearch,
           setConnectionSearch,
           loadingConnections,
-          [setSelectedSchemas, setSelectedTables, setSelectedColumns],
-          setSchemaData
+          [setSelectedSchemas, setSelectedTables, setSelectedColumns, setSelectedViews],
+          [setSchemaData, setTableData, setColumnData, setViewData]
         )}
         {renderSearchableSelect(
           'Schema',
@@ -434,8 +512,8 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
           schemaSearch,
           setSchemaSearch,
           loadingSchemas,
-          [setSelectedTables, setSelectedColumns],
-          setTableData
+          [setSelectedTables, setSelectedColumns, setSelectedViews],
+          [setTableData, setColumnData, setViewData]
         )}
         {renderSearchableSelect(
           'Table',
@@ -444,8 +522,8 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
           tableSearch,
           setTableSearch,
           loadingTables,
-          [setSelectedColumns],
-          setColumnData
+          [setSelectedColumns, setSelectedViews],
+          [setColumnData, setViewData]
         )}
         {renderSearchableSelect(
           'Column',
@@ -453,7 +531,17 @@ const Step3 = ({ policyData, name, onDataChange, initialData, setIsStep3Modified
           selectedColumns,
           columnSearch,
           setColumnSearch,
-          loadingColumns
+          loadingColumns,
+          [setSelectedViews],
+          [setViewData]
+        )}
+        {renderSearchableSelect(
+          'View',
+          filteredViews,
+          selectedViews,
+          viewSearch,
+          setViewSearch,
+          loadingViews
         )}
       </div>
     </div>

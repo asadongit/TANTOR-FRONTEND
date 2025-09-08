@@ -41,7 +41,7 @@ const Toggle = ({ enabled, onToggle }) => {
     );
 };
 
-const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPolicyComplete = () => {} }) => {  
+const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPolicyComplete = () => { } }) => {
     const { token } = useAuth();
     const [policy, setPolicy] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -71,6 +71,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
             subGroup: [],
         },
         data_connection: [],
+        views: [],
         row_access_control: {},
         column_access_control: {},
     });
@@ -89,7 +90,8 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
         selectedConnections: [],
         selectedSchemas: [],
         selectedTables: [],
-        selectedColumns: []
+        selectedColumns: [],
+        selectedViews: []
     });
     const [step6Data, setStep6Data] = useState({
         permissions: {
@@ -125,12 +127,12 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
     }, []);
 
     useEffect(() => {
-    if (isEmbedded && isOpen) {
-      setActiveStep(0);
-      setData();
-    }
-    setIsStepperOpen(isOpen);
-  }, [isOpen, isEmbedded]);
+        if (isEmbedded && isOpen) {
+            setActiveStep(0);
+            setData();
+        }
+        setIsStepperOpen(isOpen);
+    }, [isOpen, isEmbedded]);
 
     const fetchPolicyListData = async () => {
         try {
@@ -307,6 +309,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
         setPolicyData((prev) => ({
             ...prev,
             data_connection: connections,
+            views: data.selectedViews || [],
             row_access_control: isEditMode && isDataChanged ? {} : prev.row_access_control,
             column_access_control: isEditMode && isDataChanged ? {} : prev.column_access_control,
         }));
@@ -461,6 +464,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
                 subGroup: [],
             },
             data_connection: [],
+            views: [],
             row_access_control: {},
             column_access_control: {},
         });
@@ -480,6 +484,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
             selectedSchemas: [],
             selectedTables: [],
             selectedColumns: [],
+            selectedViews: [],
         });
         setStepReportData({
             report_name: [],
@@ -516,6 +521,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
                     selectedSchemas: [],
                     selectedTables: [],
                     selectedColumns: [],
+                    selectedViews: [], // Reset views on clear
                 });
                 break;
             case 3:
@@ -652,7 +658,8 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
                 selectedConnections: policyDetails.data_connection?.map(dc => dc.connection) || [],
                 selectedSchemas: policyDetails.data_connection?.map(dc => dc.schema) || [],
                 selectedTables: policyDetails.data_connection?.flatMap(dc => dc.tables) || [],
-                selectedColumns: policyDetails.data_connection?.flatMap(dc => dc.columns) || []
+                selectedColumns: policyDetails.data_connection?.flatMap(dc => dc.columns) || [],
+                selectedViews: policyDetails.views || [] // Handle views on edit
             });
             setStepReportData({
                 report_name: policyDetails.reports?.report_name || [],
@@ -812,7 +819,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
             }, 3000);
         }
     };
-     const [refreshing, setRefreshing] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     const refreshPolicy = async (policyId) => {
         setActiveMenu(null);
