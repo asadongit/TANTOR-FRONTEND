@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, Table, Minimize2, Maximize2 } from 'lucide-react';
 import Breadcrumb from '../../../../components/Breadcrumb';
 import { useAuth } from '../../../../context/AuthContext';
 import { secureQuery } from '../../DataCatalogue/Components/function';
+import DataLineageFlow from './DataLineageFlow';
 
 const API_BASE_URL = `${window._env_?.VITE_FAST_API}/data_lineage`;
 
@@ -100,7 +101,7 @@ const LineageFilters = ({
 
 const LineageTable = ({
   isTableLoading, tableData, paginatedData, currentPage, itemsPerPage, toggleLineageItem, isItemInLineage,
-  totalPages, handlePageChange
+  totalPages, handlePageChange, onVisualize, hasLineageItems
 }) => {
   if (isTableLoading) {
     return <p className="text-center">Loading data...</p>;
@@ -150,17 +151,23 @@ const LineageTable = ({
         <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} totalItems={tableData.length} itemsPerPage={itemsPerPage} />
       </div>
       <div className="mt-8 flex justify-end">
-        <button className="px-6 py-2 bg-[#8d77ba] text-white font-semibold rounded-md shadow-sm hover:opacity-90">
-          Visualize
+        <button
+          onClick={onVisualize}
+          disabled={!hasLineageItems}
+          className="px-6 py-2 bg-[#8d77ba] text-white font-semibold rounded-md shadow-sm hover:opacity-90 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          Visualize ({hasLineageItems ? Array.from(hasLineageItems).length : 0})
         </button>
       </div>
     </>
   );
 };
 
-
-function Lineage() {
+function EnhancedLineage() {
   const { token } = useAuth();
+  const [currentView, setCurrentView] = useState('selection');
+  const [currentTableIndex, setCurrentTableIndex] = useState(0);
+
   const [connectionOptions, setConnectionOptions] = useState([]);
   const [databaseOptions, setDatabaseOptions] = useState([]);
   const [schemaOptions, setSchemaOptions] = useState([]);
@@ -185,7 +192,10 @@ function Lineage() {
         try {
           const response = await secureQuery({ user_query: "" }, token);
           setPolicyIds(response.matched_policy_ids || []);
-        } catch (error) { console.error("Failed to fetch policy IDs:", error); setPolicyIds([]); }
+        } catch (error) {
+          console.error("Failed to fetch policy IDs:", error);
+          setPolicyIds([]);
+        }
       })();
     }
   }, [token]);
@@ -195,10 +205,56 @@ function Lineage() {
   useEffect(() => { setSelectedTypes([]); setTableData([]); }, [selectedSchemas]);
   useEffect(() => { setTableData([]); }, [selectedTypes]);
 
-  const handleConnectionsOpen = async () => { if (policyIds.length > 0 && connectionOptions.length === 0) { setIsConnectionsLoading(true); try { const response = await fetch(`${API_BASE_URL}/get_connection_type`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'accept': 'application/json' }, body: JSON.stringify({ matched_policy_ids: policyIds }), }); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); const data = await response.json(); setConnectionOptions(data); } catch (error) { console.error("Error fetching connection types:", error); } finally { setIsConnectionsLoading(false); } } };
-  const handleDatabaseOpen = async () => { if (selectedConnections.length > 0 && databaseOptions.length === 0) { setIsDatabaseLoading(true); try { const response = await fetch(`${API_BASE_URL}/get_connection_name`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'accept': 'application/json' }, body: JSON.stringify({ matched_policy_ids: policyIds, connection_type: selectedConnections, }), }); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); const data = await response.json(); setDatabaseOptions(data); } catch (error) { console.error("Error fetching databases:", error); } finally { setIsDatabaseLoading(false); } } };
+  const handleConnectionsOpen = async () => {
+    if (policyIds.length > 0 && connectionOptions.length === 0) {
+      setIsConnectionsLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/get_connection_type`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'accept': 'application/json'
+          },
+          body: JSON.stringify({ matched_policy_ids: policyIds }),
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        setConnectionOptions(data);
+      } catch (error) {
+        console.error("Error fetching connection types:", error);
+      } finally {
+        setIsConnectionsLoading(false);
+      }
+    }
+  };
 
-  const handleSchemaOpen = async () => {
+  const handleDatabaseOpen = async () => {
+    if (selectedConnections.length > 0 && databaseOptions.length === 0) {
+      setIsDatabaseLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/get_connection_name`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'accept': 'application/json'
+          },
+          body: JSON.stringify({
+            matched_policy_ids: policyIds,
+            connection_type: selectedConnections,
+          }),
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        setDatabaseOptions(data);
+      } catch (error) {
+        console.error("Error fetching databases:", error);
+      } finally {
+        setIsDatabaseLoading(false);
+      }
+    }
+  };
+
+const handleSchemaOpen = async () => {
     if (selectedDatabases.length > 0 && schemaOptions.length === 0) {
       setIsSchemaLoading(true);
       try {
@@ -227,12 +283,29 @@ function Lineage() {
       }
     }
   };
+
   const fetchTableData = async () => {
     if (policyIds.length === 0 || selectedTypes.length === 0 || selectedSchemas.length === 0) return;
-    setIsTableLoading(true); setTableData([]); setCurrentPage(1);
+    setLineageItems(new Set());
+    setIsTableLoading(true);
+    setTableData([]);
+    setCurrentPage(1);
     try {
-      const payload = { matched_policy_ids: policyIds, connection: selectedConnections, database: selectedDatabases, database_schema: selectedSchemas, type: selectedTypes.map(t => t.toLowerCase().slice(0, -1)) };
-      const response = await fetch(`${API_BASE_URL}/table`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'accept': 'application/json' }, body: JSON.stringify(payload), });
+      const payload = {
+        matched_policy_ids: policyIds,
+        connection: selectedConnections,
+        database: selectedDatabases,
+        database_schema: selectedSchemas,
+        type: selectedTypes.map(t => t.toLowerCase().slice(0, -1))
+      };
+      const response = await fetch(`${API_BASE_URL}/table`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json'
+        },
+        body: JSON.stringify(payload),
+      });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       const tables = (data.tables || []).map(item => ({
@@ -251,48 +324,148 @@ function Lineage() {
         type: 'Column'
       }));
       setTableData([...tables, ...columns]);
-    } catch (error) { console.error("Error fetching table data:", error); setTableData([]); } finally { setIsTableLoading(false); }
+    } catch (error) {
+      console.error("Error fetching table data:", error);
+      setTableData([]);
+    } finally {
+      setIsTableLoading(false);
+    }
   };
 
-  const createToggleHandler = (setter) => (optionsToToggle, isSelectAll = false) => { if (isSelectAll) { const allOptionsSet = new Set(optionsToToggle); setter(prev => prev.length === allOptionsSet.size ? [] : Array.from(allOptionsSet)); return; } const option = optionsToToggle[0]; setter(currentSelected => { const newSelected = new Set(currentSelected); if (newSelected.has(option)) { newSelected.delete(option); } else { newSelected.add(option); } return Array.from(newSelected); }); };
-  const toggleLineageItem = (item) => { setLineageItems(prev => { const newSet = new Set(prev); const itemIdentifier = JSON.stringify(item); let found = false; for (let val of newSet) { if (val === itemIdentifier) { newSet.delete(val); found = true; break; } } if (!found) newSet.add(itemIdentifier); return newSet; }); };
+  const createToggleHandler = (setter) => (optionsToToggle, isSelectAll = false) => {
+    if (isSelectAll) {
+      const allOptionsSet = new Set(optionsToToggle);
+      setter(prev => prev.length === allOptionsSet.size ? [] : Array.from(allOptionsSet));
+      return;
+    }
+    const option = optionsToToggle[0];
+    setter(currentSelected => {
+      const newSelected = new Set(currentSelected);
+      if (newSelected.has(option)) {
+        newSelected.delete(option);
+      } else {
+        newSelected.add(option);
+      }
+      return Array.from(newSelected);
+    });
+  };
+
+  const toggleLineageItem = (item) => {
+    setLineageItems(prev => {
+      const newSet = new Set(prev);
+      const itemIdentifier = JSON.stringify(item);
+      let found = false;
+      for (let val of newSet) {
+        if (val === itemIdentifier) {
+          newSet.delete(val);
+          found = true;
+          break;
+        }
+      }
+      if (!found) newSet.add(itemIdentifier);
+      return newSet;
+    });
+  };
+
   const isItemInLineage = (item) => lineageItems.has(JSON.stringify(item));
   const isShowDataDisabled = selectedConnections.length === 0 || selectedDatabases.length === 0 || selectedSchemas.length === 0 || selectedTypes.length === 0;
   const totalPages = Math.ceil(tableData.length / itemsPerPage);
   const handlePageChange = (page) => { if (page > 0 && page <= totalPages) setCurrentPage(page); };
-  const paginatedData = useMemo(() => { const startIndex = (currentPage - 1) * itemsPerPage; return tableData.slice(startIndex, startIndex + itemsPerPage); }, [tableData, currentPage]);
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return tableData.slice(startIndex, startIndex + itemsPerPage);
+  }, [tableData, currentPage]);
 
   const handleConnectionsToggle = createToggleHandler(setSelectedConnections);
   const handleDatabasesToggle = createToggleHandler(setSelectedDatabases);
   const handleSchemasToggle = createToggleHandler(setSelectedSchemas);
   const handleTypesToggle = createToggleHandler(setSelectedTypes);
 
-  return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <Breadcrumb />
-      <main className="mt-6">
-        <div className="p-6 pb-8 bg-white rounded-lg shadow mb-5">
-          <LineageFilters
-            connectionOptions={connectionOptions} selectedConnections={selectedConnections} handleConnectionsToggle={handleConnectionsToggle} handleConnectionsOpen={handleConnectionsOpen} isConnectionsLoading={isConnectionsLoading}
-            databaseOptions={databaseOptions} selectedDatabases={selectedDatabases} handleDatabasesToggle={handleDatabasesToggle} handleDatabaseOpen={handleDatabaseOpen} isDatabaseLoading={isDatabaseLoading}
-            schemaOptions={schemaOptions} selectedSchemas={selectedSchemas} handleSchemasToggle={handleSchemasToggle} handleSchemaOpen={handleSchemaOpen} isSchemaLoading={isSchemaLoading}
-            typeOptions={typeOptions} selectedTypes={selectedTypes} handleTypesToggle={handleTypesToggle}
-            fetchTableData={fetchTableData} isShowDataDisabled={isShowDataDisabled}
-          />
-        </div>
+  const selectedItemsForVisualization = useMemo(() => {
+    return Array.from(lineageItems).map(item => JSON.parse(item));
+  }, [lineageItems]);
 
-        {(isTableLoading || tableData.length > 0) && (
-          <div className="p-6 bg-white rounded-lg shadow">
-            <LineageTable
-              isTableLoading={isTableLoading} tableData={tableData} paginatedData={paginatedData}
-              currentPage={currentPage} itemsPerPage={itemsPerPage} toggleLineageItem={toggleLineageItem}
-              isItemInLineage={isItemInLineage} totalPages={totalPages} handlePageChange={handlePageChange}
+  const handleVisualize = () => {
+    if (lineageItems.size > 0) {
+      setCurrentView('visualization');
+      setCurrentTableIndex(0);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const handleBackToSelection = () => {
+    setCurrentView('selection');
+  };
+
+  const handleTableNavigation = (direction) => {
+    if (direction === 'next' && currentTableIndex < selectedItemsForVisualization.length - 1) {
+      setCurrentTableIndex(prev => prev + 1);
+    } else if (direction === 'prev' && currentTableIndex > 0) {
+      setCurrentTableIndex(prev => prev - 1);
+    }
+  };
+
+  if (currentView === 'selection') {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <Breadcrumb />
+
+        <main className="mt-6">
+          <div className="p-6 pb-8 bg-white rounded-lg shadow mb-5">
+            <LineageFilters
+              connectionOptions={connectionOptions}
+              selectedConnections={selectedConnections}
+              handleConnectionsToggle={handleConnectionsToggle}
+              handleConnectionsOpen={handleConnectionsOpen}
+              isConnectionsLoading={isConnectionsLoading}
+              databaseOptions={databaseOptions}
+              selectedDatabases={selectedDatabases}
+              handleDatabasesToggle={handleDatabasesToggle}
+              handleDatabaseOpen={handleDatabaseOpen}
+              isDatabaseLoading={isDatabaseLoading}
+              schemaOptions={schemaOptions}
+              selectedSchemas={selectedSchemas}
+              handleSchemasToggle={handleSchemasToggle}
+              handleSchemaOpen={handleSchemaOpen}
+              isSchemaLoading={isSchemaLoading}
+              typeOptions={typeOptions}
+              selectedTypes={selectedTypes}
+              handleTypesToggle={handleTypesToggle}
+              fetchTableData={fetchTableData}
+              isShowDataDisabled={isShowDataDisabled}
             />
           </div>
-        )}
-      </main>
-    </div>
+
+          {(isTableLoading || tableData.length > 0) && (
+            <div className="p-6 bg-white rounded-lg shadow">
+              <LineageTable
+                isTableLoading={isTableLoading}
+                tableData={tableData}
+                paginatedData={paginatedData}
+                currentPage={currentPage}
+                itemsPerPage={itemsPerPage}
+                toggleLineageItem={toggleLineageItem}
+                isItemInLineage={isItemInLineage}
+                totalPages={totalPages}
+                handlePageChange={handlePageChange}
+                onVisualize={handleVisualize}
+                hasLineageItems={lineageItems}
+              />
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+ return (
+    <DataLineageFlow
+      selectedItems={selectedItemsForVisualization}
+      currentTableIndex={currentTableIndex}
+      onNavigate={handleTableNavigation}
+      onBack={handleBackToSelection}
+    />
   );
 }
 
-export default Lineage;
+export default EnhancedLineage;
