@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useDatabotAPI } from "../../../../hooks/dataGovernance/Databot/useDatabotAPI";
 import { useDatabotContext } from "../../../../hooks/dataGovernance/DatabotContext";
 import toast from "react-hot-toast";
+import { TOOL_NAMES } from "../../../../hooks/dataGovernance/Databot/constants";
 
 function capitalizeFirstLetter(val) {
     return String(val).charAt(0).toUpperCase() + String(val).slice(1);
@@ -16,6 +17,7 @@ const ResultTab = ({activeTab}) => {
     setlineageResultGlobal, 
     setImpactResultGlobal, 
     setDependencyResultGlobal } = useDatabotContext();
+
   const { getRelationshipAPI,
     getLineageAPI, 
     getImpactAPI, 
@@ -23,22 +25,28 @@ const ResultTab = ({activeTab}) => {
     loading } = useDatabotAPI();
 
   const hasIrrelevant = databot.queries.some(item => item.a === "Irrelevant query!");
+  const suggestedTool = databot.suggested_tool;
+  const suggestedTool_lowerCase = suggestedTool
+  ? suggestedTool[0].toLowerCase() + suggestedTool.slice(1)
+  : "";
+
 
   const fetchResults = async () => {
     if(databot.curr_input && hasIrrelevant && Object.keys(databot?.result[activeTab]).length === 0) {
-      if(activeTab === "relationship") {
+      if(activeTab === "relationship" && suggestedTool_lowerCase === TOOL_NAMES.RELATIONSHIP) {
         const resp = await getRelationshipAPI(databot.curr_input, selectedConnectionGlobal, selectedSchemaGlobal); 
         setRelationshipResultGlobal(resp, databot.curr_input);
 
-      } else if (activeTab === "lineage") {
+      } else if (activeTab === "lineage" && suggestedTool_lowerCase === TOOL_NAMES.LINEAGE) {
         const resp = await getLineageAPI(databot.curr_input, selectedConnectionGlobal, selectedSchemaGlobal); 
         setlineageResultGlobal(resp, databot.curr_input);
 
-      } else if(activeTab === "impact") {
+      } else if(activeTab === "impact" && suggestedTool_lowerCase === TOOL_NAMES.IMPACT) {
         const resp = await getImpactAPI(databot.curr_input, selectedConnectionGlobal, selectedSchemaGlobal); 
         setImpactResultGlobal(resp, databot.curr_input);
 
-      } else if(activeTab === "dependency") {
+
+      } else if(activeTab === "dependency" && suggestedTool_lowerCase === TOOL_NAMES.DEPENDENCY) {
         const resp = await getDependencyAPI(databot.curr_input, selectedConnectionGlobal, selectedSchemaGlobal);
         setDependencyResultGlobal(resp, databot.curr_input)
       }
