@@ -276,7 +276,6 @@ const Project = () => {
   };
 
   const confirmDeleteProject = async () => {
-    console.log("Deleting project with ID:", deleteModal.projectId);
     if (!deleteModal.projectId) return;
     try {
       const response = await fetch(`${hostnameV1}/projects/${deleteModal.projectId}`, {

@@ -85,7 +85,7 @@ const MultiSelectDropdown = ({ options, selectedValues, onChange, placeholder, d
           {selectedValues.length > 0 ? (
             selectedValues.map(value => (
               <span
-              title="Close"
+                title="Close"
                 key={value}
                 className="bg-[#8d77ba] text-white text-xs font-semibold mr-2 px-2.5 py-1 rounded-full flex items-center flex-shrink-0"
               >
@@ -151,8 +151,6 @@ const MultiSelectDropdown = ({ options, selectedValues, onChange, placeholder, d
 
 const Edit = ({ onClose, editDetails, type }) => {
 
-  console.log("detailss @@@@@@@@@ ", editDetails)
-  console.log("type is ", type)
   const { decodedToken } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -180,44 +178,45 @@ const Edit = ({ onClose, editDetails, type }) => {
   const [isLoadingTags, setIsLoadingTags] = useState(false);
   const [isLoadingSubTags, setIsLoadingSubTags] = useState(false);
   const [isLoadingTerms, setIsLoadingTerms] = useState(false);
-  const [isLoadingTopUsers, setIsLoadingTopUsers] = useState(false); // New loading state for top users
+  const [isLoadingTopUsers, setIsLoadingTopUsers] = useState(false);
 
   const [saveError, setSaveError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
     ['data steward', 'data owner'].includes(role.toLowerCase())
   );
-  
+
   useEffect(() => {
     const fetchTopUsers = async () => {
-        if (type !== 'table' || !editDetails?.connection_set?.[0]) {
-            return;
-        }
-        setIsLoadingTopUsers(true);
-        const { connection_name, table_schema, table_name } = editDetails.connection_set[0];
-        const fullTableName = `${connection_name}.${table_schema}.${table_name}`;
-        const endpoint = `${window._env_?.VITE_FAST_API}/get_users_by_tablename/${fullTableName}`;
+      if (type !== 'table' || !editDetails?.connection_set?.[0]) {
+        return;
+      }
+      setIsLoadingTopUsers(true);
+      const { connection_name, table_schema, table_name } = editDetails.connection_set[0];
+      const fullTableName = `${connection_name}.${table_schema}.${table_name}`;
+      const endpoint = `${window._env_?.VITE_FAST_API}/get_users_by_tablename/${fullTableName}`;
 
-        try {
-            const response = await fetch(endpoint, {
-                method: 'GET',
-                headers: { 'accept': 'application/json' }
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            setTopUsers(data || []);
-        } catch (error) {
-            console.error('Error fetching top users:', error);
-            setTopUsers([]);
-        } finally {
-            setIsLoadingTopUsers(false);
+      try {
+        const response = await fetch(endpoint, {
+          method: 'GET',
+          headers: { 'accept': 'application/json' }
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const data = await response.json();
+        setTopUsers(data || []);
+      } catch (error) {
+        console.error('Error fetching top users:', error);
+        setTopUsers([]);
+      } finally {
+        setIsLoadingTopUsers(false);
+      }
     };
 
     fetchTopUsers();
-  }, [editDetails, type]); 
+  }, [editDetails, type]);
 
   const fetchDomains = useCallback(() =>
     fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/add/domain`, {
@@ -484,10 +483,12 @@ const Edit = ({ onClose, editDetails, type }) => {
 
   const handleSave = async () => {
     setSaveError('');
+    setIsSaving(true);
     const hasSelection = [selectedDomains, selectedCategories, selectedSubCategories, selectedTags, selectedSubTags, selectedTerms].some(arr => arr.length > 0);
 
     if (!hasSelection) {
       setSaveError('Error: At least one selection is required.');
+      setIsSaving(false);
       return;
     }
 
@@ -514,7 +515,9 @@ const Edit = ({ onClose, editDetails, type }) => {
       }));
       endpoint = `${window._env_?.VITE_FAST_API}/data_catalogue/add_catalogue_element_column`;
       payload = {
-        elements: element
+        elements: element,
+        roles: decodedToken?.resource_access?.darch?.roles || [],
+        owner: decodedToken?.preferred_username
       };
     } else {
       endpoint = `${window._env_?.VITE_FAST_API}/data_catalogue/add_catalogue_element_table`;
@@ -528,7 +531,9 @@ const Edit = ({ onClose, editDetails, type }) => {
             tag_id: selectedTags.map(Number),
             sub_tag_id: selectedSubTags.map(Number)
           }]
-        }]
+        }],
+        roles: decodedToken?.resource_access?.darch?.roles || [],
+        owner: decodedToken?.preferred_username
       };
     }
 
@@ -542,12 +547,14 @@ const Edit = ({ onClose, editDetails, type }) => {
         const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
-      console.log('Save successful:', await response.json());
+      const data = await response.json();
       onClose();
-      toast.success("Saved Successfully")
+      toast.success(data.message || "Saved Successfully")
     } catch (error) {
       console.error('Error saving catalogue element:', error);
       setSaveError(`Failed to save details`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -573,8 +580,7 @@ const Edit = ({ onClose, editDetails, type }) => {
 
         {/* Form Section */}
         <div className='flex flex-col items-start gap-5 p-6 pt-2 text-sm'>
-        
-          {/* Top Users Section - Renders only for 'table' type */}
+
           {type === 'table' && (
             <div className={formSectionClass}>
               <div className='font-medium'>Top Users</div>
@@ -719,7 +725,20 @@ const Edit = ({ onClose, editDetails, type }) => {
         {saveError && <div className="text-red-600 text-center mb-3">{saveError}</div>}
         <div className='flex justify-end gap-x-4'>
           <button onClick={onClose} className='w-36 h-10 border border-gray-400 text-gray-400 p-2 rounded-md hover:bg-gray-100'>Cancel</button>
-          <button onClick={handleSave} className='w-36 h-10 p-2 border border-[#8d77ba] rounded-md text-[#8d77ba] hover:bg-[#8d77ba] hover:text-white'>Save</button>
+          <button
+            onClick={handleSave}
+            className='w-36 h-10 p-2 border border-[#8d77ba] rounded-md text-[#8d77ba] hover:bg-[#8d77ba] hover:text-white flex items-center justify-center'
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save'
+            )}
+          </button>
         </div>
       </div>
 

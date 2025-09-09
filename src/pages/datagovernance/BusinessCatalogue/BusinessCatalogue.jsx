@@ -4,7 +4,6 @@ import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../components/Breadcrumb.jsx';
 import AddCatalogueModal from './AddCatalogueModal.jsx';
 import { useAuth } from '../../../context/AuthContext.jsx';
-import EditDetailModal from './EditDetailModal.jsx';
 import { toast } from 'react-hot-toast';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfirming }) => {
@@ -89,8 +88,6 @@ const PaginationSkeleton = () => (
         </div>
     </div>
 );
-
-
 
 const DetailsModal = ({ isOpen, onClose, title, data }) => {
 
@@ -314,7 +311,7 @@ const BusinessCatalogue = () => {
 
     const handleOpenEditModal = (item) => {
         setItemToEdit(item);
-        setIsEditModalOpen(true);
+        setIsAddModalOpen(true);
     };
 
     const handleCloseEditModal = () => {
@@ -395,7 +392,9 @@ const BusinessCatalogue = () => {
             const payload = {
                 id_set: [{
                     domain_id: [parseInt(itemToDelete.id, 10)]
-                }]
+                }],
+                roles: decodedToken?.resource_access?.darch?.roles || [],
+                owner: decodedToken?.preferred_username
             };
 
             const response = await fetch(`${window._env_?.VITE_FAST_API}/business_catalogue/dashboard/delete_element`, {
@@ -413,7 +412,7 @@ const BusinessCatalogue = () => {
                 throw new Error(result.detail || `HTTP error! Status: ${response.status}`);
             }
 
-            toast.success('Domain deleted successfully!');
+            toast.success(result.message || 'Domain deleted successfully!');
             handleCloseDeleteModal();
             await fetchCatalogueData();
 
@@ -433,9 +432,22 @@ const BusinessCatalogue = () => {
         tableHeaders.push('Action');
     }
 
-    const handleAddComplete = () => {
+    const handleEditComplete = (responseData) => {
         setIsAddModalOpen(false);
-        toast.success('Catalogue added successfully!');
+        setItemToEdit(null);
+
+        const message = responseData?.status_message?.[0] || 'Catalogue updated successfully!';
+        toast.success(message);
+
+        fetchCatalogueData();
+    };
+
+    const handleAddComplete = (responseData) => {
+        setIsAddModalOpen(false);
+
+        const message = responseData?.status_message?.[0] || 'Catalogue added successfully!';
+        toast.success(message);
+
         fetchCatalogueData();
         setSearchTerm('');
     };
@@ -468,7 +480,13 @@ const BusinessCatalogue = () => {
                             </button>
                         )}
                     </div>
-                    <button title="Refresh" onClick={() => fetchCatalogueData(true)} disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">
+                    <button title="Refresh"
+                        onClick={() => {
+                            setSearchTerm('');
+                            setSortConfig({ key: null, direction: 'asc' }); 
+                            fetchCatalogueData(true);
+                        }}
+                        disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">
                         <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
                     </button>
                     {isUserAuthorized && (
@@ -527,11 +545,57 @@ const BusinessCatalogue = () => {
                                     <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
                                         <td className="p-3 text-gray-700 font-medium">{indexOfFirstItem + index + 1}</td>
                                         <td className="p-3 text-gray-600">{item.domain}</td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Categories', item.category.map(c => c.name))} className="text-blue-600 underline">{item.category.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-categories', item.subcategory.map(sc => sc.name))} className="text-blue-600 underline">{item.subcategory.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Terms', item.term.map(t => t.name))} className="text-blue-600 underline">{item.term.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Tags', item.tag.map(tg => tg.name))} className="text-blue-600 underline">{item.tag.length}</button></td>
-                                        <td className="p-3"><button onClick={() => handleOpenDetailsModal('Sub-Tags', item.subtag.map(st => st.name))} className="text-blue-600 underline">{item.subtag.length}</button></td>
+
+                                        <td className="p-3">
+                                            {item.category.length > 0 ? (
+                                                <button onClick={() => handleOpenDetailsModal('Categories', item.category.map(c => c.name))} className="text-blue-600 underline">
+                                                    {item.category.length}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-600">0</span>
+                                            )}
+                                        </td>
+
+                                        <td className="p-3">
+                                            {item.subcategory.length > 0 ? (
+                                                <button onClick={() => handleOpenDetailsModal('Sub-categories', item.subcategory.map(sc => sc.name))} className="text-blue-600 underline">
+                                                    {item.subcategory.length}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-600">0</span>
+                                            )}
+                                        </td>
+
+                                        <td className="p-3">
+                                            {item.term.length > 0 ? (
+                                                <button onClick={() => handleOpenDetailsModal('Terms', item.term.map(t => t.name))} className="text-blue-600 underline">
+                                                    {item.term.length}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-600">0</span>
+                                            )}
+                                        </td>
+
+                                        <td className="p-3">
+                                            {item.tag.length > 0 ? (
+                                                <button onClick={() => handleOpenDetailsModal('Tags', item.tag.map(tg => tg.name))} className="text-blue-600 underline">
+                                                    {item.tag.length}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-600">0</span>
+                                            )}
+                                        </td>
+
+                                        <td className="p-3">
+                                            {item.subtag.length > 0 ? (
+                                                <button onClick={() => handleOpenDetailsModal('Sub-Tags', item.subtag.map(st => st.name))} className="text-blue-600 underline">
+                                                    {item.subtag.length}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-600">0</span>
+                                            )}
+                                        </td>
+
                                         <td className="p-3 text-gray-600 truncate max-w-xs" title={item.description}>{item.description}</td>
                                         <td className="p-3 text-gray-600">{item.createdBy}</td>
                                         <td className="p-3 text-gray-600">{item.createdDate}</td>
@@ -572,7 +636,6 @@ const BusinessCatalogue = () => {
                                                                     >
                                                                         <Trash2 className="h-4 w-4" />
                                                                     </button>
-
                                                                 </div>
                                                             </div>
                                                         </>
@@ -614,17 +677,15 @@ const BusinessCatalogue = () => {
 
             </div>
 
+            <DetailsModal isOpen={detailsModal.isOpen} onClose={handleCloseDetailsModal} title={detailsModal.title} data={detailsModal.data} />
             <AddCatalogueModal
                 isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
-                onAddComplete={handleAddComplete}
-            />
-            <DetailsModal isOpen={detailsModal.isOpen} onClose={handleCloseDetailsModal} title={detailsModal.title} data={detailsModal.data} />
-            <EditDetailModal
-                isOpen={isEditModalOpen}
-                onClose={handleCloseEditModal}
-                data={itemToEdit}
-                onEditComplete={fetchCatalogueData}
+                onClose={() => {
+                    setIsAddModalOpen(false);
+                    setItemToEdit(null);
+                }}
+                onComplete={itemToEdit ? handleEditComplete : handleAddComplete}
+                editData={itemToEdit}
             />
             <ConfirmationModal
                 isOpen={isDeleteModalOpen}

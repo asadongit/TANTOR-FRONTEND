@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
-import { X } from "lucide-react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 
 function DimensionValueSelector({ 
   index, 
@@ -78,7 +78,7 @@ function DimensionValueSelector({
         onClick={toggleDropdown}
       >
         <span className="truncate">{displayText}</span>
-        <span className="ml-2 flex-shrink-0">{isOpen ? '▲' : '▼'}</span>
+        <span className="ml-2 flex-shrink-0">{isOpen ? (<ChevronUp className="h-4 w-4 text-black"/>) : (<ChevronDown className="h-4 w-4  text-black"/>)}</span>
       </button>
       
       {/* Dropdown */}

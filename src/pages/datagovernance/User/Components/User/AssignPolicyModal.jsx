@@ -88,7 +88,6 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
     };
 
     const handleApply = () => {
-        console.log('selected policy ids areee =======>', selectedPolicyIds);
         const selectedPoliciesData = policies.filter((p) => selectedPolicyIds.includes(p.id));
 
         const combinedRoles = new Set();

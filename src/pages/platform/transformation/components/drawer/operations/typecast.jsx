@@ -88,7 +88,6 @@ export const TypecastOperationFields = ({
   });
 
   const selectedDataType = transformation.params.target_datatype || "";
-  console.log("selected datat===>",selectedDataType)
   const targetColumnOptions = [
     ...columnOptions,
     ...(isAddingNewColumn && newColumnName ? [{ value: newColumnName, label: newColumnName }] : []),

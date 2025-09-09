@@ -51,7 +51,6 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
       }
 
       const data = await response.json();
-      console.log("Group created successfully:", data);
 
       if (onGroupAdded) {
         onGroupAdded({ success: true, message: 'Group created successfully' });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Columns3, X, Table, ChevronLeft, ChevronRight, RefreshCcw, TableOfContents, Layers, LayoutGrid, Search } from "lucide-react";
+import { Columns3, X, Table, ChevronLeft, ChevronRight, RefreshCcw, TableOfContents, Layers, LayoutGrid, Search, Info } from "lucide-react";
 import Breadcrumb from "../../../../components/Breadcrumb.jsx";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -38,10 +38,9 @@ const Database = () => {
 
   const [dbTypeFilter, setDbTypeFilter] = useState(null);
 
-  // NEW: State for search and pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10); // Set items per page
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [cards, setCards] = useState([
     { title: "Oracle", icon: Oracle, count: 0 },
@@ -78,7 +77,7 @@ const Database = () => {
       const connId = item.connection_id;
       if (!connectionMap.has(connId)) {
         connectionMap.set(connId, {
-          id: item.connection_id, // Using full ID for a more reliable key
+          id: item.connection_id,
           connectionName: item.connection_name,
           Alias: item.connection_name,
           Database: item.connection_type,
@@ -145,15 +144,10 @@ const Database = () => {
       const dynamicKeys = Array.from(allDbTypes);
       setChartDataKeys(dynamicKeys);
       const formattedData = rawTrendData.map(dayData => {
-
-        const chartPoint = {
-          day: dayData.date,
-        };
-
+        const chartPoint = { day: dayData.date };
         dynamicKeys.forEach(key => {
           chartPoint[key] = 0;
         });
-
         for (const [dbType, count] of Object.entries(dayData.connections)) {
           if (dynamicKeys.includes(dbType)) {
             chartPoint[dbType] = count;
@@ -252,7 +246,7 @@ const Database = () => {
   };
 
   const handleRefresh = async () => {
-    resetFiltersAndPagination(); // Clear filters and reset pagination on refresh
+    resetFiltersAndPagination();
     const result = await loadData();
     if (result.success) {
       setToast({ show: true, message: 'Database data refreshed successfully', type: 'success' });
@@ -289,7 +283,6 @@ const Database = () => {
     });
   };
 
-  // MODIFICATION: Filter data by type and search term
   const filteredData = connectionData.filter(item => {
     const typeMatch = !dbTypeFilter || item.Database.toLowerCase() === dbTypeFilter.toLowerCase();
     const searchMatch = !searchTerm ||
@@ -298,7 +291,6 @@ const Database = () => {
     return typeMatch && searchMatch;
   });
 
-  // NEW: Pagination logic
   const totalItems = filteredData.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -310,6 +302,10 @@ const Database = () => {
       setCurrentPage(newPage);
     }
   };
+
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [showChartTooltip, setShowChartTooltip] = useState(false);
+
 
   return (
     <div className="p-4">
@@ -399,7 +395,7 @@ const Database = () => {
                         onClick={() => {
                           setDbTypeFilter(card.title);
                           setIsTableView(true);
-                          setCurrentPage(1); // Reset page when filtering
+                          setCurrentPage(1);
                         }}
                       >
                         See details
@@ -411,14 +407,40 @@ const Database = () => {
             </div>
           </div>
           <div className="grid lg:grid-cols-3 gap-6 mt-10">
-            <div className="lg:col-span-2">
-              <CatalogueChart data={chartData} dataKeys={chartDataKeys} isDatabase={true}/>
+            <div className="lg:col-span-2 relative">
+              <div
+                className="absolute top-0 right-0 z-10 p-2"
+                onMouseEnter={() => setShowChartTooltip(true)}
+                onMouseLeave={() => setShowChartTooltip(false)}
+              >
+                <div className="relative cursor-help">
+                  <Info className="h-5 w-5 mt-2 mr-2 text-gray-500" />
+                  {showChartTooltip && (
+                    <div className="absolute bottom-full right-0 mb-2 w-72 px-3 py-2 text-sm text-white bg-gray-800 rounded-lg shadow-lg">
+                      This graph shows the trend of the number of database connections you have access to, categorized by type, over the past seven days.
+                      <div className="absolute top-full right-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <CatalogueChart data={chartData} dataKeys={chartDataKeys} isDatabase={true} />
             </div>
+
             <div className="bg-white p-6 rounded-lg">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-medium">Recent access</h3>
-                <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center">
-                  <span className="text-gray-600 text-sm">i</span>
+                <div
+                  className="relative"
+                  onMouseEnter={() => setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+                >
+                  <Info className="h-5 w-5 text-gray-500" />
+                  {showTooltip && (
+                    <div className="absolute bottom-full right-0 mb-2 w-64 px-3 py-2 text-sm text-white bg-gray-800 rounded-lg shadow-lg z-10">
+                      A list of connections you have recently accessed.
+                      <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800"></div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="space-y-4">
@@ -454,10 +476,8 @@ const Database = () => {
                 </tr>
               </thead>
               <tbody>
-                {/* MODIFICATION: Map over paginated items */}
                 {currentItems.length > 0 ? currentItems.map((item, index) => (
                   <tr key={item.id} className="border-b">
-                    {/* MODIFICATION: Calculate correct row number */}
                     <td className="p-4">{indexOfFirstItem + index + 1}</td>
                     <td
                       onClick={() => handeNavigateToDatabaseViewScreen(item)}
@@ -487,14 +507,13 @@ const Database = () => {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan="8" className="p-4 text-center text-gray-500">No data available for the current selection.</td>
+                    <td colSpan="10" className="p-4 text-center text-gray-500">No data available for the current selection.</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* NEW: Pagination Controls */}
           {totalItems > 0 && (
             <div className="flex justify-between items-center mt-4 text-sm text-gray-700">
               <span>
@@ -503,7 +522,7 @@ const Database = () => {
               <div className="flex items-center gap-1">
                 <button
                   title="Back"
-                  className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
+                  className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
                 >
@@ -514,7 +533,7 @@ const Database = () => {
                 </span>
                 <button
                   title="Next"
-                  className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50"
+                  className="px-2 py-1 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
                 >

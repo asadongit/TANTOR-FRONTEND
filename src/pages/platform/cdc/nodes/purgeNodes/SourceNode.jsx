@@ -24,7 +24,6 @@ import { useWorkflow } from "../../context/WorkflowContext";
 import { useAuth } from "../../../../../context/AuthContext";
 
 export function SourceNode({ id, data, selected }) {
-  // console.log("sourceData--------",data)
   const [loading, setLoading] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");

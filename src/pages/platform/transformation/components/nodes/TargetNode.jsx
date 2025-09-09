@@ -393,7 +393,6 @@ export const TargetNode = ({ id, data }) => {
 
   const handleSetTargetMapping = useCallback((newMapping) => {
     if (JSON.stringify(newMapping) !== JSON.stringify(targetMapping)) {
-      // console.log("Target Node - Setting new target mapping:", newMapping);
       setTargetMapping(newMapping);
       if (typeof data.onDataChange === "function") {
         data.onDataChange({ targetMapping: newMapping });
@@ -847,13 +846,6 @@ export const TargetNode = ({ id, data }) => {
                           procedure.originalParameterMapping?.[param.name] ||
                           "";
         initialMapping[param.name] = paramValue;
-
-        // console.log(`Target Node - Parameter ${param.name}:`, {
-        //   fromStored: storedMapping[param.name],
-        //   fromProcedure: procedure.parameterMapping?.[param.name],
-        //   fromOriginal: procedure.originalParameterMapping?.[param.name],
-        //   finalValue: paramValue
-        // });
       });
     }
 
@@ -1083,9 +1075,6 @@ export const TargetNode = ({ id, data }) => {
       hasUpdated = true;
     }
 
-    // if (hasUpdated) {
-    //   console.log("Target node data restored:", data);
-    // }
   }, [
     data.connection,
     data.connectionId,
@@ -1105,7 +1094,6 @@ export const TargetNode = ({ id, data }) => {
 
 
     if (data.preProcedures && Array.isArray(data.preProcedures) && data.preProcedures.length > 0) {
-      // console.log("Target Node - Restoring pre-procedures parameter mappings:", data.preProcedures);
 
       const initialPreMappings = {};
       data.preProcedures.forEach((procData, index) => {
@@ -1116,12 +1104,6 @@ export const TargetNode = ({ id, data }) => {
 
         if (Object.keys(parameterMapping).length > 0) {
           initialPreMappings[mappingKey] = parameterMapping;
-
-          // console.log("Target Node - Restored pre-procedure mapping:", {
-          //   mappingKey,
-          //   parameterMapping,
-          //   procedureName: procData.procedure_name
-          // });
 
           const procedureJSON = {
             "EventType": "BeforeTargetWrite",
@@ -1157,7 +1139,6 @@ export const TargetNode = ({ id, data }) => {
     }
 
     if (data.postProcedures && Array.isArray(data.postProcedures) && data.postProcedures.length > 0) {
-      // console.log("Target Node - Restoring post-procedures parameter mappings:", data.postProcedures);
 
       const initialPostMappings = {};
       data.postProcedures.forEach((procData, index) => {
@@ -1168,12 +1149,6 @@ export const TargetNode = ({ id, data }) => {
 
         if (Object.keys(parameterMapping).length > 0) {
           initialPostMappings[mappingKey] = parameterMapping;
-
-          // console.log("Target Node - Restored post-procedure mapping:", {
-          //   mappingKey,
-          //   parameterMapping,
-          //   procedureName: procData.procedure_name
-          // });
 
           const procedureJSON = {
             "EventType": "AfterTargetWrite",
@@ -1333,7 +1308,7 @@ export const TargetNode = ({ id, data }) => {
       <Handle type="target" position={Position.Left} style={{ width: 10, height: 10 }} />
 
       <div className="flex items-center space-x-3 mb-3">
-        <Database className="w-5 h-5 text-[#96CF7B]" />
+        <Database className="w-5 h-5 text-[#8E77BB]" />
         <h3 className="text-black font-medium">Target</h3>
       </div>
 

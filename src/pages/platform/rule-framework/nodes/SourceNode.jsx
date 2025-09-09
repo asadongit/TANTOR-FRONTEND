@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import PropTypes, { node } from "prop-types";
 import { Handle, Position } from "reactflow";
-import { Upload, X, Search, Pencil } from "lucide-react";
+import { Upload, X, Search, Pencil, FileSpreadsheet } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../../../context/AuthContext";
 import { useTableContext } from "../../react-flow/context/TableContext";
@@ -240,7 +240,6 @@ export function SourceNode({ id, data }) {
     columns.forEach(col => {
       if(col.dimType.toLowerCase() === "metric" && (!col.aggregate || col.aggregate.length === 0)){
         selectedColumnsWithNoAggregates.push(col.name);
-        console.log(col);
       }
       
       if(col.dimType.toLowerCase() === "metric" && col.aggregate.length > 0)
@@ -300,8 +299,6 @@ export function SourceNode({ id, data }) {
       }
       return col;
     });
-    
-    console.log(mergedColumns);
     
     if(!validateNodeData(mergedColumns)) return; 
 
@@ -408,7 +405,7 @@ export function SourceNode({ id, data }) {
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
       <div className="flex items-center space-x-3 mb-3">
-        <Upload className="w-5 h-5 text-[#96CF7B]" />
+        <FileSpreadsheet className="w-5 h-5 text-[#8E77BB]" />
         <h3 className="text-black font-medium">Create Rule</h3>
       </div>
       
