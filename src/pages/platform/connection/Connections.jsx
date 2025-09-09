@@ -5,6 +5,7 @@ import {
   RotateCw,
   Eye,
   ChevronDown,
+  Search,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { encrypt } from "../../../utils/Crypto";
@@ -23,7 +24,8 @@ import { useModal } from "../cdc/context/ModalProvider";
 
 const Connections = () => {
   const { token, project, setSelectedProject, hostnameV1,hostnameV2 } = useAuth();
-  const { openModal, closeModal } = useModal()
+  const { openModal, closeModal } = useModal();
+  const [searchTerm, setSearchTerm] = useState('');
   const {
     data: cardData,
     isLoading: isCardLoading,
@@ -247,11 +249,23 @@ const Connections = () => {
   }, [fetchProjects])
 
   const filteredConnections = useMemo(() => {
-    if (project === "none" || !project) {
-      return connections;
+    let filtered = connections;
+
+    if (project !== "none" && project) {
+      filtered = filtered.filter((conn) => conn.project === project);
     }
-    return connections.filter((conn) => conn.project === project)
-  }, [connections, project])
+
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(conn =>
+        Object.values(conn).some(value =>
+          String(value).toLowerCase().includes(search)
+        )
+      );
+    }
+
+    return filtered;
+  }, [connections, project, searchTerm]);
 
   const deleteConnection = async (id) => {
     try {
@@ -287,13 +301,24 @@ const Connections = () => {
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Connections</h1>
         <div className="flex items-center gap-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search connections"
+              className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+          </div>
+
           <select
             value={project}
             onChange={(e) => {
               const projectName = e.target.value;
               setSelectedProject(projectName);
             }}
-            className=" w-44 text-slate-500 font-medium rounded-lg text-sm px-1 py-2.5 me-2 mb-2 text-center inline-flex items-center dark:bg-white shadow-md"
+            className="w-44 text-slate-500 font-medium rounded-lg text-sm px-1 py-2.5 me-2 mb-2 text-center inline-flex items-center dark:bg-white shadow-md"
           >
             <option value="default">Default{" "}</option>
             {projects?.map((project, idx) => (
@@ -303,9 +328,9 @@ const Connections = () => {
               </option>
             ))}
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 mr-2 mb-2">
+          {/* <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 mr-2 mb-2">
             <ChevronDown className="h-4 w-4 text-gray-500" />
-          </div>
+          </div> */}
 
           <button
             onClick={() => {
@@ -321,7 +346,14 @@ const Connections = () => {
 
       <CardGrid cards={cards} onCardClick={handleCardClick} isLoading={isCardLoading} />
 
-      <DataTable columns={columns} data={connections} actions={actions} isLoading={isConnectionsLoading} isError={connectionsError} refetch={refetchConnections} />
+      <DataTable
+        columns={columns}
+        data={filteredConnections}
+        actions={actions}
+        isLoading={isConnectionsLoading}
+        isError={connectionsError}
+        refetch={refetchConnections}
+      />
 
       {activeModal?.name === 'editCreate' && (
         <ConnectionWizard

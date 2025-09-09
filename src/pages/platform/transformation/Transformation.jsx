@@ -37,6 +37,7 @@ function Transformation() {
     last5transformations: [],
     movementgraph: []
   });
+  const [countModal, setCountModal] = useState({ isOpen: false, type: null, data: null, title: null });
   const {project, decodedToken, token} = useAuth()
 
   const hostname = window._env_?.VITE_FAST_API;
@@ -391,6 +392,13 @@ function Transformation() {
     }
   };
 
+  const calculateTotalCount = (countObj) => {
+    if (!countObj || Object.keys(countObj).length === 0) {
+      return "-";
+    }
+    return Object.values(countObj).reduce((sum, count) => sum + (count || 0), 0);
+  };
+
   const columns = [
     { key: "transformation_name", label: "Name", sortable: true },
     { key: "description", label: "Description", sortable: true },
@@ -400,8 +408,54 @@ function Transformation() {
       render: (row) => formatDate(row.updated_at) },
     { key: "created_by", label: "Owner", sortable: true },
     { key: "status", label: "Status", sortable: true },
-    { key: "source_count", label: "Source Records", sortable: true },
-    { key: "target_count", label: "Target Records", sortable: true },
+    {
+      key: "source_count",
+      label: "Source Records",
+      sortable: true,
+      render: (row) => (
+        <button
+          onClick={() => {
+            if (row.source_count && Object.keys(row.source_count).length > 0) {
+              setCountModal({
+                isOpen: true,
+                type: 'source',
+                data: row.source_count,
+                title: 'Source Records Details'
+              });
+            }
+          }}
+          className={`${row.source_count && Object.keys(row.source_count).length > 0
+            ? 'text-blue-600 hover:underline cursor-pointer'
+            : 'text-gray-900 cursor-default'}`}
+        >
+          {calculateTotalCount(row.source_count)}
+        </button>
+      )
+    },
+    {
+      key: "target_count",
+      label: "Target Records",
+      sortable: true,
+      render: (row) => (
+        <button
+          onClick={() => {
+            if (row.target_count && Object.keys(row.target_count).length > 0) {
+              setCountModal({
+                isOpen: true,
+                type: 'target',
+                data: row.target_count,
+                title: 'Target Records Details'
+              });
+            }
+          }}
+          className={`${row.target_count && Object.keys(row.target_count).length > 0
+            ? 'text-blue-600 hover:underline cursor-pointer'
+            : 'text-gray-900 cursor-default'}`}
+        >
+          {calculateTotalCount(row.target_count)}
+        </button>
+      )
+    },
     { key: "duration", label: "Duration", sortable: true },
     { label: "Action", sortable: false },
   ];
@@ -588,6 +642,42 @@ function Transformation() {
     );
   };
 
+  const CountDetailsModal = ({ isOpen, onClose, type, data, title }) => {
+    if (!isOpen) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl w-[500px] p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="max-h-[400px] overflow-y-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-4">Name</th>
+                  <th className="text-right py-2 px-4">Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(data || {}).map(([key, value]) => (
+                  <tr key={key} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-4 text-gray-700">{key}</td>
+                    <td className="py-2 px-4 text-right text-gray-900">{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const filteredTransformationData = useMemo(() => {
     if (!searchTerm.trim()) return transformationData;
     const q = searchTerm.toLowerCase();
@@ -734,6 +824,14 @@ function Transformation() {
         onClose={() => setDeleteModal({ isOpen: false, transformation: null })}
         transformationData={deleteModal.transformation}
         onConfirmDelete={confirmDeleteTransformation}
+      />
+
+      <CountDetailsModal
+        isOpen={countModal.isOpen}
+        onClose={() => setCountModal({ isOpen: false, type: null, data: null, title: null })}
+        type={countModal.type}
+        data={countModal.data}
+        title={countModal.title}
       />
     </div>
   );
