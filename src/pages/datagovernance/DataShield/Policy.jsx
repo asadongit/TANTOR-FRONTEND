@@ -177,7 +177,6 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
                 throw new Error('Failed to delete policy');
             }
             const data = await response.json();
-            console.log(data.message);
             setToast({
                 show: true,
                 message: 'Policy deleted successfully',
@@ -726,7 +725,6 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
                 throw new Error('Failed to update policy status');
             }
             const data = await response.json();
-            console.log(data.message);
             return true;
         } catch (error) {
             console.error('Error updating policy status:', error);
@@ -794,7 +792,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
                 if (!listResult.success) errorMessages.push('list data');
                 setToast({
                     show: true,
-                    message: `Failed to refresh role ${errorMessages.join(' and ')}`,
+                    message: `Failed to refresh policy ${errorMessages.join(' and ')}`,
                     type: 'error'
                 });
             }
@@ -802,7 +800,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => {}, onPoli
             console.error("Error refreshing data:", error);
             setToast({
                 show: true,
-                message: 'Failed to refresh role data',
+                message: 'Failed to refresh policy data',
                 type: 'error'
             });
         } finally {

@@ -311,7 +311,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
 
         <div className="grid grid-cols-3 gap-8">
           <div className="space-y-3">
-            <h3 className="text-[#8e78b7] font-medium">User</h3>
+            <h3 className="text-[#8e78b7] font-medium">Login Credentials</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-black mb-1.5">User name <span className="text-red-500">*</span></label>
@@ -357,7 +357,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-[#8e78b7] font-medium">User information</h3>
+            <h3 className="text-[#8e78b7] font-medium">Personal Details</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-black mb-1.5">First name <span className="text-red-500">*</span></label>
@@ -398,7 +398,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
             </div>
           </div>
           <div className="space-y-6">
-            <h3 className="text-[#8e78b7] font-medium">Roles</h3>
+            <h3 className="text-[#8e78b7] font-medium">Access Policies</h3>
             <div className="space-y-3">
               <div className="space-y-4 mt-9">
                 <button
@@ -410,7 +410,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                 </button>
                 <button
                   onClick={() => {
-                    console.log("Assign New Policy clicked");
                     setIsPolicyStepperOpen(true);
                   }}
                   className="w-full px-4 py-2 border border-gray-400 rounded-lg bg-gray-100 hover:bg-[#8e78b7] hover:text-white transition-colors text-black"

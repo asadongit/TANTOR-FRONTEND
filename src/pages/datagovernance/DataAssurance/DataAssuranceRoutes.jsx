@@ -9,6 +9,8 @@ import Metadata from './Quality/Metadata/Metadata';
 
 //l
 import Lineage from './Lineage/Lineage';
+import RulesLibrary from './Quality/Rules/RulesLibrary';
+import DataLineageFlow from './Lineage/DataLineageFlow';
 
 const PREFIX = '/datagovernance/data-assurance';
 
@@ -19,7 +21,10 @@ export const DataAssuranceRoutes = (
     <Route path={`${PREFIX}/rules/create`} element={<CreateRules />} />
     <Route path={`${PREFIX}/data`} element={<Data />} />
     <Route path={`${PREFIX}/metadata`} element={<Metadata />} />
+    <Route path={`${PREFIX}/rule-library`} element={<RulesLibrary />} />
+
 
     <Route path={`${PREFIX}/lineage`} element={<Lineage />} />
+        <Route path={`${PREFIX}/lineageflow`} element={<DataLineageFlow />} />
   </>
 );

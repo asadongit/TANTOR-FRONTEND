@@ -6,13 +6,89 @@ import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode, Search } from "luci
 import { useStateContext } from "../context/contextViewProvider";
 import { Columns } from "../BusinessView/Columns";
 import { Modal } from "@mui/material";
-import { ToastContainer, toast } from "react-toastify";
 import ComplexQueryEditor from "../components/ComplexQueryEditor";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
+import { useToast } from "../context/ToastContext";
+
+  const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+
+    const filteredOptions = options.filter((option) =>
+      option.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleSelectClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!disabled) {
+        setIsOpen((prev) => !prev);
+      }
+    };
+
+    const handleOptionClick = (option) => {
+      onChange({ target: { value: option } });
+      setIsOpen(false);
+      setSearchTerm("");
+    };
+
+    return (
+      <div className="relative w-full text-black">
+        <div
+          className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+            disabled ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+          onClick={handleSelectClick}
+        >
+          <span>{value || placeholder}</span>
+          {disabled ? (
+            <span>Loading...</span>
+          ) : isOpen ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
+        </div>
+        {isOpen && !disabled && (
+          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+            <div className="p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  className="w-full p-2 pl-8 border rounded-md"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            </div>
+            <div className="max-h-60 overflow-y-auto">
+              {filteredOptions.length === 0 ? (
+                <div className="p-2 text-gray-500">No connections available</div>
+              ) : (
+                filteredOptions.map((option) => (
+                  <div
+                    key={option}
+                    className="p-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => handleOptionClick(option)}
+                  >
+                    {option}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
 export function ConnectionNode({ id, onSave }) {
+   const { showToast } = useToast();
   const { token, hostnameV1 } = useAuth();
   const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -23,12 +99,14 @@ export function ConnectionNode({ id, onSave }) {
   const [tables, setTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState("");
   const [columns, setColumns] = useState([]);
+  const [allowedColumns, setAllowedColumns] = useState([]);
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [selectedColumn, setSelectedColumn] = useState("");
   const [columnData, setColumnData] = useState([]);
   const [previousColId, setPreviousColId] = useState("");
   const [colId, setColId] = useState("");
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
+  const [policyIds, setPolicyIds] = useState([]);
 
   const modalState = useLocation().state || {
     queryType: "Regular",
@@ -42,14 +120,14 @@ export function ConnectionNode({ id, onSave }) {
     }));
   }, []);
 
-  // Fetch connections
   const fetchConnections = async () => {
     try {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-      const policyIds = secureQueryResponse.matched_policy_ids || [];
+      const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
+      setPolicyIds(fetchedPolicyIds);
 
-      if (policyIds.length === 0) {
-        toast.error("No policies matched for fetching connections");
+      if (fetchedPolicyIds.length === 0) {
+        setConnections([]);
         return;
       }
 
@@ -59,11 +137,13 @@ export function ConnectionNode({ id, onSave }) {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ matched_policy_ids: policyIds }),
+        body: JSON.stringify({ matched_policy_ids: fetchedPolicyIds }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch connections");
+        const errorText = await response.text();
+        console.error("Fetch error:", errorText);
+        throw new Error(`Failed to fetch connections: ${errorText}`);
       }
 
       const connectionsData = await response.json();
@@ -71,7 +151,11 @@ export function ConnectionNode({ id, onSave }) {
       setConnections(names);
     } catch (error) {
       console.error("Error fetching connections:", error);
-      toast.error("Failed to load connections");
+
+      showToast('Failed to load connections', 'error');
+      setConnections([]);
+    }
+    finally {
     }
   };
 
@@ -79,22 +163,20 @@ export function ConnectionNode({ id, onSave }) {
     fetchConnections();
   }, [token, hostnameV1]);
 
-  // Fetch schemas
   const handleConnectionChange = async (event) => {
     const conn = event.target.value;
     setSelectedConnection(conn);
     setSelectedSchema("");
     setSelectedTable("");
     setColumns([]);
+    setAllowedColumns([]);
     setSelectedColumns([]);
     setColumnData([]);
+    setColId("");
 
     try {
-      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-      const policyIds = secureQueryResponse.matched_policy_ids || [];
-
       if (policyIds.length === 0) {
-        toast.error("No policies matched for fetching schemas");
+        setSchemas([]);
         return;
       }
 
@@ -111,7 +193,9 @@ export function ConnectionNode({ id, onSave }) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch schemas");
+        const errorText = await response.text();
+        console.error("Fetch error:", errorText);
+        throw new Error(`Failed to fetch schemas: ${errorText}`);
       }
 
       const data = await response.json();
@@ -121,25 +205,23 @@ export function ConnectionNode({ id, onSave }) {
     } catch (error) {
       console.error("Error fetching schema data:", error);
       setSchemas([]);
-      toast.error("Failed to load schemas");
+      showToast('Failed to load schemas', 'error');
     }
   };
 
-  // Fetch tables
   const handleSchemaChange = async (event) => {
     const schema = event.target.value;
     setSelectedSchema(schema);
     setSelectedTable("");
     setColumns([]);
+    setAllowedColumns([]);
     setSelectedColumns([]);
     setColumnData([]);
+    setColId("");
 
     try {
-      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-      const policyIds = secureQueryResponse.matched_policy_ids || [];
-
       if (policyIds.length === 0) {
-        toast.error("No policies matched for fetching tables");
+        setTables([]);
         return;
       }
 
@@ -152,69 +234,53 @@ export function ConnectionNode({ id, onSave }) {
         body: JSON.stringify({
           matched_policy_ids: policyIds,
           connection_name: selectedConnection,
-          schema_name: schema,
+          schema_name: [schema],
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch tables");
+        const errorText = await response.text();
+        console.error("Fetch error:", errorText);
+        throw new Error(`Failed to fetch tables: ${errorText}`);
       }
 
       const data = await response.json();
-      setTables(data.tables || []);
+
+      if (!data || !data.schemas || !Array.isArray(data.schemas)) {
+        console.error("Invalid response structure:", data);
+        throw new Error("Invalid response structure from /tables/list");
+      }
+
+      const schemaData = data.schemas.find(
+        (item) => item.connection_name === selectedConnection && item.schema === schema
+      );
+      if (schemaData && schemaData.tables) {
+        setTables(schemaData.tables);
+      } else {
+        setTables([]);
+      }
     } catch (error) {
       console.error("Error fetching table data:", error);
       setTables([]);
-      toast.error("Failed to load tables");
+      showToast('Failed to load tables', 'error');
     }
   };
 
-  // Fetch columns
   const handleTableChange = async (event) => {
     const table = event.target.value;
     const unique = `${selectedConnection}_${selectedSchema}_${table}`;
     setColId(unique);
     setSelectedTable(table);
     setColumns([]);
+    setAllowedColumns([]);
     setSelectedColumns([]);
     setColumnData([]);
 
     try {
-      // Fetch columns from /columns/list
-      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
-      const policyIds = secureQueryResponse.matched_policy_ids || [];
-
-      if (policyIds.length === 0) {
-        toast.error("No policies matched for fetching columns");
-        return;
-      }
-
-      const listResponse = await fetch(`${hostnameV1}/columns/list`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          matched_policy_ids: policyIds,
-          connection_name: selectedConnection,
-          schema_name: selectedSchema,
-          table_name: table,
-        }),
-      });
-
-      if (!listResponse.ok) {
-        throw new Error("Failed to fetch columns");
-      }
-
-      const listData = await listResponse.json();
-      const columnNames = listData.columns.map((col) => col.column_name);
-      setColumns(columnNames);
-
-      // Fetch column details (including datatype) from existing API
-      const detailsResponse = await fetch(
+      const detailedColumnsResponse = await fetch(
         `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${table}/columns`,
         {
+          method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -222,18 +288,75 @@ export function ConnectionNode({ id, onSave }) {
         }
       );
 
-      if (!detailsResponse.ok) {
-        throw new Error("Failed to fetch column details");
+      if (!detailedColumnsResponse.ok) {
+        const errorText = await detailedColumnsResponse.text();
+        console.error("Fetch error:", errorText);
+        throw new Error(`Failed to fetch detailed columns: ${errorText}`);
+      }
+      const detailedColumnsData = await detailedColumnsResponse.json();
+      setColumns(detailedColumnsData);
+
+      const secureQueryResponse = await secureQuery({ user_query: "" }, token);
+      const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
+
+      if (fetchedPolicyIds.length === 0) {
+        setAllowedColumns([]);
+        setColumnData([]);
+        return;
       }
 
-      const detailsData = await detailsResponse.json();
-      setColumnData(detailsData);
+      const allowedColumnsResponse = await fetch(`${hostnameV1}/columns/list`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matched_policy_ids: fetchedPolicyIds,
+          connection_name: selectedConnection,
+          schema_name: [selectedSchema],
+          table_name: [table],
+        }),
+      });
+
+      if (!allowedColumnsResponse.ok) {
+        const errorText = await allowedColumnsResponse.text();
+        console.error("Fetch error:", errorText);
+        throw new Error(`Failed to fetch allowed columns: ${errorText}`);
+      }
+
+      const allowedColumnsData = await allowedColumnsResponse.json();
+
+      if (!allowedColumnsData || !allowedColumnsData.columns) {
+        console.error("Invalid response structure:", allowedColumnsData);
+        setAllowedColumns([]);
+        setColumnData([]);
+        return;
+      }
+
+      const columnData = allowedColumnsData.columns.find(
+        (item) =>
+          item.connection_name.toLowerCase() === selectedConnection.toLowerCase() &&
+          item.schema.toLowerCase() === selectedSchema.toLowerCase() &&
+          item.table_name.toLowerCase() === table.toLowerCase()
+      );
+
+      const formattedColumns = columnData && columnData.columns
+        ? columnData.columns.map((item) => ({
+            column: item.column_name,
+            datatype: item.metadata?.DATA_TYPE || "unknown",
+          }))
+        : [];
+
+      setAllowedColumns(formattedColumns);
+      setColumnData(formattedColumns);
       updateNodeInternals(id);
     } catch (error) {
-      console.error("Error fetching column data:", error);
+      console.error("Error fetching columns:", error);
       setColumns([]);
+      setAllowedColumns([]);
       setColumnData([]);
-      toast.error("Failed to load columns");
+      showToast('Failed to load columns', 'error');
     }
   };
 
@@ -276,11 +399,12 @@ export function ConnectionNode({ id, onSave }) {
 
   const handleSelectAllChange = (isChecked) => {
     if (isChecked) {
-      setSelectedColumns(columns);
-      setSelectedColumnsOrder(columns);
+      const columnNames = allowedColumns.map((col) => col.column);
+      setSelectedColumns(columnNames);
+      setSelectedColumnsOrder(columnNames);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
-        columns.forEach((column) => {
+        columnNames.forEach((column) => {
           updatedSettings[colId] = {
             ...updatedSettings[colId],
             [column]: {
@@ -296,11 +420,11 @@ export function ConnectionNode({ id, onSave }) {
       setSelectedColumnsOrder([]);
       setColumnSettings((prevSettings) => {
         const updatedSettings = { ...prevSettings };
-        columns.forEach((column) => {
+        allowedColumns.forEach((column) => {
           updatedSettings[colId] = {
             ...updatedSettings[colId],
-            [column]: {
-              ...(updatedSettings[colId]?.[column] || {}),
+            [column.column]: {
+              ...(updatedSettings[colId]?.[column.column] || {}),
               output: "No",
             },
           };
@@ -310,7 +434,7 @@ export function ConnectionNode({ id, onSave }) {
     }
   };
 
-  const isAllSelected = selectedColumns.length === columns.length;
+  const isAllSelected = selectedColumns.length === allowedColumns.length && allowedColumns.length > 0;
 
   useEffect(() => {
     if (colId && columnSettings[colId]) {
@@ -324,7 +448,7 @@ export function ConnectionNode({ id, onSave }) {
 
   const handleSave = () => {
     if (!selectedConnection || !selectedSchema || !selectedTable) {
-      toast.error("Please select a connection, schema, and table");
+      showToast('Please select a connection, schema, and table', 'error');
       return;
     }
 
@@ -342,6 +466,13 @@ export function ConnectionNode({ id, onSave }) {
       setColumnSettings(updatedSettings);
     }
 
+    const filteredColumns = allowedColumns
+      .filter((col) => columns.some((c) => c.column.toLowerCase() === col.column.toLowerCase()))
+      .map((col) => ({
+        column: col.column,
+        datatype: columns.find((c) => c.column.toLowerCase() === col.column.toLowerCase())?.datatype || "unknown",
+      }));
+
     const newPayload = {
       id,
       type: "Connection",
@@ -351,7 +482,7 @@ export function ConnectionNode({ id, onSave }) {
       selectedTable,
       selectedColumns,
       def: `Select * from ${selectedConnection}.${selectedSchema}.${selectedTable}`,
-      Columns: columnData,
+      Columns: filteredColumns,
     };
 
     const currentPayloads = connectionPayload || [];
@@ -366,7 +497,7 @@ export function ConnectionNode({ id, onSave }) {
 
     handleConnectionPayload(updatedPayloads);
     onSave?.(newPayload);
-    toast.success("Data Saved Successfully");
+    showToast('Data Saved Successfully', 'success');
     setPreviousColId(colId);
   };
 
@@ -433,65 +564,6 @@ export function ConnectionNode({ id, onSave }) {
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const toggleEditorModal = (value) => {
     setIsEditorModalOpen(value);
-  };
-
-  const SearchableSelect = ({ options, value, onChange, placeholder }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-
-    const filteredOptions = options
-      .map((option) => (typeof option === "object" ? option.connection_name : option))
-      .filter((option) => option.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    const handleSelectClick = () => {
-      setIsOpen(!isOpen);
-    };
-
-    const handleOptionClick = (option) => {
-      onChange({ target: { value: option } });
-      setIsOpen(false);
-      setSearchTerm("");
-    };
-
-    return (
-      <div className="relative w-full text-black">
-        <div
-          className="w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
-          onClick={handleSelectClick}
-        >
-          <span>{value || placeholder}</span>
-          {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </div>
-        {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
-            <div className="p-2 border-b">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  className="w-full p-2 pl-8 border rounded-md"
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            </div>
-            <div className="max-h-60 overflow-y-auto">
-              {filteredOptions.map((option) => (
-                <div
-                  key={option}
-                  className="p-2 hover:bg-gray-100 cursor-pointer"
-                  onClick={() => handleOptionClick(option)}
-                >
-                  {option}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
   };
 
   const updateNodeInternals = useUpdateNodeInternals();
@@ -564,7 +636,7 @@ export function ConnectionNode({ id, onSave }) {
                   placeholder="Select a table"
                 />
               </div>
-              {columns?.length && (
+              {allowedColumns?.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-black mb-1">Select Columns</label>
                   <div className="p-3 space-y-2">
@@ -581,28 +653,32 @@ export function ConnectionNode({ id, onSave }) {
                       </label>
                     </div>
                     <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
-                      {columns.map((column) => (
-                        <div className="flex justify-between" key={column}>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id={column}
-                              value={column}
-                              checked={selectedColumns.includes(column)}
-                              onChange={() => handleColumnChange(column)}
-                              className="text-purple-600 focus:ring-purple-500"
+                      {allowedColumns
+                        .filter((col) =>
+                          columns.some((c) => c.column.toLowerCase() === col.column.toLowerCase())
+                        )
+                        .map((col) => (
+                          <div className="flex justify-between" key={col.column}>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={col.column}
+                                value={col.column}
+                                checked={selectedColumns.includes(col.column)}
+                                onChange={() => handleColumnChange(col.column)}
+                                className="text-purple-600 focus:ring-purple-500"
+                              />
+                              <label htmlFor={col.column} className="text-sm text-gray-700">
+                                {col.column}
+                              </label>
+                            </div>
+                            <Pencil
+                              name="edit"
+                              onClick={() => handleChange(col.column)}
+                              className="mr-3 h-4 w-4 text-[#8E77BB]"
                             />
-                            <label htmlFor={column} className="text-sm text-gray-700">
-                              {column}
-                            </label>
                           </div>
-                          <Pencil
-                            name="edit"
-                            onClick={() => handleChange(column)}
-                            className="mr-3 h-4 w-4 text-[#8E77BB]"
-                          />
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </div>
                 </div>
@@ -640,7 +716,7 @@ export function ConnectionNode({ id, onSave }) {
           <Columns
             id={colId}
             columnName={selectedColumn}
-            dataType={columnData.find((col) => col.column === selectedColumn)?.datatype}
+            dataType={columns.find((col) => col.column.toLowerCase() === selectedColumn.toLowerCase())?.datatype || "unknown"}
             toggleModal={toggleModal}
           />
         </div>

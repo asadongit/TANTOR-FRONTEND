@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowUpRight, Pencil, ChevronLeft, ChevronRight, TriangleAlert, X, Check } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
+import { useNavigate } from 'react-router-dom';
 
 const RuleRunDetails = ({ show, onClose, runDetails, ruleSummary }) => {
     const [currentPage, setCurrentPage] = useState(1);
@@ -32,11 +33,11 @@ const RuleRunDetails = ({ show, onClose, runDetails, ruleSummary }) => {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 mb-8 text-base">
-                    <div>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-2 gap-y-4 mb-8 text-base">
+                    {/* <div>
                         <span className="font-semibold text-gray-700">ID:</span>
                         <span className="ml-2 text-gray-800">{ruleSummary.id}</span>
-                    </div>
+                    </div> */}
                     <div>
                         <span className="font-semibold text-gray-700">Severity:</span>
                         <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${ruleSummary.severity === 'High' ? 'bg-red-100 text-red-800' :
@@ -163,11 +164,12 @@ const RuleRunDetails = ({ show, onClose, runDetails, ruleSummary }) => {
     );
 };
 
-const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickAction, isLoading }) => {
+const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, isLoading }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [showRunDetailsPopup, setShowRunDetailsPopup] = useState(false);
     const [currentRuleRunDetails, setCurrentRuleRunDetails] = useState([]);
     const [currentRuleSummary, setCurrentRuleSummary] = useState(null);
+     const navigate = useNavigate();
 
     const rowsPerPage = 5;
 
@@ -220,7 +222,6 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
 
         if (ruleRunResults.length != 0) {
             const detailsForThisRule = ruleRunResults.filter(result => result.rule_id === rule.id);
-            console.log("details for the rule selected is ===>",detailsForThisRule)
             setCurrentRuleRunDetails(detailsForThisRule);
         } else {
             setCurrentRuleRunDetails([]);
@@ -228,6 +229,16 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
         setCurrentRuleSummary(rule);
         setShowRunDetailsPopup(true);
     };
+
+    const handleEdit = (rule) =>{
+        const selectedIds = selectedRules.map(item => item.id);
+        const data = {
+        rules: [rule]
+        }
+        navigate('/datagovernance/data-assurance/rules/create', {
+          state: { edit: true, ruleData: data,fromRuleRunSummary: true,selectedRuleIds: selectedIds }
+        })
+    }
 
 
     return (
@@ -283,7 +294,7 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
                                 <thead>
                                     <tr className="bg-[#29304a] text-white">
                                         <th className="px-2 py-2 text-left font-semibold">#</th>
-                                        <th className="px-2 py-2 text-left font-semibold">ID</th>
+                                        {/* <th className="px-2 py-2 text-left font-semibold">ID</th> */}
                                         <th className="px-2 py-2 text-left font-semibold">Type</th>
                                         <th className="px-2 py-2 text-left font-semibold">Group</th>
                                         <th className="px-2 py-2 text-left font-semibold">Name</th>
@@ -296,7 +307,7 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
                                     {currentItems.map((rule, index) => (
                                         <tr key={rule.id} className="border-b border-gray-200 hover:bg-gray-50">
                                             <td className="px-2 py-2">{indexOfFirstItem + index + 1}</td>
-                                            <td className="px-2 py-2">{rule.id}</td>
+                                            {/* <td className="px-2 py-2">{rule.id}</td> */}
                                             <td className="px-2 py-2 max-w-[150px] truncate tooltip">{rule.type || '-'}</td>
                                             <td className="px-2 py-2 max-w-[150px] truncate">{rule.group_name || '-'}</td>
                                             <td className="px-2 py-2 max-w-[300px] truncate">{rule.name || '-'}</td>
@@ -319,7 +330,8 @@ const RuleRunSummary = ({ show, onClose, selectedRules, ruleRunResults, onQuickA
                                                         <ArrowUpRight className="h-5 w-5 text-[#8e78b7]" />
                                                     </button>
                                                     <button
-                                                        onClick={() => onQuickAction('Edit', rule)}
+                                                        // onClick={() => onQuickAction('Edit', rule)}
+                                                        onClick={() => handleEdit(rule)}
                                                         className="p-2 hover:bg-blue-100 rounded-full"
                                                         title="Edit"
                                                     >

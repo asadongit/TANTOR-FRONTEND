@@ -30,7 +30,6 @@ import { useWorkflow } from "../../context/WorkflowContext";
 import { useAuth } from "../../../../../context/AuthContext";
 import AutoComplete from "../../components/AutoComplete";
 export function SourceNode({ id, data, selected }) {
-  // console.log("sourceData--------",data)
   const [loading, setLoading] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
@@ -65,6 +64,10 @@ export function SourceNode({ id, data, selected }) {
     selectedMode
   );
   const { data: ddl } = useDDL(selectedConnection, selectedSchema);
+  
+  // Ensure connections is always an array
+  const safeConnections = Array.isArray(connections) ? connections : [];
+  
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id;
@@ -103,8 +106,51 @@ export function SourceNode({ id, data, selected }) {
     pipelineMappings,
   ]);
 
+  // Initialize node with pre-populated data in edit mode
+  useEffect(() => {
+    if (data?.source && Object.keys(data.source).length > 0) {
+      const sourceData = data.source;
+      // Pre-populate connection
+      if (sourceData.connection) {
+        setSelectedConnection(sourceData.connection);
+      }
+      
+      // Pre-populate schema
+      if (sourceData.schema) {
+        setSelectedSchema(sourceData.schema);
+      }
+      
+      // Pre-populate mode
+      if (sourceData.mode) {
+        setSelectedMode(sourceData.mode);
+      }
+      
+      // Pre-populate selected items
+      if (sourceData.bulk_list && Array.isArray(sourceData.bulk_list)) {
+        setSelectedItems(sourceData.bulk_list);
+      }
+      
+      // Pre-populate connection object if available
+      if (sourceData.source_conn_id) {
+        // Find the connection object from connections data
+        const connectionObj = safeConnections?.find(conn => 
+          conn.connection_id === sourceData.source_conn_id || 
+          conn.connection_name === sourceData.connection
+        );
+        if (connectionObj) {
+          setSelectedConnectionObj(connectionObj);
+        }
+      }
+      
+      // Pre-populate node data
+      if (sourceData) {
+        setNodeData(sourceData);
+      }
+    }
+  }, [data?.source, safeConnections]);
+
   const filteredTables = useMemo(() => {
-    if (!tables || !tables.length) return [];
+    if (!tables || !Array.isArray(tables) || !tables.length) return [];
 
     return tables
       .filter((table) => table && table.source_table)
@@ -155,11 +201,12 @@ export function SourceNode({ id, data, selected }) {
 
   const handleItemSelection = (checked, table) => {
     setSelectedItems((prev) => {
+      const safePrev = Array.isArray(prev) ? prev : [];
       if (checked) {
         // return [...prev, { metadata_id: tableId, schedule: {} }];
-        return [...prev, table];
+        return [...safePrev, table];
       } else {
-        return prev.filter((item) => item !== table);
+        return safePrev.filter((item) => item !== table);
       }
     });
   };
@@ -181,15 +228,15 @@ export function SourceNode({ id, data, selected }) {
   };
 
   const areAllSelected =
-    filteredTables.length > 0 &&
-    selectedItems.length ===
+    Array.isArray(filteredTables) && filteredTables.length > 0 &&
+    Array.isArray(selectedItems) && selectedItems.length ===
       filteredTables.filter((table) => table !== null).length;
 
   const isSubmitEnabled = Boolean(
     selectedConnection && selectedSchema && selectedMode
   );
 
-  const connectedTargets = (data?.target || [])
+  const connectedTargets = (Array.isArray(data?.target) ? data.target : [])
     .filter((target) => target && target.id !== undefined)
     .map((target) => target.id);
 
@@ -283,7 +330,7 @@ export function SourceNode({ id, data, selected }) {
             </select> */}
 
             <AutoComplete
-              options={connections || []}
+              options={safeConnections || []}
               placeholder="Select Connection"
               labelKey="connection_name"
               valueKey="id"

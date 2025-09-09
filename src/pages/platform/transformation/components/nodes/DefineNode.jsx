@@ -167,8 +167,9 @@ export const DefineNode = ({ id, data }) => {
   };
 
   useEffect(() => {
-    // Only validate if name is present and not already checked
-    if (data.name && data.name.trim() !== "" && !nameError && !nameExists) {
+    // Only validate if name is present, not already checked, and not in edit mode with existing data
+    const isEditMode = sessionStorage.getItem('editMode') === 'true';
+    if (data.name && data.name.trim() !== "" && !nameError && !nameExists && !isEditMode) {
       validateName(data.name);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -214,7 +215,7 @@ export const DefineNode = ({ id, data }) => {
       <Handle type="source" position={Position.Right} style={{ width: 10, height: 10 }} />
 
       <div className="flex items-center space-x-3 mb-3">
-        <FilePlus className="w-5 h-5 text-[#96CF7B]" />
+        <FilePlus className="w-5 h-5 text-[#8E77BB]" />
         <h3 className="text-black font-medium">Define</h3>
       </div>
 

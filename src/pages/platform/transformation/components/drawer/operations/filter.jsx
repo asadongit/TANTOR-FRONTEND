@@ -9,6 +9,8 @@ export const FILTER_OPERATORS = [
   { id: ">", name: "Greater Than (>)", value: ">" },
   { id: "<", name: "Less Than (<)", value: "<" },
   { id: "==", name: "Equal (==)", value: "==" },
+  { id: "!=", name: "Not Equal (!=)", value: "!=" },
+
 
 ];
 
@@ -258,14 +260,13 @@ export const FilterOperationFields = ({
 
   const selectedOperator = transformation_operator || transformation.transformation_operator || operatorOptions[0]?.id;
 
-  console.log(selectedOperator)
-
   let operatorOptionsFiltered = operatorOptions;
-if (selectedColType && isStringType(selectedColType)) {
-  operatorOptionsFiltered = operatorOptions.filter(op => op.id === "==");
-}
-
-console.log(operatorOptionsFiltered)
+  if (selectedColType && selectedColDatatype) {
+    const datatype = selectedColDatatype.toLowerCase();
+    if (datatype.includes("varchar") || datatype.includes("char") || datatype.includes("string") || datatype.includes("text")) {
+      operatorOptionsFiltered = operatorOptions.filter(op => op.id === "==" || op.id === "!=");
+    }
+  }
 
   const customStyles = {
     control: (provided) => ({

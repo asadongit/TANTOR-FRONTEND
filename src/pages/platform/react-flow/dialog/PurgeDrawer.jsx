@@ -328,10 +328,6 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
     setQueryMode(mode);
   };
 
-  const addCondition = () => {
-    console.log("Add condition");
-  };
-
   const headers = [
     "Partition Name",
     "Column Name",

@@ -161,7 +161,7 @@ const MetricsCard = ({
 
   return (
     <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
+      {/* <div className="flex items-center justify-between mb-2">
         <div className={`${iconBgColor} p-2 rounded-md`}>{icon}</div>
         {trend && (
           <span
@@ -172,7 +172,7 @@ const MetricsCard = ({
             {change > 0 ? "↗" : "↘"} {Math.abs(change)}%
           </span>
         )}
-      </div>
+      </div> */}
       <div className="mt-2">
         <div className="text-2xl font-bold text-gray-800">{value}</div>
         <div className="text-sm text-gray-500">{title}</div>
@@ -197,6 +197,13 @@ export default function CDCJobView() {
   const [targetConfigs, setTargetConfigs] = useState([]);
   const [selectedErrorTask, setSelectedErrorTask] = useState(null);
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [metrics, setMetrics] = useState({
+    total_events_seen: 0,
+    create_events_seen: 0,
+    update_events_seen: 0,
+    delete_events_seen: 0,
+  });
+  const [isAdhocLoading, setIsAdhocLoading] = useState(false);
 
   const openModal = (configType) => {
     setActiveConfigType(configType);
@@ -213,6 +220,30 @@ export default function CDCJobView() {
     setSelectedErrorTask(null);
   };
 
+  const [selectedConnectorName, setselectedConnectorName] = useState("")
+
+  useEffect(() => {
+    if (selectedConnectorName != "") {
+      const fetchMetrics = async () => {
+        try {
+          const metricsResponse = await axios.get(
+            `${hostnameV2}/cdc/debezium-metrics`,
+            {
+              params: { connector_name: selectedConnectorName },
+              headers: { accept: "application/json" },
+            }
+          );
+          setMetrics(metricsResponse.data);
+        } catch (error) {
+          console.error("Error fetching metrics:", error);
+          // toast.error("Failed to fetch metrics data");
+        }
+      };
+
+      fetchMetrics();
+    }
+  }, [selectedConnectorName]);
+
   useEffect(() => {
     if (!cdcId) return;
 
@@ -225,6 +256,9 @@ export default function CDCJobView() {
           configsResponse.data;
         setSourceConfigs(sourceConfigs || []);
         setTargetConfigs(targetConfigs || []);
+        const connectorName = sourceConfigs[0]?.config?.config?.["topic.prefix"];
+        setselectedConnectorName(connectorName)
+
         if (
           !data?.source_connector?.config?.name ||
           !data?.target_connector?.config?.name
@@ -332,7 +366,6 @@ export default function CDCJobView() {
 
           setLogs(logsData);
         } else {
-          console.log("No logs found for connector:", connectorName);
           setLogs([]);
         }
       } catch (error) {
@@ -352,16 +385,6 @@ export default function CDCJobView() {
     };
   }, [cdcId, data]);
 
-  useEffect(() => {
-    if (data) {
-      try {
-        console.log("CDC config data:", data);
-      } catch (error) {
-        console.error("Error fetching job data:", error);
-      }
-    }
-  }, [data]);
-
   const refreshData = () => {
     setIsRefreshing(true);
     setTimeout(() => {
@@ -370,7 +393,6 @@ export default function CDCJobView() {
   };
 
   const handleRestartTask = async (taskId) => {
-    console.log(`Restarting task ${taskId}`);
 
     if (jobData) {
       let connectorName = '';
@@ -420,6 +442,33 @@ export default function CDCJobView() {
     setActiveConfigType(type);
     setIsModalOpen(true);
   };
+
+  const handleAdhocSnapshot = async () => {
+    setIsAdhocLoading(true);
+
+    try {
+      const response = await fetch(`${hostnameV2}/cdc/${cdcId}/adhoc-snapshot`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(data.message || "Adhoc snapshot triggered successfully");
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || "Failed to trigger adhoc snapshot");
+      }
+    } catch (error) {
+      console.error("Error triggering adhoc snapshot:", error);
+      toast.error("Failed to trigger adhoc snapshot");
+    } finally {
+      setIsAdhocLoading(false);
+    }
+  }
 
   // const handleActivateConfig = (configId) => {
   //   // Update the config history to mark the selected config as active
@@ -521,12 +570,12 @@ export default function CDCJobView() {
 
   const jobStatusColor =
     jobData.source.connector.state === "RUNNING" &&
-    jobData.target.connector.state === "RUNNING"
+      jobData.target.connector.state === "RUNNING"
       ? "bg-green-500"
       : jobData.source.connector.state === "FAILED" ||
         jobData.target.connector.state === "FAILED"
-      ? "bg-red-500"
-      : "bg-yellow-500";
+        ? "bg-red-500"
+        : "bg-yellow-500";
 
   const ConnectorPanel = ({
     connectorData,
@@ -580,8 +629,8 @@ export default function CDCJobView() {
       connectorData.connector.state === "RUNNING"
         ? "bg-green-500"
         : connectorData.connector.state === "FAILED"
-        ? "bg-red-500"
-        : "bg-yellow-500";
+          ? "bg-red-500"
+          : "bg-yellow-500";
     const renderStatusBadge = (status) => {
       if (!status) return null;
       const statusColors = {
@@ -643,11 +692,10 @@ export default function CDCJobView() {
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
           <div className="flex items-center">
             <div
-              className={`${
-                type === "source"
-                  ? "bg-indigo-100 text-indigo-600"
-                  : "bg-purple-100 text-purple-600"
-              } p-2 rounded-md mr-3`}
+              className={`${type === "source"
+                ? "bg-indigo-100 text-indigo-600"
+                : "bg-purple-100 text-purple-600"
+                } p-2 rounded-md mr-3`}
             >
               {type === "source" ? (
                 <Database className="h-5 w-5" />
@@ -670,11 +718,10 @@ export default function CDCJobView() {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => handleConnectorAction(isPaused || !isRunning ? "resume" : "pause")}
-              className={`p-2 rounded-md text-sm flex items-center ${
-                isRunning
-                  ? "bg-red-50 text-red-700 hover:bg-red-100"
-                  : "bg-green-50 text-green-700 hover:bg-green-100"
-              }`}
+              className={`p-2 rounded-md text-sm flex items-center ${isRunning
+                ? "bg-red-50 text-red-700 hover:bg-red-100"
+                : "bg-green-50 text-green-700 hover:bg-green-100"
+                }`}
             >
               {isRunning ? (
                 <>
@@ -755,13 +802,12 @@ export default function CDCJobView() {
                           >
                             <div className="flex items-center justify-between px-3 py-2 bg-white border border-gray-200 hover:bg-gray-50">
                               <div className="flex items-center">
-                                <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full mr-2 ${
-                                  task.state === "RUNNING"
-                                    ? "bg-green-100 text-green-600"
-                                    : task.state === "FAILED"
-                                      ? "bg-red-100 text-red-600"
-                                      : "bg-yellow-100 text-yellow-600"
-                                }`}>
+                                <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full mr-2 ${task.state === "RUNNING"
+                                  ? "bg-green-100 text-green-600"
+                                  : task.state === "FAILED"
+                                    ? "bg-red-100 text-red-600"
+                                    : "bg-yellow-100 text-yellow-600"
+                                  }`}>
                                   {task.state === "RUNNING" && <CheckCircle className="w-3 h-3" />}
                                   {task.state === "FAILED" && <XCircle className="w-3 h-3" />}
                                   {task.state === "PAUSED" && <PauseCircle className="w-3 h-3" />}
@@ -1255,7 +1301,7 @@ export default function CDCJobView() {
                   <Database className="h-4 w-4 mr-1 text-purple-500" />
                   <span>
                     {jobData.target.config["database.hostname"] ||
-                     extractHostnameFromJdbcUrl(jobData.target.config["connection.url"])}
+                      extractHostnameFromJdbcUrl(jobData.target.config["connection.url"])}
                   </span>
                 </div>
               </div>
@@ -1265,125 +1311,102 @@ export default function CDCJobView() {
                   onClick={refreshData}
                   className="flex items-center px-2 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md transition-colors"
                 >
-                  <RefreshCw
-                    className={`h-4 w-4 mr-1.5 ${
-                      isRefreshing ? "animate-spin" : ""
-                    }`}
-                  />
+                  {/* <RefreshCw
+                    className={`h-4 w-4 mr-1.5 ${isRefreshing ? "animate-spin" : ""
+                      }`}
+                  /> */}
                 </button>
-                <span className="text-sm text-gray-500">Last updated:</span>
+                {/* <span className="text-sm text-gray-500">Last updated:</span>
                 <span className="text-sm font-medium">
                   {jobData.metrics.lastSyncTime}
-                </span>
+                </span> */}
               </div>
             </div>
           </div>
 
-          {/* <div className="px-6 py-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="px-6 py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
               <MetricsCard
-                title="Records Processed"
-                value={jobData.metrics.recordsProcessed.toLocaleString()}
-                icon={<Layers className="h-5 w-5 text-indigo-600" />}
-                trend={true}
-                change={2.3}
+                title="Total Records Processed"
+                value={metrics.total_events_seen}
+                icon={<Database className="h-5 w-5" />}
+                color="indigo"
               />
-
               <MetricsCard
-                title="Data Volume"
-                value={jobData.metrics.bytesProcessed}
-                icon={<Database className="h-5 w-5 text-purple-600" />}
-                color="purple"
-                trend={true}
-                change={1.8}
-              />
-
-              <MetricsCard
-                title="Replication Lag"
-                value={jobData.metrics.lagTime}
-                icon={<Clock className="h-5 w-5 text-yellow-600" />}
-                color="yellow"
-                trend={true}
-                change={-0.5}
-              />
-
-              <MetricsCard
-                title="Errors"
-                value={jobData.metrics.errors}
-                icon={<AlertCircle className="h-5 w-5 text-red-600" />}
-                color="red"
-                trend={false}
-              />
-
-              <MetricsCard
-                title="Throughput"
-                value={jobData.metrics.throughput}
-                icon={<BarChart2 className="h-5 w-5 text-green-600" />}
+                title="Inserted Records"
+                value={metrics.create_events_seen}
+                icon={<Plus className="h-5 w-5" />}
                 color="green"
-                trend={true}
-                change={1.5}
               />
-
               <MetricsCard
-                title="Sync Success"
-                value={`${jobData.metrics.syncSuccess}%`}
-                icon={<CheckCircle className="h-5 w-5 text-blue-600" />}
-                color="blue"
-                trend={true}
-                change={0.2}
+                title="Deleted Records"
+                value={metrics.delete_events_seen}
+                icon={<Trash2 className="h-5 w-5" />}
+                color="red"
+              />
+              <MetricsCard
+                title="Updated Records"
+                value={metrics.update_events_seen}
+                icon={<Edit className="h-5 w-5" />}
+                color="yellow"
               />
             </div>
-          </div> */}
+          </div>
         </div>
 
         <div className="bg-white rounded-t-lg shadow-sm border border-gray-200 mb-5">
           <div className="px-2">
-            <nav className="flex space-x-2">
-              <button
-                className={`py-4 px-3 text-sm font-medium border-b-2 ${
-                  activeTab === "overview"
+            <nav className="flex space-x-2 items-center justify-between">
+              <div className="flex space-x-2">
+                <button
+                  className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === "overview"
                     ? "border-indigo-600 text-indigo-600"
                     : "border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("overview")}
-              >
-                Overview
-              </button>
-              <button
-                className={`py-4 px-3 text-sm font-medium border-b-2 ${
-                  activeTab === "logs"
+                    }`}
+                  onClick={() => setActiveTab("overview")}
+                >
+                  Overview
+                </button>
+                <button
+                  className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === "logs"
                     ? "border-indigo-600 text-indigo-600"
                     : "border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("logs")}
-              >
-                Logs
-              </button>
+                    }`}
+                  onClick={() => setActiveTab("logs")}
+                >
+                  Logs
+                </button>
+                <button
+                  className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === "configurations"
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  onClick={() => setActiveTab("configurations")}
+                >
+                  Configuration History
+                </button>
+              </div>
 
-              {/* <button
-                className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === 'metrics' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300'}`}
-                onClick={() => setActiveTab('metrics')}
-              >
-                Performance Metrics
-              </button> */}
-              <button
-                className={`py-4 px-3 text-sm font-medium border-b-2 ${
-                  activeTab === "configurations"
-                    ? "border-indigo-600 text-indigo-600"
-                    : "border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("configurations")}
-              >
-                Configuration History
-              </button>
-              {/* <button
-                className={`py-4 px-3 text-sm font-medium border-b-2 ${activeTab === 'Connectors' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300'}`}
-                onClick={() => setActiveTab('Connectors')}
-              >
-Connectors              </button> */}
+              <div>
+                <button
+                  className="py-2 px-4 text-sm font-medium text-white bg-purple-600 hover:bg-purple-500 rounded disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  onClick={handleAdhocSnapshot}
+                  disabled={isAdhocLoading}
+                >
+                  {isAdhocLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Adhoc Snapshot"
+                  )}
+                </button>
+              </div>
             </nav>
           </div>
         </div>
+
 
         {/* <div className="bg-white rounded-b-lg shadow-sm border-x border-b border-gray-200 mb-6 p-6">
           {activeTab === 'overview' && (
@@ -1394,16 +1417,16 @@ Connectors              </button> */}
         {activeTab === "configurations" && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-800 flex items-center">
+              <h3 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
                 <History className="w-5 h-5 mr-2 text-indigo-600" />
                 Configuration Version History
               </h3>
-              <div className="flex space-x-2">
+              {/* <div className="flex space-x-2">
                 <button className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-md text-sm flex items-center">
                   <Plus className="w-4 h-4 mr-1.5" />
                   New Configuration
                 </button>
-              </div>
+              </div> */}
             </div>
 
             <div className="mb-6">
@@ -1429,17 +1452,16 @@ Connectors              </button> */}
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        {/* <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
                           Actions
-                        </th>
+                        </th> */}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {sourceConfigs.map((config, idx) => (
                         <tr key={config.config_id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{`V${
-                            idx + 1
-                          }`}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{`V${idx + 1
+                            }`}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                             {config.config_id}
                           </td>
@@ -1449,32 +1471,32 @@ Connectors              </button> */}
                           {/* <td className="px-4 py-3 text-sm text-gray-900">{config.config?.name || '—'}</td> */}
                           <td className="px-4 py-3 whitespace-nowrap">
                             {config.config_id ===
-                            data?.source_connector?.config_id ? (
+                              data?.source_connector?.config_id ? (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 Active
                               </span>
                             ) : (
                               <span
-                                onClick={() =>
-                                  handleActivateConfig({
-                                    source_connector_id: config.config_id,
-                                  })
-                                }
-                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 cursor-pointer transition-all duration-300 hover:bg-green-50 hover:text-green-700 active:scale-95 active:ring-2 active:ring-green-300 relative group"
+                                // onClick={() =>
+                                //   handleActivateConfig({
+                                //     source_connector_id: config.config_id,
+                                //   })
+                                // }
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
                               >
                                 <span className="group-hover:opacity-0 transition-opacity duration-200">
                                   Inactive
                                 </span>
-                                <span className="absolute left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                {/* <span className="absolute left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                   Activate?
-                                </span>
+                                </span> */}
                               </span>
                             )}
                           </td>
 
-                          <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                          {/* <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                             <div className="flex justify-end space-x-2">
-                              {/* <button
+                              <button
                                 className="text-gray-600 hover:text-gray-900"
                                 title="Clone Configuration"
                               >
@@ -1491,7 +1513,7 @@ Connectors              </button> */}
                                 title="Clone Configuration"
                               >
                                 <Copy className="w-4 h-4" />
-                              </button> */}
+                              </button>
                               <button
                                 className="text-red-600 hover:text-gray-900"
                                 title="Clone Configuration"
@@ -1499,7 +1521,7 @@ Connectors              </button> */}
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
-                          </td>
+                          </td> */}
                         </tr>
                       ))}
                     </tbody>
@@ -1531,17 +1553,16 @@ Connectors              </button> */}
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        {/* <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
                           Actions
-                        </th>
+                        </th> */}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {targetConfigs.map((config, idx) => (
                         <tr key={config.config_id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{`V${
-                            idx + 1
-                          }`}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{`V${idx + 1
+                            }`}</td>
 
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                             {config.config_id}
@@ -1552,31 +1573,34 @@ Connectors              </button> */}
                           {/* <td className="px-4 py-3 text-sm text-gray-900">{config.config?.name || '—'}</td> */}
                           <td className="px-4 py-3 whitespace-nowrap">
                             {config.config_id ===
-                            data?.target_connector?.config_id ? (
+                              data?.target_connector?.config_id ? (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 Active
                               </span>
                             ) : (
                               <span
-                                onClick={() =>
-                                  handleActivateConfig({
-                                    target_connector_id: config.config_id,
-                                  })
-                                }
-                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 cursor-pointer transition-all duration-300 hover:bg-green-50 hover:text-green-700 active:scale-95 active:ring-2 active:ring-green-300 relative group"
+                                // onClick={() =>
+                                //   handleActivateConfig({
+                                //     target_connector_id: config.config_id,
+                                //   })
+                                // }
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
+
+                                // className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 cursor-pointer transition-all duration-300 hover:bg-green-50 hover:text-green-700 active:scale-95 active:ring-2 active:ring-green-300 relative group"
+
                               >
                                 <span className="group-hover:opacity-0 transition-opacity duration-200">
                                   Inactive
                                 </span>
-                                <span className="absolute left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                {/* <span className="absolute left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                   Activate?
-                                </span>
+                                </span> */}
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                          {/* <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                             <div className="flex justify-end space-x-2">
-                              {/* <button
+                              <button
                                 className="text-gray-600 hover:text-gray-900"
                                 title="Clone Configuration"
                               >
@@ -1593,7 +1617,7 @@ Connectors              </button> */}
                                 title="Clone Configuration"
                               >
                                 <Copy className="w-4 h-4" />
-                              </button> */}
+                              </button>
                               <button
                                 className="text-red-600 hover:text-gray-900"
                                 title="Clone Configuration"
@@ -1601,7 +1625,7 @@ Connectors              </button> */}
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
-                          </td>
+                          </td> */}
                         </tr>
                       ))}
                     </tbody>

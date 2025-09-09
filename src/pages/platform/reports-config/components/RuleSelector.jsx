@@ -4,89 +4,94 @@ import DimensionSelector from "./DimensionSelector";
 import TimeTransformationComponent from "./TimeTransformationComponent";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
+import SearchableSelect from "../components/SearchableSelect";
 
-function MetricSelector({ index, rule, metricData = [], updateRule }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
+function MetricSelector({ metric, index, ruleIndex, rule, updateRule, currentSelectedRuleId, metricData, metricParameterName }) {
+  const metricOperators = [
+    {label: "add", value: "add"},
+    {label: "sub", value: "sub"},
+    {label: "mul", value: "mul"},
+    {label: "div", value: "div"},
+  ]
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
+  const handleMetricChange = (field, value) => {
+    const updatedMetrics = [...rule.metrics] || [];
+   
+    if(field === "name"){
+      updatedMetrics[index] = {
+        name: value, 
+        parameterName: "", 
+        parameterOperator: ""
       }
+    } else if(field === "parameterName"){
+      updatedMetrics[index] = {...updatedMetrics[index], parameterName: value}
+    } else if(field === "parameterOperator"){
+      updatedMetrics[index] = {...updatedMetrics[index], parameterOperator: value}
     }
 
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
-
-  const displayText =
-    rule.metrics && rule.metrics.length > 0 ? ` ${rule.metrics.length} Selected` : "Select metric";
-
-  const handleMetricChange = (metric) => {
-    const currentMetrics = rule.metrics || [];
-    const updatedMetrics = currentMetrics.includes(metric)
-      ? currentMetrics.filter((m) => m !== metric)
-      : [...currentMetrics, metric];
-
-    updateRule(index, "metrics", updatedMetrics);
+    updateRule(ruleIndex, "metrics", updatedMetrics);
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <label
-        htmlFor={`metric-selector-${index}`}
-        className="block text-sm font-medium text-gray-700 mb-1"
+    <div className="flex items-center gap-4 mb-2">
+      {/* Metric Select */}
+      <select
+        value={metric?.name || ""}
+        onChange={(e) => handleMetricChange("name", e.target.value)}
+        className="flex-1 h-[38px] border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
       >
-        Metric Selector
-      </label>
+        <option value="">Select Metric</option>
+        {metricData.length > 0 ? (
+          metricData.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))
+        ) : (
+          <option disabled>No metrics available</option>
+        )}
+      </select>
 
-      {/* Button */}
+      {/* Operator Select */}
+      <select
+        value={metric?.parameterOperator || ""}
+        onChange={(e) => handleMetricChange("parameterOperator", e.target.value)}
+        className="flex-1 h-[38px] border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+      >
+        <option value="">Select Operator</option>
+        {metricOperators.map((o) => (
+          <option key={o.label} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+
+      {/* Parameter Select */}
+      <select
+        value={metric?.parameterName || ""}
+        onChange={(e) => handleMetricChange("parameterName", e.target.value)}
+        className="flex-1 h-[38px] border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+      >
+        <option value="">Select Parameter</option>
+        {metricParameterName.map((p) => (
+          <option key={p} value={p}>
+            {p}
+          </option>
+        ))}
+      </select>
+
+      {/* Remove Button */}
       <button
         type="button"
-        id={`metric-selector-${index}`}
-        className="flex justify-between items-center w-full px-3 py-2 text-left border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-        onClick={() => setIsOpen(!isOpen)}
+        className="h-7 w-7 p-0 inline-flex items-center justify-center border border-gray-300 rounded-md shadow-sm text-sm font-medium text-black bg-gray-50 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        onClick={() => {
+          const updatedMetrics = [...rule.metrics] || [];
+          updatedMetrics.splice(index,1);
+          updateRule(ruleIndex, "metrics", updatedMetrics);
+        }}
       >
-        <span className="truncate">{displayText}</span>
-        <span>{isOpen ? "▲" : "▼"}</span>
+        ×
       </button>
-
-      {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-          <div className="max-h-60 overflow-y-auto p-2">
-            {metricData.length > 0 ? (
-              metricData.map((metric) => {
-                const isSelected =
-                  rule.metrics && rule.metrics.includes(metric);
-
-                return (
-                  <label
-                    key={metric}
-                    className="flex items-center space-x-2 p-2 hover:bg-gray-100 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      className="form-checkbox text-blue-600"
-                      value={metric}
-                      checked={isSelected}
-                      onChange={() => handleMetricChange(metric)}
-                    />
-                    <span>{metric}</span>
-                  </label>
-                );
-              })
-            ) : (
-              <div className="p-2 text-gray-500">No metrics available</div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -106,13 +111,15 @@ const RuleSelector = ({
   const [dimensionNamesData, setDimensionNamesData] = useState([]);
   const [isTimeTransformationOpen, setIsTimeTransformationOpen] = useState(false);
 
+  const [metricParameterName, setMetricParameterName] = useState([]);
+
   const { token, hostnameV1 } = useAuth();
 
   // Load rule data on mount
   useEffect(() => {
     const fetchRules = async () => {
       try {
-        const response = await fetch(`${hostnameV1}/lineItems/selectRule`, {
+        const response = await fetch(`${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectRule`, {
           headers: {
             "Content-Type": "application/json",
             authorization: `Bearer ${token}`,
@@ -149,7 +156,7 @@ const RuleSelector = ({
 
       try {
         const response = await fetch(
-          `${hostnameV1}/lineItems/selectMatric?rule_id=${currentSelectedRuleId}`,
+          `${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectMatric?rule_id=${currentSelectedRuleId}`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -181,7 +188,7 @@ const RuleSelector = ({
 
       try {
         const response = await fetch(
-          `${hostnameV1}/lineItems/selectDimension?rule_id=${currentSelectedRuleId}`,
+          `${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectDimension?rule_id=${currentSelectedRuleId}`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -206,15 +213,15 @@ const RuleSelector = ({
     fetchDimensionNames();
   }, [currentSelectedRuleId, hostnameV1, token]);
 
-  const handleRuleChange = (e) => {
-    const selectedRuleId = e.target.value;
+  const handleRuleChange = (option) => {
+    const selectedRuleId = option.id;
 
     if (!selectedRuleId) {
       updateRule(index, null, {
         ruleId: "",
         ruleName: "",
         metrics: [],
-        dimensions: [{ id: "", name: "", operator: "", value: [] }],
+        dimensions: [],
         filters: [],
       });
       setCurrentSelectedRuleId("");
@@ -224,23 +231,45 @@ const RuleSelector = ({
     }
 
     // Prevent clearing if same rule is reselected
-    if (selectedRuleId === rule.ruleId) return;
+    if (selectedRuleId.toString() === rule.ruleId.toString()) return;
 
     const selectedRule = ruleData.find(
-      (r) => r.rule_id.toString() === selectedRuleId
+      (r) => r.rule_id.toString() === selectedRuleId.toString()
     );
 
     if (selectedRule) {
       updateRule(index, null, {
-        ruleId: selectedRuleId,
+        ruleId: selectedRuleId.toString(),
         ruleName: selectedRule.rule_name,
         metrics: [],
-        dimensions: [{ id: "", name: "", operator: "", value: [] }],
+        dimensions: [],
         filters: [],
       });
       setTimeout(() => setCurrentSelectedRuleId(selectedRuleId), 0);
     }
+
   };
+
+  useEffect(() => {
+    (async () => {
+      try{
+        const response = await fetch(`${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectMetricParameterName`);
+        
+        if(!response.ok){
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.detail || "Error occured while trying to display rule.");
+        }
+
+        const data = await response.json();
+        setMetricParameterName(data);
+
+      }catch(error){
+        console.error(error);
+        setMetricParameterName([]);
+        toast.error(error.message);
+      }
+    })();
+  }, [])
 
   return (
     <>
@@ -271,7 +300,7 @@ const RuleSelector = ({
             >
               Rule Selector
             </label>
-            <select
+            {/* <select
               id={`rule-selector-${index}`}
               className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               name="ruleId"
@@ -284,17 +313,61 @@ const RuleSelector = ({
                   {ruleItem.rule_name}
                 </option>
               ))}
-            </select>
+            </select> */}
+            <SearchableSelect
+              options={
+                (() => ruleData?.map(item => (
+                  {label: item.rule_name,
+                    id: item.rule_id.toString()
+                  }
+                )))()
+              }
+              placeholder="Select Rule"
+              onChange={handleRuleChange}
+              value={(() => {
+                const selectedRule = ruleData?.find(item => item.rule_id.toString() === currentSelectedRuleId.toString()) || [];
+                if(selectedRule.length === 0)
+                  return null;
+                return {id: selectedRule.rule_id, label: selectedRule.rule_name}
+              })()}
+            />
+          </div>
+        </div>
+        
+        
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="block text-sm font-medium text-gray-700">Metric Selector</h3>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center mb-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              onClick={() => {
+                const updatedMetrics = rule.metrics || [];
+                updatedMetrics.push({
+                  name: "", parameterName: "", parameterOperator: ""
+                })
+                
+                updateRule(index, "metrics", updatedMetrics);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Add Metric
+            </button>
           </div>
 
-          <MetricSelector
-            index={index}
-            rule={rule}
-            metricData={metricData}
-            updateRule={updateRule}
-          />
+          {rule.metrics.map((metric, metricIndex) => (
+            <MetricSelector
+              key={`${index}-dim-${metricIndex}`}
+              metric={metric}
+              index={metricIndex}
+              ruleIndex={index}
+              rule={rule}
+              updateRule={updateRule}
+              currentSelectedRuleId={currentSelectedRuleId}
+              metricData={metricData}
+              metricParameterName={metricParameterName}
+            />
+          ))}
         </div>
-
         <div className="mb-4">
           <div className="flex justify-between items-center">
             <h3 className="block text-sm font-medium text-gray-700">Dimension Filter</h3>

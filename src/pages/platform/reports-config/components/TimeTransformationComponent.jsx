@@ -47,7 +47,7 @@ const TimeTransformationComponent = ({
 
       try {
         const response = await fetch(
-          `${hostnameV1}/lineItems/selectDimensionDateName?rule_id=${ruleId}`,
+          `${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectDimensionDateName?rule_id=${ruleId}`,
           { headers }
         );
         if (!response.ok) {
@@ -118,7 +118,6 @@ const TimeTransformationComponent = ({
       ...rule,
       filters: rule.filters ? [...rule.filters] : [],
     };
-    console.log(filterColName);
     const newFilter = {
       id: filterColId,
       name: filterColName,
@@ -319,7 +318,7 @@ const TimeTransformationComponent = ({
             )}
 
             <div className="flex justify-end gap-4 mt-6">
-              {(dateType === "historicDate" || dateType === "dateRange") && (
+              {((dateType === "historicDate" && lowerUnit.toLowerCase() !== "pfy")|| dateType === "dateRange") && (
                 <button
                   className="bg-[#8E77BB] text-white px-4 py-2 rounded-md hover:bg-[#7864a3] flex items-center gap-2"
                   onClick={handleValidate}

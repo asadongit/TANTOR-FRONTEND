@@ -10,10 +10,6 @@ const SaveViewModal = ({ toggleModal, handleSaveView }) => {
 
 
   useEffect(() => {
-    console.log("updating payload")
-    console.log("matarilized is ===>",isMaterializedView)
-    console.log("caching is ====>",isCaching)
-
     if (finalPayload) {
       handleFinalPayload({
         ...finalPayload,

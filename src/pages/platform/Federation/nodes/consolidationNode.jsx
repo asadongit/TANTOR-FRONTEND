@@ -5,7 +5,7 @@ import { Handle, Position } from "reactflow";
 import { SquareKanban, X, Network, ChevronDown, ChevronUp, Pencil, MoveHorizontal } from "lucide-react";
 import { useStateContext } from "../context/contextViewProvider";
 import { Modal, Box, IconButton, Autocomplete, TextField } from "@mui/material";
-import { ToastContainer, toast } from "react-toastify";
+import { useToast } from '../context/ToastContext';
 import { Circle } from 'lucide-react';
 import { Columns } from "../BusinessView/Columns";
  
@@ -13,6 +13,7 @@ export function ConsolidationNode({ id }) {
   const { handleConnectionPayload, handleViewPayload, consolidationPayload, connectionPayload, viewPayload, handleFinalPayload, finalPayload, columnSettings, setColumnSettings } = useStateContext("");
   const [type, setType] = useState("Join");
   const [unionType, setUnionType] = useState("");
+  const { showToast } = useToast();
  
   const [leftColumns, setLeftColumns] = useState([]);
   const [rightColumns, setRightColumns] = useState([]);
@@ -32,9 +33,6 @@ export function ConsolidationNode({ id }) {
   const [colId, setColId] = useState("Union")
  
   useEffect(() => {
-    console.log("COLUMN SETTTINGS ARE ======>", columnSettings)
-    console.log("finalpayload operation is ======>", finalPayload.operation)
-    console.log("finalpayload operation is ======>", finalPayload.operation);
  
     if (!finalPayload.joins || finalPayload.joins.length === 0 || !finalPayload.joins.some(join => join.id === id)) {
       setSelectedLeft("")
@@ -60,10 +58,6 @@ export function ConsolidationNode({ id }) {
   const [secondView, setSecondView] = useState("")
  
   useEffect(() => {
-    console.log("id of consolidation is ===>", id);
-    console.log("consolidation is ===>", consolidationPayload);
-    console.log("viewPayload is ==>", viewPayload);
-    console.log("connection payload is ===>", connectionPayload);
  
     if (type === "Join") {
       consolidationPayload.forEach((payload) => {
@@ -73,7 +67,6 @@ export function ConsolidationNode({ id }) {
             viewPayload.find((view) => view.id === payload.source);
  
           if (matchingView) {
-            console.log("left columns are ===>", matchingView.Columns);
             const columnNames = matchingView.Columns.map(col => col.column_name || col.column);
             setLeftColumns(columnNames);
             setLeftView(matchingView.view);
@@ -86,7 +79,6 @@ export function ConsolidationNode({ id }) {
             viewPayload.find((view) => view.id === payload.target);
  
           if (matchingView) {
-            console.log("right columns are ===>", matchingView.Columns);
             const columnNames = matchingView.Columns.map(col => col.column_name || col.column);
             setRightColumns(columnNames);
             setRightView(matchingView.view);
@@ -102,7 +94,6 @@ export function ConsolidationNode({ id }) {
             viewPayload.find((view) => view.id === payload.source);
  
           if (matchingView) {
-            console.log("LEFT SIDE ISSSSSS&&&&&&&&&&&&&&===>", matchingView.view);
             setFirstView(matchingView.view)
           }
         }
@@ -113,7 +104,6 @@ export function ConsolidationNode({ id }) {
             viewPayload.find((view) => view.id === payload.target);
  
           if (matchingView) {
-            console.log("RIGHT SIDE ISSSSSS&&&&&&&&&&&&&&===>", matchingView.view);
             setSecondView(matchingView.view)
           }
         }
@@ -137,7 +127,6 @@ export function ConsolidationNode({ id }) {
  
       if (connection2) newJoin.definition = connection2.def;
  
-      console.log("wanteddd join ====>", newJoin)
       setJoins([newJoin]);
     }
   }, [view1, view2, joinType, selectedLeft, selectedRight, operator, connectionPayload]);
@@ -149,7 +138,6 @@ export function ConsolidationNode({ id }) {
   const [isConsolidationModalOpen, setIsConsolidationModalOpen] = useState(false);
  
   const toggleConsolidationModal = () => {
-    console.log("checking the selected columns", finalPayload)
     if (columnSettings?.Union) {
       setSelectedUnionColumns(
         Object.entries(columnSettings.Union)
@@ -163,8 +151,6 @@ export function ConsolidationNode({ id }) {
   };
  
   useEffect(() => {
-    console.log("viewPayload in consolidation is =====>", viewPayload);
-    console.log("connection payload in consolidation is ====>", connectionPayload);
  
     if (type === "Union" || type === "Intersect") {
       const unionData = {};
@@ -174,12 +160,10 @@ export function ConsolidationNode({ id }) {
         }
       });
  
-      console.log("union data is ===>", unionData);
  
       const firstKey = Object.keys(unionData)[0];
       const firstKeyColumns = unionData[firstKey] || [];
  
-      console.log("first key columns for union is ===>", firstKeyColumns);
       setColumns(firstKeyColumns);
  
       const columnTypeMap = {};
@@ -196,8 +180,7 @@ export function ConsolidationNode({ id }) {
           name: col,
           type: columnTypeMap[col] || "unknown"
         }));
- 
-        console.log("Formatted Payload ===>", formattedPayload);
+
  
         handleFinalPayload({
           ...finalPayload,
@@ -213,19 +196,12 @@ export function ConsolidationNode({ id }) {
  
   const handleSave = () => {
  
-    // checkConsolidation();
- 
-    console.log("type is =====>", type);
- 
     if (type === "Join") {
  
       if (!(joinType && selectedLeft && selectedRight && operator)) {
-        toast.error("Select input first")
+        showToast('Select input first', 'error');
         return;
       }
- 
- 
-      console.log("joins are ===>", joins)
  
       let updatedJoins = [];
       if (joins.length > 0) {
@@ -260,10 +236,6 @@ export function ConsolidationNode({ id }) {
         });
       });
  
-      console.log("columns payload in the join is =====>", columnsPayload)
- 
-      console.log("@@@@@@@@@@@@@@join payload is ===>", finalPayload)
- 
  
       const allJoins = [...(finalPayload?.joins || []), ...updatedJoins];
  
@@ -282,14 +254,11 @@ export function ConsolidationNode({ id }) {
  
         tempArray1.delete(view2);
       });
- 
-      console.log("temp array 1===>", tempArray1);
-      console.log("temp array 2===>", tempArray2);
+
  
       const baseJoin = Array.from(tempArray1)[0];
       const connection = connectionPayload.find(conn => conn.view === baseJoin);
- 
-      console.log("base join is===>", baseJoin);
+
  
  
  
@@ -308,25 +277,23 @@ export function ConsolidationNode({ id }) {
  
       handleFinalPayload({ ...finalPayload, ...newPayload });
     }
-    toast.success("Data Saved Successfully");
+    showToast('Data Saved Successfully', 'success');
  
     setIsConsolidationModalOpen(!isConsolidationModalOpen);
   };
  
   const handleUnionNext = () => {
-    console.log("type is ====>",type)
-    console.log("inner type is =====>", unionType)
     if (type === "Union" || type === "Intersect" || type === "Union All" || type === "Intersect All") {
       if (type === "Union" && unionType == "" ) {
-        toast.error("Select type first");
+        showToast('Select type first', 'error');
         return;
       }
       if(type === "Intersect" && unionType == ""){
-        toast.error("Select type first")
+        showToast('Select type first', 'error');
         return;
       }
       if (selectedUnionColumns.length === 0) {
-        toast.error("Select atleast one column");
+        showToast('Select atleast one column', 'error');
         return;
       }
  
@@ -342,8 +309,6 @@ export function ConsolidationNode({ id }) {
           unionData[item.view] = item.selectedColumns;
         });
  
-        console.log("union data is ===>", unionData)
- 
  
         const defs = {};
         connectionPayload.forEach((item) => {
@@ -352,14 +317,9 @@ export function ConsolidationNode({ id }) {
           }
         });
 
-
-        console.log("UNION ISS  SSSSSS-========>",unionData)
-        console.log("first view is =========>",firstView)
-        console.log("second view is ========>",secondView)
-
         if (unionData[firstView]?.length !== unionData[secondView]?.length) {
           console.error(`Column count mismatch: ${firstView} (${unionData[firstView]?.length}) vs ${secondView} (${unionData[secondView]?.length})`);
-          toast.error(`Column count mismatch: ${firstView} (${unionData[firstView]?.length}) and ${secondView} (${unionData[secondView]?.length})`);
+          showToast(`Column count mismatch: ${firstView} (${unionData[firstView]?.length}) and ${secondView} (${unionData[secondView]?.length})`,"error");
           return;
       }
 
@@ -377,13 +337,11 @@ export function ConsolidationNode({ id }) {
         }
  
         handleFinalPayload({ ...finalPayload, ...newPayload });
-        console.log(" union newpayload after is =====>", newPayload)
       }
     }
   }
  
   const handleType = (type) => {
-    console.log("handle typeeee")
     handleFinalPayload(prevPayload => ({
       columnsDataType: prevPayload?.columnsDataType || {}
     }));
@@ -406,7 +364,6 @@ export function ConsolidationNode({ id }) {
   }
  
   const handleColumnChange = (column) => {
-    console.log("column settings in union are======>", columnSettings)
     setSelectedUnionColumns((prev) => {
       if (prev.includes(column)) {
         setColumnSettings((prevSettings) => {
@@ -494,7 +451,6 @@ export function ConsolidationNode({ id }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
  
   const toggleModal = (value) => {
-    console.log("toggle model ")
     setIsModalOpen(value);
   };
  
@@ -516,7 +472,7 @@ export function ConsolidationNode({ id }) {
     );
   
     if (duplicates.length > 0) {
-      toast.error("Duplicate column mappings found. Please select unique mappings.");
+      showToast("Duplicate column mappings found. Please select unique mappings.","error");
       return;
     }
   

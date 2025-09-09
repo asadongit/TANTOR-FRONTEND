@@ -1,5 +1,8 @@
 import MetadataList from './MetadataList';
 import MetadataEmpty from './MetadataEmpty';
+import MigrationList from './MetadataList';
+import MigrationEmpty from './MetadataEmpty';
+
 
 const Migration = () => {
 

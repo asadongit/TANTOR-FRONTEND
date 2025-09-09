@@ -18,7 +18,7 @@ const { data: MigrationData=[], isLoading: isMigrationLoading, error: MigrationE
   const ID = isPipelineNode ? pipelineId : id;
 
   const { updateData, pipelines } = useWorkflow();
-  // console.log("Define-Data----------", data);
+
   const handleInputChange = (e, field) => {
     const value = e.target.value;
     setNodeData((prevState) => ({
@@ -78,6 +78,22 @@ useEffect(() => {
   isPipelineNode, 
   nodeData.name, 
 ]);
+
+  // Initialize node with pre-populated data in edit mode
+  useEffect(() => {
+    if (data?.define && Object.keys(data.define).length > 0) {
+      const defineData = data.define;
+      
+      // Pre-populate node data
+      if (defineData) {
+        setNodeData({
+          name: defineData.name || "",
+          description: defineData.description || "",
+          autoName: defineData.autoName || "",
+        });
+      }
+    }
+  }, [data?.define]);
 
   
 

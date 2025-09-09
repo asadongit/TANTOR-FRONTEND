@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-
 import { useNavigate } from 'react-router-dom';
 import  {encrypt} from '../../../utils/Crypto'
 import { useSourceTypeCounts } from "../../../hooks/platform/cardCounts";
@@ -8,24 +7,22 @@ import { useMigrationData } from "../../../hooks/platform/migration";
 import {
   Pencil,
   Trash2,
-  Play} from "lucide-react";
+  Play,
+} from "lucide-react";
 import DataTable from "../../../components/DataTable";
 import CardGrid from "../../../components/CardGrid";
+
 const MigrationList = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useSourceTypeCounts('metadata');
   const { data: migrationData=[], isLoading: isMigrationLoading, error: migrationError, refetch: refetchMigrations } = useMigrationData();
 
   const navigate = useNavigate();
-
-
   
   const handleCreateMigration = () => {
     navigate('/Migrationcanvas'); 
   };
 
-
-
- 
+  
   const cards = [
     {
       icon: "material-symbols:database-upload-outline",
@@ -65,7 +62,7 @@ const MigrationList = () => {
   ];
 
 
-  const columns = [
+const columns = [
     { key: "metadata_name", label: "Name", sortable: true },
       { key: "project", label: "Project ", sortable: true },
       { key: "created_by", label: "Created By", sortable: true },
@@ -76,7 +73,7 @@ const MigrationList = () => {
       { key: "status", label: "Status", sortable: true },
       { label: "Action", sortable: false },
     ]
-    
+
     const handleCardClick = (card) => {
       const url = `/componentType=migration&dataScope=${card.title.replace(/\s+/g, '').toLowerCase()}&heading=${card.title}`;
       const encryptedUrl = encodeURIComponent(encrypt(url));
@@ -99,6 +96,7 @@ const MigrationList = () => {
         onClick: (row) => console.log("Run clicked for", row),
       },
     ];
+
   return (
     <div className="p-6">
       <div className="flex gap-2 mb-6 items-center justify-between">
@@ -127,7 +125,6 @@ const MigrationList = () => {
   isError={migrationError}
   refetch={refetchMigrations}
 />
-
     </div>
   );
 };

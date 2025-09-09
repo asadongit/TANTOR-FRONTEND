@@ -33,8 +33,10 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
     
   useEffect(() => {
     if (drawerState.isOpen && drawerState.selectedTable) {
-      console.log("Drawer state ==>> ", drawerState);
       const node = nodes.find(n => n.id === drawerState.nodeId);
+      
+      const currentSelectedColumnName = node?.data?.currentSelectedTable || "";
+
       const existingColumns = node?.data?.filterConditions?.columns || [];
       const selectedTable = drawerState.selectedTable;
       const columnList = Array.isArray(selectedTable) ? selectedTable : [selectedTable];
@@ -53,10 +55,15 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
           groupBy: existing?.groupBy ?? false,
         };
       });
-      setColumn(mappedColumns);
-      if (mappedColumns.length > 0) {
-        setColumnSettings(mappedColumns[0]);
-        setCurrentColumnIndex(0);
+
+      const metricColumns = mappedColumns.filter(col => col?.dimType?.toLowerCase() === "metric");
+      
+      const selectedColumnIndex = metricColumns.findIndex(col => col?.name?.toLowerCase() === currentSelectedColumnName?.toLowerCase());
+      setColumn(metricColumns);
+
+      if (metricColumns.length > 0) {
+        setColumnSettings(metricColumns[selectedColumnIndex]);
+        setCurrentColumnIndex(selectedColumnIndex);
       }
     }
   }, [drawerState.isOpen, drawerState.selectedTable]);
@@ -238,7 +245,7 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
             </div>
 
             {/* Alias and Output */}
-            <div className="flex space-x-4">
+            {/* <div className="flex space-x-4">
               <div className="flex-1 space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Alias</label>
                 <input
@@ -261,10 +268,10 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
                   <span className="ml-2 text-sm text-gray-700">Include in output</span>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Order and Sort */}
-            <div className="flex space-x-4">
+            {/* <div className="flex space-x-4">
               <div className="flex-1 space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Order</label>
                 <input
@@ -287,7 +294,7 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
                   <option value="DESC">Descending</option>
                 </select>
               </div>
-            </div>
+            </div> */}
 
             {/* Aggregate and Group By */}
             <div className="flex space-x-4">
@@ -350,13 +357,13 @@ const RuleFilter = ({ nodes, setNodes, filterData, setFilterData }) => {
               <div className={`flex-1 space-y-2 ${columnSettings.dimType === "dimension" ? "" : "invisible"}`}>
                 <label className="block text-sm font-medium text-gray-700">Group By</label>
                 <div className="flex items-center">
-                  <input
+                  {/* <input
                     type="checkbox"
                     checked={!!columnSettings.groupBy}
                     onChange={(e) => setColumnSettings({ ...columnSettings, groupBy: e.target.checked })}
                     className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Group by</span>
+                  <span className="ml-2 text-sm text-gray-700">Group by</span> */}
                 </div>
               </div>
             </div>

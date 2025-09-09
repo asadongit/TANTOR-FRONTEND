@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -6,6 +6,7 @@ import axios from 'axios';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from '../../../context/AuthContext';
 import DataTable from '../../../components/DataTable';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -36,6 +37,7 @@ function Transformation() {
     last5transformations: [],
     movementgraph: []
   });
+  const [countModal, setCountModal] = useState({ isOpen: false, type: null, data: null, title: null });
   const {project, decodedToken, token} = useAuth()
 
   const hostname = window._env_?.VITE_FAST_API;
@@ -173,13 +175,11 @@ function Transformation() {
 
 
   const MovementChart = () => {
-    const chartData = dashboardData.movementgraph || [];
+    const [currentPage, setCurrentPage] = useState(0);
 
-    const colors = {
-      total: '#ff5555',
-      success: '#55aa55',
-      failed: '#5555aa'
-    };
+    const chartData = (dashboardData.movementgraph || [])
+      .slice()
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     if (!chartData.length) {
       return (
@@ -195,93 +195,103 @@ function Transformation() {
       );
     }
 
+    const daysPerPage = 5;
+    const totalPages = Math.ceil(chartData.length / daysPerPage);
+
+    const paginatedData = chartData
+      .slice()
+      .reverse()
+      .slice(currentPage * daysPerPage, (currentPage + 1) * daysPerPage)
+      .reverse();
+
+    const formattedData = paginatedData.map(item => ({
+      ...item,
+      shortDate: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }));
+
+    const getDateRange = () => {
+      if (paginatedData.length === 0) return "No data";
+
+      const firstDate = new Date(paginatedData[0].date).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric'
+      });
+      const lastDate = new Date(paginatedData[paginatedData.length - 1].date).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric'
+      });
+
+      return `${firstDate} - ${lastDate}`;
+    };
+
     return (
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex items-center gap-2 mb-4">
-          <Icon icon="material-symbols:trending-up" className="w-5 h-5 text-[#8d77ba]" />
-          <h3 className="text-lg font-semibold text-gray-800">Movement</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Icon icon="material-symbols:trending-up" className="w-5 h-5 text-[#8d77ba]" />
+            <h3 className="text-lg font-semibold text-gray-800">Movement</h3>
+            <span className="text-sm text-gray-500 ml-2">({getDateRange()})</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1))}
+              disabled={currentPage >= totalPages - 1}
+              className={`p-1 rounded-md ${
+                currentPage >= totalPages - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+              title="View older data"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="text-xs text-gray-500 min-w-[40px] text-center">
+              {totalPages > 0 ? `${totalPages - currentPage}/${totalPages}` : '0/0'}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 0))}
+              disabled={currentPage <= 0}
+              className={`p-1 rounded-md ${
+                currentPage <= 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+              title="View newer data"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        <div className="relative h-64 mb-4">
-          <svg className="w-full h-full" viewBox="0 0 400 200">
-            {[30, 25, 20, 15, 10, 5].map((value, index) => (
-              <g key={value}>
-                <text x="15" y={30 + index * 25} className="text-xs fill-gray-500" textAnchor="middle">
-                  {value}
-                </text>
-                <line x1="25" y1={30 + index * 25} x2="370" y2={30 + index * 25} stroke="#f0f0f0" strokeWidth="1" />
-              </g>
-            ))}
-
-            {chartData.map((item, index) => (
-              <text key={index} x={50 + index * 50} y="190" className="text-xs fill-gray-500" textAnchor="middle">
-                {new Date(item.date).getDate()}
-              </text>
-            ))}
-
-            <polyline
-              points={chartData.map((item, index) => `${50 + index * 50},${180 - (item.total * 5)}`).join(' ')}
-              fill="none"
-              stroke={colors.total}
-              strokeWidth="2"
-            />
-            {chartData.map((item, index) => (
-              <circle
-                key={`total-${index}`}
-                cx={50 + index * 50}
-                cy={180 - (item.total * 5)}
-                r="3"
-                fill={colors.total}
+        <div className="h-[350px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={formattedData} margin={{ top: 5, right: 20, left: 10, bottom: 25 }}>
+              {/* <CartesianGrid strokeDasharray="3 3" /> */}
+              <XAxis
+                dataKey="shortDate"
+                tickMargin={10}
+                padding={{ left: 10, right: 10 }}
+              >
+                <Label value="Date" offset={-20} position="insideBottom" />
+              </XAxis>
+              <YAxis
+                tickMargin={10}
+                domain={['auto', 'auto']}
+              >
+                <Label value="No of transformations" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle' }} />
+              </YAxis>
+              <Tooltip contentStyle={{ backgroundColor: 'white', borderRadius: '4px' }} />
+              <Legend
+                verticalAlign="top"
+                height={36}
+                align="right"
+                iconType="circle"
+                wrapperStyle={{
+                  paddingTop: 5,
+                  paddingBottom: 20,
+                  lineHeight: '24px'
+                }}
+                formatter={(value) => <span style={{ color: 'rgba(0, 0, 0, 0.87)', fontSize: '13px', marginTop: '5px' }}>{value}</span>}
               />
-            ))}
-
-            <polyline
-              points={chartData.map((item, index) => `${50 + index * 50},${180 - (item.success * 5)}`).join(' ')}
-              fill="none"
-              stroke={colors.success}
-              strokeWidth="2"
-            />
-            {chartData.map((item, index) => (
-              <circle
-                key={`success-${index}`}
-                cx={50 + index * 50}
-                cy={180 - (item.success * 5)}
-                r="3"
-                fill={colors.success}
-              />
-            ))}
-
-            <polyline
-              points={chartData.map((item, index) => `${50 + index * 50},${180 - (item.failed * 5)}`).join(' ')}
-              fill="none"
-              stroke={colors.failed}
-              strokeWidth="2"
-            />
-            {chartData.map((item, index) => (
-              <circle
-                key={`failed-${index}`}
-                cx={50 + index * 50}
-                cy={180 - (item.failed * 5)}
-                r="3"
-                fill={colors.failed}
-              />
-            ))}
-          </svg>
-        </div>
-
-        <div className="flex flex-wrap gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.total }}></div>
-            <span className="text-gray-600">Total</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.success }}></div>
-            <span className="text-gray-600">Success</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.failed }}></div>
-            <span className="text-gray-600">Failed</span>
-          </div>
+              <Line type="monotone" dataKey="total" stroke="#ff5555" name="Total" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="success" stroke="#55aa55" name="Success" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="failed" stroke="#5555aa" name="Failed" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
     );
@@ -382,6 +392,13 @@ function Transformation() {
     }
   };
 
+  const calculateTotalCount = (countObj) => {
+    if (!countObj || Object.keys(countObj).length === 0) {
+      return "-";
+    }
+    return Object.values(countObj).reduce((sum, count) => sum + (count || 0), 0);
+  };
+
   const columns = [
     { key: "transformation_name", label: "Name", sortable: true },
     { key: "description", label: "Description", sortable: true },
@@ -391,8 +408,54 @@ function Transformation() {
       render: (row) => formatDate(row.updated_at) },
     { key: "created_by", label: "Owner", sortable: true },
     { key: "status", label: "Status", sortable: true },
-    { key: "source_count", label: "Source Records", sortable: true },
-    { key: "target_count", label: "Target Records", sortable: true },
+    {
+      key: "source_count",
+      label: "Source Records",
+      sortable: true,
+      render: (row) => (
+        <button
+          onClick={() => {
+            if (row.source_count && Object.keys(row.source_count).length > 0) {
+              setCountModal({
+                isOpen: true,
+                type: 'source',
+                data: row.source_count,
+                title: 'Source Records Details'
+              });
+            }
+          }}
+          className={`${row.source_count && Object.keys(row.source_count).length > 0
+            ? 'text-blue-600 hover:underline cursor-pointer'
+            : 'text-gray-900 cursor-default'}`}
+        >
+          {calculateTotalCount(row.source_count)}
+        </button>
+      )
+    },
+    {
+      key: "target_count",
+      label: "Target Records",
+      sortable: true,
+      render: (row) => (
+        <button
+          onClick={() => {
+            if (row.target_count && Object.keys(row.target_count).length > 0) {
+              setCountModal({
+                isOpen: true,
+                type: 'target',
+                data: row.target_count,
+                title: 'Target Records Details'
+              });
+            }
+          }}
+          className={`${row.target_count && Object.keys(row.target_count).length > 0
+            ? 'text-blue-600 hover:underline cursor-pointer'
+            : 'text-gray-900 cursor-default'}`}
+        >
+          {calculateTotalCount(row.target_count)}
+        </button>
+      )
+    },
     { key: "duration", label: "Duration", sortable: true },
     { label: "Action", sortable: false },
   ];
@@ -402,12 +465,12 @@ function Transformation() {
       label: "Run",
       icon: <Icon icon="material-symbols:play-arrow" className="w-5 h-5" />,
       onClick: (row) => handleTriggerETL(row.transformation_name),
-      show: (row) => row.status === 'Ready to run'
+      show: (row) => row.status !== 'creating' && row.status !== 'Running'
     },
     {
       label: "Edit",
       icon: <Icon icon="material-symbols:edit-outline" className="w-5 h-5" />,
-      onClick: (row) => console.log("Edit:", row)
+      onClick: (row) => handleEditTransformation(row)
     },
     {
       label: "Info",
@@ -421,6 +484,44 @@ function Transformation() {
     },
   ];
 
+  const handleEditTransformation = async (transformation) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(
+        `${hostname}/etl/transformation/${transformation.transformation_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.status === 200) {
+        const transformationData = response.data;
+
+        if (transformationData.extra_info?.edit_flow) {
+          sessionStorage.setItem('editFlowData', JSON.stringify(transformationData.extra_info.edit_flow));
+          sessionStorage.setItem('editTransformationId', transformation.transformation_id.toString());
+          sessionStorage.setItem('editMode', 'true');
+        }
+
+
+        navigate('/transformation/studio');
+      }
+    } catch (error) {
+      console.error("Error fetching transformation for edit:", error);
+      setToast({
+        show: true,
+        message: 'Failed to load transformation for editing',
+        type: 'error'
+      });
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => {
+        setToast({ show: false, message: '', type: '' });
+      }, 3000);
+    }
+  };
 
   const DeleteTransformation = ({ isOpen, onClose, transformationData, onConfirmDelete }) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -541,6 +642,52 @@ function Transformation() {
     );
   };
 
+  const CountDetailsModal = ({ isOpen, onClose, type, data, title }) => {
+    if (!isOpen) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl w-[500px] p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="max-h-[400px] overflow-y-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-4">Name</th>
+                  <th className="text-right py-2 px-4">Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(data || {}).map(([key, value]) => (
+                  <tr key={key} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-4 text-gray-700">{key}</td>
+                    <td className="py-2 px-4 text-right text-gray-900">{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const filteredTransformationData = useMemo(() => {
+    if (!searchTerm.trim()) return transformationData;
+    const q = searchTerm.toLowerCase();
+    return transformationData.filter(row =>
+      Object.values(row || {}).some(val =>
+        String(val ?? '').toLowerCase().includes(q)
+      )
+    );
+  }, [searchTerm, transformationData]);
+
   return (
     <div className="p-6">
       <style>{rotateAnimation}</style>
@@ -582,7 +729,7 @@ function Transformation() {
           </div>
 
           <button
-            className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
+            className="p-2 px-2 rounded-lg border border-gray-400 hover:bg-gray-50"
             onClick={handleRefresh}
             title="Refresh data"
             disabled={isLoading}
@@ -664,7 +811,7 @@ function Transformation() {
 
       <DataTable
         columns={columns}
-        data={transformationData}
+        data={filteredTransformationData}
         actions={actions}
         isLoading={isLoading}
         isError={false}
@@ -677,6 +824,14 @@ function Transformation() {
         onClose={() => setDeleteModal({ isOpen: false, transformation: null })}
         transformationData={deleteModal.transformation}
         onConfirmDelete={confirmDeleteTransformation}
+      />
+
+      <CountDetailsModal
+        isOpen={countModal.isOpen}
+        onClose={() => setCountModal({ isOpen: false, type: null, data: null, title: null })}
+        type={countModal.type}
+        data={countModal.data}
+        title={countModal.title}
       />
     </div>
   );

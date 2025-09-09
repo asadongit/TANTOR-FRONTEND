@@ -37,7 +37,7 @@ function LineItemConfigModal() {
         ruleId: "",
         ruleName: "",
         metrics: [],
-        dimensions: [{ id: "", name: "", operator: "", value: [] }],
+        dimensions: [],
         filters: [],
       },
     ];
@@ -47,7 +47,7 @@ function LineItemConfigModal() {
 
   const addDimension = (ruleIndex) => {
     const newRules = [...rules];
-    console.log("Rule with index ==>> ", newRules[ruleIndex].dimensions);
+
     newRules[ruleIndex].dimensions.push({
       id: "",
       name: "",
@@ -67,17 +67,17 @@ function LineItemConfigModal() {
 
   const removeDimension = (ruleIndex, dimIndex) => {
     const newRules = [...rules];
-    if (newRules[ruleIndex].dimensions.length > 1)
-      newRules[ruleIndex].dimensions.splice(dimIndex, 1);
+    // if (newRules[ruleIndex].dimensions.length > 1)
+    newRules[ruleIndex].dimensions.splice(dimIndex, 1);
     
-    else if (newRules[ruleIndex].dimensions.length == 1) {
-      newRules[ruleIndex].dimensions[0] = {
-        id: "",
-        name: "",
-        operator: "",
-        value: [],
-      };
-    }
+    // else if (newRules[ruleIndex].dimensions.length == 1) {
+    //   newRules[ruleIndex].dimensions[0] = {
+    //     id: "",
+    //     name: "",
+    //     operator: "",
+    //     value: [],
+    //   };
+    // }
     updateLineItemRules(lineItemId, newRules);
   };
 
@@ -134,7 +134,7 @@ function LineItemConfigModal() {
             </button>
             <button
               type="button"
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium bg-[#8E77BB] hover:opacity-80 text-white rounded-lg hover:bg-[rgb(142,119,187,0.8)"
+              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
               onClick={(e) => {
                 e.preventDefault();
                 setShowRuleOperatorSelector(true);

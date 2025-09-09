@@ -2,13 +2,14 @@
 import React, { useState, useCallback, useEffect } from "react";
 import PropTypes, { node } from "prop-types";
 import { Handle, Position } from "reactflow";
-import { Upload, X, Search, Pencil } from "lucide-react";
+import { Upload, X, Search, Pencil, FileSpreadsheet } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../../../context/AuthContext";
 import { useTableContext } from "../../react-flow/context/TableContext";
 import DimensionFilter from "../components/DimensionFilter";
 import TimeTransformationFilter from "../components/TimeTransformationFilter";
 import { useLocation } from "react-router-dom";
+import SearchableSelect from "../components/SearchableSelect";
 
 const SkeletonLoader = () => (
   <div className="animate-pulse space-y-4">
@@ -37,13 +38,11 @@ export function SourceNode({ id, data }) {
   const [generatedQuery, setGeneratedQuery] = useState("");
   const [ruleFilterSelections, setRuleFilterSelections] = useState([]);
 
-  // Added state for rule name and description
   const [ruleName, setRuleName] = useState(data.ruleName || "");
   const [ruleDescription, setRuleDescription] = useState(data.ruleDescription || "");
 
   const {pathname} = useLocation();
 
-  // NEW CODE
   useEffect(() => {
     if(data?.mode && (data.mode.toUpperCase() !== "EDIT")) return;
     const existingSelectedItems = data?.filterConditions?.columns.map((col) => col.name);
@@ -61,18 +60,6 @@ export function SourceNode({ id, data }) {
         fct_name: "",
     });
   }, []);
-  // NEW CODE
-
-
-
-
-
-
-
-
-
-
-
 
   const updateNodeData = (partialData) => {
   if (data.onDataChange) {
@@ -91,7 +78,7 @@ export function SourceNode({ id, data }) {
 
   const fetchOptions = useCallback(async () => {
     try {
-      const response = await fetch(`${hostnameV1}/selectSubject`, {
+      const response = await fetch(`${window._env_?.VITE_REPORTING_BACKEND_API}/selectSubject`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -117,7 +104,7 @@ export function SourceNode({ id, data }) {
           setTables(JSON.parse(cachedTables));
         } else {
           const response = await fetch(
-            `${hostnameV1}/selectMatric?fact_id=${fact_id}`,
+            `${window._env_?.VITE_REPORTING_BACKEND_API}/selectMatric?fact_id=${fact_id}`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -169,7 +156,7 @@ export function SourceNode({ id, data }) {
       };
 
       const response = await fetch(
-        `${hostnameV1}/selectDimension?fact_id=${selectedFact.fact_id}`, 
+        `${window._env_?.VITE_REPORTING_BACKEND_API}/selectDimension?fact_id=${selectedFact.fact_id}`, 
         { headers }
       );
       
@@ -251,8 +238,9 @@ export function SourceNode({ id, data }) {
     const selectedColumnsWithNoAggregates = [];
 
     columns.forEach(col => {
-      if(col.dimType.toLowerCase() === "metric" && (!col.aggregate || col.aggregate.length === 0))
+      if(col.dimType.toLowerCase() === "metric" && (!col.aggregate || col.aggregate.length === 0)){
         selectedColumnsWithNoAggregates.push(col.name);
+      }
       
       if(col.dimType.toLowerCase() === "metric" && col.aggregate.length > 0)
         selectedAggregateColumns.push(col.name);
@@ -264,7 +252,7 @@ export function SourceNode({ id, data }) {
     }
 
     if(selectedColumnsWithNoAggregates.length > 0){
-      toast.error(`No aggregates were selected for column(s): ${selectedAggregateColumns.join(", ")}`);
+      toast.error(`No aggregates were selected for column(s): ${selectedColumnsWithNoAggregates.join(", ")}`);
       return false;
     }
     return true;
@@ -287,7 +275,7 @@ export function SourceNode({ id, data }) {
     order: "",
     sort: "",
     aggregate: [],
-    groupBy: false,
+    groupBy: table?.dimType?.toLowerCase() === "dimension",
     isVisible: true,
   }));
   
@@ -311,8 +299,6 @@ export function SourceNode({ id, data }) {
       }
       return col;
     });
-    
-    console.log(mergedColumns);
     
     if(!validateNodeData(mergedColumns)) return; 
 
@@ -419,7 +405,7 @@ export function SourceNode({ id, data }) {
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
       <div className="flex items-center space-x-3 mb-3">
-        <Upload className="w-5 h-5 text-[#96CF7B]" />
+        <FileSpreadsheet className="w-5 h-5 text-[#8E77BB]" />
         <h3 className="text-black font-medium">Create Rule</h3>
       </div>
       
@@ -462,7 +448,7 @@ export function SourceNode({ id, data }) {
           <label className="text-xs font-semibold text-black mb-0.5 block">
             Table
           </label>
-          <select
+          {/* <select
             className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
             value={selectedFact.fct_name}
             onChange={(e) => {
@@ -487,7 +473,37 @@ export function SourceNode({ id, data }) {
                 {connection.fct_name}
               </option>
             ))}
-          </select>
+          </select> */}
+          <SearchableSelect 
+            options={(() => {
+              return connections?.map(connection => ({
+                label: connection.fct_name,
+                id: connection.fact_id
+              }))
+            })()}
+            placeholder="Select Table"
+            onChange={(option) => {
+              const connection = connections.find(
+                (c) => c.fct_name === option.label
+              );
+              if (!connection) return;
+              const newFact = {
+                fact_id: connection.fact_id,
+                fct_name: connection.fct_name,
+              };
+              setSelectedFact(newFact);
+              // Persist in node data immediately
+              updateNodeData({ selectedFact: newFact });
+              setSelectedItems([]);
+              setTables([]);
+            }}
+
+            value={(() => ({
+              label: selectedFact?.fct_name,
+              id: selectedFact?.fact_id,
+            }))()}
+            />
+
         </div>
       </div>
 
@@ -544,20 +560,31 @@ export function SourceNode({ id, data }) {
                         htmlFor={`table-${idx}`}
                         className="text-xs font-semibold text-black"
                       >
-                        {table.name}
+                        {`${table.name} (${table.dimType})`}
                       </label>
                     </div>
-                    <button
+                    {table.dimType.toLowerCase() === "metric" && (<button
                       onClick={() => {
+                        updateNodeData({ currentSelectedTable: table?.name });
+
+                        let newSelectedItems = selectedItems;
+
+                        if (!selectedItems.includes(table.name)) {
+                          newSelectedItems = [...selectedItems, table.name];
+                          setSelectedItems(newSelectedItems);
+                        }
+
                         const selectedTables = filteredTables.filter((t) =>
-                          selectedItems.includes(t.name)
+                          newSelectedItems.includes(t.name)
                         );
+
                         openDrawer(id, selectedTables);
+
                       }}
                       className="text-purple-600 hover:text-purple-700"
                     >
                       <Pencil className="w-4 h-4" />
-                    </button>
+                    </button>)}
                   </div>
                 ))}
               </>

@@ -101,8 +101,6 @@ const ConfigEditorModal = ({
   const updateConnectorConfig = async () => {
     try {
       const connector_name = configData?.name;
-      console.log("connector_name:", connector_name);
-      console.log("configType:", configType);
       const response = await axios.patch(
         `${hostnameV2}/cdc/${cdcId}/update-connector`,
         {
@@ -118,7 +116,6 @@ const ConfigEditorModal = ({
       );
 
       toast.success("Connector updated successfully!");
-      console.log("Response:", response.data);
       return response.data;
     } catch (error) {
       toast.error("Error updating connector!");
@@ -157,75 +154,52 @@ const ConfigEditorModal = ({
     setEditing(false);
   };
 
+  const NON_EDITABLE_FIELDS = {
+    source: new Set([
+      'connector.class',
+      'tasks.max',
+      'schema.history.internal.kafka.bootstrap.servers',
+      'topic.prefix',
+      'schema.history.internal.kafka.topic',
+      'decimal.handling.mode'
+    ]),
+    target: new Set([
+      'connector.class',
+      'bootstrap.servers',
+      'topics',
+      'schema.evolution'
+    ])
+  };
+
   const renderConfigFields = () => {
     if (!config) return null;
+    const nonEditableSet = configType === 'source'
+      ? NON_EDITABLE_FIELDS.source
+      : NON_EDITABLE_FIELDS.target;
 
     return (
       <div className="space-y-4">
-        {Object.entries(config).map(([key, value]) => (
-          <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border-b border-gray-100 pb-3">
-            <label className="text-sm font-medium text-gray-700">
-              {key}
-            </label>
-            <input
-              type={key.includes('password') ? 'password' : 'text'}
-              value={value}
-              onChange={(e) => updateConfigField(key, e.target.value)}
-              disabled={!editing}
-              className="col-span-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm
-                focus:outline-none focus:ring-blue-500 focus:border-blue-500
-                disabled:bg-gray-50 disabled:text-gray-500"
-            />
-          </div>
-        ))}
+        {Object.entries(config).map(([key, value]) => {
+          const locked = nonEditableSet.has(key);
+          return (
+            <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center border-b border-gray-100 pb-3">
+              <label className="text-sm font-medium text-gray-700">
+                {key}
+              </label>
+              <input
+                type={key.includes('password') ? 'password' : 'text'}
+                value={value}
+                onChange={(e) => updateConfigField(key, e.target.value)}
+                disabled={!editing || locked}
+                title={locked ? 'This field cannot be edited' : ''}
+                className={`col-span-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm
+                  focus:outline-none focus:ring-blue-500 focus:border-blue-500
+                  disabled:bg-gray-50 disabled:text-gray-500 ${locked ? 'opacity-70 cursor-not-allowed' : ''}`}
+              />
+            </div>
+          );
+        })}
       </div>
-    );
-  };
-
-  const renderStatusBadge = () => {
-    if (!status) return null;
-    const statusColors = {
-      "RUNNING": {
-        bg: "bg-green-100",
-        text: "text-green-800",
-        dot: "bg-green-500",
-      },
-      "STOPPED": {
-        bg: "bg-yellow-100",
-        text: "text-yellow-800",
-        dot: "bg-yellow-800",
-      },
-      "FAILED": {
-        bg: "bg-red-100",
-        text: "text-red-800",
-        dot: "bg-red-800",
-      },
-      "PAUSED": {
-        bg: "bg-blue-100",
-        text: "text-blue-800",
-        dot: "bg-blue-800",
-      },
-      "CREATED": {
-        bg: "bg-blue-100",
-        text: "text-blue-800",
-        dot: "bg-blue-800",
-      }
-    };
-
-    const state = status?.toUpperCase() || 'unknown';
-    const statusStyle = statusColors[state] || statusColors["FAILED"];
-    const isRunning = state === "RUNNING";
-
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center ${statusStyle.bg} ${statusStyle.text}`}>
-        <span className="relative ml-1 flex h-2 w-2">
-          {isRunning && (
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusStyle.dot} opacity-75`}></span>
-          )}
-          <span className={`relative inline-flex rounded-full h-2 w-2 ${statusStyle.dot}`}></span>
-        </span>
-        <span className="ml-2 capitalize">{state}</span>
-      </span>
     );
   };
 

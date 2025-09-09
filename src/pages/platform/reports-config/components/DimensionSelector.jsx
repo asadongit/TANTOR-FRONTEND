@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import toast from "react-hot-toast";
-import { X } from "lucide-react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 
 function DimensionValueSelector({ 
   index, 
@@ -11,13 +11,16 @@ function DimensionValueSelector({
   ruleIndex 
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef(null);
+  const [sortedDimensionValuesData, setSortedDimensionValuesData] = useState([]);
   
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+        setSearchTerm('');
       }
     }
     
@@ -28,9 +31,41 @@ function DimensionValueSelector({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
+
+  // Sort Values
+  useEffect(() => {
+    if (dimensionValuesData.length === 0) {
+      return;
+    }
+    
+    const selectedIds = new Set((dimension.value || []).map(v => v.id));
+    
+    const filteredItems = dimensionValuesData.filter(item => 
+      item.fct_col_value.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    const selectedItems = [];
+    const unselectedItems = [];
+    
+    filteredItems.forEach(item => {
+      if (selectedIds.has(item.id)) {
+        selectedItems.push(item);
+      } else {
+        unselectedItems.push(item);
+      }
+    });
+    
+    const sorted = [...selectedItems, ...unselectedItems];
+    setSortedDimensionValuesData(sorted);
+  }, [isOpen, dimensionValuesData, dimension.value, searchTerm]);
   
-  // Simple display text
-  const displayText = dimension.value && dimension.value.length > 0 
+  // Reset search when opening dropdown
+  const toggleDropdown = () => {
+    if (!isOpen) setSearchTerm('');
+    setIsOpen(!isOpen);
+  };
+
+  const displayText = dimension.value?.length > 0 
     ? `${dimension.value.length} selected` 
     : 'Select values';
   
@@ -40,26 +75,38 @@ function DimensionValueSelector({
         type="button"
         id={`dimension-value-selector-${index}`}
         className="h-[38px] flex justify-between items-center w-full px-3 text-left border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleDropdown}
       >
         <span className="truncate">{displayText}</span>
-        <span className="ml-2 flex-shrink-0">{isOpen ? '▲' : '▼'}</span>
+        <span className="ml-2 flex-shrink-0">{isOpen ? (<ChevronUp className="h-4 w-4 text-black"/>) : (<ChevronDown className="h-4 w-4  text-black"/>)}</span>
       </button>
       
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-          <div className="max-h-60 overflow-y-auto p-2 text-sm">
-            {dimensionValuesData.length > 0 ? (
-              dimensionValuesData.map((dimValue) => {
-                const isChecked = dimension.value && dimension.value.some(
-                  (v) => v.id === dimValue.id
-                );
+          {/* Search input */}
+          <div className="p-2 border-b border-gray-200">
+            <input
+              type="text"
+              placeholder="Search values..."
+              className="w-full px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              autoFocus
+            />
+          </div>
+          
+          <div className="max-h-60 overflow-y-auto text-sm">
+            {sortedDimensionValuesData.length > 0 ? (
+              sortedDimensionValuesData.map((dimValue) => {
+                const isChecked = dimension.value?.some(v => v.id === dimValue.id);
                 
                 return (
                   <label
                     key={dimValue.id}
-                    className="flex items-center space-x-2 p-2 hover:bg-gray-100 cursor-pointer"
+                    className={`flex items-center space-x-2 p-2 hover:bg-gray-100 cursor-pointer ${
+                      isChecked ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                    }`}
                   >
                     <input
                       type="checkbox"
@@ -71,14 +118,9 @@ function DimensionValueSelector({
                         const newDimValue = isChecked
                           ? [
                               ...(dimension.value || []),
-                              {
-                                id: dimValue.id,
-                                name: dimValue.fct_col_value,
-                              },
+                              { id: dimValue.id, name: dimValue.fct_col_value },
                             ]
-                          : (dimension.value || []).filter(
-                              (v) => v.id !== dimValue.id
-                            );
+                          : (dimension.value || []).filter(v => v.id !== dimValue.id);
 
                         updateDimension(ruleIndex, index, "value", newDimValue);
                       }}
@@ -88,7 +130,11 @@ function DimensionValueSelector({
                 );
               })
             ) : (
-              <div className="p-2 text-gray-500">No values available</div>
+              <div className="p-4 text-center text-gray-500">
+                {dimensionValuesData.length === 0 
+                  ? "No values available" 
+                  : "No matching values found"}
+              </div>
             )}
           </div>
         </div>
@@ -130,7 +176,7 @@ const DimensionSelector = ({
         };
         
         const response = await fetch(
-          `${hostnameV1}/lineItems/selectDimensionName?rule_id=${currentSelectedRuleId}&fct_column_name=${selectedDimensionName}`,
+          `${window._env_?.VITE_REPORTING_BACKEND_API}/lineItems/selectDimensionName?rule_id=${currentSelectedRuleId}&fct_column_name=${selectedDimensionName}`,
           { headers }
         );
 

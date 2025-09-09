@@ -13,96 +13,6 @@ const RulesReportsLinks = () => {
   const navigate = useNavigate();
 
   const actions = [
-    // {
-    //   label: "View",
-    //   icon: <MoveUpRight size={16} />,
-    //   onClick: async (row) => {
-    //     const reportId = row.report_id;
-    //     const reportType = row.report_type;
-    //     const reportFileName = row.report_name;
-
-    //     // If report type is LIST, navigate to report viewer page
-
-    //     if ((reportType || "").toUpperCase() === "LIST") {
-    //       const reportFolder = window._env_?.VITE_BIRT_REPORT_FOLDER;
-    //       const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-
-    //       navigate("/reports/viewer", {
-    //         state: {
-    //           reportPath,
-    //           reportName: reportFileName,
-    //           reportId
-    //         }
-    //       });
-    //       return;
-    //     }
-
-
-    //     /*
-    //             if ((reportType || "").toUpperCase() === "LIST") {
-    //                 const reportFolder = window._env_?.VITE_BIRT_REPORT_FOLDER; 
-    //                 const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
-                  
-    //                 window.open(
-    //                   `${window._env_?.VITE_BIRT_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-    //                     window._env_?.VITE_BIRT_EXPORT_FORMAT
-    //                   }`,
-    //                   "_blank"
-    //                 );
-    //                 return;
-    //               }
-    //     */
-
-    //     const headers = {
-    //       "Content-Type": "application/json",
-    //       authorization: `Bearer ${token}`,
-    //     };
-
-    //     // Only check if report exists if reportType is not 'LIST'
-    //     if ((reportType || "").toUpperCase() !== "LIST") {
-    //       try {
-    //         const response = await fetch(
-    //           `${hostnameV1}/lineItems/reports/${reportId}/exists`,
-    //           { headers }
-    //         );
-
-    //         if (!response.ok)
-    //           return toast.error(
-    //             "ERROR OCCURED TRYING TO CHECK IF REPORT EXISTS."
-    //           );
-
-    //         const data = await response.json();
-
-    //         if (data.isExists === false)
-    //           return toast.error(`Report isn't generated yet.`);
-    //       } catch (error) {
-    //         console.log(error);
-    //         toast.error("Error occured.");
-    //       }
-    //     }
-
-    //     try {
-    //       const redirectResponse = await fetch(
-    //         `${window._env_?.VITE_BIRT_BACKEND_API
-    //         }/templates/generate?report-id=${reportId}&report-name=${reportFileName}&report-type=${reportType}`
-    //       );
-    //       if (!redirectResponse.ok)
-    //         return toast.error("ERROR OCCURED TRYING TO GENERATE REPORT.");
-
-    //       console.log("Redirect Response: ", redirectResponse);
-    //       const redirectPath = await redirectResponse.text();
-    //       window.open(
-    //         `${window._env_?.VITE_BIRT_API
-    //         }/frameset?__report=${redirectPath}&__format=${window._env_?.VITE_BIRT_EXPORT_FORMAT
-    //         }`,
-    //         "_blank"
-    //       );
-    //     } catch (error) {
-    //       console.log(error);
-    //       toast.error("Error occured trying to generate report.");
-    //     }
-    //   },
-    // },
     {
       label: "link",
       icon: <Link size={16} />,
@@ -144,8 +54,6 @@ const RulesReportsLinks = () => {
 
       if(policyIds.length == 0)
         return;
-      
-      console.log("policy ids are =====>", policyIds)
 
       const response = await fetch(`${hostnameV1}/reportdetails`, {
         method: 'POST',

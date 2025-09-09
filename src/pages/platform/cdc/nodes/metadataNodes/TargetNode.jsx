@@ -22,7 +22,6 @@ import { useModal } from "../../context/ModalProvider";
 import * as XLSX from "xlsx";
 
 export function TargetNode({ id, data, selected }) {
-  // console.log("TARGET---DATAAA---", data);
   const { token, decodedToken, hostnameV1, project } = useAuth();
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
@@ -233,15 +232,28 @@ export function TargetNode({ id, data, selected }) {
     setSettings(event.target.value);
   };
 
+  const handleSettingsValueChange = (e) => {
+    const value = e.target.value;
+    if (settings === "Prefix" && /^\d/.test(value)) {
+      toast.error("Prefix cannot start with a number. Changed first character to 'T'.");
+      setSettingsValue("T" + value.slice(1));
+    } else {
+      setSettingsValue(value);
+    }
+  };
+
   function generateTableMappings(tables, option = {}, mode = "none", schemaName = "") {
     return tables.map((tableName) => {
       let newName = tableName;
-
       if (mode === "Prefix" && option.Prefix) {
-        newName = `${option.Prefix}${tableName}`;
+        let prefix = option.Prefix;
+        if (/^\d/.test(prefix)) {
+          prefix = "T" + prefix.slice(1);
+        }
+        newName = `${prefix}${tableName}`;
       } else if (mode === "Suffix" && option.Suffix) {
         newName = `${tableName}${option.Suffix}`;
-      }  
+      }
       setIsLoading(false);
       const targetTableName = schemaName ? `${schemaName}.${newName}` : newName;
       return { [tableName]: targetTableName };
@@ -286,14 +298,6 @@ export function TargetNode({ id, data, selected }) {
       updateData(ID, isPipelineNode, "target", updatedNodeData);
     }
   }, [selectedConnection, selectedSchema, filteredTables, bulkList]);
-
-  const handleItemSelection = (checked, tableName) => {
-    console.log("Selection changed:", checked, tableName);
-  };
-
-  const openDrawer = (category, action, id, pipelineId, tableData) => {
-    console.log("Opening drawer:", category, action, id, pipelineId, tableData);
-  };
 
   const handleSave = () => {
     handleDDLValidation();
@@ -632,9 +636,7 @@ export function TargetNode({ id, data, selected }) {
             <input
               type="text"
               value={settingsValue}
-              onChange={(e) => {
-                setSettingsValue(e.target.value);
-              }}
+              onChange={handleSettingsValueChange}
               className="w-full p-1 text-[10px] bg-white rounded-sm border border-gray-300 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
             />
           </div>

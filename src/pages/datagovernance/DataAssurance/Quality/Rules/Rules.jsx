@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Play, Pencil, RefreshCw, Trash2, BookOpen, List, Clock, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import Breadcrumb from '../../../../../components/Breadcrumb';
 import { useNavigate } from 'react-router-dom';
 import RuleRunSummary from './RuleRunSummary';
+import { useAuth } from "../../../../../context/AuthContext";
+import { useLocation } from 'react-router-dom';
 
 const Rules = () => {
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -17,12 +20,30 @@ const Rules = () => {
   const [detailedRules, setDetailedRules] = useState([]);
   const [ruleRunResults, setRuleRunResults] = useState([]);
   const [isPopupLoading, setIsPopupLoading] = useState(false);
+  const [showScheduler, setShowScheduler] = useState(false);
+  const [schedulerData, setSchedulerData] = useState({
+    freq: '',
+    date: '',
+    time: '',
+    rule_ids: [],
+    display_s_nos: []
+  });
+  const [sortConfig, setSortConfig] = useState({ key: 'last_run_date', direction: 'desc' })
   const rowsPerPage = 5;
   const navigate = useNavigate();
-  const [metricData, setMetricData] = useState([]);
+  const [metricData, setMetricData] = useState({});
   const [tableData, setTableData] = useState([]);
   const selectAllRef = useRef(null);
   const [showSelectAllOptions, setShowSelectAllOptions] = useState(false);
+  const { decodedToken } = useAuth();
+
+  const [deleteConfirmation, setDeleteConfirmation] = useState({
+    show: false,
+    ids: [],
+    serialNumbers: [],
+    isSingle: false,
+    item: null
+  });
 
   useEffect(() => {
     if (toast.show) {
@@ -33,76 +54,65 @@ const Rules = () => {
     }
   }, [toast.show]);
 
-  const metricsData = [
-    {
+  const metricsData = () => {
+    const keys = Object.keys(metricData);
+    const sortedKeys = keys.sort((a, b) => {
+      if (a.toLowerCase() === 'overall') return -1;
+      if (b.toLowerCase() === 'overall') return 1;
+      return a.localeCompare(b);
+    });
+
+    return sortedKeys.map((key) => ({
       icon: "material-symbols:tab-group-outline",
       bgcolor: "bg-[#8d77ba] bg-opacity-25",
       iconcolor: "text-[#8d77ba]",
-      title: "Overall",
-      count: metricData?.Overall || "-"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Accuracy",
-      count: metricData?.Accuracy || "-"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Consistency",
-      count: metricData?.Consistency || "-"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Completeness",
-      count: metricData?.Completeness || "-"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Validity",
-      count: metricData?.Validity || "-"
-    },
-    {
-      icon: "material-symbols:tab-group-outline",
-      bgcolor: "bg-[#8d77ba] bg-opacity-25",
-      iconcolor: "text-[#8d77ba]",
-      title: "Uniqueness",
-      count: metricData?.Uniqueness || "-"
-    }
-  ];
+      title: key,
+      count: metricData[key] || "-"
+    }));
+  };
 
   const fetchCounts = async () => {
-    fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/counts`)
-      .then(response => response.json())
-      .then(data => {
-        console.log(data);
-        setMetricData(data);
-      })
-      .catch(error => {
-        console.error('Error fetching counts:', error);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/counts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({ owner: decodedToken?.preferred_username }),
       });
+      if (response.status === 200) {
+        const data = await response.json();
+        setMetricData(data);
+      } else {
+        console.error('Non-200 response:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching counts:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchTableData = async () => {
     setIsLoading(true);
-    fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/table`)
-      .then(response => response.json())
-      .then(data => {
-        console.log(data.data_rules);
-        setTableData(data.data_rules || []);
-        setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching table data:', error);
-        setIsLoading(false);
+    try {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/dashboard/table`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({ owner: decodedToken?.preferred_username }),
       });
+      const data = await response.json();
+      setTableData(data.data_rules || []);
+    } catch (error) {
+      console.error('Error fetching table data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchRuleDetails = async (ids) => {
@@ -113,7 +123,7 @@ const Rules = () => {
           'Content-Type': 'application/json',
           'accept': 'application/json',
         },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({ ids, owner: decodedToken?.preferred_username }),
       });
       const data = await response.json();
       return data.rules || [];
@@ -136,7 +146,7 @@ const Rules = () => {
           'Content-Type': 'application/json',
           'accept': 'application/json',
         },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({ ids, owner: decodedToken?.preferred_username }),
       });
 
       if (!response.ok) {
@@ -165,6 +175,10 @@ const Rules = () => {
 
   const handleCreateRule = () => {
     navigate('/datagovernance/data-assurance/rules/create');
+  };
+
+  const handleOpenRuleLibrary = () => {
+    navigate('/datagovernance/data-assurance/rule-library');
   };
 
   const handleSelectRow = (id) => {
@@ -197,7 +211,6 @@ const Rules = () => {
       fetchRuleRunResults(idsToRun)
     ]);
 
-
     const enrichedRulesData = detailedRulesData.map((rule) => {
       const tableItem = tableData.find((item) => item.id === rule.id);
       return {
@@ -213,19 +226,140 @@ const Rules = () => {
 
   const handleQuickAction = (action, item) => {
     if (action === 'Run') {
-      console.log(`Running rule: ${item.id}`);
       setShowRunSummary(false);
     } else if (action === 'Edit') {
       handleActionClick('Edit', item, tableData.findIndex(i => i.id === item.id));
       setShowRunSummary(false);
+    } else if (action === 'Schedule') {
+      handleScheduleSelected(item, true);
     }
   };
 
-  const filteredData = tableData.filter(item =>
-    Object.values(item).some(val =>
-      val && val.toString().toLowerCase().includes(searchTerm.toLowerCase())
+  const handleScheduleSelected = (item, isScheduleForId = false) => {
+    let idsToSchedule = [];
+
+    if (isScheduleForId) {
+      idsToSchedule = [item.id];
+    } else if (selectedRows.length > 0) {
+      idsToSchedule = selectedRows;
+    } else {
+      idsToSchedule = [item.id];
+    }
+    
+    const serialNumbersToDisplay = idsToSchedule.map(id => idToSerialNumberMap.get(id));
+
+    setSchedulerData(prev => ({
+        ...prev,
+        rule_ids: idsToSchedule,
+        display_s_nos: serialNumbersToDisplay
+    }));
+    setShowScheduler(true);
+  };
+
+  const handleScheduleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/rules/scheduler`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({
+          ...schedulerData,
+          owner: decodedToken?.preferred_username
+        }),
+      });
+
+      if (response.ok) {
+        setToast({
+          show: true,
+          message: `Successfully scheduled ${schedulerData.rule_ids.length} rule(s)`,
+          type: 'success',
+        });
+        setShowScheduler(false);
+        setSchedulerData({ freq: '', date: '', time: '', rule_ids: [], display_s_nos: [] });
+      } else {
+        throw new Error('Failed to schedule rules');
+      }
+    } catch (error) {
+      console.error('Error scheduling rules:', error);
+      setToast({
+        show: true,
+        message: 'Failed to schedule rules',
+        type: 'error',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleScheduleAllSelected = () => {
+    if (selectedRows.length === 0) return;
+    
+    const serialNumbersToDisplay = selectedRows.map(id => idToSerialNumberMap.get(id));
+    
+    setSchedulerData(prev => ({
+        ...prev,
+        rule_ids: selectedRows,
+        display_s_nos: serialNumbersToDisplay
+    }));
+    setShowScheduler(true);
+    setShowSelectAllOptions(false);
+  };
+
+  const handleSort = (key) => {
+    setSortConfig(prev => {
+      const newDirection = prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc';
+      return { key, direction: newDirection };
+    });
+    setCurrentPage(1);
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'asc' ? (
+        <ArrowUp className="h-4 w-4 inline-block ml-1" />
+      ) : (
+        <ArrowDown className="h-4 w-4 inline-block ml-1" />
+      );
+    }
+    return <ArrowUpDown className="h-4 w-4 inline-block ml-1 opacity-50" />;
+  };
+
+  const filteredData = tableData
+    .filter(item =>
+      Object.values(item).some(val =>
+        val && val.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      )
     )
-  );
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+      const direction = sortConfig.direction === 'asc' ? 1 : -1;
+      const aValue = a[sortConfig.key] || '';
+      const bValue = b[sortConfig.key] || '';
+      let comparison = 0;
+      if (sortConfig.key === 'id') {
+        comparison = (parseInt(aValue, 10) || 0) - (parseInt(bValue, 10) || 0);
+      } else {
+        comparison = aValue.toString().localeCompare(bValue.toString());
+      }
+      if (comparison === 0 && sortConfig.key === 'last_run_date') {
+        const aUpdated = a.updated_date || '';
+        const bUpdated = b.updated_date || '';
+        return bUpdated.localeCompare(aUpdated) * direction;
+      }
+      return comparison * direction;
+    });
+
+  const idToSerialNumberMap = new Map();
+  filteredData.forEach((item, index) => {
+    const serialNumber =
+      sortConfig.key === 'id' && sortConfig.direction === 'desc'
+        ? filteredData.length - index
+        : index + 1;
+    idToSerialNumberMap.set(item.id, serialNumber);
+  });
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
   const indexOfLastItem = currentPage * rowsPerPage;
@@ -247,6 +381,7 @@ const Rules = () => {
       setCurrentPage(currentPage + 1);
     }
   };
+
   const handleRefreshSelected = async (item, isRefreshForId = false) => {
     let idsToRefresh = [];
 
@@ -293,13 +428,7 @@ const Rules = () => {
     }
   };
 
-  const [deleteConfirmation, setDeleteConfirmation] = useState({
-    show: false,
-    ids: [],
-    isSingle: false,
-    item: null
-  });
-
+  // <-- MODIFIED: Update handler to store serial numbers -->
   const handleDeleteSelected = async (item, isDeleteForId = false) => {
     let idsToDelete = [];
 
@@ -310,26 +439,33 @@ const Rules = () => {
     } else {
       idsToDelete = [item.id];
     }
+    
+    const serialNumbersToDelete = idsToDelete.map(id => idToSerialNumberMap.get(id));
 
     setDeleteConfirmation({
       show: true,
       ids: idsToDelete,
+      serialNumbers: serialNumbersToDelete,
       isSingle: isDeleteForId,
       item: item
     });
   };
 
+  // <-- MODIFIED: Update handler to store serial numbers -->
   const handleDeleteAllSelected = async () => {
     if (selectedRows.length === 0) return;
+    
+    const serialNumbersToDelete = selectedRows.map(id => idToSerialNumberMap.get(id));
+    
     setDeleteConfirmation({
       show: true,
       ids: selectedRows,
+      serialNumbers: serialNumbersToDelete,
       isSingle: false,
       item: null
     });
     setShowSelectAllOptions(false);
   };
-
 
   const performDelete = async (idsToDelete) => {
     setIsLoading(true);
@@ -340,7 +476,7 @@ const Rules = () => {
           'Content-Type': 'application/json',
           'accept': 'application/json',
         },
-        body: JSON.stringify({ ids: idsToDelete }),
+        body: JSON.stringify({ ids: idsToDelete, owner: decodedToken?.preferred_username }),
       });
 
       if (response.ok) {
@@ -366,6 +502,7 @@ const Rules = () => {
       setIsLoading(false);
     }
   };
+
   const handleActionClick = async (action, item, index) => {
     if (action === 'Edit') {
       try {
@@ -374,7 +511,7 @@ const Rules = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ ids: [item.id] }),
+          body: JSON.stringify({ ids: [item.id], owner: decodedToken?.preferred_username }),
         });
         const data = await response.json();
         navigate('/datagovernance/data-assurance/rules/create', {
@@ -423,8 +560,6 @@ const Rules = () => {
           type: 'error',
         });
       }
-    } else {
-      console.log(`${action} action for item at index ${index}:`, item);
     }
   };
 
@@ -458,7 +593,6 @@ const Rules = () => {
   const isIndeterminate = currentItems.some(item => selectedRows.includes(item.id)) &&
     !areAllCurrentItemsSelected;
 
-
   const handleRunAllSelected = async () => {
     if (selectedRows.length === 0) return;
 
@@ -489,6 +623,110 @@ const Rules = () => {
     setShowSelectAllOptions(false);
   };
 
+  const renderMetricsSkeleton = () => {
+    return Array(6).fill().map((_, index) => (
+      <div
+        key={index}
+        className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 animate-pulse"
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+          <div className="h-4 w-20 bg-gray-200 rounded"></div>
+        </div>
+        <div className="h-8 w-16 bg-gray-200 rounded"></div>
+      </div>
+    ));
+  };
+
+  const renderTableSkeleton = () => {
+    return Array(rowsPerPage).fill().map((_, index) => (
+      <tr key={index} className="border-b">
+        <td className="p-4">
+          <div className="h-4 w-4 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse"></div>
+        </td>
+        <td className="p-4">
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+          </div>
+        </td>
+      </tr>
+    ));
+  };
+
+  const [autoOpenRuleRunSummary, setAutoOpenRuleRunSummary] = useState(false);
+  const [autoSelectedRuleIds, setAutoSelectedRuleIds] = useState([]);
+
+  useEffect(() => {
+    if (autoOpenRuleRunSummary && autoSelectedRuleIds.length > 0) {
+      const handleAutoOpen = async () => {
+        setIsPopupLoading(true);
+        setShowRunSummary(true);
+
+        const [detailedRulesData, results] = await Promise.all([
+          fetchRuleDetails(autoSelectedRuleIds),
+          fetchRuleRunResults(autoSelectedRuleIds)
+        ]);
+
+        const enrichedRulesData = detailedRulesData.map((rule) => {
+          const tableItem = tableData.find((item) => item.id === rule.id);
+          return {
+            ...rule,
+            type: tableItem ? tableItem.type : rule.type,
+          };
+        });
+
+        setDetailedRules(enrichedRulesData);
+        setRuleRunResults(results);
+        setIsPopupLoading(false);
+        setAutoOpenRuleRunSummary(false);
+      };
+
+      handleAutoOpen();
+    }
+  }, [autoOpenRuleRunSummary, autoSelectedRuleIds]);
+
+  useEffect(() => {
+    const locationState = location.state;
+    if (locationState?.fromRuleRunSummary && locationState?.selectedRuleIds) {
+      setAutoSelectedRuleIds(locationState.selectedRuleIds);
+      setAutoOpenRuleRunSummary(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
 
   return (
     <div className="p-6">
@@ -526,18 +764,21 @@ const Rules = () => {
             />
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
-
           <button
-            className={`p-1 px-1.5 rounded-lg border ${viewMode === 'table' ? 'bg-gray-100 border-gray-500' : 'border-gray-400'} hover:bg-gray-50`}
-            onClick={() => setViewMode(viewMode === 'both' ? 'table' : 'both')}
-            title={viewMode === 'both' ? "Hide Cards View" : "Show Both Views"}
+            type="button"
+            title={"Rule library"}
+            onClick={handleOpenRuleLibrary}
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
           >
-            <Icon
-              icon="material-symbols-light:format-list-bulleted"
-              width="24"
-              height="24"
-              className="text-gray-600"
-            />
+            <BookOpen className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            title={viewMode === 'both' ? "Hide Cards View" : "Show Both Views"}
+            onClick={() => setViewMode(viewMode === 'both' ? 'table' : 'both')}
+            className="text-black shadow-lg hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 me-2 dark:bg-[#ffffff] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]"
+          >
+            <List className="h-5 w-5" />
           </button>
 
           <button
@@ -550,25 +791,26 @@ const Rules = () => {
         </div>
       </div>
 
-      {/* Only show cards if viewMode is 'both' */}
       {viewMode === 'both' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-          {metricsData.map((metric, index) => (
-            <div
-              key={index}
-              className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div
-                  className={`flex items-center justify-center w-10 h-10 ${metric.bgcolor} rounded-full ${metric.iconcolor}`}
-                >
-                  <Icon icon={metric.icon} className="w-5 h-5" />
+          {isLoading || Object.keys(metricData).length === 0
+            ? renderMetricsSkeleton()
+            : metricsData().map((metric, index) => (
+              <div
+                key={index}
+                className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className={`flex items-center justify-center w-10 h-10 ${metric.bgcolor} rounded-full ${metric.iconcolor}`}
+                  >
+                    <Icon icon={metric.icon} className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-700 leading-tight">{metric.title}</h3>
                 </div>
-                <h3 className="text-sm font-medium text-gray-700 leading-tight">{metric.title}</h3>
+                <p className="text-gray-900 text-3xl font-bold">{metric.count}</p>
               </div>
-              <p className="text-gray-900 text-3xl font-bold">{metric.count}</p>
-            </div>
-          ))}
+            ))}
         </div>
       )}
 
@@ -604,6 +846,13 @@ const Rules = () => {
                             Refresh Selected
                           </button>
                           <button
+                            onClick={handleScheduleAllSelected}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors flex items-center gap-2"
+                          >
+                            <Clock className="h-3 w-3 text-[#8e78b7]" />
+                            Schedule Selected
+                          </button>
+                          <button
                             onClick={handleDeleteAllSelected}
                             className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors flex items-center gap-2"
                           >
@@ -614,140 +863,195 @@ const Rules = () => {
                       )}
                     </div>
                   </th>
-                  <th className="text-left p-4">ID</th>
-                  <th className="text-left p-4">Category</th>
-                  <th className="text-left p-4">Type</th>
-                  <th className="text-left p-4">Group</th>
-                  <th className="text-left p-4">Name</th>
-                  <th className="text-left p-4">Severity</th>
-                  <th className="text-left p-4">Status</th>
-                  <th className="text-left p-4">Created Date</th>
-                  <th className="text-left p-4">Updated Date</th>
-                  <th className="text-left p-4">Last Run</th>
-                  <th className="text-left p-4 last:rounded-tr-lg">Actions</th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" >
+                    <span className="inline-flex items-center">ID</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('category')}>
+                    <span className="inline-flex items-center">Category {getSortIcon('category')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('type')}>
+                    <span className="inline-flex items-center">Type {getSortIcon('type')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('group_name')}>
+                    <span className="inline-flex items-center">Group {getSortIcon('group_name')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('name')}>
+                    <span className="inline-flex items-center">Name {getSortIcon('name')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('severity')}>
+                    <span className="inline-flex items-center">Severity {getSortIcon('severity')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('status')}>
+                    <span className="inline-flex items-center">Status {getSortIcon('status')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('created_date')}>
+                    <span className="inline-flex items-center">Created Date {getSortIcon('created_date')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('updated_date')}>
+                    <span className="inline-flex items-center">Updated Date {getSortIcon('updated_date')}</span>
+                  </th>
+                  <th className="text-left p-4 cursor-pointer hover:bg-[#3a4563]" onClick={() => handleSort('last_run_date')}>
+                    <span className="inline-flex items-center">Last Run {getSortIcon('last_run_date')}</span>
+                  </th>
+                  <th className="text-center p-4 last:rounded-tr-lg">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {currentItems.map((item, index) => (
-                  <tr key={item.id} className="border-b hover:bg-gray-50"> {/* Use item.id as key for better performance */}
-                    <td className="p-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedRows.includes(item.id)}
-                        onChange={() => handleSelectRow(item.id)}
-                        className="h-4 w-4 text-[#8e78b7] rounded"
-                      />
-                    </td>
-                    <td className="p-4 font-medium">{item.id}</td>
-                    <td className="p-4 text-gray-600">{item.category}</td>
-                    <td className="p-4 text-gray-600">{item.type}</td>
-                    <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
-                    <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
-                        item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
-                        {item.severity}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active' ? 'bg-green-100 text-green-700' :
-                        'bg-gray-100 text-gray-700'
-                        }`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-600">{item.created_date}</td>
-                    <td className="p-4 text-gray-600">{item.updated_date}</td>
-                    <td className="p-4 text-gray-600">{item.last_run_date}</td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="relative group">
-                          <button
-                            onClick={() => handleRunSelected(item, true)}
-                            className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
-                            title="Run"
-                          >
-                            <Play className="h-4 w-4 text-[#8e78b7]" />
-                          </button>
-                          {selectedRows.length > 0 && (
-                            <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                {isLoading || tableData.length === 0
+                  ? renderTableSkeleton()
+                  : currentItems.map((item, index) => {
+                    const serialNumber =
+                      sortConfig.key === 'id' && sortConfig.direction === 'desc'
+                        ? filteredData.length - indexOfFirstItem - index
+                        : indexOfFirstItem + index + 1;
+
+                    return (
+                      <tr key={item.id} className="border-b hover:bg-gray-50">
+                        <td className="p-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(item.id)}
+                            onChange={() => handleSelectRow(item.id)}
+                            className="h-4 w-4 text-[#8e78b7] rounded"
+                          />
+                        </td>
+                        <td className="p-4 font-medium">{serialNumber}</td>
+                        <td className="p-4 text-gray-600">{item.category}</td>
+                        <td className="p-4 text-gray-600">{item.type}</td>
+                        <td className="p-4 text-[#8e78b7] font-medium">{item.group_name}</td>
+                        <td className="p-4 text-[#8e78b7] font-medium">{item.name}</td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.severity === 'High' ? 'bg-red-100 text-red-700' :
+                            item.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                            {item.severity}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active' ? 'bg-green-100 text-green-700' :
+                            'bg-gray-100 text-gray-700'
+                            }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-600">{item.created_date}</td>
+                        <td className="p-4 text-gray-600">{item.updated_date}</td>
+                        <td className="p-4 text-gray-600">{item.last_run_date}</td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <div className="relative group">
                               <button
                                 onClick={() => handleRunSelected(item, true)}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                className="p-1.5 hover:bg-[#8e78b7] hover:bg-opacity-10 rounded-full"
+                                title="Run"
                               >
-                                Run ID {item.id}
+                                <Play className="h-4 w-4 text-[#8e78b7]" />
                               </button>
-                              <button
-                                onClick={handleRunAllSelected}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                              >
-                                Run Selected IDs
-                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleRunSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Run ID {serialNumber}
+                                  </button>
+                                  <button
+                                    onClick={handleRunAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Run Selected IDs
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleActionClick('Edit', item, index)}
-                          className="p-1.5 hover:bg-blue-100 rounded-full"
-                          title="Edit Rule"
-                        >
-                          <Pencil className="h-4 w-4 text-[#8e78b7]" />
-                        </button><div className="relative group">
-                          <button
-                            onClick={() => handleRefreshSelected(item, true)}
-                            className="p-1.5 hover:bg-green-100 rounded-full"
-                            title="Refresh Rule"
-                          >
-                            <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
-                          </button>
-                          {selectedRows.length > 0 && (
-                            <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                            <button
+                              onClick={() => handleActionClick('Edit', item, index)}
+                              className="p-1.5 hover:bg-blue-100 rounded-full"
+                              title="Edit Rule"
+                            >
+                              <Pencil className="h-4 w-4 text-[#8e78b7]" />
+                            </button>
+                            <div className="relative group">
                               <button
                                 onClick={() => handleRefreshSelected(item, true)}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                className="p-1.5 hover:bg-green-100 rounded-full"
+                                title="Refresh Rule"
                               >
-                                Refresh ID {item.id}
+                                <RefreshCw className="h-4 w-4 text-[#8e78b7]" />
                               </button>
-                              <button
-                                onClick={handleRefreshAllSelected}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                              >
-                                Refresh Selected IDs
-                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleRefreshSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Refresh ID {serialNumber}
+                                  </button>
+                                  <button
+                                    onClick={handleRefreshAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Refresh Selected IDs
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <div className="relative group">
-                          <button
-                            onClick={() => handleDeleteSelected(item, true)}
-                            className="p-1.5 hover:bg-red-100 rounded-full"
-                            title="Delete Rule"
-                          >
-                            <Trash2 className="h-4 w-4 text-[#8e78b7]" />
-                          </button>
-                          {selectedRows.length > 0 && (
-                            <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                            <div className="relative group">
+                              <button
+                                onClick={() => handleScheduleSelected(item, true)}
+                                className="p-1.5 hover:bg-purple-100 rounded-full"
+                                title="Schedule Rule"
+                              >
+                                <Clock className="h-4 w-4 text-[#8e78b7]" />
+                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleScheduleSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Schedule ID {serialNumber}
+                                  </button>
+                                  <button
+                                    onClick={handleScheduleAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Schedule Selected IDs
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="relative group">
                               <button
                                 onClick={() => handleDeleteSelected(item, true)}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                className="p-1.5 hover:bg-red-100 rounded-full"
+                                title="Delete Rule"
                               >
-                                Delete ID {item.id}
+                                <Trash2 className="h-4 w-4 text-[#8e78b7]" />
                               </button>
-                              <button
-                                onClick={handleDeleteAllSelected}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
-                              >
-                                Delete Selected IDs
-                              </button>
+                              {selectedRows.length > 0 && (
+                                <div className="absolute right-0 top-4 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-md hidden group-hover:block z-10">
+                                  <button
+                                    onClick={() => handleDeleteSelected(item, true)}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Delete ID {serialNumber}
+                                  </button>
+                                  <button
+                                    onClick={handleDeleteAllSelected}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
+                                  >
+                                    Delete Selected IDs
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
               </tbody>
             </table>
           </div>
@@ -767,8 +1071,8 @@ const Rules = () => {
                     key={index}
                     onClick={() => goToPage(index + 1)}
                     className={`px-3 py-1 mx-1 rounded-md ${currentPage === index + 1
-                      ? 'bg-[#8e78b7] text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-[#8e78b7] text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
                       }`}
                   >
                     {index + 1}
@@ -792,25 +1096,85 @@ const Rules = () => {
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
             <h3 className="text-lg font-medium mb-4">Confirm Deletion</h3>
             <p className="mb-6">
-              {deleteConfirmation.ids.length > 1
-                ? `Are you sure you want to delete ${deleteConfirmation.ids.length} selected rules?`
-                : `Are you sure you want to delete rule ID ${deleteConfirmation.ids[0]}?`}
+              {deleteConfirmation.serialNumbers.length > 1
+                ? `Are you sure you want to delete the ${deleteConfirmation.serialNumbers.length} selected rules?`
+                : `Are you sure you want to delete the rule : ${deleteConfirmation.serialNumbers[0]}?`}
             </p>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setDeleteConfirmation({ show: false, ids: [], isSingle: false, item: null })}
+                onClick={() => setDeleteConfirmation({ show: false, ids: [], serialNumbers: [], isSingle: false, item: null })}
                 className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
-                  setDeleteConfirmation({ show: false, ids: [], isSingle: false, item: null });
+                  setDeleteConfirmation({ show: false, ids: [], serialNumbers: [], isSingle: false, item: null });
                   performDelete(deleteConfirmation.ids);
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showScheduler && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
+            <h3 className="text-xl font-medium mb-4">Scheduler</h3>
+            <p className="mb-4 text-gray-600">
+              Scheduling rule(s): {schedulerData.display_s_nos.join(', ')}
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+              <select
+                value={schedulerData.freq}
+                onChange={(e) => setSchedulerData(prev => ({ ...prev, freq: e.target.value }))}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+              >
+                <option value="" disabled>Select a frequency</option>
+                <option value="Once">Once</option>
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Monthly">Monthly</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <input
+                type="date"
+                value={schedulerData.date}
+                min={new Date().toISOString().split("T")[0]}
+                onChange={(e) => setSchedulerData(prev => ({ ...prev, date: e.target.value }))}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+              />
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+              <input
+                type="time"
+                value={schedulerData.time}
+                onChange={(e) => setSchedulerData(prev => ({ ...prev, time: e.target.value }))}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowScheduler(false);
+                  setSchedulerData({ freq: '', date: '', time: '', rule_ids: [], display_s_nos: [] });
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleScheduleSubmit}
+                className="px-4 py-2 bg-[#8e78b7] text-white rounded-md hover:bg-[#7a67a0]"
+              >
+                Schedule
               </button>
             </div>
           </div>

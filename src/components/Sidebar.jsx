@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { Bot } from "lucide-react";
 import {
   ChartBarIcon,
   CubeIcon,
@@ -118,7 +119,11 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
         { name: 'Lineage', path: `${DATAGOVERNANCE_PREFIX}/data-assurance/lineage` },
       ]
     },
-    { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: `${DATAGOVERNANCE_PREFIX}/business-catalogue` },
+    { name: 'Business Catalogue', icon: ClipboardDocumentListIcon, path: `${DATAGOVERNANCE_PREFIX}/business-catalogue`,
+      subItems: [
+        { name: 'Glossary', path: `${DATAGOVERNANCE_PREFIX}/business-catalogue/glossary` },
+      ]
+    },
     { name: 'Data Shield', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/data-shield`,
       subItems: [
         { name: 'Protection', path: `${DATAGOVERNANCE_PREFIX}/data-shield/protection` },
@@ -127,7 +132,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
       ]
     },
     { type: 'divider' },
-    { name: 'Databot', icon: ShieldCheckIcon, path: `${DATAGOVERNANCE_PREFIX}/databot` },
+    { name: 'Databot', icon: Bot, path: `${DATAGOVERNANCE_PREFIX}/databot` },
     { name: 'Reports', icon: DocumentTextIcon, path: `${DATAGOVERNANCE_PREFIX}/reports` },
     { name: 'Import', icon: ArrowsPointingInIcon, path: `${DATAGOVERNANCE_PREFIX}/import` },
     { name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },

@@ -4,58 +4,33 @@ import { useStateContext } from "../context/contextViewProvider";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
-import { ToastContainer, toast } from "react-toastify";
 import SaveViewModal from "../components/SaveViewModal";
 import { useLocation, useNavigate } from "react-router-dom";
 import FilterComponent from "../components/FilterComponent";
 import { useAuth } from "../../../../context/AuthContext";
+import { Icon } from "@iconify/react"; // Added for toast icons
+import { X } from "lucide-react"; // Added for close button
 
 export function BusinessFooter() {
-
   const navigate = useNavigate();
   const { finalPayload, handleFinalPayload, connectionPayload, viewPayload, columnSettings } = useStateContext("");
   const [preview, setPreview] = useState(false);
-  // const encodedToken = window._env_?.VITE_FEDERATION_ACCESS_TOKEN;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
-
+  const [toast, setToast] = useState({ show: false, message: '', type: '' }); // Added toast state
 
   const modalState = useLocation().state || {
     queryType: "Regular",
     viewType: "Business",
   };
 
-  // const getSelectFields = (columnSettings, hasOperation) => {
-  //   console.log("hase operation isss =====>",hasOperation)
-  //   const selectedViews = hasOperation
-  //     ? { Union: columnSettings.Union }
-  //     : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
-
-
-  //   console.log("selected views column seetings ====>", selectedViews)
-
-  //   return Object.entries(selectedViews || {})
-  //     .flatMap(([view, columns]) =>
-  //       Object.entries(columns)
-  //         .filter(([colName, colProps]) => colProps.output === "Yes")
-  //         .map(([colName, colProps]) => ({
-  //           field: colProps.aggregate
-  //             ? `${colProps.aggregate}(${hasOperation ? colName : `${view}.${colName}`})`
-  //             : (hasOperation ? colName : `${view}.${colName}`),
-  //           alias: colProps.alias || ""
-  //         }))
-  //     );
-  // };
-
   const getSelectFields = (columnSettings, hasOperation) => {
-    console.log("hasOperation is =====>", hasOperation);
 
     const selectedViews = hasOperation
       ? { Union: columnSettings.Union }
       : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
-    console.log("selected views column settings ====>", selectedViews);
 
     return Object.entries(selectedViews || {}).flatMap(([view, columns]) =>
       Object.entries(columns).flatMap(([colName, colProps]) => {
@@ -80,16 +55,11 @@ export function BusinessFooter() {
     );
   };
 
-
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-
   const [rowData, setRowData] = useState([]);
-
-  const [colDefs, setColumnDefs] = useState([])
+  const [colDefs, setColumnDefs] = useState([]);
 
   const helperPreviewData = async (cleanApiPayload) => {
-
-    console.log("CALLING API VIA PAYLOAD =====>", cleanApiPayload)
 
     try {
       const response = await fetch(
@@ -123,13 +93,19 @@ export function BusinessFooter() {
           setError("Table is empty");
           setRowData([]);
         } else {
-          console.log("Parsed Data Array:", data);
           setLoading(false);
           const columns = Object.keys(data[0]);
           setColumnDefs(columns);
           setRowData(data);
           setError(null);
-          toast.success("View Query Executed!");
+          setToast({
+            show: true,
+            message: "View Query Executed!",
+            type: "success",
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: "", type: "" });
+          }, 3000);
         }
         return data;
       } else {
@@ -137,21 +113,42 @@ export function BusinessFooter() {
           const errorData = JSON.parse(responseText);
           let errorMessage = errorData.detail || "Unknown error occurred";
           setError(errorMessage);
-          toast.error(errorMessage);
+          setToast({
+            show: true,
+            message: errorMessage,
+            type: "error",
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: "", type: "" });
+          }, 3000);
           setColumnDefs([]);
           setRowData([]);
           setPreview(false);
         } catch (parseError) {
           console.error("Error parsing error response:", parseError, responseText);
           setError("An unexpected error occurred");
-          toast.error("An unexpected error occurred");
+          setToast({
+            show: true,
+            message: "An unexpected error occurred",
+            type: "error",
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: "", type: "" });
+          }, 3000);
         }
         return null;
       }
     } catch (error) {
       console.error("Error executing query:", error);
       setError("Something went wrong!");
-      toast.error("Failed to execute query");
+      setToast({
+        show: true,
+        message: "Failed to execute query",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
       setColumnDefs([]);
       setRowData([]);
       setPreview(false);
@@ -159,16 +156,12 @@ export function BusinessFooter() {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  useEffect(() => {
-    console.log("PAYLOAD IS $$$$$$$$$$$$$", finalPayload)
-  }, [finalPayload])
 
   const fetchPreviewData = async (payload = null, filterData = null) => {
     setIsFilterModalOpen(false);
 
-    console.log("filterdata is ====>", filterData);
 
     let apiPayload = payload || finalPayload;
 
@@ -177,19 +170,13 @@ export function BusinessFooter() {
     }
 
     const isSkipCondition = !payload && !filterData;
-    console.log("skip condition is ====>", isSkipCondition);
-
 
     apiPayload = { ...apiPayload, skip_filter: isSkipCondition };
-
 
     let apiPayloadForApi = { ...apiPayload };
     if (isSkipCondition) {
       delete apiPayloadForApi.filter_data;
     }
-
-    console.log("FILTER API PAYLOAD ==> ", apiPayloadForApi);
-
 
     const connections = connectionPayload.map(item => item.selectedConnection);
     const views = viewPayload.map(item => item.view);
@@ -206,7 +193,14 @@ export function BusinessFooter() {
       : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
     if (!source || Object.keys(source).length === 0) {
-      toast.error("Please select columns first before proceeding.");
+      setToast({
+        show: true,
+        message: "Please select columns first before proceeding.",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
       return;
     }
 
@@ -226,7 +220,6 @@ export function BusinessFooter() {
         if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") {
           sortColumns.add(column);
         }
-
       });
     });
 
@@ -235,44 +228,55 @@ export function BusinessFooter() {
     aggregateColumns = [...aggregateColumns];
     sortColumns = [...sortColumns];
 
-    console.log("Select Columns:", selectColumns);
-    console.log("Group By Columns:", groupByColumns);
-    console.log("Aggregate Columns:", aggregateColumns);
-    console.log("Sort Columns:", sortColumns);
-
-
     if (modalState.queryType === "Regular") {
-      console.log("modalstate querytype is ====>",modalState.queryType)
       const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
 
       if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
-        toast.error(`${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+        setToast({
+          show: true,
+          message: `${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`,
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return;
       }
 
       const nonAggregatedSelectColumns = selectColumns;
 
       if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
-        toast.error(`${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+        setToast({
+          show: true,
+          message: `${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`,
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return;
       }
-
 
       const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
 
       if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
-        toast.error(`${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
+        setToast({
+          show: true,
+          message: `${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`,
+          type: "error",
+        });
+        setTimeout(() => {
+          setToast({ show: false, message: "", type: "" });
+        }, 3000);
         return;
       }
     }
-
 
     if (Object.keys(apiPayloadForApi).length > 0) {
       setPreview(true);
       setLoading(true);
       setRowData([]);
 
-      console.log("source is newwwwwwww =====>", source)
 
       const groupByArray = Object.entries(source).flatMap(([view, columns]) =>
         Object.entries(columns)
@@ -280,7 +284,6 @@ export function BusinessFooter() {
           .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
       );
 
-      console.log("group by array new is =====>", groupByArray)
 
       let orderBy = [];
       Object.keys(source).forEach(table => {
@@ -303,12 +306,7 @@ export function BusinessFooter() {
         return hasOperation ? `${col.key} ${sortOrder}` : `${col.table}.${col.key} ${sortOrder}`;
       });
 
-      console.log("order by is ====>", { order_by: finalOrderBy });
-
-
       const selectFields = getSelectFields(columnSettings, hasOperation);
-
-      console.log("selected fields areeee =========>", selectFields)
 
       const updatedPayload = {
         ...apiPayloadForApi,
@@ -318,7 +316,6 @@ export function BusinessFooter() {
         metadata,
       };
 
-      console.log("Updated final payload for API is ===>", updatedPayload);
 
       handleFinalPayload({
         ...apiPayload,
@@ -332,14 +329,10 @@ export function BusinessFooter() {
     }
   };
 
-
-
   const handleClick = async () => {
-
     if (finalPayload && Object.keys(finalPayload).length > 0) {
       if (modalState.queryType == "Regular") setIsFilterModalOpen(true);
       else {
-
         const connections = connectionPayload.map(item => item.selectedConnection);
         const views = viewPayload.map(item => item.view);
         const metadata = { connections, views };
@@ -355,7 +348,14 @@ export function BusinessFooter() {
           : Object.fromEntries(Object.entries(columnSettings).filter(([key]) => key !== "Union"));
 
         if (!source || Object.keys(source).length === 0) {
-          toast.error("Please select columns first before proceeding.");
+          setToast({
+            show: true,
+            message: "Please select columns first before proceeding.",
+            type: "error",
+          });
+          setTimeout(() => {
+            setToast({ show: false, message: "", type: "" });
+          }, 3000);
           return;
         }
 
@@ -375,7 +375,6 @@ export function BusinessFooter() {
             if (parseInt(properties.order, 10) > 0 && properties.sort.trim() !== "") {
               sortColumns.add(column);
             }
-
           });
         });
 
@@ -383,34 +382,6 @@ export function BusinessFooter() {
         groupByColumns = [...groupByColumns];
         aggregateColumns = [...aggregateColumns];
         sortColumns = [...sortColumns];
-
-        console.log("Select Columns:", selectColumns);
-        console.log("Group By Columns:", groupByColumns);
-        console.log("Aggregate Columns:", aggregateColumns);
-        console.log("Sort Columns:", sortColumns);
-
-       
-        // const invalidSelectColumns = selectColumns.filter(col => !groupByColumns.includes(col));
-
-        // if (groupByColumns.length > 0 && selectColumns.length > 0 && invalidSelectColumns.length > 0) {
-        //   toast.error(`${invalidSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
-        //   return;
-        // }
-
-        // const nonAggregatedSelectColumns = selectColumns;
-
-        // if (groupByColumns.length === 0 && aggregateColumns.length > 0 && selectColumns.length > 0 && nonAggregatedSelectColumns.length > 0) {
-        //   toast.error(`${nonAggregatedSelectColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
-        //   return;
-        // }
-
-
-        // const invalidSortColumns = sortColumns.filter(col => !groupByColumns.includes(col) && !aggregateColumns.includes(col));
-
-        // if ((groupByColumns.length > 0 || aggregateColumns.length > 0) && invalidSortColumns.length > 0) {
-        //   toast.error(`${invalidSortColumns.join(', ')} must be an aggregate expression or appear in GROUP BY`);
-        //   return;
-        // }
 
         if (Object.keys(finalPayload).length > 0) {
           setPreview(true);
@@ -422,8 +393,6 @@ export function BusinessFooter() {
               .filter(([col, settings]) => settings.groupBy === "Yes")
               .map(([col]) => (hasOperation ? `${col}` : `${view}.${col}`))
           );
-
-          console.log("group by array new is =====>", groupByArray)
 
           let orderBy = [];
           Object.keys(source).forEach(table => {
@@ -446,8 +415,6 @@ export function BusinessFooter() {
             return hasOperation ? `${col.key} ${sortOrder}` : `${col.table}.${col.key} ${sortOrder}`;
           });
 
-          console.log("order by is ====>", { order_by: finalOrderBy });
-
           const selectFields = getSelectFields(columnSettings, hasOperation);
 
           const updatedPayload = {
@@ -458,18 +425,21 @@ export function BusinessFooter() {
             metadata,
           };
 
-          console.log("Updated final payload for API is ===>", updatedPayload);
-
           handleFinalPayload(updatedPayload);
-          helperPreviewData(updatedPayload)
+          helperPreviewData(updatedPayload);
         }
       }
-    }
-    else {
-      toast.error("Select inputs first");
+    } else {
+      setToast({
+        show: true,
+        message: "Select inputs first",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
     }
   };
-
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -478,8 +448,6 @@ export function BusinessFooter() {
   };
 
   const handleSaveView = async (params) => {
-
-    console.log("view name entered is =======>", params)
     const { newViewName } = params;
 
     finalPayload["view_name"] = newViewName.toLowerCase();
@@ -491,7 +459,6 @@ export function BusinessFooter() {
       delete finalPayload.skip_filter;
     }
 
-    console.log("final payload fainally is =======>", finalPayload)
 
     const viewExistsResponse = await fetch(
       `${hostnameV2}/view-exists/${newViewName}`,
@@ -505,16 +472,28 @@ export function BusinessFooter() {
     );
 
     if (viewExistsResponse.status !== 200) {
-      toast.error("Error checking if view exists");
+      setToast({
+        show: true,
+        message: "Error checking if view exists",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
       return null;
     }
     const viewExists = await viewExistsResponse.json();
-    console.log("viewExists ===> ", viewExists);
     if (viewExists["result"]) {
-      toast.error("View already exists");
+      setToast({
+        show: true,
+        message: "View already exists",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
       return null;
     }
-
 
     const newPayload = {
       ...finalPayload,
@@ -534,18 +513,30 @@ export function BusinessFooter() {
       }
     );
 
-
     const data = await response.json();
 
     if (response.status == 200) {
-      console.log("Save View Result ==> ", data);
-      toast.success("View Saved Successfully.", { autoClose: 2900 });
-      setTimeout(() => navigate("/federation"), 3000);
+      setToast({
+        show: true,
+        message: "View Saved Successfully.",
+        type: "success",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+        navigate("/federation");
+      }, 3000);
     } else {
-      toast.error("Error while saving view..");
+      setToast({
+        show: true,
+        message: "Error while saving view..",
+        type: "error",
+      });
+      setTimeout(() => {
+        setToast({ show: false, message: "", type: "" });
+      }, 3000);
     }
+  };
 
-  }
   return (
     <>
       {preview && (
@@ -570,7 +561,6 @@ export function BusinessFooter() {
                     </tr>
                   </thead>
                   <tbody className="text-sm">
-
                     {rowData.map((row, rowIndex) => (
                       <tr key={rowIndex} className="border-b bg-white">
                         {Object.keys(row).map((key, index) => (
@@ -580,24 +570,20 @@ export function BusinessFooter() {
                         ))}
                       </tr>
                     ))}
-
                   </tbody>
                 </table>
               </div>
             )}
-
-
           </div>
         </>
       )}
-
 
       <div className='bg-white w-full py-2.5 flex justify-end border-solid border-t-2'>
         <div className="mr-3">
           <button
             type="button"
             onClick={() => setPreview(false)}
-            className="text-black bg-white hover:bg-gray-50 focus:ring-1  rounded-lg text-sm px-8 py-1 mr-2 focus:outline-none border-solid border-2"
+            className="text-black bg-white hover:bg-gray-50 focus:ring-1 rounded-lg text-sm px-8 py-1 mr-2 focus:outline-none border-solid border-2"
           >
             Cancel
           </button>
@@ -623,7 +609,27 @@ export function BusinessFooter() {
           onApply={fetchPreviewData}
         />
       )}
-      <ToastContainer />
+      {toast.show && (
+        <div
+          className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${
+            toast.type === "success"
+              ? "bg-green-100 text-green-800 border-l-4 border-green-500"
+              : "bg-red-100 text-red-800 border-l-4 border-red-500"
+          }`}
+        >
+          <Icon
+            icon={toast.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"}
+            className="h-5 w-5"
+          />
+          <p>{toast.message}</p>
+          <button
+            onClick={() => setToast({ show: false, message: "", type: "" })}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </>
-  )
+  );
 }

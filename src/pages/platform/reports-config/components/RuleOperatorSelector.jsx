@@ -147,6 +147,19 @@ export default function RuleSelector() {
       const ruleNames = rulesWithoutMetrics.map(rule => rule.ruleName).join(", ");
       return toast.error(`Rule(s) "${ruleNames}" must have at least one metric selected.`);
     }
+    
+    // Check if any metrics are invalid
+    const invalidMetrics = rules.flatMap(rule => 
+      rule.metrics.filter(m => 
+        (!m.name) ||
+        (m.name && (m.parameterName && !m.parameterOperator)) ||
+        (m.name && (!m.parameterName && m.parameterOperator))
+      )
+    );
+    
+    if(invalidMetrics.length > 0){
+      return toast.error("Invalid metric configuration")
+    }
 
     // Check dimensions validation
     const invalidDimensions = rules.flatMap(rule => 
@@ -334,7 +347,7 @@ export default function RuleSelector() {
         <div className="mt-8 flex gap-3 justify-end flex-wrap">
           <button
             onClick={closeModal}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-md transition-colors duration-200"
+            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             Back
           </button>

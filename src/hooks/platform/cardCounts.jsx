@@ -87,7 +87,7 @@ export const useProjectCardData = () => {
 const fetchRuleCounts = async (token) => {
   if (!token) throw new Error("Token is missing");
 
-  const response = await axios.get(`${hostnamev1}/ruleCount`, {
+  const response = await axios.get(`${window._env_?.VITE_REPORTING_BACKEND_API}/ruleCount`, {
       headers: {
          Authorization: `Bearer ${token}`,
         },

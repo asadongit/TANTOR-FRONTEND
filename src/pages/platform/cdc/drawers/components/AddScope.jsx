@@ -24,14 +24,11 @@ const AddScope = ({ drawerState, handleSave }) => {
       ? sourceData.bulk_list
       : sourceData.subset_list) || [];
 
-  console.log("Initial selected tables:", selectedTables);
-
   if (
     selectedTableFromDrawer &&
     !selectedTables.includes(selectedTableFromDrawer)
   ) {
     selectedTables = [...selectedTables, selectedTableFromDrawer];
-    console.log("Updated tables list with drawer table:", selectedTables);
   }
 
   const [selectedTable, setSelectedTable] = useState("");
@@ -54,14 +51,11 @@ const AddScope = ({ drawerState, handleSave }) => {
   };
 
   useEffect(() => {
-    console.log("useEffect running with table:", selectedTableFromDrawer);
 
     // Select the table immediately
     if (selectedTableFromDrawer) {
-      console.log("Setting selected table to:", selectedTableFromDrawer);
       setSelectedTable(selectedTableFromDrawer);
     } else if (selectedTables.length > 0) {
-      console.log("Setting selected table to first table:", selectedTables[0]);
       setSelectedTable(selectedTables[0]);
     }
 
@@ -80,7 +74,6 @@ const AddScope = ({ drawerState, handleSave }) => {
       initialTableOpTypes[selectedTableFromDrawer] = { ...defaultOpTypes };
     }
 
-    console.log("Setting table op types:", initialTableOpTypes);
     setTableOpTypes(initialTableOpTypes);
   }, [selectedTableFromDrawer, sourceData.table_op_types]);
 

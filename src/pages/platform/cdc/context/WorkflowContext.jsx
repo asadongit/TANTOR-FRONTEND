@@ -25,6 +25,7 @@ export const WorkflowProvider = ({ children }) => {
   const [pipelineMappings, setPipelineMappings] = useState({});
   const [inProgressMappings, setInProgressMappings] = useState({});
   const [bulkMappings, setBulkMappings] = useState({});
+  const [editMode, setEditMode] = useState(false);
 
   const pipelineCounterRef = useRef({ count: 0 });
   const reactFlowInstance = useReactFlow();
@@ -61,8 +62,9 @@ export const WorkflowProvider = ({ children }) => {
     }, 100);
   };
 
-  const updatePipelineData = (pipelineId, nodeType, nodeData) => {
+  const updatePipelineData = (pipelineId, nodeType, nodeData) => {   
     setPipelines((prevPipelines) => {
+      
       if (!prevPipelines[pipelineId]) {
         return prevPipelines;
       }
@@ -80,7 +82,7 @@ export const WorkflowProvider = ({ children }) => {
         };
       }
 
-      return {
+      const updatedPipelines = {
         ...prevPipelines,
         [pipelineId]: {
           ...prevPipelines[pipelineId],
@@ -93,6 +95,7 @@ export const WorkflowProvider = ({ children }) => {
           },
         },
       };
+      return updatedPipelines;
     });
   };
 
@@ -289,7 +292,7 @@ export const WorkflowProvider = ({ children }) => {
     });
   };
 
-  const updateData = (ID, isPipelineNode = false, type, updatedNodeData) => {
+  const updateData = (ID, isPipelineNode = false, type, updatedNodeData) => {  
     isPipelineNode
       ? updatePipelineData(ID, type, updatedNodeData)
       : updateCustomNode(ID, type, updatedNodeData);
@@ -331,12 +334,13 @@ export const WorkflowProvider = ({ children }) => {
     const key = isPipelineMode ? ID : `${sourceId}-${ID}`;
 
     const validUpdateKeys = ["schedule", "whereCondition"];
+    if (!updatedData || typeof updatedData !== 'object') {
+      console.warn("updateBulkMappings: updatedData is not a valid object", updatedData);
+      return;
+    }
     const keysToUpdate = Object.keys(updatedData);
 
     if (!keysToUpdate.every((key) => validUpdateKeys.includes(key))) {
-      console.log(
-        "Invalid keys in update. Only 'schedule' and 'whereCondition' can be updated."
-      );
       return;
     }
 
@@ -354,7 +358,7 @@ export const WorkflowProvider = ({ children }) => {
           return mapping;
         });
       } else {
-        console.log("Mapping key", key, "not found.");
+        console.error("Mapping key", key, "not found.");
       }
 
       return updatedMappings;
@@ -387,6 +391,37 @@ export const WorkflowProvider = ({ children }) => {
       ...prevMappings,
       [nodeid]: newMappings,
     }));
+  };
+
+  // Function to get enhanced node data for storage (includes all user inputs)
+  const getEnhancedNodeData = () => {
+    const enhancedNodes = nodes.map((node) => {
+      const pid = node.data?.pipelineId || node.id;
+      const latestData = pipelines[pid]?.data;
+      
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          // Include all the user input data
+          define: latestData?.define || node.data?.define,
+          source: latestData?.source || node.data?.source,
+          target: latestData?.target || node.data?.target,
+          scheduler: latestData?.scheduler || node.data?.scheduler,
+        },
+      };
+    });
+    
+    return {
+      nodes: enhancedNodes,
+      edges,
+      pipelineData: {
+        define: pipelines[Object.keys(pipelines)[0]]?.data?.define,
+        source: pipelines[Object.keys(pipelines)[0]]?.data?.source,
+        target: pipelines[Object.keys(pipelines)[0]]?.data?.target,
+        scheduler: pipelines[Object.keys(pipelines)[0]]?.data?.scheduler,
+      }
+    };
   };
 
   const getUniquesource_tablesInBulk = () => {
@@ -429,6 +464,9 @@ export const WorkflowProvider = ({ children }) => {
         updateBulkMappings,
         deselectMapping,
         bulkMappings,
+        editMode,
+        setEditMode,
+        getEnhancedNodeData,
       }}
     >
       {children}

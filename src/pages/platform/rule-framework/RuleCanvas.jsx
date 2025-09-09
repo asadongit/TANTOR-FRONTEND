@@ -62,7 +62,7 @@ const RuleCanvas = () => {
       const headers = {"Content-Type": "application/json", "Authorization": `Bearer ${token}`};
       try{
 
-        const response = await fetch(`${hostnameV1}/ruleJson?rule_id=${ruleId}`, {headers});
+        const response = await fetch(`${window._env_?.VITE_REPORTING_BACKEND_API}/ruleJson?rule_id=${ruleId}`, {headers});
         if(!response.ok){
           const errorData = await response.json().catch(() => null);
           throw new Error(errorData?.detail || "Error occured when trying to fetch existing rule.");
