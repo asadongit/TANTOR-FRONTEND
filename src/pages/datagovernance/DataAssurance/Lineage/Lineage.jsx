@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, Table, Minimize2, Maximize2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Breadcrumb from '../../../../components/Breadcrumb';
 import { useAuth } from '../../../../context/AuthContext';
 import { secureQuery } from '../../DataCatalogue/Components/function';
@@ -48,7 +48,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
 const MultiSelectDropdown = ({ title, options, selected, toggleOption, hasSelectAll = false, disabled = false, disabledText = "Select previous filters first", onOpen, isLoading = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const dropdownRef = useRef(null);
+  const dropdownRef = React.useRef(null);
   useEffect(() => {
     const handleClickOutside = (event) => { if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setIsOpen(false); };
     document.addEventListener('mousedown', handleClickOutside);
@@ -83,7 +83,7 @@ const MultiSelectDropdown = ({ title, options, selected, toggleOption, hasSelect
               <div className="p-2"><div className="relative"><Search className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400 h-4 w-4" /><input type="text" placeholder="Search..." className="w-full pl-9 pr-3 py-2 border rounded-md" onChange={(e) => setSearchTerm(e.target.value)} /></div></div>
               <ul className="py-1 max-h-60 overflow-y-auto">
                 {hasSelectAll && options.length > 0 && (<li className="px-4 py-2 hover:bg-gray-100"><label className="flex items-center space-x-2 cursor-pointer"><input type="checkbox" onChange={() => toggleOption(options, true)} checked={selected.length === options.length} /><span>Select All</span></label></li>)}
-                {options.length === 0 && !hasSelectAll && <li className="px-4 py-2 text-sm text-gray-500">No options available</li>}
+                {options.length === 0 && <li className="px-4 py-2 text-sm text-gray-500">No options available</li>}
                 {filteredOptions.map((option) => (<li key={option} className="px-4 py-2 hover:bg-gray-100"><label className="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked={selected.includes(option)} onChange={() => toggleOption([option])} /><span>{option}</span></label></li>))}
               </ul>
             </>
@@ -95,7 +95,7 @@ const MultiSelectDropdown = ({ title, options, selected, toggleOption, hasSelect
 };
 
 const LineageFilters = ({
-  connectionOptions, selectedConnections, handleConnectionsToggle, handleConnectionsOpen, isConnectionsLoading,
+  connectionOptions, selectedConnections, handleConnectionsToggle, isConnectionsLoading,
   databaseOptions, selectedDatabases, handleDatabasesToggle, handleDatabaseOpen, isDatabaseLoading,
   schemaOptions, selectedSchemas, handleSchemasToggle, handleSchemaOpen, isSchemaLoading,
   typeOptions, selectedTypes, handleTypesToggle,
@@ -103,7 +103,7 @@ const LineageFilters = ({
 }) => {
   return (
     <div className="flex flex-wrap gap-4 items-end">
-      <MultiSelectDropdown title="Connections" options={connectionOptions} selected={selectedConnections} toggleOption={handleConnectionsToggle} onOpen={handleConnectionsOpen} isLoading={isConnectionsLoading} />
+      <MultiSelectDropdown title="Connections" options={connectionOptions} selected={selectedConnections} toggleOption={handleConnectionsToggle} isLoading={isConnectionsLoading} />
       <MultiSelectDropdown title="Database" options={databaseOptions} selected={selectedDatabases} toggleOption={handleDatabasesToggle} disabled={selectedConnections.length === 0} disabledText="Select a Connection" onOpen={handleDatabaseOpen} isLoading={isDatabaseLoading} />
       <MultiSelectDropdown title="Schema" options={schemaOptions} selected={selectedSchemas} toggleOption={handleSchemasToggle} disabled={selectedDatabases.length === 0} disabledText="Select a Database" onOpen={handleSchemaOpen} isLoading={isSchemaLoading} />
       <MultiSelectDropdown title="Type" options={typeOptions} selected={selectedTypes} toggleOption={handleTypesToggle} hasSelectAll={true} disabled={selectedSchemas.length === 0} disabledText="Select a Schema" />
@@ -150,7 +150,7 @@ const LineageTable = ({
                   <TruncatedText text={item.database} maxLength={15} />
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <TruncatedText text={item.schema} maxLength={15} />
+                  <TruncatedText text={item.schemaToShow} maxLength={15} />
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                   <TruncatedText text={item.name} maxLength={20} />
@@ -181,7 +181,7 @@ const LineageTable = ({
           disabled={!hasLineageItems}
           className="px-6 py-2 bg-[#8d77ba] text-white font-semibold rounded-md shadow-sm hover:opacity-90 disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
-          Visualize ({hasLineageItems ? Array.from(hasLineageItems).length : 0})
+          Visualize
         </button>
       </div>
     </>
@@ -204,25 +204,52 @@ function EnhancedLineage() {
   const [tableData, setTableData] = useState([]);
   const [lineageItems, setLineageItems] = useState(new Set());
   const [policyIds, setPolicyIds] = useState([]);
-  const [isConnectionsLoading, setIsConnectionsLoading] = useState(false);
+
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isDatabaseLoading, setIsDatabaseLoading] = useState(false);
   const [isSchemaLoading, setIsSchemaLoading] = useState(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-
+  
   useEffect(() => {
-    if (token) {
-      (async () => {
-        try {
-          const response = await secureQuery({ user_query: "" }, token);
-          setPolicyIds(response.matched_policy_ids || []);
-        } catch (error) {
-          console.error("Failed to fetch policy IDs:", error);
-          setPolicyIds([]);
-        }
-      })();
+    if (!token) {
+      setIsInitialLoading(false);
+      return;
     }
+
+    const initializeLineageFilters = async () => {
+      try {
+        const policyResponse = await secureQuery({ user_query: "" }, token);
+        const fetchedPolicyIds = policyResponse.matched_policy_ids || [];
+        setPolicyIds(fetchedPolicyIds);
+
+        if (fetchedPolicyIds.length > 0) {
+          const connectionsResponse = await fetch(`${API_BASE_URL}/get_connection_type`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
+            body: JSON.stringify({ matched_policy_ids: fetchedPolicyIds }),
+          });
+
+          if (!connectionsResponse.ok) {
+            throw new Error(`Connection API error! status: ${connectionsResponse.status}`);
+          }
+          
+          const connectionsData = await connectionsResponse.json();
+          setConnectionOptions(connectionsData);
+        }
+        
+      } catch (error) {
+        console.error("Failed to initialize lineage filters:", error);
+        setPolicyIds([]);
+        setConnectionOptions([]);
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+
+    initializeLineageFilters();
   }, [token]);
 
   useEffect(() => { setSelectedDatabases([]); setDatabaseOptions([]); }, [selectedConnections]);
@@ -230,39 +257,13 @@ function EnhancedLineage() {
   useEffect(() => { setSelectedTypes([]); setTableData([]); }, [selectedSchemas]);
   useEffect(() => { setTableData([]); }, [selectedTypes]);
 
-  const handleConnectionsOpen = async () => {
-    if (policyIds.length > 0 && connectionOptions.length === 0) {
-      setIsConnectionsLoading(true);
-      try {
-        const response = await fetch(`${API_BASE_URL}/get_connection_type`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'accept': 'application/json'
-          },
-          body: JSON.stringify({ matched_policy_ids: policyIds }),
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        setConnectionOptions(data);
-      } catch (error) {
-        console.error("Error fetching connection types:", error);
-      } finally {
-        setIsConnectionsLoading(false);
-      }
-    }
-  };
-
   const handleDatabaseOpen = async () => {
     if (selectedConnections.length > 0 && databaseOptions.length === 0) {
       setIsDatabaseLoading(true);
       try {
         const response = await fetch(`${API_BASE_URL}/get_connection_name`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'accept': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
           body: JSON.stringify({
             matched_policy_ids: policyIds,
             connection_type: selectedConnections,
@@ -293,14 +294,12 @@ function EnhancedLineage() {
         });
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
-
         const allSchemas = data.flatMap(dbSchemaObject =>
           Object.entries(dbSchemaObject).flatMap(([dbName, schemaArray]) =>
             schemaArray.map(schemaName => `${dbName}.${schemaName}`)
           )
         );
         setSchemaOptions([...new Set(allSchemas)]);
-
       } catch (error) {
         console.error("Error fetching schemas:", error);
       } finally {
@@ -325,10 +324,7 @@ function EnhancedLineage() {
       };
       const response = await fetch(`${API_BASE_URL}/table`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'accept': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json', 'accept': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -337,36 +333,32 @@ function EnhancedLineage() {
       const tables = (data.tables || []).map(item => ({
         connection: item.connection_type,
         database: item.connection_name,
-        schema: item.table_schema.split('.')[1] || item.table_schema,
-        name: item.table_name,
+        schema: item.table_schema,
+        table:item.table_name,
+        schemaToShow: item.table_schema.split('.')[1] || item.table_schema,
+        name: item.table_name.split('.')[2] || item.table_name,
         type: 'Table'
       }));
 
       const columns = (data.columns || []).map(item => ({
         connection: item.connection_type,
         database: item.connection_name,
-        schema: item.table_schema.split('.')[1] || item.table_schema,
-        name: `${item.table_name}.${item.column_name}`,
+        schema: item.table_schema,
+        table:item.table_name,
+        column:item.column_name,
+        schemaToShow: item.table_schema.split('.')[1] || item.table_schema,
+        name: item.column_name.split('.').slice(2).join('.') || item.column_name,
         type: 'Column'
       }));
 
       const views = (data.views || []).map(item => {
-        const connection = item.connection_type.length === 1 ?
-          item.connection_type[0] :
-          item.connection_type.join(' + ');
-
-        const database = item.connection_name.length === 1 ?
-          item.connection_name[0] :
-          item.connection_name.join(' + ');
-
-        const schema = item.table_schema.length === 1 ? 
-          (item.table_schema[0].split('.')[1] || item.table_schema[0]) :
-          item.table_schema.join(' + ');
-
+        const connection = item.connection_type.length === 1 ? item.connection_type[0] : item.connection_type.join(' + ');
+        const database = item.connection_name.length === 1 ? item.connection_name[0] : item.connection_name.join(' + ');
+        const schemaToShow = item.table_schema.length === 1 ? (item.table_schema[0].split('.')[1] || item.table_schema[0]) : item.table_schema.join(' + ');
         return {
           connection,
           database,
-          schema,
+          schemaToShow,
           name: item.view_name,
           type: 'View',
           viewMetadata: {
@@ -448,15 +440,12 @@ function EnhancedLineage() {
     }
   };
 
-  const handleBackToSelection = () => {
-    setCurrentView('selection');
-  };
+  const handleBackToSelection = () => setCurrentView('selection');
 
   const handleTableNavigation = (direction) => {
     const displayableItems = selectedItemsForVisualization.filter(item =>
       item.type === 'Table' || item.type === 'View'
     );
-
     if (direction === 'next' && currentTableIndex < displayableItems.length - 1) {
       setCurrentTableIndex(prev => prev + 1);
     } else if (direction === 'prev' && currentTableIndex > 0) {
@@ -468,15 +457,13 @@ function EnhancedLineage() {
     return (
       <div className="p-6 bg-gray-50 min-h-screen">
         <Breadcrumb />
-
         <main className="mt-6">
           <div className="p-6 pb-8 bg-white rounded-lg shadow mb-5">
             <LineageFilters
               connectionOptions={connectionOptions}
               selectedConnections={selectedConnections}
               handleConnectionsToggle={handleConnectionsToggle}
-              handleConnectionsOpen={handleConnectionsOpen}
-              isConnectionsLoading={isConnectionsLoading}
+              isConnectionsLoading={isInitialLoading}
               databaseOptions={databaseOptions}
               selectedDatabases={selectedDatabases}
               handleDatabasesToggle={handleDatabasesToggle}
@@ -494,7 +481,6 @@ function EnhancedLineage() {
               isShowDataDisabled={isShowDataDisabled}
             />
           </div>
-
           {(isTableLoading || tableData.length > 0) && (
             <div className="p-6 bg-white rounded-lg shadow">
               <LineageTable
@@ -508,7 +494,7 @@ function EnhancedLineage() {
                 totalPages={totalPages}
                 handlePageChange={handlePageChange}
                 onVisualize={handleVisualize}
-                hasLineageItems={lineageItems}
+                hasLineageItems={lineageItems.size > 0}
               />
             </div>
           )}
