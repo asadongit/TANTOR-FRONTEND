@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from "react";
-import { X, Plus, ChevronDown } from "lucide-react";
+import { X, Plus, ChevronDown, RefreshCw } from "lucide-react";
 
 import ArithmeticOperationFields from "./operations/arithmatic";
 import StringOperationFields, { StringOperationParameters, getStringParams, validateStringTransformation } from "./operations/string";
@@ -1631,6 +1631,51 @@ useEffect(() => {
 		}
 	}, [isOpen, isEditMode]);
 
+  const handleRefreshColumns = useCallback(() => {
+    if (!isEditMode || !transformations.length) return;
+
+    try {
+      const initialDfCols = {};
+      if (window.allNodes && window.allEdges) {
+        const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
+        const sources = incomingEdges
+          .map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
+          .filter(Boolean);
+
+        sources.forEach(node => {
+          const alias = node.data?.alias || `unnamed_source_${node.id}`;
+          initialDfCols[alias] = Array.isArray(node.data?.columns) ? [...node.data.columns] : [];
+        });
+      }
+
+      const updatedDfCols = replayTransformationsForColumns(transformations, initialDfCols);
+
+      setDataframeColumns(updatedDfCols);
+
+      if (window.allNodes) {
+        Object.entries(updatedDfCols).forEach(([dfId, columns]) => {
+          const node = window.allNodes.find(n =>
+            n.data?.alias === dfId || n.id === dfId
+          );
+          if (node && typeof node.data.onDataChange === "function") {
+            node.data.onDataChange({ columns: [...columns] });
+          }
+        });
+      }
+
+      window.replayedDataframeColumns = JSON.parse(JSON.stringify(updatedDfCols));
+
+      window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
+        detail: {
+          type: "manual-refresh",
+          timestamp: Date.now()
+        }
+      }));
+    } catch (error) {
+      console.error('Error refreshing transformation columns:', error);
+    }
+  }, [isEditMode, transformations, activeNodeId, replayTransformationsForColumns]);
+
 	if (!isOpen) return null;
 
 	return (
@@ -1647,22 +1692,33 @@ useEffect(() => {
 							Transformation
 						</h2>
 						{transformations.length > 1 && (
-							<div className="relative inline-block text-left">
-								<select
-									className="pl-3 pr-8 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB] appearance-none cursor-pointer"
-									onChange={(e) => scrollToTransformation(Number(e.target.value) - 1)}
-									defaultValue=""
-								>
-									<option value="" disabled>Jump to...</option>
-									{transformations.map((_, idx) => (
-										<option key={idx} value={idx + 1}>
-											Transformation {idx + 1}
-										</option>
-									))}
-								</select>
-								<div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-									<ChevronDown className="w-4 h-4 text-gray-500" />
+							<div className="flex items-center space-x-2">
+								<div className="relative inline-block text-left">
+									<select
+										className="pl-3 pr-8 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB] appearance-none cursor-pointer"
+										onChange={(e) => scrollToTransformation(Number(e.target.value) - 1)}
+										defaultValue=""
+									>
+										<option value="" disabled>Jump to...</option>
+										{transformations.map((_, idx) => (
+											<option key={idx} value={idx + 1}>
+												Transformation {idx + 1}
+											</option>
+										))}
+									</select>
+									<div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+										<ChevronDown className="w-4 h-4 text-gray-500" />
+									</div>
 								</div>
+								{isEditMode && (
+									<button
+										onClick={handleRefreshColumns}
+										className="p-1.5 text-gray-600 hover:text-[#8E77BB] rounded-full hover:bg-gray-100 transition-colors"
+										title="Refresh column list"
+									>
+										<RefreshCw className="w-4 h-4" />
+									</button>
+								)}
 							</div>
 						)}
 					</div>
