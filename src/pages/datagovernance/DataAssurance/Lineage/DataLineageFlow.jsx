@@ -1,4 +1,5 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, Table, Minimize2, Maximize2, Layers } from 'lucide-react';
 import {
   ReactFlow,
   MiniMap,
@@ -9,185 +10,725 @@ import {
   addEdge,
   MarkerType,
 } from 'reactflow';
-import { ChevronRight, ChevronLeft, Eye, RotateCcw, X } from 'lucide-react';
-
 import 'reactflow/dist/style.css';
+import Breadcrumb from '../../../../components/Breadcrumb';
 
 // Circular Remote Control Component
-const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, onReset, onClose, expandedNodes }) => {
+const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, onReset, onClose, expandedNodes, isLoading, nodeData }) => {
   const isForwardExpanded = expandedNodes.has(`${nodeId}-forward`);
   const isBackwardExpanded = expandedNodes.has(`${nodeId}-backward`);
+
+  const getDisplayName = () => {
+    if (!nodeData) return nodeId;
+
+    switch (nodeData.type) {
+      case 'schema':
+        return nodeData.fullName || nodeData.description?.replace('Schema: ', '') || nodeId;
+      case 'table':
+        return nodeData.fullName || nodeData.description?.replace('Table: ', '') || nodeId;
+      case 'view':
+        return nodeData.viewName || nodeData.description?.replace('View: ', '') || nodeId;
+      default:
+        return nodeId;
+    }
+  };
 
   return (
     <div
       className="absolute z-20"
+      // style={{
+      //   left: position.x + 80,
+      //   top: position.y - 40,
+      //   transform: 'translate(-50%, -50%)'
+      // }}
       style={{
-        left: position.x + 80,
-        top: position.y - 40,
-        transform: 'translate(-50%, -50%)'
+        right: '70px',
+        top: '120px',
       }}
     >
-      {/* Circular Remote Design */}
       <div className="relative">
-        {/* Outer Circle */}
         <div className="w-24 h-24 bg-gray-800 rounded-full border-4 border-gray-600 shadow-2xl relative">
-          {/* Inner Circle */}
           <div className="w-12 h-12 bg-red-500 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
             <span className="text-white text-xs font-bold">CTRL</span>
           </div>
-
-          {/* Forward Button (Right) */}
           <button
             onClick={() => onNavigate(nodeId, 'forward')}
-            className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${isForwardExpanded ? 'bg-yellow-500 text-black' : 'bg-gray-700 hover:bg-gray-600 text-white'
+            disabled={isLoading}
+            className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${isForwardExpanded ? 'bg-yellow-500 text-black' :
+              isLoading ? 'bg-gray-500 text-white cursor-wait' :
+                'bg-gray-700 hover:bg-gray-600 text-white'
               }`}
-            title="Toggle Forward Connections"
+            title={isLoading ? "Loading..." : "Toggle Forward Connections"}
           >
-            <ChevronRight size={14} />
+            {isLoading ? (
+              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <ChevronRight size={14} />
+            )}
           </button>
-
-          {/* Backward Button (Left) */}
           <button
             onClick={() => onNavigate(nodeId, 'backward')}
-            className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${isBackwardExpanded ? 'bg-yellow-500 text-black' : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
+            className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${isBackwardExpanded ? 'bg-yellow-500 text-black' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
             title="Toggle Backward Connections"
           >
             <ChevronLeft size={14} />
           </button>
-
-          {/* Up Button */}
-          <button
-            onClick={() => onReset(nodeId)}
-            className="absolute top-0 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded-full border-2 border-white text-white flex items-center justify-center transition-all"
-            title="Reset View"
-          >
-            <RotateCcw size={12} />
-          </button>
-
-          {/* Down Button */}
-          <button
-            onClick={() => onToggleVisibility(nodeId)}
-            className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded-full border-2 border-white text-white flex items-center justify-center transition-all"
-            title="Toggle All Connections"
-          >
-            <Eye size={12} />
-          </button>
         </div>
-
-        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full text-white flex items-center justify-center text-xs"
         >
-          <X size={12} />
+          <XCircle size={12} />
         </button>
       </div>
-
-      {/* Tooltip */}
       <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-        Node: {nodeId}
+        {getDisplayName()}
       </div>
     </div>
   );
 };
 
-// Initial nodes data
-const initialNodes = [
-  // Data Sources (blue nodes)
-  { id: 'datamart', type: 'default', position: { x: 50, y: 50 }, data: { label: 'DATAMART', type: 'source', description: 'Main data mart source' }, style: { background: '#22D3EE', color: 'white', border: '2px solid #0EA5E9', borderRadius: '50%', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' } },
-  { id: 'load-fact-sales', type: 'default', position: { x: 50, y: 200 }, data: { label: 'LOAD_FACT_SALES', type: 'source', description: 'Sales fact loader' }, style: { background: '#22D3EE', color: 'white', border: '2px solid #0EA5E9', borderRadius: '50%', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 'bold' } },
-  { id: 'load-dwh', type: 'default', position: { x: 50, y: 350 }, data: { label: 'LOAD DWH', type: 'source', description: 'Data warehouse loader' }, style: { background: '#22D3EE', color: 'white', border: '2px solid #0EA5E9', borderRadius: '50%', width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' } },
-  { id: 'load-dwh-dim-product', type: 'default', position: { x: 50, y: 470 }, data: { label: 'LOAD_DWH_DIM_PRODUCT', type: 'source', description: 'Product dimension loader' }, style: { background: '#22D3EE', color: 'white', border: '2px solid #0EA5E9', borderRadius: '50%', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold' } },
-
-  // Transformation nodes (red nodes)
-  { id: 'dbo-dwhfact-sales', type: 'default', position: { x: 300, y: 120 }, data: { label: 'DBO.DWHFACT.SALES', type: 'transformation', description: 'Sales fact table' }, style: { background: '#EF4444', color: 'white', border: '2px solid #DC2626', borderRadius: '50%', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold' } },
-  { id: 'dbo-dwhdim-customer', type: 'default', position: { x: 280, y: 280 }, data: { label: 'DBO.DWHDIM.CUSTOMER', type: 'transformation', description: 'Customer dimension table' }, style: { background: '#EF4444', color: 'white', border: '2px solid #DC2626', borderRadius: '50%', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px', fontWeight: 'bold' } },
-  { id: 'dbo-dwhdim-product', type: 'default', position: { x: 280, y: 420 }, data: { label: 'DBO.DWHDIM.PRODUCT', type: 'transformation', description: 'Product dimension table' }, style: { background: '#EF4444', color: 'white', border: '2px solid #DC2626', borderRadius: '50%', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px', fontWeight: 'bold' } },
-  { id: 'dbo-sproductssold', type: 'default', position: { x: 500, y: 80 }, data: { label: 'DBO.SPRODUCTSSOLD', type: 'transformation', description: 'Products sold summary' }, style: { background: '#EF4444', color: 'white', border: '2px solid #DC2626', borderRadius: '50%', width: 90, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px', fontWeight: 'bold' } },
-  { id: 'dbo-vsalesproductsummary', type: 'default', position: { x: 500, y: 200 }, data: { label: 'DBO.VSALESPRODUCTSUMMARY', type: 'transformation', description: 'Sales product summary view' }, style: { background: '#EF4444', color: 'white', border: '2px solid #DC2626', borderRadius: '50%', width: 110, height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '6px', fontWeight: 'bold' } },
-  { id: 'dbo-vsalescustomerproducts', type: 'default', position: { x: 500, y: 350 }, data: { label: 'DBO.VSALESCUSTOMERPRODUCTS', type: 'transformation', description: 'Customer products view' }, style: { background: '#EF4444', color: 'white', border: '2px solid #DC2626', borderRadius: '50%', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '6px', fontWeight: 'bold' } },
-
-  // Output nodes (green nodes) - initially hidden
-  { id: 'customer-sales-by-year', type: 'default', position: { x: 750, y: 50 }, data: { label: 'CUSTOMER SALES BY YEAR', type: 'output', description: 'Yearly customer sales report' }, style: { background: '#10B981', color: 'white', border: '2px solid #059669', borderRadius: '50%', width: 110, height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold' }, hidden: true },
-  { id: 'top-product-sales', type: 'default', position: { x: 750, y: 180 }, data: { label: 'TOP PRODUCT SALES', type: 'output', description: 'Top selling products report' }, style: { background: '#10B981', color: 'white', border: '2px solid #059669', borderRadius: '50%', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold' }, hidden: true },
-  { id: 'order-by-sales-rep-summary', type: 'default', position: { x: 750, y: 300 }, data: { label: 'ORDER BY SALES REP SUMMARY', type: 'output', description: 'Sales representative summary' }, style: { background: '#10B981', color: 'white', border: '2px solid #059669', borderRadius: '50%', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px', fontWeight: 'bold' }, hidden: true },
-  { id: 'sales-report', type: 'default', position: { x: 750, y: 450 }, data: { label: 'SALES REPORT', type: 'output', description: 'Comprehensive sales report' }, style: { background: '#10B981', color: 'white', border: '2px solid #059669', borderRadius: '50%', width: 90, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold' }, hidden: true },
-  { id: 'customer-products', type: 'default', position: { x: 950, y: 350 }, data: { label: 'CUSTOMER PRODUCTS', type: 'output', description: 'Final customer products output' }, style: { background: '#10B981', color: 'white', border: '2px solid #059669', borderRadius: '50%', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 'bold' }, hidden: true }
-];
-
-// Initial edges - some hidden initially
-const initialEdges = [
-  { id: 'e1', source: 'datamart', target: 'dbo-dwhfact-sales', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e2', source: 'load-fact-sales', target: 'dbo-dwhfact-sales', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e3', source: 'load-dwh', target: 'dbo-dwhdim-customer', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e4', source: 'load-dwh-dim-product', target: 'dbo-dwhdim-product', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e5', source: 'dbo-dwhfact-sales', target: 'dbo-sproductssold', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e6', source: 'dbo-dwhfact-sales', target: 'dbo-vsalesproductsummary', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e7', source: 'dbo-dwhdim-customer', target: 'dbo-vsalesproductsummary', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e8', source: 'dbo-dwhdim-product', target: 'dbo-vsalesproductsummary', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e9', source: 'dbo-vsalesproductsummary', target: 'dbo-vsalescustomerproducts', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e10', source: 'dbo-dwhdim-customer', target: 'dbo-vsalescustomerproducts', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e11', source: 'dbo-dwhdim-product', target: 'dbo-vsalescustomerproducts', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' } },
-  { id: 'e12', source: 'dbo-sproductssold', target: 'customer-sales-by-year', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' }, hidden: true },
-  { id: 'e13', source: 'dbo-vsalesproductsummary', target: 'top-product-sales', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' }, hidden: true },
-  { id: 'e14', source: 'dbo-vsalescustomerproducts', target: 'order-by-sales-rep-summary', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' }, hidden: true },
-  { id: 'e15', source: 'dbo-vsalescustomerproducts', target: 'sales-report', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' }, hidden: true },
-  { id: 'e16', source: 'sales-report', target: 'customer-products', markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#6B7280' }, hidden: true },
-];
-
-function DataLineageFlow() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack }) => {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
+  const [forwardSteps, setForwardSteps] = useState(2);
+  const [forwardData, setForwardData] = useState(null);
+  const [isLoadingForward, setIsLoadingForward] = useState(false);
+
+  const fetchForwardLineage = async (nodeId, nodeType, steps = 2) => {
+    setIsLoadingForward(true);
+    try {
+      const currentItem = displayableItems[currentTableIndex];
+      if (!currentItem) return null;
+
+      const clickedNode = nodes.find(n => n.id === nodeId);
+
+      let connectionName = null;
+      if (currentItem.type === 'Table') {
+        connectionName = currentItem.database;
+      }
+      // else if (currentItem.type === 'View' && currentItem.viewMetadata) {
+      //   // For views, extract from viewMetadata - use the first connection or handle multi-connection views
+      //   const { connection_name } = currentItem.viewMetadata;
+      //   if (Array.isArray(connection_name) && connection_name.length > 0) {
+      //     connectionName = connection_name[0]; // Use first connection for now
+      //   } else if (typeof connection_name === 'string') {
+      //     connectionName = connection_name;
+      //   }
+      // }
+
+      if (!connectionName && currentItem.database) {
+        connectionName = currentItem.database.split(' + ')[0];
+      }
+
+      let requestData = {
+        matched_policy_ids: [3],
+        connection_name: connectionName,
+        steps: steps,
+        type: nodeType
+      };
+
+      if (nodeType === 'schema') {
+        const fullTableName = clickedNode.data.fullName;
+        requestData.table_schema = fullTableName;
+      } else if (nodeType === 'table') {
+        if (clickedNode && clickedNode.data && clickedNode.data.fullName) {
+          const fullTableName = clickedNode.data.fullName;
+          const tableParts = fullTableName.split('.');
+
+          if (tableParts.length >= 2) {
+            requestData.table_schema = tableParts.slice(0, -1).join('.');
+            requestData.table_name = fullTableName;
+          } else {
+            requestData.table_schema = currentItem.schema;
+            requestData.table_name = fullTableName;
+          }
+        } else {
+          requestData.table_schema = currentItem.schema;
+          requestData.table_name = `${connectionName}.${currentItem.schema}.${nodeId}`;
+        }
+      }
+
+      console.log('Forward lineage request data:', requestData);
+
+      const response = await fetch('http://localhost:8000/api/v1/data_lineage/vizualization/forward', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'sessionId=abc123'
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      } else {
+        console.error('Failed to fetch forward lineage:', response.statusText);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching forward lineage:', error);
+      return null;
+    } finally {
+      setIsLoadingForward(false);
+    }
+  };
+
+  const displayableItems = useMemo(() => {
+    return selectedItems.filter(item => item.type === 'Table' || item.type === 'View');
+  }, [selectedItems]);
+
+  const NODE_SIZE = 60;
+
+  const generateNodesAndEdges = (item) => {
+    if (item.type === 'Table') {
+      return generateTableNodesAndEdges(item);
+    } else if (item.type === 'View') {
+      return generateViewNodesAndEdges(item);
+    }
+    return { nodes: [], edges: [] };
+  };
+
+  const generateTableNodesAndEdges = (tableItem) => {
+    const schemaNode = {
+      id: `${tableItem.schema}-schema`,
+      type: 'default',
+      position: { x: 200, y: 200 },
+      data: {
+        label: 'S',
+        type: 'schema',
+        description: `Schema: ${tableItem.schemaToShow}`,
+        fullName: tableItem.schema
+      },
+      style: {
+        background: '#3B82F6',
+        color: 'white',
+        border: '3px solid #1D4ED8',
+        borderRadius: '50%',
+        width: NODE_SIZE,
+        height: NODE_SIZE,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '24px',
+        fontWeight: 'bold',
+        textAlign: 'center'
+      }
+    };
+
+    const tableNode = {
+      id: `${tableItem.table}-table`,
+      type: 'default',
+      position: { x: 500, y: 200 },
+      data: {
+        label: 'T',
+        type: 'table',
+        description: `Table: ${tableItem.name}`,
+        fullName: tableItem.table
+      },
+      style: {
+        background: '#EF4444',
+        color: 'white',
+        border: '3px solid #DC2626',
+        borderRadius: '50%',
+        width: NODE_SIZE,
+        height: NODE_SIZE,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '24px',
+        fontWeight: 'bold',
+        textAlign: 'center'
+      }
+    };
+
+    const connectionEdge = {
+      id: `${schemaNode.id}-${tableNode.id}`,
+      source: schemaNode.id,
+      target: tableNode.id,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      style: { stroke: '#6B7280', strokeWidth: 3 }
+    };
+
+    return {
+      nodes: [schemaNode, tableNode],
+      edges: [connectionEdge]
+    };
+  };
+
+  const generateViewNodesAndEdges = (viewItem) => {
+    if (!viewItem.viewMetadata) {
+      return generateTableNodesAndEdges(viewItem);
+    }
+
+    const { table_name, table_schema } = viewItem.viewMetadata;
+    const nodes = [];
+    const edges = [];
+
+    const schemaGroups = {};
+    table_name.forEach((tableName, index) => {
+      const schemaKey = table_schema[index] || table_schema[0];
+      const schemaName = schemaKey;
+
+      if (!schemaGroups[schemaName]) {
+        schemaGroups[schemaName] = [];
+      }
+      schemaGroups[schemaName].push({
+        name: tableName,
+        fullSchema: schemaKey
+      });
+    });
+
+    let schemaIndex = 0;
+    const schemaPositions = {};
+
+    Object.entries(schemaGroups).forEach(([schemaName, tables]) => {
+      const schemaY = 100 + (schemaIndex * 200);
+      const schemaX = 100;
+
+      const schemaNodeId = `${schemaName}-schema-${schemaIndex}`;
+      schemaPositions[schemaName] = { x: schemaX, y: schemaY };
+
+      const schemaNode = {
+        id: schemaNodeId,
+        type: 'default',
+        position: { x: schemaX, y: schemaY },
+        data: {
+          label: 'S',
+          type: 'schema',
+          description: `Schema: ${schemaName.split('.').pop()}`,
+          fullName: schemaName
+        },
+        style: {
+          background: '#3B82F6',
+          color: 'white',
+          border: '3px solid #1D4ED8',
+          borderRadius: '50%',
+          width: NODE_SIZE,
+          height: NODE_SIZE,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '24px',
+          fontWeight: 'bold',
+          textAlign: 'center'
+        }
+      };
+      nodes.push(schemaNode);
+
+      tables.forEach((table, tableIndex) => {
+        const tableY = schemaY + ((tableIndex - Math.floor(tables.length / 2)) * 80);
+        const tableX = schemaX + 250;
+
+        const tableNodeId = `${table.name}-table-${schemaIndex}-${tableIndex}`;
+        const tableNode = {
+          id: tableNodeId,
+          type: 'default',
+          position: { x: tableX, y: tableY },
+          data: {
+            label: 'T',
+            type: 'table',
+            description: `Table: ${table.name.split('.').pop()}`,
+            fullName: table.name
+          },
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: '3px solid #DC2626',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+        nodes.push(tableNode);
+
+        const schemaToTableEdge = {
+          id: `${schemaNodeId}-${tableNodeId}`,
+          source: schemaNodeId,
+          target: tableNodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#6B7280', strokeWidth: 2 }
+        };
+        edges.push(schemaToTableEdge);
+      });
+
+      schemaIndex++;
+    });
+
+    const viewX = 600;
+    const viewY = 100 + (Object.keys(schemaGroups).length - 1) * 100;
+
+    const viewNodeId = `${viewItem.name}`;
+    const viewNode = {
+      id: viewNodeId,
+      type: 'default',
+      position: { x: viewX, y: viewY },
+      data: {
+        label: 'V',
+        type: 'view',
+        description: `View: ${viewItem.name}`,
+        viewName: viewItem.name
+      },
+      style: {
+        background: '#10B981',
+        color: 'white',
+        border: '3px solid #059669',
+        borderRadius: '50%',
+        width: NODE_SIZE,
+        height: NODE_SIZE,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '24px',
+        fontWeight: 'bold',
+        textAlign: 'center'
+      }
+    };
+    nodes.push(viewNode);
+
+    nodes.forEach(node => {
+      if (node.data.type === 'table') {
+        const tableToViewEdge = {
+          id: `${node.id}-${viewNodeId}`,
+          source: node.id,
+          target: viewNodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#10B981', strokeWidth: 2 }
+        };
+        edges.push(tableToViewEdge);
+      }
+    });
+
+    return { nodes, edges };
+  };
+
+  const currentItem = displayableItems[currentTableIndex];
+  const { nodes: initialNodes, edges: initialEdges } = currentItem ?
+    generateNodesAndEdges(currentItem) :
+    { nodes: [], edges: [] };
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => {
+    if (currentItem) {
+      const { nodes: newNodes, edges: newEdges } = generateNodesAndEdges(currentItem);
+      setNodes(newNodes);
+      setEdges(newEdges);
+      setExpandedNodes(new Set());
+      setSelectedNodeId(null);
+      setForwardData(null);
+    }
+  }, [currentItem, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges],
   );
 
-  const findConnectedElements = (nodeId, direction) => {
-    const connectedNodes = new Set();
-    const connectedEdges = new Set();
-    edges.forEach(edge => {
-      if (direction === 'forward' && edge.source === nodeId) {
-        connectedNodes.add(edge.target);
-        connectedEdges.add(edge.id);
-      } else if (direction === 'backward' && edge.target === nodeId) {
-        connectedNodes.add(edge.source);
-        connectedEdges.add(edge.id);
+  const getForwardLineageNodes = (sourceNodeId, apiData) => {
+    const newNodes = [];
+    const newEdges = [];
+
+    const sourceNode = nodes.find(n => n.id === sourceNodeId);
+    if (!sourceNode) return { nodes: [], edges: [] };
+
+    const baseX = sourceNode.position.x + 300;
+    const baseY = sourceNode.position.y;
+
+    if (apiData.tables && sourceNode.data.type === 'schema') {
+      apiData.tables.forEach((fullTableName, index) => {
+        const tableParts = fullTableName.split('.');
+        const tableName = tableParts[tableParts.length - 1];
+
+        const tableNodeId = `${sourceNodeId}-forward-table-${index}`;
+        const tableNode = {
+          id: tableNodeId,
+          type: 'default',
+          position: {
+            x: baseX,
+            y: baseY + ((index - Math.floor(apiData.tables.length / 2)) * 80)
+          },
+          data: {
+            label: 'T',
+            type: 'table',
+            description: `Table: ${tableName}`,
+            fullName: fullTableName
+          },
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: '3px solid #DC2626',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+        newNodes.push(tableNode);
+
+        const edge = {
+          id: `${sourceNodeId}-${tableNodeId}`,
+          source: sourceNodeId,
+          target: tableNodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: {
+            stroke: '#10B981',
+            strokeWidth: 2,
+            strokeDasharray: '5,5'
+          }
+        };
+        newEdges.push(edge);
+      });
+    }
+
+    if (Array.isArray(apiData) && sourceNode.data.type === 'table') {
+      apiData.forEach((viewName, index) => {
+        const viewNodeId = `${sourceNodeId}-forward-view-${index}`;
+        const viewNode = {
+          id: viewNodeId,
+          type: 'default',
+          position: {
+            x: baseX,
+            y: baseY + ((index - Math.floor(apiData.length / 2)) * 100)
+          },
+          data: {
+            label: 'V',
+            type: 'view',
+            description: `View: ${viewName}`,
+            viewName: viewName
+          },
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: '3px solid #059669',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+        newNodes.push(viewNode);
+
+        const edge = {
+          id: `${sourceNodeId}-${viewNodeId}`,
+          source: sourceNodeId,
+          target: viewNodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: {
+            stroke: '#10B981',
+            strokeWidth: 2,
+            strokeDasharray: '5,5'
+          }
+        };
+        newEdges.push(edge);
+      });
+    }
+
+    if (apiData.views && apiData.views.length > 0) {
+      const viewsBaseX = baseX + 300;
+
+      apiData.views.forEach((view, viewIndex) => {
+        const viewNodeId = `${sourceNodeId}-forward-view-${viewIndex}`;
+        const viewNode = {
+          id: viewNodeId,
+          type: 'default',
+          position: {
+            x: viewsBaseX,
+            y: baseY + ((viewIndex - Math.floor(apiData.views.length / 2)) * 100)
+          },
+          data: {
+            label: 'V',
+            type: 'view',
+            description: `View: ${view.view_name}`,
+            viewName: view.view_name
+          },
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: '3px solid #059669',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+        newNodes.push(viewNode);
+
+        view.tables.forEach((viewTable, tableIndex) => {
+          const matchingTableNode = newNodes.find(n =>
+            n.data.type === 'table' &&
+            n.data.fullName &&
+            n.data.fullName.toLowerCase().includes(viewTable.toLowerCase().split('.').pop())
+          ) || nodes.find(n =>
+            n.data.type === 'table' &&
+            n.data.description.toLowerCase().includes(viewTable.toLowerCase().split('.').pop())
+          );
+
+          if (matchingTableNode) {
+            const viewEdge = {
+              id: `${matchingTableNode.id}-${viewNodeId}`,
+              source: matchingTableNode.id,
+              target: viewNodeId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: {
+                stroke: '#10B981',
+                strokeWidth: 2,
+                strokeDasharray: '5,5'
+              }
+            };
+            newEdges.push(viewEdge);
+          }
+        });
+      });
+    }
+
+    return { nodes: newNodes, edges: newEdges };
+  };
+
+  const getDummyAdditionalNodes = (nodeId, direction) => {
+    if (direction === 'forward' && forwardData) {
+      return getForwardLineageNodes(nodeId, forwardData);
+    }
+
+    const nodeStyles = {
+      source: {
+        background: '#8B5CF6',
+        border: '2px solid #7C3AED',
+        color: 'white',
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 'bold'
+      },
+      transform: {
+        background: '#F59E0B',
+        border: '2px solid #D97706',
+        color: 'white',
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 'bold'
       }
-    });
-    return { nodes: connectedNodes, edges: connectedEdges };
+    };
+
+    const mockData = {
+      [`${nodeId}-backward`]: {
+        nodes: [{
+          id: `${nodeId}-upstream-1`,
+          position: { x: 50, y: 150 },
+          data: {
+            label: 'S',
+            type: 'source',
+            description: 'Raw Data Source',
+            fullName: 'Raw Data Source'
+          },
+          style: { ...nodeStyles.source, width: NODE_SIZE, height: NODE_SIZE, fontSize: '24px' }
+        }],
+        edges: [{
+          id: `${nodeId}-upstream-edge-1`,
+          source: `${nodeId}-upstream-1`,
+          target: nodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#8B5CF6', strokeWidth: 2 }
+        }]
+      }
+    };
+
+    return mockData[`${nodeId}-${direction}`] || { nodes: [], edges: [] };
+  };
+
+  const handleNavigate = async (nodeId, direction) => {
+    const key = `${nodeId}-${direction}`;
+    const isCurrentlyExpanded = expandedNodes.has(key);
+
+    const clickedNode = nodes.find(n => n.id === nodeId);
+
+    if (direction === 'forward' && clickedNode?.data?.type === 'view') {
+      console.log('Forward lineage not available for view nodes');
+      return;
+    }
+
+    if (isCurrentlyExpanded) {
+      setNodes(currentNodes =>
+        currentNodes.filter(node => !node.id.includes(`${nodeId}-${direction === 'forward' ? 'forward' : 'upstream'}`))
+      );
+      setEdges(currentEdges =>
+        currentEdges.filter(edge => !edge.id.includes(`${nodeId}-${direction === 'forward' ? 'forward' : 'upstream'}`))
+      );
+      setExpandedNodes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(key);
+        return newSet;
+      });
+
+      if (direction === 'forward') {
+        setForwardData(null);
+      }
+    } else {
+      if (direction === 'forward') {
+        if (!clickedNode) return;
+        const nodeType = clickedNode.data?.type || 'schema';
+
+        if (nodeType === 'schema' || nodeType === 'table') {
+          const apiData = await fetchForwardLineage(nodeId, nodeType, forwardSteps);
+          if (apiData) {
+            setForwardData(apiData);
+            const additionalData = getForwardLineageNodes(nodeId, apiData);
+
+            if (additionalData.nodes.length > 0) {
+              setNodes(currentNodes => [...currentNodes, ...additionalData.nodes]);
+              setEdges(currentEdges => [...currentEdges, ...additionalData.edges]);
+              setExpandedNodes(prev => new Set(prev).add(key));
+            }
+          }
+        }
+      } else {
+        const additionalData = getDummyAdditionalNodes(nodeId, direction);
+        if (additionalData.nodes.length > 0) {
+          setNodes(currentNodes => [...currentNodes, ...additionalData.nodes]);
+          setEdges(currentEdges => [...currentEdges, ...additionalData.edges]);
+          setExpandedNodes(prev => new Set(prev).add(key));
+        }
+      }
+    }
   };
 
   const handleToggleVisibility = (nodeId) => {
-    const forwardConnected = findConnectedElements(nodeId, 'forward');
-    const backwardConnected = findConnectedElements(nodeId, 'backward');
-    const allConnectedNodes = new Set([...forwardConnected.nodes, ...backwardConnected.nodes]);
-    const allConnectedEdges = new Set([...forwardConnected.edges, ...backwardConnected.edges]);
-    const hasVisibleConnected = nodes.some(node =>
-      allConnectedNodes.has(node.id) && !node.hidden
-    );
-    setNodes(currentNodes =>
-      currentNodes.map(node => ({
-        ...node,
-        hidden: allConnectedNodes.has(node.id) ? hasVisibleConnected : node.hidden
-      }))
-    );
-    setEdges(currentEdges =>
-      currentEdges.map(edge => ({
-        ...edge,
-        hidden: allConnectedEdges.has(edge.id) ? hasVisibleConnected : edge.hidden
-      }))
-    );
   };
 
   const handleReset = () => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-    setExpandedNodes(new Set());
+    if (currentItem) {
+      const { nodes: resetNodes, edges: resetEdges } = generateNodesAndEdges(currentItem);
+      setNodes(resetNodes);
+      setEdges(resetEdges);
+      setExpandedNodes(new Set());
+      setForwardData(null);
+    }
   };
 
   const onNodeClick = (event, node) => {
@@ -200,80 +741,85 @@ function DataLineageFlow() {
 
   const selectedNode = nodes.find(node => node.id === selectedNodeId);
 
-  // --- START OF UPDATED SECTION ---
-
-  // Dummy data for additional nodes - simulates API response for lineage
-  const getDummyAdditionalNodes = (nodeId, direction) => {
-    const nodeStyles = {
-      source: { background: '#8B5CF6', border: '2px solid #7C3AED', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' },
-      transform: { background: '#F59E0B', border: '2px solid #D97706', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' },
-    };
-
-    const dummyData = {
-      // --- Source Nodes ---
-      'datamart-forward': { nodes: [{ id: `${nodeId}-downstream-1`, position: { x: 200, y: 20 }, data: { label: 'STAGING_AREA', type: 'transformation', description: 'Staging area for data processing' }, style: { ...nodeStyles.transform, width: 90, height: 90, fontSize: '8px' } }], edges: [{ id: `${nodeId}-downstream-edge-1`, source: nodeId, target: `${nodeId}-downstream-1`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'load-fact-sales-forward': { nodes: [{ id: `${nodeId}-downstream-1`, position: { x: 200, y: 180 }, data: { label: 'VALIDATION_STEP', type: 'transformation', description: 'Data validation before loading' }, style: { ...nodeStyles.transform, width: 100, height: 100, fontSize: '8px' } }], edges: [{ id: `${nodeId}-downstream-edge-1`, source: nodeId, target: `${nodeId}-downstream-1`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'load-dwh-forward': { nodes: [{ id: `${nodeId}-downstream-1`, position: { x: 200, y: 330 }, data: { label: 'CLEANSING_SCRIPT', type: 'transformation', description: 'Script for data cleansing' }, style: { ...nodeStyles.transform, width: 90, height: 90, fontSize: '8px' } }], edges: [{ id: `${nodeId}-downstream-edge-1`, source: nodeId, target: `${nodeId}-downstream-1`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'load-dwh-dim-product-forward': { nodes: [{ id: `${nodeId}-downstream-1`, position: { x: 200, y: 450 }, data: { label: 'CATEGORY_MAP', type: 'transformation', description: 'Mapping product categories' }, style: { ...nodeStyles.transform, width: 95, height: 95, fontSize: '8px' } }], edges: [{ id: `${nodeId}-downstream-edge-1`, source: nodeId, target: `${nodeId}-downstream-1`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-
-      // --- Transformation Nodes ---
-      'dbo-dwhfact-sales-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 120, y: 60 }, data: { label: 'RAW_SALES_DATA', type: 'source', description: 'Raw sales data source' }, style: { ...nodeStyles.source, width: 95, height: 95, fontSize: '7px' } }, { id: `${nodeId}-upstream-2`, position: { x: 120, y: 180 }, data: { label: 'ORDER_SYSTEM', type: 'source', description: 'Order management system' }, style: { ...nodeStyles.source, width: 85, height: 85, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#8B5CF6', strokeWidth: 2 } }, { id: `${nodeId}-upstream-edge-2`, source: `${nodeId}-upstream-2`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#8B5CF6', strokeWidth: 2 } }] },
-      'dbo-dwhfact-sales-forward': { nodes: [{ id: `${nodeId}-downstream-1`, position: { x: 450, y: 60 }, data: { label: 'ANALYTICS_VIEW', type: 'transformation', description: 'Analytics processing view' }, style: { ...nodeStyles.transform, width: 85, height: 85, fontSize: '8px' } }, { id: `${nodeId}-downstream-2`, position: { x: 450, y: 180 }, data: { label: 'METRIC_CALC', type: 'transformation', description: 'Metrics calculation layer' }, style: { ...nodeStyles.transform, width: 80, height: 80, fontSize: '9px' } }], edges: [{ id: `${nodeId}-downstream-edge-1`, source: nodeId, target: `${nodeId}-downstream-1`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }, { id: `${nodeId}-downstream-edge-2`, source: nodeId, target: `${nodeId}-downstream-2`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'dbo-dwhdim-customer-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 100, y: 260 }, data: { label: 'CRM_SYSTEM', type: 'source', description: 'Customer Relationship Manager' }, style: { ...nodeStyles.source, width: 90, height: 90, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#8B5CF6', strokeWidth: 2 } }] },
-      'dbo-dwhdim-customer-forward': { nodes: [{ id: `${nodeId}-downstream-1`, position: { x: 430, y: 260 }, data: { label: 'CUST_SEGMENT', type: 'transformation', description: 'Customer segmentation model' }, style: { ...nodeStyles.transform, width: 95, height: 95, fontSize: '8px' } }], edges: [{ id: `${nodeId}-downstream-edge-1`, source: nodeId, target: `${nodeId}-downstream-1`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'dbo-dwhdim-product-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 100, y: 400 }, data: { label: 'PRODUCT_CATALOG', type: 'source', description: 'Main Product Catalog DB' }, style: { ...nodeStyles.source, width: 100, height: 100, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#8B5CF6', strokeWidth: 2 } }] },
-      'dbo-dwhdim-product-forward': { nodes: [{ id: `${nodeId}-downstream-1`, position: { x: 430, y: 400 }, data: { label: 'INVENTORY_JOIN', type: 'transformation', description: 'Joined with inventory data' }, style: { ...nodeStyles.transform, width: 90, height: 90, fontSize: '8px' } }], edges: [{ id: `${nodeId}-downstream-edge-1`, source: nodeId, target: `${nodeId}-downstream-1`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'dbo-sproductssold-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 350, y: 60 }, data: { label: 'AGG_LOGIC', type: 'transformation', description: 'Aggregation logic script' }, style: { ...nodeStyles.transform, width: 80, height: 80, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'dbo-sproductssold-forward': { nodes: [{ id: `${nodeId}-downstream-1`, position: { x: 650, y: 60 }, data: { label: 'SALES_FORECAST', type: 'output', description: 'Sales forecasting model input' }, style: { ...nodeStyles.transform, width: 90, height: 90, fontSize: '8px' } }], edges: [{ id: `${nodeId}-downstream-edge-1`, source: nodeId, target: `${nodeId}-downstream-1`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'dbo-vsalesproductsummary-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 350, y: 180 }, data: { label: 'JOIN_LOGIC', type: 'transformation', description: 'View definition join logic' }, style: { ...nodeStyles.transform, width: 85, height: 85, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'dbo-vsalesproductsummary-forward': { nodes: [{ id: `${nodeId}-downstream-1`, position: { x: 650, y: 180 }, data: { label: 'BI_TOOL_QUERY', type: 'output', description: 'Query from BI Tool' }, style: { ...nodeStyles.transform, width: 90, height: 90, fontSize: '8px' } }], edges: [{ id: `${nodeId}-downstream-edge-1`, source: nodeId, target: `${nodeId}-downstream-1`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'dbo-vsalescustomerproducts-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 350, y: 330 }, data: { label: 'CUSTOMER_FILTER', type: 'transformation', description: 'Customer filtering logic' }, style: { ...nodeStyles.transform, width: 100, height: 100, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'dbo-vsalescustomerproducts-forward': { nodes: [{ id: `${nodeId}-downstream-1`, position: { x: 700, y: 320 }, data: { label: 'DASHBOARD_DATA', type: 'output', description: 'Dashboard data feed' }, style: { ...nodeStyles.transform, width: 90, height: 90, fontSize: '7px' } }, { id: `${nodeId}-downstream-2`, position: { x: 700, y: 420 }, data: { label: 'API_ENDPOINT', type: 'output', description: 'API data endpoint' }, style: { ...nodeStyles.transform, width: 80, height: 80, fontSize: '8px' } }], edges: [{ id: `${nodeId}-downstream-edge-1`, source: nodeId, target: `${nodeId}-downstream-1`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }, { id: `${nodeId}-downstream-edge-2`, source: nodeId, target: `${nodeId}-downstream-2`, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-
-      // --- Output Nodes ---
-      'customer-sales-by-year-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 600, y: 30 }, data: { label: 'YEARLY_AGG', type: 'transformation', description: 'Yearly aggregation script' }, style: { ...nodeStyles.transform, width: 80, height: 80, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'top-product-sales-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 600, y: 160 }, data: { label: 'RANKING_FUNC', type: 'transformation', description: 'Ranking function for products' }, style: { ...nodeStyles.transform, width: 85, height: 85, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'order-by-sales-rep-summary-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 600, y: 280 }, data: { label: 'GROUP_BY_REP', type: 'transformation', description: 'Grouping by sales rep' }, style: { ...nodeStyles.transform, width: 90, height: 90, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'sales-report-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 600, y: 430 }, data: { label: 'REPORT_QUERY', type: 'transformation', description: 'Final query for the report' }, style: { ...nodeStyles.transform, width: 80, height: 80, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-      'customer-products-backward': { nodes: [{ id: `${nodeId}-upstream-1`, position: { x: 800, y: 330 }, data: { label: 'FINAL_FILTER', type: 'transformation', description: 'Final filtering for customer products' }, style: { ...nodeStyles.transform, width: 85, height: 85, fontSize: '8px' } }], edges: [{ id: `${nodeId}-upstream-edge-1`, source: `${nodeId}-upstream-1`, target: nodeId, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: '#F59E0B', strokeWidth: 2 } }] },
-    };
-
-    return dummyData[`${nodeId}-${direction}`] || { nodes: [], edges: [] };
-  };
-  // --- END OF UPDATED SECTION ---
-
-
-  const handleNavigate = (nodeId, direction) => {
-    const key = `${nodeId}-${direction}`;
-    const isCurrentlyExpanded = expandedNodes.has(key);
-
-    const term = direction === 'forward' ? 'downstream' : 'upstream';
-
-    if (isCurrentlyExpanded) {
-      setNodes(currentNodes =>
-        currentNodes.filter(node => !node.id.startsWith(`${nodeId}-${term}`))
-      );
-      setEdges(currentEdges =>
-        currentEdges.filter(edge => !edge.id.startsWith(`${nodeId}-${term}`))
-      );
-      setExpandedNodes(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(key);
-        return newSet;
-      });
-    } else {
-      const additionalData = getDummyAdditionalNodes(nodeId, direction);
-      if (additionalData.nodes.length > 0) {
-        setNodes(currentNodes => [...currentNodes, ...additionalData.nodes]);
-        setEdges(currentEdges => [...currentEdges, ...additionalData.edges]);
-        setExpandedNodes(prev => new Set(prev).add(key));
-      }
-    }
-  };
+  if (!currentItem) {
+    return (
+      <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-600">No Items Selected</h2>
+          <p className="text-gray-500">Please select tables or views from the lineage page first.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full h-screen bg-gray-50">
-      <div className="h-full relative">
+    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
+      <div className="p-2">
+        <Breadcrumb />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onBack}
+              className="flex items-center text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            {currentItem?.type === 'View' ? (
+              <Layers className="h-6 w-6 text-gray-700" />
+            ) : (
+              <Table className="h-6 w-6 text-gray-700" />
+            )}
+            <span className="text-lg font-semibold text-gray-800">
+              {currentItem?.name || 'Loading...'}
+              {/* ({currentItem?.type}) */}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {displayableItems.length > 1 && (
+              <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => onNavigate('prev')}
+                  disabled={currentTableIndex === 0}
+                  className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Previous Item"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-sm font-medium text-gray-700 px-3">
+                  Item {currentTableIndex + 1} of {displayableItems.length}
+                </span>
+                <button
+                  onClick={() => onNavigate('next')}
+                  disabled={currentTableIndex === displayableItems.length - 1}
+                  className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Next Item"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-2">
+              <span className="text-sm font-medium text-gray-700">Steps:</span>
+              <select
+                value={forwardSteps}
+                onChange={(e) => setForwardSteps(parseInt(e.target.value))}
+                className="text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                title="Forward Lineage Steps"
+              >
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
+                <option value={4}>4</option>
+                <option value={5}>5</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-grow relative">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -281,7 +827,6 @@ function DataLineageFlow() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeClick={onNodeClick}
-          fitView
           className="bg-gray-50"
         >
           <Controls />
@@ -301,22 +846,14 @@ function DataLineageFlow() {
             onReset={handleReset}
             onClose={closeRemote}
             expandedNodes={expandedNodes}
+            isLoading={isLoadingForward}
+            nodeData={selectedNode.data}
           />
         )}
-      </div>
 
-      {selectedNodeId && selectedNode && (
-        <div className="absolute bottom-4 left-4 bg-white p-4 rounded-lg shadow-lg border max-w-sm">
-          <h4 className="font-bold mb-2">Selected Node Details</h4>
-          <div className="space-y-2 text-sm">
-            <div><strong>Name:</strong> {selectedNode.data.label}</div>
-            <div><strong>Type:</strong> <span className="capitalize">{selectedNode.data.type}</span></div>
-            <div><strong>Description:</strong> {selectedNode.data.description}</div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
-}
+};
 
 export default DataLineageFlow;

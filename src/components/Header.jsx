@@ -45,11 +45,11 @@ const Header = () => {
   const { data: user, isLoading } = useFetchUser(userId);
 
   const isDataSteward = decodedToken?.resource_access?.darch?.roles?.some(role =>
-    ['data steward'].includes(role.toLowerCase())
+    ['persona:data steward'].includes(role.toLowerCase())
   );
 
   const isDataOwner = decodedToken?.resource_access?.darch?.roles?.some(role =>
-    ['data owner'].includes(role.toLowerCase())
+    ['persona:data owner'].includes(role.toLowerCase())
   );
 
   useEffect(() => {

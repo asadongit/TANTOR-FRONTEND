@@ -10,7 +10,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 function Tables() {
   const { token, decodedToken } = useAuth();
   const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-    ['data steward', 'data owner'].includes(role?.toLowerCase())
+    ['persona:data steward', 'persona:data owner'].includes(role?.toLowerCase())
   );
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);

@@ -86,7 +86,7 @@ const DatabaseViewScreen = () => {
 
 
   const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(
-    (role) => ["data steward", "data owner"].includes(role.toLowerCase())
+    (role) => ["persona:data steward", "persona:data owner"].includes(role.toLowerCase())
   );
 
   const fetchAllData = async () => {
