@@ -84,7 +84,8 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
     const [step2Data, setStep2Data] = useState({
         selectedRole: '',
         selectedGroup: '',
-        selectedSubgroup: ''
+        selectedSubgroup: '',
+        selectedPersona: ''
     });
     const [step3Data, setStep3Data] = useState({
         selectedConnections: [],
@@ -278,7 +279,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                 ...policyData.user_selections,
                 role: data.selectedRole,
                 group: data.selectedGroup,
-                persona: '',
+                persona: data.selectedPersona || '',
                 subGroup: data.selectedSubgroup
             }
         };
@@ -478,6 +479,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
             selectedRole: '',
             selectedGroup: '',
             selectedSubgroup: '',
+            selectedPersona: ''
         });
         setStep3Data({
             selectedConnections: [],
@@ -513,6 +515,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                     selectedRole: '',
                     selectedGroup: '',
                     selectedSubgroup: '',
+                    selectedPersona: ''
                 });
                 break;
             case 2:
@@ -652,7 +655,8 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
             setStep2Data({
                 selectedRole: policyDetails.user_selections.role || "",
                 selectedGroup: policyDetails.user_selections.group || "",
-                selectedSubgroup: policyDetails.user_selections.subGroup || ""
+                selectedSubgroup: policyDetails.user_selections.subGroup || "",
+                selectedPersona: policyDetails.user_selections.persona || "" 
             });
             setStep3Data({
                 selectedConnections: policyDetails.data_connection?.map(dc => dc.connection) || [],
