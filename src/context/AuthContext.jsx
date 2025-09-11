@@ -27,6 +27,11 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(
     () => localStorage.getItem("token") || null
   );
+
+  const [session_state, setSessionState] = useState(
+    () => localStorage.getItem("session_state") || null
+  );
+
   const [decodedToken, setDecodedToken] = useState(() => {
     if (token) {
       try {
@@ -113,9 +118,11 @@ export const AuthProvider = ({ children }) => {
       if (response.ok && data.access_token) {
         try {
           setToken(data.access_token);
+          setSessionState(data.session_state);
           const decodedToken = jwtDecode(data.access_token);
           setDecodedToken(decodedToken);
           localStorage.setItem("token", data.access_token);
+          localStorage.setItem("session_state", data.session_state);
           
           const savedProject = localStorage.getItem(`project_${decodedToken.preferred_username}`);
           if (savedProject) {
@@ -150,6 +157,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         isAuthenticated: !!token,
         token,
+        session_state,
         decodedToken,
         login,
         logout,

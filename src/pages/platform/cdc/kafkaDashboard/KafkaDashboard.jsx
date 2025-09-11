@@ -11,7 +11,7 @@ import { KafkaMonitoringProvider } from "../../monitoring/context/KafkaMonitorin
 import KafkaMonitoring from "../../monitoring/KafkaMonitoring";
 
 const KafkaDashboard = () => {
-  const { token, hostnameV1 } = useAuth();
+  const { session_state, token, hostnameV1 } = useAuth();
   const [counts, setCounts] = useState({
     brokers: 0,
     active_topics: 0,
@@ -23,6 +23,17 @@ const KafkaDashboard = () => {
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
   const [activeTab, setActiveTab] = useState("overview");
+  const openkafbat = async () => {
+    try {
+      await fetch(`${hostnameV1}/auth/silent-auth?session_state=${session_state}`, {
+        method: "GET",
+        credentials: "include"
+      });
+    } catch (e) {
+      // Optionally handle error, but still open window
+    }
+    window.open("https://kafbat-ui.tantor.io/");
+  }
 
   const [loadedTabs, setLoadedTabs] = useState({});
 
@@ -97,6 +108,7 @@ const KafkaDashboard = () => {
                   {t.label}
                 </button>
               ))}
+              <button onClick={() => openkafbat()}>Kafbat UI</button>
             </div>
           </div>
         </div>
