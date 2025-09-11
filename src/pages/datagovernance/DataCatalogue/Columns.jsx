@@ -12,7 +12,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 function Columns() {
     const { token, decodedToken } = useAuth();
     const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-        ['data steward', 'data owner'].includes(role?.toLowerCase())
+        ['persona:data steward', 'persona:data owner'].includes(role?.toLowerCase())
     );
     const navigate = useNavigate();
     const { state: navigationState } = useLocation();

@@ -184,7 +184,7 @@ const Edit = ({ onClose, editDetails, type }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-    ['data steward', 'data owner'].includes(role.toLowerCase())
+    ['persona:data steward', 'persona:data owner'].includes(role.toLowerCase())
   );
 
   useEffect(() => {
