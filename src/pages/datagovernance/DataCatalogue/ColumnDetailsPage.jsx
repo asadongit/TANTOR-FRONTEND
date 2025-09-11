@@ -71,7 +71,7 @@ function ColumnDetailsPage() {
     const hostnameV1 = window._env_?.VITE_FAST_API;
 
     const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-        ['data steward', 'data owner'].includes(role.toLowerCase())
+        ['persona:data steward', 'persona:data owner'].includes(role.toLowerCase())
     );
 
     const [activeTab, setActiveTab] = useState('Summary');

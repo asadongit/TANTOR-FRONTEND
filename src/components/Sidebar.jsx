@@ -41,8 +41,8 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   }, [activeSection]);
 
   const isGlobalAdmin = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'global-admin');
-  const isPolicyManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'policy manager');
-  const isUserManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'user manager');
+  const isPolicyManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:policy manager');
+  const isUserManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:user manager');
 
   const toggleExpand = (e, routeName) => {
     e.preventDefault();
