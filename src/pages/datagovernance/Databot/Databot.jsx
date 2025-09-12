@@ -229,27 +229,27 @@ const Databot = () => {
           </div>
         </div> : 
 
-        <>
-          <div className='w-full flex flex-col bg-white'>
-            <div className=''>
-              <RefreshSection 
-                secureQueryLoading={secureQueryLoading} 
-                connectionsLoading={connectionsLoading}
-                schemaLoading={schemaLoading}
-                dropdownRef={dropdownRef}
-                connections={connections}/>
-            </div>
-
-              <ResultSection />
-          </div>
-
-          <div className='bg-white ml-2 border-white rounded-md'>
-            <DatabotChatSection 
-              setIsResultScreen={setIsResultScreen}
-              setQuery={setQuery}
+        <div className="flex w-full">
+          <div className="flex flex-col bg-white flex-[2] min-w-0 overflow-hidden">
+            <RefreshSection 
+              secureQueryLoading={secureQueryLoading} 
+              connectionsLoading={connectionsLoading}
+              schemaLoading={schemaLoading}
+              dropdownRef={dropdownRef}
+              connections={connections}
             />
+            <ResultSection />
           </div>
-        </>
+
+          <div className="flex-[1] bg-white ml-2 border-white rounded-md min-w-0 overflow-hidden">
+            <div className="h-full overflow-auto">
+              <DatabotChatSection 
+                setIsResultScreen={setIsResultScreen}
+                setQuery={setQuery}
+              />
+            </div>
+          </div>
+        </div>
       }
     </div>
   );

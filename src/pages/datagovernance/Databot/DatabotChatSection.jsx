@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from 'react';
 import TantorlOGO from "../../../assets/tantor_favicon.png"
 import { useDatabotContext } from '../../../hooks/dataGovernance/DatabotContext';
 import { useAuth } from '../../../context/AuthContext';
-// import { useRelationship } from '../../../hooks/dataGovernance/Databot/useRelationship';
 
 const DatabotChatSection = ({setIsResultScreen, setQuery}) => {
   const { databot, triggerNewQuestion, resetChat } = useDatabotContext();

@@ -149,7 +149,8 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
           handleIsRefreshed(false);
           const respOk = await refreshDatabotAPI(policyIdsGlobal, selectedConnectionGlobal, selectedSchemaGlobal);
 
-          const refreshSuccess = respOk.status === "ok";
+          const refreshSuccess = respOk?.status === "ok";
+
           handleIsRefreshed(refreshSuccess);
           setLoading(false)
         }}
