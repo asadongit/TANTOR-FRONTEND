@@ -36,11 +36,6 @@ const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, 
   return (
     <div
       className="absolute z-20"
-      // style={{
-      //   left: position.x + 80,
-      //   top: position.y - 40,
-      //   transform: 'translate(-50%, -50%)'
-      // }}
       style={{
         right: '70px',
         top: '120px',
@@ -107,22 +102,13 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       if (currentItem.type === 'Table') {
         connectionName = currentItem.database;
       }
-      // else if (currentItem.type === 'View' && currentItem.viewMetadata) {
-      //   // For views, extract from viewMetadata - use the first connection or handle multi-connection views
-      //   const { connection_name } = currentItem.viewMetadata;
-      //   if (Array.isArray(connection_name) && connection_name.length > 0) {
-      //     connectionName = connection_name[0]; // Use first connection for now
-      //   } else if (typeof connection_name === 'string') {
-      //     connectionName = connection_name;
-      //   }
-      // }
 
       if (!connectionName && currentItem.database) {
         connectionName = currentItem.database.split(' + ')[0];
       }
 
       let requestData = {
-        matched_policy_ids: [3],
+        matched_policy_ids: [19],
         connection_name: connectionName,
         steps: steps,
         type: nodeType
@@ -262,21 +248,27 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       return generateTableNodesAndEdges(viewItem);
     }
 
-    const { table_name, table_schema } = viewItem.viewMetadata;
+    const { table_name} = viewItem.viewMetadata;
     const nodes = [];
     const edges = [];
-
     const schemaGroups = {};
-    table_name.forEach((tableName, index) => {
-      const schemaKey = table_schema[index] || table_schema[0];
-      const schemaName = schemaKey;
+
+    table_name.forEach((fullTableName) => {
+      const parts = fullTableName.split('.');
+      const schemaName = parts.slice(0, -1).join('.');
+
+      if (!schemaName) {
+        console.error(`Could not determine schema for table: ${fullTableName}`);
+        return;
+      }
 
       if (!schemaGroups[schemaName]) {
         schemaGroups[schemaName] = [];
       }
+
       schemaGroups[schemaName].push({
-        name: tableName,
-        fullSchema: schemaKey
+        name: fullTableName,
+        fullSchema: schemaName
       });
     });
 
