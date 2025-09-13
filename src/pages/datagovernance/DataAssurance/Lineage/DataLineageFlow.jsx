@@ -11,8 +11,9 @@ import {
   MarkerType,
 } from 'reactflow';
 
-const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, onReset, onClose, expandedNodes, isLoading, nodeData }) => {
+const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, onReset, onClose, expandedNodes, backwardExpandedNodes, isLoading, isLoadingBackward, nodeData }) => {
   const isForwardExpanded = expandedNodes.has(nodeId);
+  const isBackwardExpanded = backwardExpandedNodes.has(nodeId);
 
   return (
     <div
@@ -49,11 +50,23 @@ const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, 
           </button>
           <button
             onClick={() => onNavigate(nodeId, 'backward')}
-            className="absolute left-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all bg-gray-400 cursor-not-allowed text-white"
-            disabled={true}
-            title="Backward functionality not implemented yet"
+            disabled={isLoadingBackward || nodeData.type !== 'view'}
+            className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${nodeData.type !== 'view' ? 'bg-gray-400 cursor-not-allowed' :
+                isBackwardExpanded ? 'bg-yellow-500 text-black' :
+                  isLoadingBackward ? 'bg-gray-500 text-white cursor-wait' :
+                    'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            title={
+              nodeData.type !== 'view' ? "Backward only available for views" :
+                isLoadingBackward ? "Loading..." :
+                  isBackwardExpanded ? "Close Backward Connections" : "Show Backward Connections"
+            }
           >
-            <ChevronLeft size={14} />
+            {isLoadingBackward ? (
+              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <ChevronLeft size={14} />
+            )}
           </button>
         </div>
         <button
@@ -75,17 +88,30 @@ const API_BASE_URL = `${window._env_?.VITE_FAST_API}/data_lineage`;
 const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack }) => {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
-  const [forwardSteps, setForwardSteps] = useState(2);
+  const [backwardExpandedNodes, setBackwardExpandedNodes] = useState(new Set());
+  const [steps, setSteps] = useState(2);
   const [forwardData, setForwardData] = useState(new Map());
+  const [backwardData, setBackwardData] = useState(new Map());
   const [isLoadingForward, setIsLoadingForward] = useState(false);
+  const [isLoadingBackward, setIsLoadingBackward] = useState(false);
   const [nodeConnectionMap, setNodeConnectionMap] = useState(new Map());
-
 
   const displayableItems = useMemo(() => {
     return selectedItems.filter(item => item.type === 'Table' || item.type === 'View');
   }, [selectedItems]);
 
   const NODE_SIZE = 60;
+
+  const stepOptions = Array.from({ length: 5 }, (_, i) => i + 1);
+
+  const findExistingNode = (nodes, nodeId) => {
+    return nodes.find(n => n.id.toLowerCase() === nodeId.toLowerCase());
+  };
+
+  const edgeExists = (edges, sourceId, targetId) => {
+    const proposedEdgeId = `${sourceId}-${targetId}`.toLowerCase();
+    return edges.some(edge => edge.id && edge.id.toLowerCase() === proposedEdgeId);
+  };
 
   const getConnectionInfo = (nodeId, nodeType) => {
     if (nodeType === 'schema') {
@@ -105,18 +131,15 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     return null;
   };
 
-  const fetchForwardLineage = async (nodeId, nodeType, steps) => {
+  const fetchForwardLineage = async (nodeId, nodeType, stepCount) => {
     const connectionInfo = getConnectionInfo(nodeId, nodeType);
     if (!connectionInfo) return null;
-
-    // const policyResponse = await secureQuery({ user_query: "" }, token);
-    // const fetchedPolicyIds = policyResponse.matched_policy_ids || [];
 
     const payload = {
       matched_policy_ids: [19],
       connection_name: connectionInfo.database,
       table_schema: connectionInfo.schema,
-      steps: steps,
+      steps: stepCount,
       type: nodeType
     };
 
@@ -145,12 +168,60 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     }
   };
 
-  // Calculate positions for new nodes
-  const calculateNodePositions = (existingNodes, newNodeType, count) => {
+  const fetchBackwardLineage = async (nodeId, nodeType, stepCount) => {
+    if (nodeType !== 'view') return null;
+
+    const payload = {
+      matched_policy_ids: [19],
+      view_name: nodeId,
+      steps: stepCount,
+      type: nodeType
+    };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/vizualization/backward`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching backward lineage:', error);
+      return null;
+    }
+  };
+
+  const calculateNodePositions = (existingNodes, newNodeType, count, direction = 'forward') => {
     const positions = [];
-    const baseX = newNodeType === 'table' ? 800 : 1100;
-    const startY = 100;
-    const spacing = 120;
+    let baseX, startY, spacing;
+
+    if (direction === 'backward') {
+      if (newNodeType === 'schema') {
+        baseX = 150; 
+        startY = 100;
+        spacing = 100;
+      } else if (newNodeType === 'table') {
+        baseX = 450; 
+        startY = 100;
+        spacing = 100;
+      } else {
+        baseX = 0;
+        startY = 100;
+        spacing = 120;
+      }
+    } else {
+      baseX = newNodeType === 'table' ? 800 : 1100;
+      startY = 100;
+      spacing = 120;
+    }
 
     for (let i = 0; i < count; i++) {
       positions.push({
@@ -170,8 +241,8 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       const tablePositions = calculateNodePositions(existingNodes, 'table', forwardResponse.tables.length);
 
       forwardResponse.tables.forEach((tableFullName, index) => {
-        // Skip if table already exists
-        if (existingNodes.find(n => n.id === tableFullName)) {
+        // Skip if table already exists (case-insensitive check)
+        if (findExistingNode(existingNodes, tableFullName)) {
           return;
         }
 
@@ -206,7 +277,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
         newNodes.push(tableNode);
 
-        // Create edge from schema to table
+
         const edge = {
           id: `${nodeId}-${tableFullName}`,
           source: nodeId,
@@ -218,15 +289,13 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         newEdges.push(edge);
       });
 
-      // Handle views if steps >= 2
-      if (forwardResponse.views && forwardSteps >= 2) {
+      if (forwardResponse.views && steps >= 2) {
         const viewPositions = calculateNodePositions(existingNodes, 'view', forwardResponse.views.length);
 
         forwardResponse.views.forEach((viewData, index) => {
           const viewName = viewData.view_name;
 
-          // Skip if view already exists
-          if (existingNodes.find(n => n.id === viewName)) {
+          if (findExistingNode(existingNodes, viewName)) {
             return;
           }
 
@@ -260,7 +329,6 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
           newNodes.push(viewNode);
 
-          // Create edges from tables to view
           viewData.tables.forEach(tableName => {
             const matchingTableNode = [...existingNodes, ...newNodes].find(node =>
               node.data?.type === 'table' &&
@@ -270,12 +338,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             if (matchingTableNode) {
               const edgeId = `${matchingTableNode.id}-${viewName}`;
 
-              // Check if edge already exists
-              const edgeExists = [...existingNodes, ...newEdges].some(edge =>
-                edge.id && edge.id.toLowerCase() === edgeId.toLowerCase()
-              );
-
-              if (!edgeExists) {
+              if (!edgeExists(newEdges, matchingTableNode.id, viewName)) {
                 const edge = {
                   id: edgeId,
                   source: matchingTableNode.id,
@@ -296,21 +359,15 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       const viewPositions = calculateNodePositions(existingNodes, 'view', forwardResponse.length);
 
       forwardResponse.forEach((viewName, index) => {
-        // Skip if view already exists
-        if (existingNodes.find(n => n.id === viewName)) {
-          // Still create edge if view exists but edge doesn't exist (case-insensitive check)
-          const existingEdges = [...existingNodes].filter(item => item.id && item.source && item.target);
-          const proposedEdgeId = `${nodeId}-${viewName}`.toLowerCase();
-
-          const edgeExists = existingEdges.some(edge =>
-            edge.id && edge.id.toLowerCase() === proposedEdgeId
-          );
-
-          if (!edgeExists) {
+        const existingViewNode = findExistingNode(existingNodes, viewName);
+        
+        if (existingViewNode) {
+          // View exists, just create edge if it doesn't exist
+          if (!edgeExists(existingNodes.filter(item => item.source && item.target), nodeId, existingViewNode.id)) {
             const edge = {
-              id: `${nodeId}-${viewName}`,
+              id: `${nodeId}-${existingViewNode.id}`,
               source: nodeId,
-              target: viewName,
+              target: existingViewNode.id,
               markerEnd: { type: MarkerType.ArrowClosed },
               style: { stroke: '#10B981', strokeWidth: 2 },
               data: { isForwardEdge: true, sourceNode: nodeId }
@@ -366,6 +423,144 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     return { newNodes, newEdges };
   };
 
+  const createBackwardNodes = (nodeId, nodeType, backwardResponse, existingNodes) => {
+    const newNodes = [];
+    const newEdges = [];
+
+    if (nodeType === 'view' && backwardResponse.tables) {
+      if (backwardResponse.schema && steps >= 2) {
+        const schemaPositions = calculateNodePositions(existingNodes, 'schema', backwardResponse.schema.length, 'backward');
+
+        backwardResponse.schema.forEach((schemaFullName, index) => {
+          if (findExistingNode(existingNodes, schemaFullName)) {
+            return;
+          }
+
+          const schemaName = schemaFullName.split('.').pop();
+          const schemaNode = {
+            id: schemaFullName,
+            type: 'default',
+            position: schemaPositions[index],
+            data: {
+              label: 'S',
+              type: 'schema',
+              description: `Schema: ${schemaName}`,
+              fullName: schemaFullName,
+              isBackwardNode: true,
+              sourceNode: nodeId
+            },
+            style: {
+              background: '#3B82F6',
+              color: 'white',
+              border: '3px solid #1D4ED8',
+              borderRadius: '50%',
+              width: NODE_SIZE,
+              height: NODE_SIZE,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              textAlign: 'center'
+            }
+          };
+
+          newNodes.push(schemaNode);
+        });
+      }
+
+      const tablePositions = calculateNodePositions(existingNodes, 'table', backwardResponse.tables.length, 'backward');
+
+      backwardResponse.tables.forEach((tableFullName, index) => {
+        const existingTableNode = findExistingNode(existingNodes, tableFullName);
+        
+        if (existingTableNode) {
+          const edgeId = `${existingTableNode.id}-${nodeId}`;
+          if (!edgeExists([...existingNodes.filter(item => item.source && item.target), ...newEdges], existingTableNode.id, nodeId)) {
+            const edge = {
+              id: edgeId,
+              source: existingTableNode.id,
+              target: nodeId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: '#10B981', strokeWidth: 2 },
+              data: { isBackwardEdge: true, sourceNode: nodeId }
+            };
+            newEdges.push(edge);
+          }
+          return;
+        }
+
+        const tableName = tableFullName.split('.').pop();
+        const tableNode = {
+          id: tableFullName,
+          type: 'default',
+          position: tablePositions[index],
+          data: {
+            label: 'T',
+            type: 'table',
+            description: `Table: ${tableName}`,
+            fullName: tableFullName,
+            isBackwardNode: true,
+            sourceNode: nodeId
+          },
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: '3px solid #DC2626',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+
+        newNodes.push(tableNode);
+
+        // Create edge from table to view
+        const edge = {
+          id: `${tableFullName}-${nodeId}`,
+          source: tableFullName,
+          target: nodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#10B981', strokeWidth: 2 },
+          data: { isBackwardEdge: true, sourceNode: nodeId }
+        };
+        newEdges.push(edge);
+
+        if (backwardResponse.schema && steps >= 2) {
+          const tableSchema = tableFullName.split('.').slice(0, -1).join('.');
+          const matchingSchemaNode = [...existingNodes, ...newNodes].find(node =>
+            node.data?.type === 'schema' &&
+            node.id.toLowerCase() === tableSchema.toLowerCase()
+          );
+
+          if (matchingSchemaNode) {
+            const schemaToTableEdgeId = `${matchingSchemaNode.id}-${tableFullName}`;
+            
+            if (!edgeExists(newEdges, matchingSchemaNode.id, tableFullName)) {
+              const schemaToTableEdge = {
+                id: schemaToTableEdgeId,
+                source: matchingSchemaNode.id,
+                target: tableFullName,
+                markerEnd: { type: MarkerType.ArrowClosed },
+                style: { stroke: '#6B7280', strokeWidth: 2 },
+                data: { isBackwardEdge: true, sourceNode: nodeId }
+              };
+              newEdges.push(schemaToTableEdge);
+            }
+          }
+        }
+      });
+    }
+
+    return { newNodes, newEdges };
+  };
+
   // Remove forward nodes and edges for a specific source node
   const removeForwardNodes = (sourceNodeId, currentNodes, currentEdges) => {
     const sourceEdges = currentEdges.filter(edge =>
@@ -379,6 +574,36 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
     const nodesToRemove = [];
     targetNodeIds.forEach(nodeId => {
+      const remainingConnections = filteredEdges.filter(edge =>
+        edge.target === nodeId || edge.source === nodeId
+      );
+
+      if (remainingConnections.length === 0) {
+        nodesToRemove.push(nodeId);
+      }
+    });
+
+    // Remove nodes that have no connections left
+    const filteredNodes = currentNodes.filter(node =>
+      !nodesToRemove.includes(node.id)
+    );
+
+    return { filteredNodes, filteredEdges };
+  };
+
+  // Remove backward nodes and edges for a specific source node
+  const removeBackwardNodes = (sourceNodeId, currentNodes, currentEdges) => {
+    const sourceEdges = currentEdges.filter(edge =>
+      edge.data?.sourceNode === sourceNodeId && edge.data?.isBackwardEdge
+    );
+
+    const sourceNodeIds = sourceEdges.map(edge => edge.source);
+    const filteredEdges = currentEdges.filter(edge =>
+      !(edge.data?.sourceNode === sourceNodeId && edge.data?.isBackwardEdge)
+    );
+
+    const nodesToRemove = [];
+    sourceNodeIds.forEach(nodeId => {
       const remainingConnections = filteredEdges.filter(edge =>
         edge.target === nodeId || edge.source === nodeId
       );
@@ -646,8 +871,10 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       setNodes(newNodes);
       setEdges(newEdges);
       setExpandedNodes(new Set());
+      setBackwardExpandedNodes(new Set());
       setSelectedNodeId(null);
       setForwardData(new Map());
+      setBackwardData(new Map());
       setNodeConnectionMap(new Map());
     }
   }, [currentItem, setNodes, setEdges]);
@@ -658,68 +885,128 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   );
 
   const handleNavigate = async (nodeId, direction) => {
-
-    if (direction !== 'forward') return;
-
     const node = nodes.find(n => n.id === nodeId);
-    if (!node || (node.data.type !== 'schema' && node.data.type !== 'table')) {
-      return;
-    }
+    if (!node) return;
 
-    const isCurrentlyExpanded = expandedNodes.has(nodeId);
+    if (direction === 'forward') {
+      if (node.data.type !== 'schema' && node.data.type !== 'table') {
+        return;
+      }
 
-    if (isCurrentlyExpanded) {
-      setExpandedNodes(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(nodeId);
-        return newSet;
-      });
+      const isCurrentlyExpanded = expandedNodes.has(nodeId);
 
-      const { filteredNodes, filteredEdges } = removeForwardNodes(nodeId, nodes, edges);
-      setNodes(filteredNodes);
-      setEdges(filteredEdges);
+      if (isCurrentlyExpanded) {
+        setExpandedNodes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(nodeId);
+          return newSet;
+        });
 
-      setForwardData(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(nodeId);
-        return newMap;
-      });
-    } else {
-      setIsLoadingForward(true);
+        const { filteredNodes, filteredEdges } = removeForwardNodes(nodeId, nodes, edges);
+        setNodes(filteredNodes);
+        setEdges(filteredEdges);
 
-      try {
-        const response = await fetchForwardLineage(nodeId, node.data.type, forwardSteps);
+        setForwardData(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(nodeId);
+          return newMap;
+        });
+      } else {
+        setIsLoadingForward(true);
 
-        if (response) {
-          const { newNodes, newEdges } = createForwardNodes(nodeId, node.data.type, response, nodes);
+        try {
+          const response = await fetchForwardLineage(nodeId, node.data.type, steps);
 
-          // Merge existing edges with new edges, avoiding duplicates
-          const existingEdgeIds = new Set(edges.map(e => e.id));
-          const uniqueNewEdges = newEdges.filter(e => !existingEdgeIds.has(e.id));
+          if (response) {
+            const { newNodes, newEdges } = createForwardNodes(nodeId, node.data.type, response, nodes);
 
-          // Merge existing nodes with new nodes, avoiding duplicates
-          const existingNodeIds = new Set(nodes.map(n => n.id));
-          const uniqueNewNodes = newNodes.filter(n => !existingNodeIds.has(n.id));
+            // Use case-insensitive checks for existing edges and nodes
+            const existingEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
+            const uniqueNewEdges = newEdges.filter(e => !existingEdgeIds.has(e.id.toLowerCase()));
 
-          setNodes(prev => [...prev, ...uniqueNewNodes]);
-          setEdges(prev => [...prev, ...uniqueNewEdges]);
+            const existingNodeIds = new Set(nodes.map(n => n.id.toLowerCase()));
+            const uniqueNewNodes = newNodes.filter(n => !existingNodeIds.has(n.id.toLowerCase()));
 
-          setExpandedNodes(prev => {
-            const newSet = new Set(prev);
-            newSet.add(nodeId);
-            return newSet;
-          });
+            setNodes(prev => [...prev, ...uniqueNewNodes]);
+            setEdges(prev => [...prev, ...uniqueNewEdges]);
 
-          setForwardData(prev => {
-            const newMap = new Map(prev);
-            newMap.set(nodeId, response);
-            return newMap;
-          });
-        } 
-      } catch (error) {
-        console.error('Error handling forward navigation:', error);
-      } finally {
-        setIsLoadingForward(false);
+            setExpandedNodes(prev => {
+              const newSet = new Set(prev);
+              newSet.add(nodeId);
+              return newSet;
+            });
+
+            setForwardData(prev => {
+              const newMap = new Map(prev);
+              newMap.set(nodeId, response);
+              return newMap;
+            });
+          }
+        } catch (error) {
+          console.error('Error handling forward navigation:', error);
+        } finally {
+          setIsLoadingForward(false);
+        }
+      }
+    } else if (direction === 'backward') {
+      if (node.data.type !== 'view') {
+        return;
+      }
+
+      const isCurrentlyExpanded = backwardExpandedNodes.has(nodeId);
+
+      if (isCurrentlyExpanded) {
+        setBackwardExpandedNodes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(nodeId);
+          return newSet;
+        });
+
+        const { filteredNodes, filteredEdges } = removeBackwardNodes(nodeId, nodes, edges);
+        setNodes(filteredNodes);
+        setEdges(filteredEdges);
+
+        setBackwardData(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(nodeId);
+          return newMap;
+        });
+      } else {
+        setIsLoadingBackward(true);
+
+        try {
+          const response = await fetchBackwardLineage(nodeId, node.data.type, steps);
+
+          if (response) {
+            const { newNodes, newEdges } = createBackwardNodes(nodeId, node.data.type, response, nodes);
+
+            // Use case-insensitive checks for existing edges and nodes
+            const existingEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
+            const uniqueNewEdges = newEdges.filter(e => !existingEdgeIds.has(e.id.toLowerCase()));
+
+            const existingNodeIds = new Set(nodes.map(n => n.id.toLowerCase()));
+            const uniqueNewNodes = newNodes.filter(n => !existingNodeIds.has(n.id.toLowerCase()));
+
+            setNodes(prev => [...prev, ...uniqueNewNodes]);
+            setEdges(prev => [...prev, ...uniqueNewEdges]);
+
+            setBackwardExpandedNodes(prev => {
+              const newSet = new Set(prev);
+              newSet.add(nodeId);
+              return newSet;
+            });
+
+            setBackwardData(prev => {
+              const newMap = new Map(prev);
+              newMap.set(nodeId, response);
+              return newMap;
+            });
+          }
+        } catch (error) {
+          console.error('Error handling backward navigation:', error);
+        } finally {
+          setIsLoadingBackward(false);
+        }
       }
     }
   };
@@ -734,7 +1021,9 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       setNodes(resetNodes);
       setEdges(resetEdges);
       setExpandedNodes(new Set());
+      setBackwardExpandedNodes(new Set());
       setForwardData(new Map());
+      setBackwardData(new Map());
       setNodeConnectionMap(new Map());
     }
   };
@@ -809,16 +1098,14 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-2">
               <span className="text-sm font-medium text-gray-700">Steps:</span>
               <select
-                value={forwardSteps}
-                onChange={(e) => setForwardSteps(parseInt(e.target.value))}
+                value={steps}
+                onChange={(e) => setSteps(parseInt(e.target.value))}
                 className="text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                title="Forward Lineage Steps"
+                title="Lineage Steps (applies to both forward and backward)"
               >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-                <option value={3}>3</option>
-                <option value={4}>4</option>
-                <option value={5}>5</option>
+                {stepOptions.map(step => (
+                  <option key={step} value={step}>{step}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -852,7 +1139,9 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             onReset={handleReset}
             onClose={closeRemote}
             expandedNodes={expandedNodes}
+            backwardExpandedNodes={backwardExpandedNodes}
             isLoading={isLoadingForward}
+            isLoadingBackward={isLoadingBackward}
             nodeData={selectedNode.data}
           />
         )}
