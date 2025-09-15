@@ -50,14 +50,14 @@ const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, 
           </button>
           <button
             onClick={() => onNavigate(nodeId, 'backward')}
-            disabled={isLoadingBackward || nodeData.type !== 'view'}
-            className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${nodeData.type !== 'view' ? 'bg-gray-400 cursor-not-allowed' :
+            disabled={isLoadingBackward || (nodeData.type !== 'view' && nodeData.type !== 'table')}
+            className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${(nodeData.type !== 'view' && nodeData.type !== 'table') ? 'bg-gray-400 cursor-not-allowed' :
                 isBackwardExpanded ? 'bg-yellow-500 text-black' :
                   isLoadingBackward ? 'bg-gray-500 text-white cursor-wait' :
                     'bg-gray-700 hover:bg-gray-600 text-white'
               }`}
             title={
-              nodeData.type !== 'view' ? "Backward only available for views" :
+              (nodeData.type !== 'view' && nodeData.type !== 'table') ? "Backward only available for views and tables" :
                 isLoadingBackward ? "Loading..." :
                   isBackwardExpanded ? "Close Backward Connections" : "Show Backward Connections"
             }
@@ -169,14 +169,19 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   };
 
   const fetchBackwardLineage = async (nodeId, nodeType, stepCount) => {
-    if (nodeType !== 'view') return null;
-
     const payload = {
       matched_policy_ids: [19],
-      view_name: nodeId,
       steps: stepCount,
       type: nodeType
     };
+
+    if (nodeType === 'view') {
+      payload.view_name = nodeId;
+    } else if (nodeType === 'table') {
+      payload.table_name = nodeId;
+    } else {
+      return null;
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/vizualization/backward`, {
@@ -276,7 +281,6 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         };
 
         newNodes.push(tableNode);
-
 
         const edge = {
           id: `${nodeId}-${tableFullName}`,
@@ -555,6 +559,71 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             }
           }
         }
+      });
+    } else if (nodeType === 'table' && Array.isArray(backwardResponse)) {
+      const schemaPositions = calculateNodePositions(existingNodes, 'schema', backwardResponse.length, 'backward');
+
+      backwardResponse.forEach((schemaFullName, index) => {
+        const existingSchemaNode = findExistingNode(existingNodes, schemaFullName);
+        
+        if (existingSchemaNode) {
+          // Schema exists, just create edge if it doesn't exist
+          const edgeId = `${existingSchemaNode.id}-${nodeId}`;
+          if (!edgeExists([...existingNodes.filter(item => item.source && item.target), ...newEdges], existingSchemaNode.id, nodeId)) {
+            const edge = {
+              id: edgeId,
+              source: existingSchemaNode.id,
+              target: nodeId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: '#6B7280', strokeWidth: 2 },
+              data: { isBackwardEdge: true, sourceNode: nodeId }
+            };
+            newEdges.push(edge);
+          }
+          return;
+        }
+
+        const schemaName = schemaFullName.split('.').pop();
+        const schemaNode = {
+          id: schemaFullName,
+          type: 'default',
+          position: schemaPositions[index],
+          data: {
+            label: 'S',
+            type: 'schema',
+            description: `Schema: ${schemaName}`,
+            fullName: schemaFullName,
+            isBackwardNode: true,
+            sourceNode: nodeId
+          },
+          style: {
+            background: '#3B82F6',
+            color: 'white',
+            border: '3px solid #1D4ED8',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+
+        newNodes.push(schemaNode);
+
+        // Create edge from schema to table
+        const edge = {
+          id: `${schemaFullName}-${nodeId}`,
+          source: schemaFullName,
+          target: nodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#6B7280', strokeWidth: 2 },
+          data: { isBackwardEdge: true, sourceNode: nodeId }
+        };
+        newEdges.push(edge);
       });
     }
 
@@ -949,7 +1018,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         }
       }
     } else if (direction === 'backward') {
-      if (node.data.type !== 'view') {
+      if (node.data.type !== 'view' && node.data.type !== 'table') {
         return;
       }
 
