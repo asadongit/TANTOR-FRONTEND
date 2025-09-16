@@ -10,41 +10,43 @@ const Step2 = ({ onDataChange, initialData }) => {
         { role: 'Role', icon: User, key: 'roles' },
         { role: 'Group', icon: Users, key: 'groups' },
         { role: 'Sub-group', icon: UserPlus, key: 'subgroups' },
-        { role: 'Persona', icon: UserRoundCog, key: 'personas' },
+        { role: 'Persona', icon: UserRoundCog, key: 'persona' },
     ];
     const { token } = useAuth();
     const [selectedTab, setSelectedTab] = useState('Role');
     const [selectedRole, setSelectedRole] = useState(initialData.selectedRole || '');
     const [selectedGroup, setSelectedGroup] = useState(initialData.selectedGroup || '');
     const [selectedSubgroup, setSelectedSubgroup] = useState(initialData.selectedSubgroup || '');
+    const [selectedPersona, setSelectedPersona] = useState(initialData.selectedPersona || '');
     const [searchTerm, setSearchTerm] = useState('');
     const [data, setData] = useState({
         roles: [],
         groups: [],
         subgroups: [],
-        personas: []
+        persona: []
     });
     const [loading, setLoading] = useState(true);
     const [loadingSubgroups, setLoadingSubgroups] = useState(false);
     const [isFormValid, setIsFormValid] = useState(false);
 
     useEffect(() => {
-        // Check if at least one selection has been made
-        const hasSelection = selectedRole !== '' || selectedGroup !== '' || selectedSubgroup !== '';
+        const hasSelection = selectedRole !== '' || selectedGroup !== '' || selectedSubgroup !== '' || selectedPersona !== '';
         setIsFormValid(hasSelection);
 
         onDataChange({
             selectedRole,
             selectedGroup,
             selectedSubgroup,
+            selectedPersona,
             isFormValid: hasSelection
         });
-    }, [selectedRole, selectedGroup, selectedSubgroup]);
+    }, [selectedRole, selectedGroup, selectedSubgroup, selectedPersona]);
 
     useEffect(() => {
         setSelectedRole(initialData.selectedRole || '');
         setSelectedGroup(initialData.selectedGroup || '');
         setSelectedSubgroup(initialData.selectedSubgroup || '');
+        setSelectedPersona(initialData.selectedPersona || '');
     }, [initialData]);
 
     useEffect(() => {
@@ -80,7 +82,7 @@ const Step2 = ({ onDataChange, initialData }) => {
                 roles: responseData.roles || [],
                 groups: responseData.groups || [],
                 subgroups: [],
-                personas: []
+                persona: responseData.persona || []
             });
             setLoading(false);
         } catch (error) {
@@ -137,6 +139,9 @@ const Step2 = ({ onDataChange, initialData }) => {
                 }
                 setSelectedSubgroup(item === selectedSubgroup ? '' : item);
                 break;
+            case 'Persona':
+                setSelectedPersona(item === selectedPersona ? '' : item);
+                break;
             default:
                 break;
         }
@@ -147,6 +152,7 @@ const Step2 = ({ onDataChange, initialData }) => {
             case 'Role': return item === selectedRole;
             case 'Group': return item === selectedGroup;
             case 'Sub-group': return item === selectedSubgroup;
+            case 'Persona': return item === selectedPersona;
             default: return false;
         }
     };

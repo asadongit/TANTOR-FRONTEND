@@ -10,37 +10,14 @@ import {
   addEdge,
   MarkerType,
 } from 'reactflow';
-import 'reactflow/dist/style.css';
-import Breadcrumb from '../../../../components/Breadcrumb';
 
-// Circular Remote Control Component
-const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, onReset, onClose, expandedNodes, isLoading, nodeData }) => {
-  const isForwardExpanded = expandedNodes.has(`${nodeId}-forward`);
-  const isBackwardExpanded = expandedNodes.has(`${nodeId}-backward`);
-
-  const getDisplayName = () => {
-    if (!nodeData) return nodeId;
-
-    switch (nodeData.type) {
-      case 'schema':
-        return nodeData.fullName || nodeData.description?.replace('Schema: ', '') || nodeId;
-      case 'table':
-        return nodeData.fullName || nodeData.description?.replace('Table: ', '') || nodeId;
-      case 'view':
-        return nodeData.viewName || nodeData.description?.replace('View: ', '') || nodeId;
-      default:
-        return nodeId;
-    }
-  };
+const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, onReset, onClose, expandedNodes, backwardExpandedNodes, isLoading, isLoadingBackward, nodeData }) => {
+  const isForwardExpanded = expandedNodes.has(nodeId);
+  const isBackwardExpanded = backwardExpandedNodes.has(nodeId);
 
   return (
     <div
       className="absolute z-20"
-      // style={{
-      //   left: position.x + 80,
-      //   top: position.y - 40,
-      //   transform: 'translate(-50%, -50%)'
-      // }}
       style={{
         right: '70px',
         top: '120px',
@@ -53,12 +30,17 @@ const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, 
           </div>
           <button
             onClick={() => onNavigate(nodeId, 'forward')}
-            disabled={isLoading}
-            className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${isForwardExpanded ? 'bg-yellow-500 text-black' :
-              isLoading ? 'bg-gray-500 text-white cursor-wait' :
-                'bg-gray-700 hover:bg-gray-600 text-white'
+            disabled={isLoading || (nodeData.type !== 'schema' && nodeData.type !== 'table')}
+            className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${nodeData.type !== 'schema' && nodeData.type !== 'table' ? 'bg-gray-400 cursor-not-allowed' :
+                isForwardExpanded ? 'bg-yellow-500 text-black' :
+                  isLoading ? 'bg-gray-500 text-white cursor-wait' :
+                    'bg-gray-700 hover:bg-gray-600 text-white'
               }`}
-            title={isLoading ? "Loading..." : "Toggle Forward Connections"}
+            title={
+              nodeData.type !== 'schema' && nodeData.type !== 'table' ? "Forward not available for this node type" :
+                isLoading ? "Loading..." :
+                  isForwardExpanded ? "Close Forward Connections" : "Show Forward Connections"
+            }
           >
             {isLoading ? (
               <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -68,10 +50,23 @@ const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, 
           </button>
           <button
             onClick={() => onNavigate(nodeId, 'backward')}
-            className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${isBackwardExpanded ? 'bg-yellow-500 text-black' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
-            title="Toggle Backward Connections"
+            disabled={isLoadingBackward || (nodeData.type !== 'view' && nodeData.type !== 'table')}
+            className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${(nodeData.type !== 'view' && nodeData.type !== 'table') ? 'bg-gray-400 cursor-not-allowed' :
+                isBackwardExpanded ? 'bg-yellow-500 text-black' :
+                  isLoadingBackward ? 'bg-gray-500 text-white cursor-wait' :
+                    'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            title={
+              (nodeData.type !== 'view' && nodeData.type !== 'table') ? "Backward only available for views and tables" :
+                isLoadingBackward ? "Loading..." :
+                  isBackwardExpanded ? "Close Backward Connections" : "Show Backward Connections"
+            }
           >
-            <ChevronLeft size={14} />
+            {isLoadingBackward ? (
+              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <ChevronLeft size={14} />
+            )}
           </button>
         </div>
         <button
@@ -82,104 +77,618 @@ const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, 
         </button>
       </div>
       <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-        {getDisplayName()}
+        {nodeId}
       </div>
     </div>
   );
 };
 
+const API_BASE_URL = `${window._env_?.VITE_FAST_API}/data_lineage`;
+
 const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack }) => {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
-  const [forwardSteps, setForwardSteps] = useState(2);
-  const [forwardData, setForwardData] = useState(null);
+  const [backwardExpandedNodes, setBackwardExpandedNodes] = useState(new Set());
+  const [steps, setSteps] = useState(2);
+  const [forwardData, setForwardData] = useState(new Map());
+  const [backwardData, setBackwardData] = useState(new Map());
   const [isLoadingForward, setIsLoadingForward] = useState(false);
-
-  const fetchForwardLineage = async (nodeId, nodeType, steps = 2) => {
-    setIsLoadingForward(true);
-    try {
-      const currentItem = displayableItems[currentTableIndex];
-      if (!currentItem) return null;
-
-      const clickedNode = nodes.find(n => n.id === nodeId);
-
-      let connectionName = null;
-      if (currentItem.type === 'Table') {
-        connectionName = currentItem.database;
-      }
-      // else if (currentItem.type === 'View' && currentItem.viewMetadata) {
-      //   // For views, extract from viewMetadata - use the first connection or handle multi-connection views
-      //   const { connection_name } = currentItem.viewMetadata;
-      //   if (Array.isArray(connection_name) && connection_name.length > 0) {
-      //     connectionName = connection_name[0]; // Use first connection for now
-      //   } else if (typeof connection_name === 'string') {
-      //     connectionName = connection_name;
-      //   }
-      // }
-
-      if (!connectionName && currentItem.database) {
-        connectionName = currentItem.database.split(' + ')[0];
-      }
-
-      let requestData = {
-        matched_policy_ids: [3],
-        connection_name: connectionName,
-        steps: steps,
-        type: nodeType
-      };
-
-      if (nodeType === 'schema') {
-        const fullTableName = clickedNode.data.fullName;
-        requestData.table_schema = fullTableName;
-      } else if (nodeType === 'table') {
-        if (clickedNode && clickedNode.data && clickedNode.data.fullName) {
-          const fullTableName = clickedNode.data.fullName;
-          const tableParts = fullTableName.split('.');
-
-          if (tableParts.length >= 2) {
-            requestData.table_schema = tableParts.slice(0, -1).join('.');
-            requestData.table_name = fullTableName;
-          } else {
-            requestData.table_schema = currentItem.schema;
-            requestData.table_name = fullTableName;
-          }
-        } else {
-          requestData.table_schema = currentItem.schema;
-          requestData.table_name = `${connectionName}.${currentItem.schema}.${nodeId}`;
-        }
-      }
-
-      console.log('Forward lineage request data:', requestData);
-
-      const response = await fetch('http://localhost:8000/api/v1/data_lineage/vizualization/forward', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': 'sessionId=abc123'
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data;
-      } else {
-        console.error('Failed to fetch forward lineage:', response.statusText);
-        return null;
-      }
-    } catch (error) {
-      console.error('Error fetching forward lineage:', error);
-      return null;
-    } finally {
-      setIsLoadingForward(false);
-    }
-  };
+  const [isLoadingBackward, setIsLoadingBackward] = useState(false);
+  const [nodeConnectionMap, setNodeConnectionMap] = useState(new Map());
 
   const displayableItems = useMemo(() => {
     return selectedItems.filter(item => item.type === 'Table' || item.type === 'View');
   }, [selectedItems]);
 
   const NODE_SIZE = 60;
+
+  const stepOptions = Array.from({ length: 5 }, (_, i) => i + 1);
+
+  const findExistingNode = (nodes, nodeId) => {
+    return nodes.find(n => n.id.toLowerCase() === nodeId.toLowerCase());
+  };
+
+  const edgeExists = (edges, sourceId, targetId) => {
+    const proposedEdgeId = `${sourceId}-${targetId}`.toLowerCase();
+    return edges.some(edge => edge.id && edge.id.toLowerCase() === proposedEdgeId);
+  };
+
+  const getConnectionInfo = (nodeId, nodeType) => {
+    if (nodeType === 'schema') {
+      const parts = nodeId.split('.');
+      return {
+        database: parts[0],
+        schema: nodeId
+      };
+    } else if (nodeType === 'table') {
+      const parts = nodeId.split('.');
+      return {
+        database: parts[0],
+        schema: parts.slice(0, -1).join('.'),
+        table: nodeId
+      };
+    }
+    return null;
+  };
+
+  const fetchForwardLineage = async (nodeId, nodeType, stepCount) => {
+    const connectionInfo = getConnectionInfo(nodeId, nodeType);
+    if (!connectionInfo) return null;
+
+    const payload = {
+      matched_policy_ids: [19],
+      connection_name: connectionInfo.database,
+      table_schema: connectionInfo.schema,
+      steps: stepCount,
+      type: nodeType
+    };
+
+    if (nodeType === 'table') {
+      payload.table_name = connectionInfo.table;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/vizualization/forward`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching forward lineage:', error);
+      return null;
+    }
+  };
+
+  const fetchBackwardLineage = async (nodeId, nodeType, stepCount) => {
+    const payload = {
+      matched_policy_ids: [19],
+      steps: stepCount,
+      type: nodeType
+    };
+
+    if (nodeType === 'view') {
+      payload.view_name = nodeId;
+    } else if (nodeType === 'table') {
+      payload.table_name = nodeId;
+    } else {
+      return null;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/vizualization/backward`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching backward lineage:', error);
+      return null;
+    }
+  };
+
+  const calculateNodePositions = (existingNodes, newNodeType, count, direction = 'forward') => {
+    const positions = [];
+    let baseX, startY, spacing;
+
+    if (direction === 'backward') {
+      if (newNodeType === 'schema') {
+        baseX = 150; 
+        startY = 100;
+        spacing = 100;
+      } else if (newNodeType === 'table') {
+        baseX = 450; 
+        startY = 100;
+        spacing = 100;
+      } else {
+        baseX = 0;
+        startY = 100;
+        spacing = 120;
+      }
+    } else {
+      baseX = newNodeType === 'table' ? 800 : 1100;
+      startY = 100;
+      spacing = 120;
+    }
+
+    for (let i = 0; i < count; i++) {
+      positions.push({
+        x: baseX,
+        y: startY + (i * spacing)
+      });
+    }
+
+    return positions;
+  };
+
+  const createForwardNodes = (nodeId, nodeType, forwardResponse, existingNodes) => {
+    const newNodes = [];
+    const newEdges = [];
+
+    if (nodeType === 'schema' && forwardResponse.tables) {
+      const tablePositions = calculateNodePositions(existingNodes, 'table', forwardResponse.tables.length);
+
+      forwardResponse.tables.forEach((tableFullName, index) => {
+        // Skip if table already exists (case-insensitive check)
+        if (findExistingNode(existingNodes, tableFullName)) {
+          return;
+        }
+
+        const tableName = tableFullName.split('.').pop();
+        const tableNode = {
+          id: tableFullName,
+          type: 'default',
+          position: tablePositions[index],
+          data: {
+            label: 'T',
+            type: 'table',
+            description: `Table: ${tableName}`,
+            fullName: tableFullName,
+            isForwardNode: true,
+            sourceNode: nodeId
+          },
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: '3px solid #DC2626',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+
+        newNodes.push(tableNode);
+
+        const edge = {
+          id: `${nodeId}-${tableFullName}`,
+          source: nodeId,
+          target: tableFullName,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#6B7280', strokeWidth: 2 },
+          data: { isForwardEdge: true, sourceNode: nodeId }
+        };
+        newEdges.push(edge);
+      });
+
+      if (forwardResponse.views && steps >= 2) {
+        const viewPositions = calculateNodePositions(existingNodes, 'view', forwardResponse.views.length);
+
+        forwardResponse.views.forEach((viewData, index) => {
+          const viewName = viewData.view_name;
+
+          if (findExistingNode(existingNodes, viewName)) {
+            return;
+          }
+
+          const viewNode = {
+            id: viewName,
+            type: 'default',
+            position: viewPositions[index],
+            data: {
+              label: 'V',
+              type: 'view',
+              description: `View: ${viewName}`,
+              fullName: viewName,
+              isForwardNode: true,
+              sourceNode: nodeId
+            },
+            style: {
+              background: '#10B981',
+              color: 'white',
+              border: '3px solid #059669',
+              borderRadius: '50%',
+              width: NODE_SIZE,
+              height: NODE_SIZE,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              textAlign: 'center'
+            }
+          };
+
+          newNodes.push(viewNode);
+
+          viewData.tables.forEach(tableName => {
+            const matchingTableNode = [...existingNodes, ...newNodes].find(node =>
+              node.data?.type === 'table' &&
+              node.id.toLowerCase() === tableName.toLowerCase()
+            );
+
+            if (matchingTableNode) {
+              const edgeId = `${matchingTableNode.id}-${viewName}`;
+
+              if (!edgeExists(newEdges, matchingTableNode.id, viewName)) {
+                const edge = {
+                  id: edgeId,
+                  source: matchingTableNode.id,
+                  target: viewName,
+                  markerEnd: { type: MarkerType.ArrowClosed },
+                  style: { stroke: '#10B981', strokeWidth: 2 },
+                  data: { isForwardEdge: true, sourceNode: nodeId }
+                };
+                newEdges.push(edge);
+              }
+            } else {
+              console.warn(`Could not find matching table node for: ${tableName}`);
+            }
+          });
+        });
+      }
+    } else if (nodeType === 'table' && Array.isArray(forwardResponse)) {
+      const viewPositions = calculateNodePositions(existingNodes, 'view', forwardResponse.length);
+
+      forwardResponse.forEach((viewName, index) => {
+        const existingViewNode = findExistingNode(existingNodes, viewName);
+        
+        if (existingViewNode) {
+          // View exists, just create edge if it doesn't exist
+          if (!edgeExists(existingNodes.filter(item => item.source && item.target), nodeId, existingViewNode.id)) {
+            const edge = {
+              id: `${nodeId}-${existingViewNode.id}`,
+              source: nodeId,
+              target: existingViewNode.id,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: '#10B981', strokeWidth: 2 },
+              data: { isForwardEdge: true, sourceNode: nodeId }
+            };
+            newEdges.push(edge);
+          }
+          return;
+        }
+
+        const viewNode = {
+          id: viewName,
+          type: 'default',
+          position: viewPositions[index],
+          data: {
+            label: 'V',
+            type: 'view',
+            description: `View: ${viewName}`,
+            fullName: viewName,
+            isForwardNode: true,
+            sourceNode: nodeId
+          },
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: '3px solid #059669',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+
+        newNodes.push(viewNode);
+
+        // Create edge from table to view
+        const edge = {
+          id: `${nodeId}-${viewName}`,
+          source: nodeId,
+          target: viewName,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#10B981', strokeWidth: 2 },
+          data: { isForwardEdge: true, sourceNode: nodeId }
+        };
+        newEdges.push(edge);
+      });
+    }
+
+    return { newNodes, newEdges };
+  };
+
+  const createBackwardNodes = (nodeId, nodeType, backwardResponse, existingNodes) => {
+    const newNodes = [];
+    const newEdges = [];
+
+    if (nodeType === 'view' && backwardResponse.tables) {
+      if (backwardResponse.schema && steps >= 2) {
+        const schemaPositions = calculateNodePositions(existingNodes, 'schema', backwardResponse.schema.length, 'backward');
+
+        backwardResponse.schema.forEach((schemaFullName, index) => {
+          if (findExistingNode(existingNodes, schemaFullName)) {
+            return;
+          }
+
+          const schemaName = schemaFullName.split('.').pop();
+          const schemaNode = {
+            id: schemaFullName,
+            type: 'default',
+            position: schemaPositions[index],
+            data: {
+              label: 'S',
+              type: 'schema',
+              description: `Schema: ${schemaName}`,
+              fullName: schemaFullName,
+              isBackwardNode: true,
+              sourceNode: nodeId
+            },
+            style: {
+              background: '#3B82F6',
+              color: 'white',
+              border: '3px solid #1D4ED8',
+              borderRadius: '50%',
+              width: NODE_SIZE,
+              height: NODE_SIZE,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              textAlign: 'center'
+            }
+          };
+
+          newNodes.push(schemaNode);
+        });
+      }
+
+      const tablePositions = calculateNodePositions(existingNodes, 'table', backwardResponse.tables.length, 'backward');
+
+      backwardResponse.tables.forEach((tableFullName, index) => {
+        const existingTableNode = findExistingNode(existingNodes, tableFullName);
+        
+        if (existingTableNode) {
+          const edgeId = `${existingTableNode.id}-${nodeId}`;
+          if (!edgeExists([...existingNodes.filter(item => item.source && item.target), ...newEdges], existingTableNode.id, nodeId)) {
+            const edge = {
+              id: edgeId,
+              source: existingTableNode.id,
+              target: nodeId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: '#10B981', strokeWidth: 2 },
+              data: { isBackwardEdge: true, sourceNode: nodeId }
+            };
+            newEdges.push(edge);
+          }
+          return;
+        }
+
+        const tableName = tableFullName.split('.').pop();
+        const tableNode = {
+          id: tableFullName,
+          type: 'default',
+          position: tablePositions[index],
+          data: {
+            label: 'T',
+            type: 'table',
+            description: `Table: ${tableName}`,
+            fullName: tableFullName,
+            isBackwardNode: true,
+            sourceNode: nodeId
+          },
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: '3px solid #DC2626',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+
+        newNodes.push(tableNode);
+
+        // Create edge from table to view
+        const edge = {
+          id: `${tableFullName}-${nodeId}`,
+          source: tableFullName,
+          target: nodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#10B981', strokeWidth: 2 },
+          data: { isBackwardEdge: true, sourceNode: nodeId }
+        };
+        newEdges.push(edge);
+
+        if (backwardResponse.schema && steps >= 2) {
+          const tableSchema = tableFullName.split('.').slice(0, -1).join('.');
+          const matchingSchemaNode = [...existingNodes, ...newNodes].find(node =>
+            node.data?.type === 'schema' &&
+            node.id.toLowerCase() === tableSchema.toLowerCase()
+          );
+
+          if (matchingSchemaNode) {
+            const schemaToTableEdgeId = `${matchingSchemaNode.id}-${tableFullName}`;
+            
+            if (!edgeExists(newEdges, matchingSchemaNode.id, tableFullName)) {
+              const schemaToTableEdge = {
+                id: schemaToTableEdgeId,
+                source: matchingSchemaNode.id,
+                target: tableFullName,
+                markerEnd: { type: MarkerType.ArrowClosed },
+                style: { stroke: '#6B7280', strokeWidth: 2 },
+                data: { isBackwardEdge: true, sourceNode: nodeId }
+              };
+              newEdges.push(schemaToTableEdge);
+            }
+          }
+        }
+      });
+    } else if (nodeType === 'table' && Array.isArray(backwardResponse)) {
+      const schemaPositions = calculateNodePositions(existingNodes, 'schema', backwardResponse.length, 'backward');
+
+      backwardResponse.forEach((schemaFullName, index) => {
+        const existingSchemaNode = findExistingNode(existingNodes, schemaFullName);
+        
+        if (existingSchemaNode) {
+          // Schema exists, just create edge if it doesn't exist
+          const edgeId = `${existingSchemaNode.id}-${nodeId}`;
+          if (!edgeExists([...existingNodes.filter(item => item.source && item.target), ...newEdges], existingSchemaNode.id, nodeId)) {
+            const edge = {
+              id: edgeId,
+              source: existingSchemaNode.id,
+              target: nodeId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: '#6B7280', strokeWidth: 2 },
+              data: { isBackwardEdge: true, sourceNode: nodeId }
+            };
+            newEdges.push(edge);
+          }
+          return;
+        }
+
+        const schemaName = schemaFullName.split('.').pop();
+        const schemaNode = {
+          id: schemaFullName,
+          type: 'default',
+          position: schemaPositions[index],
+          data: {
+            label: 'S',
+            type: 'schema',
+            description: `Schema: ${schemaName}`,
+            fullName: schemaFullName,
+            isBackwardNode: true,
+            sourceNode: nodeId
+          },
+          style: {
+            background: '#3B82F6',
+            color: 'white',
+            border: '3px solid #1D4ED8',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+
+        newNodes.push(schemaNode);
+
+        // Create edge from schema to table
+        const edge = {
+          id: `${schemaFullName}-${nodeId}`,
+          source: schemaFullName,
+          target: nodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#6B7280', strokeWidth: 2 },
+          data: { isBackwardEdge: true, sourceNode: nodeId }
+        };
+        newEdges.push(edge);
+      });
+    }
+
+    return { newNodes, newEdges };
+  };
+
+  // Remove forward nodes and edges for a specific source node
+  const removeForwardNodes = (sourceNodeId, currentNodes, currentEdges) => {
+    const sourceEdges = currentEdges.filter(edge =>
+      edge.data?.sourceNode === sourceNodeId && edge.data?.isForwardEdge
+    );
+
+    const targetNodeIds = sourceEdges.map(edge => edge.target);
+    const filteredEdges = currentEdges.filter(edge =>
+      !(edge.data?.sourceNode === sourceNodeId && edge.data?.isForwardEdge)
+    );
+
+    const nodesToRemove = [];
+    targetNodeIds.forEach(nodeId => {
+      const remainingConnections = filteredEdges.filter(edge =>
+        edge.target === nodeId || edge.source === nodeId
+      );
+
+      if (remainingConnections.length === 0) {
+        nodesToRemove.push(nodeId);
+      }
+    });
+
+    // Remove nodes that have no connections left
+    const filteredNodes = currentNodes.filter(node =>
+      !nodesToRemove.includes(node.id)
+    );
+
+    return { filteredNodes, filteredEdges };
+  };
+
+  // Remove backward nodes and edges for a specific source node
+  const removeBackwardNodes = (sourceNodeId, currentNodes, currentEdges) => {
+    const sourceEdges = currentEdges.filter(edge =>
+      edge.data?.sourceNode === sourceNodeId && edge.data?.isBackwardEdge
+    );
+
+    const sourceNodeIds = sourceEdges.map(edge => edge.source);
+    const filteredEdges = currentEdges.filter(edge =>
+      !(edge.data?.sourceNode === sourceNodeId && edge.data?.isBackwardEdge)
+    );
+
+    const nodesToRemove = [];
+    sourceNodeIds.forEach(nodeId => {
+      const remainingConnections = filteredEdges.filter(edge =>
+        edge.target === nodeId || edge.source === nodeId
+      );
+
+      if (remainingConnections.length === 0) {
+        nodesToRemove.push(nodeId);
+      }
+    });
+
+    // Remove nodes that have no connections left
+    const filteredNodes = currentNodes.filter(node =>
+      !nodesToRemove.includes(node.id)
+    );
+
+    return { filteredNodes, filteredEdges };
+  };
 
   const generateNodesAndEdges = (item) => {
     if (item.type === 'Table') {
@@ -191,8 +700,9 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   };
 
   const generateTableNodesAndEdges = (tableItem) => {
+    const schemaNodeId = tableItem.schema;
     const schemaNode = {
-      id: `${tableItem.schema}-schema`,
+      id: schemaNodeId,
       type: 'default',
       position: { x: 200, y: 200 },
       data: {
@@ -217,8 +727,9 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       }
     };
 
+    const tableNodeId = tableItem.table;
     const tableNode = {
-      id: `${tableItem.table}-table`,
+      id: tableNodeId,
       type: 'default',
       position: { x: 500, y: 200 },
       data: {
@@ -244,9 +755,9 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     };
 
     const connectionEdge = {
-      id: `${schemaNode.id}-${tableNode.id}`,
-      source: schemaNode.id,
-      target: tableNode.id,
+      id: `${schemaNodeId}-${tableNodeId}`,
+      source: schemaNodeId,
+      target: tableNodeId,
       markerEnd: { type: MarkerType.ArrowClosed },
       style: { stroke: '#6B7280', strokeWidth: 3 }
     };
@@ -262,21 +773,27 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       return generateTableNodesAndEdges(viewItem);
     }
 
-    const { table_name, table_schema } = viewItem.viewMetadata;
+    const { table_name } = viewItem.viewMetadata;
     const nodes = [];
     const edges = [];
-
     const schemaGroups = {};
-    table_name.forEach((tableName, index) => {
-      const schemaKey = table_schema[index] || table_schema[0];
-      const schemaName = schemaKey;
+
+    table_name.forEach((fullTableName) => {
+      const parts = fullTableName.split('.');
+      const schemaName = parts.slice(0, -1).join('.');
+
+      if (!schemaName) {
+        console.error(`Could not determine schema for table: ${fullTableName}`);
+        return;
+      }
 
       if (!schemaGroups[schemaName]) {
         schemaGroups[schemaName] = [];
       }
+
       schemaGroups[schemaName].push({
-        name: tableName,
-        fullSchema: schemaKey
+        name: fullTableName,
+        fullSchema: schemaName
       });
     });
 
@@ -287,7 +804,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       const schemaY = 100 + (schemaIndex * 200);
       const schemaX = 100;
 
-      const schemaNodeId = `${schemaName}-schema-${schemaIndex}`;
+      const schemaNodeId = schemaName;
       schemaPositions[schemaName] = { x: schemaX, y: schemaY };
 
       const schemaNode = {
@@ -321,7 +838,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         const tableY = schemaY + ((tableIndex - Math.floor(tables.length / 2)) * 80);
         const tableX = schemaX + 250;
 
-        const tableNodeId = `${table.name}-table-${schemaIndex}-${tableIndex}`;
+        const tableNodeId = table.name;
         const tableNode = {
           id: tableNodeId,
           type: 'default',
@@ -365,7 +882,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     const viewX = 600;
     const viewY = 100 + (Object.keys(schemaGroups).length - 1) * 100;
 
-    const viewNodeId = `${viewItem.name}`;
+    const viewNodeId = viewItem.name;
     const viewNode = {
       id: viewNodeId,
       type: 'default',
@@ -423,8 +940,11 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       setNodes(newNodes);
       setEdges(newEdges);
       setExpandedNodes(new Set());
+      setBackwardExpandedNodes(new Set());
       setSelectedNodeId(null);
-      setForwardData(null);
+      setForwardData(new Map());
+      setBackwardData(new Map());
+      setNodeConnectionMap(new Map());
     }
   }, [currentItem, setNodes, setEdges]);
 
@@ -433,292 +953,135 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     [setEdges],
   );
 
-  const getForwardLineageNodes = (sourceNodeId, apiData) => {
-    const newNodes = [];
-    const newEdges = [];
-
-    const sourceNode = nodes.find(n => n.id === sourceNodeId);
-    if (!sourceNode) return { nodes: [], edges: [] };
-
-    const baseX = sourceNode.position.x + 300;
-    const baseY = sourceNode.position.y;
-
-    if (apiData.tables && sourceNode.data.type === 'schema') {
-      apiData.tables.forEach((fullTableName, index) => {
-        const tableParts = fullTableName.split('.');
-        const tableName = tableParts[tableParts.length - 1];
-
-        const tableNodeId = `${sourceNodeId}-forward-table-${index}`;
-        const tableNode = {
-          id: tableNodeId,
-          type: 'default',
-          position: {
-            x: baseX,
-            y: baseY + ((index - Math.floor(apiData.tables.length / 2)) * 80)
-          },
-          data: {
-            label: 'T',
-            type: 'table',
-            description: `Table: ${tableName}`,
-            fullName: fullTableName
-          },
-          style: {
-            background: '#EF4444',
-            color: 'white',
-            border: '3px solid #DC2626',
-            borderRadius: '50%',
-            width: NODE_SIZE,
-            height: NODE_SIZE,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            textAlign: 'center'
-          }
-        };
-        newNodes.push(tableNode);
-
-        const edge = {
-          id: `${sourceNodeId}-${tableNodeId}`,
-          source: sourceNodeId,
-          target: tableNodeId,
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: {
-            stroke: '#10B981',
-            strokeWidth: 2,
-            strokeDasharray: '5,5'
-          }
-        };
-        newEdges.push(edge);
-      });
-    }
-
-    if (Array.isArray(apiData) && sourceNode.data.type === 'table') {
-      apiData.forEach((viewName, index) => {
-        const viewNodeId = `${sourceNodeId}-forward-view-${index}`;
-        const viewNode = {
-          id: viewNodeId,
-          type: 'default',
-          position: {
-            x: baseX,
-            y: baseY + ((index - Math.floor(apiData.length / 2)) * 100)
-          },
-          data: {
-            label: 'V',
-            type: 'view',
-            description: `View: ${viewName}`,
-            viewName: viewName
-          },
-          style: {
-            background: '#10B981',
-            color: 'white',
-            border: '3px solid #059669',
-            borderRadius: '50%',
-            width: NODE_SIZE,
-            height: NODE_SIZE,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            textAlign: 'center'
-          }
-        };
-        newNodes.push(viewNode);
-
-        const edge = {
-          id: `${sourceNodeId}-${viewNodeId}`,
-          source: sourceNodeId,
-          target: viewNodeId,
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: {
-            stroke: '#10B981',
-            strokeWidth: 2,
-            strokeDasharray: '5,5'
-          }
-        };
-        newEdges.push(edge);
-      });
-    }
-
-    if (apiData.views && apiData.views.length > 0) {
-      const viewsBaseX = baseX + 300;
-
-      apiData.views.forEach((view, viewIndex) => {
-        const viewNodeId = `${sourceNodeId}-forward-view-${viewIndex}`;
-        const viewNode = {
-          id: viewNodeId,
-          type: 'default',
-          position: {
-            x: viewsBaseX,
-            y: baseY + ((viewIndex - Math.floor(apiData.views.length / 2)) * 100)
-          },
-          data: {
-            label: 'V',
-            type: 'view',
-            description: `View: ${view.view_name}`,
-            viewName: view.view_name
-          },
-          style: {
-            background: '#10B981',
-            color: 'white',
-            border: '3px solid #059669',
-            borderRadius: '50%',
-            width: NODE_SIZE,
-            height: NODE_SIZE,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            textAlign: 'center'
-          }
-        };
-        newNodes.push(viewNode);
-
-        view.tables.forEach((viewTable, tableIndex) => {
-          const matchingTableNode = newNodes.find(n =>
-            n.data.type === 'table' &&
-            n.data.fullName &&
-            n.data.fullName.toLowerCase().includes(viewTable.toLowerCase().split('.').pop())
-          ) || nodes.find(n =>
-            n.data.type === 'table' &&
-            n.data.description.toLowerCase().includes(viewTable.toLowerCase().split('.').pop())
-          );
-
-          if (matchingTableNode) {
-            const viewEdge = {
-              id: `${matchingTableNode.id}-${viewNodeId}`,
-              source: matchingTableNode.id,
-              target: viewNodeId,
-              markerEnd: { type: MarkerType.ArrowClosed },
-              style: {
-                stroke: '#10B981',
-                strokeWidth: 2,
-                strokeDasharray: '5,5'
-              }
-            };
-            newEdges.push(viewEdge);
-          }
-        });
-      });
-    }
-
-    return { nodes: newNodes, edges: newEdges };
-  };
-
-  const getDummyAdditionalNodes = (nodeId, direction) => {
-    if (direction === 'forward' && forwardData) {
-      return getForwardLineageNodes(nodeId, forwardData);
-    }
-
-    const nodeStyles = {
-      source: {
-        background: '#8B5CF6',
-        border: '2px solid #7C3AED',
-        color: 'white',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 'bold'
-      },
-      transform: {
-        background: '#F59E0B',
-        border: '2px solid #D97706',
-        color: 'white',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 'bold'
-      }
-    };
-
-    const mockData = {
-      [`${nodeId}-backward`]: {
-        nodes: [{
-          id: `${nodeId}-upstream-1`,
-          position: { x: 50, y: 150 },
-          data: {
-            label: 'S',
-            type: 'source',
-            description: 'Raw Data Source',
-            fullName: 'Raw Data Source'
-          },
-          style: { ...nodeStyles.source, width: NODE_SIZE, height: NODE_SIZE, fontSize: '24px' }
-        }],
-        edges: [{
-          id: `${nodeId}-upstream-edge-1`,
-          source: `${nodeId}-upstream-1`,
-          target: nodeId,
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: { stroke: '#8B5CF6', strokeWidth: 2 }
-        }]
-      }
-    };
-
-    return mockData[`${nodeId}-${direction}`] || { nodes: [], edges: [] };
-  };
-
   const handleNavigate = async (nodeId, direction) => {
-    const key = `${nodeId}-${direction}`;
-    const isCurrentlyExpanded = expandedNodes.has(key);
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
 
-    const clickedNode = nodes.find(n => n.id === nodeId);
-
-    if (direction === 'forward' && clickedNode?.data?.type === 'view') {
-      console.log('Forward lineage not available for view nodes');
-      return;
-    }
-
-    if (isCurrentlyExpanded) {
-      setNodes(currentNodes =>
-        currentNodes.filter(node => !node.id.includes(`${nodeId}-${direction === 'forward' ? 'forward' : 'upstream'}`))
-      );
-      setEdges(currentEdges =>
-        currentEdges.filter(edge => !edge.id.includes(`${nodeId}-${direction === 'forward' ? 'forward' : 'upstream'}`))
-      );
-      setExpandedNodes(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(key);
-        return newSet;
-      });
-
-      if (direction === 'forward') {
-        setForwardData(null);
+    if (direction === 'forward') {
+      if (node.data.type !== 'schema' && node.data.type !== 'table') {
+        return;
       }
-    } else {
-      if (direction === 'forward') {
-        if (!clickedNode) return;
-        const nodeType = clickedNode.data?.type || 'schema';
 
-        if (nodeType === 'schema' || nodeType === 'table') {
-          const apiData = await fetchForwardLineage(nodeId, nodeType, forwardSteps);
-          if (apiData) {
-            setForwardData(apiData);
-            const additionalData = getForwardLineageNodes(nodeId, apiData);
+      const isCurrentlyExpanded = expandedNodes.has(nodeId);
 
-            if (additionalData.nodes.length > 0) {
-              setNodes(currentNodes => [...currentNodes, ...additionalData.nodes]);
-              setEdges(currentEdges => [...currentEdges, ...additionalData.edges]);
-              setExpandedNodes(prev => new Set(prev).add(key));
-            }
-          }
-        }
+      if (isCurrentlyExpanded) {
+        setExpandedNodes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(nodeId);
+          return newSet;
+        });
+
+        const { filteredNodes, filteredEdges } = removeForwardNodes(nodeId, nodes, edges);
+        setNodes(filteredNodes);
+        setEdges(filteredEdges);
+
+        setForwardData(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(nodeId);
+          return newMap;
+        });
       } else {
-        const additionalData = getDummyAdditionalNodes(nodeId, direction);
-        if (additionalData.nodes.length > 0) {
-          setNodes(currentNodes => [...currentNodes, ...additionalData.nodes]);
-          setEdges(currentEdges => [...currentEdges, ...additionalData.edges]);
-          setExpandedNodes(prev => new Set(prev).add(key));
+        setIsLoadingForward(true);
+
+        try {
+          const response = await fetchForwardLineage(nodeId, node.data.type, steps);
+
+          if (response) {
+            const { newNodes, newEdges } = createForwardNodes(nodeId, node.data.type, response, nodes);
+
+            // Use case-insensitive checks for existing edges and nodes
+            const existingEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
+            const uniqueNewEdges = newEdges.filter(e => !existingEdgeIds.has(e.id.toLowerCase()));
+
+            const existingNodeIds = new Set(nodes.map(n => n.id.toLowerCase()));
+            const uniqueNewNodes = newNodes.filter(n => !existingNodeIds.has(n.id.toLowerCase()));
+
+            setNodes(prev => [...prev, ...uniqueNewNodes]);
+            setEdges(prev => [...prev, ...uniqueNewEdges]);
+
+            setExpandedNodes(prev => {
+              const newSet = new Set(prev);
+              newSet.add(nodeId);
+              return newSet;
+            });
+
+            setForwardData(prev => {
+              const newMap = new Map(prev);
+              newMap.set(nodeId, response);
+              return newMap;
+            });
+          }
+        } catch (error) {
+          console.error('Error handling forward navigation:', error);
+        } finally {
+          setIsLoadingForward(false);
+        }
+      }
+    } else if (direction === 'backward') {
+      if (node.data.type !== 'view' && node.data.type !== 'table') {
+        return;
+      }
+
+      const isCurrentlyExpanded = backwardExpandedNodes.has(nodeId);
+
+      if (isCurrentlyExpanded) {
+        setBackwardExpandedNodes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(nodeId);
+          return newSet;
+        });
+
+        const { filteredNodes, filteredEdges } = removeBackwardNodes(nodeId, nodes, edges);
+        setNodes(filteredNodes);
+        setEdges(filteredEdges);
+
+        setBackwardData(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(nodeId);
+          return newMap;
+        });
+      } else {
+        setIsLoadingBackward(true);
+
+        try {
+          const response = await fetchBackwardLineage(nodeId, node.data.type, steps);
+
+          if (response) {
+            const { newNodes, newEdges } = createBackwardNodes(nodeId, node.data.type, response, nodes);
+
+            // Use case-insensitive checks for existing edges and nodes
+            const existingEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
+            const uniqueNewEdges = newEdges.filter(e => !existingEdgeIds.has(e.id.toLowerCase()));
+
+            const existingNodeIds = new Set(nodes.map(n => n.id.toLowerCase()));
+            const uniqueNewNodes = newNodes.filter(n => !existingNodeIds.has(n.id.toLowerCase()));
+
+            setNodes(prev => [...prev, ...uniqueNewNodes]);
+            setEdges(prev => [...prev, ...uniqueNewEdges]);
+
+            setBackwardExpandedNodes(prev => {
+              const newSet = new Set(prev);
+              newSet.add(nodeId);
+              return newSet;
+            });
+
+            setBackwardData(prev => {
+              const newMap = new Map(prev);
+              newMap.set(nodeId, response);
+              return newMap;
+            });
+          }
+        } catch (error) {
+          console.error('Error handling backward navigation:', error);
+        } finally {
+          setIsLoadingBackward(false);
         }
       }
     }
   };
 
   const handleToggleVisibility = (nodeId) => {
+    // Implementation for toggle visibility if needed
   };
 
   const handleReset = () => {
@@ -727,7 +1090,10 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       setNodes(resetNodes);
       setEdges(resetEdges);
       setExpandedNodes(new Set());
-      setForwardData(null);
+      setBackwardExpandedNodes(new Set());
+      setForwardData(new Map());
+      setBackwardData(new Map());
+      setNodeConnectionMap(new Map());
     }
   };
 
@@ -755,7 +1121,6 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   return (
     <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
       <div className="p-2">
-        <Breadcrumb />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
@@ -771,7 +1136,6 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             )}
             <span className="text-lg font-semibold text-gray-800">
               {currentItem?.name || 'Loading...'}
-              {/* ({currentItem?.type}) */}
             </span>
           </div>
 
@@ -803,16 +1167,14 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-2">
               <span className="text-sm font-medium text-gray-700">Steps:</span>
               <select
-                value={forwardSteps}
-                onChange={(e) => setForwardSteps(parseInt(e.target.value))}
+                value={steps}
+                onChange={(e) => setSteps(parseInt(e.target.value))}
                 className="text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                title="Forward Lineage Steps"
+                title="Lineage Steps (applies to both forward and backward)"
               >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-                <option value={3}>3</option>
-                <option value={4}>4</option>
-                <option value={5}>5</option>
+                {stepOptions.map(step => (
+                  <option key={step} value={step}>{step}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -846,7 +1208,9 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             onReset={handleReset}
             onClose={closeRemote}
             expandedNodes={expandedNodes}
+            backwardExpandedNodes={backwardExpandedNodes}
             isLoading={isLoadingForward}
+            isLoadingBackward={isLoadingBackward}
             nodeData={selectedNode.data}
           />
         )}

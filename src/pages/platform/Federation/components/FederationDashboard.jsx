@@ -470,7 +470,7 @@ const FederationDashBoard = () => {
           <table className="w-full">
             <thead className="text-sm">
               <tr className="bg-[#29304a] text-white">
-                <th className="text-center p-4">ID</th>
+                <th className="text-center p-4">Id</th>
                 <th className="text-center p-4">Connections</th>
                 <th className="text-center p-4">Schema</th>
                 <th className="text-center p-4">Tables</th>
@@ -501,7 +501,7 @@ const FederationDashBoard = () => {
                       ))
                     ) : (
                       <>
-                        <td className="p-4 text-center">{user.ID}</td>
+                        <td className="p-4 text-center">{startItem + index}</td>
                         <td className="p-4 text-center">{user.Connections}</td>
                         <td className="p-4 text-center">{user.Schema}</td>
                         <td className="p-4 text-center">{user.Tables}</td>
