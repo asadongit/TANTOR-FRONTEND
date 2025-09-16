@@ -604,7 +604,7 @@ const Header = () => {
                   </div>
                 ) : (
                   <div className="px-4 py-4 border-b border-gray-100 bg-gradient-to-r from-[purple-50] to-indigo-50">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-start space-x-3">
                       <div className="w-14 h-14 bg-gradient-to-br from-[#8e78b7] to-purple-400 rounded-full flex items-center justify-center text-white text-lg font-semibold shadow-md">
                         {getUserInitials()}
                       </div>
@@ -618,12 +618,23 @@ const Header = () => {
                             {userPlan}
                           </span>
 
-                          {user?.roles || decodedToken?.resource_access?.darch?.roles ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                              <Shield size={12} className="mr-1" />
-                              {user?.roles || decodedToken?.resource_access?.darch?.roles}
-                            </span>
-                          ) : null}
+                          {
+                            (user?.roles || decodedToken?.resource_access?.darch?.roles)?.map((role, index) => {
+                              const cleanedRole = role.toLowerCase().startsWith('persona:')
+                                ? role.substring(8).trim()
+                                : role.trim();
+
+                              return (
+                                <span
+                                  key={`role-${index}`}
+                                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
+                                >
+                                  <Shield size={12} className="mr-1" />
+                                  {cleanedRole}
+                                </span>
+                              );
+                            })
+                          }
                         </div>
                       </div>
                     </div>
