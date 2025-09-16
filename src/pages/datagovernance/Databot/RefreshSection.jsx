@@ -1,17 +1,20 @@
 import { useEffect, useState } from "react";
-import { useDatabotContext } from "../../../hooks/dataGovernance/DatabotContext";
+import { useDatabotContext } from "./context/DatabotContext";
 import Refresh from "../../../assets/databot/Refresh.svg"
 
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useDatabotAPI } from "../../../hooks/dataGovernance/Databot/useDatabotAPI";
+import { useLocation } from "react-router-dom";
 
 
-const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, connections, dropdownRef}) => {
+const RefreshSection = ({secureQueryLoading, connectionsLoading, connections, dropdownRef}) => {
   const [openConnections, setOpenConnections] = useState(false);
   const [openSchemas, setOpenSchemas] = useState(false);
   const [schemaResp, setSchemaResp] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const location = useLocation();
+  
 	const { 
     databot,
     handleSelectedConnectionGlobal,
@@ -21,16 +24,13 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
     policyIdsGlobal,
     handleIsRefreshed,
     isRefreshed
-     } = useDatabotContext();
-      
-  const { getSchemaDetails, refreshDatabotAPI } = useDatabotAPI();
+  } = useDatabotContext();
+  
+  const { getSchemaDetails, refreshDatabotAPI, schemaLoading } = useDatabotAPI();
 
   const uniqueConnections = Array.from(
     new Set((Array.isArray(connections) ? connections : []).map(c => c.connection_name))
   );
-
-
-  // const schema = connections?.map((conn) => conn?.table_schema)
 
   const hasSelection = Boolean(selectedConnectionGlobal);
   const hasSchema = Boolean(selectedSchemaGlobal);
@@ -39,7 +39,7 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
   const schemaButtonLabel = hasSchema ? selectedSchemaGlobal : "Select";
 
   const schemaDetails = async () => {
-    if(selectedConnectionGlobal.length > 0) {
+    if(selectedConnectionGlobal?.length > 0) {
       const schema = await getSchemaDetails(selectedConnectionGlobal);
       setSchemaResp(schema);
     }
@@ -106,7 +106,7 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
 				{/* Button */}
 				<button
 					onClick={() => setOpenSchemas(!openSchemas)}
-          disabled={(secureQueryLoading || connectionsLoading || schemaLoading || selectedConnectionGlobal.length === 0 || loading)}
+          disabled={(secureQueryLoading || connectionsLoading || schemaLoading || selectedConnectionGlobal?.length === 0 || loading)}
 					className="flex items-center justify-between w-36 px-3 py-1.5 
             bg-white border border-gray-300 rounded-md shadow-sm text-sm text-gray-700
             hover:border-[#8d77ba] focus:outline-none focus:ring-2 focus:ring-[#8d77ba]
@@ -142,8 +142,8 @@ const RefreshSection = ({secureQueryLoading, connectionsLoading, schemaLoading, 
 			</>
 
 			<button 
-        disabled={(secureQueryLoading || connectionsLoading || schemaLoading || selectedConnectionGlobal.length === 0
-          || selectedSchemaGlobal.length === 0 || databot.is_loading)}
+        disabled={(secureQueryLoading || connectionsLoading || schemaLoading || selectedConnectionGlobal?.length === 0
+          || selectedSchemaGlobal?.length === 0 || databot.is_loading || loading)}
         onClick={async () => {
           setLoading(true);
           handleIsRefreshed(false);

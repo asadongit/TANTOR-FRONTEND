@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { useDatabotAPI } from "./Databot/useDatabotAPI";
-import { TOOL_NAMES } from "./Databot/constants";
+import { useDatabotAPI } from "../../../../hooks/dataGovernance/Databot/useDatabotAPI";
+import { TOOL_NAMES } from "../../../../hooks/dataGovernance/Databot/constants";
 
 const DatabotContext = createContext();
 

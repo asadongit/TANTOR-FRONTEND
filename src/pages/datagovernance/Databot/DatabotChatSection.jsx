@@ -4,7 +4,7 @@ import { Maximize, Plus,
   X, Minimize } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import TantorlOGO from "../../../assets/tantor_favicon.png"
-import { useDatabotContext } from '../../../hooks/dataGovernance/DatabotContext';
+import { useDatabotContext } from './context/DatabotContext';
 import { useAuth } from '../../../context/AuthContext';
 
 const DatabotChatSection = ({setIsResultScreen, setQuery}) => {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDatabotAPI } from "../../../../hooks/dataGovernance/Databot/useDatabotAPI";
-import { useDatabotContext } from "../../../../hooks/dataGovernance/DatabotContext";
+import { useDatabotContext } from "../context/DatabotContext";
 import toast from "react-hot-toast";
 import { TOOL_NAMES } from "../../../../hooks/dataGovernance/Databot/constants";
 import DatabotGraphPlot from "../DatabotGraphPlot";

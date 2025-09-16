@@ -36,7 +36,7 @@ import {
 import TantorLogin from "./pages/login";
 import { BusinessHeader } from "./pages/platform/Federation/BusinessView/BusinessHeader";
 import TransformationCanvas from "./pages/platform/transformation/components/TransformationCanvas";
-import { DatabotProvider } from "./hooks/dataGovernance/DatabotContext";
+import { DatabotProvider } from "./pages/datagovernance/Databot/context/DatabotContext";
 
 function App() {
   const [activeSection, setActiveSection] = useState("platform");
