@@ -1,14 +1,15 @@
 import { Maximize, Plus, 
-  Bot, ArrowRight, 
-  Paperclip, Mic, 
-  X, Minimize } from 'lucide-react';
+  Bot, ArrowRight, Minimize } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import TantorlOGO from "../../../assets/tantor_favicon.png"
 import { useDatabotContext } from './context/DatabotContext';
 import { useAuth } from '../../../context/AuthContext';
 
 const DatabotChatSection = ({setIsResultScreen, setQuery}) => {
-  const { databot, triggerNewQuestion, resetChat } = useDatabotContext();
+  const { databot, triggerNewQuestion, resetChat, 
+    handleSelectedConnectionGlobal, 
+    handleSelectedSchemaGlobal, handleIsRefreshed } = useDatabotContext();
+    
   const isLoading = databot.is_loading;
 
   const { decodedToken } = useAuth();
@@ -51,6 +52,16 @@ const DatabotChatSection = ({setIsResultScreen, setQuery}) => {
     }
   };
 
+  const handleNewChat = () => {
+    setIsResultScreen(false)
+    resetChat();
+    setQuery("")
+    setNewQuery("");
+    handleSelectedConnectionGlobal(null);
+    handleSelectedSchemaGlobal(null);
+    handleIsRefreshed(false);
+}
+
   return (
     <div className="flex flex-col h-full rounded-lg w-[400px]">
       <div className="pb-4 pt-5 px-4 flex-shrink-0">
@@ -79,12 +90,7 @@ const DatabotChatSection = ({setIsResultScreen, setQuery}) => {
             <div className="relative group">
               <button 
                 disabled={isLoading}
-                onClick={() => {
-                  setIsResultScreen(false)
-                  resetChat();
-                  setQuery("")
-                  setNewQuery("");
-                }}
+                onClick={() => handleNewChat()}
                 className="text-white bg-[#8d77ba] rounded-sm
                   disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 resize-none">
                 <Plus size={20}/>
@@ -214,7 +220,7 @@ const DatabotChatSection = ({setIsResultScreen, setQuery}) => {
                 <div className="relative group">
                   <button 
                     disabled={isLoading}
-                    onClick={() => setIsResultScreen(false)}
+                    onClick={() => handleNewChat()}
                     className="text-white bg-[#8d77ba] rounded-sm
                     disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 resize-none">
                     <Plus size={20}/>
