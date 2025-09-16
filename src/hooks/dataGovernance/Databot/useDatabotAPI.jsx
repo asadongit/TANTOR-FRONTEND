@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
-import { relationship_1, relationship_2, impact_1, lineage_1, dependency_1 } from "../../../pages/datagovernance/Databot/SampleResponses";
-import { useDatabotContext } from "../../../hooks/dataGovernance/DatabotContext";
 import toast from "react-hot-toast";
 
 export const useDatabotAPI = () => {
@@ -96,13 +94,18 @@ export const useDatabotAPI = () => {
 
       return json;
 
-    } catch (err) {
-      setSchemaLoading(true);
-      return err;
+    } catch {
+      setSchemaLoading(false);
+      return null;
+
+    } finally {
+      setSchemaLoading(false);
     }
   }
 
   const getRelationshipAPI = async (ques, connection, schema) => {
+    const modified_ques = ques.trim().toLowerCase();
+    
     setLoading(true);
     try {
       const response = await fetch(
@@ -114,7 +117,7 @@ export const useDatabotAPI = () => {
             "Content-Type": "application/json",
           },
            body: JSON.stringify({ 
-            query: ques,
+            query: modified_ques,
             schema: schema,
             connection_name: connection
           })
@@ -156,7 +159,6 @@ export const useDatabotAPI = () => {
       const json = await response.json();
 
       return json;
-      // return lineage_1;
 
     } catch (err) {
       console.error("Error: ", err);
@@ -251,7 +253,7 @@ export const useDatabotAPI = () => {
       const json = await response.json();
 
       if(json.status === "degraded") {
-        throw new Error(`HTTP error! ${response.status}`);
+        throw new Error(`HTTP error! ${json.status}`);
       }
       toast.success("Refreshed successfully!")
 
