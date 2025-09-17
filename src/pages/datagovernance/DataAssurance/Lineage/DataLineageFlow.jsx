@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, Table, Minimize2, Maximize2, Layers, Share2, Network, Info, X } from 'lucide-react';
 import {
@@ -159,15 +160,16 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [backwardExpandedNodes, setBackwardExpandedNodes] = useState(new Set());
-  const [allConnectionsExpandedNodes, setAllConnectionsExpandedNodes] = useState(new Set()); // Add this
+  const [allConnectionsExpandedNodes, setAllConnectionsExpandedNodes] = useState(new Set());
   const [steps, setSteps] = useState(2);
   const [forwardData, setForwardData] = useState(new Map());
   const [backwardData, setBackwardData] = useState(new Map());
-  const [allConnectionsData, setAllConnectionsData] = useState(new Map()); // Add this
+  const [allConnectionsData, setAllConnectionsData] = useState(new Map());
   const [isLoadingForward, setIsLoadingForward] = useState(false);
   const [isLoadingBackward, setIsLoadingBackward] = useState(false);
-  const [isLoadingAllConnections, setIsLoadingAllConnections] = useState(false); // Add this
+  const [isLoadingAllConnections, setIsLoadingAllConnections] = useState(false);
   const [nodeConnectionMap, setNodeConnectionMap] = useState(new Map());
+  const [initialNodeIds, setInitialNodeIds] = useState(new Set());
 
   const displayableItems = useMemo(() => {
     return selectedItems.filter(item => item.type === 'Table' || item.type === 'View');
@@ -202,6 +204,124 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       };
     }
     return null;
+  };
+
+  const cleanUpIdleNodes = (currentNodes, currentEdges, sourceNodeId, initialNodes = new Set()) => {
+    const nodesToCheck = new Set();
+
+    currentNodes.forEach(node => {
+      const connectedEdges = currentEdges.filter(edge =>
+        edge.source === node.id || edge.target === node.id
+      );
+
+      if (connectedEdges.length === 0 && !initialNodes.has(node.id)) {
+        nodesToCheck.add(node.id);
+      }
+    });
+    const sourceNodeConnections = currentEdges.filter(edge =>
+      edge.source === sourceNodeId || edge.target === sourceNodeId
+    );
+    if (sourceNodeConnections.length === 0 && !initialNodes.has(sourceNodeId)) {
+      nodesToCheck.add(sourceNodeId);
+    }
+
+    const cleanedNodes = currentNodes.filter(node => !nodesToCheck.has(node.id));
+    return {
+      cleanedNodes,
+      removedNodes: Array.from(nodesToCheck)
+    };
+  };
+
+  const removeForwardNodesWithCleaning = (sourceNodeId, currentNodes, currentEdges) => {
+    const sourceEdges = currentEdges.filter(edge =>
+      edge.data?.sourceNode === sourceNodeId && edge.data?.isForwardEdge
+    );
+
+    const targetNodeIds = sourceEdges.map(edge => edge.target);
+    const filteredEdges = currentEdges.filter(edge =>
+      !(edge.data?.sourceNode === sourceNodeId && edge.data?.isForwardEdge)
+    );
+
+    const nodesToRemove = [];
+    targetNodeIds.forEach(nodeId => {
+      const remainingConnections = filteredEdges.filter(edge =>
+        edge.target === nodeId || edge.source === nodeId
+      );
+
+      if (remainingConnections.length === 0) {
+        nodesToRemove.push(nodeId);
+      }
+    });
+
+    // Remove nodes that have no connections left
+    let filteredNodes = currentNodes.filter(node =>
+      !nodesToRemove.includes(node.id)
+    );
+
+    // Apply cleaning to remove idle nodes, including the source node if it becomes idle
+    const { cleanedNodes } = cleanUpIdleNodes(filteredNodes, filteredEdges, sourceNodeId, initialNodeIds);
+
+    return { filteredNodes: cleanedNodes, filteredEdges };
+  };
+
+  const removeBackwardNodesWithCleaning = (sourceNodeId, currentNodes, currentEdges) => {
+    const sourceEdges = currentEdges.filter(edge =>
+      edge.data?.sourceNode === sourceNodeId && edge.data?.isBackwardEdge
+    );
+
+    const sourceNodeIds = sourceEdges.map(edge => edge.source);
+    const filteredEdges = currentEdges.filter(edge =>
+      !(edge.data?.sourceNode === sourceNodeId && edge.data?.isBackwardEdge)
+    );
+
+    const nodesToRemove = [];
+    sourceNodeIds.forEach(nodeId => {
+      const remainingConnections = filteredEdges.filter(edge =>
+        edge.target === nodeId || edge.source === nodeId
+      );
+
+      if (remainingConnections.length === 0) {
+        nodesToRemove.push(nodeId);
+      }
+    });
+
+    let filteredNodes = currentNodes.filter(node =>
+      !nodesToRemove.includes(node.id)
+    );
+
+    const { cleanedNodes } = cleanUpIdleNodes(filteredNodes, filteredEdges, sourceNodeId, initialNodeIds);
+
+    return { filteredNodes: cleanedNodes, filteredEdges };
+  };
+
+  const removeAllConnectionsNodesWithCleaning = (sourceNodeId, currentNodes, currentEdges) => {
+    const sourceEdges = currentEdges.filter(edge =>
+      edge.data?.sourceNode === sourceNodeId && edge.data?.isAllConnectionsEdge
+    );
+
+    const targetNodeIds = sourceEdges.map(edge => edge.target);
+    const filteredEdges = currentEdges.filter(edge =>
+      !(edge.data?.sourceNode === sourceNodeId && edge.data?.isAllConnectionsEdge)
+    );
+
+    const nodesToRemove = [];
+    targetNodeIds.forEach(nodeId => {
+      const remainingConnections = filteredEdges.filter(edge =>
+        edge.target === nodeId || edge.source === nodeId
+      );
+
+      if (remainingConnections.length === 0) {
+        nodesToRemove.push(nodeId);
+      }
+    });
+
+    let filteredNodes = currentNodes.filter(node =>
+      !nodesToRemove.includes(node.id)
+    );
+
+    const { cleanedNodes } = cleanUpIdleNodes(filteredNodes, filteredEdges, sourceNodeId, initialNodeIds);
+
+    return { filteredNodes: cleanedNodes, filteredEdges };
   };
 
   const fetchForwardLineage = async (nodeId, nodeType, stepCount) => {
@@ -311,6 +431,52 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     return positions;
   };
 
+  // Helper function to ensure schema-table connections exist
+  const ensureSchemaTableConnections = (nodes, edges, sourceNodeId, sourceNodeType) => {
+    const newEdges = [...edges];
+    
+    nodes.forEach(node => {
+      if (node.data?.type === 'table') {
+        const tableFullName = node.id;
+        const tableSchema = tableFullName.split('.').slice(0, -1).join('.');
+        
+        // Find the matching schema node
+        const matchingSchemaNode = nodes.find(schemaNode => 
+          schemaNode.data?.type === 'schema' && 
+          schemaNode.id.toLowerCase() === tableSchema.toLowerCase()
+        );
+        
+        if (matchingSchemaNode) {
+          const schemaToTableEdgeId = `${matchingSchemaNode.id}-${tableFullName}`;
+          
+          // Check if the edge already exists
+          const edgeAlreadyExists = newEdges.some(edge => 
+            edge.id && edge.id.toLowerCase() === schemaToTableEdgeId.toLowerCase()
+          );
+          
+          if (!edgeAlreadyExists) {
+            const schemaToTableEdge = {
+              id: schemaToTableEdgeId,
+              source: matchingSchemaNode.id,
+              target: tableFullName,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: '#6B7280', strokeWidth: 2 },
+              data: { 
+                isBackwardEdge: sourceNodeType === 'backward',
+                isForwardEdge: sourceNodeType === 'forward',
+                isAllConnectionsEdge: sourceNodeType === 'allConnections',
+                sourceNode: sourceNodeId 
+              }
+            };
+            newEdges.push(schemaToTableEdge);
+          }
+        }
+      }
+    });
+    
+    return newEdges;
+  };
+
   const createForwardNodes = (nodeId, nodeType, forwardResponse, existingNodes) => {
     const newNodes = [];
     const newEdges = [];
@@ -320,7 +486,21 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
       forwardResponse.tables.forEach((tableFullName, index) => {
         // Skip if table already exists (case-insensitive check)
-        if (findExistingNode(existingNodes, tableFullName)) {
+        const existingTableNode = findExistingNode(existingNodes, tableFullName);
+        if (existingTableNode) {
+          // Table exists, just create edge if it doesn't exist
+          const edgeId = `${nodeId}-${existingTableNode.id}`;
+          if (!edgeExists(existingNodes.filter(item => item.source && item.target), nodeId, existingTableNode.id)) {
+            const edge = {
+              id: edgeId,
+              source: nodeId,
+              target: existingTableNode.id,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: '#6B7280', strokeWidth: 2 },
+              data: { isForwardEdge: true, sourceNode: nodeId }
+            };
+            newEdges.push(edge);
+          }
           return;
         }
 
@@ -372,21 +552,14 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         forwardResponse.views.forEach((viewData, index) => {
           const viewName = viewData.view_name;
 
-          const existingViewNode = findExistingNode(existingNodes, viewName);
+          const existingViewNode = findExistingNode([...existingNodes, ...newNodes], viewName);
 
           if (existingViewNode) {
             viewData.tables.forEach(tableName => {
-              let matchingTableNode = existingNodes.find(node =>
+              let matchingTableNode = [...existingNodes, ...newNodes].find(node =>
                 node.data?.type === 'table' &&
                 node.id.toLowerCase() === tableName.toLowerCase()
               );
-
-              if (!matchingTableNode) {
-                matchingTableNode = newNodes.find(node =>
-                  node.data?.type === 'table' &&
-                  node.id.toLowerCase() === tableName.toLowerCase()
-                );
-              }
 
               if (matchingTableNode) {
                 const edgeId = `${matchingTableNode.id}-${viewName}`;
@@ -439,18 +612,10 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
           newNodes.push(viewNode);
 
           viewData.tables.forEach(tableName => {
-            let matchingTableNode = existingNodes.find(node =>
+            let matchingTableNode = [...existingNodes, ...newNodes].find(node =>
               node.data?.type === 'table' &&
               node.id.toLowerCase() === tableName.toLowerCase()
             );
-
-            // If not found in existing nodes, check in newly created nodes
-            if (!matchingTableNode) {
-              matchingTableNode = newNodes.find(node =>
-                node.data?.type === 'table' &&
-                node.id.toLowerCase() === tableName.toLowerCase()
-              );
-            }
 
             if (matchingTableNode) {
               const edgeId = `${matchingTableNode.id}-${viewName}`;
@@ -549,7 +714,8 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         const schemaPositions = calculateNodePositions(existingNodes, 'schema', backwardResponse.schema.length, 'backward');
 
         backwardResponse.schema.forEach((schemaFullName, index) => {
-          if (findExistingNode(existingNodes, schemaFullName)) {
+          const existingSchemaNode = findExistingNode(existingNodes, schemaFullName);
+          if (existingSchemaNode) {
             return;
           }
 
@@ -603,6 +769,31 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
               data: { isBackwardEdge: true, sourceNode: nodeId }
             };
             newEdges.push(edge);
+          }
+          
+          // Ensure schema-table connection exists for existing table
+          if (backwardResponse.schema && steps >= 2) {
+            const tableSchema = tableFullName.split('.').slice(0, -1).join('.');
+            const matchingSchemaNode = [...existingNodes, ...newNodes].find(node =>
+              node.data?.type === 'schema' &&
+              node.id.toLowerCase() === tableSchema.toLowerCase()
+            );
+
+            if (matchingSchemaNode) {
+              const schemaToTableEdgeId = `${matchingSchemaNode.id}-${tableFullName}`;
+
+              if (!edgeExists([...existingNodes.filter(item => item.source && item.target), ...newEdges], matchingSchemaNode.id, tableFullName)) {
+                const schemaToTableEdge = {
+                  id: schemaToTableEdgeId,
+                  source: matchingSchemaNode.id,
+                  target: tableFullName,
+                  markerEnd: { type: MarkerType.ArrowClosed },
+                  style: { stroke: '#6B7280', strokeWidth: 2 },
+                  data: { isBackwardEdge: true, sourceNode: nodeId }
+                };
+                newEdges.push(schemaToTableEdge);
+              }
+            }
           }
           return;
         }
@@ -743,64 +934,140 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     return { newNodes, newEdges };
   };
 
-  // Remove forward nodes and edges for a specific source node
-  const removeForwardNodes = (sourceNodeId, currentNodes, currentEdges) => {
-    const sourceEdges = currentEdges.filter(edge =>
-      edge.data?.sourceNode === sourceNodeId && edge.data?.isForwardEdge
-    );
+  const createAllConnectionsNodes = (nodeId, nodeType, response, existingNodes) => {
+    const newNodes = [];
+    const newEdges = [];
 
-    const targetNodeIds = sourceEdges.map(edge => edge.target);
-    const filteredEdges = currentEdges.filter(edge =>
-      !(edge.data?.sourceNode === sourceNodeId && edge.data?.isForwardEdge)
-    );
+    if (nodeType === 'schema' && response.tables) {
+      const tablePositions = calculateNodePositions(existingNodes, 'table', response.tables.length);
 
-    const nodesToRemove = [];
-    targetNodeIds.forEach(nodeId => {
-      const remainingConnections = filteredEdges.filter(edge =>
-        edge.target === nodeId || edge.source === nodeId
-      );
+      response.tables.forEach((tableFullName, index) => {
+        // Skip if table already exists
+        const existingTableNode = findExistingNode(existingNodes, tableFullName);
+        if (existingTableNode) {
+          // Table exists, just create edge if it doesn't exist
+          const edgeId = `${nodeId}-${existingTableNode.id}`;
+          if (!edgeExists(existingNodes.filter(item => item.source && item.target), nodeId, existingTableNode.id)) {
+            const edge = {
+              id: edgeId,
+              source: nodeId,
+              target: existingTableNode.id,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: '#6B7280', strokeWidth: 2 },
+              data: { isAllConnectionsEdge: true, sourceNode: nodeId }
+            };
+            newEdges.push(edge);
+          }
+          return;
+        }
 
-      if (remainingConnections.length === 0) {
-        nodesToRemove.push(nodeId);
-      }
-    });
+        const tableName = tableFullName.split('.').pop();
+        const tableNode = {
+          id: tableFullName,
+          type: 'default',
+          position: tablePositions[index],
+          data: {
+            label: 'T',
+            type: 'table',
+            description: `Table: ${tableName}`,
+            fullName: tableFullName,
+            isAllConnectionsNode: true,
+            sourceNode: nodeId
+          },
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: '3px solid #DC2626',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
 
-    // Remove nodes that have no connections left
-    const filteredNodes = currentNodes.filter(node =>
-      !nodesToRemove.includes(node.id)
-    );
+        newNodes.push(tableNode);
 
-    return { filteredNodes, filteredEdges };
-  };
+        const edge = {
+          id: `${nodeId}-${tableFullName}`,
+          source: nodeId,
+          target: tableFullName,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#6B7280', strokeWidth: 2 },
+          data: { isAllConnectionsEdge: true, sourceNode: nodeId }
+        };
+        newEdges.push(edge);
+      });
+    } else if (nodeType === 'table' && Array.isArray(response)) {
+      const viewPositions = calculateNodePositions(existingNodes, 'view', response.length);
 
-  // Remove backward nodes and edges for a specific source node
-  const removeBackwardNodes = (sourceNodeId, currentNodes, currentEdges) => {
-    const sourceEdges = currentEdges.filter(edge =>
-      edge.data?.sourceNode === sourceNodeId && edge.data?.isBackwardEdge
-    );
+      response.forEach((viewName, index) => {
+        const existingViewNode = findExistingNode(existingNodes, viewName);
 
-    const sourceNodeIds = sourceEdges.map(edge => edge.source);
-    const filteredEdges = currentEdges.filter(edge =>
-      !(edge.data?.sourceNode === sourceNodeId && edge.data?.isBackwardEdge)
-    );
+        if (existingViewNode) {
+          // View exists, just create edge if it doesn't exist
+          if (!edgeExists(existingNodes.filter(item => item.source && item.target), nodeId, existingViewNode.id)) {
+            const edge = {
+              id: `${nodeId}-${existingViewNode.id}`,
+              source: nodeId,
+              target: existingViewNode.id,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: '#10B981', strokeWidth: 2 },
+              data: { isAllConnectionsEdge: true, sourceNode: nodeId }
+            };
+            newEdges.push(edge);
+          }
+          return;
+        }
 
-    const nodesToRemove = [];
-    sourceNodeIds.forEach(nodeId => {
-      const remainingConnections = filteredEdges.filter(edge =>
-        edge.target === nodeId || edge.source === nodeId
-      );
+        const viewNode = {
+          id: viewName,
+          type: 'default',
+          position: viewPositions[index],
+          data: {
+            label: 'V',
+            type: 'view',
+            description: `View: ${viewName}`,
+            fullName: viewName,
+            isAllConnectionsNode: true,
+            sourceNode: nodeId
+          },
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: '3px solid #059669',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
 
-      if (remainingConnections.length === 0) {
-        nodesToRemove.push(nodeId);
-      }
-    });
+        newNodes.push(viewNode);
 
-    // Remove nodes that have no connections left
-    const filteredNodes = currentNodes.filter(node =>
-      !nodesToRemove.includes(node.id)
-    );
+        // Create edge from table to view
+        const edge = {
+          id: `${nodeId}-${viewName}`,
+          source: nodeId,
+          target: viewName,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#10B981', strokeWidth: 2 },
+          data: { isAllConnectionsEdge: true, sourceNode: nodeId }
+        };
+        newEdges.push(edge);
+      });
+    }
 
-    return { filteredNodes, filteredEdges };
+    return { newNodes, newEdges };
   };
 
   const generateNodesAndEdges = (item) => {
@@ -1054,173 +1321,23 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       setEdges(newEdges);
       setExpandedNodes(new Set());
       setBackwardExpandedNodes(new Set());
-      setAllConnectionsExpandedNodes(new Set()); // Add this
+      setAllConnectionsExpandedNodes(new Set());
       setSelectedNodeId(null);
       setForwardData(new Map());
       setBackwardData(new Map());
-      setAllConnectionsData(new Map()); // Add this
+      setAllConnectionsData(new Map());
       setNodeConnectionMap(new Map());
+
+      // Track initial node IDs for cleaning purposes
+      const initialIds = new Set(newNodes.map(node => node.id));
+      setInitialNodeIds(initialIds);
     }
   }, [currentItem, setNodes, setEdges]);
-
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges],
   );
-
-  const createAllConnectionsNodes = (nodeId, nodeType, response, existingNodes) => {
-    const newNodes = [];
-    const newEdges = [];
-
-    if (nodeType === 'schema' && response.tables) {
-      const tablePositions = calculateNodePositions(existingNodes, 'table', response.tables.length);
-
-      response.tables.forEach((tableFullName, index) => {
-        // Skip if table already exists
-        if (findExistingNode(existingNodes, tableFullName)) {
-          return;
-        }
-
-        const tableName = tableFullName.split('.').pop();
-        const tableNode = {
-          id: tableFullName,
-          type: 'default',
-          position: tablePositions[index],
-          data: {
-            label: 'T',
-            type: 'table',
-            description: `Table: ${tableName}`,
-            fullName: tableFullName,
-            isAllConnectionsNode: true,
-            sourceNode: nodeId
-          },
-          style: {
-            background: '#EF4444',
-            color: 'white',
-            border: '3px solid #DC2626',
-            borderRadius: '50%',
-            width: NODE_SIZE,
-            height: NODE_SIZE,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            textAlign: 'center'
-          }
-        };
-
-        newNodes.push(tableNode);
-
-        const edge = {
-          id: `${nodeId}-${tableFullName}`,
-          source: nodeId,
-          target: tableFullName,
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: { stroke: '#6B7280', strokeWidth: 2 },
-          data: { isAllConnectionsEdge: true, sourceNode: nodeId }
-        };
-        newEdges.push(edge);
-      });
-    } else if (nodeType === 'table' && Array.isArray(response)) {
-      const viewPositions = calculateNodePositions(existingNodes, 'view', response.length);
-
-      response.forEach((viewName, index) => {
-        const existingViewNode = findExistingNode(existingNodes, viewName);
-
-        if (existingViewNode) {
-          // View exists, just create edge if it doesn't exist
-          if (!edgeExists(existingNodes.filter(item => item.source && item.target), nodeId, existingViewNode.id)) {
-            const edge = {
-              id: `${nodeId}-${existingViewNode.id}`,
-              source: nodeId,
-              target: existingViewNode.id,
-              markerEnd: { type: MarkerType.ArrowClosed },
-              style: { stroke: '#10B981', strokeWidth: 2 },
-              data: { isAllConnectionsEdge: true, sourceNode: nodeId }
-            };
-            newEdges.push(edge);
-          }
-          return;
-        }
-
-        const viewNode = {
-          id: viewName,
-          type: 'default',
-          position: viewPositions[index],
-          data: {
-            label: 'V',
-            type: 'view',
-            description: `View: ${viewName}`,
-            fullName: viewName,
-            isAllConnectionsNode: true,
-            sourceNode: nodeId
-          },
-          style: {
-            background: '#10B981',
-            color: 'white',
-            border: '3px solid #059669',
-            borderRadius: '50%',
-            width: NODE_SIZE,
-            height: NODE_SIZE,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            textAlign: 'center'
-          }
-        };
-
-        newNodes.push(viewNode);
-
-        // Create edge from table to view
-        const edge = {
-          id: `${nodeId}-${viewName}`,
-          source: nodeId,
-          target: viewName,
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: { stroke: '#10B981', strokeWidth: 2 },
-          data: { isAllConnectionsEdge: true, sourceNode: nodeId }
-        };
-        newEdges.push(edge);
-      });
-    }
-
-    return { newNodes, newEdges };
-  };
-
-  // Add the removeAllConnectionsNodes function
-  const removeAllConnectionsNodes = (sourceNodeId, currentNodes, currentEdges) => {
-    const sourceEdges = currentEdges.filter(edge =>
-      edge.data?.sourceNode === sourceNodeId && edge.data?.isAllConnectionsEdge
-    );
-
-    const targetNodeIds = sourceEdges.map(edge => edge.target);
-    const filteredEdges = currentEdges.filter(edge =>
-      !(edge.data?.sourceNode === sourceNodeId && edge.data?.isAllConnectionsEdge)
-    );
-
-    const nodesToRemove = [];
-    targetNodeIds.forEach(nodeId => {
-      const remainingConnections = filteredEdges.filter(edge =>
-        edge.target === nodeId || edge.source === nodeId
-      );
-
-      if (remainingConnections.length === 0) {
-        nodesToRemove.push(nodeId);
-      }
-    });
-
-    // Remove nodes that have no connections left
-    const filteredNodes = currentNodes.filter(node =>
-      !nodesToRemove.includes(node.id)
-    );
-
-    return { filteredNodes, filteredEdges };
-  };
-
 
   const handleNavigate = async (nodeId, direction) => {
     const node = nodes.find(n => n.id === nodeId);
@@ -1234,14 +1351,14 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       const isCurrentlyExpanded = allConnectionsExpandedNodes.has(nodeId);
 
       if (isCurrentlyExpanded) {
-        // Remove all connections nodes
+        // Remove all connections nodes with cleaning
         setAllConnectionsExpandedNodes(prev => {
           const newSet = new Set(prev);
           newSet.delete(nodeId);
           return newSet;
         });
 
-        const { filteredNodes, filteredEdges } = removeAllConnectionsNodes(nodeId, nodes, edges);
+        const { filteredNodes, filteredEdges } = removeAllConnectionsNodesWithCleaning(nodeId, nodes, edges);
         setNodes(filteredNodes);
         setEdges(filteredEdges);
 
@@ -1303,7 +1420,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
           return newSet;
         });
 
-        const { filteredNodes, filteredEdges } = removeForwardNodes(nodeId, nodes, edges);
+        const { filteredNodes, filteredEdges } = removeForwardNodesWithCleaning(nodeId, nodes, edges);
         setNodes(filteredNodes);
         setEdges(filteredEdges);
 
@@ -1323,10 +1440,18 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
             // Use case-insensitive checks for existing edges and nodes
             const existingEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
-            const uniqueNewEdges = newEdges.filter(e => !existingEdgeIds.has(e.id.toLowerCase()));
+            let uniqueNewEdges = newEdges.filter(e => !existingEdgeIds.has(e.id.toLowerCase()));
 
             const existingNodeIds = new Set(nodes.map(n => n.id.toLowerCase()));
             const uniqueNewNodes = newNodes.filter(n => !existingNodeIds.has(n.id.toLowerCase()));
+
+            // Ensure schema-table connections for existing nodes
+            const allNodes = [...nodes, ...uniqueNewNodes];
+            const finalEdges = ensureSchemaTableConnections(allNodes, [...edges, ...uniqueNewEdges], nodeId, 'forward');
+            
+            // Filter out edges that already exist
+            const existingFinalEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
+            uniqueNewEdges = finalEdges.filter(e => !existingFinalEdgeIds.has(e.id.toLowerCase()));
 
             setNodes(prev => [...prev, ...uniqueNewNodes]);
             setEdges(prev => [...prev, ...uniqueNewEdges]);
@@ -1363,7 +1488,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
           return newSet;
         });
 
-        const { filteredNodes, filteredEdges } = removeBackwardNodes(nodeId, nodes, edges);
+        const { filteredNodes, filteredEdges } = removeBackwardNodesWithCleaning(nodeId, nodes, edges);
         setNodes(filteredNodes);
         setEdges(filteredEdges);
 
@@ -1383,10 +1508,18 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
             // Use case-insensitive checks for existing edges and nodes
             const existingEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
-            const uniqueNewEdges = newEdges.filter(e => !existingEdgeIds.has(e.id.toLowerCase()));
+            let uniqueNewEdges = newEdges.filter(e => !existingEdgeIds.has(e.id.toLowerCase()));
 
             const existingNodeIds = new Set(nodes.map(n => n.id.toLowerCase()));
             const uniqueNewNodes = newNodes.filter(n => !existingNodeIds.has(n.id.toLowerCase()));
+
+            // Ensure schema-table connections for existing nodes
+            const allNodes = [...nodes, ...uniqueNewNodes];
+            const finalEdges = ensureSchemaTableConnections(allNodes, [...edges, ...uniqueNewEdges], nodeId, 'backward');
+            
+            // Filter out edges that already exist
+            const existingFinalEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
+            uniqueNewEdges = finalEdges.filter(e => !existingFinalEdgeIds.has(e.id.toLowerCase()));
 
             setNodes(prev => [...prev, ...uniqueNewNodes]);
             setEdges(prev => [...prev, ...uniqueNewEdges]);
@@ -1423,9 +1556,15 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       setEdges(resetEdges);
       setExpandedNodes(new Set());
       setBackwardExpandedNodes(new Set());
+      setAllConnectionsExpandedNodes(new Set());
       setForwardData(new Map());
       setBackwardData(new Map());
+      setAllConnectionsData(new Map());
       setNodeConnectionMap(new Map());
+
+      // Reset initial node IDs
+      const initialIds = new Set(resetNodes.map(node => node.id));
+      setInitialNodeIds(initialIds);
     }
   };
 
@@ -1532,23 +1671,22 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         </ReactFlow>
 
         {selectedNodeId && selectedNode && (
-    <CircularNodeRemote
-      nodeId={selectedNodeId}
-      position={selectedNode.position}
-      onNavigate={handleNavigate}
-      onToggleVisibility={handleToggleVisibility}
-      onReset={handleReset}
-      onClose={closeRemote}
-      expandedNodes={expandedNodes}
-      backwardExpandedNodes={backwardExpandedNodes}
-      allConnectionsExpandedNodes={allConnectionsExpandedNodes}
-      isLoading={isLoadingForward}
-      isLoadingBackward={isLoadingBackward}
-      isLoadingAllConnections={isLoadingAllConnections}
-      nodeData={selectedNode.data}
-    />
-  )}
-
+          <CircularNodeRemote
+            nodeId={selectedNodeId}
+            position={selectedNode.position}
+            onNavigate={handleNavigate}
+            onToggleVisibility={handleToggleVisibility}
+            onReset={handleReset}
+            onClose={closeRemote}
+            expandedNodes={expandedNodes}
+            backwardExpandedNodes={backwardExpandedNodes}
+            allConnectionsExpandedNodes={allConnectionsExpandedNodes}
+            isLoading={isLoadingForward}
+            isLoadingBackward={isLoadingBackward}
+            isLoadingAllConnections={isLoadingAllConnections}
+            nodeData={selectedNode.data}
+          />
+        )}
       </div>
     </div>
   );
