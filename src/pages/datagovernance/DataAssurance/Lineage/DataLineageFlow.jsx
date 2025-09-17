@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, Table, Minimize2, Maximize2, Layers } from 'lucide-react';
+import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, Table, Minimize2, Maximize2, Layers, Share2, Network, Info, X } from 'lucide-react';
 import {
   ReactFlow,
   MiniMap,
@@ -11,9 +11,38 @@ import {
   MarkerType,
 } from 'reactflow';
 
-const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, onReset, onClose, expandedNodes, backwardExpandedNodes, isLoading, isLoadingBackward, nodeData }) => {
+const CircularNodeRemote = ({
+  nodeId,
+  position,
+  onNavigate,
+  onToggleVisibility,
+  onReset,
+  onClose,
+  expandedNodes,
+  backwardExpandedNodes,
+  allConnectionsExpandedNodes,
+  isLoading,
+  isLoadingBackward,
+  isLoadingAllConnections,
+  nodeData
+}) => {
   const isForwardExpanded = expandedNodes.has(nodeId);
   const isBackwardExpanded = backwardExpandedNodes.has(nodeId);
+  const isAllConnectionsExpanded = allConnectionsExpandedNodes.has(nodeId);
+
+  const handleAssetInfo = () => {
+    // TODO: Implement asset information functionality
+    console.log('Asset info clicked for:', nodeId);
+  };
+
+  const handleColumnDetails = () => {
+    // TODO: Implement column level details functionality
+    console.log('Column details clicked for:', nodeId);
+  };
+
+  const handleAllConnections = () => {
+    onNavigate(nodeId, 'allConnections');
+  };
 
   return (
     <div
@@ -24,17 +53,26 @@ const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, 
       }}
     >
       <div className="relative">
-        <div className="w-24 h-24 bg-gray-800 rounded-full border-4 border-gray-600 shadow-2xl relative">
+        <div className="w-28 h-28 bg-gray-800 rounded-full border-4 border-gray-600 shadow-2xl relative">
           <div className="w-12 h-12 bg-red-500 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
             <span className="text-white text-xs font-bold">CTRL</span>
           </div>
+
+          <button
+            onClick={handleAssetInfo}
+            className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-7 h-7 bg-gray-700 hover:bg-gray-600 rounded-full border-2 border-white flex items-center justify-center transition-all text-white"
+            title="Asset Information"
+          >
+            <Info size={16} />
+          </button>
+
           <button
             onClick={() => onNavigate(nodeId, 'forward')}
             disabled={isLoading || (nodeData.type !== 'schema' && nodeData.type !== 'table')}
-            className={`absolute right-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${nodeData.type !== 'schema' && nodeData.type !== 'table' ? 'bg-gray-400 cursor-not-allowed' :
-                isForwardExpanded ? 'bg-yellow-500 text-black' :
-                  isLoading ? 'bg-gray-500 text-white cursor-wait' :
-                    'bg-gray-700 hover:bg-gray-600 text-white'
+            className={`absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${nodeData.type !== 'schema' && nodeData.type !== 'table' ? 'bg-gray-400 cursor-not-allowed' :
+              isForwardExpanded ? 'bg-yellow-500 text-black' :
+                isLoading ? 'bg-gray-500 text-white cursor-wait' :
+                  'bg-gray-700 hover:bg-gray-600 text-white'
               }`}
             title={
               nodeData.type !== 'schema' && nodeData.type !== 'table' ? "Forward not available for this node type" :
@@ -45,16 +83,46 @@ const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, 
             {isLoading ? (
               <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              <ChevronRight size={14} />
+              <ChevronRight size={16} />
             )}
           </button>
+
+          <button
+            onClick={handleAllConnections}
+            disabled={isLoadingAllConnections || (nodeData.type !== 'schema' && nodeData.type !== 'table')}
+            className={`absolute bottom-0 right-2 transform translate-x-1/4 translate-y-1/4 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${nodeData.type !== 'schema' && nodeData.type !== 'table' ? 'bg-gray-400 cursor-not-allowed' :
+              isAllConnectionsExpanded ? 'bg-yellow-500 text-black' :
+                isLoadingAllConnections ? 'bg-gray-500 text-white cursor-wait' :
+                  'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            title={
+              nodeData.type !== 'schema' && nodeData.type !== 'table' ? "All connections not available for this node type" :
+                isLoadingAllConnections ? "Loading..." :
+                  isAllConnectionsExpanded ? "Close All Connections" : "Show All Asset Connections (1 step)"
+            }
+          >
+            {isLoadingAllConnections ? (
+              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Share2 size={16} />
+            )}
+          </button>
+
+          <button
+            onClick={handleColumnDetails}
+            className="absolute bottom-0 left-2 transform -translate-x-1/4 translate-y-1/4 w-7 h-7 bg-gray-700 hover:bg-gray-600 rounded-full border-2 border-white flex items-center justify-center transition-all text-white"
+            title="Column Level Details"
+          >
+            <Network size={16} />
+          </button>
+
           <button
             onClick={() => onNavigate(nodeId, 'backward')}
             disabled={isLoadingBackward || (nodeData.type !== 'view' && nodeData.type !== 'table')}
-            className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${(nodeData.type !== 'view' && nodeData.type !== 'table') ? 'bg-gray-400 cursor-not-allowed' :
-                isBackwardExpanded ? 'bg-yellow-500 text-black' :
-                  isLoadingBackward ? 'bg-gray-500 text-white cursor-wait' :
-                    'bg-gray-700 hover:bg-gray-600 text-white'
+            className={`absolute left-0 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${(nodeData.type !== 'view' && nodeData.type !== 'table') ? 'bg-gray-400 cursor-not-allowed' :
+              isBackwardExpanded ? 'bg-yellow-500 text-black' :
+                isLoadingBackward ? 'bg-gray-500 text-white cursor-wait' :
+                  'bg-gray-700 hover:bg-gray-600 text-white'
               }`}
             title={
               (nodeData.type !== 'view' && nodeData.type !== 'table') ? "Backward only available for views and tables" :
@@ -65,18 +133,20 @@ const CircularNodeRemote = ({ nodeId, position, onNavigate, onToggleVisibility, 
             {isLoadingBackward ? (
               <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              <ChevronLeft size={14} />
+              <ChevronLeft size={16} />
             )}
           </button>
         </div>
+
         <button
           onClick={onClose}
-          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full text-white flex items-center justify-center text-xs"
+          className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full text-white flex items-center justify-center text-xs shadow-lg"
         >
-          <XCircle size={12} />
+          <XCircle size={14} />
         </button>
       </div>
-      <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+
+      <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
         {nodeId}
       </div>
     </div>
@@ -89,11 +159,14 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [backwardExpandedNodes, setBackwardExpandedNodes] = useState(new Set());
+  const [allConnectionsExpandedNodes, setAllConnectionsExpandedNodes] = useState(new Set()); // Add this
   const [steps, setSteps] = useState(2);
   const [forwardData, setForwardData] = useState(new Map());
   const [backwardData, setBackwardData] = useState(new Map());
+  const [allConnectionsData, setAllConnectionsData] = useState(new Map()); // Add this
   const [isLoadingForward, setIsLoadingForward] = useState(false);
   const [isLoadingBackward, setIsLoadingBackward] = useState(false);
+  const [isLoadingAllConnections, setIsLoadingAllConnections] = useState(false); // Add this
   const [nodeConnectionMap, setNodeConnectionMap] = useState(new Map());
 
   const displayableItems = useMemo(() => {
@@ -210,11 +283,11 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
     if (direction === 'backward') {
       if (newNodeType === 'schema') {
-        baseX = 150; 
+        baseX = 150;
         startY = 100;
         spacing = 100;
       } else if (newNodeType === 'table') {
-        baseX = 450; 
+        baseX = 450;
         startY = 100;
         spacing = 100;
       } else {
@@ -299,7 +372,39 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         forwardResponse.views.forEach((viewData, index) => {
           const viewName = viewData.view_name;
 
-          if (findExistingNode(existingNodes, viewName)) {
+          const existingViewNode = findExistingNode(existingNodes, viewName);
+
+          if (existingViewNode) {
+            viewData.tables.forEach(tableName => {
+              let matchingTableNode = existingNodes.find(node =>
+                node.data?.type === 'table' &&
+                node.id.toLowerCase() === tableName.toLowerCase()
+              );
+
+              if (!matchingTableNode) {
+                matchingTableNode = newNodes.find(node =>
+                  node.data?.type === 'table' &&
+                  node.id.toLowerCase() === tableName.toLowerCase()
+                );
+              }
+
+              if (matchingTableNode) {
+                const edgeId = `${matchingTableNode.id}-${viewName}`;
+
+                const existingEdges = [...existingNodes.filter(item => item.source && item.target), ...newEdges];
+                if (!edgeExists(existingEdges, matchingTableNode.id, viewName)) {
+                  const edge = {
+                    id: edgeId,
+                    source: matchingTableNode.id,
+                    target: viewName,
+                    markerEnd: { type: MarkerType.ArrowClosed },
+                    style: { stroke: '#10B981', strokeWidth: 2 },
+                    data: { isForwardEdge: true, sourceNode: nodeId }
+                  };
+                  newEdges.push(edge);
+                }
+              }
+            });
             return;
           }
 
@@ -334,15 +439,23 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
           newNodes.push(viewNode);
 
           viewData.tables.forEach(tableName => {
-            const matchingTableNode = [...existingNodes, ...newNodes].find(node =>
+            let matchingTableNode = existingNodes.find(node =>
               node.data?.type === 'table' &&
               node.id.toLowerCase() === tableName.toLowerCase()
             );
 
+            // If not found in existing nodes, check in newly created nodes
+            if (!matchingTableNode) {
+              matchingTableNode = newNodes.find(node =>
+                node.data?.type === 'table' &&
+                node.id.toLowerCase() === tableName.toLowerCase()
+              );
+            }
+
             if (matchingTableNode) {
               const edgeId = `${matchingTableNode.id}-${viewName}`;
 
-              if (!edgeExists(newEdges, matchingTableNode.id, viewName)) {
+              if (!edgeExists([...newEdges], matchingTableNode.id, viewName)) {
                 const edge = {
                   id: edgeId,
                   source: matchingTableNode.id,
@@ -364,7 +477,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
       forwardResponse.forEach((viewName, index) => {
         const existingViewNode = findExistingNode(existingNodes, viewName);
-        
+
         if (existingViewNode) {
           // View exists, just create edge if it doesn't exist
           if (!edgeExists(existingNodes.filter(item => item.source && item.target), nodeId, existingViewNode.id)) {
@@ -477,7 +590,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
       backwardResponse.tables.forEach((tableFullName, index) => {
         const existingTableNode = findExistingNode(existingNodes, tableFullName);
-        
+
         if (existingTableNode) {
           const edgeId = `${existingTableNode.id}-${nodeId}`;
           if (!edgeExists([...existingNodes.filter(item => item.source && item.target), ...newEdges], existingTableNode.id, nodeId)) {
@@ -545,7 +658,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
           if (matchingSchemaNode) {
             const schemaToTableEdgeId = `${matchingSchemaNode.id}-${tableFullName}`;
-            
+
             if (!edgeExists(newEdges, matchingSchemaNode.id, tableFullName)) {
               const schemaToTableEdge = {
                 id: schemaToTableEdgeId,
@@ -565,7 +678,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
       backwardResponse.forEach((schemaFullName, index) => {
         const existingSchemaNode = findExistingNode(existingNodes, schemaFullName);
-        
+
         if (existingSchemaNode) {
           // Schema exists, just create edge if it doesn't exist
           const edgeId = `${existingSchemaNode.id}-${nodeId}`;
@@ -941,21 +1054,240 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       setEdges(newEdges);
       setExpandedNodes(new Set());
       setBackwardExpandedNodes(new Set());
+      setAllConnectionsExpandedNodes(new Set()); // Add this
       setSelectedNodeId(null);
       setForwardData(new Map());
       setBackwardData(new Map());
+      setAllConnectionsData(new Map()); // Add this
       setNodeConnectionMap(new Map());
     }
   }, [currentItem, setNodes, setEdges]);
+
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges],
   );
 
+  const createAllConnectionsNodes = (nodeId, nodeType, response, existingNodes) => {
+    const newNodes = [];
+    const newEdges = [];
+
+    if (nodeType === 'schema' && response.tables) {
+      const tablePositions = calculateNodePositions(existingNodes, 'table', response.tables.length);
+
+      response.tables.forEach((tableFullName, index) => {
+        // Skip if table already exists
+        if (findExistingNode(existingNodes, tableFullName)) {
+          return;
+        }
+
+        const tableName = tableFullName.split('.').pop();
+        const tableNode = {
+          id: tableFullName,
+          type: 'default',
+          position: tablePositions[index],
+          data: {
+            label: 'T',
+            type: 'table',
+            description: `Table: ${tableName}`,
+            fullName: tableFullName,
+            isAllConnectionsNode: true,
+            sourceNode: nodeId
+          },
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            border: '3px solid #DC2626',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+
+        newNodes.push(tableNode);
+
+        const edge = {
+          id: `${nodeId}-${tableFullName}`,
+          source: nodeId,
+          target: tableFullName,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#6B7280', strokeWidth: 2 },
+          data: { isAllConnectionsEdge: true, sourceNode: nodeId }
+        };
+        newEdges.push(edge);
+      });
+    } else if (nodeType === 'table' && Array.isArray(response)) {
+      const viewPositions = calculateNodePositions(existingNodes, 'view', response.length);
+
+      response.forEach((viewName, index) => {
+        const existingViewNode = findExistingNode(existingNodes, viewName);
+
+        if (existingViewNode) {
+          // View exists, just create edge if it doesn't exist
+          if (!edgeExists(existingNodes.filter(item => item.source && item.target), nodeId, existingViewNode.id)) {
+            const edge = {
+              id: `${nodeId}-${existingViewNode.id}`,
+              source: nodeId,
+              target: existingViewNode.id,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { stroke: '#10B981', strokeWidth: 2 },
+              data: { isAllConnectionsEdge: true, sourceNode: nodeId }
+            };
+            newEdges.push(edge);
+          }
+          return;
+        }
+
+        const viewNode = {
+          id: viewName,
+          type: 'default',
+          position: viewPositions[index],
+          data: {
+            label: 'V',
+            type: 'view',
+            description: `View: ${viewName}`,
+            fullName: viewName,
+            isAllConnectionsNode: true,
+            sourceNode: nodeId
+          },
+          style: {
+            background: '#10B981',
+            color: 'white',
+            border: '3px solid #059669',
+            borderRadius: '50%',
+            width: NODE_SIZE,
+            height: NODE_SIZE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }
+        };
+
+        newNodes.push(viewNode);
+
+        // Create edge from table to view
+        const edge = {
+          id: `${nodeId}-${viewName}`,
+          source: nodeId,
+          target: viewName,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#10B981', strokeWidth: 2 },
+          data: { isAllConnectionsEdge: true, sourceNode: nodeId }
+        };
+        newEdges.push(edge);
+      });
+    }
+
+    return { newNodes, newEdges };
+  };
+
+  // Add the removeAllConnectionsNodes function
+  const removeAllConnectionsNodes = (sourceNodeId, currentNodes, currentEdges) => {
+    const sourceEdges = currentEdges.filter(edge =>
+      edge.data?.sourceNode === sourceNodeId && edge.data?.isAllConnectionsEdge
+    );
+
+    const targetNodeIds = sourceEdges.map(edge => edge.target);
+    const filteredEdges = currentEdges.filter(edge =>
+      !(edge.data?.sourceNode === sourceNodeId && edge.data?.isAllConnectionsEdge)
+    );
+
+    const nodesToRemove = [];
+    targetNodeIds.forEach(nodeId => {
+      const remainingConnections = filteredEdges.filter(edge =>
+        edge.target === nodeId || edge.source === nodeId
+      );
+
+      if (remainingConnections.length === 0) {
+        nodesToRemove.push(nodeId);
+      }
+    });
+
+    // Remove nodes that have no connections left
+    const filteredNodes = currentNodes.filter(node =>
+      !nodesToRemove.includes(node.id)
+    );
+
+    return { filteredNodes, filteredEdges };
+  };
+
+
   const handleNavigate = async (nodeId, direction) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
+
+    if (direction === 'allConnections') {
+      if (node.data.type !== 'schema' && node.data.type !== 'table') {
+        return;
+      }
+
+      const isCurrentlyExpanded = allConnectionsExpandedNodes.has(nodeId);
+
+      if (isCurrentlyExpanded) {
+        // Remove all connections nodes
+        setAllConnectionsExpandedNodes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(nodeId);
+          return newSet;
+        });
+
+        const { filteredNodes, filteredEdges } = removeAllConnectionsNodes(nodeId, nodes, edges);
+        setNodes(filteredNodes);
+        setEdges(filteredEdges);
+
+        setAllConnectionsData(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(nodeId);
+          return newMap;
+        });
+      } else {
+        setIsLoadingAllConnections(true);
+
+        try {
+          const response = await fetchForwardLineage(nodeId, node.data.type, 1);
+
+          if (response) {
+            const { newNodes, newEdges } = createAllConnectionsNodes(nodeId, node.data.type, response, nodes);
+
+            const existingEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
+            const uniqueNewEdges = newEdges.filter(e => !existingEdgeIds.has(e.id.toLowerCase()));
+
+            const existingNodeIds = new Set(nodes.map(n => n.id.toLowerCase()));
+            const uniqueNewNodes = newNodes.filter(n => !existingNodeIds.has(n.id.toLowerCase()));
+
+            setNodes(prev => [...prev, ...uniqueNewNodes]);
+            setEdges(prev => [...prev, ...uniqueNewEdges]);
+
+            setAllConnectionsExpandedNodes(prev => {
+              const newSet = new Set(prev);
+              newSet.add(nodeId);
+              return newSet;
+            });
+
+            setAllConnectionsData(prev => {
+              const newMap = new Map(prev);
+              newMap.set(nodeId, response);
+              return newMap;
+            });
+          }
+        } catch (error) {
+          console.error('Error handling all connections:', error);
+        } finally {
+          setIsLoadingAllConnections(false);
+        }
+      }
+      return;
+    }
 
     if (direction === 'forward') {
       if (node.data.type !== 'schema' && node.data.type !== 'table') {
@@ -1200,20 +1532,22 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         </ReactFlow>
 
         {selectedNodeId && selectedNode && (
-          <CircularNodeRemote
-            nodeId={selectedNodeId}
-            position={selectedNode.position}
-            onNavigate={handleNavigate}
-            onToggleVisibility={handleToggleVisibility}
-            onReset={handleReset}
-            onClose={closeRemote}
-            expandedNodes={expandedNodes}
-            backwardExpandedNodes={backwardExpandedNodes}
-            isLoading={isLoadingForward}
-            isLoadingBackward={isLoadingBackward}
-            nodeData={selectedNode.data}
-          />
-        )}
+    <CircularNodeRemote
+      nodeId={selectedNodeId}
+      position={selectedNode.position}
+      onNavigate={handleNavigate}
+      onToggleVisibility={handleToggleVisibility}
+      onReset={handleReset}
+      onClose={closeRemote}
+      expandedNodes={expandedNodes}
+      backwardExpandedNodes={backwardExpandedNodes}
+      allConnectionsExpandedNodes={allConnectionsExpandedNodes}
+      isLoading={isLoadingForward}
+      isLoadingBackward={isLoadingBackward}
+      isLoadingAllConnections={isLoadingAllConnections}
+      nodeData={selectedNode.data}
+    />
+  )}
 
       </div>
     </div>
