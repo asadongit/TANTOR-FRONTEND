@@ -11,6 +11,7 @@ import {
   addEdge,
   MarkerType,
 } from 'reactflow';
+import AssetInformationModal from "./AssetInformationModal"
 
 const CircularNodeRemote = ({
   nodeId,
@@ -27,13 +28,20 @@ const CircularNodeRemote = ({
   isLoadingAllConnections,
   nodeData
 }) => {
+  const [showAssetInfo, setShowAssetInfo] = useState(false);
+
   const isForwardExpanded = expandedNodes.has(nodeId);
   const isBackwardExpanded = backwardExpandedNodes.has(nodeId);
   const isAllConnectionsExpanded = allConnectionsExpandedNodes.has(nodeId);
 
+  const isAssetInfoDisabled = nodeData.type === 'view';
+
   const handleAssetInfo = () => {
-    // TODO: Implement asset information functionality
-    console.log('Asset info clicked for:', nodeId);
+    setShowAssetInfo(true);
+  };
+
+  const handleCloseAssetInfo = () => {
+    setShowAssetInfo(false);
   };
 
   const handleColumnDetails = () => {
@@ -45,112 +53,129 @@ const CircularNodeRemote = ({
     onNavigate(nodeId, 'allConnections');
   };
 
+
   return (
-    <div
-      className="absolute z-20"
-      style={{
-        right: '70px',
-        top: '120px',
-      }}
-    >
-      <div className="relative">
-        <div className="w-28 h-28 bg-gray-800 rounded-full border-4 border-gray-600 shadow-2xl relative">
-          <div className="w-12 h-12 bg-red-500 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
-            <span className="text-white text-xs font-bold">CTRL</span>
+    <>
+      <div
+        className="absolute z-20"
+        style={{
+          right: '70px',
+          top: '120px',
+        }}
+      >
+        <div className="relative">
+          <div className="w-28 h-28 bg-gray-800 rounded-full border-4 border-gray-600 shadow-2xl relative">
+            <div className="w-12 h-12 bg-red-500 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">CTRL</span>
+            </div>
+
+            <button
+              onClick={handleAssetInfo}
+              disabled={isAssetInfoDisabled}
+              className={`absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${isAssetInfoDisabled
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+                }`}
+              title={
+                isAssetInfoDisabled
+                  ? "Asset information not available for views"
+                  : "Asset Information"
+              }
+            >
+              <Info size={16} />
+            </button>
+
+            <button
+              onClick={() => onNavigate(nodeId, 'forward')}
+              disabled={isLoading || (nodeData.type !== 'schema' && nodeData.type !== 'table')}
+              className={`absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${nodeData.type !== 'schema' && nodeData.type !== 'table' ? 'bg-gray-400 cursor-not-allowed' :
+                isForwardExpanded ? 'bg-yellow-500 text-black' :
+                  isLoading ? 'bg-gray-500 text-white cursor-wait' :
+                    'bg-gray-700 hover:bg-gray-600 text-white'
+                }`}
+              title={
+                nodeData.type !== 'schema' && nodeData.type !== 'table' ? "Forward not available for this node type" :
+                  isLoading ? "Loading..." :
+                    isForwardExpanded ? "Close Forward Connections" : "Show Forward Connections"
+              }
+            >
+              {isLoading ? (
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <ChevronRight size={16} />
+              )}
+            </button>
+
+            <button
+              onClick={handleAllConnections}
+              disabled={isLoadingAllConnections || (nodeData.type !== 'schema' && nodeData.type !== 'table')}
+              className={`absolute bottom-0 right-2 transform translate-x-1/4 translate-y-1/4 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${nodeData.type !== 'schema' && nodeData.type !== 'table' ? 'bg-gray-400 cursor-not-allowed' :
+                isAllConnectionsExpanded ? 'bg-yellow-500 text-black' :
+                  isLoadingAllConnections ? 'bg-gray-500 text-white cursor-wait' :
+                    'bg-gray-700 hover:bg-gray-600 text-white'
+                }`}
+              title={
+                nodeData.type !== 'schema' && nodeData.type !== 'table' ? "All connections not available for this node type" :
+                  isLoadingAllConnections ? "Loading..." :
+                    isAllConnectionsExpanded ? "Close All Connections" : "Show All Asset Connections (1 step)"
+              }
+            >
+              {isLoadingAllConnections ? (
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <Share2 size={16} />
+              )}
+            </button>
+
+            <button
+              onClick={handleColumnDetails}
+              className="absolute bottom-0 left-2 transform -translate-x-1/4 translate-y-1/4 w-7 h-7 bg-gray-700 hover:bg-gray-600 rounded-full border-2 border-white flex items-center justify-center transition-all text-white"
+              title="Column Level Details"
+            >
+              <Network size={16} />
+            </button>
+
+            <button
+              onClick={() => onNavigate(nodeId, 'backward')}
+              disabled={isLoadingBackward || (nodeData.type !== 'view' && nodeData.type !== 'table')}
+              className={`absolute left-0 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${(nodeData.type !== 'view' && nodeData.type !== 'table') ? 'bg-gray-400 cursor-not-allowed' :
+                isBackwardExpanded ? 'bg-yellow-500 text-black' :
+                  isLoadingBackward ? 'bg-gray-500 text-white cursor-wait' :
+                    'bg-gray-700 hover:bg-gray-600 text-white'
+                }`}
+              title={
+                (nodeData.type !== 'view' && nodeData.type !== 'table') ? "Backward only available for views and tables" :
+                  isLoadingBackward ? "Loading..." :
+                    isBackwardExpanded ? "Close Backward Connections" : "Show Backward Connections"
+              }
+            >
+              {isLoadingBackward ? (
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <ChevronLeft size={16} />
+              )}
+            </button>
           </div>
 
           <button
-            onClick={handleAssetInfo}
-            className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-7 h-7 bg-gray-700 hover:bg-gray-600 rounded-full border-2 border-white flex items-center justify-center transition-all text-white"
-            title="Asset Information"
+            onClick={onClose}
+            className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full text-white flex items-center justify-center text-xs shadow-lg"
           >
-            <Info size={16} />
-          </button>
-
-          <button
-            onClick={() => onNavigate(nodeId, 'forward')}
-            disabled={isLoading || (nodeData.type !== 'schema' && nodeData.type !== 'table')}
-            className={`absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${nodeData.type !== 'schema' && nodeData.type !== 'table' ? 'bg-gray-400 cursor-not-allowed' :
-              isForwardExpanded ? 'bg-yellow-500 text-black' :
-                isLoading ? 'bg-gray-500 text-white cursor-wait' :
-                  'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            title={
-              nodeData.type !== 'schema' && nodeData.type !== 'table' ? "Forward not available for this node type" :
-                isLoading ? "Loading..." :
-                  isForwardExpanded ? "Close Forward Connections" : "Show Forward Connections"
-            }
-          >
-            {isLoading ? (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <ChevronRight size={16} />
-            )}
-          </button>
-
-          <button
-            onClick={handleAllConnections}
-            disabled={isLoadingAllConnections || (nodeData.type !== 'schema' && nodeData.type !== 'table')}
-            className={`absolute bottom-0 right-2 transform translate-x-1/4 translate-y-1/4 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${nodeData.type !== 'schema' && nodeData.type !== 'table' ? 'bg-gray-400 cursor-not-allowed' :
-              isAllConnectionsExpanded ? 'bg-yellow-500 text-black' :
-                isLoadingAllConnections ? 'bg-gray-500 text-white cursor-wait' :
-                  'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            title={
-              nodeData.type !== 'schema' && nodeData.type !== 'table' ? "All connections not available for this node type" :
-                isLoadingAllConnections ? "Loading..." :
-                  isAllConnectionsExpanded ? "Close All Connections" : "Show All Asset Connections (1 step)"
-            }
-          >
-            {isLoadingAllConnections ? (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <Share2 size={16} />
-            )}
-          </button>
-
-          <button
-            onClick={handleColumnDetails}
-            className="absolute bottom-0 left-2 transform -translate-x-1/4 translate-y-1/4 w-7 h-7 bg-gray-700 hover:bg-gray-600 rounded-full border-2 border-white flex items-center justify-center transition-all text-white"
-            title="Column Level Details"
-          >
-            <Network size={16} />
-          </button>
-
-          <button
-            onClick={() => onNavigate(nodeId, 'backward')}
-            disabled={isLoadingBackward || (nodeData.type !== 'view' && nodeData.type !== 'table')}
-            className={`absolute left-0 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${(nodeData.type !== 'view' && nodeData.type !== 'table') ? 'bg-gray-400 cursor-not-allowed' :
-              isBackwardExpanded ? 'bg-yellow-500 text-black' :
-                isLoadingBackward ? 'bg-gray-500 text-white cursor-wait' :
-                  'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            title={
-              (nodeData.type !== 'view' && nodeData.type !== 'table') ? "Backward only available for views and tables" :
-                isLoadingBackward ? "Loading..." :
-                  isBackwardExpanded ? "Close Backward Connections" : "Show Backward Connections"
-            }
-          >
-            {isLoadingBackward ? (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <ChevronLeft size={16} />
-            )}
+            <XCircle size={14} />
           </button>
         </div>
 
-        <button
-          onClick={onClose}
-          className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full text-white flex items-center justify-center text-xs shadow-lg"
-        >
-          <XCircle size={14} />
-        </button>
+        <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+          {nodeId}
+        </div>
       </div>
 
-      <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-        {nodeId}
-      </div>
-    </div>
+      <AssetInformationModal
+        nodeData={{ ...nodeData, fullName: nodeId }}
+        isOpen={showAssetInfo}
+        onClose={handleCloseAssetInfo}
+      />
+    </>
   );
 };
 
@@ -434,26 +459,26 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   // Helper function to ensure schema-table connections exist
   const ensureSchemaTableConnections = (nodes, edges, sourceNodeId, sourceNodeType) => {
     const newEdges = [...edges];
-    
+
     nodes.forEach(node => {
       if (node.data?.type === 'table') {
         const tableFullName = node.id;
         const tableSchema = tableFullName.split('.').slice(0, -1).join('.');
-        
+
         // Find the matching schema node
-        const matchingSchemaNode = nodes.find(schemaNode => 
-          schemaNode.data?.type === 'schema' && 
+        const matchingSchemaNode = nodes.find(schemaNode =>
+          schemaNode.data?.type === 'schema' &&
           schemaNode.id.toLowerCase() === tableSchema.toLowerCase()
         );
-        
+
         if (matchingSchemaNode) {
           const schemaToTableEdgeId = `${matchingSchemaNode.id}-${tableFullName}`;
-          
+
           // Check if the edge already exists
-          const edgeAlreadyExists = newEdges.some(edge => 
+          const edgeAlreadyExists = newEdges.some(edge =>
             edge.id && edge.id.toLowerCase() === schemaToTableEdgeId.toLowerCase()
           );
-          
+
           if (!edgeAlreadyExists) {
             const schemaToTableEdge = {
               id: schemaToTableEdgeId,
@@ -461,11 +486,11 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
               target: tableFullName,
               markerEnd: { type: MarkerType.ArrowClosed },
               style: { stroke: '#6B7280', strokeWidth: 2 },
-              data: { 
+              data: {
                 isBackwardEdge: sourceNodeType === 'backward',
                 isForwardEdge: sourceNodeType === 'forward',
                 isAllConnectionsEdge: sourceNodeType === 'allConnections',
-                sourceNode: sourceNodeId 
+                sourceNode: sourceNodeId
               }
             };
             newEdges.push(schemaToTableEdge);
@@ -473,7 +498,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
         }
       }
     });
-    
+
     return newEdges;
   };
 
@@ -770,7 +795,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             };
             newEdges.push(edge);
           }
-          
+
           // Ensure schema-table connection exists for existing table
           if (backwardResponse.schema && steps >= 2) {
             const tableSchema = tableFullName.split('.').slice(0, -1).join('.');
@@ -1448,7 +1473,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             // Ensure schema-table connections for existing nodes
             const allNodes = [...nodes, ...uniqueNewNodes];
             const finalEdges = ensureSchemaTableConnections(allNodes, [...edges, ...uniqueNewEdges], nodeId, 'forward');
-            
+
             // Filter out edges that already exist
             const existingFinalEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
             uniqueNewEdges = finalEdges.filter(e => !existingFinalEdgeIds.has(e.id.toLowerCase()));
@@ -1516,7 +1541,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             // Ensure schema-table connections for existing nodes
             const allNodes = [...nodes, ...uniqueNewNodes];
             const finalEdges = ensureSchemaTableConnections(allNodes, [...edges, ...uniqueNewEdges], nodeId, 'backward');
-            
+
             // Filter out edges that already exist
             const existingFinalEdgeIds = new Set(edges.map(e => e.id.toLowerCase()));
             uniqueNewEdges = finalEdges.filter(e => !existingFinalEdgeIds.has(e.id.toLowerCase()));
