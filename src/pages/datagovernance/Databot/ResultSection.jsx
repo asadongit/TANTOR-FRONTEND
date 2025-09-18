@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import ResultTab from "./TabbedSection/ResultTab";
-import { useDatabotContext } from "../../../hooks/dataGovernance/DatabotContext";
+import { useDatabotContext } from "./context/DatabotContext";
 import { ICON_SVGS, TOOL_NAMES } from "../../../hooks/dataGovernance/Databot/constants";
 
 const ResultSection = () => {
