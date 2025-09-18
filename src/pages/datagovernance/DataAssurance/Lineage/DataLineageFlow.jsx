@@ -1717,6 +1717,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           className="bg-gray-50"
+          nodesConnectable={false}
         >
           <Controls />
           <MiniMap

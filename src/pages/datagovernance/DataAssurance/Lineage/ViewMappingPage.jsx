@@ -265,6 +265,60 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
     return relevantConditions;
   };
 
+  const generateBaseLayout = (data, newNodes, newEdges, highlightedColumns) => {
+    data.tables.forEach((tableName, tableIndex) => {
+      const tableColumns = data.source_cols[tableName] || [];
+      
+      const tableNode = {
+        id: `table-${tableName}`,
+        type: 'tableNode',
+        position: { x: 100, y: 150 + (tableIndex * 300) },
+        data: { 
+          tableName: tableName,
+          columns: tableColumns,
+          isTarget: false,
+          highlightedColumns: highlightedColumns,
+          onColumnClick: handleColumnClick
+        },
+        draggable: true
+      };
+      newNodes.push(tableNode);
+    });
+
+    const targetColumns = Object.keys(data.target_cols_mapping || {});
+    const viewNode = {
+      id: `view-${data.view_name}`,
+      type: 'tableNode',
+      position: { x: 600, y: 200 },
+      data: { 
+        tableName: data.view_name,
+        columns: targetColumns,
+        isTarget: true,
+        onColumnClick: handleColumnClick,
+        selectedColumn: selectedTargetColumn,
+        highlightedColumns: []
+      },
+      draggable: true
+    };
+    newNodes.push(viewNode);
+
+    data.tables.forEach((tableName, index) => {
+      const edge = {
+        id: `edge-${tableName}-view`,
+        source: `table-${tableName}`,
+        target: `view-${data.view_name}`,
+        markerEnd: { type: MarkerType.ArrowClosed },
+        style: { 
+          stroke: '#10B981',
+          strokeWidth: 2
+        },
+        type: 'default',
+        animated: false
+      };
+      newEdges.push(edge);
+    });
+  };
+
   // Generate JOIN layout
   const generateJoinLayout = (data, newNodes, newEdges, highlightedColumns) => {
     data.tables.forEach((tableName, tableIndex) => {
@@ -630,12 +684,16 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
     const newEdges = [];
     const highlightedColumns = getHighlightedColumns();
     
-    const isJoinOperation = data.join_conditions && Object.keys(data.join_conditions).length > 0;
-    
-    if (isJoinOperation) {
-      generateJoinLayout(data, newNodes, newEdges, highlightedColumns);
+    if (data.operation === 'base') {
+      generateBaseLayout(data, newNodes, newEdges, highlightedColumns);
     } else {
-      generateUnionLayout(data, newNodes, newEdges, highlightedColumns);
+      const isJoinOperation = data.join_conditions && Object.keys(data.join_conditions).length > 0;
+      
+      if (isJoinOperation) {
+        generateJoinLayout(data, newNodes, newEdges, highlightedColumns);
+      } else {
+        generateUnionLayout(data, newNodes, newEdges, highlightedColumns);
+      }
     }
 
     console.log('Generated nodes:', newNodes);
@@ -652,8 +710,11 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
   }, [selectedTargetColumn, updateNodeData]);
 
   const allEdges = useMemo(() => {
+    if (selectedTargetColumn && viewData && viewData.operation === 'base' && columnLineageEdges.length > 0) {
+      return columnLineageEdges;
+    }
     return [...edges, ...columnLineageEdges];
-  }, [edges, columnLineageEdges]);
+  }, [edges, columnLineageEdges, selectedTargetColumn, viewData]);
 
   useEffect(() => {
     if (viewName) {
@@ -702,7 +763,7 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
               onClick={onBackToLineage}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 py-2 rounded-md transition-colors"
             >
-              <ChevronLeft className="h-5 w-5"/>
+              <ChevronLeft className="h-5 w-5 text-gray-700"/>
             </button>
             <div className="flex items-center gap-2">
               <Layers className="h-6 w-6" />
