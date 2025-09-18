@@ -12,6 +12,8 @@ import {
   MarkerType,
 } from 'reactflow';
 import AssetInformationModal from "./AssetInformationModal"
+import ViewMappingPage from "./ViewMappingPage";
+import Breadcrumb from '../../../../components/Breadcrumb';
 
 const CircularNodeRemote = ({
   nodeId,
@@ -26,7 +28,8 @@ const CircularNodeRemote = ({
   isLoading,
   isLoadingBackward,
   isLoadingAllConnections,
-  nodeData
+  nodeData,
+  onColumnDetails
 }) => {
   const [showAssetInfo, setShowAssetInfo] = useState(false);
 
@@ -45,8 +48,7 @@ const CircularNodeRemote = ({
   };
 
   const handleColumnDetails = () => {
-    // TODO: Implement column level details functionality
-    console.log('Column details clicked for:', nodeId);
+    onColumnDetails(nodeId, nodeData.type);
   };
 
   const handleAllConnections = () => {
@@ -73,8 +75,8 @@ const CircularNodeRemote = ({
               onClick={handleAssetInfo}
               disabled={isAssetInfoDisabled}
               className={`absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${isAssetInfoDisabled
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-gray-700 hover:bg-gray-600 text-white'
                 }`}
               title={
                 isAssetInfoDisabled
@@ -195,12 +197,30 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   const [isLoadingAllConnections, setIsLoadingAllConnections] = useState(false);
   const [nodeConnectionMap, setNodeConnectionMap] = useState(new Map());
   const [initialNodeIds, setInitialNodeIds] = useState(new Set());
+  const [showViewMapping, setShowViewMapping] = useState(false);
+  const [selectedViewForMapping, setSelectedViewForMapping] = useState(null);
 
+  // 3. Add this function to handle column details
+  const handleColumnDetails = (nodeId, nodeType) => {
+    if (nodeType === 'view') {
+      setSelectedViewForMapping(nodeId);
+      setShowViewMapping(true);
+    } else {
+      // For non-view types, implement later as mentioned
+      console.log('Column details clicked for:', nodeId, nodeType);
+    }
+  };
+
+  // 4. Add this function to go back to main lineage
+  const handleBackToLineage = () => {
+    setShowViewMapping(false);
+    setSelectedViewForMapping(null);
+  };
   const displayableItems = useMemo(() => {
     return selectedItems.filter(item => item.type === 'Table' || item.type === 'View');
   }, [selectedItems]);
 
-  const NODE_SIZE = 60;
+  const NODE_SIZE = 50;
 
   const stepOptions = Array.from({ length: 5 }, (_, i) => i + 1);
 
@@ -1614,8 +1634,19 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     );
   }
 
+  if (showViewMapping && selectedViewForMapping) {
+    return (
+      <ViewMappingPage
+        viewName={selectedViewForMapping}
+        apiBaseUrl={API_BASE_URL}
+        onBackToLineage={handleBackToLineage}
+      />
+    );
+  }
+
   return (
     <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
+      <Breadcrumb />
       <div className="p-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -1710,6 +1741,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             isLoadingBackward={isLoadingBackward}
             isLoadingAllConnections={isLoadingAllConnections}
             nodeData={selectedNode.data}
+            onColumnDetails={handleColumnDetails}
           />
         )}
       </div>
