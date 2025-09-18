@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronRight, Database, Eye, ArrowLeft, Layers, ChevronLeft } from 'lucide-react';
+import { ChevronRight, Database, Eye, ArrowLeft, Layers, ChevronLeft, Code, Map } from 'lucide-react';
 import {
   ReactFlow,
   MiniMap,
@@ -123,7 +123,10 @@ const nodeTypes = {
 
 const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
   const [viewData, setViewData] = useState(null);
+  const [viewDefinition, setViewDefinition] = useState('');
+  const [activeTab, setActiveTab] = useState('map');
   const [loading, setLoading] = useState(false);
+  const [textLoading, setTextLoading] = useState(false);
   const [error, setError] = useState(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -246,6 +249,40 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchViewDefinition = async () => {
+    if (!viewName) return;
+    
+    setTextLoading(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/text_view`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json'
+        },
+        body: JSON.stringify({ 
+          "matched_policy_ids": [19], 
+          "view_name": viewName, 
+          "type": "view" 
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data && data.length > 0) {
+        setViewDefinition(data[0]);
+      }
+    } catch (err) {
+      console.error('Error fetching view definition:', err);
+      setViewDefinition('Error loading view definition');
+    } finally {
+      setTextLoading(false);
     }
   };
 
@@ -719,6 +756,7 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
   useEffect(() => {
     if (viewName) {
       fetchViewMapping();
+      fetchViewDefinition();
     }
   }, [viewName]);
 
@@ -726,7 +764,7 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
     return (
       <div className="h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8d77ba] mx-auto mb-4"></div>
           <p className="text-gray-600">Loading view mapping...</p>
         </div>
       </div>
@@ -743,7 +781,7 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
           </div>
           <button
             onClick={fetchViewMapping}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            className="px-4 py-2 bg-[#8d77ba] text-white rounded-lg hover:bg-[#8d77ba] transition-colors"
           >
             Retry
           </button>
@@ -775,42 +813,108 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
         </div>
       </div>
 
-      {/* ReactFlow Content */}
-      <div className="flex-1">
-        <ReactFlow
-          nodes={nodes}
-          edges={allEdges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={memoizedNodeTypes}
-          fitView
-          fitViewOptions={{
-            padding: 50,
-            includeHiddenNodes: false,
-            minZoom: 0.5,
-            maxZoom: 1.5
-          }}
-          className="bg-gray-50"
-          nodesDraggable={true}
-          nodesConnectable={false}
-          elementsSelectable={true}
-          minZoom={0.3}
-          maxZoom={2}
-        >
-          <Controls showInteractive={false} />
-          <MiniMap
-            nodeColor={(node) => {
-              if (node.type === 'tableNode') {
-                return node.data.isTarget ? '#22C55E' : '#3B82F6';
-              }
-              if (node.type === 'unionNode') return '#6B7280';
-              if (node.type === 'joinNode') return '#8B5CF6';
-              return '#E5E7EB';
-            }}
-            className="bg-white border border-gray-300 rounded"
-          />
-          <Background variant="dots" gap={20} size={1} color="#E5E7EB" />
-        </ReactFlow>
+      <div className="px-4">
+        <div className="flex space-x-4">
+          <button
+            className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${
+              activeTab === 'map'
+                ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('map')}
+          >
+            <Map className="h-4 w-4" />
+            Map
+          </button>
+          <button
+            className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${
+              activeTab === 'text'
+                ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('text')}
+          >
+            <Code className="h-4 w-4" />
+            Text
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden">
+        {activeTab === 'map' ? (
+          <div className="h-full">
+            <ReactFlow
+              nodes={nodes}
+              edges={allEdges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              nodeTypes={memoizedNodeTypes}
+              fitView
+              fitViewOptions={{
+                padding: 50,
+                includeHiddenNodes: false,
+                minZoom: 0.5,
+                maxZoom: 1.5
+              }}
+              className="bg-gray-50"
+              nodesDraggable={true}
+              nodesConnectable={false}
+              elementsSelectable={true}
+              minZoom={0.3}
+              maxZoom={2}
+            >
+              <Controls showInteractive={false} />
+              <MiniMap
+                nodeColor={(node) => {
+                  if (node.type === 'tableNode') {
+                    return node.data.isTarget ? '#22C55E' : '#3B82F6';
+                  }
+                  if (node.type === 'unionNode') return '#6B7280';
+                  if (node.type === 'joinNode') return '#8B5CF6';
+                  return '#E5E7EB';
+                }}
+                className="bg-white border border-gray-300 rounded"
+              />
+              <Background variant="dots" gap={20} size={1} color="#E5E7EB" />
+            </ReactFlow>
+          </div>
+        ) : (
+          <div className="h-full flex flex-col p-6 bg-white mt-2">
+            <div className="mb-2">
+              <div className="flex items-center gap-3 mb-2">
+                <Code className="h-5 w-5 text-[#8d77ba]" />
+                <h2 className="text-xl font-semibold text-gray-800">View Definition</h2>
+              </div>
+            </div>
+            
+            {textLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#8d77ba] mx-auto mb-3"></div>
+                  <p className="text-gray-500">Loading view definition...</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 rounded-lg p-1 overflow-hidden">
+                <div className="px-5 h-full overflow-auto">
+                  {viewDefinition ? (
+                    <div className="text-sm text-gray-800">
+                      <div className="text-gray-500 mb-3">CREATE VIEW {viewName} AS</div>
+                      <pre className="whitespace-pre-wrap bg-gray-50 p-4 rounded-md border border-gray-100">
+                        {viewDefinition}
+                      </pre>
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-500">
+                      <Code className="h-12 w-12 mb-3 opacity-50" />
+                      <p>No view definition available</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
