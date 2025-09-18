@@ -388,12 +388,16 @@ const BusinessCatalogue = () => {
         if (!itemToDelete) return;
 
         setIsDeleting(true);
+        const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+        const creatorArray = creatorRoles.map(role =>
+            role.startsWith('persona:') ? role.replace('persona:', '') : role
+        );
         try {
             const payload = {
                 id_set: [{
                     domain_id: [parseInt(itemToDelete.id, 10)]
                 }],
-                roles: decodedToken?.resource_access?.darch?.roles || [],
+                roles: creatorArray || [],
                 owner: decodedToken?.preferred_username
             };
 
@@ -483,7 +487,7 @@ const BusinessCatalogue = () => {
                     <button title="Refresh"
                         onClick={() => {
                             setSearchTerm('');
-                            setSortConfig({ key: null, direction: 'asc' }); 
+                            setSortConfig({ key: null, direction: 'asc' });
                             fetchCatalogueData(true);
                         }}
                         disabled={isLoading} className="p-2.5 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-wait">

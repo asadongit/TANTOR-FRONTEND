@@ -10,8 +10,8 @@ const Tab = ({ label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(label)}
         className={`px-4 py-2 text-md font-medium border-b-2 ${activeTab === label
-                ? 'border-[#8d77ba] text-[#8d77ba]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-[#8d77ba] text-[#8d77ba]'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
     >
         {label}
@@ -394,6 +394,10 @@ function TableDetailsPage() {
         const trimmedDescription = description.trim();
         setIsSaving(true);
         setIsEditingDescription(false);
+        const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+        const creatorArray = creatorRoles.map(role =>
+            role.startsWith('persona:') ? role.replace('persona:', '') : role
+        );
         try {
             const response = await fetch(`${hostnameV1}/data_catalogue/edit_table_description`, {
                 method: 'PATCH',
@@ -403,7 +407,7 @@ function TableDetailsPage() {
                     table_schema: tableData.schema,
                     table_name: tableData.name,
                     table_description: trimmedDescription,
-                    roles: decodedToken?.resource_access?.darch?.roles || [],
+                    roles: creatorArray || [],
                     owner: decodedToken?.preferred_username
                 })
             });
@@ -445,6 +449,10 @@ function TableDetailsPage() {
         setIsSavingColumnDesc(true);
         setSavingColumnName(editingColumnName);
         handleColumnEditCancel();
+        const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+        const creatorArray = creatorRoles.map(role =>
+            role.startsWith('persona:') ? role.replace('persona:', '') : role
+        );
         try {
             const response = await fetch(`${hostnameV1}/data_catalogue/edit_column_description`, {
                 method: 'PATCH',
@@ -455,7 +463,7 @@ function TableDetailsPage() {
                     table_name: tableData.name,
                     column_name: editingColumnName,
                     column_description: trimmedDescription,
-                    roles: decodedToken?.resource_access?.darch?.roles || [],
+                    roles: creatorArray || [],
                     owner: decodedToken?.preferred_username
                 })
             });
@@ -791,7 +799,7 @@ function TableDetailsPage() {
                                 <div>
                                     {loadingSampleData && <p className="text-gray-500 text-center p-4">Loading sample data...</p>}
                                     {sampleDataError && <p className="text-red-600 text-center p-4">Error: {sampleDataError}</p>}
-                                    
+
                                     {!loadingSampleData && !sampleDataError && sampleData.length === 0 && (
                                         <div className="mt-6 border rounded-lg p-10 text-center bg-gray-50">
                                             <h3 className="text-lg font-medium text-gray-900">No Sample Data</h3>
