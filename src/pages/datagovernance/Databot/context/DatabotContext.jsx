@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { useDatabotAPI } from "./Databot/useDatabotAPI";
-import { TOOL_NAMES } from "./Databot/constants";
+import { useDatabotAPI } from "../../../../hooks/dataGovernance/Databot/useDatabotAPI";
+import { TOOL_NAMES } from "../../../../hooks/dataGovernance/Databot/constants";
 
 const DatabotContext = createContext();
 
@@ -64,6 +64,10 @@ export const DatabotProvider = ({ children }) => {
           img: resp?.graph_b64,
           errCode: resp?.metadata?.err_code,
           errMsg: resp?.metadata?.err_msg,
+          graphData: {
+            nodes: resp?.graph?.nodes,
+            links: resp?.graph?.edges
+          }
         }
       }
     }))
@@ -89,6 +93,10 @@ export const DatabotProvider = ({ children }) => {
           img: resp?.graph_b64,
           errCode: resp?.metadata?.err_code,
           errMsg: resp?.metadata?.err_msg,
+          graphData: {
+            nodes: resp?.graph?.nodes,
+            links: resp?.graph?.edges
+          }
         }
       }
     }))
@@ -114,6 +122,10 @@ export const DatabotProvider = ({ children }) => {
           img: resp?.graph_b64,
           errCode: resp?.metadata?.err_code,
           errMsg: resp?.metadata?.err_msg,
+          graphData: {
+            nodes: resp?.graph?.nodes,
+            links: resp?.graph?.edges
+          }
         }
       }
     }))
@@ -139,6 +151,10 @@ export const DatabotProvider = ({ children }) => {
           img: resp?.graph_b64,
           errCode: resp?.metadata?.err_code,
           errMsg: resp?.metadata?.err_msg,
+          graphData: {
+            nodes: resp?.graph?.nodes,
+            links: resp?.graph?.edges
+          }
         }
       }
     }))
@@ -228,6 +244,10 @@ export const DatabotProvider = ({ children }) => {
           img: resp?.graph_b64,
           errCode: resp?.metadata?.err_code,
           errMsg: resp?.metadata?.err_msg,
+          graphData: {
+            nodes: resp?.graph?.nodes,
+            links: resp?.graph?.edges
+          }
         },
       },
     }));

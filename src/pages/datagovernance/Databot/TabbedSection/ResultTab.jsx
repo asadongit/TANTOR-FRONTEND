@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useDatabotAPI } from "../../../../hooks/dataGovernance/Databot/useDatabotAPI";
-import { useDatabotContext } from "../../../../hooks/dataGovernance/DatabotContext";
+import { useDatabotContext } from "../context/DatabotContext";
 import toast from "react-hot-toast";
 import { TOOL_NAMES } from "../../../../hooks/dataGovernance/Databot/constants";
+import DatabotGraphPlot from "../DatabotGraphPlot";
 
 function capitalizeFirstLetter(val) {
     return String(val).charAt(0).toUpperCase() + String(val).slice(1);
@@ -86,13 +87,9 @@ const ResultTab = ({activeTab}) => {
           </div>
           </>
 
-        : databot?.result[activeTab]?.img ?
-          <div className="w-full pt-5">
-            <img
-              src={`data:image/svg+xml;base64,${databot?.result[activeTab]?.img}`}
-              alt="Graph"
-              className="max-w-full h-auto object-contain"
-            />
+        : (databot.result[activeTab].graphData?.nodes?.length > 0 || databot.result[activeTab].graphData?.links?.length > 0) ?
+          <div className="flex-1 overflow-hidden mt-3">
+            <DatabotGraphPlot graphData={databot?.result[activeTab]?.graphData}/>
           </div> :
 
           <div className="mt-4 p-3 rounded-xl bg-[#8d77ba]/10 border border-[#8d77ba] text-[#8d77ba] flex items-center gap-3 shadow-sm">

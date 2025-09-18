@@ -1,7 +1,7 @@
 import { Bot, PanelRightClose, MessageSquare, Paperclip, 
   Mic, ArrowRight, PanelLeftClose, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useDatabotContext } from '../../../hooks/dataGovernance/DatabotContext';
+import { useDatabotContext } from './context/DatabotContext';
 import ResultSection from './ResultSection';
 import DatabotChatSection from './DatabotChatSection';
 import { useAuth } from '../../../context/AuthContext';
@@ -14,12 +14,14 @@ const Databot = () => {
   const { token } = useAuth();
 
   const dropdownRef = useRef(null);
-  const { triggerNewQuestion, resetChat, handlePolicyIdsGlobal, isRefreshed, handleFirstSelectedTab, firstSelectedTab } = useDatabotContext();
+  const { triggerNewQuestion, resetChat, 
+    handlePolicyIdsGlobal, isRefreshed, 
+    handleFirstSelectedTab, 
+    firstSelectedTab, handleSelectedConnectionGlobal, handleSelectedSchemaGlobal } = useDatabotContext();
 
   const { secureQueryLoading,
     getSecureQuery, 
     connectionsLoading,
-    schemaLoading,
     getConnectionDetails } = useDatabotAPI();
 
   const tabbedSection = ["relationship", "lineage", "impact", "dependency"];
@@ -40,6 +42,8 @@ const Databot = () => {
 
   
   const getConnectionSchemaDetails = async () => {
+    handleSelectedConnectionGlobal(null);
+    handleSelectedSchemaGlobal(null);
     const policyId = await getSecureQuery();
     handlePolicyIdsGlobal(policyId?.matched_policy_ids);
 
@@ -137,7 +141,6 @@ const Databot = () => {
             <RefreshSection 
               secureQueryLoading={secureQueryLoading} 
               connectionsLoading={connectionsLoading}
-              schemaLoading={schemaLoading}
               dropdownRef={dropdownRef}
               connections={connections}/>
           </div>
@@ -229,27 +232,26 @@ const Databot = () => {
           </div>
         </div> : 
 
-        <>
-          <div className='w-full flex flex-col bg-white'>
-            <div className=''>
-              <RefreshSection 
-                secureQueryLoading={secureQueryLoading} 
-                connectionsLoading={connectionsLoading}
-                schemaLoading={schemaLoading}
-                dropdownRef={dropdownRef}
-                connections={connections}/>
-            </div>
-
-              <ResultSection />
-          </div>
-
-          <div className='bg-white ml-2 border-white rounded-md'>
-            <DatabotChatSection 
-              setIsResultScreen={setIsResultScreen}
-              setQuery={setQuery}
+        <div className="flex w-full">
+          <div className="flex flex-col bg-white flex-[2] min-w-0 overflow-hidden">
+            <RefreshSection 
+              secureQueryLoading={secureQueryLoading} 
+              connectionsLoading={connectionsLoading}
+              dropdownRef={dropdownRef}
+              connections={connections}
             />
+            <ResultSection />
           </div>
-        </>
+
+          <div className="flex-[1] bg-white ml-2 border-white rounded-md min-w-0 overflow-hidden">
+            <div className="h-full overflow-auto">
+              <DatabotChatSection 
+                setIsResultScreen={setIsResultScreen}
+                setQuery={setQuery}
+              />
+            </div>
+          </div>
+        </div>
       }
     </div>
   );
