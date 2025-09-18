@@ -216,6 +216,10 @@ const DatabaseViewScreen = () => {
     const trimmedDescription = summaryText.trim();
     setIsSaving(true);
     setIsEditing(false);
+    const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+    const creatorArray = creatorRoles.map(role =>
+      role.startsWith('persona:') ? role.replace('persona:', '') : role
+    );
     try {
       const response = await fetch(
         `${hostnameV1}/data_catalogue/edit_connection_description`,
@@ -229,7 +233,7 @@ const DatabaseViewScreen = () => {
           body: JSON.stringify({
             connection_name: connection.connectionName,
             description: trimmedDescription,
-            roles: decodedToken?.resource_access?.darch?.roles || [],
+            roles: creatorArray || [],
             owner: decodedToken?.preferred_username
           }),
         }
@@ -285,6 +289,10 @@ const DatabaseViewScreen = () => {
     setIsSavingSchemaDesc(true);
     setSavingSchemaName(schemaToSave);
     handleSchemaEditCancel();
+    const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+    const creatorArray = creatorRoles.map(role =>
+      role.startsWith('persona:') ? role.replace('persona:', '') : role
+    );
     try {
       const response = await fetch(`${hostnameV1}/data_catalogue/edit_schema_description`, {
         method: 'PATCH',
@@ -297,7 +305,7 @@ const DatabaseViewScreen = () => {
           connection_name: connectionName,
           table_schema: schemaToSave,
           schema_description: trimmedDescription,
-          roles: decodedToken?.resource_access?.darch?.roles || [],
+          roles: creatorArray || [],
           owner: decodedToken?.preferred_username
         })
       });
@@ -323,7 +331,7 @@ const DatabaseViewScreen = () => {
 
   const fetchAccessData = async () => {
     setLoadingAccessData(true);
-    setAccessCurrentPage(1); 
+    setAccessCurrentPage(1);
     try {
       const response = await fetch(
         `${window._env_?.VITE_FAST_API}/data_catalogue/access_tab`,

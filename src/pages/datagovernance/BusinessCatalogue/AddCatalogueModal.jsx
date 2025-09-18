@@ -545,7 +545,10 @@ const AddCatalogueModal = ({ isOpen, onClose, onComplete, editData }) => {
 
         const transformLevel = (level, data, parentData = {}) => {
             const ownerAsArray = data.owner ? [data.owner] : [];
-            const creatorArray = decodedToken?.resource_access?.darch?.roles || [];
+            const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+            const creatorArray = creatorRoles.map(role =>
+                role.startsWith('persona:') ? role.replace('persona:', '') : role
+            );
 
             const standardObject = {
                 name: data.name,
