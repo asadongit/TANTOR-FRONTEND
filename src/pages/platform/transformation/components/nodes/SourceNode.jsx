@@ -86,6 +86,9 @@ export const SourceNode = ({ id, data }) => {
   // const postProcedureDropdownRef = useRef(null);
   const sourceTypeDropdownRef = useRef(null);
   const fileTypeDropdownRef = useRef(null);
+   useEffect(() => {
+    console.log("selectedColumns UPDATED:", selectedColumns);
+  }, [selectedColumns]);
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -813,6 +816,7 @@ export const SourceNode = ({ id, data }) => {
         setSelectedColumns(data.columns);
         hasUpdated = true;
       }
+    
 
       if (data.objectType && (!selectedObjectType || selectedObjectType === "")) {
         setSelectedObjectType(data.objectType);
@@ -892,26 +896,58 @@ export const SourceNode = ({ id, data }) => {
     data.enableCountLogging
   ]);
 
-  useEffect(() => {
-    if (data.table && data.columns && selectedTable === data.table && tables.length > 0) {
-      const tableColumns = getColumnsForTable(data.table);
-      if (tableColumns.length > 0 && columns.length === 0) {
-        setColumns(tableColumns);
-      }
+  // useEffect(() => {
+  //   if (data.table && data.columns && selectedTable === data.table && tables.length > 0) {
+  //     const tableColumns = getColumnsForTable(data.table);
+  //     if (tableColumns.length > 0 && columns.length === 0) {
+  //       setColumns(tableColumns);
+  //     }
 
-      if (selectedColumns.length === 0 && data.columns.length > 0) {
-        setSelectedColumns(data.columns);
+  //     if (selectedColumns.length === 0 && data.columns.length > 0) {
+  //       setSelectedColumns(data.columns);
 
-        if (selectedObjectType === "tables") {
-          setTableSelections(prev => ({
-            ...prev,
-            selectedTable: data.table,
-            selectedColumns: data.columns
-          }));
-        }
+  //       if (selectedObjectType === "tables") {
+  //         setTableSelections(prev => ({
+  //           ...prev,
+  //           selectedTable: data.table,
+  //           selectedColumns: data.columns
+  //         }));
+  //       }
+  //     }
+  //   }
+  // }, [tables, data.table, data.columns, selectedTable, selectedObjectType, columns.length, selectedColumns.length]);
+
+const hasInitializedSelectedColumns = useRef(false);
+
+useEffect(() => {
+  if (
+    data.table &&
+    data.columns &&
+    selectedTable === data.table &&
+    tables.length > 0 &&
+    !hasInitializedSelectedColumns.current
+  ) {
+    const tableColumns = getColumnsForTable(data.table);
+    if (tableColumns.length > 0 && columns.length === 0) {
+      setColumns(tableColumns);
+    }
+
+    if (data.columns.length > 0) {
+      setSelectedColumns(data.columns);
+
+      if (selectedObjectType === "tables") {
+        setTableSelections(prev => ({
+          ...prev,
+          selectedTable: data.table,
+          selectedColumns: data.columns
+        }));
       }
     }
-  }, [tables, data.table, data.columns, selectedTable, selectedObjectType, columns.length, selectedColumns.length]);
+
+    hasInitializedSelectedColumns.current = true; 
+  }
+}, [tables, data.table, data.columns, selectedTable, selectedObjectType, columns.length]);
+
 
   useEffect(() => {
     if (selectedObjectType === "procedures" && procedures.length > 0 && data.preProcedures) {
@@ -1754,6 +1790,7 @@ export const SourceNode = ({ id, data }) => {
                         onChange={e => setColumnSearch(e.target.value)}
                       />
                     </div>
+                    
                     <div className="max-h-40 mt-2 overflow-y-auto border text-black border-gray-300 rounded-sm p-2">
                       <div className="mb-2">
                         <label className="flex items-center text-[11px]">
@@ -1779,6 +1816,8 @@ export const SourceNode = ({ id, data }) => {
                           <span className="font-medium">Select All</span>
                         </label>
                       </div>
+
+
 
                       {filteredColumns.map((column, idx) => {
                         const isChecked = selectedColumns.some(
