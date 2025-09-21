@@ -24,7 +24,6 @@ import { SkeletonLoader } from "../../components/skeltonLoader";
 import { useConnections, useDDL, useSchemaCount, useSchemas, useTables } from "../../hooks/DataFetch";
 
 export function SourceNode({ id, data, selected }) {
-  // console.log("sourceData--------",data)
   const [loading, setLoading] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");

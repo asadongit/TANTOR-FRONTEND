@@ -240,7 +240,6 @@ export function SourceNode({ id, data }) {
     columns.forEach(col => {
       if(col.dimType.toLowerCase() === "metric" && (!col.aggregate || col.aggregate.length === 0)){
         selectedColumnsWithNoAggregates.push(col.name);
-        console.log(col);
       }
       
       if(col.dimType.toLowerCase() === "metric" && col.aggregate.length > 0)
@@ -300,8 +299,6 @@ export function SourceNode({ id, data }) {
       }
       return col;
     });
-    
-    console.log(mergedColumns);
     
     if(!validateNodeData(mergedColumns)) return; 
 

@@ -16,7 +16,6 @@ function Columns() {
     );
     const navigate = useNavigate();
     const { state: navigationState } = useLocation();
-    console.log("states in columns are ### ", navigationState)
 
     const [loading, setLoading] = useState(true);
     const [columnData, setColumnData] = useState([]);

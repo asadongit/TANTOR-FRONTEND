@@ -18,7 +18,6 @@ const [nodeData, setNodeData] = useState({
   const ID = isPipelineNode ? pipelineId : id;
 
   const { updateData, pipelines } = useWorkflow();
-  // console.log("Define-Data----------", data);
   const handleInputChange = (e, field) => {
     const value = e.target.value;
     setNodeData((prevState) => ({

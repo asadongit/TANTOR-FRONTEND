@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { useDatabotAPI } from "./Databot/useDatabotAPI";
+import { useDatabotAPI } from "../../../../hooks/dataGovernance/Databot/useDatabotAPI";
+import { TOOL_NAMES } from "../../../../hooks/dataGovernance/Databot/constants";
 
 const DatabotContext = createContext();
 
@@ -42,11 +43,155 @@ export const DatabotProvider = ({ children }) => {
     }));
   };
 
+
+  const setRelationshipResultGlobal = (resp, ques) => {
+    setDatabot((prev) => ({
+      ...prev,
+      curr_tab: resp?.metadata?.tool || TOOL_NAMES.RELATIONSHIP,
+      suggested_tool: resp?.metadata?.suggested_tool || "",
+      queries: prev?.queries?.map((query) =>
+        query.q === ques
+          ? {
+              q: ques,
+              a: resp?.explanation,
+            }
+          : query
+      ),
+      result: {
+        ...prev.result,
+        relationship: {
+          tables: resp?.metadata?.entities?.tables,
+          img: resp?.graph_b64,
+          errCode: resp?.metadata?.err_code,
+          errMsg: resp?.metadata?.err_msg,
+          graphData: {
+            nodes: resp?.graph?.nodes,
+            links: resp?.graph?.edges
+          }
+        }
+      }
+    }))
+  };
+
+  const setlineageResultGlobal = (resp, ques) => {
+    setDatabot((prev) => ({
+      ...prev,
+      curr_tab: resp?.metadata?.tool || TOOL_NAMES.LINEAGE,
+      suggested_tool: resp?.metadata?.suggested_tool || "",
+      queries: prev?.queries?.map((query) =>
+        query.q === ques
+          ? {
+              q: ques,
+              a: resp?.explanation,
+            }
+          : query
+      ),
+      result: {
+        ...prev.result,
+        lineage: {
+          tables: resp?.metadata?.entities?.tables,
+          img: resp?.graph_b64,
+          errCode: resp?.metadata?.err_code,
+          errMsg: resp?.metadata?.err_msg,
+          graphData: {
+            nodes: resp?.graph?.nodes,
+            links: resp?.graph?.edges
+          }
+        }
+      }
+    }))
+  }
+
+  const setImpactResultGlobal = (resp, ques) => {
+    setDatabot((prev) => ({
+      ...prev,
+      curr_tab: resp?.metadata?.tool || TOOL_NAMES.IMPACT,
+      suggested_tool: resp?.metadata?.suggested_tool || "",
+      queries: prev?.queries?.map((query) =>
+        query.q === ques
+          ? {
+              q: ques,
+              a: resp?.explanation,
+            }
+          : query
+      ),
+      result: {
+        ...prev.result,
+        impact: {
+          tables: resp?.metadata?.entities?.tables,
+          img: resp?.graph_b64,
+          errCode: resp?.metadata?.err_code,
+          errMsg: resp?.metadata?.err_msg,
+          graphData: {
+            nodes: resp?.graph?.nodes,
+            links: resp?.graph?.edges
+          }
+        }
+      }
+    }))
+  }
+
+  const setDependencyResultGlobal = (resp, ques) => {
+    setDatabot((prev) => ({
+      ...prev,
+      curr_tab: resp?.metadata?.tool || TOOL_NAMES.DEPENDENCY,
+      suggested_tool: resp?.metadata?.suggested_tool || "",
+      queries: prev?.queries?.map((query) =>
+        query.q === ques
+          ? {
+              q: ques,
+              a: resp?.explanation,
+            }
+          : query
+      ),
+      result: {
+        ...prev.result,
+        dependency: {
+          tables: resp?.metadata?.entities?.tables,
+          img: resp?.graph_b64,
+          errCode: resp?.metadata?.err_code,
+          errMsg: resp?.metadata?.err_msg,
+          graphData: {
+            nodes: resp?.graph?.nodes,
+            links: resp?.graph?.edges
+          }
+        }
+      }
+    }))
+  }
+
+  // Connection and schema
+  const [selectedConnectionGlobal, setSelectedConnectionGlobal] = useState("");
+  const handleSelectedConnectionGlobal = (val) => {
+    setSelectedConnectionGlobal(val)
+  }
+
+  const [selectedSchemaGlobal, setSelectedSchemaGlobal] = useState("");
+  const handleSelectedSchemaGlobal = (val) => {
+    setSelectedSchemaGlobal(val)
+  }
+
+  const [policyIdsGlobal, setPolicyIds] = useState([]);
+  const handlePolicyIdsGlobal = (val) => {
+    setPolicyIds(val)
+  }
+
+  const [isRefreshed, setIsRefreshed] = useState(false);
+  const handleIsRefreshed = (val) => {
+    setIsRefreshed(val);
+  }
+
+  const [firstSelectedTab, setFirstSelectedTab] = useState("");
+  const handleFirstSelectedTab = (tab) => {
+    setFirstSelectedTab(tab)
+  }
+
   const triggerNewQuestion = async (ques, curr_tab) => {
     // State update for question
     setDatabot((prev) => ({
       ...prev,
       curr_input: ques,
+      curr_tab: curr_tab,
       is_loading: true,
       queries: [
         ...prev.queries,
@@ -66,24 +211,24 @@ export const DatabotProvider = ({ children }) => {
     // API call
     let resp;
     if(curr_tab === "relationship") {
-      resp = await getRelationshipAPI(ques);
+      resp = await getRelationshipAPI(ques, selectedConnectionGlobal, selectedSchemaGlobal);
 
     } else if(curr_tab === "lineage") {
-      resp = await getLineageAPI(ques);
+      resp = await getLineageAPI(ques, selectedConnectionGlobal, selectedSchemaGlobal);
 
     } else if(curr_tab === "impact") {
-      resp = await getImpactAPI(ques);
+      resp = await getImpactAPI(ques, selectedConnectionGlobal, selectedSchemaGlobal);
 
     } else if(curr_tab === "dependency") {
-      resp = await getDependencyAPI(ques);
+      resp = await getDependencyAPI(ques, selectedConnectionGlobal, selectedSchemaGlobal);
     }
-    console.log(`Q: ${ques} has ans: ${resp}`);
 
     // State update for ans and result
     setDatabot((prev) => ({
       ...prev,
       is_loading: false,
-      curr_tab: resp?.metadata?.tool,
+      curr_tab: resp?.metadata?.tool || prev.curr_tab,
+      suggested_tool: resp?.metadata?.suggested_tool,
       queries: prev?.queries?.map((query) =>
         query.q === ques
           ? {
@@ -94,126 +239,19 @@ export const DatabotProvider = ({ children }) => {
       ),
       result: {
         ...prev.result,
-        [resp?.metadata?.tool]: {
+        [resp?.metadata?.tool || prev.curr_tab]: {
           tables: resp?.metadata?.entities?.tables,
           img: resp?.graph_b64,
           errCode: resp?.metadata?.err_code,
           errMsg: resp?.metadata?.err_msg,
+          graphData: {
+            nodes: resp?.graph?.nodes,
+            links: resp?.graph?.edges
+          }
         },
       },
     }));
   };
-
-  // const createNewChat = (val, ans) => {
-  //   setDatabot((prev) => ({
-  //     ...prev,
-  //     chats: prev.chats.map((chat) =>
-  //       chat.id === prev.activeChatId
-  //         ? {
-  //             ...chat,
-  //             // curr_input: val,
-  //             queries: [...chat.queries, { ques: val, ans }],
-  //           }
-  //         : chat
-  //     ),
-  //   }));
-  // };
-
-  const setRelationshipResultGlobal = (resp, ques) => {
-    setDatabot((prev) => ({
-      ...prev,
-      curr_tab: resp?.metadata?.tool,
-      queries: prev?.queries?.map((query) =>
-        query.q === ques
-          ? {
-              q: ques,
-              a: resp?.explanation,
-            }
-          : query
-      ),
-      result: {
-        ...prev.result,
-        relationship: {
-          tables: resp?.metadata?.entities?.tables,
-          img: resp?.graph_b64,
-          errCode: resp?.metadata?.err_code,
-          errMsg: resp?.metadata?.err_msg,
-        }
-      }
-    }))
-  };
-
-  const setlineageResultGlobal = (resp, ques) => {
-    setDatabot((prev) => ({
-      ...prev,
-      curr_tab: resp?.metadata?.tool,
-      queries: prev?.queries?.map((query) =>
-        query.q === ques
-          ? {
-              q: ques,
-              a: resp?.explanation,
-            }
-          : query
-      ),
-      result: {
-        ...prev.result,
-        lineage: {
-          tables: resp?.metadata?.entities?.tables,
-          img: resp?.graph_b64,
-          errCode: resp?.metadata?.err_code,
-          errMsg: resp?.metadata?.err_msg,
-        }
-      }
-    }))
-  }
-
-  const setImpactResultGlobal = (resp, ques) => {
-    setDatabot((prev) => ({
-      ...prev,
-      curr_tab: resp?.metadata?.tool,
-      queries: prev?.queries?.map((query) =>
-        query.q === ques
-          ? {
-              q: ques,
-              a: resp?.explanation,
-            }
-          : query
-      ),
-      result: {
-        ...prev.result,
-        impact: {
-          tables: resp?.metadata?.entities?.tables,
-          img: resp?.graph_b64,
-          errCode: resp?.metadata?.err_code,
-          errMsg: resp?.metadata?.err_msg,
-        }
-      }
-    }))
-  }
-
-  const setDependencyResultGlobal = (resp, ques) => {
-    setDatabot((prev) => ({
-      ...prev,
-      curr_tab: resp?.metadata?.tool,
-      queries: prev?.queries?.map((query) =>
-        query.q === ques
-          ? {
-              q: ques,
-              a: resp?.explanation,
-            }
-          : query
-      ),
-      result: {
-        ...prev.result,
-        dependency: {
-          tables: resp?.metadata?.entities?.tables,
-          img: resp?.graph_b64,
-          errCode: resp?.metadata?.err_code,
-          errMsg: resp?.metadata?.err_msg,
-        }
-      }
-    }))
-  }
 
   const [relationshipResponse, setRelationshipResponse] = useState([]);
   const handleRelationshipResponse = (res) => {
@@ -240,6 +278,16 @@ export const DatabotProvider = ({ children }) => {
         triggerNewQuestion,
         switchTab,
         resetChat,
+        selectedConnectionGlobal,
+        handleSelectedConnectionGlobal,
+        selectedSchemaGlobal,
+        handleSelectedSchemaGlobal,
+        policyIdsGlobal,
+        handlePolicyIdsGlobal,
+        isRefreshed,
+        handleIsRefreshed,
+        firstSelectedTab,
+        handleFirstSelectedTab
       }}
     >
       {children}

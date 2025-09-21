@@ -148,20 +148,31 @@ function transformationReducer(state, action) {
             ...action.payload.data,
             alias: action.payload.data.alias,
             targetMapping: action.payload.data.targetMapping ||
-                          state.preservedTargetMappings[action.payload.id] || {}
+                           state.preservedTargetMappings[action.payload.id] || {},
+            // NEW: keep SCD config
+            scdConfig: action.payload.data.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" }
           }
         }
       };
 
-    case ACTION_TYPES.UPDATE_TARGET:
+    case ACTION_TYPES.UPDATE_TARGET: {
       const newTargetMapping = action.payload.data.targetMapping ||
                               state.targets[action.payload.id]?.targetMapping ||
                               state.preservedTargetMappings[action.payload.id] || {};
-
-
       if (Object.keys(newTargetMapping).length > 0) {
-        state.preservedTargetMappings[action.payload.id] = {...newTargetMapping};
+        state.preservedTargetMappings[action.payload.id] = { ...newTargetMapping };
       }
+
+      // FIXED: Ensure SCD config is properly preserved and updated
+      const currentScdConfig = state.targets[action.payload.id]?.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" };
+      const newScdConfig = action.payload.data.scdConfig !== undefined
+        ? {
+            primaryKeys: Array.isArray(action.payload.data.scdConfig.primaryKeys) ? action.payload.data.scdConfig.primaryKeys : [],
+            surrogateKey: action.payload.data.scdConfig.surrogateKey || "",
+            checksumColumns: Array.isArray(action.payload.data.scdConfig.checksumColumns) ? action.payload.data.scdConfig.checksumColumns : [],
+            changeType: action.payload.data.scdConfig.changeType || ""
+          }
+        : currentScdConfig;
 
       const updatedTargetState = {
         ...state,
@@ -171,24 +182,23 @@ function transformationReducer(state, action) {
             ...state.targets[action.payload.id],
             ...action.payload.data,
             targetMapping: newTargetMapping,
-            // FIXED: Ensure enableCountLogging is properly updated and preserved
             enableCountLogging: typeof action.payload.data.enableCountLogging === 'boolean'
               ? action.payload.data.enableCountLogging
-              : (state.targets[action.payload.id]?.enableCountLogging || false)
+              : (state.targets[action.payload.id]?.enableCountLogging || false),
+            // FIXED: Always update SCD config properly
+            scdConfig: newScdConfig
           }
         }
       };
 
-      // Trigger a sidebar update notification
       if (typeof action.payload.data.enableCountLogging === 'boolean') {
         setTimeout(() => {
-          if (window.triggerSidebarUpdate) {
-            window.triggerSidebarUpdate();
-          }
+          if (window.triggerSidebarUpdate) window.triggerSidebarUpdate();
         }, 0);
       }
 
       return updatedTargetState;
+    }
 
     case ACTION_TYPES.REMOVE_TARGET:
       const { [action.payload]: ___, ...remainingTargets } = state.targets;
@@ -373,7 +383,6 @@ function transformationReducer(state, action) {
     }
 
     case ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES:
-      // console.log("Updating global properties:", action.payload);
       return {
         ...state,
         properties: {
@@ -397,7 +406,6 @@ function transformationReducer(state, action) {
       if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
       if (window.targetMappingsDebug) window.targetMappingsDebug = {};
 
-      // console.log("TransformationContext fully reset");
       return initialState;
 
     default:
@@ -562,12 +570,26 @@ export function TransformationProvider({ children }) {
           const selectedSourceId = targetToSelectedSourceMap[targetId];
           if (selectedSourceId) {
             const selectedSource = state.sources[selectedSourceId];
-            if (selectedSource) {
-              sourceDataframe = selectedSource.alias || `source_${selectedSourceId}`;
-            } else {
-              sourceDataframe = selectedSourceId;
-            }
+            sourceDataframe = selectedSource ? (selectedSource.alias || `source_${selectedSourceId}`) : selectedSourceId;
           }
+
+          // helper to serialize single vs array -> string or "[]"
+          const serialize = (arr) => {
+            if (!Array.isArray(arr)) return arr || "";
+            if (arr.length === 0) return "";
+            return arr.length === 1 ? arr[0] : JSON.stringify(arr);
+          };
+
+          // NEW: bracketed serializer without quotes for multi-value SCD lists, single stays plain
+          const serializeBracketed = (arr) => {
+            if (!Array.isArray(arr)) return arr || "";
+            const cleaned = arr.filter(Boolean).map(v => String(v).trim());
+            if (cleaned.length === 0) return "";
+            if (cleaned.length === 1) return cleaned[0];
+            return `[${cleaned.join(",")}]`;
+          };
+
+          const scd = targetData.scdConfig || {};
 
           result.target[targetKey] = {
             targetType: targetData.connectionType || "unknown",
@@ -578,7 +600,17 @@ export function TransformationProvider({ children }) {
             LoadingParams: {
               targetschema: targetData.schema || "",
               targetTable: targetData.table || "",
-              loadStrategy: targetData.loadStrategy || ""
+              loadStrategy: targetData.loadStrategy || "",
+              // NEW: SCD params for SCD1/SCD2
+              ...(targetData.loadType === "SCD1" || targetData.loadType === "SCD2"
+                ? {
+                    // Use bracketed no-quote format for multi-values
+                    targetPK: serializeBracketed(scd.primaryKeys || []),
+                    surrogateKey: scd.surrogateKey || "",
+                    changeType: (scd.checksumColumns?.length ? (scd.changeType || "checksum") : ""),
+                    checksumColumns: serializeBracketed(scd.checksumColumns || [])
+                  }
+                : {})
             },
             EnableCountLogging: targetData.enableCountLogging || false,
             targetMapping: targetData.targetMapping || {}
@@ -810,7 +842,9 @@ export function useTrackConnections(nodes, edges) {
                   objectType: data.objectType,
                   preProcedures: data.preProcedures,
                   postProcedures: data.postProcedures,
-                  enableCountLogging: data.enableCountLogging || false
+                  enableCountLogging: data.enableCountLogging || false,
+                  // NEW: carry any existing SCD config from node data
+                  scdConfig: data.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" }
                 }
               }
             });
@@ -823,7 +857,6 @@ export function useTrackConnections(nodes, edges) {
                   sourceNodeId: data.selectedSourceId
                 }
               });
-              // console.log(`Restored target mapping relationship: Target ${id} -> Source ${data.selectedSourceId}`);
             }
           }
           break;

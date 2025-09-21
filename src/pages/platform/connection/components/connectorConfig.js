@@ -7,6 +7,8 @@ import snowflake from "../../../../assets/connector/snowflake-connector.png";
 import mssql from "../../../../assets/connector/mssql-connector.png";
 import db2 from "../../../../assets/connector/db2-connector.png";
 import kafka from "../../../../assets/connector/kafka-connector.png";
+import iris from "../../../../assets/connector/iris-connector.png";
+
 export const connectorConfig = {
     oracle: {
       fields: [
@@ -173,5 +175,16 @@ export const connectorConfig = {
         { name: "source_schema", label: "Schema", required: false },
       ],
       icon: db2
+    },
+    iris: {
+      fields: [
+        { name: "host_address", label: "Host", required: true },
+        { name: "port_number", label: "Port", type: "number", required: true },
+        { name: "database_name", label: "Database", required: true },
+        { name: "username", label: "Username", required: true },
+        { name: "password", label: "Password", type: "password", required: true },
+        { name: "source_schema", label: "Schema", required: false },
+      ],
+      icon: iris
     },
   };

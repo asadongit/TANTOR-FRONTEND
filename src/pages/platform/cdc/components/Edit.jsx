@@ -204,7 +204,6 @@ const EditCDC = () => {
     const state = status?.toUpperCase()|| 'unknown';
     const statusStyle = statusColors[state] || statusColors["FAILED"];
     const isRunning = state === "RUNNING"; 
-    console.log("stststtstststtsts",state,statusStyle)
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center ${statusStyle.bg} ${statusStyle.text}`}>
         <span className="relative ml-1 flex h-2 w-2">

@@ -14,8 +14,6 @@ const DetailsPage = () => {
   const { token, decodedToken } = useAuth();
 
 
-  console.log("glossary item iss @@@ ", item)
-
   const [mainTab, setMainTab] = useState('Overview');
   const [activeDetail, setActiveDetail] = useState(null);
 

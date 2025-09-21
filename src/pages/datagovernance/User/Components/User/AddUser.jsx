@@ -410,7 +410,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                 </button>
                 <button
                   onClick={() => {
-                    console.log("Assign New Policy clicked");
                     setIsPolicyStepperOpen(true);
                   }}
                   className="w-full px-4 py-2 border border-gray-400 rounded-lg bg-gray-100 hover:bg-[#8e78b7] hover:text-white transition-colors text-black"

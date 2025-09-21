@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from "react";
-import { X, Plus, ChevronDown } from "lucide-react";
+import { X, Plus, ChevronDown, RefreshCw } from "lucide-react";
 
 import ArithmeticOperationFields from "./operations/arithmatic";
 import StringOperationFields, { StringOperationParameters, getStringParams, validateStringTransformation } from "./operations/string";
@@ -230,7 +230,6 @@ const TransformationItem = memo(({
           );
           if (colObj && colObj.datatype) {
             const t = colObj.datatype.toLowerCase();
-			// console.log(t)
             if (t.includes("char") || t.includes("varchar2") || t.includes("string")) {
               operatorOptions = FILTER_OPERATORS.filter(op => (op.id === "==" || op.id === "!="));
               selectedColType = "string";
@@ -381,104 +380,116 @@ export const TransformationDrawer = ({
 	}, [transformations.length]);
 
 	const replayTransformationsForColumns = useCallback((transformationsList, initialDfCols) => {
-		let dfCols = JSON.parse(JSON.stringify(initialDfCols));
-		const getColName = (col) => typeof col === "object" ? col.name : col;
+  let dfCols = JSON.parse(JSON.stringify(initialDfCols));
+  const getColName = (col) => typeof col === "object" ? col.name : col;
 
-		const renameMaps = {};
+  const renameMaps = {};
+  const previousStates = {};
 
-		transformationsList.forEach((t, idx) => {
-			const dfId = t.source_dataframe;
-			if (!dfId) return;
-			let cols = Array.isArray(dfCols[dfId]) ? [...dfCols[dfId]] : [];
+  transformationsList.forEach((t, idx) => {
+    const dfId = t.source_dataframe;
+    if (!dfId) return;
 
-			switch (t.transformation_operation) {
-				case "constantcopy":
-				case "arithmetic":
-				case "string":
-				case "typecast":
-				case "date":
-				case "ranking":
-				case "expression":
-					if (t.target_column && t.target_column.length > 0) {
-						t.target_column.forEach(targetCol => {
-							const colName = getColName(targetCol);
-							let datatype = t.params?.datatype || t.params?.target_datatype || "string";
-							if (t.transformation_operation === "arithmetic") {
-								datatype = "NUMBER";
-							}
-							if (t.transformation_operation === "date") {
-								datatype = "DATE";
-							}
-							if (colName && !cols.some(c => getColName(c) === colName)) {
-								cols.push({ name: colName, datatype });
-							}
-						});
-					}
-					break;
-				case "rename":
-					if (t.source_column && t.target_column && t.source_column.length === t.target_column.length) {
-						const renameMap = {};
-						t.source_column.forEach((src, idx) => {
-							const tgt = t.target_column[idx];
-							const srcIdx = cols.findIndex(c => getColName(c) === src);
-							if (srcIdx !== -1 && tgt && tgt !== src) {
-								const oldCol = cols[srcIdx];
-								cols[srcIdx] = typeof oldCol === "object"
-									? { ...oldCol, name: tgt }
-									: { name: tgt, datatype: "string" };
-								renameMap[src] = tgt;
-							}
-						});
-						if (!renameMaps[dfId]) renameMaps[dfId] = {};
-						Object.assign(renameMaps[dfId], renameMap);
+    previousStates[idx] = JSON.parse(JSON.stringify(dfCols));
 
-						for (let j = idx + 1; j < transformationsList.length; j++) {
-							const nextT = transformationsList[j];
-							if (nextT.source_dataframe !== dfId) continue;
-							const map = renameMaps[dfId];
-							const updateColArr = (arr) => arr.map(col => map[col] || col);
+    let cols = Array.isArray(dfCols[dfId]) ? [...dfCols[dfId]] : [];
 
-							if (Array.isArray(nextT.source_column)) {
-								nextT.source_column = updateColArr(nextT.source_column);
-							}
-							if (Array.isArray(nextT.target_column)) {
-								nextT.target_column = updateColArr(nextT.target_column);
-							}
-						}
-					}
-					break;
-				case "restrictcolumns":
-					if (t.source_column && t.source_column.length > 0) {
-						cols = cols.filter(c => t.source_column.includes(getColName(c)));
-					}
-					break;
-				case "join":
-					if (t.params?.drop_left_dataframe_collist && Array.isArray(t.params.drop_left_dataframe_collist)) {
-						cols = cols.filter(c => !t.params.drop_left_dataframe_collist.includes(getColName(c)));
-					}
-					break;
-				default:
-					break;
-			}
-			dfCols[dfId] = cols;
-		});
+    switch (t.transformation_operation) {
+      case "constantcopy":
+      case "arithmetic":
+      case "string":
+      case "typecast":
+      case "date":
+      case "ranking":
+      case "expression":
+        if (t.target_column && t.target_column.length > 0) {
+          t.target_column.forEach(targetCol => {
+            const colName = getColName(targetCol);
+            let datatype = t.params?.datatype || t.params?.target_datatype || "string";
+            if (t.transformation_operation === "arithmetic") {
+              datatype = "NUMBER";
+            }
+            if (t.transformation_operation === "date") {
+              datatype = "DATE";
+            }
+            if (colName && !cols.some(c => getColName(c) === colName)) {
+              cols.push({ name: colName, datatype });
+            }
+          });
+        }
+        break;
 
-		window.replayedDataframeColumns = JSON.parse(JSON.stringify(dfCols));
+      case "rename":
+        if (t.source_column && t.target_column && t.source_column.length === t.target_column.length) {
+          const renameMap = {};
+          t.source_column.forEach((src, idx) => {
+            const tgt = t.target_column[idx];
+            if (tgt && tgt !== src) {
+              renameMap[src] = tgt;
+              cols = cols.map(col => {
+                const colName = getColName(col);
+                if (colName === src) {
+                  return typeof col === "object"
+                    ? { ...col, name: tgt }
+                    : { name: tgt, datatype: "string" };
+                }
+                return col;
+              });
+            }
+          });
 
-		if (window.allNodes) {
-			Object.keys(dfCols).forEach(dfId => {
-				const sourceNode = window.allNodes.find(node =>
-					(node.type === "source" && (node.data?.alias === dfId || node.id === dfId))
-				);
-				if (sourceNode && typeof sourceNode.data.onDataChange === "function" && dfCols[dfId]?.length > 0) {
-					// console.log(`Updating source node ${dfId} with replayed columns during replay`);
-					sourceNode.data.onDataChange({ columns: [...dfCols[dfId]] });
-				}
-			});
-		}
+          if (!renameMaps[dfId]) renameMaps[dfId] = {};
+          Object.assign(renameMaps[dfId], renameMap);
 
-		return dfCols;
-	}, []);
+          for (let j = idx + 1; j < transformationsList.length; j++) {
+            const nextT = transformationsList[j];
+            if (nextT.source_dataframe !== dfId) continue;
+
+            const map = renameMaps[dfId];
+            const updateColArr = (arr) => arr.map(col => map[col] || col);
+
+            if (Array.isArray(nextT.source_column)) {
+              nextT.source_column = updateColArr(nextT.source_column);
+            }
+            if (Array.isArray(nextT.target_column)) {
+              nextT.target_column = updateColArr(nextT.target_column);
+            }
+          }
+        }
+        break;
+
+      case "restrictcolumns":
+        if (t.source_column && t.source_column.length > 0) {
+          cols = cols.filter(c => t.source_column.includes(getColName(c)));
+        }
+        break;
+
+      case "join":
+        if (t.params?.right_dataframe && dfCols[t.params.right_dataframe]) {
+          const rightCols = dfCols[t.params.right_dataframe];
+          const droppedLeft = new Set(t.params.drop_left_dataframe_collist || []);
+          const droppedRight = new Set(t.params.drop_right_dataframe_collist || []);
+
+          cols = cols.filter(c => !droppedLeft.has(getColName(c)));
+
+          rightCols.forEach(rightCol => {
+            const rightColName = getColName(rightCol);
+            if (!droppedRight.has(rightColName) && !cols.some(c => getColName(c) === rightColName)) {
+              cols.push(rightCol);
+            }
+          });
+        }
+        break;
+    }
+
+    dfCols[dfId] = cols;
+  });
+
+  window.transformationReplayHistory = previousStates;
+  window.replayedDataframeColumns = JSON.parse(JSON.stringify(dfCols));
+
+  return dfCols;
+}, []);
 
 	const syncDataframeColumnsFromNodes = useCallback(() => {
 		if (!window.allNodes || !window.allEdges) return;
@@ -526,7 +537,6 @@ export const TransformationDrawer = ({
 					);
 					if (sourceNode && typeof sourceNode.data.onDataChange === "function") {
 						sourceNode.data.onDataChange({ columns: [...window.replayedDataframeColumns[dfId]] });
-						// console.log(`Updated source node ${dfId} with replayed columns:`, window.replayedDataframeColumns[dfId]);
 					}
 				}
 			});
@@ -1062,8 +1072,6 @@ export const TransformationDrawer = ({
 			result.push(transformationData);
 		});
 
-		console.log("Saving transformations:", result);
-
 		if (activeNode && activeNode.data && activeNode.data.onDataChange) {
 			activeNode.data.onDataChange({
 				transformations: result,
@@ -1190,8 +1198,6 @@ export const TransformationDrawer = ({
 	}, [setDataframeColumns, syncDataframeColumnsFromNodes]);
 
 	const handleAddNewTargetColumn = useCallback((columnName, dataframeId, operationType = "arithmetic", givendatatype = "NUMBER", oldColumnName = null, restrictedColumns = null, restrictType = null) => {
-  //   console.log("operation type is ====>", operationType);
-  //   console.log("given datatype is  =====>", givendatatype);
   const actualDfId = dataframeId;
 
   let datatype = "NUMBER";
@@ -1370,6 +1376,33 @@ export const TransformationDrawer = ({
     }
   }
 
+  // FIXED: After adding/updating columns, notify all connected target nodes to refresh their SCD configurations
+  if (window.allNodes && window.allEdges) {
+    // Find all target nodes that might be connected to this dataframe
+    const targetNodes = window.allNodes.filter(n => n.type === 'target');
+
+    targetNodes.forEach(targetNode => {
+      // Check if this target is connected to the source that was updated
+      const isConnected = window.allEdges.some(edge => {
+        const sourceNode = window.allNodes.find(n => n.id === edge.source);
+        return edge.target === targetNode.id &&
+               sourceNode &&
+               (sourceNode.data?.alias === dataframeId || sourceNode.id === dataframeId);
+      });
+
+      if (isConnected && targetNode.data?.scdConfig) {
+        // Trigger target node to refresh its SCD config validation
+        if (targetNode.data.onDataChange) {
+          targetNode.data.onDataChange({
+            scdConfig: targetNode.data.scdConfig,
+            _refreshScdConfig: true,
+            _timestamp: Date.now()
+          });
+        }
+      }
+    });
+  }
+
   // Dispatch a detailed event with all information about the new column
   setTimeout(() => {
     window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
@@ -1379,7 +1412,9 @@ export const TransformationDrawer = ({
         columnType: datatype,
         operationType: operationType,
         timestamp: Date.now(),
-        isNewColumn: true
+        isNewColumn: true,
+        // FIXED: Add flag to indicate SCD configs should be refreshed
+        refreshScdConfigs: true
       }
     }));
   }, 10);
@@ -1551,13 +1586,43 @@ useEffect(() => {
 			columnsLoaded &&
 			!hasReplayedRef.current
 		) {
-			const updatedDfCols = replayTransformationsForColumns(initialTransformations, dataframeColumns);
-			setDataframeColumns(updatedDfCols);
-			setTransformations(initialTransformations);
-			hasReplayedRef.current = true;
+			try {
+				// Add debugging info
+				console.log('Starting transformation replay with initial columns:', dataframeColumns);
+
+				const updatedDfCols = replayTransformationsForColumns(initialTransformations, dataframeColumns);
+
+				console.log('Columns after replay:', updatedDfCols);
+
+				setDataframeColumns(updatedDfCols);
+				setTransformations(initialTransformations);
+
+				// Force update nodes with new columns
+				if (window.allNodes) {
+					Object.entries(updatedDfCols).forEach(([dfId, columns]) => {
+						const node = window.allNodes.find(n =>
+							n.data?.alias === dfId || n.id === dfId
+						);
+						if (node && typeof node.data.onDataChange === "function") {
+							node.data.onDataChange({ columns: [...columns] });
+						}
+					});
+				}
+
+				hasReplayedRef.current = true;
+
+				// Dispatch column update event
+				window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
+					detail: {
+						type: "transformation-replay-complete",
+						timestamp: Date.now()
+					}
+				}));
+			} catch (error) {
+				console.error('Error during transformation replay:', error);
+			}
 		}
-		// eslint-disable-next-line
-	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded, replayTransformationsForColumns]);
+	}, [isEditMode, initialTransformations, isDataLoaded, columnsLoaded, replayTransformationsForColumns, dataframeColumns]);
 
 	// Reset replay flag when drawer closes or edit mode changes
 	useEffect(() => {
@@ -1565,6 +1630,51 @@ useEffect(() => {
 			hasReplayedRef.current = false;
 		}
 	}, [isOpen, isEditMode]);
+
+  const handleRefreshColumns = useCallback(() => {
+    if (!isEditMode || !transformations.length) return;
+
+    try {
+      const initialDfCols = {};
+      if (window.allNodes && window.allEdges) {
+        const incomingEdges = window.allEdges.filter(edge => edge.target === activeNodeId);
+        const sources = incomingEdges
+          .map(edge => window.allNodes.find(node => node.id === edge.source && node.type === "source"))
+          .filter(Boolean);
+
+        sources.forEach(node => {
+          const alias = node.data?.alias || `unnamed_source_${node.id}`;
+          initialDfCols[alias] = Array.isArray(node.data?.columns) ? [...node.data.columns] : [];
+        });
+      }
+
+      const updatedDfCols = replayTransformationsForColumns(transformations, initialDfCols);
+
+      setDataframeColumns(updatedDfCols);
+
+      if (window.allNodes) {
+        Object.entries(updatedDfCols).forEach(([dfId, columns]) => {
+          const node = window.allNodes.find(n =>
+            n.data?.alias === dfId || n.id === dfId
+          );
+          if (node && typeof node.data.onDataChange === "function") {
+            node.data.onDataChange({ columns: [...columns] });
+          }
+        });
+      }
+
+      window.replayedDataframeColumns = JSON.parse(JSON.stringify(updatedDfCols));
+
+      window.dispatchEvent(new CustomEvent("tantor-columns-updated", {
+        detail: {
+          type: "manual-refresh",
+          timestamp: Date.now()
+        }
+      }));
+    } catch (error) {
+      console.error('Error refreshing transformation columns:', error);
+    }
+  }, [isEditMode, transformations, activeNodeId, replayTransformationsForColumns]);
 
 	if (!isOpen) return null;
 
@@ -1582,22 +1692,33 @@ useEffect(() => {
 							Transformation
 						</h2>
 						{transformations.length > 1 && (
-							<div className="relative inline-block text-left">
-								<select
-									className="pl-3 pr-8 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB] appearance-none cursor-pointer"
-									onChange={(e) => scrollToTransformation(Number(e.target.value) - 1)}
-									defaultValue=""
-								>
-									<option value="" disabled>Jump to...</option>
-									{transformations.map((_, idx) => (
-										<option key={idx} value={idx + 1}>
-											Transformation {idx + 1}
-										</option>
-									))}
-								</select>
-								<div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-									<ChevronDown className="w-4 h-4 text-gray-500" />
+							<div className="flex items-center space-x-2">
+								<div className="relative inline-block text-left">
+									<select
+										className="pl-3 pr-8 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB] appearance-none cursor-pointer"
+										onChange={(e) => scrollToTransformation(Number(e.target.value) - 1)}
+										defaultValue=""
+									>
+										<option value="" disabled>Jump to...</option>
+										{transformations.map((_, idx) => (
+											<option key={idx} value={idx + 1}>
+												Transformation {idx + 1}
+											</option>
+										))}
+									</select>
+									<div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+										<ChevronDown className="w-4 h-4 text-gray-500" />
+									</div>
 								</div>
+								{isEditMode && (
+									<button
+										onClick={handleRefreshColumns}
+										className="p-1.5 text-gray-600 hover:text-[#8E77BB] rounded-full hover:bg-gray-100 transition-colors"
+										title="Refresh column list"
+									>
+										<RefreshCw className="w-4 h-4" />
+									</button>
+								)}
 							</div>
 						)}
 					</div>

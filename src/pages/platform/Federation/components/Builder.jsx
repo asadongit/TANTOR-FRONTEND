@@ -35,7 +35,6 @@ export default function Builder({ handleSwitch, checked }) {
                 const data = await response.json();
 
                 if (data && data.result) {
-                    console.log("views in builder is =-====>", data.result);
                     setShownViews(data.result);
                 } else {
                     console.error("Invalid response from the API");
@@ -56,15 +55,11 @@ export default function Builder({ handleSwitch, checked }) {
 
     const checkCaching = async (pay) => {
         try {
-            console.log("Inside checking caching");
 
             const cachingResponse = await fetch(`${hostnameV1}/checkCaching/${selectedView}`);
             const cachingData = await cachingResponse.json();
 
-            console.log("caching response is ====>", cachingData.result);
-
             if (cachingData.result) {
-                console.log("inside iff===>");
                 fetch(`${hostnameV1}/view/${selectedView}`, {
                     method: "POST",
                     headers: {
@@ -77,7 +72,6 @@ export default function Builder({ handleSwitch, checked }) {
                     .then((response) => response.json().then((data) => ({ status: response.status, data })))
                     .then(({ status, data }) => {
                         if (status === 200) {
-                            console.log("data result is ====>", data);
                             if (data.detail) {
                                 setToast({
                                     show: true,
@@ -124,7 +118,6 @@ export default function Builder({ handleSwitch, checked }) {
                         setLoading(false);
                     });
             } else {
-                console.log("inside else===>");
                 fetch(`${hostnameV1}/view/${selectedView}`, {
                     method: "POST",
                     headers: {
@@ -162,7 +155,6 @@ export default function Builder({ handleSwitch, checked }) {
                                 }, 3000);
                                 setData([]);
                             } else {
-                                console.log("Parsed Data Array: ", dataArray);
                                 const rows = data.trim().split("\n").map((row) => JSON.parse(row));
                                 const columns = Object.keys(rows[0]);
                                 setColumnDefs(columns);
@@ -236,7 +228,6 @@ export default function Builder({ handleSwitch, checked }) {
         })
             .then((response) =>
                 response.text().then((text) => {
-                    console.log("Raw response text:", text);
                     setCurl(text);
                 })
             )
@@ -267,7 +258,6 @@ export default function Builder({ handleSwitch, checked }) {
     const [viewsDetails, setViewsDetails] = useState(null);
 
     const handleQueryDetails = async () => {
-        console.log("query details is ===>", viewsDetails);
         if (viewsDetails === null) {
             try {
                 setQueryLoading(true);
@@ -305,7 +295,6 @@ export default function Builder({ handleSwitch, checked }) {
                 setIsQueryModalOpen(true);
             }
         } else {
-            console.log("query details IN ELSE is ===>", viewsDetails);
             setIsQueryModalOpen(true);
         }
     };

@@ -207,7 +207,6 @@ const {token, hostnameV1}= useAuth();
 
   const handleCancel = () => {
     setSelectedItems([]);
-    console.log("Selection reset.");
   };
 
   const handleOk = () => {
