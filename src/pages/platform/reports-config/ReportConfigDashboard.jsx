@@ -15,7 +15,6 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 import { useNavigate } from "react-router-dom";
-import { encrypt } from "../../../utils/Crypto";
 import DataTable from "../../../components/DataTable";
 import { useProjectData } from "../../../hooks/platform/project";
 // import { useProjectCardData } from "../../../hooks/platform/cardCounts";
@@ -26,18 +25,20 @@ import toast from "react-hot-toast";
 import ReportSummaryComponent from "./components/ReportSummaryComponent";
 import {CardGrid} from "../../../components/ReportingCardGrid"
 import Breadcrumb from "../../../components/Breadcrumb";
+import {birtEncrypt} from "./utils/Crypto";
+import {encrypt} from "../../../utils/Crypto"
 
 const ReportConfigDashboard = () => {
   // const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
   const [hoveredBar, setHoveredBar] = useState(null);
-  const { token, hostnameV1 } = useAuth();
+  const { token, hostnameV1, decodedToken } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [currentEmbedId, setCurrentEmbedId] = useState('');
   const [currentDashboardId, setCurrentDashboardId] = useState('');
   const [currentReportData, setCurrentReportData] = useState({});
   const [isReportSummaryOpen, setIsReportSummaryOpen] = useState(false);
   const [cards, setCards] = useState([]);
-  const[filteredReportData,setFilteredReportData] = useState([]);
+  const [filteredReportData,setFilteredReportData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   const navigate = useNavigate();
@@ -49,7 +50,6 @@ const ReportConfigDashboard = () => {
   // const handleCreate = () => {
   //   navigate("/config/report/ruleLinks");
   // };
-  
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -132,18 +132,19 @@ const ReportConfigDashboard = () => {
             const reportFolder = window._env_?.VITE_REPORTING_REPORT_FOLDER;
             const reportPath = `${reportFolder}/${reportFileName}.rptdesign`;
 
-            window.open(
-              `${window._env_?.VITE_REPORTING_API}/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
-                window._env_?.VITE_REPORTING_EXPORT_FORMAT
-              }`,
-              "_blank"
-            );
-            return;
-          }
-          else{
-            toast.error("Invalid Report Type provided.");
-            return;
-          }
+          window.open(
+            `${
+              window._env_?.VITE_REPORTING_API
+            }/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
+              window._env_?.VITE_REPORTING_EXPORT_FORMAT
+            }&encUsername=${encodeURIComponent(birtEncrypt(decodedToken?.preferred_username))}&encReportName=${encodeURIComponent(birtEncrypt(reportFileName))}`,
+            "_blank"
+          );
+          return;
+        } else {
+          toast.error("Invalid Report Type provided.");
+          return;
+        }
       },
     },
     {
@@ -182,7 +183,6 @@ const ReportConfigDashboard = () => {
     setIsReportsLoading(true);
     setReportError(null);
     try {
-
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const policyIds = secureQueryResponse.matched_policy_ids || [];
 
