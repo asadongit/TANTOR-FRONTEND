@@ -14,6 +14,7 @@ import {
 import AssetInformationModal from "./AssetInformationModal"
 import ViewMappingPage from "./ViewMappingPage";
 import Breadcrumb from '../../../../components/Breadcrumb';
+import TableMappingPage from './TableMappingPage';
 
 const CircularNodeRemote = ({
   nodeId,
@@ -199,14 +200,20 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   const [initialNodeIds, setInitialNodeIds] = useState(new Set());
   const [showViewMapping, setShowViewMapping] = useState(false);
   const [selectedViewForMapping, setSelectedViewForMapping] = useState(null);
+  const [showTableMapping, setShowTableMapping] = useState(false);
+  const [selectedTableForMapping, setSelectedTableForMapping] = useState(null);
 
   // 3. Add this function to handle column details
   const handleColumnDetails = (nodeId, nodeType) => {
     if (nodeType === 'view') {
       setSelectedViewForMapping(nodeId);
       setShowViewMapping(true);
-    } else {
-      // For non-view types, implement later as mentioned
+    }
+    else if (nodeType === 'table') {
+      setSelectedTableForMapping(nodeId);
+      setShowTableMapping(true);
+    }
+    else {
       console.log('Column details clicked for:', nodeId, nodeType);
     }
   };
@@ -216,6 +223,12 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     setShowViewMapping(false);
     setSelectedViewForMapping(null);
   };
+
+  const handleTableBackToLineage = () => {
+    setShowTableMapping(false);
+    setSelectedTableForMapping(null);
+  };
+
   const displayableItems = useMemo(() => {
     return selectedItems.filter(item => item.type === 'Table' || item.type === 'View');
   }, [selectedItems]);
@@ -1644,10 +1657,20 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     );
   }
 
+  if (showTableMapping && selectedTableForMapping) {
+    return (
+      <TableMappingPage
+        TableName={selectedTableForMapping}
+        apiBaseUrl={API_BASE_URL}
+        onBackToLineage={handleTableBackToLineage}
+      />
+    );
+  }
+
   return (
-    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
+    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
       <Breadcrumb />
-      <div className="p-2">
+      <div className="">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button

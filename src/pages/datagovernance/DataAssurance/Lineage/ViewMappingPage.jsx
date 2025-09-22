@@ -791,10 +791,10 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
   }
 
   return (
-    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
+    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
       <Breadcrumb />
       {/* Header */}
-      <div className="px-4 py-2">
+      <div className="mb-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -864,18 +864,6 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
               maxZoom={2}
             >
               <Controls showInteractive={false} />
-              <MiniMap
-                nodeColor={(node) => {
-                  if (node.type === 'tableNode') {
-                    return node.data.isTarget ? '#22C55E' : '#3B82F6';
-                  }
-                  if (node.type === 'unionNode') return '#6B7280';
-                  if (node.type === 'joinNode') return '#8B5CF6';
-                  return '#E5E7EB';
-                }}
-                className="bg-white border border-gray-300 rounded"
-              />
-              <Background variant="dots" gap={20} size={1} color="#E5E7EB" />
             </ReactFlow>
           </div>
         ) : (
