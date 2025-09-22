@@ -25,7 +25,8 @@ import toast from "react-hot-toast";
 import ReportSummaryComponent from "./components/ReportSummaryComponent";
 import {CardGrid} from "../../../components/ReportingCardGrid"
 import Breadcrumb from "../../../components/Breadcrumb";
-import {encrypt} from "./utils/Crypto";
+import {birtEncrypt} from "./utils/Crypto";
+import {encrypt} from "../../../utils/Crypto"
 
 const ReportConfigDashboard = () => {
   // const { data: cardData, isLoading: isCardLoading, error: cardError, refetch: refetchCardData } = useProjectCardData();
@@ -136,7 +137,7 @@ const ReportConfigDashboard = () => {
               window._env_?.VITE_REPORTING_API
             }/frameset?__report=${encodeURIComponent(reportPath)}&__format=${
               window._env_?.VITE_REPORTING_EXPORT_FORMAT
-            }&encUsername=${encodeURIComponent(encrypt(decodedToken?.preferred_username))}&encReportName=${encodeURIComponent(encrypt(reportFileName))}`,
+            }&encUsername=${encodeURIComponent(birtEncrypt(decodedToken?.preferred_username))}&encReportName=${encodeURIComponent(birtEncrypt(reportFileName))}`,
             "_blank"
           );
           return;
