@@ -863,7 +863,7 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
               minZoom={0.3}
               maxZoom={2}
             >
-              <Controls showInteractive={false} />
+              <Controls position="top-right" />
             </ReactFlow>
           </div>
         ) : (

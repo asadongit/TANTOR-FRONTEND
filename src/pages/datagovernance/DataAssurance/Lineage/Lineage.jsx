@@ -461,10 +461,7 @@ function EnhancedLineage() {
   const handleBackToSelection = () => setCurrentView('selection');
 
   const handleTableNavigation = (direction) => {
-    const displayableItems = selectedItemsForVisualization.filter(item =>
-      item.type === 'Table' || item.type === 'View'
-    );
-    if (direction === 'next' && currentTableIndex < displayableItems.length - 1) {
+    if (direction === 'next' && currentTableIndex < selectedItemsForVisualization.length - 1) {
       setCurrentTableIndex(prev => prev + 1);
     } else if (direction === 'prev' && currentTableIndex > 0) {
       setCurrentTableIndex(prev => prev - 1);

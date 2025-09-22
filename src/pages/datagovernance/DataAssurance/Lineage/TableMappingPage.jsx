@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, ChevronLeft, Code, Map, AlertCircle } from 'lucide-react';
+import { Table, ChevronLeft, Code, Map, AlertCircle, Download, Camera, FileText } from 'lucide-react';
 import {
     ReactFlow,
     MiniMap,
@@ -10,9 +10,12 @@ import {
     MarkerType,
     Handle,
     Position,
+    useReactFlow,
+    ReactFlowProvider,
+    getNodesBounds,
+    getViewportForBounds,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import Breadcrumb from '../../../../components/Breadcrumb';
 
 const SourceTableNode = ({ data }) => {
     return (
@@ -134,7 +137,7 @@ const nodeTypes = {
     targetTable: TargetTableNode,
 };
 
-const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage }) => {
+const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api", onBackToLineage = () => { }, type = "table" }) => {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [activeTab, setActiveTab] = useState('map');
@@ -144,501 +147,114 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage }) => {
     const [textError, setTextError] = useState(null);
 
     const lineageData = {
-    "etl": "yes",
-    "source": [
-        {
-            "connection": "orcl_lineage_etl",
-            "schema": "orcl_lineage_etl.test_user1",
-            "table": "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS",
-            "columns": {
-                "DEPARTMENT_ID": [
-                    "DEPARTMENT_ID"
-                ],
-                "DEPARTMENT_NAME": [
-                    "DEPARTMENT_NAME"
-                ],
-                "LOCATION": [
-                    "LOCATION"
-                ]
-            }
-        },
-        {
-            "connection": "orcl_lineage_etl",
-            "schema": "orcl_lineage_etl.test_user1",
-            "table": "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES",
-            "columns": {
-                "EMPLOYEE_ID": [
-                    "EMPLOYEE_ID"
-                ],
-                "FIRST_NAME": [
-                    "FIRST_NAME"
-                ],
-                "LAST_NAME": [
-                    "LAST_NAME"
-                ],
-                "SALARY": [
-                    "SALARY"
-                ],
-				      "DEPARTMENT_ID": [
-                    "DEPARTMENT_ID"
-                ]
-            }
-        }
-    ],
-    "transformation": [
-        {
-            "arithmetic": {
-                "transformation_order": 1,
-                "column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"],
+        "etl": "yes",
+        "source": [
+            {
+                "connection": "orcl_lineage_etl",
+                "schema": "orcl_lineage_etl.test_user1",
+                "table": "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS",
                 "columns": {
-		           "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
+                    "DEPARTMENT_ID": [
+                        "DEPARTMENT_ID"
                     ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME"
+                    "DEPARTMENT_NAME": [
+                        "DEPARTMENT_NAME"
                     ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID",
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID"
-            ]
+                    "LOCATION": [
+                        "LOCATION"
+                    ]
                 }
-            }
-        },
-        {
-            "string": {
-                "transformation_order": 2,
-				"column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"],
+            },
+            {
+                "connection": "orcl_lineage_etl",
+                "schema": "orcl_lineage_etl.test_user1",
+                "table": "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES",
                 "columns": {
-				 "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
+                    "EMPLOYEE_ID": [
+                        "EMPLOYEE_ID"
                     ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME"
+                    "FIRST_NAME": [
+                        "FIRST_NAME"
                     ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
+                    "LAST_NAME": [
+                        "LAST_NAME"
                     ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
+                    "SALARY": [
+                        "SALARY"
                     ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME",
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID"
-            ]
-                },
-                "transformation_operator": "concat"
-            }
-        },
-        {
-            "constantcopy": {
-                "transformation_order": 3,
-				"column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"],
-                "columns": {
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol": [
-                        ""
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID"
-            ]
-                }
-            }
-        },
-        {
-            "join": {
-                "transformation_order": 3,
-				"join_operator": "== ",
-				 "join_type": "inner",
-                "columns_used":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID","orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
-				"column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID","orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
-        "columns": {
-        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol":[
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"
-            ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME"
-                    ],
-                  "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION"
-                    ] 
-                }
-            }
-        },
-        {
-            "rename": {
-                "transformation_order": 4,
-				"column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname"],
-                "columns": {
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"
-            ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME"
-                    ],
-                  "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION"
-                    ] 
-                }
-            }
-        },
-        {
-            "filter": {
-                "transformation_order": 5,
-				"column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"],
-                "columns": {
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"
-            ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME"
-                    ],
-                  "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION"
-                    ] 
-                }
-            }
-        },
-        {
-            "date": {
-                "transformation_order": 6,
-				"column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddatecol"],
-                "columns": {
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME": [
-                     "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"
-            ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME"
-                    ],
-                  "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION"
-                    ] 
-                }
-            }
-        },
-        {
-            "restrictcolumns": {
-                "transformation_order": 7,
-				"column_affected":[
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME"
-                ],
-                "columns": {
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"
-            ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME"
-                    ],
-                  "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION"
-                    ] 
-                },
-                "transformation_operator": "drop"
-            }
-        },
-        {
-            "typecast": {
-                "transformation_order": 8,
-				"column_affected":[
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                ],
-                "columns": {
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"
-            ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME"
-                    ],
-                  "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION"
-                    ] 
-                }
-            }
-        },
-        {
-            "sorting": {
-                "transformation_order": 9,
-				"column_affected":[
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID",
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname"
-                ],
-        "order":{
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": "desc",
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname": "asc"
-                },
-                "columns": {
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"
-            ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME"
-                    ],
-                  "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION"
-                    ] 
-                }
-            }
-        },
-        {
-            "ranking": {
-                "transformation_order": 10,
-				"column_affected":[
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.rankcolumn"
-                ],
-                "columns": {
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"
-            ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME"
-                    ],
-                  "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION"
-                    ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.rankcolumn": [
-                    ""
+                    "DEPARTMENT_ID": [
+                        "DEPARTMENT_ID"
                     ]
                 }
             }
-        },
-		{
-            "expression": {
-                "transformation_order": 11,
-				"column_affected":[
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.expression"
-                ],
+        ],
+        "transformation": [
+            {
+                "string": {
+                    "transformation_order": 2,
+                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"],
+                    "columns": {
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
+                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME",
+                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
+                        ]
+                    },
+                    "transformation_operator": "concat"
+                }
+            },
+            {
+                "join": {
+                    "transformation_order": 3,
+                    "join_operator": "== ",
+                    "join_type": "inner",
+                    "columns_used": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID", "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
+                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID", "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
+                    "columns": {
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
+                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
+                        ]
+                    }
+                }
+            },
+            {
+                "rename": {
+                    "transformation_order": 4,
+                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname"],
+                    "columns": {
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname": [
+                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
+                        ]
+                    }
+                }
+            }
+        ],
+        "target": [
+            {
+                "connection": "post_lineage_etl",
+                "schema": "post_lineage_etl.public",
+                "table": "post_lineage_etl.public.employee_report",
                 "columns": {
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.newdatecol"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                    ],
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname": [
+                    "employee_name": [
                         "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                    ],
-				"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddate"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID": [
-              "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"
-            ],
-                    "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME"
-                    ],
-                  "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION"
-                    ],
-                  "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.rankcolumn": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.rankcolumn"
-                    ],
-					"orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.expression": [
-                    ""
                     ]
                 }
             }
-        }
-    ],
-    "target": [
-        {
-            "connection": "post_lineage_etl",
-            "schema": "post_lineage_etl.public",
-            "table": "post_lineage_etl.public.employee_report",
-            "columns": {
-                "department_name":["orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_NAME"],
-                "employee_id": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                ],
-                "employee_name": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                ],
-                "location":["orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.LOCATION"],
-                "original_salary": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.SALARY"
-                ],
-                "report_generated_at": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standarddatecol"
-                ],
-                "report_id": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.EMPLOYEE_ID"
-                ],
-                "total_compensation": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.rankcolumn"
-                ],
-				"Expression":[
-				    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.expression"
-				]
-            }
-        }
-    ]
-}
+        ]
+    };
 
+    const isSameColumnIgnoreCase = (col1, col2) => {
+        if (!col1 || !col2) return false;
+        return col1.toLowerCase() === col2.toLowerCase();
+    };
+
+    const getColumnName = (fullPath) => fullPath?.split('.').pop() || '';
 
     const generateNodesAndEdges = useCallback(() => {
         const generatedNodes = [];
         const generatedEdges = [];
         let nodeId = 0;
 
+        // Create source nodes
         lineageData.source.forEach((source, sourceIndex) => {
             const tableName = source.table.split('.').pop();
             const columns = Object.keys(source.columns);
@@ -650,12 +266,14 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage }) => {
             });
         });
 
+        // Sort transformations by order
         const sortedTransformations = [...lineageData.transformation].sort((a, b) => {
             const aType = Object.keys(a)[0];
             const bType = Object.keys(b)[0];
             return a[aType].transformation_order - b[bType].transformation_order;
         });
 
+        // Create transformation nodes
         sortedTransformations.forEach((transformation, transformIndex) => {
             const transformType = Object.keys(transformation)[0];
             const transformData = transformation[transformType];
@@ -679,40 +297,48 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage }) => {
         lineageData.target.forEach((target, targetIndex) => {
             const tableName = target.table.split('.').pop();
             const columns = Object.keys(target.columns);
+
+            const transformationCount = lineageData.transformation.length;
+            const targetXPosition = transformationCount > 0
+                ? 350 + transformationCount * 280 + 200
+                : 700;
+
             generatedNodes.push({
                 id: `target-${targetIndex}`,
                 type: 'targetTable',
-                position: { x: 1200, y: targetIndex * 300 + 150 },
+                position: { x: targetXPosition, y: targetIndex * 300 + 150 },
                 data: { id: `target-${targetIndex}`, tableName, columns }
             });
         });
 
         const edgeId = { current: 0 };
-        const getColumnName = (fullPath) => fullPath.split('.').pop();
+
         const isDirectSourceColumn = (columnPath) => lineageData.source.some(source =>
             Object.keys(source.columns).some(sourceCol =>
-                columnPath.toLowerCase() === `${source.table}.${sourceCol}`.toLowerCase()
+                isSameColumnIgnoreCase(columnPath, `${source.table}.${sourceCol}`)
             )
         );
+
         const isAvailableFromPreviousTransform = (columnPath, currentTransformIndex) => {
             if (currentTransformIndex === 0) return false;
             const prevTransform = sortedTransformations[currentTransformIndex - 1];
             const prevType = Object.keys(prevTransform)[0];
             const prevData = prevTransform[prevType];
             return Object.keys(prevData.columns).some(prevOutputCol =>
-                columnPath.toLowerCase() === prevOutputCol.toLowerCase()
+                isSameColumnIgnoreCase(columnPath, prevOutputCol)
             );
         };
 
         sortedTransformations.forEach((transform, transformIndex) => {
             const transformType = Object.keys(transform)[0];
             const transformData = transform[transformType];
+
             if (transformType === 'join' && transformData.columns_used) {
                 transformData.columns_used.forEach(joinColumn => {
                     lineageData.source.forEach((source, sourceIndex) => {
                         Object.keys(source.columns).forEach(sourceColumnName => {
                             const sourceFullPath = `${source.table}.${sourceColumnName}`;
-                            if (joinColumn.toLowerCase() === sourceFullPath.toLowerCase()) {
+                            if (isSameColumnIgnoreCase(joinColumn, sourceFullPath)) {
                                 generatedEdges.push({
                                     id: `edge-${edgeId.current++}`,
                                     source: `source-${sourceIndex}`,
@@ -733,15 +359,17 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage }) => {
                 });
             }
 
+            // Handle regular transformation edges
             Object.entries(transformData.columns).forEach(([transformOutputCol, inputCols]) => {
                 inputCols.forEach(inputCol => {
                     if (!inputCol) return;
+
                     if (transformIndex > 0 && isAvailableFromPreviousTransform(inputCol, transformIndex)) {
                         const prevTransform = sortedTransformations[transformIndex - 1];
                         const prevType = Object.keys(prevTransform)[0];
                         const prevData = prevTransform[prevType];
                         Object.keys(prevData.columns).forEach(prevOutputCol => {
-                            if (inputCol.toLowerCase() === prevOutputCol.toLowerCase()) {
+                            if (isSameColumnIgnoreCase(inputCol, prevOutputCol)) {
                                 generatedEdges.push({
                                     id: `edge-${edgeId.current++}`,
                                     source: `transform-${transformIndex - 1}`,
@@ -754,10 +382,11 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage }) => {
                                 });
                             }
                         });
-                    } else if (isDirectSourceColumn(inputCol)) {
+                    }
+                    else if (isDirectSourceColumn(inputCol)) {
                         lineageData.source.forEach((source, sourceIndex) => {
                             Object.keys(source.columns).forEach(sourceColumnName => {
-                                if (inputCol.toLowerCase() === `${source.table}.${sourceColumnName}`?.toLowerCase()) {
+                                if (isSameColumnIgnoreCase(inputCol, `${source.table}.${sourceColumnName}`)) {
                                     generatedEdges.push({
                                         id: `edge-${edgeId.current++}`,
                                         source: `source-${sourceIndex}`,
@@ -788,7 +417,10 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage }) => {
                         Object.keys(lastTransformData.columns).forEach(transformOutputCol => {
                             const transformColName = getColumnName(transformOutputCol);
                             const sourceColName = getColumnName(sourceCol);
-                            if (sourceCol === transformOutputCol || sourceColName === transformColName || sourceCol.endsWith(`.${transformColName}`)) {
+
+                            if (isSameColumnIgnoreCase(sourceCol, transformOutputCol) ||
+                                isSameColumnIgnoreCase(sourceColName, transformColName) ||
+                                sourceCol.toLowerCase().endsWith(`.${transformColName.toLowerCase()}`)) {
                                 generatedEdges.push({
                                     id: `edge-${edgeId.current++}`,
                                     source: `transform-${lastTransformIndex}`,
@@ -866,133 +498,140 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage }) => {
     }, [activeTab, fetchTableDefinition]);
 
     return (
-        <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
-            <Breadcrumb />
-            {/* Header */}
-            <div className="mb-1">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={onBackToLineage}
-                            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 py-2 rounded-md transition-colors"
-                        >
-                            <ChevronLeft className="h-5 w-5 text-gray-700" />
-                        </button>
-                        <div className="flex items-center gap-2">
-                            <Table className="h-6 w-6 text-[#8d77ba]" />
-                            <span className="text-lg font-semibold text-gray-800">
-                                {TableName}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="px-4">
-                <div className="flex space-x-4">
-                    <button
-                        className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'map'
-                            ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
-                            : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                        onClick={() => setActiveTab('map')}
-                    >
-                        <Map className="h-4 w-4" />
-                        Map
-                    </button>
-                    <button
-                        className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'text'
-                            ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
-                            : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                        onClick={() => setActiveTab('text')}
-                    >
-                        <Code className="h-4 w-4" />
-                        Text
-                    </button>
-                </div>
-            </div>
-
-            <div className="flex-1 overflow-hidden">
-                {activeTab === 'map' ? (
-                    <div className="h-full">
-                        <ReactFlow
-                            nodes={nodes}
-                            edges={edges}
-                            onNodesChange={onNodesChange}
-                            onEdgesChange={onEdgesChange}
-                            nodeTypes={nodeTypes}
-                            fitView
-                            fitViewOptions={{ padding: 100, minZoom: 0.5, maxZoom: 1.5 }}
-                            className="bg-gray-50"
-                            nodesDraggable={true}
-                            nodesConnectable={false}
-                            elementsSelectable={true}
-                            minZoom={0.1}
-                            maxZoom={2}
-                        >
-                            <Controls showInteractive={false} />
-                            <Background variant="dots" gap={20} size={1} color="#e5e7eb" />
-                        </ReactFlow>
-                    </div>
-                ) : (
-                    <div className="h-full flex flex-col p-6 bg-white">
-                        <div className="mb-4">
-                            <div className="flex items-center gap-3 mb-2">
-                                <Code className="h-5 w-5 text-[#8d77ba]" />
-                                <h2 className="text-xl font-semibold text-gray-800">Table Definition</h2>
-                            </div>
-                        </div>
-
-                        {textLoading ? (
-                            <div className="flex-1 flex items-center justify-center">
-                                <div className="text-center">
-                                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#8d77ba] mx-auto mb-3"></div>
-                                    <p className="text-gray-500">Loading table definition...</p>
-                                </div>
-                            </div>
-                        ) : textError ? (
-                            <div className="flex-1 flex items-center justify-center text-center">
-                                <div>
-                                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 inline-block">
-                                        <div className="flex items-center gap-2">
-                                            <AlertCircle className="h-5 w-5 text-red-600" />
-                                            <p className="text-red-700 font-medium">Error loading definition</p>
-                                        </div>
-                                        <p className="text-red-600 text-sm mt-1">{textError}</p>
-                                    </div>
-                                    <div>
-                                        <button
-                                            onClick={fetchTableDefinition}
-                                            className="px-4 py-2 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7f6aa9] transition-colors"
-                                        >
-                                            Retry
-                                        </button>
+        // <ReactFlowProvider>
+            <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
+                {type === "table" && (
+                    <>
+                        <div className="mb-1 px-4 py-2">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={onBackToLineage}
+                                        className="flex items-center gap-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 py-2 rounded-md transition-colors"
+                                    >
+                                        <ChevronLeft className="h-5 w-5 text-gray-700" />
+                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <Table className="h-6 w-6 text-[#8d77ba]" />
+                                        <span className="text-lg font-semibold text-gray-800">
+                                            {TableName?.split('.').pop()}
+                                        </span>
                                     </div>
                                 </div>
+                                {/* {activeTab === 'map' && (
+                                <DownloadButton nodes={nodes} TableName={TableName} />
+                            )} */}
                             </div>
-                        ) : (
-                            <div className="flex-1 rounded-lg overflow-hidden">
-                                <div className="h-full overflow-auto">
-                                    {TableDefinition ? (
-                                        <div className="text-sm text-gray-800">
-                                            <pre className="whitespace-pre-wrap bg-gray-50 p-4 rounded-md border border-gray-200 font-mono">
-                                                {TableDefinition}
-                                            </pre>
-                                        </div>
-                                    ) : (
-                                        <div className="h-full flex flex-col items-center justify-center text-gray-500">
-                                            <Code className="h-12 w-12 mb-3 opacity-50" />
-                                            <p>No table definition available</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                        </div>
+                    </>
                 )}
+
+                <div className="px-4">
+                    <div className="flex space-x-4">
+                        <button
+                            className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'map'
+                                ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
+                                : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            onClick={() => setActiveTab('map')}
+                        >
+                            <Map className="h-4 w-4" />
+                            Map
+                        </button>
+                        <button
+                            className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'text'
+                                ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
+                                : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            onClick={() => setActiveTab('text')}
+                        >
+                            <Code className="h-4 w-4" />
+                            Text
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-hidden">
+                    {activeTab === 'map' ? (
+                        <div className="h-full">
+                            <ReactFlow
+                                nodes={nodes}
+                                edges={edges}
+                                onNodesChange={onNodesChange}
+                                onEdgesChange={onEdgesChange}
+                                nodeTypes={nodeTypes}
+                                fitView
+                                fitViewOptions={{ padding: 100, minZoom: 0.5, maxZoom: 1.5 }}
+                                className="bg-gray-50"
+                                nodesDraggable={true}
+                                nodesConnectable={false}
+                                elementsSelectable={true}
+                                minZoom={0.1}
+                                maxZoom={2}
+                            >
+                                <Controls position="top-right" />
+                                <Background variant="dots" gap={20} size={1} color="#e5e7eb" />
+                            </ReactFlow>
+                        </div>
+                    ) : (
+                        <div className="h-full flex flex-col p-6 bg-white">
+                            <div className="mb-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <Code className="h-5 w-5 text-[#8d77ba]" />
+                                    <h2 className="text-xl font-semibold text-gray-800">Table Definition</h2>
+                                </div>
+                            </div>
+
+                            {textLoading ? (
+                                <div className="flex-1 flex items-center justify-center">
+                                    <div className="text-center">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#8d77ba] mx-auto mb-3"></div>
+                                        <p className="text-gray-500">Loading table definition...</p>
+                                    </div>
+                                </div>
+                            ) : textError ? (
+                                <div className="flex-1 flex items-center justify-center text-center">
+                                    <div>
+                                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 inline-block">
+                                            <div className="flex items-center gap-2">
+                                                <AlertCircle className="h-5 w-5 text-red-600" />
+                                                <p className="text-red-700 font-medium">Error loading definition</p>
+                                            </div>
+                                            <p className="text-red-600 text-sm mt-1">{textError}</p>
+                                        </div>
+                                        <div>
+                                            <button
+                                                onClick={fetchTableDefinition}
+                                                className="px-4 py-2 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7f6aa9] transition-colors"
+                                            >
+                                                Retry
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex-1 rounded-lg overflow-hidden">
+                                    <div className="h-full overflow-auto">
+                                        {TableDefinition ? (
+                                            <div className="text-sm text-gray-800">
+                                                <pre className="whitespace-pre-wrap bg-gray-50 p-4 rounded-md border border-gray-200 font-mono">
+                                                    {TableDefinition}
+                                                </pre>
+                                            </div>
+                                        ) : (
+                                            <div className="h-full flex flex-col items-center justify-center text-gray-500">
+                                                <Code className="h-12 w-12 mb-3 opacity-50" />
+                                                <p>No table definition available</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+        // </ReactFlowProvider>
     );
 };
 
