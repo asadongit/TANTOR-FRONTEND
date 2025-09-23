@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, ChevronLeft, Code, Map, AlertCircle, Download, Camera, FileText } from 'lucide-react';
+import { Table, ChevronLeft, Code, Map, AlertCircle, Download, Camera, FileText, ChevronRight } from 'lucide-react';
 import {
     ReactFlow,
     MiniMap,
@@ -166,120 +166,221 @@ const TargetTableNode = ({ data }) => {
     );
 };
 
+const NavigationButtons = ({ selectedColumn, columnInfo, onBack, onForward }) => {
+    if (!selectedColumn) return null;
+
+    const parseColumnInfo = (columnName) => {
+        if (!columnName) return {};
+
+        const parts = columnName.split('.');
+        if (parts.length === 4) {
+            return {
+                connection: parts[0],
+                schema: parts[1],
+                table: parts[2],
+                column: parts[3]
+            };
+        }
+        return { column: columnName };
+    };
+
+    const parsedInfo = parseColumnInfo(columnInfo?.columnName);
+
+    return (
+        <div
+            className="bg-white shadow-lg border-l border-gray-200 z-50 flex flex-col"
+            style={{
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                width: '320px',
+                height: '100vh',
+                margin: 0,
+                padding: 0
+            }}
+        >
+
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                        <ChevronRight className="h-5 w-5 text-[#8d77ba]" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800">Column Details</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 p-4 overflow-y-auto">
+                <div className="space-y-4">
+                    {parsedInfo.column && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="text-xs text-gray-500 mb-1">Column</div>
+                            <div className="font-semibold text-gray-800">{parsedInfo.column}</div>
+                        </div>
+                    )}
+
+                    {parsedInfo.table && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="text-xs text-gray-500 mb-1">Table</div>
+                            <div className="font-semibold text-gray-800">{parsedInfo.table}</div>
+                        </div>
+                    )}
+
+                    {parsedInfo.schema && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="text-xs text-gray-500 mb-1">Schema</div>
+                            <div className="font-semibold text-gray-800">{parsedInfo.schema}</div>
+                        </div>
+                    )}
+
+                    {parsedInfo.connection && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="text-xs text-gray-500 mb-1">Connection</div>
+                            <div className="font-semibold text-gray-800">{parsedInfo.connection}</div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex gap-3">
+                    <button
+                        onClick={onBack}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-150 group"
+                        title="Show backward lineage"
+                    >
+                        <ChevronLeft className="h-4 w-4 text-gray-600 group-hover:text-gray-800" />
+                        <span className="text-sm font-medium text-gray-600 group-hover:text-gray-800">Back</span>
+                    </button>
+                    <button
+                        onClick={onForward}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-[#8d77ba] border border-[#8d77ba] rounded-lg transition-colors duration-150 group"
+                        title="Show Forward lineage"
+                    >
+                        <span className="text-sm font-medium text-white">Forward</span>
+                        <ChevronRight className="h-4 w-4 text-white" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const nodeTypes = {
     sourceTable: SourceTableNode,
     transformation: TransformationNode,
     targetTable: TargetTableNode,
 };
 
-const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type }) => {
+const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policyIds }) => {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [allEdges, setAllEdges] = useState([]);
     const [selectedColumn, setSelectedColumn] = useState(null);
+    const [selectedColumnInfo, setSelectedColumnInfo] = useState(null);
     const [activeTab, setActiveTab] = useState('map');
     const [loading, setLoading] = useState(false);
     const [textLoading, setTextLoading] = useState(false);
     const [TableDefinition, setTableDefinition] = useState('');
     const [textError, setTextError] = useState(null);
 
-    const lineageData = {
-        "etl": "yes",
-        "source": [
-            {
-                "connection": "orcl_lineage_etl",
-                "schema": "orcl_lineage_etl.test_user1",
-                "table": "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS",
-                "columns": {
-                    "DEPARTMENT_ID": [
-                        "DEPARTMENT_ID"
-                    ],
-                    "DEPARTMENT_NAME": [
-                        "DEPARTMENT_NAME"
-                    ],
-                    "LOCATION": [
-                        "LOCATION"
-                    ]
-                }
-            },
-            {
-                "connection": "orcl_lineage_etl",
-                "schema": "orcl_lineage_etl.test_user1",
-                "table": "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES",
-                "columns": {
-                    "EMPLOYEE_ID": [
-                        "EMPLOYEE_ID"
-                    ],
-                    "FIRST_NAME": [
-                        "FIRST_NAME"
-                    ],
-                    "LAST_NAME": [
-                        "LAST_NAME"
-                    ],
-                    "SALARY": [
-                        "SALARY"
-                    ],
-                    "DEPARTMENT_ID": [
-                        "DEPARTMENT_ID"
-                    ]
-                }
+    const lineageData ={
+    "etl": "yes",
+    "source": [
+        {
+            "connection": "orcl_lineage_etl",
+            "schema": "orcl_lineage_etl.test_user1",
+            "table": "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS",
+            "columns": {
+                "DEPARTMENT_ID": [
+                    "DEPARTMENT_ID"
+                ],
+                "DEPARTMENT_NAME": [
+                    "DEPARTMENT_NAME"
+                ],
+                "LOCATION": [
+                    "LOCATION"
+                ]
             }
-        ],
-        "transformation": [
-            {
-                "string": {
-                    "transformation_order": 2,
-                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"],
-                    "columns": {
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME",
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
-                        ]
-                    },
-                    "transformation_operator": "concat"
-                }
-            },
-            {
-                "join": {
-                    "transformation_order": 3,
-                    "join_operator": "== ",
-                    "join_type": "inner",
-
-                    "columns_used": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID", "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
-                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID", "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
-                    "columns": {
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
-                        ]
-                    }
-                }
-            },
-            {
-                "rename": {
-                    "transformation_order": 4,
-                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname"],
-                    "columns": {
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname": [
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
-                        ]
-                    }
-                }
+        },
+        {
+            "connection": "orcl_lineage_etl",
+            "schema": "orcl_lineage_etl.test_user1",
+            "table": "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES",
+            "columns": {
+                "EMPLOYEE_ID": [
+                    "EMPLOYEE_ID"
+                ],
+                "FIRST_NAME": [
+                    "FIRST_NAME"
+                ],
+                "LAST_NAME": [
+                    "LAST_NAME"
+                ],
+                "SALARY": [
+                    "SALARY"
+                ],
+				      "DEPARTMENT_ID": [
+                    "DEPARTMENT_ID"
+                ]
             }
-        ],
-        "target": [
-            {
-                "connection": "post_lineage_etl",
-                "schema": "post_lineage_etl.public",
-                "table": "post_lineage_etl.public.employee_report",
+        }
+    ],
+    "transformation": [
+        {
+            "string": {
+                "transformation_order": 2,
+				"column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"],
                 "columns": {
-                    "employee_name": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
+                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME",
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
+                    ]
+                },
+                "transformation_operator": "concat"
+            }
+        },
+		{
+            "join": {
+                "transformation_order": 3,
+				"join_operator": "== ",
+				"join_type": "inner",
+				 
+                "columns_used":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID","orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
+                "column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID","orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
+                "columns": {
+                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
                     ]
                 }
             }
-        ]
-    }
-
+        },
+		{
+            "rename": {
+                "transformation_order": 4,
+				"column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname"],
+                "columns": {
+                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname": [
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
+                    ]
+                }
+            }
+		}
+		],
+    "target": [
+        {
+            "connection": "post_lineage_etl",
+            "schema": "post_lineage_etl.public",
+            "table": "post_lineage_etl.public.employee_report",
+            "columns": {
+                "employee_name": [
+                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
+                ]
+            }
+        }
+    ]
+}
 
 
     const isSameColumnIgnoreCase = (col1, col2) => {
@@ -290,13 +391,22 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type }) => {
     const getColumnName = (fullPath) => fullPath?.split('.').pop() || '';
 
     const handleColumnClick = useCallback((columnKey, nodeId, columnName, nodeType) => {
+        setSelectedColumnInfo({
+            columnKey,
+            nodeId,
+            columnName,
+            nodeType
+        });
+
         if (selectedColumn === columnKey) {
             setSelectedColumn(null);
+            setSelectedColumnInfo(null);
             setEdges(allEdges);
             return;
         }
 
         setSelectedColumn(columnKey);
+
 
         const relatedEdges = new Set();
         const visited = new Set();
@@ -372,6 +482,101 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type }) => {
         const filteredEdges = allEdges.filter(edge => relatedEdges.has(edge.id));
         setEdges(filteredEdges);
     }, [selectedColumn, allEdges, setEdges]);
+
+    const handleBack = () => {
+        if (!selectedColumnInfo || !allEdges || allEdges.length === 0) return;
+
+        console.log('Back button clicked');
+        console.log('Current selected column:', selectedColumnInfo);
+
+        const { nodeId, columnName } = selectedColumnInfo;
+        const relatedEdges = new Set();
+        const visited = new Set();
+
+        const traceBackward = (currentNodeId, currentColumn) => {
+            if (visited.has(`backward-${currentNodeId}-${currentColumn}`)) return;
+            visited.add(`backward-${currentNodeId}-${currentColumn}`);
+
+            allEdges.forEach(edge => {
+                const targetHandle = edge.targetHandle;
+                const sourceHandle = edge.sourceHandle;
+
+                if (targetHandle && targetHandle.includes(currentNodeId)) {
+                    const targetColumnMatch = targetHandle.match(/-([^-]+)-(?:input|output)$/);
+                    const targetColumn = targetColumnMatch ? targetColumnMatch[1] : targetHandle.split('-').pop();
+
+                    if (targetColumn && (
+                        isSameColumnIgnoreCase(currentColumn, targetColumn) ||
+                        isSameColumnIgnoreCase(getColumnName(currentColumn), targetColumn) ||
+                        targetHandle.includes(currentColumn) ||
+                        targetHandle.includes(getColumnName(currentColumn))
+                    )) {
+                        relatedEdges.add(edge.id);
+
+                        if (sourceHandle) {
+                            const sourceNodeId = edge.source;
+                            let sourceColumn;
+
+                            if (sourceHandle.includes('-output')) {
+                                const sourceColumnMatch = sourceHandle.match(/-([^-]+)-output$/);
+                                sourceColumn = sourceColumnMatch ? sourceColumnMatch[1] : null;
+                            } else {
+                                const sourceColumnMatch = sourceHandle.match(/-([^-]+)$/);
+                                sourceColumn = sourceColumnMatch ? sourceColumnMatch[1] : null;
+                            }
+
+                            if (sourceColumn) {
+                                traceBackward(sourceNodeId, sourceColumn);
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        traceBackward(nodeId, columnName);
+        const filteredEdges = allEdges.filter(edge => relatedEdges.has(edge.id));
+        setEdges(filteredEdges);
+    };
+
+    const handleForward = () => {
+        if (!selectedColumnInfo || !allEdges || allEdges.length === 0) return;
+
+        console.log('Forward button clicked');
+        console.log('Current selected column:', selectedColumnInfo);
+
+        const { nodeId, columnName } = selectedColumnInfo;
+        const relatedEdges = new Set();
+        const visited = new Set();
+
+        const traceForward = (currentNodeId, currentColumn) => {
+            if (visited.has(`${currentNodeId}-${currentColumn}`)) return;
+            visited.add(`${currentNodeId}-${currentColumn}`);
+
+            allEdges.forEach(edge => {
+                const sourceHandle = edge.sourceHandle;
+                if (sourceHandle && sourceHandle.includes(currentNodeId) &&
+                    (sourceHandle.includes(currentColumn) ||
+                        sourceHandle.includes(getColumnName(currentColumn)))) {
+                    relatedEdges.add(edge.id);
+
+                    const targetHandle = edge.targetHandle;
+                    if (targetHandle) {
+                        const targetNodeId = edge.target;
+                        const targetColumnMatch = targetHandle.match(/-([^-]+)-(?:input|output)$/);
+                        if (targetColumnMatch) {
+                            const targetColumn = targetColumnMatch[1];
+                            traceForward(targetNodeId, targetColumn);
+                        }
+                    }
+                }
+            });
+        };
+
+        traceForward(nodeId, columnName);
+        const filteredEdges = allEdges.filter(edge => relatedEdges.has(edge.id));
+        setEdges(filteredEdges);
+    };
 
     const generateNodesAndEdges = useCallback(() => {
         const generatedNodes = [];
@@ -613,7 +818,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type }) => {
                     'accept': 'application/json',
                 },
                 body: JSON.stringify({
-                    "matched_policy_ids": [362],
+                    "matched_policy_ids": policyIds,
                     "connection": connection,
                     "schema": schema,
                     "table": table,
@@ -664,7 +869,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type }) => {
                                         </span>
                                     </div>
                                 </div>
-                                {/* {activeTab === 'map' && (
+                                 {/* {activeTab === 'map' && (
                                 <DownloadButton nodes={nodes} TableName={TableName} />
                             )} */}
                             </div>
@@ -697,9 +902,15 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type }) => {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-hidden">
+                <div className={`flex-1 overflow-hidden transition-all duration-300 ${selectedColumn ? 'mr-80' : 'mr-0'}`}>
                     {activeTab === 'map' ? (
-                        <div className="h-full">
+                        <div className="h-full relative">
+                            <NavigationButtons
+                                selectedColumn={selectedColumn}
+                                columnInfo={selectedColumnInfo}
+                                onBack={handleBack}
+                                onForward={handleForward}
+                            />
                             <ReactFlow
                                 nodes={nodes}
                                 edges={edges}

@@ -1698,6 +1698,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           apiBaseUrl={API_BASE_URL}
           onBackToLineage={() => { }}
           type="column"
+          policyIds = {policyIds}
         />
       </div>
     );
@@ -1709,6 +1710,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
         viewName={selectedViewForMapping}
         apiBaseUrl={API_BASE_URL}
         onBackToLineage={handleBackToLineage}
+        policyIds = {policyIds}
       />
     );
   }
@@ -1720,6 +1722,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
         apiBaseUrl={API_BASE_URL}
         onBackToLineage={handleTableBackToLineage}
         type="table"
+        policyIds = {policyIds}
       />
     );
   }

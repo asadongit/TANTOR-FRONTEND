@@ -121,7 +121,7 @@ const nodeTypes = {
   joinNode: JoinNode,
 };
 
-const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
+const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage, policyIds }) => {
   const [viewData, setViewData] = useState(null);
   const [viewDefinition, setViewDefinition] = useState('');
   const [activeTab, setActiveTab] = useState('map');
@@ -234,7 +234,7 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
           'Content-Type': 'application/json',
           'accept': 'application/json'
         },
-        body: JSON.stringify({ view: viewName, "matched_policy_ids": [19] })
+        body: JSON.stringify({ view: viewName, "matched_policy_ids": policyIds })
       });
 
       if (!response.ok) {
@@ -264,7 +264,7 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage }) => {
           'accept': 'application/json'
         },
         body: JSON.stringify({ 
-          "matched_policy_ids": [19], 
+          "matched_policy_ids": policyIds, 
           "view_name": viewName, 
           "type": "view" 
         })
