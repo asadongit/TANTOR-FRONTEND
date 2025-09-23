@@ -25,7 +25,7 @@ import toast from "react-hot-toast";
 import ReportSummaryComponent from "./components/ReportSummaryComponent";
 import {CardGrid} from "../../../components/ReportingCardGrid"
 import Breadcrumb from "../../../components/Breadcrumb";
-import {birtEncrypt} from "./utils/Crypto";
+import {birtEncrypt} from "./utils/BirtCrypto";
 import {encrypt} from "../../../utils/Crypto"
 
 const ReportConfigDashboard = () => {
