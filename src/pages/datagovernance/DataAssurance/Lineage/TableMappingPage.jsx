@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, ChevronLeft, Code, Map, AlertCircle, Download, Camera, FileText } from 'lucide-react';
+import {
+    Table, ChevronLeft, Code, Map, AlertCircle, Download, Camera, FileText, ChevronRight, Clipboard,
+    Check
+} from 'lucide-react';
 import {
     ReactFlow,
     MiniMap,
@@ -16,8 +19,11 @@ import {
     getViewportForBounds,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import DownloadHelper from './DownloadHelper';
+import Breadcrumb from '../../../../components/Breadcrumb';
 
 const SourceTableNode = ({ data }) => {
+    const { selectedColumn, onColumnClick } = data;
     return (
         <div className="bg-white border-2 border-blue-300 rounded-lg shadow-lg min-w-[200px]">
             <div className="bg-blue-100 px-3 py-2 rounded-t-lg border-b">
@@ -27,24 +33,37 @@ const SourceTableNode = ({ data }) => {
                 </div>
             </div>
             <div className="p-2">
-                {data.columns?.map((column, index) => (
-                    <div key={index} className="flex items-center justify-between py-1 px-2 hover:bg-gray-50 rounded text-xs">
-                        <span className="text-gray-700">{column}</span>
-                        <Handle
-                            type="source"
-                            position={Position.Right}
-                            id={`${data.id}-${column}`}
-                            className="!w-2 !h-2 !bg-blue-500 !border-blue-600"
-                            style={{ top: 'auto', transform: 'none', position: 'relative' }}
-                        />
-                    </div>
-                ))}
+                {data.columns?.map((column, index) => {
+                    const columnKey = `${data.id}-${column}`;
+                    const isSelected = selectedColumn === columnKey;
+
+                    return (
+                        <div
+                            key={index}
+                            className={`flex items-center justify-between py-1 px-2 hover:bg-gray-50 rounded text-xs cursor-pointer transition-colors ${isSelected ? 'bg-blue-100 border border-blue-300' : ''
+                                }`}
+                            onClick={() => onColumnClick && onColumnClick(columnKey, data.id, column, 'source')}
+                        >
+                            <span className={`text-gray-700 ${isSelected ? 'font-semibold text-blue-800' : ''}`}>
+                                {column}
+                            </span>
+                            <Handle
+                                type="source"
+                                position={Position.Right}
+                                id={`${data.id}-${column}`}
+                                className="!w-2 !h-2 !bg-blue-500 !border-blue-600"
+                                style={{ top: 'auto', transform: 'none', position: 'relative' }}
+                            />
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
 };
 
 const TransformationNode = ({ data }) => {
+    const { selectedColumn, onColumnClick } = data;
     const getTransformationColor = (type) => {
         const colors = {
             arithmetic: 'bg-transparent border-red-300 text-red-800',
@@ -73,12 +92,19 @@ const TransformationNode = ({ data }) => {
             <div className="p-2">
                 {data.columns?.map((column, index) => {
                     const columnName = column.split('.').pop();
+                    const columnKey = `${data.id}-${column}`;
+                    const isSelected = selectedColumn === columnKey;
                     const isAffected = data.affectedColumns?.some(affected =>
                         affected.includes(columnName) || affected === column
                     );
 
                     return (
-                        <div key={index} className="flex items-center justify-between py-1 px-2 hover:bg-white/50 rounded text-xs">
+                        <div
+                            key={index}
+                            className={`flex items-center justify-between py-1 px-2 hover:bg-white/50 rounded text-xs cursor-pointer transition-colors ${isSelected ? 'bg-white border border-gray-400' : ''
+                                }`}
+                            onClick={() => onColumnClick && onColumnClick(columnKey, data.id, column, 'transformation')}
+                        >
                             <Handle
                                 type="target"
                                 position={Position.Left}
@@ -86,7 +112,8 @@ const TransformationNode = ({ data }) => {
                                 className="!w-2 !h-2 !bg-gray-500 !border-gray-600"
                                 style={{ top: 'auto', transform: 'none', position: 'relative' }}
                             />
-                            <span className={`text-center flex-1 mx-2 ${isAffected ? 'font-bold bg-yellow-200 px-1 rounded border border-yellow-400' : ''}`}>
+                            <span className={`text-center flex-1 mx-2 ${isAffected ? 'font-bold bg-yellow-200 px-1 rounded border border-yellow-400' : ''
+                                } ${isSelected ? 'font-bold text-gray-800' : ''}`}>
                                 {columnName}
                             </span>
                             <Handle
@@ -105,6 +132,7 @@ const TransformationNode = ({ data }) => {
 };
 
 const TargetTableNode = ({ data }) => {
+    const { selectedColumn, onColumnClick } = data;
     return (
         <div className="bg-white border-2 border-green-300 rounded-lg shadow-lg min-w-[200px]">
             <div className="bg-green-100 px-3 py-2 rounded-t-lg border-b">
@@ -114,18 +142,133 @@ const TargetTableNode = ({ data }) => {
                 </div>
             </div>
             <div className="p-2">
-                {data.columns?.map((column, index) => (
-                    <div key={index} className="flex items-center justify-between py-1 px-2 hover:bg-gray-50 rounded text-xs">
-                        <Handle
-                            type="target"
-                            position={Position.Left}
-                            id={`${data.id}-${column}`}
-                            className="!w-2 !h-2 !bg-green-500 !border-green-600"
-                            style={{ top: 'auto', transform: 'none', position: 'relative' }}
-                        />
-                        <span className="text-gray-700 ml-2">{column}</span>
+                {data.columns?.map((column, index) => {
+                    const columnKey = `${data.id}-${column}`;
+                    const isSelected = selectedColumn === columnKey;
+
+                    return (
+                        <div
+                            key={index}
+                            className={`flex items-center justify-between py-1 px-2 hover:bg-gray-50 rounded text-xs cursor-pointer transition-colors ${isSelected ? 'bg-green-100 border border-green-300' : ''
+                                }`}
+                            onClick={() => onColumnClick && onColumnClick(columnKey, data.id, column, 'target')}
+                        >
+                            <Handle
+                                type="target"
+                                position={Position.Left}
+                                id={`${data.id}-${column}`}
+                                className="!w-2 !h-2 !bg-green-500 !border-green-600"
+                                style={{ top: 'auto', transform: 'none', position: 'relative' }}
+                            />
+                            <span className={`text-gray-700 ml-2 ${isSelected ? 'font-semibold text-green-800' : ''}`}>
+                                {column}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+const NavigationButtons = ({ selectedColumn, columnInfo, onBack, onForward, onClose }) => {
+    if (!selectedColumn) return null;
+
+    const parseColumnInfo = (columnName) => {
+        if (!columnName) return {};
+
+        const parts = columnName.split('.');
+        if (parts.length === 4) {
+            return {
+                connection: parts[0],
+                schema: parts[1],
+                table: parts[2],
+                column: parts[3]
+            };
+        }
+        return { column: columnName };
+    };
+
+    const parsedInfo = parseColumnInfo(columnInfo?.columnName);
+
+    return (
+        <div
+            className="bg-white shadow-lg border-l border-gray-200 z-50 flex flex-col"
+            style={{
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                width: '320px',
+                height: '100vh',
+                margin: 0,
+                padding: 0
+            }}
+        >
+
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50"
+                onClick={onClose}
+                title="Close Details">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                        <ChevronRight className="h-5 w-5 text-[#8d77ba]" />
                     </div>
-                ))}
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800">Column Details</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 p-4 overflow-y-auto">
+                <div className="space-y-4">
+                    {parsedInfo.column && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="text-xs text-gray-500 mb-1">Column</div>
+                            <div className="font-semibold text-gray-800">{parsedInfo.column}</div>
+                        </div>
+                    )}
+
+                    {parsedInfo.table && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="text-xs text-gray-500 mb-1">Table</div>
+                            <div className="font-semibold text-gray-800">{parsedInfo.table}</div>
+                        </div>
+                    )}
+
+                    {parsedInfo.schema && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="text-xs text-gray-500 mb-1">Schema</div>
+                            <div className="font-semibold text-gray-800">{parsedInfo.schema}</div>
+                        </div>
+                    )}
+
+                    {parsedInfo.connection && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="text-xs text-gray-500 mb-1">Connection</div>
+                            <div className="font-semibold text-gray-800">{parsedInfo.connection}</div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex gap-3">
+                    <button
+                        onClick={onBack}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-150 group"
+                        title="Show backward lineage"
+                    >
+                        <ChevronLeft className="h-4 w-4 text-gray-600 group-hover:text-gray-800" />
+                        <span className="text-sm font-medium text-gray-600 group-hover:text-gray-800">Back</span>
+                    </button>
+                    <button
+                        onClick={onForward}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-[#8d77ba] border border-[#8d77ba] rounded-lg transition-colors duration-150 group"
+                        title="Show Forward lineage"
+                    >
+                        <span className="text-sm font-medium text-white">Forward</span>
+                        <ChevronRight className="h-4 w-4 text-white" />
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -137,110 +280,85 @@ const nodeTypes = {
     targetTable: TargetTableNode,
 };
 
-const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api", onBackToLineage = () => { }, type = "table" }) => {
+const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policyIds, columnName = "" }) => {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [allEdges, setAllEdges] = useState([]);
+    const [selectedColumn, setSelectedColumn] = useState(null);
+    const [selectedColumnInfo, setSelectedColumnInfo] = useState(null);
     const [activeTab, setActiveTab] = useState('map');
     const [loading, setLoading] = useState(false);
     const [textLoading, setTextLoading] = useState(false);
     const [TableDefinition, setTableDefinition] = useState('');
     const [textError, setTextError] = useState(null);
+    const [isCopied, setIsCopied] = useState(false);
+    const [lineageData, setLineageData] = useState(null);
+    const [lineageError, setLineageError] = useState(null);
 
-    const lineageData = {
-        "etl": "yes",
-        "source": [
-            {
-                "connection": "orcl_lineage_etl",
-                "schema": "orcl_lineage_etl.test_user1",
-                "table": "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS",
-                "columns": {
-                    "DEPARTMENT_ID": [
-                        "DEPARTMENT_ID"
-                    ],
-                    "DEPARTMENT_NAME": [
-                        "DEPARTMENT_NAME"
-                    ],
-                    "LOCATION": [
-                        "LOCATION"
-                    ]
-                }
-            },
-            {
-                "connection": "orcl_lineage_etl",
-                "schema": "orcl_lineage_etl.test_user1",
-                "table": "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES",
-                "columns": {
-                    "EMPLOYEE_ID": [
-                        "EMPLOYEE_ID"
-                    ],
-                    "FIRST_NAME": [
-                        "FIRST_NAME"
-                    ],
-                    "LAST_NAME": [
-                        "LAST_NAME"
-                    ],
-                    "SALARY": [
-                        "SALARY"
-                    ],
-                    "DEPARTMENT_ID": [
-                        "DEPARTMENT_ID"
-                    ]
-                }
-            }
-        ],
-        "transformation": [
-            {
-                "string": {
-                    "transformation_order": 2,
-                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"],
-                    "columns": {
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME",
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
-                        ]
-                    },
-                    "transformation_operator": "concat"
-                }
-            },
-            {
-                "join": {
-                    "transformation_order": 3,
-                    "join_operator": "== ",
-                    "join_type": "inner",
-                    "columns_used": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID", "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
-                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID", "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
-                    "columns": {
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
-                        ]
-                    }
-                }
-            },
-            {
-                "rename": {
-                    "transformation_order": 4,
-                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname"],
-                    "columns": {
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname": [
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
-                        ]
-                    }
-                }
-            }
-        ],
-        "target": [
-            {
-                "connection": "post_lineage_etl",
-                "schema": "post_lineage_etl.public",
-                "table": "post_lineage_etl.public.employee_report",
-                "columns": {
-                    "employee_name": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                    ]
-                }
-            }
-        ]
+    const handleCopy = () => {
+        if (TableDefinition) {
+            navigator.clipboard.writeText(TableDefinition).then(() => {
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
     };
+
+    // API call for lineage data
+    const fetchLineageData = useCallback(async () => {
+        if (!TableName || !apiBaseUrl || !policyIds) return;
+
+        setLoading(true);
+        setLineageError(null);
+
+        try {
+            const endpoint = type === 'column' ? 'col_lineage' : 'map_view';
+            let requestBody = {
+                matched_policy_ids: policyIds,
+                table: TableName
+            };
+
+            if (type === 'column' && columnName) {
+                const columnParts = columnName.split('.');
+                if (columnParts.length >= 4) {
+                    const tableFromColumn = columnParts.slice(0, -1).join('.');
+                    const actualColumn = columnParts[columnParts.length - 1];
+                    requestBody = {
+                        matched_policy_ids: policyIds,
+                        table: tableFromColumn,
+                        column: actualColumn
+                    };
+                } else {
+                    requestBody.column = columnName;
+                }
+            }
+
+            const response = await fetch(`${apiBaseUrl}/etl/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'accept': 'application/json'
+                },
+                body: JSON.stringify(requestBody),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
+                throw new Error(`HTTP ${response.status}: ${errorData.detail || 'Failed to fetch lineage data.'}`);
+            }
+
+            const data = await response.json();
+            setLineageData(data);
+
+        } catch (err) {
+            console.error('Error fetching lineage data:', err);
+            setLineageError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [TableName, apiBaseUrl, policyIds, type, columnName]);
 
     const isSameColumnIgnoreCase = (col1, col2) => {
         if (!col1 || !col2) return false;
@@ -249,7 +367,196 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
 
     const getColumnName = (fullPath) => fullPath?.split('.').pop() || '';
 
+    const handleColumnClick = useCallback((columnKey, nodeId, columnName, nodeType) => {
+        setSelectedColumnInfo({
+            columnKey,
+            nodeId,
+            columnName,
+            nodeType
+        });
+
+        if (selectedColumn === columnKey) {
+            setSelectedColumn(null);
+            setSelectedColumnInfo(null);
+            setEdges(allEdges);
+            return;
+        }
+
+        setSelectedColumn(columnKey);
+
+        const relatedEdges = new Set();
+        const visited = new Set();
+
+        const traceForward = (currentNodeId, currentColumn) => {
+            if (visited.has(`${currentNodeId}-${currentColumn}`)) return;
+            visited.add(`${currentNodeId}-${currentColumn}`);
+
+            allEdges.forEach(edge => {
+                const sourceHandle = edge.sourceHandle;
+                if (sourceHandle && sourceHandle.includes(currentNodeId) &&
+                    (sourceHandle.includes(currentColumn) ||
+                        sourceHandle.includes(getColumnName(currentColumn)))) {
+                    relatedEdges.add(edge.id);
+
+                    const targetHandle = edge.targetHandle;
+                    if (targetHandle) {
+                        const targetNodeId = edge.target;
+                        const targetColumnMatch = targetHandle.match(/-([^-]+)-(?:input|output)$/);
+                        if (targetColumnMatch) {
+                            const targetColumn = targetColumnMatch[1];
+                            traceForward(targetNodeId, targetColumn);
+                        }
+                    }
+                }
+            });
+        };
+
+        const traceBackward = (currentNodeId, currentColumn) => {
+            if (visited.has(`backward-${currentNodeId}-${currentColumn}`)) return;
+            visited.add(`backward-${currentNodeId}-${currentColumn}`);
+
+            allEdges.forEach(edge => {
+                const targetHandle = edge.targetHandle;
+                const sourceHandle = edge.sourceHandle;
+
+                if (targetHandle && targetHandle.includes(currentNodeId)) {
+                    const targetColumnMatch = targetHandle.match(/-([^-]+)-(?:input|output)$/);
+                    const targetColumn = targetColumnMatch ? targetColumnMatch[1] : targetHandle.split('-').pop();
+
+                    if (targetColumn && (
+                        isSameColumnIgnoreCase(currentColumn, targetColumn) ||
+                        isSameColumnIgnoreCase(getColumnName(currentColumn), targetColumn) ||
+                        targetHandle.includes(currentColumn) ||
+                        targetHandle.includes(getColumnName(currentColumn))
+                    )) {
+                        relatedEdges.add(edge.id);
+
+                        if (sourceHandle) {
+                            const sourceNodeId = edge.source;
+                            let sourceColumn;
+
+                            if (sourceHandle.includes('-output')) {
+                                const sourceColumnMatch = sourceHandle.match(/-([^-]+)-output$/);
+                                sourceColumn = sourceColumnMatch ? sourceColumnMatch[1] : null;
+                            } else {
+                                const sourceColumnMatch = sourceHandle.match(/-([^-]+)$/);
+                                sourceColumn = sourceColumnMatch ? sourceColumnMatch[1] : null;
+                            }
+
+                            if (sourceColumn) {
+                                traceBackward(sourceNodeId, sourceColumn);
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        traceForward(nodeId, columnName);
+        traceBackward(nodeId, columnName);
+
+        const filteredEdges = allEdges.filter(edge => relatedEdges.has(edge.id));
+        setEdges(filteredEdges);
+    }, [selectedColumn, allEdges, setEdges]);
+
+    const handleBack = () => {
+        if (!selectedColumnInfo || !allEdges || allEdges.length === 0) return;
+
+        console.log('Back button clicked');
+        console.log('Current selected column:', selectedColumnInfo);
+
+        const { nodeId, columnName } = selectedColumnInfo;
+        const relatedEdges = new Set();
+        const visited = new Set();
+
+        const traceBackward = (currentNodeId, currentColumn) => {
+            if (visited.has(`backward-${currentNodeId}-${currentColumn}`)) return;
+            visited.add(`backward-${currentNodeId}-${currentColumn}`);
+
+            allEdges.forEach(edge => {
+                const targetHandle = edge.targetHandle;
+                const sourceHandle = edge.sourceHandle;
+
+                if (targetHandle && targetHandle.includes(currentNodeId)) {
+                    const targetColumnMatch = targetHandle.match(/-([^-]+)-(?:input|output)$/);
+                    const targetColumn = targetColumnMatch ? targetColumnMatch[1] : targetHandle.split('-').pop();
+
+                    if (targetColumn && (
+                        isSameColumnIgnoreCase(currentColumn, targetColumn) ||
+                        isSameColumnIgnoreCase(getColumnName(currentColumn), targetColumn) ||
+                        targetHandle.includes(currentColumn) ||
+                        targetHandle.includes(getColumnName(currentColumn))
+                    )) {
+                        relatedEdges.add(edge.id);
+
+                        if (sourceHandle) {
+                            const sourceNodeId = edge.source;
+                            let sourceColumn;
+
+                            if (sourceHandle.includes('-output')) {
+                                const sourceColumnMatch = sourceHandle.match(/-([^-]+)-output$/);
+                                sourceColumn = sourceColumnMatch ? sourceColumnMatch[1] : null;
+                            } else {
+                                const sourceColumnMatch = sourceHandle.match(/-([^-]+)$/);
+                                sourceColumn = sourceColumnMatch ? sourceColumnMatch[1] : null;
+                            }
+
+                            if (sourceColumn) {
+                                traceBackward(sourceNodeId, sourceColumn);
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        traceBackward(nodeId, columnName);
+        const filteredEdges = allEdges.filter(edge => relatedEdges.has(edge.id));
+        setEdges(filteredEdges);
+    };
+
+    const handleForward = () => {
+        if (!selectedColumnInfo || !allEdges || allEdges.length === 0) return;
+
+        console.log('Forward button clicked');
+        console.log('Current selected column:', selectedColumnInfo);
+
+        const { nodeId, columnName } = selectedColumnInfo;
+        const relatedEdges = new Set();
+        const visited = new Set();
+
+        const traceForward = (currentNodeId, currentColumn) => {
+            if (visited.has(`${currentNodeId}-${currentColumn}`)) return;
+            visited.add(`${currentNodeId}-${currentColumn}`);
+
+            allEdges.forEach(edge => {
+                const sourceHandle = edge.sourceHandle;
+                if (sourceHandle && sourceHandle.includes(currentNodeId) &&
+                    (sourceHandle.includes(currentColumn) ||
+                        sourceHandle.includes(getColumnName(currentColumn)))) {
+                    relatedEdges.add(edge.id);
+
+                    const targetHandle = edge.targetHandle;
+                    if (targetHandle) {
+                        const targetNodeId = edge.target;
+                        const targetColumnMatch = targetHandle.match(/-([^-]+)-(?:input|output)$/);
+                        if (targetColumnMatch) {
+                            const targetColumn = targetColumnMatch[1];
+                            traceForward(targetNodeId, targetColumn);
+                        }
+                    }
+                }
+            });
+        };
+
+        traceForward(nodeId, columnName);
+        const filteredEdges = allEdges.filter(edge => relatedEdges.has(edge.id));
+        setEdges(filteredEdges);
+    };
+
     const generateNodesAndEdges = useCallback(() => {
+        if (!lineageData) return;
+
         const generatedNodes = [];
         const generatedEdges = [];
         let nodeId = 0;
@@ -262,7 +569,11 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
                 id: `source-${sourceIndex}`,
                 type: 'sourceTable',
                 position: { x: 50, y: sourceIndex * 300 + 50 },
-                data: { id: `source-${sourceIndex}`, tableName, columns }
+                data: {
+                    id: `source-${sourceIndex}`,
+                    tableName,
+                    columns
+                }
             });
         });
 
@@ -286,10 +597,10 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
                 data: {
                     id: `transform-${transformIndex}`,
                     type: transformType,
-                    operator: transformData.transformation_operator,
+                    operator: transformData.transformation_operator || transformData.join_operator,
                     columns,
                     affectedColumns,
-                    order: transformData.transformation_order,
+                    order: transformData.transformation_order
                 }
             });
         });
@@ -307,7 +618,11 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
                 id: `target-${targetIndex}`,
                 type: 'targetTable',
                 position: { x: targetXPosition, y: targetIndex * 300 + 150 },
-                data: { id: `target-${targetIndex}`, tableName, columns }
+                data: {
+                    id: `target-${targetIndex}`,
+                    tableName,
+                    columns
+                }
             });
         });
 
@@ -439,12 +754,33 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
         }
 
         setNodes(generatedNodes);
+        setAllEdges(generatedEdges);
         setEdges(generatedEdges);
-    }, [setNodes, setEdges]);
+    }, [lineageData]);
+
+    // Fetch lineage data on component mount
+    useEffect(() => {
+        fetchLineageData();
+    }, [fetchLineageData]);
 
     useEffect(() => {
-        generateNodesAndEdges();
-    }, [generateNodesAndEdges]);
+        if (lineageData) {
+            generateNodesAndEdges();
+        }
+    }, [lineageData, generateNodesAndEdges]);
+
+    useEffect(() => {
+        setNodes(currentNodes =>
+            currentNodes.map(node => ({
+                ...node,
+                data: {
+                    ...node.data,
+                    selectedColumn,
+                    onColumnClick: handleColumnClick
+                }
+            }))
+        );
+    }, [selectedColumn, handleColumnClick, setNodes]);
 
     const fetchTableDefinition = useCallback(async () => {
         if (!TableName || !apiBaseUrl) return;
@@ -467,7 +803,7 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
                     'accept': 'application/json',
                 },
                 body: JSON.stringify({
-                    "matched_policy_ids": [362],
+                    "matched_policy_ids": policyIds,
                     "connection": connection,
                     "schema": schema,
                     "table": table,
@@ -489,7 +825,7 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
         } finally {
             setTextLoading(false);
         }
-    }, [TableName, apiBaseUrl]);
+    }, [TableName, apiBaseUrl, policyIds]);
 
     useEffect(() => {
         if (activeTab === 'text') {
@@ -497,12 +833,54 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
         }
     }, [activeTab, fetchTableDefinition]);
 
+    const handleCloseDetails = () => {
+        setSelectedColumn(null);
+        setSelectedColumnInfo(null);
+        setEdges(allEdges);
+    };
+
+    // Show loading state while fetching lineage data
+    if (loading) {
+        return (
+            <div className="bg-gray-50 h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8d77ba] mx-auto mb-4"></div>
+                    <p className="text-gray-600 text-lg">Loading lineage data...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show error state if lineage data fetch failed
+    if (lineageError) {
+        return (
+            <div className="bg-gray-50 h-screen flex items-center justify-center">
+                <div className="text-center max-w-md">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-4">
+                        <AlertCircle className="h-8 w-8 text-red-600 mx-auto mb-3" />
+                        <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Lineage</h3>
+                        <p className="text-red-600 text-sm">{lineageError}</p>
+                    </div>
+                    <div className="space-x-3">
+                        <button
+                            onClick={fetchLineageData}
+                            className="px-4 py-2 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7f6aa9] transition-colors"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        // <ReactFlowProvider>
-            <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
+        <ReactFlowProvider>
+            <div className="bg-gray-50 h-screen flex flex-col overflow-hidden relative p-2">
                 {type === "table" && (
                     <>
-                        <div className="mb-1 px-4 py-2">
+                        <Breadcrumb />
+                        <div className="mb-1 px-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <button
@@ -518,12 +896,18 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
                                         </span>
                                     </div>
                                 </div>
-                                {/* {activeTab === 'map' && (
-                                <DownloadButton nodes={nodes} TableName={TableName} />
-                            )} */}
+                                {activeTab === 'map' && (
+                                    <DownloadHelper nodes={nodes} TableName={TableName} />
+                                )}
                             </div>
                         </div>
                     </>
+                )}
+
+                {type === "column" && activeTab === 'map' && (
+                    <div className="mb-1 px-4 py-2 absolute top-0 right-0 z-10">
+                        <DownloadHelper nodes={nodes} TableName={TableName} />
+                    </div>
                 )}
 
                 <div className="px-4">
@@ -551,9 +935,16 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-hidden">
+                <div className={`flex-1 overflow-hidden transition-all duration-300 ${selectedColumn ? 'mr-80' : 'mr-0'}`}>
                     {activeTab === 'map' ? (
-                        <div className="h-full">
+                        <div className="h-full relative">
+                            <NavigationButtons
+                                selectedColumn={selectedColumn}
+                                columnInfo={selectedColumnInfo}
+                                onBack={handleBack}
+                                onForward={handleForward}
+                                onClose={handleCloseDetails}
+                            />
                             <ReactFlow
                                 nodes={nodes}
                                 edges={edges}
@@ -576,9 +967,30 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
                     ) : (
                         <div className="h-full flex flex-col p-6 bg-white">
                             <div className="mb-4">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <Code className="h-5 w-5 text-[#8d77ba]" />
-                                    <h2 className="text-xl font-semibold text-gray-800">Table Definition</h2>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <Code className="h-5 w-5 text-[#8d77ba]" />
+                                        <h2 className="text-xl font-semibold text-gray-800">Table Definition</h2>
+                                    </div>
+                                    {TableDefinition && !textLoading && !textError && (
+                                        <button
+                                            onClick={handleCopy}
+                                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700 disabled:opacity-50"
+                                            disabled={isCopied}
+                                        >
+                                            {isCopied ? (
+                                                <>
+                                                    <Check className="h-4 w-4 text-green-600" />
+                                                    <span className="text-green-700">Copied!</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Clipboard className="h-4 w-4" />
+                                                    <span>Copy</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -631,7 +1043,7 @@ const TableMappingPage = ({ TableName = "sample.table.name", apiBaseUrl = "/api"
                     )}
                 </div>
             </div>
-        // </ReactFlowProvider>
+        </ReactFlowProvider>
     );
 };
 

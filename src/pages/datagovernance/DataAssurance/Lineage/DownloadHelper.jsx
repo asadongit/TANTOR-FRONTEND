@@ -167,7 +167,7 @@ const DownloadHelper = ({ nodes, TableName }) => {
             {isDownloading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
             ) : (
-                <DownloadIcon className="h-4 w-4" />
+                <Download className="h-4 w-4" />
             )}
         </button>
     );

@@ -10,11 +10,13 @@ import {
   useEdgesState,
   addEdge,
   MarkerType,
+  ReactFlowProvider,
 } from 'reactflow';
 import AssetInformationModal from "./AssetInformationModal"
 import ViewMappingPage from "./ViewMappingPage";
 import Breadcrumb from '../../../../components/Breadcrumb';
 import TableMappingPage from './TableMappingPage';
+import DownloadHelper from './DownloadHelper';
 
 const CircularNodeRemote = ({
   nodeId,
@@ -39,6 +41,7 @@ const CircularNodeRemote = ({
   const isAllConnectionsExpanded = allConnectionsExpandedNodes.has(nodeId);
 
   const isAssetInfoDisabled = nodeData.type === 'view';
+  const isColumnLevelDisabled = nodeData.type === 'schema';
 
   const handleAssetInfo = () => {
     setShowAssetInfo(true);
@@ -97,7 +100,7 @@ const CircularNodeRemote = ({
                     'bg-gray-700 hover:bg-gray-600 text-white'
                 }`}
               title={
-                nodeData.type !== 'schema' && nodeData.type !== 'table' ? "Forward not available for this node type" :
+                nodeData.type !== 'schema' && nodeData.type !== 'table' ? "Forward not available" :
                   isLoading ? "Loading..." :
                     isForwardExpanded ? "Close Forward Connections" : "Show Forward Connections"
               }
@@ -118,7 +121,7 @@ const CircularNodeRemote = ({
                     'bg-gray-700 hover:bg-gray-600 text-white'
                 }`}
               title={
-                nodeData.type !== 'schema' && nodeData.type !== 'table' ? "All connections not available for this node type" :
+                nodeData.type !== 'schema' && nodeData.type !== 'table' ? "All connections not available" :
                   isLoadingAllConnections ? "Loading..." :
                     isAllConnectionsExpanded ? "Close All Connections" : "Show All Asset Connections (1 step)"
               }
@@ -132,8 +135,16 @@ const CircularNodeRemote = ({
 
             <button
               onClick={handleColumnDetails}
-              className="absolute bottom-0 left-2 transform -translate-x-1/4 translate-y-1/4 w-7 h-7 bg-gray-700 hover:bg-gray-600 rounded-full border-2 border-white flex items-center justify-center transition-all text-white"
-              title="Column Level Details"
+              disabled={isColumnLevelDisabled}
+              className={`absolute bottom-0 left-2 transform -translate-x-1/4 translate-y-1/4 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${isColumnLevelDisabled
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-gray-700 hover:bg-gray-600 text-white'
+                }`}
+              title={
+                isColumnLevelDisabled
+                  ? "Column Level Details not available for views"
+                  : "Column Level Details"
+              }
             >
               <Network size={16} />
             </button>
@@ -531,6 +542,18 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
     return newEdges;
   };
 
+  const getDisplayName = (fullName, type) => {
+    if (!fullName) return '';
+    if (type === 'schema') {
+      return fullName.split('.').pop();
+    } else if (type === 'table') {
+      return fullName.split('.').pop();
+    } else if (type === 'view') {
+      return fullName.includes('.') ? fullName.split('.').pop() : fullName;
+    }
+    return fullName;
+  };
+
   const createForwardNodes = (nodeId, nodeType, forwardResponse, existingNodes) => {
     const newNodes = [];
     const newEdges = [];
@@ -559,12 +582,35 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
         }
 
         const tableName = tableFullName.split('.').pop();
+        const displayName = getDisplayName(tableFullName, 'table');
+
         const tableNode = {
           id: tableFullName,
           type: 'default',
           position: tablePositions[index],
+          targetPosition: 'left',
+          sourcePosition: 'right',
           data: {
-            label: 'T',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>T</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  whiteSpace: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none',
+                }} title={tableFullName}>
+                  {displayName}
+                </div>
+              </div>
+            ),
             type: 'table',
             description: `Table: ${tableName}`,
             fullName: tableFullName,
@@ -605,6 +651,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
 
         forwardResponse.views.forEach((viewData, index) => {
           const viewName = viewData.view_name;
+          const displayName = getDisplayName(viewName, 'view');
 
           const existingViewNode = findExistingNode([...existingNodes, ...newNodes], viewName);
 
@@ -639,8 +686,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
             id: viewName,
             type: 'default',
             position: viewPositions[index],
+            sourcePosition: 'right',
+            targetPosition: 'left',
             data: {
-              label: 'V',
+              label: (
+                <div style={{ position: 'relative' }}>
+                  <div>V</div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '60px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '11px',
+                    color: '#6B7280',
+                    textAlign: 'center',
+                    maxWidth: '120px',
+                    whiteSpace: 'break-word',
+                    lineHeight: '1.2',
+                    pointerEvents: 'none'
+                  }} title={viewName}>
+                    {displayName}
+                  </div>
+                </div>
+              ),
               type: 'view',
               description: `View: ${viewName}`,
               fullName: viewName,
@@ -696,6 +764,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
 
       forwardResponse.forEach((viewName, index) => {
         const existingViewNode = findExistingNode(existingNodes, viewName);
+        const displayName = getDisplayName(viewName, 'view');
 
         if (existingViewNode) {
           // View exists, just create edge if it doesn't exist
@@ -717,8 +786,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           id: viewName,
           type: 'default',
           position: viewPositions[index],
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'V',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>V</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  whiteSpace: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={viewName}>
+                  {displayName}
+                </div>
+              </div>
+            ),
             type: 'view',
             description: `View: ${viewName}`,
             fullName: viewName,
@@ -758,7 +848,6 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
 
     return { newNodes, newEdges };
   };
-
   const createBackwardNodes = (nodeId, nodeType, backwardResponse, existingNodes) => {
     const newNodes = [];
     const newEdges = [];
@@ -778,8 +867,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
             id: schemaFullName,
             type: 'default',
             position: schemaPositions[index],
+            sourcePosition: 'right',
+            targetPosition: 'left',
             data: {
-              label: 'S',
+              label: (
+                <div style={{ position: 'relative' }}>
+                  <div>S</div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '60px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '11px',
+                    color: '#6B7280',
+                    textAlign: 'center',
+                    maxWidth: '120px',
+                    wordWrap: 'break-word',
+                    lineHeight: '1.2',
+                    pointerEvents: 'none'
+                  }} title={schemaFullName}>
+                    {schemaName}
+                  </div>
+                </div>
+              ),
               type: 'schema',
               description: `Schema: ${schemaName}`,
               fullName: schemaFullName,
@@ -857,8 +967,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           id: tableFullName,
           type: 'default',
           position: tablePositions[index],
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'T',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>T</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  wordWrap: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={tableFullName}>
+                  {tableName}
+                </div>
+              </div>
+            ),
             type: 'table',
             description: `Table: ${tableName}`,
             fullName: tableFullName,
@@ -946,8 +1077,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           id: schemaFullName,
           type: 'default',
           position: schemaPositions[index],
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'S',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>S</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  wordWrap: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={schemaFullName}>
+                  {schemaName}
+                </div>
+              </div>
+            ),
             type: 'schema',
             description: `Schema: ${schemaName}`,
             fullName: schemaFullName,
@@ -1020,8 +1172,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           id: tableFullName,
           type: 'default',
           position: tablePositions[index],
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'T',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>T</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  wordWrap: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={tableFullName}>
+                  {tableName}
+                </div>
+              </div>
+            ),
             type: 'table',
             description: `Table: ${tableName}`,
             fullName: tableFullName,
@@ -1082,8 +1255,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           id: viewName,
           type: 'default',
           position: viewPositions[index],
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'V',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>V</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  wordWrap: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={viewName}>
+                  {viewName}
+                </div>
+              </div>
+            ),
             type: 'view',
             description: `View: ${viewName}`,
             fullName: viewName,
@@ -1135,12 +1329,35 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
 
   const generateTableNodesAndEdges = (tableItem) => {
     const schemaNodeId = tableItem.schema;
+    const schemaDisplayName = getDisplayName(tableItem.schema, 'schema');
+
     const schemaNode = {
       id: schemaNodeId,
       type: 'default',
       position: { x: 200, y: 200 },
+      sourcePosition: 'right',
+      targetPosition: 'left',
       data: {
-        label: 'S',
+        label: (
+          <div style={{ position: 'relative' }}>
+            <div>S</div>
+            <div style={{
+              position: 'absolute',
+              top: '60px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '11px',
+              color: '#6B7280',
+              textAlign: 'center',
+              maxWidth: '120px',
+              whiteSpace: 'break-word',
+              lineHeight: '1.2',
+              pointerEvents: 'none'
+            }} title={tableItem.schema}>
+              {schemaDisplayName}
+            </div>
+          </div>
+        ),
         type: 'schema',
         description: `Schema: ${tableItem.schemaToShow}`,
         fullName: tableItem.schema
@@ -1162,12 +1379,35 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
     };
 
     const tableNodeId = tableItem.table;
+    const tableDisplayName = getDisplayName(tableItem.table, 'table');
+
     const tableNode = {
       id: tableNodeId,
       type: 'default',
       position: { x: 500, y: 200 },
+      sourcePosition: 'right',
+      targetPosition: 'left',
       data: {
-        label: 'T',
+        label: (
+          <div style={{ position: 'relative' }}>
+            <div>T</div>
+            <div style={{
+              position: 'absolute',
+              top: '60px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '11px',
+              color: '#6B7280',
+              textAlign: 'center',
+              maxWidth: '120px',
+              whiteSpace: 'break-word',
+              lineHeight: '1.2',
+              pointerEvents: 'none'
+            }} title={tableItem.table}>
+              {tableDisplayName}
+            </div>
+          </div>
+        ),
         type: 'table',
         description: `Table: ${tableItem.name}`,
         fullName: tableItem.table
@@ -1239,14 +1479,36 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
       const schemaX = 100;
 
       const schemaNodeId = schemaName;
+      const schemaDisplayName = getDisplayName(schemaName, 'schema');
       schemaPositions[schemaName] = { x: schemaX, y: schemaY };
 
       const schemaNode = {
         id: schemaNodeId,
         type: 'default',
         position: { x: schemaX, y: schemaY },
+        sourcePosition: 'right',
+        targetPosition: 'left',
         data: {
-          label: 'S',
+          label: (
+            <div style={{ position: 'relative' }}>
+              <div>S</div>
+              <div style={{
+                position: 'absolute',
+                top: '60px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: '11px',
+                color: '#6B7280',
+                textAlign: 'center',
+                maxWidth: '120px',
+                whiteSpace: 'break-word',
+                lineHeight: '1.2',
+                pointerEvents: 'none'
+              }} title={schemaName}>
+                {schemaDisplayName}
+              </div>
+            </div>
+          ),
           type: 'schema',
           description: `Schema: ${schemaName.split('.').pop()}`,
           fullName: schemaName
@@ -1271,14 +1533,36 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
       tables.forEach((table, tableIndex) => {
         const tableY = schemaY + ((tableIndex - Math.floor(tables.length / 2)) * 80);
         const tableX = schemaX + 250;
+        const tableDisplayName = getDisplayName(table.name, 'table');
 
         const tableNodeId = table.name;
         const tableNode = {
           id: tableNodeId,
           type: 'default',
           position: { x: tableX, y: tableY },
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'T',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>T</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  whiteSpace: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={table.name}>
+                  {tableDisplayName}
+                </div>
+              </div>
+            ),
             type: 'table',
             description: `Table: ${table.name.split('.').pop()}`,
             fullName: table.name
@@ -1317,12 +1601,35 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
     const viewY = 100 + (Object.keys(schemaGroups).length - 1) * 100;
 
     const viewNodeId = viewItem.name;
+    const viewDisplayName = getDisplayName(viewItem.name, 'view');
+
     const viewNode = {
       id: viewNodeId,
       type: 'default',
       position: { x: viewX, y: viewY },
+      sourcePosition: 'right',
+      targetPosition: 'left',
       data: {
-        label: 'V',
+        label: (
+          <div style={{ position: 'relative' }}>
+            <div>V</div>
+            <div style={{
+              position: 'absolute',
+              top: '60px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '11px',
+              color: '#6B7280',
+              textAlign: 'center',
+              maxWidth: '120px',
+              whiteSpace: 'break-word',
+              lineHeight: '1.2',
+              pointerEvents: 'none'
+            }} title={viewItem.name}>
+              {viewDisplayName}
+            </div>
+          </div>
+        ),
         type: 'view',
         description: `View: ${viewItem.name}`,
         viewName: viewItem.name
@@ -1647,7 +1954,6 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
   }
   if (isColumnType) {
     const columnName = currentItem.column;
-    console.log("columnname is @@@ ",columnName)
     return (
       <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
         <Breadcrumb />
@@ -1698,6 +2004,8 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           apiBaseUrl={API_BASE_URL}
           onBackToLineage={() => { }}
           type="column"
+          policyIds={policyIds}
+          columnName={columnName}
         />
       </div>
     );
@@ -1709,6 +2017,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
         viewName={selectedViewForMapping}
         apiBaseUrl={API_BASE_URL}
         onBackToLineage={handleBackToLineage}
+        policyIds={policyIds}
       />
     );
   }
@@ -1720,109 +2029,113 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
         apiBaseUrl={API_BASE_URL}
         onBackToLineage={handleTableBackToLineage}
         type="table"
+        policyIds={policyIds}
       />
     );
   }
 
   return (
-    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
-      <Breadcrumb />
-      <div className="">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onBack}
-              className="flex items-center text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            {currentDisplayItem?.type === 'View' ? (
-              <Layers className="h-6 w-6 text-gray-700" />
-            ) : (
-              <Table className="h-6 w-6 text-gray-700" />
-            )}
-            <span className="text-lg font-semibold text-gray-800">
-              {currentDisplayItem?.name || 'Loading...'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {selectedItems.length > 1 && (
-              <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => onNavigate('prev')}
-                  disabled={currentTableIndex === 0}
-                  className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Previous Item"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <span className="text-sm font-medium text-gray-700 px-3">
-                  Item {currentTableIndex + 1} of {selectedItems.length}
-                </span>
-                <button
-                  onClick={() => onNavigate('next')}
-                  disabled={currentTableIndex === selectedItems.length - 1}
-                  className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Next Item"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-
-            <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-2">
-              <span className="text-sm font-medium text-gray-700">Steps:</span>
-              <select
-                value={steps}
-                onChange={(e) => setSteps(parseInt(e.target.value))}
-                className="text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                title="Lineage Steps (applies to both forward and backward)"
+    <ReactFlowProvider>
+      <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
+        <Breadcrumb />
+        <div className="">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onBack}
+                className="flex items-center text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
               >
-                {stepOptions.map(step => (
-                  <option key={step} value={step}>{step}</option>
-                ))}
-              </select>
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              {currentDisplayItem?.type === 'View' ? (
+                <Layers className="h-6 w-6 text-gray-700" />
+              ) : (
+                <Table className="h-6 w-6 text-gray-700" />
+              )}
+              <span className="text-lg font-semibold text-gray-800">
+                {currentDisplayItem?.name || 'Loading...'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <DownloadHelper nodes={nodes} fileName={currentDisplayItem?.name || 'data-lineage'} />
+              <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-2">
+                <span className="text-sm font-medium text-gray-700">Steps:</span>
+                <select
+                  value={steps}
+                  onChange={(e) => setSteps(parseInt(e.target.value))}
+                  className="text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  title="Lineage Steps (applies to both forward and backward)"
+                >
+                  {stepOptions.map(step => (
+                    <option key={step} value={step}>{step}</option>
+                  ))}
+                </select>
+              </div>
+              {selectedItems.length > 1 && (
+                <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => onNavigate('prev')}
+                    disabled={currentTableIndex === 0}
+                    className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Previous Item"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm font-medium text-gray-700 px-3">
+                    Item {currentTableIndex + 1} of {selectedItems.length}
+                  </span>
+                  <button
+                    onClick={() => onNavigate('next')}
+                    disabled={currentTableIndex === selectedItems.length - 1}
+                    className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Next Item"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex-grow relative">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          className="bg-gray-50"
-          nodesConnectable={false}
-        >
-          <Controls position="top-right" />
-          <Background variant="dots" gap={20} size={1} color="#E5E7EB" />
-        </ReactFlow>
+        <div className="flex-grow relative">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            className="bg-gray-50"
+            nodesConnectable={false}
+          >
+            <Controls position="top-right" />
+            <Background variant="dots" gap={20} size={1} color="#E5E7EB" />
+          </ReactFlow>
 
-        {selectedNodeId && selectedNode && (
-          <CircularNodeRemote
-            nodeId={selectedNodeId}
-            position={selectedNode.position}
-            onNavigate={handleNavigate}
-            onToggleVisibility={handleToggleVisibility}
-            onReset={handleReset}
-            onClose={closeRemote}
-            expandedNodes={expandedNodes}
-            backwardExpandedNodes={backwardExpandedNodes}
-            allConnectionsExpandedNodes={allConnectionsExpandedNodes}
-            isLoading={isLoadingForward}
-            isLoadingBackward={isLoadingBackward}
-            isLoadingAllConnections={isLoadingAllConnections}
-            nodeData={selectedNode.data}
-            onColumnDetails={handleColumnDetails}
-          />
-        )}
+          {selectedNodeId && selectedNode && (
+            <CircularNodeRemote
+              nodeId={selectedNodeId}
+              position={selectedNode.position}
+              onNavigate={handleNavigate}
+              onToggleVisibility={handleToggleVisibility}
+              onReset={handleReset}
+              onClose={closeRemote}
+              expandedNodes={expandedNodes}
+              backwardExpandedNodes={backwardExpandedNodes}
+              allConnectionsExpandedNodes={allConnectionsExpandedNodes}
+              isLoading={isLoadingForward}
+              isLoadingBackward={isLoadingBackward}
+              isLoadingAllConnections={isLoadingAllConnections}
+              nodeData={selectedNode.data}
+              onColumnDetails={handleColumnDetails}
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </ReactFlowProvider>
   );
 };
 
