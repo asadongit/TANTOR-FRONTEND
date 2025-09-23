@@ -10,11 +10,13 @@ import {
   useEdgesState,
   addEdge,
   MarkerType,
+  ReactFlowProvider,
 } from 'reactflow';
 import AssetInformationModal from "./AssetInformationModal"
 import ViewMappingPage from "./ViewMappingPage";
 import Breadcrumb from '../../../../components/Breadcrumb';
 import TableMappingPage from './TableMappingPage';
+import DownloadHelper from './DownloadHelper';
 
 const CircularNodeRemote = ({
   nodeId,
@@ -1647,7 +1649,6 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
   }
   if (isColumnType) {
     const columnName = currentItem.column;
-    console.log("columnname is @@@ ",columnName)
     return (
       <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
         <Breadcrumb />
@@ -1698,7 +1699,8 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           apiBaseUrl={API_BASE_URL}
           onBackToLineage={() => { }}
           type="column"
-          policyIds = {policyIds}
+          policyIds={policyIds}
+          columnName={columnName}
         />
       </div>
     );
@@ -1710,7 +1712,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
         viewName={selectedViewForMapping}
         apiBaseUrl={API_BASE_URL}
         onBackToLineage={handleBackToLineage}
-        policyIds = {policyIds}
+        policyIds={policyIds}
       />
     );
   }
@@ -1722,110 +1724,113 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
         apiBaseUrl={API_BASE_URL}
         onBackToLineage={handleTableBackToLineage}
         type="table"
-        policyIds = {policyIds}
+        policyIds={policyIds}
       />
     );
   }
 
   return (
-    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
-      <Breadcrumb />
-      <div className="">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onBack}
-              className="flex items-center text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            {currentDisplayItem?.type === 'View' ? (
-              <Layers className="h-6 w-6 text-gray-700" />
-            ) : (
-              <Table className="h-6 w-6 text-gray-700" />
-            )}
-            <span className="text-lg font-semibold text-gray-800">
-              {currentDisplayItem?.name || 'Loading...'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {selectedItems.length > 1 && (
-              <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => onNavigate('prev')}
-                  disabled={currentTableIndex === 0}
-                  className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Previous Item"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <span className="text-sm font-medium text-gray-700 px-3">
-                  Item {currentTableIndex + 1} of {selectedItems.length}
-                </span>
-                <button
-                  onClick={() => onNavigate('next')}
-                  disabled={currentTableIndex === selectedItems.length - 1}
-                  className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Next Item"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-
-            <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-2">
-              <span className="text-sm font-medium text-gray-700">Steps:</span>
-              <select
-                value={steps}
-                onChange={(e) => setSteps(parseInt(e.target.value))}
-                className="text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                title="Lineage Steps (applies to both forward and backward)"
+    <ReactFlowProvider>
+      <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
+        <Breadcrumb />
+        <div className="">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onBack}
+                className="flex items-center text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
               >
-                {stepOptions.map(step => (
-                  <option key={step} value={step}>{step}</option>
-                ))}
-              </select>
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              {currentDisplayItem?.type === 'View' ? (
+                <Layers className="h-6 w-6 text-gray-700" />
+              ) : (
+                <Table className="h-6 w-6 text-gray-700" />
+              )}
+              <span className="text-lg font-semibold text-gray-800">
+                {currentDisplayItem?.name || 'Loading...'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <DownloadHelper nodes={nodes} fileName={currentDisplayItem?.name || 'data-lineage'} />
+              <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-2">
+                <span className="text-sm font-medium text-gray-700">Steps:</span>
+                <select
+                  value={steps}
+                  onChange={(e) => setSteps(parseInt(e.target.value))}
+                  className="text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  title="Lineage Steps (applies to both forward and backward)"
+                >
+                  {stepOptions.map(step => (
+                    <option key={step} value={step}>{step}</option>
+                  ))}
+                </select>
+              </div>
+              {selectedItems.length > 1 && (
+                <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => onNavigate('prev')}
+                    disabled={currentTableIndex === 0}
+                    className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Previous Item"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm font-medium text-gray-700 px-3">
+                    Item {currentTableIndex + 1} of {selectedItems.length}
+                  </span>
+                  <button
+                    onClick={() => onNavigate('next')}
+                    disabled={currentTableIndex === selectedItems.length - 1}
+                    className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Next Item"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex-grow relative">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          className="bg-gray-50"
-          nodesConnectable={false}
-        >
-          <Controls position="top-right" />
-          <Background variant="dots" gap={20} size={1} color="#E5E7EB" />
-        </ReactFlow>
+        <div className="flex-grow relative">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            className="bg-gray-50"
+            nodesConnectable={false}
+          >
+            <Controls position="top-right" />
+            <Background variant="dots" gap={20} size={1} color="#E5E7EB" />
+          </ReactFlow>
 
-        {selectedNodeId && selectedNode && (
-          <CircularNodeRemote
-            nodeId={selectedNodeId}
-            position={selectedNode.position}
-            onNavigate={handleNavigate}
-            onToggleVisibility={handleToggleVisibility}
-            onReset={handleReset}
-            onClose={closeRemote}
-            expandedNodes={expandedNodes}
-            backwardExpandedNodes={backwardExpandedNodes}
-            allConnectionsExpandedNodes={allConnectionsExpandedNodes}
-            isLoading={isLoadingForward}
-            isLoadingBackward={isLoadingBackward}
-            isLoadingAllConnections={isLoadingAllConnections}
-            nodeData={selectedNode.data}
-            onColumnDetails={handleColumnDetails}
-          />
-        )}
+          {selectedNodeId && selectedNode && (
+            <CircularNodeRemote
+              nodeId={selectedNodeId}
+              position={selectedNode.position}
+              onNavigate={handleNavigate}
+              onToggleVisibility={handleToggleVisibility}
+              onReset={handleReset}
+              onClose={closeRemote}
+              expandedNodes={expandedNodes}
+              backwardExpandedNodes={backwardExpandedNodes}
+              allConnectionsExpandedNodes={allConnectionsExpandedNodes}
+              isLoading={isLoadingForward}
+              isLoadingBackward={isLoadingBackward}
+              isLoadingAllConnections={isLoadingAllConnections}
+              nodeData={selectedNode.data}
+              onColumnDetails={handleColumnDetails}
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </ReactFlowProvider>
   );
 };
 

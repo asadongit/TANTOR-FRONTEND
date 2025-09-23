@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronRight, Database, Eye, ArrowLeft, Layers, ChevronLeft, Code, Map } from 'lucide-react';
+import { ChevronRight, Database, Eye, ArrowLeft, Layers, ChevronLeft, Code, Map,
+  Clipboard,
+  Check,
+ } from 'lucide-react';
 import {
   ReactFlow,
   MiniMap,
@@ -10,10 +13,12 @@ import {
   MarkerType,
   Handle,
   Position,
+  ReactFlowProvider,
 } from 'reactflow';
 
 import 'reactflow/dist/style.css';
 import Breadcrumb from '../../../../components/Breadcrumb';
+import DownloadHelper from './DownloadHelper';
 
 const TableNode = ({ data }) => {
   const { tableName, columns, isTarget, onColumnClick, selectedColumn, highlightedColumns } = data;
@@ -134,6 +139,20 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage, policyIds }) =
   const [columnLineageEdges, setColumnLineageEdges] = useState([]);
 
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
+
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (viewDefinition && viewName) {
+      const fullQuery = `CREATE VIEW ${viewName} AS\n${viewDefinition}`;
+      navigator.clipboard.writeText(fullQuery).then(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+    }
+  };
 
   const handleColumnClick = useCallback((columnName) => {
     if (selectedTargetColumn === columnName) {
@@ -791,6 +810,7 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage, policyIds }) =
   }
 
   return (
+    <ReactFlowProvider>
     <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
       <Breadcrumb />
       {/* Header */}
@@ -801,7 +821,7 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage, policyIds }) =
               onClick={onBackToLineage}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 py-2 rounded-md transition-colors"
             >
-              <ChevronLeft className="h-5 w-5 text-gray-700"/>
+              <ChevronLeft className="h-5 w-5 text-gray-700" />
             </button>
             <div className="flex items-center gap-2">
               <Layers className="h-6 w-6" />
@@ -810,28 +830,27 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage, policyIds }) =
               </span>
             </div>
           </div>
+          {activeTab === 'map' && <DownloadHelper nodes={nodes} TableName={viewName} />}
         </div>
       </div>
 
       <div className="px-4">
         <div className="flex space-x-4">
           <button
-            className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${
-              activeTab === 'map'
+            className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'map'
                 ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
                 : 'text-gray-500 hover:text-gray-700'
-            }`}
+              }`}
             onClick={() => setActiveTab('map')}
           >
             <Map className="h-4 w-4" />
             Map
           </button>
           <button
-            className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${
-              activeTab === 'text'
+            className={`px-4 py-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'text'
                 ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
                 : 'text-gray-500 hover:text-gray-700'
-            }`}
+              }`}
             onClick={() => setActiveTab('text')}
           >
             <Code className="h-4 w-4" />
@@ -869,12 +888,34 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage, policyIds }) =
         ) : (
           <div className="h-full flex flex-col p-6 bg-white mt-2">
             <div className="mb-2">
-              <div className="flex items-center gap-3 mb-2">
-                <Code className="h-5 w-5 text-[#8d77ba]" />
-                <h2 className="text-xl font-semibold text-gray-800">View Definition</h2>
+
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <Code className="h-5 w-5 text-[#8d77ba]" />
+                  <h2 className="text-xl font-semibold text-gray-800">View Definition</h2>
+                </div>
+                {viewDefinition && !textLoading && (
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700 disabled:opacity-50"
+                    disabled={isCopied}
+                  >
+                    {isCopied ? (
+                      <>
+                        <Check className="h-4 w-4 text-green-600" />
+                        <span className="text-green-700">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clipboard className="h-4 w-4" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
-            
+
             {textLoading ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
@@ -905,6 +946,7 @@ const ViewMappingPage = ({ viewName, apiBaseUrl, onBackToLineage, policyIds }) =
         )}
       </div>
     </div>
+    </ReactFlowProvider>
   );
 };
 

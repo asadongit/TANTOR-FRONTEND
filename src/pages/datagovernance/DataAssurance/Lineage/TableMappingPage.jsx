@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, ChevronLeft, Code, Map, AlertCircle, Download, Camera, FileText, ChevronRight } from 'lucide-react';
+import {
+    Table, ChevronLeft, Code, Map, AlertCircle, Download, Camera, FileText, ChevronRight, Clipboard,
+    Check
+} from 'lucide-react';
 import {
     ReactFlow,
     MiniMap,
@@ -16,6 +19,7 @@ import {
     getViewportForBounds,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import DownloadHelper from './DownloadHelper';
 
 const SourceTableNode = ({ data }) => {
     const { selectedColumn, onColumnClick } = data;
@@ -275,7 +279,7 @@ const nodeTypes = {
     targetTable: TargetTableNode,
 };
 
-const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policyIds }) => {
+const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policyIds, columnName = ""}) => {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [allEdges, setAllEdges] = useState([]);
@@ -286,104 +290,74 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
     const [textLoading, setTextLoading] = useState(false);
     const [TableDefinition, setTableDefinition] = useState('');
     const [textError, setTextError] = useState(null);
+    const [isCopied, setIsCopied] = useState(false);
+    const [lineageData, setLineageData] = useState(null);
+    const [lineageError, setLineageError] = useState(null);
 
-    const lineageData = {
-        "etl": "yes",
-        "source": [
-            {
-                "connection": "orcl_lineage_etl",
-                "schema": "orcl_lineage_etl.test_user1",
-                "table": "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS",
-                "columns": {
-                    "DEPARTMENT_ID": [
-                        "DEPARTMENT_ID"
-                    ],
-                    "DEPARTMENT_NAME": [
-                        "DEPARTMENT_NAME"
-                    ],
-                    "LOCATION": [
-                        "LOCATION"
-                    ]
-                }
-            },
-            {
-                "connection": "orcl_lineage_etl",
-                "schema": "orcl_lineage_etl.test_user1",
-                "table": "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES",
-                "columns": {
-                    "EMPLOYEE_ID": [
-                        "EMPLOYEE_ID"
-                    ],
-                    "FIRST_NAME": [
-                        "FIRST_NAME"
-                    ],
-                    "LAST_NAME": [
-                        "LAST_NAME"
-                    ],
-                    "SALARY": [
-                        "SALARY"
-                    ],
-                    "DEPARTMENT_ID": [
-                        "DEPARTMENT_ID"
-                    ]
+    const handleCopy = () => {
+        if (TableDefinition) {
+            navigator.clipboard.writeText(TableDefinition).then(() => {
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+    };
+
+    // API call for lineage data
+    const fetchLineageData = useCallback(async () => {
+        if (!TableName || !apiBaseUrl || !policyIds) return;
+
+        setLoading(true);
+        setLineageError(null);
+
+        try {
+            const endpoint = type === 'column' ? 'col_lineage' : 'map_view';
+            let requestBody = {
+                matched_policy_ids: policyIds,
+                table: TableName
+            };
+
+            if (type === 'column' && columnName) {
+                const columnParts = columnName.split('.');
+                if (columnParts.length >= 4) {
+                    const tableFromColumn = columnParts.slice(0, -1).join('.');
+                    const actualColumn = columnParts[columnParts.length - 1];
+                    requestBody = {
+                        matched_policy_ids: policyIds,
+                        table: tableFromColumn,
+                        column: actualColumn
+                    };
+                } else {
+                    requestBody.column = columnName;
                 }
             }
-        ],
-        "transformation": [
-            {
-                "string": {
-                    "transformation_order": 2,
-                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"],
-                    "columns": {
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME",
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
-                        ]
-                    },
-                    "transformation_operator": "concat"
-                }
-            },
-            {
-                "join": {
-                    "transformation_order": 3,
-                    "join_operator": "== ",
-                    "join_type": "inner",
 
-                    "columns_used": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID", "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
-                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID", "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
-                    "columns": {
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
-                        ]
-                    }
-                }
-            },
-            {
-                "rename": {
-                    "transformation_order": 4,
-                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname"],
-                    "columns": {
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname": [
-                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
-                        ]
-                    }
-                }
-            }
-        ],
-        "target": [
-            {
-                "connection": "post_lineage_etl",
-                "schema": "post_lineage_etl.public",
-                "table": "post_lineage_etl.public.employee_report",
-                "columns": {
-                    "employee_name": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                    ]
-                }
-            }
-        ]
-    }
+            const response = await fetch(`${apiBaseUrl}/etl/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'accept': 'application/json'
+                },
+                body: JSON.stringify(requestBody),
+            });
 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
+                throw new Error(`HTTP ${response.status}: ${errorData.detail || 'Failed to fetch lineage data.'}`);
+            }
+
+            const data = await response.json();
+            setLineageData(data);
+
+        } catch (err) {
+            console.error('Error fetching lineage data:', err);
+            setLineageError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [TableName, apiBaseUrl, policyIds, type, columnName]);
 
     const isSameColumnIgnoreCase = (col1, col2) => {
         if (!col1 || !col2) return false;
@@ -408,7 +382,6 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         }
 
         setSelectedColumn(columnKey);
-
 
         const relatedEdges = new Set();
         const visited = new Set();
@@ -581,6 +554,8 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
     };
 
     const generateNodesAndEdges = useCallback(() => {
+        if (!lineageData) return;
+
         const generatedNodes = [];
         const generatedEdges = [];
         let nodeId = 0;
@@ -621,7 +596,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                 data: {
                     id: `transform-${transformIndex}`,
                     type: transformType,
-                    operator: transformData.transformation_operator,
+                    operator: transformData.transformation_operator || transformData.join_operator,
                     columns,
                     affectedColumns,
                     order: transformData.transformation_order
@@ -780,11 +755,18 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         setNodes(generatedNodes);
         setAllEdges(generatedEdges);
         setEdges(generatedEdges);
-    }, []);
+    }, [lineageData]);
+
+    // Fetch lineage data on component mount
+    useEffect(() => {
+        fetchLineageData();
+    }, [fetchLineageData]);
 
     useEffect(() => {
-        generateNodesAndEdges();
-    }, [generateNodesAndEdges]);
+        if (lineageData) {
+            generateNodesAndEdges();
+        }
+    }, [lineageData, generateNodesAndEdges]);
 
     useEffect(() => {
         setNodes(currentNodes =>
@@ -842,7 +824,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         } finally {
             setTextLoading(false);
         }
-    }, [TableName, apiBaseUrl]);
+    }, [TableName, apiBaseUrl, policyIds]);
 
     useEffect(() => {
         if (activeTab === 'text') {
@@ -856,9 +838,44 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         setEdges(allEdges);
     };
 
+    // Show loading state while fetching lineage data
+    if (loading) {
+        return (
+            <div className="bg-gray-50 h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8d77ba] mx-auto mb-4"></div>
+                    <p className="text-gray-600 text-lg">Loading lineage data...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show error state if lineage data fetch failed
+    if (lineageError) {
+        return (
+            <div className="bg-gray-50 h-screen flex items-center justify-center">
+                <div className="text-center max-w-md">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-4">
+                        <AlertCircle className="h-8 w-8 text-red-600 mx-auto mb-3" />
+                        <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Lineage</h3>
+                        <p className="text-red-600 text-sm">{lineageError}</p>
+                    </div>
+                    <div className="space-x-3">
+                        <button
+                            onClick={fetchLineageData}
+                            className="px-4 py-2 bg-[#8d77ba] text-white rounded-lg hover:bg-[#7f6aa9] transition-colors"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <ReactFlowProvider>
-            <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
+            <div className="bg-gray-50 h-screen flex flex-col overflow-hidden relative">
                 {type === "table" && (
                     <>
                         <div className="mb-1 px-4 py-2">
@@ -877,12 +894,18 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                                         </span>
                                     </div>
                                 </div>
-                                {/* {activeTab === 'map' && (
-                                <DownloadButton nodes={nodes} TableName={TableName} />
-                            )} */}
+                                {activeTab === 'map' && (
+                                    <DownloadHelper nodes={nodes} TableName={TableName} />
+                                )}
                             </div>
                         </div>
                     </>
+                )}
+                
+                {type === "column" && activeTab === 'map' && (
+                    <div className="mb-1 px-4 py-2 absolute top-0 right-0 z-10">
+                        <DownloadHelper nodes={nodes} TableName={TableName} />
+                    </div>
                 )}
 
                 <div className="px-4">
@@ -942,9 +965,30 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                     ) : (
                         <div className="h-full flex flex-col p-6 bg-white">
                             <div className="mb-4">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <Code className="h-5 w-5 text-[#8d77ba]" />
-                                    <h2 className="text-xl font-semibold text-gray-800">Table Definition</h2>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <Code className="h-5 w-5 text-[#8d77ba]" />
+                                        <h2 className="text-xl font-semibold text-gray-800">Table Definition</h2>
+                                    </div>
+                                    {TableDefinition && !textLoading && !textError && (
+                                        <button
+                                            onClick={handleCopy}
+                                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700 disabled:opacity-50"
+                                            disabled={isCopied}
+                                        >
+                                            {isCopied ? (
+                                                <>
+                                                    <Check className="h-4 w-4 text-green-600" />
+                                                    <span className="text-green-700">Copied!</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Clipboard className="h-4 w-4" />
+                                                    <span>Copy</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
