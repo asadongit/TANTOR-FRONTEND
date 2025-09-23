@@ -14,6 +14,7 @@ import {
 import AssetInformationModal from "./AssetInformationModal"
 import ViewMappingPage from "./ViewMappingPage";
 import Breadcrumb from '../../../../components/Breadcrumb';
+import TableMappingPage from './TableMappingPage';
 
 const CircularNodeRemote = ({
   nodeId,
@@ -61,8 +62,8 @@ const CircularNodeRemote = ({
       <div
         className="absolute z-20"
         style={{
-          right: '70px',
-          top: '120px',
+          left: '70px',
+          bottom: '120px',
         }}
       >
         <div className="relative">
@@ -183,7 +184,7 @@ const CircularNodeRemote = ({
 
 const API_BASE_URL = `${window._env_?.VITE_FAST_API}/data_lineage`;
 
-const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack }) => {
+const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack, policyIds }) => {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [backwardExpandedNodes, setBackwardExpandedNodes] = useState(new Set());
@@ -199,14 +200,20 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   const [initialNodeIds, setInitialNodeIds] = useState(new Set());
   const [showViewMapping, setShowViewMapping] = useState(false);
   const [selectedViewForMapping, setSelectedViewForMapping] = useState(null);
+  const [showTableMapping, setShowTableMapping] = useState(false);
+  const [selectedTableForMapping, setSelectedTableForMapping] = useState(null);
 
   // 3. Add this function to handle column details
   const handleColumnDetails = (nodeId, nodeType) => {
     if (nodeType === 'view') {
       setSelectedViewForMapping(nodeId);
       setShowViewMapping(true);
-    } else {
-      // For non-view types, implement later as mentioned
+    }
+    else if (nodeType === 'table') {
+      setSelectedTableForMapping(nodeId);
+      setShowTableMapping(true);
+    }
+    else {
       console.log('Column details clicked for:', nodeId, nodeType);
     }
   };
@@ -216,9 +223,11 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     setShowViewMapping(false);
     setSelectedViewForMapping(null);
   };
-  const displayableItems = useMemo(() => {
-    return selectedItems.filter(item => item.type === 'Table' || item.type === 'View');
-  }, [selectedItems]);
+
+  const handleTableBackToLineage = () => {
+    setShowTableMapping(false);
+    setSelectedTableForMapping(null);
+  };
 
   const NODE_SIZE = 50;
 
@@ -374,7 +383,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     if (!connectionInfo) return null;
 
     const payload = {
-      matched_policy_ids: [19],
+      matched_policy_ids: policyIds,
       connection_name: connectionInfo.database,
       table_schema: connectionInfo.schema,
       steps: stepCount,
@@ -408,7 +417,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
   const fetchBackwardLineage = async (nodeId, nodeType, stepCount) => {
     const payload = {
-      matched_policy_ids: [19],
+      matched_policy_ids: policyIds,
       steps: stepCount,
       type: nodeType
     };
@@ -1351,8 +1360,11 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     return { nodes, edges };
   };
 
-  const currentItem = displayableItems[currentTableIndex];
-  const { nodes: initialNodes, edges: initialEdges } = currentItem ?
+  const currentItem = selectedItems[currentTableIndex];
+  const isColumnType = currentItem?.type === 'Column';
+
+  const currentDisplayItem = selectedItems[currentTableIndex] || selectedItems[0];
+  const { nodes: initialNodes, edges: initialEdges } = currentDisplayItem ?
     generateNodesAndEdges(currentItem) :
     { nodes: [], edges: [] };
 
@@ -1360,8 +1372,8 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   useEffect(() => {
-    if (currentItem) {
-      const { nodes: newNodes, edges: newEdges } = generateNodesAndEdges(currentItem);
+    if (currentDisplayItem) {
+      const { nodes: newNodes, edges: newEdges } = generateNodesAndEdges(currentDisplayItem);
       setNodes(newNodes);
       setEdges(newEdges);
       setExpandedNodes(new Set());
@@ -1377,7 +1389,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
       const initialIds = new Set(newNodes.map(node => node.id));
       setInitialNodeIds(initialIds);
     }
-  }, [currentItem, setNodes, setEdges]);
+  }, [currentDisplayItem, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
@@ -1595,8 +1607,8 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
   };
 
   const handleReset = () => {
-    if (currentItem) {
-      const { nodes: resetNodes, edges: resetEdges } = generateNodesAndEdges(currentItem);
+    if (currentDisplayItem) {
+      const { nodes: resetNodes, edges: resetEdges } = generateNodesAndEdges(currentDisplayItem);
       setNodes(resetNodes);
       setEdges(resetEdges);
       setExpandedNodes(new Set());
@@ -1623,13 +1635,70 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
   const selectedNode = nodes.find(node => node.id === selectedNodeId);
 
-  if (!currentItem) {
+  if (!currentDisplayItem) {
     return (
       <div className="w-full h-full bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-600">No Items Selected</h2>
           <p className="text-gray-500">Please select tables or views from the lineage page first.</p>
         </div>
+      </div>
+    );
+  }
+  if (isColumnType) {
+    const columnName = currentItem.column;
+    console.log("columnname is @@@ ",columnName)
+    return (
+      <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
+        <Breadcrumb />
+
+        <div className="mb-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onBack}
+                className="flex items-center text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <Layers className="h-6 w-6 text-gray-700" />
+              <span className="text-lg font-semibold text-gray-800">
+                {currentItem?.name || 'Loading...'}
+              </span>
+            </div>
+
+            {selectedItems.length > 1 && (
+              <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => onNavigate('prev')}
+                  disabled={currentTableIndex === 0}
+                  className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Previous Item"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-sm font-medium text-gray-700 px-3">
+                  Item {currentTableIndex + 1} of {selectedItems.length}
+                </span>
+                <button
+                  onClick={() => onNavigate('next')}
+                  disabled={currentTableIndex === selectedItems.length - 1}
+                  className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Next Item"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <TableMappingPage
+          TableName={columnName}
+          apiBaseUrl={API_BASE_URL}
+          onBackToLineage={() => { }}
+          type="column"
+        />
       </div>
     );
   }
@@ -1644,10 +1713,21 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     );
   }
 
+  if (showTableMapping && selectedTableForMapping) {
+    return (
+      <TableMappingPage
+        TableName={selectedTableForMapping}
+        apiBaseUrl={API_BASE_URL}
+        onBackToLineage={handleTableBackToLineage}
+        type="table"
+      />
+    );
+  }
+
   return (
-    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
+    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden p-2">
       <Breadcrumb />
-      <div className="p-2">
+      <div className="">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
@@ -1656,18 +1736,18 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            {currentItem?.type === 'View' ? (
+            {currentDisplayItem?.type === 'View' ? (
               <Layers className="h-6 w-6 text-gray-700" />
             ) : (
               <Table className="h-6 w-6 text-gray-700" />
             )}
             <span className="text-lg font-semibold text-gray-800">
-              {currentItem?.name || 'Loading...'}
+              {currentDisplayItem?.name || 'Loading...'}
             </span>
           </div>
 
           <div className="flex items-center gap-4">
-            {displayableItems.length > 1 && (
+            {selectedItems.length > 1 && (
               <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => onNavigate('prev')}
@@ -1678,11 +1758,11 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <span className="text-sm font-medium text-gray-700 px-3">
-                  Item {currentTableIndex + 1} of {displayableItems.length}
+                  Item {currentTableIndex + 1} of {selectedItems.length}
                 </span>
                 <button
                   onClick={() => onNavigate('next')}
-                  disabled={currentTableIndex === displayableItems.length - 1}
+                  disabled={currentTableIndex === selectedItems.length - 1}
                   className="p-2 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Next Item"
                 >
@@ -1717,12 +1797,9 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           className="bg-gray-50"
+          nodesConnectable={false}
         >
-          <Controls />
-          <MiniMap
-            nodeColor={(node) => node.style?.background || '#ddd'}
-            className="bg-white border border-gray-300 rounded"
-          />
+          <Controls position="top-right" />
           <Background variant="dots" gap={20} size={1} color="#E5E7EB" />
         </ReactFlow>
 
