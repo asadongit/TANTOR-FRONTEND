@@ -20,6 +20,7 @@ import {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import DownloadHelper from './DownloadHelper';
+import Breadcrumb from '../../../../components/Breadcrumb';
 
 const SourceTableNode = ({ data }) => {
     const { selectedColumn, onColumnClick } = data;
@@ -279,7 +280,7 @@ const nodeTypes = {
     targetTable: TargetTableNode,
 };
 
-const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policyIds, columnName = ""}) => {
+const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policyIds, columnName = "" }) => {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [allEdges, setAllEdges] = useState([]);
@@ -875,10 +876,11 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
 
     return (
         <ReactFlowProvider>
-            <div className="bg-gray-50 h-screen flex flex-col overflow-hidden relative">
+            <div className="bg-gray-50 h-screen flex flex-col overflow-hidden relative p-2">
                 {type === "table" && (
                     <>
-                        <div className="mb-1 px-4 py-2">
+                        <Breadcrumb />
+                        <div className="mb-1 px-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <button
@@ -901,7 +903,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                         </div>
                     </>
                 )}
-                
+
                 {type === "column" && activeTab === 'map' && (
                     <div className="mb-1 px-4 py-2 absolute top-0 right-0 z-10">
                         <DownloadHelper nodes={nodes} TableName={TableName} />

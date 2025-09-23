@@ -41,6 +41,7 @@ const CircularNodeRemote = ({
   const isAllConnectionsExpanded = allConnectionsExpandedNodes.has(nodeId);
 
   const isAssetInfoDisabled = nodeData.type === 'view';
+  const isColumnLevelDisabled = nodeData.type === 'schema';
 
   const handleAssetInfo = () => {
     setShowAssetInfo(true);
@@ -99,7 +100,7 @@ const CircularNodeRemote = ({
                     'bg-gray-700 hover:bg-gray-600 text-white'
                 }`}
               title={
-                nodeData.type !== 'schema' && nodeData.type !== 'table' ? "Forward not available for this node type" :
+                nodeData.type !== 'schema' && nodeData.type !== 'table' ? "Forward not available" :
                   isLoading ? "Loading..." :
                     isForwardExpanded ? "Close Forward Connections" : "Show Forward Connections"
               }
@@ -120,7 +121,7 @@ const CircularNodeRemote = ({
                     'bg-gray-700 hover:bg-gray-600 text-white'
                 }`}
               title={
-                nodeData.type !== 'schema' && nodeData.type !== 'table' ? "All connections not available for this node type" :
+                nodeData.type !== 'schema' && nodeData.type !== 'table' ? "All connections not available" :
                   isLoadingAllConnections ? "Loading..." :
                     isAllConnectionsExpanded ? "Close All Connections" : "Show All Asset Connections (1 step)"
               }
@@ -134,8 +135,16 @@ const CircularNodeRemote = ({
 
             <button
               onClick={handleColumnDetails}
-              className="absolute bottom-0 left-2 transform -translate-x-1/4 translate-y-1/4 w-7 h-7 bg-gray-700 hover:bg-gray-600 rounded-full border-2 border-white flex items-center justify-center transition-all text-white"
-              title="Column Level Details"
+              disabled={isColumnLevelDisabled}
+              className={`absolute bottom-0 left-2 transform -translate-x-1/4 translate-y-1/4 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center transition-all ${isColumnLevelDisabled
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-gray-700 hover:bg-gray-600 text-white'
+                }`}
+              title={
+                isColumnLevelDisabled
+                  ? "Column Level Details not available for views"
+                  : "Column Level Details"
+              }
             >
               <Network size={16} />
             </button>
@@ -533,6 +542,18 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
     return newEdges;
   };
 
+  const getDisplayName = (fullName, type) => {
+    if (!fullName) return '';
+    if (type === 'schema') {
+      return fullName.split('.').pop();
+    } else if (type === 'table') {
+      return fullName.split('.').pop();
+    } else if (type === 'view') {
+      return fullName.includes('.') ? fullName.split('.').pop() : fullName;
+    }
+    return fullName;
+  };
+
   const createForwardNodes = (nodeId, nodeType, forwardResponse, existingNodes) => {
     const newNodes = [];
     const newEdges = [];
@@ -561,12 +582,35 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
         }
 
         const tableName = tableFullName.split('.').pop();
+        const displayName = getDisplayName(tableFullName, 'table');
+
         const tableNode = {
           id: tableFullName,
           type: 'default',
           position: tablePositions[index],
+          targetPosition: 'left',
+          sourcePosition: 'right',
           data: {
-            label: 'T',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>T</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  whiteSpace: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none',
+                }} title={tableFullName}>
+                  {displayName}
+                </div>
+              </div>
+            ),
             type: 'table',
             description: `Table: ${tableName}`,
             fullName: tableFullName,
@@ -607,6 +651,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
 
         forwardResponse.views.forEach((viewData, index) => {
           const viewName = viewData.view_name;
+          const displayName = getDisplayName(viewName, 'view');
 
           const existingViewNode = findExistingNode([...existingNodes, ...newNodes], viewName);
 
@@ -641,8 +686,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
             id: viewName,
             type: 'default',
             position: viewPositions[index],
+            sourcePosition: 'right',
+            targetPosition: 'left',
             data: {
-              label: 'V',
+              label: (
+                <div style={{ position: 'relative' }}>
+                  <div>V</div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '60px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '11px',
+                    color: '#6B7280',
+                    textAlign: 'center',
+                    maxWidth: '120px',
+                    whiteSpace: 'break-word',
+                    lineHeight: '1.2',
+                    pointerEvents: 'none'
+                  }} title={viewName}>
+                    {displayName}
+                  </div>
+                </div>
+              ),
               type: 'view',
               description: `View: ${viewName}`,
               fullName: viewName,
@@ -698,6 +764,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
 
       forwardResponse.forEach((viewName, index) => {
         const existingViewNode = findExistingNode(existingNodes, viewName);
+        const displayName = getDisplayName(viewName, 'view');
 
         if (existingViewNode) {
           // View exists, just create edge if it doesn't exist
@@ -719,8 +786,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           id: viewName,
           type: 'default',
           position: viewPositions[index],
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'V',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>V</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  whiteSpace: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={viewName}>
+                  {displayName}
+                </div>
+              </div>
+            ),
             type: 'view',
             description: `View: ${viewName}`,
             fullName: viewName,
@@ -760,7 +848,6 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
 
     return { newNodes, newEdges };
   };
-
   const createBackwardNodes = (nodeId, nodeType, backwardResponse, existingNodes) => {
     const newNodes = [];
     const newEdges = [];
@@ -780,8 +867,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
             id: schemaFullName,
             type: 'default',
             position: schemaPositions[index],
+            sourcePosition: 'right',
+            targetPosition: 'left',
             data: {
-              label: 'S',
+              label: (
+                <div style={{ position: 'relative' }}>
+                  <div>S</div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '60px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '11px',
+                    color: '#6B7280',
+                    textAlign: 'center',
+                    maxWidth: '120px',
+                    wordWrap: 'break-word',
+                    lineHeight: '1.2',
+                    pointerEvents: 'none'
+                  }} title={schemaFullName}>
+                    {schemaName}
+                  </div>
+                </div>
+              ),
               type: 'schema',
               description: `Schema: ${schemaName}`,
               fullName: schemaFullName,
@@ -859,8 +967,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           id: tableFullName,
           type: 'default',
           position: tablePositions[index],
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'T',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>T</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  wordWrap: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={tableFullName}>
+                  {tableName}
+                </div>
+              </div>
+            ),
             type: 'table',
             description: `Table: ${tableName}`,
             fullName: tableFullName,
@@ -948,8 +1077,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           id: schemaFullName,
           type: 'default',
           position: schemaPositions[index],
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'S',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>S</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  wordWrap: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={schemaFullName}>
+                  {schemaName}
+                </div>
+              </div>
+            ),
             type: 'schema',
             description: `Schema: ${schemaName}`,
             fullName: schemaFullName,
@@ -1022,8 +1172,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           id: tableFullName,
           type: 'default',
           position: tablePositions[index],
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'T',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>T</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  wordWrap: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={tableFullName}>
+                  {tableName}
+                </div>
+              </div>
+            ),
             type: 'table',
             description: `Table: ${tableName}`,
             fullName: tableFullName,
@@ -1084,8 +1255,29 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
           id: viewName,
           type: 'default',
           position: viewPositions[index],
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'V',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>V</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  wordWrap: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={viewName}>
+                  {viewName}
+                </div>
+              </div>
+            ),
             type: 'view',
             description: `View: ${viewName}`,
             fullName: viewName,
@@ -1137,12 +1329,35 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
 
   const generateTableNodesAndEdges = (tableItem) => {
     const schemaNodeId = tableItem.schema;
+    const schemaDisplayName = getDisplayName(tableItem.schema, 'schema');
+
     const schemaNode = {
       id: schemaNodeId,
       type: 'default',
       position: { x: 200, y: 200 },
+      sourcePosition: 'right',
+      targetPosition: 'left',
       data: {
-        label: 'S',
+        label: (
+          <div style={{ position: 'relative' }}>
+            <div>S</div>
+            <div style={{
+              position: 'absolute',
+              top: '60px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '11px',
+              color: '#6B7280',
+              textAlign: 'center',
+              maxWidth: '120px',
+              whiteSpace: 'break-word',
+              lineHeight: '1.2',
+              pointerEvents: 'none'
+            }} title={tableItem.schema}>
+              {schemaDisplayName}
+            </div>
+          </div>
+        ),
         type: 'schema',
         description: `Schema: ${tableItem.schemaToShow}`,
         fullName: tableItem.schema
@@ -1164,12 +1379,35 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
     };
 
     const tableNodeId = tableItem.table;
+    const tableDisplayName = getDisplayName(tableItem.table, 'table');
+
     const tableNode = {
       id: tableNodeId,
       type: 'default',
       position: { x: 500, y: 200 },
+      sourcePosition: 'right',
+      targetPosition: 'left',
       data: {
-        label: 'T',
+        label: (
+          <div style={{ position: 'relative' }}>
+            <div>T</div>
+            <div style={{
+              position: 'absolute',
+              top: '60px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '11px',
+              color: '#6B7280',
+              textAlign: 'center',
+              maxWidth: '120px',
+              whiteSpace: 'break-word',
+              lineHeight: '1.2',
+              pointerEvents: 'none'
+            }} title={tableItem.table}>
+              {tableDisplayName}
+            </div>
+          </div>
+        ),
         type: 'table',
         description: `Table: ${tableItem.name}`,
         fullName: tableItem.table
@@ -1241,14 +1479,36 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
       const schemaX = 100;
 
       const schemaNodeId = schemaName;
+      const schemaDisplayName = getDisplayName(schemaName, 'schema');
       schemaPositions[schemaName] = { x: schemaX, y: schemaY };
 
       const schemaNode = {
         id: schemaNodeId,
         type: 'default',
         position: { x: schemaX, y: schemaY },
+        sourcePosition: 'right',
+        targetPosition: 'left',
         data: {
-          label: 'S',
+          label: (
+            <div style={{ position: 'relative' }}>
+              <div>S</div>
+              <div style={{
+                position: 'absolute',
+                top: '60px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: '11px',
+                color: '#6B7280',
+                textAlign: 'center',
+                maxWidth: '120px',
+                whiteSpace: 'break-word',
+                lineHeight: '1.2',
+                pointerEvents: 'none'
+              }} title={schemaName}>
+                {schemaDisplayName}
+              </div>
+            </div>
+          ),
           type: 'schema',
           description: `Schema: ${schemaName.split('.').pop()}`,
           fullName: schemaName
@@ -1273,14 +1533,36 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
       tables.forEach((table, tableIndex) => {
         const tableY = schemaY + ((tableIndex - Math.floor(tables.length / 2)) * 80);
         const tableX = schemaX + 250;
+        const tableDisplayName = getDisplayName(table.name, 'table');
 
         const tableNodeId = table.name;
         const tableNode = {
           id: tableNodeId,
           type: 'default',
           position: { x: tableX, y: tableY },
+          sourcePosition: 'right',
+          targetPosition: 'left',
           data: {
-            label: 'T',
+            label: (
+              <div style={{ position: 'relative' }}>
+                <div>T</div>
+                <div style={{
+                  position: 'absolute',
+                  top: '60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: '11px',
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  maxWidth: '120px',
+                  whiteSpace: 'break-word',
+                  lineHeight: '1.2',
+                  pointerEvents: 'none'
+                }} title={table.name}>
+                  {tableDisplayName}
+                </div>
+              </div>
+            ),
             type: 'table',
             description: `Table: ${table.name.split('.').pop()}`,
             fullName: table.name
@@ -1319,12 +1601,35 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack,
     const viewY = 100 + (Object.keys(schemaGroups).length - 1) * 100;
 
     const viewNodeId = viewItem.name;
+    const viewDisplayName = getDisplayName(viewItem.name, 'view');
+
     const viewNode = {
       id: viewNodeId,
       type: 'default',
       position: { x: viewX, y: viewY },
+      sourcePosition: 'right',
+      targetPosition: 'left',
       data: {
-        label: 'V',
+        label: (
+          <div style={{ position: 'relative' }}>
+            <div>V</div>
+            <div style={{
+              position: 'absolute',
+              top: '60px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '11px',
+              color: '#6B7280',
+              textAlign: 'center',
+              maxWidth: '120px',
+              whiteSpace: 'break-word',
+              lineHeight: '1.2',
+              pointerEvents: 'none'
+            }} title={viewItem.name}>
+              {viewDisplayName}
+            </div>
+          </div>
+        ),
         type: 'view',
         description: `View: ${viewItem.name}`,
         viewName: viewItem.name
