@@ -166,7 +166,7 @@ const TargetTableNode = ({ data }) => {
     );
 };
 
-const NavigationButtons = ({ selectedColumn, columnInfo, onBack, onForward }) => {
+const NavigationButtons = ({ selectedColumn, columnInfo, onBack, onForward, onClose }) => {
     if (!selectedColumn) return null;
 
     const parseColumnInfo = (columnName) => {
@@ -200,7 +200,9 @@ const NavigationButtons = ({ selectedColumn, columnInfo, onBack, onForward }) =>
             }}
         >
 
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50"
+                onClick={onClose}
+                title="Close Details">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center">
                         <ChevronRight className="h-5 w-5 text-[#8d77ba]" />
@@ -285,102 +287,102 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
     const [TableDefinition, setTableDefinition] = useState('');
     const [textError, setTextError] = useState(null);
 
-    const lineageData ={
-    "etl": "yes",
-    "source": [
-        {
-            "connection": "orcl_lineage_etl",
-            "schema": "orcl_lineage_etl.test_user1",
-            "table": "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS",
-            "columns": {
-                "DEPARTMENT_ID": [
-                    "DEPARTMENT_ID"
-                ],
-                "DEPARTMENT_NAME": [
-                    "DEPARTMENT_NAME"
-                ],
-                "LOCATION": [
-                    "LOCATION"
-                ]
-            }
-        },
-        {
-            "connection": "orcl_lineage_etl",
-            "schema": "orcl_lineage_etl.test_user1",
-            "table": "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES",
-            "columns": {
-                "EMPLOYEE_ID": [
-                    "EMPLOYEE_ID"
-                ],
-                "FIRST_NAME": [
-                    "FIRST_NAME"
-                ],
-                "LAST_NAME": [
-                    "LAST_NAME"
-                ],
-                "SALARY": [
-                    "SALARY"
-                ],
-				      "DEPARTMENT_ID": [
-                    "DEPARTMENT_ID"
-                ]
-            }
-        }
-    ],
-    "transformation": [
-        {
-            "string": {
-                "transformation_order": 2,
-				"column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"],
+    const lineageData = {
+        "etl": "yes",
+        "source": [
+            {
+                "connection": "orcl_lineage_etl",
+                "schema": "orcl_lineage_etl.test_user1",
+                "table": "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS",
                 "columns": {
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME",
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
+                    "DEPARTMENT_ID": [
+                        "DEPARTMENT_ID"
+                    ],
+                    "DEPARTMENT_NAME": [
+                        "DEPARTMENT_NAME"
+                    ],
+                    "LOCATION": [
+                        "LOCATION"
                     ]
-                },
-                "transformation_operator": "concat"
-            }
-        },
-		{
-            "join": {
-                "transformation_order": 3,
-				"join_operator": "== ",
-				"join_type": "inner",
-				 
-                "columns_used":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID","orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
-                "column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID","orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
+                }
+            },
+            {
+                "connection": "orcl_lineage_etl",
+                "schema": "orcl_lineage_etl.test_user1",
+                "table": "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES",
                 "columns": {
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
+                    "EMPLOYEE_ID": [
+                        "EMPLOYEE_ID"
+                    ],
+                    "FIRST_NAME": [
+                        "FIRST_NAME"
+                    ],
+                    "LAST_NAME": [
+                        "LAST_NAME"
+                    ],
+                    "SALARY": [
+                        "SALARY"
+                    ],
+                    "DEPARTMENT_ID": [
+                        "DEPARTMENT_ID"
                     ]
                 }
             }
-        },
-		{
-            "rename": {
-                "transformation_order": 4,
-				"column_affected":["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname"],
+        ],
+        "transformation": [
+            {
+                "string": {
+                    "transformation_order": 2,
+                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"],
+                    "columns": {
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
+                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.FIRST_NAME",
+                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.LAST_NAME"
+                        ]
+                    },
+                    "transformation_operator": "concat"
+                }
+            },
+            {
+                "join": {
+                    "transformation_order": 3,
+                    "join_operator": "== ",
+                    "join_type": "inner",
+
+                    "columns_used": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID", "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
+                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.DEPARTMENT_ID", "orcl_lineage_etl.test_user1.LINEAGE_DEPARTMENTS.DEPARTMENT_ID"],
+                    "columns": {
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname": [
+                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
+                        ]
+                    }
+                }
+            },
+            {
+                "rename": {
+                    "transformation_order": 4,
+                    "column_affected": ["orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname"],
+                    "columns": {
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname": [
+                            "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
+                        ]
+                    }
+                }
+            }
+        ],
+        "target": [
+            {
+                "connection": "post_lineage_etl",
+                "schema": "post_lineage_etl.public",
+                "table": "post_lineage_etl.public.employee_report",
                 "columns": {
-                "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.Standardname": [
-                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.fullname"
+                    "employee_name": [
+                        "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
                     ]
                 }
             }
-		}
-		],
-    "target": [
-        {
-            "connection": "post_lineage_etl",
-            "schema": "post_lineage_etl.public",
-            "table": "post_lineage_etl.public.employee_report",
-            "columns": {
-                "employee_name": [
-                    "orcl_lineage_etl.test_user1.LINEAGE_EMPLOYEES.standardname"
-                ]
-            }
-        }
-    ]
-}
+        ]
+    }
 
 
     const isSameColumnIgnoreCase = (col1, col2) => {
@@ -848,6 +850,12 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         }
     }, [activeTab, fetchTableDefinition]);
 
+    const handleCloseDetails = () => {
+        setSelectedColumn(null);
+        setSelectedColumnInfo(null);
+        setEdges(allEdges);
+    };
+
     return (
         <ReactFlowProvider>
             <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
@@ -869,7 +877,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                                         </span>
                                     </div>
                                 </div>
-                                 {/* {activeTab === 'map' && (
+                                {/* {activeTab === 'map' && (
                                 <DownloadButton nodes={nodes} TableName={TableName} />
                             )} */}
                             </div>
@@ -910,6 +918,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                                 columnInfo={selectedColumnInfo}
                                 onBack={handleBack}
                                 onForward={handleForward}
+                                onClose={handleCloseDetails}
                             />
                             <ReactFlow
                                 nodes={nodes}
