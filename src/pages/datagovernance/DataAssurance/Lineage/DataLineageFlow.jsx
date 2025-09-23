@@ -184,7 +184,7 @@ const CircularNodeRemote = ({
 
 const API_BASE_URL = `${window._env_?.VITE_FAST_API}/data_lineage`;
 
-const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack }) => {
+const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack, policyIds }) => {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [backwardExpandedNodes, setBackwardExpandedNodes] = useState(new Set());
@@ -383,7 +383,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
     if (!connectionInfo) return null;
 
     const payload = {
-      matched_policy_ids: [19],
+      matched_policy_ids: policyIds,
       connection_name: connectionInfo.database,
       table_schema: connectionInfo.schema,
       steps: stepCount,
@@ -417,7 +417,7 @@ const DataLineageFlow = ({ selectedItems, currentTableIndex, onNavigate, onBack 
 
   const fetchBackwardLineage = async (nodeId, nodeType, stepCount) => {
     const payload = {
-      matched_policy_ids: [19],
+      matched_policy_ids: policyIds,
       steps: stepCount,
       type: nodeType
     };

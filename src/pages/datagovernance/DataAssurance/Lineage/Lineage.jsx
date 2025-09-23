@@ -524,6 +524,7 @@ function EnhancedLineage() {
       currentTableIndex={currentTableIndex}
       onNavigate={handleTableNavigation}
       onBack={handleBackToSelection}
+      policyIds={policyIds}
     />
   );
 }
