@@ -1,9 +1,8 @@
 import CryptoJS from "crypto-js";
-import {cryptoKey, cryptoIvKey} from "../config";
 
 export function birtEncrypt(plainText) {
-    const key = CryptoJS.enc.Utf8.parse(cryptoKey);
-    const iv = CryptoJS.enc.Utf8.parse(cryptoIvKey);
+    const key = CryptoJS.enc.Utf8.parse(import.meta.env.VITE_CRYPTO_KEY);
+    const iv = CryptoJS.enc.Utf8.parse(import.meta.env.VITE_CRYPTO_IV);
 
     const encrypted = CryptoJS.AES.encrypt(
       CryptoJS.enc.Utf8.parse(plainText),
