@@ -86,9 +86,7 @@ export const SourceNode = ({ id, data }) => {
   // const postProcedureDropdownRef = useRef(null);
   const sourceTypeDropdownRef = useRef(null);
   const fileTypeDropdownRef = useRef(null);
-   useEffect(() => {
-    console.log("selectedColumns UPDATED:", selectedColumns);
-  }, [selectedColumns]);
+
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -816,7 +814,7 @@ export const SourceNode = ({ id, data }) => {
         setSelectedColumns(data.columns);
         hasUpdated = true;
       }
-    
+
 
       if (data.objectType && (!selectedObjectType || selectedObjectType === "")) {
         setSelectedObjectType(data.objectType);
@@ -944,7 +942,7 @@ useEffect(() => {
       }
     }
 
-    hasInitializedSelectedColumns.current = true; 
+    hasInitializedSelectedColumns.current = true;
   }
 }, [tables, data.table, data.columns, selectedTable, selectedObjectType, columns.length]);
 
@@ -1790,7 +1788,7 @@ useEffect(() => {
                         onChange={e => setColumnSearch(e.target.value)}
                       />
                     </div>
-                    
+
                     <div className="max-h-40 mt-2 overflow-y-auto border text-black border-gray-300 rounded-sm p-2">
                       <div className="mb-2">
                         <label className="flex items-center text-[11px]">
