@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { useLocation, useNavigate, Navigate, Outlet } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-import { initKeycloak, login as kcLogin, logout as kcLogout, getToken as kcGetToken, getKeycloak } from "../services/keycloakService";
+import { initKeycloak, login as kcLogin, logout as kcLogout, getToken as kcGetToken, getKeycloak } from "../services/KeycloakService";
 
 const AuthContext = createContext({
   isAuthenticated: false,
