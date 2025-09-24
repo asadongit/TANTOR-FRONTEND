@@ -33,7 +33,6 @@ import {
   ProtectedRoute,
   PublicRoute,
 } from "./context/AuthContext";
-import TantorLogin from "./pages/login";
 import { BusinessHeader } from "./pages/platform/Federation/BusinessView/BusinessHeader";
 import TransformationCanvas from "./pages/platform/transformation/components/TransformationCanvas";
 import { DatabotProvider } from "./pages/datagovernance/Databot/context/DatabotContext";
@@ -52,14 +51,7 @@ function App() {
         <Toaster />
         <ModalProvider>
           <Routes>
-            <Route
-              path="/"
-              element={
-                <PublicRoute>
-                  <TantorLogin />
-                </PublicRoute>
-              }
-            />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             <Route element={<ProtectedRoute />}>
               <Route
@@ -215,10 +207,10 @@ function App() {
                   <ContextViewProvider>
                     <ViewDrawer>
                       <div className="flex flex-col h-screen bg-gray-50 text-gray-100">
-                        <Header className="h-16 flex-shrink-0" />{" "}
+                        <Header className="h-16 flex-shrink-0" /> {" "}
                         <BusinessHeader />
                         <div className="flex-1 flex mt-8">
-                          <BusinessSidebar className="w-64" />{" "}
+                          <BusinessSidebar className="w-64" /> {" "}
                           <div className="flex-1 relative">
                             {" "}
                             <ReactFlowProvider>
@@ -299,7 +291,7 @@ function App() {
                 }
               />
             </Route>
-            
+
           </Routes>
         </ModalProvider>
       </AuthProvider>
