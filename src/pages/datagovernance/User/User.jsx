@@ -31,6 +31,7 @@ const User = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isPaginationLoading, setIsPaginationLoading] = useState(false);
   const [detailModalData, setDetailModalData] = useState({ type: '', data: [] });
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -40,38 +41,59 @@ const User = () => {
   const [checkedUsers, setCheckedUsers] = useState({});
   const [allChecked, setAllChecked] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const initialFetchDone = useRef(false);
   const rowsPerPage = 10;
 
   const { token } = useAuth();
 
-  const fetchUserData = async () => {
-    setIsLoading(true);
+  const fetchUserData = async (page = 1, search = '', isPagination = false) => {
+    if (isPagination) {
+      setIsPaginationLoading(true);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users`, {
+      const skip = (page - 1) * rowsPerPage;
+      let url = `${window._env_?.VITE_FAST_API}/auth/users?skip=${skip}&limit=${rowsPerPage}`;
+      if (search.trim()) {
+        url += `&search=${encodeURIComponent(search.trim())}`;
+      }
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
+
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
+
       const data = await response.json();
-      setUsers(data);
+      setUsers(data.users);
+      setTotalUsers(data.total);
+      setHasMore(data.has_more);
       return { success: true };
     } catch (error) {
       console.error('Error fetching user data:', error);
       return { success: false, error };
     } finally {
-      setIsLoading(false);
+      if (isPagination) {
+        setIsPaginationLoading(false);
+      } else {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     if (!initialFetchDone.current) {
-      fetchUserData();
+      fetchUserData(1, searchTerm);
       initialFetchDone.current = true;
     }
   }, []);
@@ -87,7 +109,7 @@ const User = () => {
 
   const handleSaveUser = () => {
     setIsModalOpen(false);
-    fetchUserData();
+    fetchUserData(currentPage, searchTerm);
   };
 
   const handleEditClick = (user) => {
@@ -98,12 +120,21 @@ const User = () => {
 
   const handleEditSave = () => {
     setIsEditModalOpen(false);
-    fetchUserData();
+    fetchUserData(currentPage, searchTerm);
   };
 
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+    const newSearchTerm = e.target.value;
+    setSearchTerm(newSearchTerm);
     setCurrentPage(1);
+    setCheckedUsers({});
+    setAllChecked(false);
+
+    // Debounce search to avoid too many API calls
+    clearTimeout(window.searchTimeout);
+    window.searchTimeout = setTimeout(() => {
+      fetchUserData(1, newSearchTerm);
+    }, 500);
   };
 
   const filteredUsers = users.filter(user =>
@@ -121,13 +152,21 @@ const User = () => {
 
   const goToPreviousPage = () => {
     if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
+      const newPage = currentPage - 1;
+      setCurrentPage(newPage);
+      setCheckedUsers({});
+      setAllChecked(false);
+      fetchUserData(newPage, searchTerm, true);
     }
   };
 
   const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
+    if (hasMore) {
+      const newPage = currentPage + 1;
+      setCurrentPage(newPage);
+      setCheckedUsers({});
+      setAllChecked(false);
+      fetchUserData(newPage, searchTerm, true);
     }
   };
 
@@ -206,15 +245,16 @@ const User = () => {
   };
 
   const handleDeleteConfirm = () => {
-    fetchUserData();
+    fetchUserData(currentPage, searchTerm);
   };
 
   const handleRefresh = async () => {
     setSearchTerm('');
+    setCurrentPage(1);
     setCheckedUsers({});
     setAllChecked(false);
 
-    const result = await fetchUserData();
+    const result = await fetchUserData(1, '');
 
     if (result.success) {
       setToast({
@@ -235,20 +275,13 @@ const User = () => {
     }, 3000);
   };
 
-  const handleCheckUser = (userId) => {
-    setCheckedUsers(prev => ({
-      ...prev,
-      [userId]: !prev[userId]
-    }));
-  };
-
   const handleCheckAll = () => {
     const newAllChecked = !allChecked;
     setAllChecked(newAllChecked);
 
     const newCheckedUsers = {};
     if (newAllChecked) {
-      currentUsers.forEach(user => {
+      users.forEach(user => {
         newCheckedUsers[user.id] = true;
       });
     }
@@ -334,134 +367,161 @@ const User = () => {
             </tr>
           </thead>
           <tbody>
-            {currentUsers.map((user, index) => (
-              <tr key={user.id} className="border-b hover:bg-gray-50">
-                <td className="p-4">
-                  <input
-                    type="checkbox"
-                    checked={!!checkedUsers[user.id]}
-                    onChange={() => handleCheckUser(user.id)}
-                  />
-                </td>
-                <td className="p-4">
-                  <button
-                    className="text-[#8e78b7] font-medium hover:underline"
-                    onClick={() => openUserDetails(user)}
-                  >
-                    {user.username}
-                  </button>
-                </td>
-                <td className="p-4">
-                  <button
-                    onClick={() => showDetailModal('role', user.roles, user)}
-                    className="text-center font-medium underline decoration-1 underline-offset-4"
-                  >
-                    {getCount(user.roles)}
-                  </button>
-                </td>
-                <td className="p-4">
-                  <button
-                    onClick={() => showDetailModal('persona', user.persona, user)}
-                    className="text-center font-medium underline decoration-1 underline-offset-4"
-                  >
-                    {getCount(user.persona)}
-                  </button>
-                </td>
-                <td className="p-4">
-                  <button
-                    onClick={() => showDetailModal('group', null, user)}
-                    className="text-center font-medium underline decoration-1 underline-offset-4"
-                  >
-                    {getCount(null, 'group', user)}
-                  </button>
-                </td>
-                <td className="p-4">
-                  <button
-                    onClick={() => showDetailModal('subgroup', null, user)}
-                    className="text-center font-medium underline decoration-1 underline-offset-4"
-                  >
-                    {getCount(null, 'subgroup', user)}
-                  </button>
-                </td>
-                <td className="p-4">
-                  {user.enabled ?
-                    <span className="px-2 py-1 rounded-full text-sm text-green-600 bg-green-50">Active</span> :
-                    <span className="px-2 py-1 rounded-full text-sm text-red-600 bg-red-50">Inactive</span>
-                  }
-                </td>
-                <td className="p-4">
-                  <div className="relative">
-                    <button
-                      onClick={() => setActiveMenu(activeMenu === index ? null : index)}
-                      className="p-1.5 rounded-full hover:bg-gray-100"
-                    >
-                      <MoreHorizontal className="h-5 w-5" />
-                    </button>
-
-                    {activeMenu === index && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-10"
-                          onClick={handleClickOutside}
-                        />
-                        <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                          <div className="flex items-center p-1 gap-1">
-                            <button
-                              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                              onClick={() => handleEditClick(user)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                              onClick={() => handleDeleteClick(user)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
+            {isPaginationLoading ? (
+              <tr>
+                <td colSpan="8" className="p-8 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-6 h-6 border-2 border-[#8e78b7] border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-gray-500">Loading users...</span>
                   </div>
                 </td>
               </tr>
-            ))}
+            ) : users.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="p-8 text-center text-gray-500">
+                  No users found
+                </td>
+              </tr>
+            ) : (
+              users.map((user, index) => (
+                <tr key={user.id} className="border-b hover:bg-gray-50">
+                  <td className="p-4">
+                    <input
+                      type="checkbox"
+                      checked={!!checkedUsers[user.id]}
+                      onChange={() => handleCheckUser(user.id)}
+                    />
+                  </td>
+                  <td className="p-4">
+                    <button
+                      className="text-[#8e78b7] font-medium hover:underline"
+                      onClick={() => openUserDetails(user)}
+                    >
+                      {user.username}
+                    </button>
+                  </td>
+                  <td className="p-4">
+                    <button
+                      onClick={() => showDetailModal('role', user.roles, user)}
+                      className="text-center font-medium underline decoration-1 underline-offset-4"
+                    >
+                      {getCount(user.roles)}
+                    </button>
+                  </td>
+                  <td className="p-4">
+                    <button
+                      onClick={() => showDetailModal('persona', user.persona, user)}
+                      className="text-center font-medium underline decoration-1 underline-offset-4"
+                    >
+                      {getCount(user.persona)}
+                    </button>
+                  </td>
+                  <td className="p-4">
+                    <button
+                      onClick={() => showDetailModal('group', null, user)}
+                      className="text-center font-medium underline decoration-1 underline-offset-4"
+                    >
+                      {getCount(null, 'group', user)}
+                    </button>
+                  </td>
+                  <td className="p-4">
+                    <button
+                      onClick={() => showDetailModal('subgroup', null, user)}
+                      className="text-center font-medium underline decoration-1 underline-offset-4"
+                    >
+                      {getCount(null, 'subgroup', user)}
+                    </button>
+                  </td>
+                  <td className="p-4">
+                    {user.enabled ?
+                      <span className="px-2 py-1 rounded-full text-sm text-green-600 bg-green-50">Active</span> :
+                      <span className="px-2 py-1 rounded-full text-sm text-red-600 bg-red-50">Inactive</span>
+                    }
+                  </td>
+                  <td className="p-4">
+                    <div className="relative">
+                      <button
+                        onClick={() => setActiveMenu(activeMenu === index ? null : index)}
+                        className="p-1.5 rounded-full hover:bg-gray-100"
+                      >
+                        <MoreHorizontal className="h-5 w-5" />
+                      </button>
+
+                      {activeMenu === index && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={handleClickOutside}
+                          />
+                          <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                            <div className="flex items-center p-1 gap-1">
+                              <button
+                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                onClick={() => handleEditClick(user)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                onClick={() => handleDeleteClick(user)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
 
+        <div className="flex justify-between items-center px-4 py-3 border-t">
+          <div className="text-sm text-gray-500">
+            Showing {users.length} of {totalUsers} users
+            {searchTerm && ` (filtered by "${searchTerm}")`}
+          </div>
 
-        <div className="flex justify-end items-center px-4 py-3 border-t">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
               onClick={goToPreviousPage}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-lg ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
+              disabled={currentPage === 1 || isPaginationLoading}
+              className={`flex items-center gap-1 px-3 py-2 rounded-lg ${
+                currentPage === 1 || isPaginationLoading
+                  ? 'text-gray-300 cursor-not-allowed bg-gray-50'
+                  : 'text-gray-600 hover:bg-gray-100 bg-white border'
+              }`}
             >
-              <ChevronLeft className="h-5 w-5" />
+              {isPaginationLoading && currentPage > 1 ? (
+                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+              Previous
             </button>
 
-            <div className="flex items-center">
-              {[...Array(totalPages)].map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => goToPage(index + 1)}
-                  className={`px-3 py-1 mx-1 rounded-md ${
-                    currentPage === index + 1
-                      ? 'bg-[#8e78b7] text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
+            <span className="px-3 py-2 text-sm text-gray-600">
+              Page {currentPage}
+            </span>
 
             <button
               onClick={goToNextPage}
-              disabled={currentPage === totalPages}
-              className={`p-2 rounded-lg ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-100'}`}
+              disabled={!hasMore || isPaginationLoading}
+              className={`flex items-center gap-1 px-3 py-2 rounded-lg ${
+                !hasMore || isPaginationLoading
+                  ? 'text-gray-300 cursor-not-allowed bg-gray-50'
+                  : 'text-gray-600 hover:bg-gray-100 bg-white border'
+              }`}
             >
-              <ChevronRight className="h-5 w-5" />
+              Next
+              {isPaginationLoading && hasMore ? (
+                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>
