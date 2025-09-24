@@ -915,6 +915,16 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         setEdges(allEdges);
     };
 
+    const handleTabChange = (tabName) => {
+    setActiveTab(tabName);
+    
+    if (tabName === 'text') {
+        setSelectedColumn(null);
+        setSelectedColumnInfo(null);
+        setEdges(allEdges);
+    }
+};
+
     // Show loading state while fetching lineage data
     if (loading) {
         return (
@@ -993,7 +1003,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                                 ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
                                 : 'text-gray-500 hover:text-gray-700'
                                 }`}
-                            onClick={() => setActiveTab('map')}
+                            onClick={() => handleTabChange('map')}
                         >
                             <Map className="h-4 w-4" />
                             Map
@@ -1003,7 +1013,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                                 ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
                                 : 'text-gray-500 hover:text-gray-700'
                                 }`}
-                            onClick={() => setActiveTab('text')}
+                            onClick={() => handleTabChange('text')}
                         >
                             <Code className="h-4 w-4" />
                             Text
