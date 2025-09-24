@@ -11,7 +11,10 @@ import {
     Pencil,
     X,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown
 } from "lucide-react";
 import { Icon } from "@iconify-icon/react";
 import { useNavigate } from "react-router-dom";
@@ -59,6 +62,12 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
     const [toast, setToast] = useState({ show: false, message: '', type: '' });
     const [isStepperOpen, setIsStepperOpen] = useState(isOpen);
     const [activeStep, setActiveStep] = useState(0);
+
+    const [sortConfig, setSortConfig] = useState({
+        key: null,
+        direction: 'asc'
+    });
+
     const [policyData, setPolicyData] = useState({
         policy_type: '',
         policy_description: '',
@@ -119,6 +128,23 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
     const connectionSteps = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5', 'Step 6', 'Reports (Optional)', 'Confirmation'];
     const steps = connectionSteps;
     const navigate = useNavigate();
+
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortIcon = (columnKey) => {
+        if (sortConfig.key !== columnKey) {
+            return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
+        }
+        return sortConfig.direction === 'asc'
+            ? <ArrowUp className="h-4 w-4 text-gray-400" />
+            : <ArrowDown className="h-4 w-4 text-gray-400" />;
+    };
 
     useEffect(() => {
         if (!isEmbedded) {
@@ -574,15 +600,37 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
     }, [policy, searchTerm]);
 
     const filteredTableData = useMemo(() => {
-        if (!searchTerm) return sampleData;
-        return sampleData.filter(
-            (item) =>
-                item.Type.toLowerCase().includes(searchTerm.toLowerCase()) || item.Name
-                    .toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [sampleData, searchTerm]);
+        let filtered = searchTerm
+            ? sampleData.filter(
+                (item) =>
+                    item.Type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.Name.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            : sampleData;
 
-    const totalPages = Math.ceil(sampleData.length / rowsPerPage);
+        if (sortConfig.key) {
+            filtered = [...filtered].sort((a, b) => {
+                const aValue = a[sortConfig.key];
+                const bValue = b[sortConfig.key];
+
+                if (aValue === null || aValue === undefined) return 1;
+                if (bValue === null || bValue === undefined) return -1;
+
+                const aString = String(aValue).toLowerCase();
+                const bString = String(bValue).toLowerCase();
+
+                if (sortConfig.direction === 'asc') {
+                    return aString.localeCompare(bString);
+                } else {
+                    return bString.localeCompare(aString);
+                }
+            });
+        }
+
+        return filtered;
+    }, [sampleData, searchTerm, sortConfig]);
+
+    const totalPages = Math.ceil(filteredTableData.length / rowsPerPage);
     const paginatedData = filteredTableData.slice(
         (currentPage - 1) * rowsPerPage,
         currentPage * rowsPerPage
@@ -655,7 +703,7 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                 selectedRole: policyDetails.user_selections.role || "",
                 selectedGroup: policyDetails.user_selections.group || "",
                 selectedSubgroup: policyDetails.user_selections.subGroup || "",
-                selectedPersona: policyDetails.user_selections.persona || "" 
+                selectedPersona: policyDetails.user_selections.persona || ""
             });
             setStep3Data({
                 selectedConnections: policyDetails.data_connection?.map(dc => dc.connection) || [],
@@ -1088,15 +1136,87 @@ const Policy = ({ isEmbedded = false, isOpen = false, onClose = () => { }, onPol
                         <table className="w-full table-auto min-w-[1000px]">
                             <thead>
                                 <tr className="bg-[#29304a] text-white text-sm">
-                                    <th className="text-left p-4 whitespace-nowrap">Id</th>
-                                    <th className="text-left p-4 whitespace-nowrap">Type</th>
-                                    <th className="text-left p-4 whitespace-nowrap">Name</th>
-                                    <th className="text-left p-4 whitespace-nowrap">Description</th>
-                                    <th className="text-center p-4 whitespace-nowrap">Status</th>
-                                    <th className="text-left p-4 whitespace-nowrap">Created Date</th>
-                                    <th className="text-left p-4 whitespace-nowrap">Expiry Date</th>
-                                    <th className="text-left p-4 whitespace-nowrap">Updated Date</th>
-                                    <th className="text-left p-4 whitespace-nowrap">Owner</th>
+                                    <th className="text-left p-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleSort('id')}
+                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
+                                        >
+                                            Id
+                                            {getSortIcon('id')}
+                                        </button>
+                                    </th>
+                                    <th className="text-left p-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleSort('Type')}
+                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
+                                        >
+                                            Type
+                                            {getSortIcon('Type')}
+                                        </button>
+                                    </th>
+                                    <th className="text-left p-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleSort('Name')}
+                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
+                                        >
+                                            Name
+                                            {getSortIcon('Name')}
+                                        </button>
+                                    </th>
+                                    <th className="text-left p-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleSort('Description')}
+                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
+                                        >
+                                            Description
+                                            {getSortIcon('Description')}
+                                        </button>
+                                    </th>
+                                    <th className="text-center p-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleSort('Status')}
+                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors mx-auto"
+                                        >
+                                            Status
+                                            {getSortIcon('Status')}
+                                        </button>
+                                    </th>
+                                    <th className="text-left p-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleSort('CreatedDate')}
+                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
+                                        >
+                                            Created Date
+                                            {getSortIcon('CreatedDate')}
+                                        </button>
+                                    </th>
+                                    <th className="text-left p-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleSort('expiryDate')}
+                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
+                                        >
+                                            Expiry Date
+                                            {getSortIcon('expiryDate')}
+                                        </button>
+                                    </th>
+                                    <th className="text-left p-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleSort('UpdatedDate')}
+                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
+                                        >
+                                            Updated Date
+                                            {getSortIcon('UpdatedDate')}
+                                        </button>
+                                    </th>
+                                    <th className="text-left p-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleSort('Owner')}
+                                            className="flex items-center gap-2 hover:bg-[#3a415a] px-2 py-1 rounded transition-colors"
+                                        >
+                                            Owner
+                                            {getSortIcon('Owner')}
+                                        </button>
+                                    </th>
                                     <th className="text-left p-4 whitespace-nowrap">Action</th>
                                 </tr>
                             </thead>
