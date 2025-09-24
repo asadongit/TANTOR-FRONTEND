@@ -81,15 +81,59 @@ const TransformationNode = ({ data }) => {
         return colors[type] || 'bg-transparent border-gray-300 text-gray-800';
     };
 
+    const formatJoinCondition = () => {
+        if (data.type !== 'join' || !data.joinCondition || data.joinCondition.length < 2) {
+            return null;
+        }
+
+        const leftCol = data.joinCondition[0].split('.').pop();
+        const rightCol = data.joinCondition[1].split('.').pop();
+        const operator = data.operator || '==';
+
+        return `${leftCol} ${operator} ${rightCol}`;
+    };
+
     return (
-        <div className={`border-2 rounded-lg shadow-lg min-w-[220px] ${getTransformationColor(data.type)}`}>
+        <div className={`border-2 rounded-lg shadow-lg min-w-[250px] ${getTransformationColor(data.type)}`}>
             <div className="px-3 py-2 border-b">
                 <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm capitalize">{data.type}</span>
+                    {data.type === 'join' && data.joinType && (
+                        <span className="text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded-full font-medium">
+                            {data?.joinType?.toUpperCase()}
+                        </span>
+                    )}
+                    {data.operator && data.type !== 'join' &&
+                        <span className="text-xs">
+                            {data?.operator?.toUpperCase()}
+                        </span>
+                    }
                 </div>
-                {data.operator && <span className="text-xs ml-2">({data.operator})</span>}
             </div>
             <div className="p-2">
+                {/* For join nodes, always show join condition regardless of columns */}
+                {data.type === 'join' && data.joinCondition && (
+                    <div className="flex items-center justify-between py-1 px-2 bg-teal-50 rounded border border-teal-200 mb-1">
+                        <Handle
+                            type="target"
+                            position={Position.Left}
+                            id={`${data.id}-join-input`}
+                            className="!w-2 !h-2 !bg-teal-500 !border-teal-600"
+                            style={{ top: 'auto', transform: 'none', position: 'relative' }}
+                        />
+                        <span className="text-center flex-1 mx-2 text-xs text-teal-700 font-medium">
+                            {formatJoinCondition()}
+                        </span>
+                        <Handle
+                            type="source"
+                            position={Position.Right}
+                            id={`${data.id}-join-output`}
+                            className="!w-2 !h-2 !bg-teal-500 !border-teal-600"
+                            style={{ top: 'auto', transform: 'none', position: 'relative' }}
+                        />
+                    </div>
+                )}
+
                 {data.columns?.map((column, index) => {
                     const columnName = column.split('.').pop();
                     const columnKey = `${data.id}-${column}`;
@@ -295,6 +339,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
     const [isCopied, setIsCopied] = useState(false);
     const [lineageData, setLineageData] = useState(null);
     const [lineageError, setLineageError] = useState(null);
+    const [isGeneratingGraph, setIsGeneratingGraph] = useState(false);
 
     const handleCopy = () => {
         if (TableDefinition) {
@@ -463,9 +508,6 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
     const handleBack = () => {
         if (!selectedColumnInfo || !allEdges || allEdges.length === 0) return;
 
-        console.log('Back button clicked');
-        console.log('Current selected column:', selectedColumnInfo);
-
         const { nodeId, columnName } = selectedColumnInfo;
         const relatedEdges = new Set();
         const visited = new Set();
@@ -519,9 +561,6 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
     const handleForward = () => {
         if (!selectedColumnInfo || !allEdges || allEdges.length === 0) return;
 
-        console.log('Forward button clicked');
-        console.log('Current selected column:', selectedColumnInfo);
-
         const { nodeId, columnName } = selectedColumnInfo;
         const relatedEdges = new Set();
         const visited = new Set();
@@ -555,119 +594,240 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         setEdges(filteredEdges);
     };
 
-    const generateNodesAndEdges = useCallback(() => {
+    const generateNodesAndEdges = useCallback(async () => {
         if (!lineageData) return;
 
-        const generatedNodes = [];
-        const generatedEdges = [];
-        let nodeId = 0;
+        setIsGeneratingGraph(true);
 
-        // Create source nodes
-        lineageData.source.forEach((source, sourceIndex) => {
-            const tableName = source.table.split('.').pop();
-            const columns = Object.keys(source.columns);
-            generatedNodes.push({
-                id: `source-${sourceIndex}`,
-                type: 'sourceTable',
-                position: { x: 50, y: sourceIndex * 300 + 50 },
-                data: {
+        try {
+            const generatedNodes = [];
+            const generatedEdges = [];
+
+            // Create source nodes
+            lineageData.source.forEach((source, sourceIndex) => {
+                const tableName = source.table.split('.').pop();
+                const columns = Object.keys(source.columns);
+                generatedNodes.push({
                     id: `source-${sourceIndex}`,
-                    tableName,
-                    columns
-                }
+                    type: 'sourceTable',
+                    position: { x: 50, y: sourceIndex * 300 + 50 },
+                    data: {
+                        id: `source-${sourceIndex}`,
+                        tableName,
+                        columns
+                    }
+                });
             });
-        });
 
-        // Sort transformations by order
-        const sortedTransformations = [...lineageData.transformation].sort((a, b) => {
-            const aType = Object.keys(a)[0];
-            const bType = Object.keys(b)[0];
-            return a[aType].transformation_order - b[bType].transformation_order;
-        });
+            // Sort transformations by order
+            const sortedTransformations = [...lineageData.transformation].sort((a, b) => {
+                const aType = Object.keys(a)[0];
+                const bType = Object.keys(b)[0];
+                return a[aType].transformation_order - b[bType].transformation_order;
+            });
 
-        // Create transformation nodes
-        sortedTransformations.forEach((transformation, transformIndex) => {
-            const transformType = Object.keys(transformation)[0];
-            const transformData = transformation[transformType];
-            const columns = Object.keys(transformData.columns);
-            const affectedColumns = transformData.column_affected || [];
-            generatedNodes.push({
-                id: `transform-${transformIndex}`,
-                type: 'transformation',
-                position: { x: 350 + transformIndex * 280, y: 200 },
-                data: {
+            // Create transformation nodes
+            sortedTransformations.forEach((transformation, transformIndex) => {
+                const transformType = Object.keys(transformation)[0];
+                const transformData = transformation[transformType];
+                const columns = Object.keys(transformData.columns);
+                const affectedColumns = transformData.column_affected || [];
+
+                const nodeData = {
                     id: `transform-${transformIndex}`,
                     type: transformType,
                     operator: transformData.transformation_operator || transformData.join_operator,
                     columns,
                     affectedColumns,
                     order: transformData.transformation_order
+                };
+
+                if (transformType === 'join') {
+                    nodeData.joinType = transformData.join_type;
+                    nodeData.joinCondition = transformData.join_condition;
+                    nodeData.columnsUsed = transformData.columns_used;
                 }
+
+                generatedNodes.push({
+                    id: `transform-${transformIndex}`,
+                    type: 'transformation',
+                    position: { x: 350 + transformIndex * 350, y: 200 },
+                    data: nodeData
+                });
             });
-        });
 
-        lineageData.target.forEach((target, targetIndex) => {
-            const tableName = target.table.split('.').pop();
-            const columns = Object.keys(target.columns);
+            lineageData.target.forEach((target, targetIndex) => {
+                const tableName = target.table.split('.').pop();
+                const columns = Object.keys(target.columns);
 
-            const transformationCount = lineageData.transformation.length;
-            const targetXPosition = transformationCount > 0
-                ? 350 + transformationCount * 280 + 200
-                : 700;
+                const transformationCount = lineageData.transformation.length;
+                const targetXPosition = transformationCount > 0
+                    ? 350 + transformationCount * 350 + 200
+                    : 700;
 
-            generatedNodes.push({
-                id: `target-${targetIndex}`,
-                type: 'targetTable',
-                position: { x: targetXPosition, y: targetIndex * 300 + 150 },
-                data: {
+                generatedNodes.push({
                     id: `target-${targetIndex}`,
-                    tableName,
-                    columns
+                    type: 'targetTable',
+                    position: { x: targetXPosition, y: targetIndex * 300 + 150 },
+                    data: {
+                        id: `target-${targetIndex}`,
+                        tableName,
+                        columns
+                    }
+                });
+            });
+
+            const edgeId = { current: 0 };
+
+            const isDirectSourceColumn = (columnPath) => {
+                return lineageData.source.some(source =>
+                    Object.keys(source.columns).some(sourceCol =>
+                        isSameColumnIgnoreCase(columnPath, `${source.table}.${sourceCol}`)
+                    )
+                );
+            };
+
+            const isAvailableFromPreviousTransform = (columnPath, currentTransformIndex) => {
+                if (currentTransformIndex === 0) return false;
+                const prevTransform = sortedTransformations[currentTransformIndex - 1];
+                const prevType = Object.keys(prevTransform)[0];
+                const prevData = prevTransform[prevType];
+                return Object.keys(prevData.columns).some(prevOutputCol =>
+                    isSameColumnIgnoreCase(columnPath, prevOutputCol)
+                );
+            };
+
+            sortedTransformations.forEach((transform, transformIndex) => {
+                const transformType = Object.keys(transform)[0];
+                const transformData = transform[transformType];
+
+                if (transformType === 'join' && transformData.columns_used && Array.isArray(transformData.columns_used)) {
+                    transformData.columns_used.forEach(joinColumn => {
+                        lineageData.source.forEach((source, sourceIndex) => {
+                            Object.keys(source.columns).forEach(sourceColumnName => {
+                                const sourceFullPath = `${source.table}.${sourceColumnName}`;
+                                if (isSameColumnIgnoreCase(joinColumn, sourceFullPath)) {
+                                    generatedEdges.push({
+                                        id: `edge-${edgeId.current++}`,
+                                        source: `source-${sourceIndex}`,
+                                        target: `transform-${transformIndex}`,
+                                        sourceHandle: `source-${sourceIndex}-${sourceColumnName}`,
+                                        targetHandle: `transform-${transformIndex}-join-input`,
+                                        type: 'straight',
+                                        style: {
+                                            stroke: '#ef4444',
+                                            strokeWidth: 2,
+                                            strokeDasharray: '5,5'
+                                        },
+                                        markerEnd: { type: MarkerType.ArrowClosed, color: '#ef4444' }
+                                    });
+                                }
+                            });
+                        });
+                    });
+                }
+
+                if (transformData.columns) {
+                    Object.entries(transformData.columns).forEach(([transformOutputCol, inputCols]) => {
+                        const inputColsArray = Array.isArray(inputCols) ? inputCols : [inputCols];
+
+                        inputColsArray.forEach(inputCol => {
+                            if (!inputCol) return;
+
+
+                            if (transformIndex > 0 && isAvailableFromPreviousTransform(inputCol, transformIndex)) {
+                                const prevTransform = sortedTransformations[transformIndex - 1];
+                                const prevType = Object.keys(prevTransform)[0];
+                                const prevData = prevTransform[prevType];
+
+                                Object.keys(prevData.columns).forEach(prevOutputCol => {
+                                    if (isSameColumnIgnoreCase(inputCol, prevOutputCol)) {
+                                        generatedEdges.push({
+                                            id: `edge-${edgeId.current++}`,
+                                            source: `transform-${transformIndex - 1}`,
+                                            target: `transform-${transformIndex}`,
+                                            sourceHandle: `transform-${transformIndex - 1}-${prevOutputCol}-output`,
+                                            targetHandle: `transform-${transformIndex}-${transformOutputCol}-input`,
+                                            type: 'straight',
+                                            style: { stroke: '#8b5cf6', strokeWidth: 2 },
+                                            markerEnd: { type: MarkerType.ArrowClosed, color: '#8b5cf6' }
+                                        });
+                                    }
+                                });
+                            }
+                            else if (isDirectSourceColumn(inputCol)) {
+                                lineageData.source.forEach((source, sourceIndex) => {
+                                    Object.keys(source.columns).forEach(sourceColumnName => {
+                                        if (isSameColumnIgnoreCase(inputCol, `${source.table}.${sourceColumnName}`)) {
+                                            generatedEdges.push({
+                                                id: `edge-${edgeId.current++}`,
+                                                source: `source-${sourceIndex}`,
+                                                target: `transform-${transformIndex}`,
+                                                sourceHandle: `source-${sourceIndex}-${sourceColumnName}`,
+                                                targetHandle: `transform-${transformIndex}-${transformOutputCol}-input`,
+                                                type: 'straight',
+                                                style: { stroke: '#3b82f6', strokeWidth: 2 },
+                                                markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
+                                            });
+                                        }
+                                    });
+                                });
+                            }
+                        });
+                    });
                 }
             });
-        });
 
-        const edgeId = { current: 0 };
+            if (sortedTransformations.length > 0) {
+                const lastTransformIndex = sortedTransformations.length - 1;
+                const lastTransform = sortedTransformations[lastTransformIndex];
+                const transformType = Object.keys(lastTransform)[0];
+                const lastTransformData = lastTransform[transformType];
 
-        const isDirectSourceColumn = (columnPath) => lineageData.source.some(source =>
-            Object.keys(source.columns).some(sourceCol =>
-                isSameColumnIgnoreCase(columnPath, `${source.table}.${sourceCol}`)
-            )
-        );
+                lineageData.target.forEach((target, targetIndex) => {
+                    Object.entries(target.columns).forEach(([targetCol, targetSourceCols]) => {
+                        const targetSourceColsArray = Array.isArray(targetSourceCols) ? targetSourceCols : [targetSourceCols];
 
-        const isAvailableFromPreviousTransform = (columnPath, currentTransformIndex) => {
-            if (currentTransformIndex === 0) return false;
-            const prevTransform = sortedTransformations[currentTransformIndex - 1];
-            const prevType = Object.keys(prevTransform)[0];
-            const prevData = prevTransform[prevType];
-            return Object.keys(prevData.columns).some(prevOutputCol =>
-                isSameColumnIgnoreCase(columnPath, prevOutputCol)
-            );
-        };
+                        targetSourceColsArray.forEach(sourceCol => {
+                            if (transformType === 'join' && Object.keys(lastTransformData.columns).length === 0) {
+                                const shouldConnect = lineageData.source.some(source =>
+                                    Object.keys(source.columns).some(srcCol =>
+                                        isSameColumnIgnoreCase(sourceCol, `${source.table}.${srcCol}`) ||
+                                        isSameColumnIgnoreCase(getColumnName(sourceCol), srcCol)
+                                    )
+                                );
 
-        sortedTransformations.forEach((transform, transformIndex) => {
-            const transformType = Object.keys(transform)[0];
-            const transformData = transform[transformType];
+                                if (shouldConnect) {
+                                    generatedEdges.push({
+                                        id: `edge-${edgeId.current++}`,
+                                        source: `transform-${lastTransformIndex}`,
+                                        target: `target-${targetIndex}`,
+                                        sourceHandle: `transform-${lastTransformIndex}-join-output`,
+                                        targetHandle: `target-${targetIndex}-${targetCol}`,
+                                        type: 'straight',
+                                        style: { stroke: '#10b981', strokeWidth: 2 },
+                                        markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' }
+                                    });
+                                }
+                            } else {
+                                Object.keys(lastTransformData.columns).forEach(transformOutputCol => {
+                                    const transformColName = getColumnName(transformOutputCol);
+                                    const sourceColName = getColumnName(sourceCol);
 
-            if (transformType === 'join' && transformData.columns_used) {
-                transformData.columns_used.forEach(joinColumn => {
-                    lineageData.source.forEach((source, sourceIndex) => {
-                        Object.keys(source.columns).forEach(sourceColumnName => {
-                            const sourceFullPath = `${source.table}.${sourceColumnName}`;
-                            if (isSameColumnIgnoreCase(joinColumn, sourceFullPath)) {
-                                generatedEdges.push({
-                                    id: `edge-${edgeId.current++}`,
-                                    source: `source-${sourceIndex}`,
-                                    target: `transform-${transformIndex}`,
-                                    sourceHandle: `source-${sourceIndex}-${sourceColumnName}`,
-                                    targetHandle: `transform-${transformIndex}-${Object.keys(transformData.columns)[0]}-input`,
-                                    type: 'straight',
-                                    style: {
-                                        stroke: '#ef4444',
-                                        strokeWidth: 2,
-                                        strokeDasharray: '5,5'
-                                    },
-                                    markerEnd: { type: MarkerType.ArrowClosed, color: '#ef4444' }
+                                    if (isSameColumnIgnoreCase(sourceCol, transformOutputCol) ||
+                                        isSameColumnIgnoreCase(sourceColName, transformColName) ||
+                                        sourceCol.toLowerCase().endsWith(`.${transformColName.toLowerCase()}`)) {
+                                        generatedEdges.push({
+                                            id: `edge-${edgeId.current++}`,
+                                            source: `transform-${lastTransformIndex}`,
+                                            target: `target-${targetIndex}`,
+                                            sourceHandle: `transform-${lastTransformIndex}-${transformOutputCol}-output`,
+                                            targetHandle: `target-${targetIndex}-${targetCol}`,
+                                            type: 'straight',
+                                            style: { stroke: '#10b981', strokeWidth: 2 },
+                                            markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' }
+                                        });
+                                    }
                                 });
                             }
                         });
@@ -675,91 +835,20 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                 });
             }
 
-            // Handle regular transformation edges
-            Object.entries(transformData.columns).forEach(([transformOutputCol, inputCols]) => {
-                inputCols.forEach(inputCol => {
-                    if (!inputCol) return;
+            setNodes(generatedNodes);
 
-                    if (transformIndex > 0 && isAvailableFromPreviousTransform(inputCol, transformIndex)) {
-                        const prevTransform = sortedTransformations[transformIndex - 1];
-                        const prevType = Object.keys(prevTransform)[0];
-                        const prevData = prevTransform[prevType];
-                        Object.keys(prevData.columns).forEach(prevOutputCol => {
-                            if (isSameColumnIgnoreCase(inputCol, prevOutputCol)) {
-                                generatedEdges.push({
-                                    id: `edge-${edgeId.current++}`,
-                                    source: `transform-${transformIndex - 1}`,
-                                    target: `transform-${transformIndex}`,
-                                    sourceHandle: `transform-${transformIndex - 1}-${prevOutputCol}-output`,
-                                    targetHandle: `transform-${transformIndex}-${transformOutputCol}-input`,
-                                    type: 'straight',
-                                    style: { stroke: '#8b5cf6', strokeWidth: 2 },
-                                    markerEnd: { type: MarkerType.ArrowClosed, color: '#8b5cf6' }
-                                });
-                            }
-                        });
-                    }
-                    else if (isDirectSourceColumn(inputCol)) {
-                        lineageData.source.forEach((source, sourceIndex) => {
-                            Object.keys(source.columns).forEach(sourceColumnName => {
-                                if (isSameColumnIgnoreCase(inputCol, `${source.table}.${sourceColumnName}`)) {
-                                    generatedEdges.push({
-                                        id: `edge-${edgeId.current++}`,
-                                        source: `source-${sourceIndex}`,
-                                        target: `transform-${transformIndex}`,
-                                        sourceHandle: `source-${sourceIndex}-${sourceColumnName}`,
-                                        targetHandle: `transform-${transformIndex}-${transformOutputCol}-input`,
-                                        type: 'straight',
-                                        style: { stroke: '#3b82f6', strokeWidth: 2 },
-                                        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
-                                    });
-                                }
-                            });
-                        });
-                    }
-                });
-            });
-        });
+            await new Promise(resolve => setTimeout(resolve, 100));
 
-        if (sortedTransformations.length > 0) {
-            const lastTransformIndex = sortedTransformations.length - 1;
-            const lastTransform = sortedTransformations[lastTransformIndex];
-            const transformType = Object.keys(lastTransform)[0];
-            const lastTransformData = lastTransform[transformType];
+            setAllEdges(generatedEdges);
+            setEdges(generatedEdges);
 
-            lineageData.target.forEach((target, targetIndex) => {
-                Object.entries(target.columns).forEach(([targetCol, targetSourceCols]) => {
-                    targetSourceCols.forEach(sourceCol => {
-                        Object.keys(lastTransformData.columns).forEach(transformOutputCol => {
-                            const transformColName = getColumnName(transformOutputCol);
-                            const sourceColName = getColumnName(sourceCol);
-
-                            if (isSameColumnIgnoreCase(sourceCol, transformOutputCol) ||
-                                isSameColumnIgnoreCase(sourceColName, transformColName) ||
-                                sourceCol.toLowerCase().endsWith(`.${transformColName.toLowerCase()}`)) {
-                                generatedEdges.push({
-                                    id: `edge-${edgeId.current++}`,
-                                    source: `transform-${lastTransformIndex}`,
-                                    target: `target-${targetIndex}`,
-                                    sourceHandle: `transform-${lastTransformIndex}-${transformOutputCol}-output`,
-                                    targetHandle: `target-${targetIndex}-${targetCol}`,
-                                    type: 'straight',
-                                    style: { stroke: '#10b981', strokeWidth: 2 },
-                                    markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' }
-                                });
-                            }
-                        });
-                    });
-                });
-            });
+        } catch (error) {
+            console.error('Error generating nodes and edges:', error);
+        } finally {
+            setIsGeneratingGraph(false);
         }
-
-        setNodes(generatedNodes);
-        setAllEdges(generatedEdges);
-        setEdges(generatedEdges);
     }, [lineageData]);
 
-    // Fetch lineage data on component mount
     useEffect(() => {
         fetchLineageData();
     }, [fetchLineageData]);
@@ -840,19 +929,29 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         setEdges(allEdges);
     };
 
-    // Show loading state while fetching lineage data
-    if (loading) {
+    const handleTabChange = (tabName) => {
+        setActiveTab(tabName);
+
+        if (tabName === 'text') {
+            setSelectedColumn(null);
+            setSelectedColumnInfo(null);
+            setEdges(allEdges);
+        }
+    };
+
+    if (loading || isGeneratingGraph) {
         return (
             <div className="bg-gray-50 h-screen flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8d77ba] mx-auto mb-4"></div>
-                    <p className="text-gray-600 text-lg">Loading lineage data...</p>
+                    <p className="text-gray-600 text-lg">
+                        {loading ? 'Loading lineage data...' : 'Generating visualization...'}
+                    </p>
                 </div>
             </div>
         );
     }
 
-    // Show error state if lineage data fetch failed
     if (lineageError) {
         return (
             <div className="bg-gray-50 h-screen flex items-center justify-center">
@@ -918,7 +1017,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                                 ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
                                 : 'text-gray-500 hover:text-gray-700'
                                 }`}
-                            onClick={() => setActiveTab('map')}
+                            onClick={() => handleTabChange('map')}
                         >
                             <Map className="h-4 w-4" />
                             Map
@@ -928,7 +1027,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                                 ? 'text-[#8d77ba] border-b-2 border-[#8d77ba]'
                                 : 'text-gray-500 hover:text-gray-700'
                                 }`}
-                            onClick={() => setActiveTab('text')}
+                            onClick={() => handleTabChange('text')}
                         >
                             <Code className="h-4 w-4" />
                             Text
