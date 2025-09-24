@@ -246,7 +246,6 @@ const Header = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
   };
 
   const getUserInitials = () => {

@@ -24,14 +24,7 @@ const KafkaDashboard = () => {
 
   const [activeTab, setActiveTab] = useState("overview");
   const openkafbat = async () => {
-    try {
-      await fetch(`${hostnameV1}/auth/silent-auth?session_state=${session_state}`, {
-        method: "GET",
-        credentials: "include"
-      });
-    } catch (e) {
-      // Optionally handle error, but still open window
-    }
+
     window.open("https://kafbat-ui.tantor.io/");
   }
 
