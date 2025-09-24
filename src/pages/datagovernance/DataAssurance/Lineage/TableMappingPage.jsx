@@ -144,6 +144,7 @@ const TargetTableNode = ({ data }) => {
             <div className="p-2">
                 {data.columns?.map((column, index) => {
                     const columnKey = `${data.id}-${column}`;
+                    const displayColumnName = column.split('.').pop()
                     const isSelected = selectedColumn === columnKey;
 
                     return (
@@ -161,7 +162,7 @@ const TargetTableNode = ({ data }) => {
                                 style={{ top: 'auto', transform: 'none', position: 'relative' }}
                             />
                             <span className={`text-gray-700 ml-2 ${isSelected ? 'font-semibold text-green-800' : ''}`}>
-                                {column}
+                                {displayColumnName}
                             </span>
                         </div>
                     );
