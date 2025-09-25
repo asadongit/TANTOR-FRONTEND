@@ -121,9 +121,15 @@ const LineageTable = ({
   if (isTableLoading) {
     return <p className="text-center">Loading data...</p>;
   }
+  
   if (tableData.length === 0) {
-    return null;
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500 text-lg">No data available</p>
+      </div>
+    );
   }
+  
   return (
     <>
       <div className="overflow-x-auto border rounded-md">
@@ -334,7 +340,7 @@ function EnhancedLineage() {
         connection: item.connection_type,
         database: item.connection_name,
         schema: item.table_schema,
-        table:item.table_name,
+        table: item.table_name,
         schemaToShow: item.table_schema.split('.')[1] || item.table_schema,
         name: item.table_name.split('.')[2] || item.table_name,
         type: 'Table'
@@ -344,8 +350,8 @@ function EnhancedLineage() {
         connection: item.connection_type,
         database: item.connection_name,
         schema: item.table_schema,
-        table:item.table_name,
-        column:item.column_name,
+        table: item.table_name,
+        column: item.column_name,
         schemaToShow: item.table_schema.split('.')[1] || item.table_schema,
         name: item.column_name.split('.').slice(2).join('.') || item.column_name,
         type: 'Column'
@@ -370,7 +376,19 @@ function EnhancedLineage() {
         };
       });
 
-      setTableData([...tables, ...columns, ...views]);
+      const allItems = [...tables, ...columns, ...views];
+      const uniqueItems = [];
+      const seen = new Set();
+      
+      for (const item of allItems) {
+        const identifier = `${item.connection}-${item.database}-${item.schemaToShow}-${item.name}-${item.type}`;
+        if (!seen.has(identifier)) {
+          seen.add(identifier);
+          uniqueItems.push(item);
+        }
+      }
+
+      setTableData(uniqueItems);
     } catch (error) {
       console.error("Error fetching table data:", error);
       setTableData([]);
@@ -443,10 +461,7 @@ function EnhancedLineage() {
   const handleBackToSelection = () => setCurrentView('selection');
 
   const handleTableNavigation = (direction) => {
-    const displayableItems = selectedItemsForVisualization.filter(item =>
-      item.type === 'Table' || item.type === 'View'
-    );
-    if (direction === 'next' && currentTableIndex < displayableItems.length - 1) {
+    if (direction === 'next' && currentTableIndex < selectedItemsForVisualization.length - 1) {
       setCurrentTableIndex(prev => prev + 1);
     } else if (direction === 'prev' && currentTableIndex > 0) {
       setCurrentTableIndex(prev => prev - 1);
@@ -509,6 +524,7 @@ function EnhancedLineage() {
       currentTableIndex={currentTableIndex}
       onNavigate={handleTableNavigation}
       onBack={handleBackToSelection}
+      policyIds={policyIds}
     />
   );
 }

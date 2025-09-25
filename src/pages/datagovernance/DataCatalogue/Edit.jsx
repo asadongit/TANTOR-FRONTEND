@@ -513,14 +513,22 @@ const Edit = ({ onClose, editDetails, type }) => {
           sub_tag_id: selectedSubTags.map(Number)
         }]
       }));
+      const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+      const creatorArray = creatorRoles.map(role =>
+        role.startsWith('persona:') ? role.replace('persona:', '') : role
+      );
       endpoint = `${window._env_?.VITE_FAST_API}/data_catalogue/add_catalogue_element_column`;
       payload = {
         elements: element,
-        roles: decodedToken?.resource_access?.darch?.roles || [],
+        roles: creatorArray || [],
         owner: decodedToken?.preferred_username
       };
     } else {
       endpoint = `${window._env_?.VITE_FAST_API}/data_catalogue/add_catalogue_element_table`;
+      const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+      const creatorArray = creatorRoles.map(role =>
+        role.startsWith('persona:') ? role.replace('persona:', '') : role
+      );
       payload = {
         elements: [{
           connection_set: editDetails.connection_set,
@@ -532,7 +540,7 @@ const Edit = ({ onClose, editDetails, type }) => {
             sub_tag_id: selectedSubTags.map(Number)
           }]
         }],
-        roles: decodedToken?.resource_access?.darch?.roles || [],
+        roles: creatorArray || [],
         owner: decodedToken?.preferred_username
       };
     }

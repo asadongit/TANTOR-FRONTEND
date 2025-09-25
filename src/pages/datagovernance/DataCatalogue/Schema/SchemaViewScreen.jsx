@@ -288,7 +288,10 @@ const SchemaViewScreen = () => {
     const trimmedDescription = summaryText.trim();
     setIsSaving(true);
     setIsEditing(false);
-
+    const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+    const creatorArray = creatorRoles.map(role =>
+      role.startsWith('persona:') ? role.replace('persona:', '') : role
+    );
     try {
       const response = await fetch(
         `${hostnameV1}/data_catalogue/edit_schema_description`,
@@ -303,7 +306,7 @@ const SchemaViewScreen = () => {
             connection_name: schema.connectionName,
             table_schema: schema.schema,
             schema_description: trimmedDescription,
-            roles: decodedToken?.resource_access?.darch?.roles || [],
+            roles: creatorArray || [],
             owner: decodedToken?.preferred_username
           }),
         }

@@ -439,6 +439,10 @@ function ColumnDetailsPage() {
 
         setIsSaving(true);
         setIsEditingDescription(false);
+        const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+        const creatorArray = creatorRoles.map(role =>
+            role.startsWith('persona:') ? role.replace('persona:', '') : role
+        );
         try {
             const payload = {
                 connection_name: columnDetails.connection_name,
@@ -446,7 +450,7 @@ function ColumnDetailsPage() {
                 table_name: columnDetails.table_name,
                 column_name: columnDetails.column_name,
                 column_description: trimmedDescription,
-                roles: decodedToken?.resource_access?.darch?.roles || [],
+                roles: creatorArray || [],
                 owner: decodedToken?.preferred_username
             };
 
