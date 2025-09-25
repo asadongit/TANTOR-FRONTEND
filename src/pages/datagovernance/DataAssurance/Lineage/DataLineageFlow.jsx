@@ -84,7 +84,7 @@ const CircularNodeRemote = ({
                 }`}
               title={
                 isAssetInfoDisabled
-                  ? "Asset information not available for views"
+                  ? "Asset information not available"
                   : "Asset Information"
               }
             >
@@ -123,7 +123,7 @@ const CircularNodeRemote = ({
               title={
                 nodeData.type !== 'schema' && nodeData.type !== 'table' ? "All connections not available" :
                   isLoadingAllConnections ? "Loading..." :
-                    isAllConnectionsExpanded ? "Close All Connections" : "Show All Asset Connections (1 step)"
+                    isAllConnectionsExpanded ? "Close All Connections" : "Show All Asset Connections"
               }
             >
               {isLoadingAllConnections ? (
@@ -142,7 +142,7 @@ const CircularNodeRemote = ({
                 }`}
               title={
                 isColumnLevelDisabled
-                  ? "Column Level Details not available for views"
+                  ? "Column Level Details not available"
                   : "Column Level Details"
               }
             >
@@ -158,7 +158,7 @@ const CircularNodeRemote = ({
                     'bg-gray-700 hover:bg-gray-600 text-white'
                 }`}
               title={
-                (nodeData.type !== 'view' && nodeData.type !== 'table') ? "Backward only available for views and tables" :
+                (nodeData.type !== 'view' && nodeData.type !== 'table') ? "Backward not available" :
                   isLoadingBackward ? "Loading..." :
                     isBackwardExpanded ? "Close Backward Connections" : "Show Backward Connections"
               }
