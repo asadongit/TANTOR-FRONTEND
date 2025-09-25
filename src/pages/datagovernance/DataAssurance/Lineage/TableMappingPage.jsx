@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-    Table, ChevronLeft, Code, Map, AlertCircle, Download, Camera, FileText, ChevronRight, Clipboard,
+    Table, ChevronLeft, Code, Map as MapIcon, AlertCircle, Download, Camera, FileText, ChevronRight, Clipboard,
     Check
 } from 'lucide-react';
 import {
@@ -26,11 +26,24 @@ const SourceTableNode = ({ data }) => {
     const { selectedColumn, onColumnClick } = data;
     return (
         <div className="bg-white border-2 border-blue-300 rounded-lg shadow-lg min-w-[200px]">
-            <div className="bg-blue-100 px-3 py-2 rounded-t-lg border-b">
+            <div className="bg-blue-100 px-3 py-2 rounded-t-lg border-b relative">
                 <div className="flex items-center gap-2">
                     <Table className="h-4 w-4 text-blue-600" />
                     <span className="font-semibold text-sm text-blue-800">{data.tableName}</span>
                 </div>
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={`${data.id}-flow-output`}
+                    className="!w-3 !h-3 !bg-gray-400 !border-gray-500 opacity-0"
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        right: '-6px',
+                        transform: 'translateY(-50%)',
+                        zIndex: 10
+                    }}
+                />
             </div>
             <div className="p-2">
                 {data.columns?.map((column, index) => {
@@ -95,45 +108,58 @@ const TransformationNode = ({ data }) => {
 
     return (
         <div className={`border-2 rounded-lg shadow-lg min-w-[250px] ${getTransformationColor(data.type)}`}>
-            <div className="px-3 py-2 border-b">
-                <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm capitalize">{data.type}</span>
-                    {data.type === 'join' && data.joinType && (
-                        <span className="text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded-full font-medium">
-                            {data?.joinType?.toUpperCase()}
-                        </span>
+            <div className="px-3 py-2 border-b relative">
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={`${data.id}-flow-input`}
+                    className="!w-3 !h-3 !bg-gray-400 !border-gray-500 opacity-0"
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '-6px',
+                        transform: 'translateY(-50%)',
+                        zIndex: 10
+                    }}
+                />
+                <div className="">
+                    <div className="flex items-center justify-between">
+                        <span className="font-semibold text-sm capitalize">{data.type}</span>
+                        {data.type === 'join' && data.joinType && (
+                            <span className="text-xs bg-teal-100 text-teal-700 px-4 py-1 rounded-md font-medium">
+                                {data?.joinType?.toUpperCase()}
+                            </span>
+                        )}
+                        {data.operator && data.type !== 'join' &&
+                            <span className="text-xs">
+                                {data?.operator?.toUpperCase()}
+                            </span>
+                        }
+                    </div>
+                    {data.type === 'join' && data.joinCondition && (
+                        <div className="flex items-center justify-between py-1 px-2 bg-teal-50 rounded border border-teal-200 mb-1 mt-2">
+                            <span className="text-center flex-1 mx-2 text-xs text-teal-700 font-medium">
+                                {formatJoinCondition()}
+                            </span>
+                        </div>
                     )}
-                    {data.operator && data.type !== 'join' &&
-                        <span className="text-xs">
-                            {data?.operator?.toUpperCase()}
-                        </span>
-                    }
                 </div>
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={`${data.id}-flow-output`}
+                    className="!w-3 !h-3 !bg-gray-400 !border-gray-500 opacity-0"
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        right: '-6px',
+                        transform: 'translateY(-50%)',
+                        zIndex: 10
+                    }}
+                />
             </div>
             <div className="p-2">
-                {/* For join nodes, always show join condition regardless of columns */}
-                {data.type === 'join' && data.joinCondition && (
-                    <div className="flex items-center justify-between py-1 px-2 bg-teal-50 rounded border border-teal-200 mb-1">
-                        <Handle
-                            type="target"
-                            position={Position.Left}
-                            id={`${data.id}-join-input`}
-                            className="!w-2 !h-2 !bg-teal-500 !border-teal-600"
-                            style={{ top: 'auto', transform: 'none', position: 'relative' }}
-                        />
-                        <span className="text-center flex-1 mx-2 text-xs text-teal-700 font-medium">
-                            {formatJoinCondition()}
-                        </span>
-                        <Handle
-                            type="source"
-                            position={Position.Right}
-                            id={`${data.id}-join-output`}
-                            className="!w-2 !h-2 !bg-teal-500 !border-teal-600"
-                            style={{ top: 'auto', transform: 'none', position: 'relative' }}
-                        />
-                    </div>
-                )}
-
+                
                 {data.columns?.map((column, index) => {
                     const columnName = column.split('.').pop();
                     const columnKey = `${data.id}-${column}`;
@@ -179,7 +205,20 @@ const TargetTableNode = ({ data }) => {
     const { selectedColumn, onColumnClick } = data;
     return (
         <div className="bg-white border-2 border-green-300 rounded-lg shadow-lg min-w-[200px]">
-            <div className="bg-green-100 px-3 py-2 rounded-t-lg border-b">
+            <div className="bg-green-100 px-3 py-2 rounded-t-lg border-b relative">
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={`${data.id}-flow-input`}
+                    className="!w-3 !h-3 !bg-gray-400 !border-gray-500 opacity-0"
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '-6px',
+                        transform: 'translateY(-50%)',
+                        zIndex: 10
+                    }}
+                />
                 <div className="flex items-center gap-2">
                     <Table className="h-4 w-4 text-green-600" />
                     <span className="font-semibold text-sm text-green-800">{data.tableName}</span>
@@ -701,32 +740,6 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                 const transformType = Object.keys(transform)[0];
                 const transformData = transform[transformType];
 
-                if (transformType === 'join' && transformData.columns_used && Array.isArray(transformData.columns_used)) {
-                    transformData.columns_used.forEach(joinColumn => {
-                        lineageData.source.forEach((source, sourceIndex) => {
-                            Object.keys(source.columns).forEach(sourceColumnName => {
-                                const sourceFullPath = `${source.table}.${sourceColumnName}`;
-                                if (isSameColumnIgnoreCase(joinColumn, sourceFullPath)) {
-                                    generatedEdges.push({
-                                        id: `edge-${edgeId.current++}`,
-                                        source: `source-${sourceIndex}`,
-                                        target: `transform-${transformIndex}`,
-                                        sourceHandle: `source-${sourceIndex}-${sourceColumnName}`,
-                                        targetHandle: `transform-${transformIndex}-join-input`,
-                                        type: 'straight',
-                                        style: {
-                                            stroke: '#ef4444',
-                                            strokeWidth: 2,
-                                            strokeDasharray: '5,5'
-                                        },
-                                        markerEnd: { type: MarkerType.ArrowClosed, color: '#ef4444' }
-                                    });
-                                }
-                            });
-                        });
-                    });
-                }
-
                 if (transformData.columns) {
                     Object.entries(transformData.columns).forEach(([transformOutputCol, inputCols]) => {
                         const inputColsArray = Array.isArray(inputCols) ? inputCols : [inputCols];
@@ -831,6 +844,124 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                                 });
                             }
                         });
+                    });
+                });
+            }
+
+            if (sortedTransformations.length > 0) {
+                const sourceUsageByTransform = new Map();
+
+                sortedTransformations.forEach((_, index) => {
+                    sourceUsageByTransform.set(index, new Set());
+                });
+
+                sortedTransformations.forEach((transform, transformIndex) => {
+                    const transformType = Object.keys(transform)[0];
+                    const transformData = transform[transformType];
+
+                    if (transformType === 'join' && transformData.columns_used && Array.isArray(transformData.columns_used)) {
+                        transformData.columns_used.forEach(joinColumn => {
+                            lineageData.source.forEach((source, sourceIndex) => {
+                                Object.keys(source.columns).forEach(sourceColumnName => {
+                                    const sourceFullPath = `${source.table}.${sourceColumnName}`;
+                                    if (isSameColumnIgnoreCase(joinColumn, sourceFullPath)) {
+                                        sourceUsageByTransform.get(transformIndex).add(sourceIndex);
+                                    }
+                                });
+                            });
+                        });
+                    } else if (transformData.columns) {
+                        Object.entries(transformData.columns).forEach(([transformOutputCol, inputCols]) => {
+                            const inputColsArray = Array.isArray(inputCols) ? inputCols : [inputCols];
+
+                            inputColsArray.forEach(inputCol => {
+                                if (!inputCol) return;
+
+                                if (isDirectSourceColumn(inputCol)) {
+                                    lineageData.source.forEach((source, sourceIndex) => {
+                                        Object.keys(source.columns).forEach(sourceColumnName => {
+                                            if (isSameColumnIgnoreCase(inputCol, `${source.table}.${sourceColumnName}`)) {
+                                                sourceUsageByTransform.get(transformIndex).add(sourceIndex);
+                                            }
+                                        });
+                                    });
+                                }
+                            });
+                        });
+                    }
+                });
+
+                const sourceFirstUsage = new Map();
+
+                lineageData.source.forEach((_, sourceIndex) => {
+                    for (let transformIndex = 0; transformIndex < sortedTransformations.length; transformIndex++) {
+                        if (sourceUsageByTransform.get(transformIndex).has(sourceIndex)) {
+                            sourceFirstUsage.set(sourceIndex, transformIndex);
+                            break;
+                        }
+                    }
+                });
+
+                // Create flow edges from sources to their first usage
+                sourceFirstUsage.forEach((firstTransformIndex, sourceIndex) => {
+                    generatedEdges.push({
+                        id: `flow-source-${sourceIndex}`,
+                        source: `source-${sourceIndex}`,
+                        target: `transform-${firstTransformIndex}`,
+                        sourceHandle: `source-${sourceIndex}-flow-output`,
+                        targetHandle: `transform-${firstTransformIndex}-flow-input`,
+                        type: 'straight',
+                        style: { stroke: '#9ca3af', strokeWidth: 2, strokeDasharray: '8,4' },
+                        zIndex: -1
+                    });
+                });
+            } else {
+                // If no transformations, connect all sources directly to targets
+                lineageData.source.forEach((_, sourceIndex) => {
+                    lineageData.target.forEach((_, targetIndex) => {
+                        generatedEdges.push({
+                            id: `flow-direct-${sourceIndex}-${targetIndex}`,
+                            source: `source-${sourceIndex}`,
+                            target: `target-${targetIndex}`,
+                            sourceHandle: `source-${sourceIndex}-flow-output`,
+                            targetHandle: `target-${targetIndex}-flow-input`,
+                            type: 'straight',
+                            style: { stroke: '#9ca3af', strokeWidth: 2, strokeDasharray: '8,4' },
+                            zIndex: -1
+                        });
+                    });
+                });
+            }
+
+            // Connect transformations in sequence
+            if (sortedTransformations.length > 1) {
+                for (let i = 0; i < sortedTransformations.length - 1; i++) {
+                    generatedEdges.push({
+                        id: `flow-transform-${i}`,
+                        source: `transform-${i}`,
+                        target: `transform-${i + 1}`,
+                        sourceHandle: `transform-${i}-flow-output`,
+                        targetHandle: `transform-${i + 1}-flow-input`,
+                        type: 'straight',
+                        style: { stroke: '#9ca3af', strokeWidth: 2, strokeDasharray: '8,4' },
+                        zIndex: -1
+                    });
+                }
+            }
+
+            // Connect last transformation to targets
+            if (sortedTransformations.length > 0) {
+                const lastIndex = sortedTransformations.length - 1;
+                lineageData.target.forEach((_, targetIndex) => {
+                    generatedEdges.push({
+                        id: `flow-target-${targetIndex}`,
+                        source: `transform-${lastIndex}`,
+                        target: `target-${targetIndex}`,
+                        sourceHandle: `transform-${lastIndex}-flow-output`,
+                        targetHandle: `target-${targetIndex}-flow-input`,
+                        type: 'straight',
+                        style: { stroke: '#9ca3af', strokeWidth: 2, strokeDasharray: '8,4' },
+                        zIndex: -1
                     });
                 });
             }
@@ -1019,7 +1150,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                                 }`}
                             onClick={() => handleTabChange('map')}
                         >
-                            <Map className="h-4 w-4" />
+                            <MapIcon className="h-4 w-4" />
                             Map
                         </button>
                         <button
@@ -1052,7 +1183,7 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
                                 onEdgesChange={onEdgesChange}
                                 nodeTypes={nodeTypes}
                                 fitView
-                                fitViewOptions={{ padding: 100, minZoom: 0.5, maxZoom: 1.5 }}
+                                fitViewOptions={{ padding: 100, minZoom: 0.6, maxZoom: 1.5 }}
                                 className="bg-gray-50"
                                 nodesDraggable={true}
                                 nodesConnectable={false}
