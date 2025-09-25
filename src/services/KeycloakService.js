@@ -43,8 +43,47 @@ export const initKeycloak = async () => {
 export const login = (redirectToDashboard = true) =>
   keycloak.login({ redirectUri: redirectToDashboard ? `${window.location.origin}/dashboard` : window.location.href });
 
-export const logout = () =>
-  keycloak.logout({ redirectUri: `${window.location.origin}` });
+export const logout = () => {
+  return new Promise((resolve) => {
+    try {
+      const logoutUrl = keycloak.createLogoutUrl({
+        redirectUri: `${window.location.origin}`,
+      });
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = logoutUrl;
+
+      const timeoutId = setTimeout(() => {
+        console.log('Logout iframe timeout, forcing direct navigation');
+        document.body.removeChild(iframe);
+        window.location.href = logoutUrl;
+        resolve(false);
+      }, 3000);
+
+      iframe.onload = () => {
+        clearTimeout(timeoutId);
+        document.body.removeChild(iframe);
+
+        keycloak.clearToken();
+        initialized = false;
+
+        resolve(true);
+
+        window.location.href = `${window.location.origin}`;
+      };
+
+      document.body.appendChild(iframe);
+    } catch (error) {
+      console.error('Logout error:', error);
+
+      const fallbackLogoutUrl = keycloak.createLogoutUrl({
+        redirectUri: `${window.location.origin}`,
+      });
+      window.location.href = fallbackLogoutUrl;
+      resolve(false);
+    }
+  });
+};
 
 export const getToken = () => keycloak.token;
 export const getKeycloak = () => keycloak;

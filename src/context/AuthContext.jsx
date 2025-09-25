@@ -104,11 +104,17 @@ export const AuthProvider = ({ children }) => {
     return true;
   };
 
-  const logout = () => {
-    setToken(null);
-    setDecodedToken(null);
-    setProject("default");
-    kcLogout();
+  const logout = async () => {
+    try {
+      await kcLogout();
+
+      setToken(null);
+      setDecodedToken(null);
+      setProject("default");
+    } catch (error) {
+      console.error("Error during logout:", error);
+      window.location.href = `${window.location.origin}`;
+    }
   };
 
   return (
