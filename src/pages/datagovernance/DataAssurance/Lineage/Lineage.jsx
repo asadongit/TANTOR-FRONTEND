@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Breadcrumb from '../../../../components/Breadcrumb';
 import { useAuth } from '../../../../context/AuthContext';
 import { secureQuery } from '../../DataCatalogue/Components/function';
@@ -19,6 +19,37 @@ const TruncatedText = ({ text, maxLength = 20, className = "" }) => {
     >
       {truncated}
     </span>
+  );
+};
+
+const TableSearch = ({ searchTerm, onSearchChange, onClearSearch, totalResults, filteredResults }) => {
+  return (
+    <div className="mb-4 flex items-center justify-end">
+      <div className="relative flex-1 max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search in table..."
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#8d77ba] focus:border-[#8d77ba] outline-none"
+        />
+        {searchTerm && (
+          <button
+            onClick={onClearSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full"
+            title="Clear search"
+          >
+            <X className="h-4 w-4 text-gray-400" />
+          </button>
+        )}
+      </div>
+      {searchTerm && (
+        <div className="text-sm text-gray-600 ml-4">
+          Showing {filteredResults} of {totalResults} items
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -116,7 +147,7 @@ const LineageFilters = ({
 
 const LineageTable = ({
   isTableLoading, tableData, paginatedData, currentPage, itemsPerPage, toggleLineageItem, isItemInLineage,
-  totalPages, handlePageChange, onVisualize, hasLineageItems
+  totalPages, handlePageChange, onVisualize, hasLineageItems, searchTerm, onSearchChange, onClearSearch, filteredData
 }) => {
   if (isTableLoading) {
     return <p className="text-center">Loading data...</p>;
@@ -132,6 +163,13 @@ const LineageTable = ({
   
   return (
     <>
+      <TableSearch 
+        searchTerm={searchTerm}
+        onSearchChange={onSearchChange}
+        onClearSearch={onClearSearch}
+        totalResults={tableData.length}
+        filteredResults={filteredData.length}
+      />
       <div className="overflow-x-auto border rounded-md">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-[#29304a] text-white">
@@ -146,40 +184,48 @@ const LineageTable = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {paginatedData.map((item, index) => (
-              <tr key={`${item.name}-${index}`} className="hover:bg-gray-50">
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <TruncatedText text={item.connection} maxLength={15} />
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <TruncatedText text={item.database} maxLength={15} />
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <TruncatedText text={item.schemaToShow} maxLength={15} />
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <TruncatedText text={item.name} maxLength={20} />
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.type}</td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => toggleLineageItem(item)}
-                    title={isItemInLineage(item) ? 'Remove from Lineage' : 'Add to Lineage'}
-                    className="p-1 rounded-full hover:bg-gray-100"
-                  >
-                    {isItemInLineage(item) ? (
-                      <XCircle className="h-5 w-5 text-red-500" />
-                    ) : (
-                      <PlusCircle className="h-5 w-5 text-gray-400 hover:text-[#8d77ba]" />
-                    )}
-                  </button>
+            {paginatedData.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                  {searchTerm ? 'No items match your search criteria' : 'No data to display'}
                 </td>
               </tr>
-            ))}
+            ) : (
+              paginatedData.map((item, index) => (
+                <tr key={`${item.name}-${index}`} className="hover:bg-gray-50">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <TruncatedText text={item.connection} maxLength={17} />
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <TruncatedText text={item.database} maxLength={30} />
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <TruncatedText text={item.schemaToShow} maxLength={35} />
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-1/4 min-w-[200px]">
+                    <TruncatedText text={item.name} maxLength={35} />
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.type}</td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => toggleLineageItem(item)}
+                      title={isItemInLineage(item) ? 'Remove from Lineage' : 'Add to Lineage'}
+                      className="p-1 rounded-full hover:bg-gray-100"
+                    >
+                      {isItemInLineage(item) ? (
+                        <XCircle className="h-5 w-5 text-red-500" />
+                      ) : (
+                        <PlusCircle className="h-5 w-5 text-gray-400 hover:text-[#8d77ba]" />
+                      )}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} totalItems={tableData.length} itemsPerPage={itemsPerPage} />
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} totalItems={filteredData.length} itemsPerPage={itemsPerPage} />
       </div>
       <div className="mt-8 flex justify-end">
         <button
@@ -210,6 +256,7 @@ function EnhancedLineage() {
   const [tableData, setTableData] = useState([]);
   const [lineageItems, setLineageItems] = useState(new Set());
   const [policyIds, setPolicyIds] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isDatabaseLoading, setIsDatabaseLoading] = useState(false);
@@ -218,6 +265,23 @@ function EnhancedLineage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  const filteredData = useMemo(() => {
+    if (!searchTerm.trim()) return tableData;
+    
+    const searchLower = searchTerm.toLowerCase().trim();
+    return tableData.filter(item => 
+      item.connection.toLowerCase().includes(searchLower) ||
+      item.database.toLowerCase().includes(searchLower) ||
+      item.schemaToShow.toLowerCase().includes(searchLower) ||
+      item.name.toLowerCase().includes(searchLower) ||
+      item.type.toLowerCase().includes(searchLower)
+    );
+  }, [tableData, searchTerm]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
   
   useEffect(() => {
     if (!token) {
@@ -260,8 +324,16 @@ function EnhancedLineage() {
 
   useEffect(() => { setSelectedDatabases([]); setDatabaseOptions([]); }, [selectedConnections]);
   useEffect(() => { setSelectedSchemas([]); setSchemaOptions([]); }, [selectedDatabases]);
-  useEffect(() => { setSelectedTypes([]); setTableData([]); }, [selectedSchemas]);
-  useEffect(() => { setTableData([]); }, [selectedTypes]);
+  useEffect(() => { setSelectedTypes([]); setTableData([]); setSearchTerm(''); }, [selectedSchemas]);
+  useEffect(() => { setTableData([]); setSearchTerm(''); }, [selectedTypes]);
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+  };
 
   const handleDatabaseOpen = async () => {
     if (selectedConnections.length > 0 && databaseOptions.length === 0) {
@@ -319,6 +391,7 @@ function EnhancedLineage() {
     setLineageItems(new Set());
     setIsTableLoading(true);
     setTableData([]);
+    setSearchTerm('');
     setCurrentPage(1);
     try {
       const payload = {
@@ -434,12 +507,12 @@ function EnhancedLineage() {
 
   const isItemInLineage = (item) => lineageItems.has(JSON.stringify(item));
   const isShowDataDisabled = selectedConnections.length === 0 || selectedDatabases.length === 0 || selectedSchemas.length === 0 || selectedTypes.length === 0;
-  const totalPages = Math.ceil(tableData.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const handlePageChange = (page) => { if (page > 0 && page <= totalPages) setCurrentPage(page); };
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return tableData.slice(startIndex, startIndex + itemsPerPage);
-  }, [tableData, currentPage]);
+    return filteredData.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredData, currentPage]);
 
   const handleConnectionsToggle = createToggleHandler(setSelectedConnections);
   const handleDatabasesToggle = createToggleHandler(setSelectedDatabases);
@@ -510,6 +583,10 @@ function EnhancedLineage() {
                 handlePageChange={handlePageChange}
                 onVisualize={handleVisualize}
                 hasLineageItems={lineageItems.size > 0}
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                onClearSearch={handleClearSearch}
+                filteredData={filteredData}
               />
             </div>
           )}
