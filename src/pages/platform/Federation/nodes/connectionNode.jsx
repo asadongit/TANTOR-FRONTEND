@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Handle, Position, useUpdateNodeInternals } from "reactflow";
-import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode, Search } from "lucide-react";
+import { Cable, X, ChevronDown, ChevronUp, Pencil, FileCode, Search, Loader2 } from "lucide-react";
 import { useStateContext } from "../context/contextViewProvider";
 import { Columns } from "../BusinessView/Columns";
 import { Modal } from "@mui/material";
@@ -12,83 +12,83 @@ import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 import { useToast } from "../context/ToastContext";
 
-  const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
-    const filteredOptions = options.filter((option) =>
-      option.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const filteredOptions = options.filter((option) =>
+    option.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    const handleSelectClick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!disabled) {
-        setIsOpen((prev) => !prev);
-      }
-    };
-
-    const handleOptionClick = (option) => {
-      onChange({ target: { value: option } });
-      setIsOpen(false);
-      setSearchTerm("");
-    };
-
-    return (
-      <div className="relative w-full text-black">
-        <div
-          className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
-            disabled ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-          onClick={handleSelectClick}
-        >
-          <span>{value || placeholder}</span>
-          {disabled ? (
-            <span>Loading...</span>
-          ) : isOpen ? (
-            <ChevronUp className="w-4 h-4" />
-          ) : (
-            <ChevronDown className="w-4 h-4" />
-          )}
-        </div>
-        {isOpen && !disabled && (
-          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
-            <div className="p-2 border-b">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  className="w-full p-2 pl-8 border rounded-md"
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            </div>
-            <div className="max-h-60 overflow-y-auto">
-              {filteredOptions.length === 0 ? (
-                <div className="p-2 text-gray-500">No connections available</div>
-              ) : (
-                filteredOptions.map((option) => (
-                  <div
-                    key={option}
-                    className="p-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => handleOptionClick(option)}
-                  >
-                    {option}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    );
+  const handleSelectClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled && !isLoading) {
+      setIsOpen((prev) => !prev);
+    }
   };
 
+  const handleOptionClick = (option) => {
+    onChange({ target: { value: option } });
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div className="relative w-full text-black">
+      <div
+        className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+          disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""
+        }`}
+        onClick={handleSelectClick}
+      >
+        <span>{value || placeholder}</span>
+        {isLoading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : isOpen ? (
+          <ChevronUp className="w-4 h-4" />
+        ) : (
+          <ChevronDown className="w-4 h-4" />
+        )}
+      </div>
+      {isOpen && !disabled && !isLoading && (
+        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                className="w-full p-2 pl-8 border rounded-md"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="p-2 text-gray-500">No options available</div>
+            ) : (
+              filteredOptions.map((option) => (
+                <div
+                  key={option}
+                  className="p-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleOptionClick(option)}
+                >
+                  {option}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export function ConnectionNode({ id, onSave }) {
-   const { showToast } = useToast();
+  const { showToast } = useToast();
   const { token, hostnameV1 } = useAuth();
   const { handleConnectionPayload, connectionPayload, setColumnSettings, columnSettings, complexCheck, finalPayload, handleFinalPayload } = useStateContext("");
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -107,6 +107,12 @@ export function ConnectionNode({ id, onSave }) {
   const [colId, setColId] = useState("");
   const [selectedColumnsOrder, setSelectedColumnsOrder] = useState([]);
   const [policyIds, setPolicyIds] = useState([]);
+  
+  // Loading states
+  const [isLoadingConnections, setIsLoadingConnections] = useState(false);
+  const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
+  const [isLoadingTables, setIsLoadingTables] = useState(false);
+  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
 
   const modalState = useLocation().state || {
     queryType: "Regular",
@@ -121,6 +127,7 @@ export function ConnectionNode({ id, onSave }) {
   }, []);
 
   const fetchConnections = async () => {
+    setIsLoadingConnections(true);
     try {
       const secureQueryResponse = await secureQuery({ user_query: "" }, token);
       const fetchedPolicyIds = secureQueryResponse.matched_policy_ids || [];
@@ -151,11 +158,10 @@ export function ConnectionNode({ id, onSave }) {
       setConnections(names);
     } catch (error) {
       console.error("Error fetching connections:", error);
-
       showToast('Failed to load connections', 'error');
       setConnections([]);
-    }
-    finally {
+    } finally {
+      setIsLoadingConnections(false);
     }
   };
 
@@ -174,6 +180,7 @@ export function ConnectionNode({ id, onSave }) {
     setColumnData([]);
     setColId("");
 
+    setIsLoadingSchemas(true);
     try {
       if (policyIds.length === 0) {
         setSchemas([]);
@@ -206,6 +213,8 @@ export function ConnectionNode({ id, onSave }) {
       console.error("Error fetching schema data:", error);
       setSchemas([]);
       showToast('Failed to load schemas', 'error');
+    } finally {
+      setIsLoadingSchemas(false);
     }
   };
 
@@ -219,6 +228,7 @@ export function ConnectionNode({ id, onSave }) {
     setColumnData([]);
     setColId("");
 
+    setIsLoadingTables(true);
     try {
       if (policyIds.length === 0) {
         setTables([]);
@@ -263,6 +273,8 @@ export function ConnectionNode({ id, onSave }) {
       console.error("Error fetching table data:", error);
       setTables([]);
       showToast('Failed to load tables', 'error');
+    } finally {
+      setIsLoadingTables(false);
     }
   };
 
@@ -276,6 +288,7 @@ export function ConnectionNode({ id, onSave }) {
     setSelectedColumns([]);
     setColumnData([]);
 
+    setIsLoadingColumns(true);
     try {
       const detailedColumnsResponse = await fetch(
         `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${table}/columns`,
@@ -357,6 +370,8 @@ export function ConnectionNode({ id, onSave }) {
       setAllowedColumns([]);
       setColumnData([]);
       showToast('Failed to load columns', 'error');
+    } finally {
+      setIsLoadingColumns(false);
     }
   };
 
@@ -616,6 +631,7 @@ export function ConnectionNode({ id, onSave }) {
                   value={selectedConnection}
                   onChange={handleConnectionChange}
                   placeholder="Select a connection"
+                  isLoading={isLoadingConnections}
                 />
               </div>
               <div>
@@ -625,6 +641,8 @@ export function ConnectionNode({ id, onSave }) {
                   value={selectedSchema}
                   onChange={handleSchemaChange}
                   placeholder="Select a schema"
+                  disabled={!selectedConnection}
+                  isLoading={isLoadingSchemas}
                 />
               </div>
               <div>
@@ -634,9 +652,17 @@ export function ConnectionNode({ id, onSave }) {
                   value={selectedTable}
                   onChange={handleTableChange}
                   placeholder="Select a table"
+                  disabled={!selectedSchema}
+                  isLoading={isLoadingTables}
                 />
               </div>
-              {allowedColumns?.length > 0 && (
+              {isLoadingColumns && (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#8E77BB]" />
+                  <span className="ml-2 text-sm text-gray-600">Loading columns...</span>
+                </div>
+              )}
+              {!isLoadingColumns && allowedColumns?.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-black mb-1">Select Columns</label>
                   <div className="p-3 space-y-2">
@@ -675,7 +701,7 @@ export function ConnectionNode({ id, onSave }) {
                             <Pencil
                               name="edit"
                               onClick={() => handleChange(col.column)}
-                              className="mr-3 h-4 w-4 text-[#8E77BB]"
+                              className="mr-3 h-4 w-4 text-[#8E77BB] cursor-pointer hover:text-[#7a64a0]"
                             />
                           </div>
                         ))}
@@ -700,6 +726,14 @@ export function ConnectionNode({ id, onSave }) {
           .custom-scrollbar::-webkit-scrollbar-thumb {
             background-color: #a0aec0;
             border-radius: 3px;
+          }
+          @keyframes spin {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+          .animate-spin {
+            animation: spin 1s linear infinite;
           }
         `}</style>
       </div>
