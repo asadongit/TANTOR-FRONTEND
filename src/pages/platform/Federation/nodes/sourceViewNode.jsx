@@ -12,7 +12,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import { useToast } from '../context/ToastContext';
 
 
-const SearchableSelect = ({ options, value, onChange, placeholder }) => {
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -23,7 +23,9 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   );
 
   const handleSelectClick = () => {
-    setIsOpen(!isOpen);
+    if (!disabled && !isLoading) {
+      setIsOpen(!isOpen);
+    }
   };
 
   const handleOptionClick = (option) => {
@@ -35,14 +37,25 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   return (
     <div className="relative w-full h-full">
       <div
-        className="w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+        className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+          disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""
+        }`}
         onClick={handleSelectClick}
       >
         <span>{value || placeholder}</span>
-        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        {isLoading ? (
+          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+        ) : isOpen ? (
+          <ChevronUp className="w-4 h-4" />
+        ) : (
+          <ChevronDown className="w-4 h-4" />
+        )}
       </div>
 
-      {isOpen && (
+      {isOpen && !isLoading && !disabled && (
         <div className="absolute z-10 w-full mt-1 bg-white text-black border rounded-lg shadow-lg">
           <div className="p-2 border-b">
             <div className="relative">
@@ -58,15 +71,19 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
             </div>
           </div>
           <div className="max-h-60 overflow-y-auto">
-            {filteredOptions.map((option) => (
-              <div
-                key={option}
-                className="p-2 hover:bg-gray-100 cursor-pointer"
-                onClick={() => handleOptionClick(option)}
-              >
-                {option}
-              </div>
-            ))}
+            {filteredOptions.length === 0 ? (
+              <div className="p-2 text-gray-500">No options available</div>
+            ) : (
+              filteredOptions.map((option) => (
+                <div
+                  key={option}
+                  className="p-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleOptionClick(option)}
+                >
+                  {option}
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -86,8 +103,11 @@ export function SourceViewNode({ id, onSave }) {
   const [columnData, setColumnData] = useState([])
   const [showQueryEditor, setShowQueryEditor] = useState(false);
   const [previousView, setPreviousView] = useState("");
+  const [isLoadingViews, setIsLoadingViews] = useState(false);
+  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
+  
   const {token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 }= useAuth();
-    const { showToast } = useToast();
+  const { showToast } = useToast();
 
   const modalState = useLocation().state || {
     queryType: "Regular",
@@ -103,6 +123,7 @@ export function SourceViewNode({ id, onSave }) {
 
   useEffect(() => {
     const fetchViews = async () => {
+      setIsLoadingViews(true);
       try {
         const params = new URLSearchParams({
           view_type: "Base",
@@ -121,6 +142,9 @@ export function SourceViewNode({ id, onSave }) {
         }
       } catch (error) {
         console.error("Error fetching views:", error);
+        showToast('Failed to fetch views', 'error');
+      } finally {
+        setIsLoadingViews(false);
       }
     };
 
@@ -138,12 +162,12 @@ export function SourceViewNode({ id, onSave }) {
     });
     setSelectedView(e.target.value.toLowerCase())
     fetchColumnsForView(e.target.value.toLowerCase());
-    // handleFinalPayload({});
-
   }
 
   const fetchColumnsForView = async (viewName) => {
     if (columnsForViews[viewName]) return;
+    
+    setIsLoadingColumns(true);
     const temp = {
       "view_names": [viewName]
     }
@@ -167,10 +191,14 @@ export function SourceViewNode({ id, onSave }) {
         updateNodeInternals(id);
       } else {
         console.error(`Invalid response for columns of view `);
+        showToast('Failed to fetch columns', 'error');
       }
     }
     catch (error) {
       console.error("Error fetching columns for view:", error);
+      showToast('Failed to fetch columns', 'error');
+    } finally {
+      setIsLoadingColumns(false);
     }
   };
 
@@ -296,9 +324,7 @@ export function SourceViewNode({ id, onSave }) {
         type: "Source",
         view,
         selectedColumns,
-        // select_fields: selectFields,
-        // Columns: columnsForViews[selectedView] || [],
-        Columns: columnData   ////// correct with data type 
+        Columns: columnData
       };
 
       const currentPayloads = viewPayload || [];
@@ -420,7 +446,6 @@ export function SourceViewNode({ id, onSave }) {
             )}
             <button
               onClick={handleCollapse}
-              // onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1 rounded-md hover:bg-gray-200"
             >
               {isCollapsed ? (
@@ -448,10 +473,21 @@ export function SourceViewNode({ id, onSave }) {
                   value={selectedView}
                   onChange={handleViewChange}
                   placeholder="Select View"
+                  isLoading={isLoadingViews}
                 />
               </div>
 
-              {columnsForViews[selectedView]?.length > 0 && (
+              {isLoadingColumns && (
+                <div className="flex items-center justify-center py-4">
+                  <svg className="animate-spin h-5 w-5 text-[#8E77BB]" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span className="ml-2 text-sm text-gray-600">Loading columns...</span>
+                </div>
+              )}
+
+              {!isLoadingColumns && columnsForViews[selectedView]?.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-black mb-1">
                     Select Columns
@@ -471,20 +507,15 @@ export function SourceViewNode({ id, onSave }) {
                     </div>
 
                     <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
-
                       {columnsForViews[selectedView]?.length > 0 &&
                         columnsForViews[selectedView].map((column) => (
-                          <div className="flex justify-between">
-                            <div key={column} className="flex items-center space-x-2">
+                          <div className="flex justify-between" key={column}>
+                            <div className="flex items-center space-x-2">
                               <input
                                 type="checkbox"
                                 onClick={(e) => {
                                   if (e.target.checked) {
-                                    // toggleModal(true);
                                     setSelectedColumn(column);
-
-                                  } else {
-                                    // toggleModal(false);
                                   }
                                 }}
                                 id={column}
@@ -497,14 +528,16 @@ export function SourceViewNode({ id, onSave }) {
                                 {column}
                               </label>
                             </div>
-                            <Pencil name="edit" onClick={() => handleChange(column)} className="mr-3 h-4 w-4 text-[#8E77BB]" />
+                            <Pencil 
+                              name="edit" 
+                              onClick={() => handleChange(column)} 
+                              className="mr-3 h-4 w-4 text-[#8E77BB] cursor-pointer hover:text-[#7a64a0]" 
+                            />
                           </div>
                         ))}
-
                     </div>
                   </div>
                 </div>
-
               )}
             </div>
             <button
@@ -518,14 +551,22 @@ export function SourceViewNode({ id, onSave }) {
         )}
 
         <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background-color: #a0aec0;
-          border-radius: 3px;
-        }
-      `}</style>
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #a0aec0;
+            border-radius: 3px;
+          }
+          @keyframes spin {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+          .animate-spin {
+            animation: spin 1s linear infinite;
+          }
+        `}</style>
       </div>
       <Modal
         open={isModalOpen}
@@ -543,9 +584,7 @@ export function SourceViewNode({ id, onSave }) {
             dataType={columnData.find(col => col.column_name === selectedColumn)?.data_type}
             toggleModal={toggleModal}
           />
-
         </div>
-
       </Modal>
       <Modal
         open={isEditorModalOpen}
@@ -558,9 +597,7 @@ export function SourceViewNode({ id, onSave }) {
       >
         <div className="absolute top-0 right-0 h-full">
           <ComplexQueryEditor setShowQueryEditor={toggleEditorModal} />
-
         </div>
-
       </Modal>
     </>
   );
@@ -568,5 +605,5 @@ export function SourceViewNode({ id, onSave }) {
 
 SourceViewNode.propTypes = {
   id: PropTypes.string.isRequired,
-  onSave: PropTypes.func, // Callback function for saving the payload
+  onSave: PropTypes.func,
 };
