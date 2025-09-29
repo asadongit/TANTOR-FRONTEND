@@ -203,18 +203,26 @@ function Persona() {
     fetchPersonaListData();
   }, [fetchPersonaHomepageData, fetchPersonaListData]);
 
-  // --- Table Filtering, Sorting, and Pagination ---
+  const filteredCards = useMemo(() => {
+    if (!searchTerm.trim()) return personaCards;
+    return personaCards.filter(card =>
+      card.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [personaCards, searchTerm]);
+
   const filteredAndSortedData = useMemo(() => {
     let filtered = tableData.filter(item =>
-      Object.values(item).some(val =>
-        String(val).toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (sortConfig.key) {
       filtered.sort((a, b) => {
-        const aValue = a[sortConfig.key] ?? '';
-        const bValue = b[sortConfig.key] ?? '';
+        let aValue = a[sortConfig.key] ?? '';
+        let bValue = b[sortConfig.key] ?? '';
+
+        if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+        if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -443,58 +451,61 @@ function Persona() {
       {isCardViewVisible && (
         isCardsLoading ? (<div className="text-center p-6">Loading personas...</div>) : cardsError ? (<div className="text-center p-6 bg-red-50 text-red-600 rounded-lg">{cardsError}</div>) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {personaCards.map((card, index) => (
-              <div key={card.id} className="bg-white rounded-lg shadow-sm border border-gray-100">
-                <div className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`flex items-center justify-center w-10 h-10 ${card.bgcolor} rounded-full ${card.iconcolor} mr-2`}>
-                        <Icon icon={card.icon} />
+            {filteredCards.map((card) => {
+              const cardIndex = personaCards.findIndex(c => c.id === card.id);
+              return (
+                <div key={card.id} className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="p-6">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                        <div className={`flex items-center justify-center w-10 h-10 ${card.bgcolor} rounded-full ${card.iconcolor} flex-shrink-0`}>
+                          <Icon icon={card.icon} />
+                        </div>
+                        <h3 className="text-lg font-semibold truncate" title={card.title}>{card.title}</h3>
                       </div>
-                      <h3 className="text-lg font-semibold">{card.title}</h3>
-                    </div>
-                    <div className="relative">
-                      <button onClick={() => setActiveMenu(activeMenu === `card-${index}` ? null : `card-${index}`)} className="p-1.5 rounded-full hover:bg-gray-100" title="See Actions" >
-                        <MoreVertical className="h-5 w-5" />
-                      </button>
-                      {activeMenu === `card-${index}` && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
-                          <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                            <div className="flex items-center p-1 gap-1">
-                              <button onClick={() => handleOpenEditModal({ id: card.id, name: card.title, description: card.description, status: card.enabled ? 'enabled' : 'disabled' })} title="Edit Persona" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" >
-                                <Pencil className="h-4 w-4" />
-                              </button>
-                              <button onClick={() => handleOpenDeleteModal({ id: card.id, name: card.title, description: card.description })} title="Delete Persona" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" >
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </button>
+                      <div className="relative flex-shrink-0">
+                        <button onClick={() => setActiveMenu(activeMenu === `card-${cardIndex}` ? null : `card-${cardIndex}`)} className="p-1.5 rounded-full hover:bg-gray-100" title="See Actions" >
+                          <MoreVertical className="h-5 w-5" />
+                        </button>
+                        {activeMenu === `card-${cardIndex}` && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
+                            <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                              <div className="flex items-center p-1 gap-1">
+                                <button onClick={() => handleOpenEditModal({ id: card.id, name: card.title, description: card.description, status: card.enabled ? 'enabled' : 'disabled' })} title="Edit Persona" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button onClick={() => handleOpenDeleteModal({ id: card.id, name: card.title, description: card.description })} title="Delete Persona" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" >
+                                  <Trash2 className="h-4 w-4 text-red-600" />
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        </>
-                      )}
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-gray-500 mt-4 text-sm">{card.description}</p>
-                  <div className="flex items-center justify-between mt-6">
-                    <div className="flex items-center gap-2">
-                      <Icon icon="material-symbols:supervisor-account-outline" width="24" height="24" />
-                      <span className="text-sm">{card.users}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">
-                        {card.enabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                      <ToggleSwitch
-                        enabled={card.enabled}
-                        onChange={() => handleToggleStatus(card.title, card.enabled)}
-                        disabled={toggleStates[`toggle-${card.title}`]}
-                        size="sm"
-                      />
+                    <p className="text-gray-500 mt-4 text-sm overflow-hidden" title={card.description}>{card.description}</p>
+                    <div className="flex items-center justify-between mt-6">
+                      <div className="flex items-center gap-2">
+                        <Icon icon="material-symbols:supervisor-account-outline" width="24" height="24" />
+                        <span className="text-sm">{card.users}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          {card.enabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                        <ToggleSwitch
+                          enabled={card.enabled}
+                          onChange={() => handleToggleStatus(card.title, card.enabled)}
+                          disabled={toggleStates[`toggle-${card.title}`]}
+                          size="sm"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )
       )}

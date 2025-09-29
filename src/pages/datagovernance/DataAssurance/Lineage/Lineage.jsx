@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronDown, Search, PlusCircle, XCircle, ChevronLeft, ChevronRight, X, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import Breadcrumb from '../../../../components/Breadcrumb';
 import { useAuth } from '../../../../context/AuthContext';
 import { secureQuery } from '../../DataCatalogue/Components/function';
@@ -147,8 +147,15 @@ const LineageFilters = ({
 
 const LineageTable = ({
   isTableLoading, tableData, paginatedData, currentPage, itemsPerPage, toggleLineageItem, isItemInLineage,
-  totalPages, handlePageChange, onVisualize, hasLineageItems, searchTerm, onSearchChange, onClearSearch, filteredData
+  totalPages, handlePageChange, onVisualize, hasLineageItems, searchTerm, onSearchChange, onClearSearch, filteredData,
+  sortConfig, onSort
 }) => {
+  
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return <ArrowUpDown className="h-4 w-4 inline-block ml-1 opacity-40" />;
+    return sortConfig.direction === 'asc' ? <ArrowUp className="h-4 w-4 inline-block ml-1" /> : <ArrowDown className="h-4 w-4 inline-block ml-1" />;
+  };
+
   if (isTableLoading) {
     return <p className="text-center">Loading data...</p>;
   }
@@ -175,11 +182,51 @@ const LineageTable = ({
           <thead className="bg-[#29304a] text-white">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Id</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Connection</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Database</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Schema</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Type</th>
+              <th 
+                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
+                onClick={() => onSort('connection')}
+              >
+                <span className="inline-flex items-center">
+                  Connection
+                  {getSortIcon('connection')}
+                </span>
+              </th>
+              <th 
+                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
+                onClick={() => onSort('database')}
+              >
+                <span className="inline-flex items-center">
+                  Database
+                  {getSortIcon('database')}
+                </span>
+              </th>
+              <th 
+                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
+                onClick={() => onSort('schemaToShow')}
+              >
+                <span className="inline-flex items-center">
+                  Schema
+                  {getSortIcon('schemaToShow')}
+                </span>
+              </th>
+              <th 
+                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
+                onClick={() => onSort('name')}
+              >
+                <span className="inline-flex items-center">
+                  Name
+                  {getSortIcon('name')}
+                </span>
+              </th>
+              <th 
+                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
+                onClick={() => onSort('type')}
+              >
+                <span className="inline-flex items-center">
+                  Type
+                  {getSortIcon('type')}
+                </span>
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Lineage</th>
             </tr>
           </thead>
@@ -257,6 +304,7 @@ function EnhancedLineage() {
   const [lineageItems, setLineageItems] = useState(new Set());
   const [policyIds, setPolicyIds] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({});
 
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isDatabaseLoading, setIsDatabaseLoading] = useState(false);
@@ -265,6 +313,13 @@ function EnhancedLineage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
 
   const filteredData = useMemo(() => {
     if (!searchTerm.trim()) return tableData;
@@ -279,9 +334,28 @@ function EnhancedLineage() {
     );
   }, [tableData, searchTerm]);
 
+  const filteredAndSortedData = useMemo(() => {
+    let sorted = [...filteredData];
+
+    if (sortConfig.key) {
+      sorted.sort((a, b) => {
+        let aValue = a[sortConfig.key] ?? '';
+        let bValue = b[sortConfig.key] ?? '';
+
+        if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+        if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sorted;
+  }, [filteredData, sortConfig]);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, sortConfig]);
   
   useEffect(() => {
     if (!token) {
@@ -324,8 +398,8 @@ function EnhancedLineage() {
 
   useEffect(() => { setSelectedDatabases([]); setDatabaseOptions([]); }, [selectedConnections]);
   useEffect(() => { setSelectedSchemas([]); setSchemaOptions([]); }, [selectedDatabases]);
-  useEffect(() => { setSelectedTypes([]); setTableData([]); setSearchTerm(''); }, [selectedSchemas]);
-  useEffect(() => { setTableData([]); setSearchTerm(''); }, [selectedTypes]);
+  useEffect(() => { setSelectedTypes([]); setTableData([]); setSearchTerm(''); setSortConfig({}); }, [selectedSchemas]);
+  useEffect(() => { setTableData([]); setSearchTerm(''); setSortConfig({}); }, [selectedTypes]);
 
   const handleSearchChange = (value) => {
     setSearchTerm(value);
@@ -392,6 +466,7 @@ function EnhancedLineage() {
     setIsTableLoading(true);
     setTableData([]);
     setSearchTerm('');
+    setSortConfig({});
     setCurrentPage(1);
     try {
       const payload = {
@@ -507,12 +582,12 @@ function EnhancedLineage() {
 
   const isItemInLineage = (item) => lineageItems.has(JSON.stringify(item));
   const isShowDataDisabled = selectedConnections.length === 0 || selectedDatabases.length === 0 || selectedSchemas.length === 0 || selectedTypes.length === 0;
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
   const handlePageChange = (page) => { if (page > 0 && page <= totalPages) setCurrentPage(page); };
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredData.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredData, currentPage]);
+    return filteredAndSortedData.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAndSortedData, currentPage]);
 
   const handleConnectionsToggle = createToggleHandler(setSelectedConnections);
   const handleDatabasesToggle = createToggleHandler(setSelectedDatabases);
@@ -586,7 +661,9 @@ function EnhancedLineage() {
                 searchTerm={searchTerm}
                 onSearchChange={handleSearchChange}
                 onClearSearch={handleClearSearch}
-                filteredData={filteredData}
+                filteredData={filteredAndSortedData}
+                sortConfig={sortConfig}
+                onSort={handleSort}
               />
             </div>
           )}
