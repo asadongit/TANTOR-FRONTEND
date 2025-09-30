@@ -43,6 +43,32 @@ const CircularNodeRemote = ({
   const isAssetInfoDisabled = nodeData.type === 'view';
   const isColumnLevelDisabled = nodeData.type === 'schema';
 
+  const getInitial = () => {
+    switch (nodeData.type) {
+      case 'schema':
+        return 'S';
+      case 'table':
+        return 'T';
+      case 'view':
+        return 'V';
+      default:
+        return '?';
+    }
+  };
+
+  const getCenterColor = () => {
+    switch (nodeData.type) {
+      case 'schema':
+        return 'bg-blue-500';
+      case 'table':
+        return 'bg-red-500';
+      case 'view':
+        return 'bg-green-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
   const handleAssetInfo = () => {
     setShowAssetInfo(true);
   };
@@ -71,8 +97,8 @@ const CircularNodeRemote = ({
       >
         <div className="relative">
           <div className="w-28 h-28 bg-gray-800 rounded-full border-4 border-gray-600 shadow-2xl relative">
-            <div className="w-12 h-12 bg-red-500 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">CTRL</span>
+            <div className={`w-12 h-12 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center ${getCenterColor()}`}>
+              <span className="text-white text-xl font-bold">{getInitial()}</span>
             </div>
 
             <button
