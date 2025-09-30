@@ -205,7 +205,10 @@ const CircularNodeRemote = ({
           </button>
         </div>
 
-        <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+        <div
+          className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap max-w-[270px] overflow-hidden text-ellipsis"
+          title={nodeId}
+        >
           {nodeId}
         </div>
       </div>
