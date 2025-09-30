@@ -159,7 +159,7 @@ const TransformationNode = ({ data }) => {
                 />
             </div>
             <div className="p-2">
-                
+
                 {data.columns?.map((column, index) => {
                     const columnName = column.split('.').pop();
                     const columnKey = `${data.id}-${column}`;
@@ -472,24 +472,42 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         const relatedEdges = new Set();
         const visited = new Set();
 
+        const extractColumnFromHandle = (handle, nodeIdPrefix) => {
+            if (!handle) return null;
+
+            let match = handle.match(/-([^-]+)-(?:input|output)$/);
+            if (match) return match[1];
+
+            if (nodeIdPrefix && handle.startsWith(nodeIdPrefix + '-')) {
+                const columnPath = handle.substring(nodeIdPrefix.length + 1);
+                return columnPath.endsWith('-output')
+                    ? columnPath.substring(0, columnPath.length - 7)
+                    : columnPath;
+            }
+
+            return null;
+        };
+
         const traceForward = (currentNodeId, currentColumn) => {
-            if (visited.has(`${currentNodeId}-${currentColumn}`)) return;
-            visited.add(`${currentNodeId}-${currentColumn}`);
+            const key = `fwd-${currentNodeId}-${currentColumn}`;
+            if (visited.has(key)) return;
+            visited.add(key);
 
             allEdges.forEach(edge => {
-                const sourceHandle = edge.sourceHandle;
-                if (sourceHandle && sourceHandle.includes(currentNodeId) &&
-                    (sourceHandle.includes(currentColumn) ||
-                        sourceHandle.includes(getColumnName(currentColumn)))) {
-                    relatedEdges.add(edge.id);
+                if (edge.id.startsWith('flow-')) return;
 
-                    const targetHandle = edge.targetHandle;
-                    if (targetHandle) {
-                        const targetNodeId = edge.target;
-                        const targetColumnMatch = targetHandle.match(/-([^-]+)-(?:input|output)$/);
-                        if (targetColumnMatch) {
-                            const targetColumn = targetColumnMatch[1];
-                            traceForward(targetNodeId, targetColumn);
+                if (edge.source === currentNodeId) {
+                    const sourceCol = extractColumnFromHandle(edge.sourceHandle, currentNodeId);
+
+                    if (sourceCol && (
+                        isSameColumnIgnoreCase(currentColumn, sourceCol) ||
+                        isSameColumnIgnoreCase(getColumnName(currentColumn), sourceCol)
+                    )) {
+                        relatedEdges.add(edge.id);
+
+                        const targetCol = extractColumnFromHandle(edge.targetHandle, edge.target);
+                        if (targetCol) {
+                            traceForward(edge.target, targetCol);
                         }
                     }
                 }
@@ -497,40 +515,25 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         };
 
         const traceBackward = (currentNodeId, currentColumn) => {
-            if (visited.has(`backward-${currentNodeId}-${currentColumn}`)) return;
-            visited.add(`backward-${currentNodeId}-${currentColumn}`);
+            const key = `bwd-${currentNodeId}-${currentColumn}`;
+            if (visited.has(key)) return;
+            visited.add(key);
 
             allEdges.forEach(edge => {
-                const targetHandle = edge.targetHandle;
-                const sourceHandle = edge.sourceHandle;
+                if (edge.id.startsWith('flow-')) return;
 
-                if (targetHandle && targetHandle.includes(currentNodeId)) {
-                    const targetColumnMatch = targetHandle.match(/-([^-]+)-(?:input|output)$/);
-                    const targetColumn = targetColumnMatch ? targetColumnMatch[1] : targetHandle.split('-').pop();
+                if (edge.target === currentNodeId) {
+                    const targetCol = extractColumnFromHandle(edge.targetHandle, currentNodeId);
 
-                    if (targetColumn && (
-                        isSameColumnIgnoreCase(currentColumn, targetColumn) ||
-                        isSameColumnIgnoreCase(getColumnName(currentColumn), targetColumn) ||
-                        targetHandle.includes(currentColumn) ||
-                        targetHandle.includes(getColumnName(currentColumn))
+                    if (targetCol && (
+                        isSameColumnIgnoreCase(currentColumn, targetCol) ||
+                        isSameColumnIgnoreCase(getColumnName(currentColumn), targetCol)
                     )) {
                         relatedEdges.add(edge.id);
 
-                        if (sourceHandle) {
-                            const sourceNodeId = edge.source;
-                            let sourceColumn;
-
-                            if (sourceHandle.includes('-output')) {
-                                const sourceColumnMatch = sourceHandle.match(/-([^-]+)-output$/);
-                                sourceColumn = sourceColumnMatch ? sourceColumnMatch[1] : null;
-                            } else {
-                                const sourceColumnMatch = sourceHandle.match(/-([^-]+)$/);
-                                sourceColumn = sourceColumnMatch ? sourceColumnMatch[1] : null;
-                            }
-
-                            if (sourceColumn) {
-                                traceBackward(sourceNodeId, sourceColumn);
-                            }
+                        const sourceCol = extractColumnFromHandle(edge.sourceHandle, edge.source);
+                        if (sourceCol) {
+                            traceBackward(edge.source, sourceCol);
                         }
                     }
                 }
@@ -540,7 +543,9 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         traceForward(nodeId, columnName);
         traceBackward(nodeId, columnName);
 
-        const filteredEdges = allEdges.filter(edge => relatedEdges.has(edge.id));
+        const filteredEdges = allEdges.filter(edge =>
+            relatedEdges.has(edge.id) || edge.id.startsWith('flow-')
+        );
         setEdges(filteredEdges);
     }, [selectedColumn, allEdges, setEdges]);
 
@@ -551,41 +556,42 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         const relatedEdges = new Set();
         const visited = new Set();
 
+        const extractColumnFromHandle = (handle, nodeIdPrefix) => {
+            if (!handle) return null;
+
+            let match = handle.match(/-([^-]+)-(?:input|output)$/);
+            if (match) return match[1];
+
+            if (nodeIdPrefix && handle.startsWith(nodeIdPrefix + '-')) {
+                const columnPath = handle.substring(nodeIdPrefix.length + 1);
+                return columnPath.endsWith('-output')
+                    ? columnPath.substring(0, columnPath.length - 7)
+                    : columnPath;
+            }
+
+            return null;
+        };
+
         const traceBackward = (currentNodeId, currentColumn) => {
-            if (visited.has(`backward-${currentNodeId}-${currentColumn}`)) return;
-            visited.add(`backward-${currentNodeId}-${currentColumn}`);
+            const key = `bwd-${currentNodeId}-${currentColumn}`;
+            if (visited.has(key)) return;
+            visited.add(key);
 
             allEdges.forEach(edge => {
-                const targetHandle = edge.targetHandle;
-                const sourceHandle = edge.sourceHandle;
+                if (edge.id.startsWith('flow-')) return;
 
-                if (targetHandle && targetHandle.includes(currentNodeId)) {
-                    const targetColumnMatch = targetHandle.match(/-([^-]+)-(?:input|output)$/);
-                    const targetColumn = targetColumnMatch ? targetColumnMatch[1] : targetHandle.split('-').pop();
+                if (edge.target === currentNodeId) {
+                    const targetCol = extractColumnFromHandle(edge.targetHandle, currentNodeId);
 
-                    if (targetColumn && (
-                        isSameColumnIgnoreCase(currentColumn, targetColumn) ||
-                        isSameColumnIgnoreCase(getColumnName(currentColumn), targetColumn) ||
-                        targetHandle.includes(currentColumn) ||
-                        targetHandle.includes(getColumnName(currentColumn))
+                    if (targetCol && (
+                        isSameColumnIgnoreCase(currentColumn, targetCol) ||
+                        isSameColumnIgnoreCase(getColumnName(currentColumn), targetCol)
                     )) {
                         relatedEdges.add(edge.id);
 
-                        if (sourceHandle) {
-                            const sourceNodeId = edge.source;
-                            let sourceColumn;
-
-                            if (sourceHandle.includes('-output')) {
-                                const sourceColumnMatch = sourceHandle.match(/-([^-]+)-output$/);
-                                sourceColumn = sourceColumnMatch ? sourceColumnMatch[1] : null;
-                            } else {
-                                const sourceColumnMatch = sourceHandle.match(/-([^-]+)$/);
-                                sourceColumn = sourceColumnMatch ? sourceColumnMatch[1] : null;
-                            }
-
-                            if (sourceColumn) {
-                                traceBackward(sourceNodeId, sourceColumn);
-                            }
+                        const sourceCol = extractColumnFromHandle(edge.sourceHandle, edge.source);
+                        if (sourceCol) {
+                            traceBackward(edge.source, sourceCol);
                         }
                     }
                 }
@@ -593,7 +599,9 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         };
 
         traceBackward(nodeId, columnName);
-        const filteredEdges = allEdges.filter(edge => relatedEdges.has(edge.id));
+        const filteredEdges = allEdges.filter(edge =>
+            relatedEdges.has(edge.id) || edge.id.startsWith('flow-')
+        );
         setEdges(filteredEdges);
     };
 
@@ -604,24 +612,42 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         const relatedEdges = new Set();
         const visited = new Set();
 
+        const extractColumnFromHandle = (handle, nodeIdPrefix) => {
+            if (!handle) return null;
+
+            let match = handle.match(/-([^-]+)-(?:input|output)$/);
+            if (match) return match[1];
+
+            if (nodeIdPrefix && handle.startsWith(nodeIdPrefix + '-')) {
+                const columnPath = handle.substring(nodeIdPrefix.length + 1);
+                return columnPath.endsWith('-output')
+                    ? columnPath.substring(0, columnPath.length - 7)
+                    : columnPath;
+            }
+
+            return null;
+        };
+
         const traceForward = (currentNodeId, currentColumn) => {
-            if (visited.has(`${currentNodeId}-${currentColumn}`)) return;
-            visited.add(`${currentNodeId}-${currentColumn}`);
+            const key = `fwd-${currentNodeId}-${currentColumn}`;
+            if (visited.has(key)) return;
+            visited.add(key);
 
             allEdges.forEach(edge => {
-                const sourceHandle = edge.sourceHandle;
-                if (sourceHandle && sourceHandle.includes(currentNodeId) &&
-                    (sourceHandle.includes(currentColumn) ||
-                        sourceHandle.includes(getColumnName(currentColumn)))) {
-                    relatedEdges.add(edge.id);
+                if (edge.id.startsWith('flow-')) return;
 
-                    const targetHandle = edge.targetHandle;
-                    if (targetHandle) {
-                        const targetNodeId = edge.target;
-                        const targetColumnMatch = targetHandle.match(/-([^-]+)-(?:input|output)$/);
-                        if (targetColumnMatch) {
-                            const targetColumn = targetColumnMatch[1];
-                            traceForward(targetNodeId, targetColumn);
+                if (edge.source === currentNodeId) {
+                    const sourceCol = extractColumnFromHandle(edge.sourceHandle, currentNodeId);
+
+                    if (sourceCol && (
+                        isSameColumnIgnoreCase(currentColumn, sourceCol) ||
+                        isSameColumnIgnoreCase(getColumnName(currentColumn), sourceCol)
+                    )) {
+                        relatedEdges.add(edge.id);
+
+                        const targetCol = extractColumnFromHandle(edge.targetHandle, edge.target);
+                        if (targetCol) {
+                            traceForward(edge.target, targetCol);
                         }
                     }
                 }
@@ -629,7 +655,9 @@ const TableMappingPage = ({ TableName, apiBaseUrl, onBackToLineage, type, policy
         };
 
         traceForward(nodeId, columnName);
-        const filteredEdges = allEdges.filter(edge => relatedEdges.has(edge.id));
+        const filteredEdges = allEdges.filter(edge =>
+            relatedEdges.has(edge.id) || edge.id.startsWith('flow-')
+        );
         setEdges(filteredEdges);
     };
 
