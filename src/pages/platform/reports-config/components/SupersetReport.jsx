@@ -201,9 +201,12 @@ import { useEffect, useRef, useState } from "react";
 import { embedDashboard } from "@superset-ui/embedded-sdk";
 import axios from "axios";
 import { X } from "lucide-react";
+import { useAuth } from "../../../../context/AuthContext";
 
 const SupersetReport = ({ showModal, setShowModal, currentReportName, dashboardId }) => {
   const [isLoading, setIsLoading] = useState(false);
+
+  const {hostnameV1} = useAuth();
 
   const SUPERSET_URL = window._env_?.VITE_REPORTING_DASHBOARD_URL;
 
@@ -211,68 +214,71 @@ const SupersetReport = ({ showModal, setShowModal, currentReportName, dashboardI
   const PASSWORD = window._env_?.VITE_REPORTING_DASHBOARD_PASSWORD;
   const ROLE_NAME = window._env_?.VITE_REPORTING_DASHBOARD_ROLE_NAME;
 
-  async function loginToSuperset() {
-    const loginResponse = await axios.post(
-      `${SUPERSET_URL}/api/v1/security/login`,
-      {
-        username: USERNAME,
-        password: PASSWORD,
-        provider: "db",
-        refresh: true,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    return loginResponse.data.access_token;
-  }
+  // async function loginToSuperset() {
+  //   const loginResponse = await axios.post(
+  //     `${SUPERSET_URL}/api/v1/security/login`,
+  //     {
+  //       username: USERNAME,
+  //       password: PASSWORD,
+  //       provider: "db",
+  //       refresh: true,
+  //     },
+  //     {
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //     }
+  //   );
+  //   return loginResponse.data.access_token;
+  // }
 
   async function fetchGuestTokenFromBackend(dashboardId) {
     try {
-      const accessToken = await loginToSuperset();
+      // const accessToken = await loginToSuperset();
 
-      const sessionResponse = await axios.get(
-        `${SUPERSET_URL}/api/v1/security/csrf_token/`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          withCredentials: true,
-        }
-      );
+      // const sessionResponse = await axios.get(
+      //   `${SUPERSET_URL}/api/v1/security/csrf_token/`,
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${accessToken}`,
+      //     },
+      //     withCredentials: true,
+      //   }
+      // );
 
-      const csrfToken = sessionResponse.data.result;
+      // const csrfToken = sessionResponse.data.result;
 
-      const response = await axios.post(
-        `${SUPERSET_URL}/api/v1/security/guest_token/`,
-        {
-          user: {
-            username: USERNAME,
-            first_name: "Superset",
-            last_name: "Admin",
-            roles: [ROLE_NAME],
-          },
-          resources: [
-            {
-              type: "dashboard",
-              id: dashboardId,
-            },
-          ],
-          rls: [],
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrfToken,
-            Authorization: `Bearer ${accessToken}`,
-          },
-          withCredentials: true,
-        }
-      );
+      // const response = await axios.post(
+      //   `${SUPERSET_URL}/api/v1/security/guest_token/`,
+      //   {
+      //     user: {
+      //       username: USERNAME,
+      //       first_name: "Superset",
+      //       last_name: "Admin",
+      //       roles: [ROLE_NAME],
+      //     },
+      //     resources: [
+      //       {
+      //         type: "dashboard",
+      //         id: dashboardId,
+      //       },
+      //     ],
+      //     rls: [],
+      //   },
+      //   {
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //       "X-CSRFToken": csrfToken,
+      //       Authorization: `Bearer ${accessToken}`,
+      //     },
+      //     withCredentials: true,
+      //   }
+      // );
 
-      return response.data.token;
+      const response = await fetch(`${hostnameV1}/superset/fetchGuestToken?embed_id=${dashboardId}`);
+      const data = await response.json();
+
+      return data["token"] || "";
     } catch (error) {
       console.error("Error fetching guest token:", error);
       throw error;
