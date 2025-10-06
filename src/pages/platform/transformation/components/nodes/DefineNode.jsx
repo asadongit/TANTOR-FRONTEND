@@ -5,7 +5,7 @@ import { useAuth } from "../../../../../context/AuthContext";
 
 const hostname = window._env_?.VITE_FAST_API;
 
-// Use a module-level cache for transformation names
+// module-level cache for transformation names
 const transformationNamesCache = {
   names: [],
   timestamp: 0,
@@ -22,12 +22,11 @@ export const DefineNode = ({ id, data }) => {
   const [attemptedSave, setAttemptedSave] = useState(false);
   const nameCheckTimeout = useRef(null);
   const { project, decodedToken, token } = useAuth();
+  const isEditMode = data.isEditMode || sessionStorage.getItem('editMode') === 'true';
 
-  // Memoized fetch function to avoid repeated calls
   const getExistingTransformationNames = useCallback(async () => {
     const now = Date.now();
     const currentUser = decodedToken?.preferred_username;
-    // Only fetch if cache is expired or project/user changed
     if (
       now - transformationNamesCache.timestamp < transformationNamesCache.expiryTime &&
       transformationNamesCache.lastProject === project &&
@@ -36,7 +35,6 @@ export const DefineNode = ({ id, data }) => {
       return transformationNamesCache.names;
     }
 
-    // Prevent concurrent fetches
     if (transformationNamesCache._fetchPromise) {
       return transformationNamesCache._fetchPromise;
     }
@@ -134,6 +132,7 @@ export const DefineNode = ({ id, data }) => {
   }, [getExistingTransformationNames]);
 
   const handleNameChange = (e) => {
+    if (isEditMode) return;
     const value = e.target.value;
     data.onDataChange({ name: value });
 
@@ -167,13 +166,11 @@ export const DefineNode = ({ id, data }) => {
   };
 
   useEffect(() => {
-    // Only validate if name is present, not already checked, and not in edit mode with existing data
     const isEditMode = sessionStorage.getItem('editMode') === 'true';
     if (data.name && data.name.trim() !== "" && !nameError && !nameExists && !isEditMode) {
       validateName(data.name);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, []);
 
   useEffect(() => {
     if (data.onSave) {
@@ -231,10 +228,11 @@ export const DefineNode = ({ id, data }) => {
                 attemptedSave && nameError ? "border-red-500" : "border-gray-300"
               } text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 ${
                 attemptedSave && nameError ? "focus:ring-red-500" : "focus:ring-gray-400"
-              } focus:border-gray-400`}
+              } focus:border-gray-400 ${isEditMode ? "bg-gray-100 cursor-not-allowed opacity-70" : ""}`}
               placeholder="Enter transformation name"
               value={data.name || ""}
               onChange={handleNameChange}
+              disabled={isEditMode}
             />
             {isChecking && (
               <div className="absolute right-2 top-1">

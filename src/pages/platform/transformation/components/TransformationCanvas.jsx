@@ -86,6 +86,14 @@ function TransformationCanvasContent() {
         setNodes(restoredData.nodes);
         setEdges(restoredData.edges);
 
+        setNodes(prev =>
+          prev.map(n =>
+            n.type === 'define'
+              ? { ...n, data: { ...n.data, isEditMode: true } }
+              : n
+          )
+        );
+
         if (editFlowData.properties) {
           dispatch({
             type: ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES,
