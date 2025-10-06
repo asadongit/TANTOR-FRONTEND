@@ -20,6 +20,9 @@ const Header = () => {
   const [tableLinkageNotifications, setTableLinkageNotifications] = useState(null);
   const [columnLinkageNotifications, setColumnLinkageNotifications] = useState(null);
   const [deletionNotifications, setDeletionNotifications] = useState(null);
+  const [tableLinkageDeletionNotifications, setTableLinkageDeletionNotifications] = useState(null);
+  const [columnLinkageDeletionNotifications, setColumnLinkageDeletionNotifications] = useState(null);
+
 
   const [ownerBusinessCatalogue, setOwnerBusinessCatalogue] = useState(null);
   const [ownerColumnLinkage, setOwnerColumnLinkage] = useState(null);
@@ -29,6 +32,9 @@ const Header = () => {
   const [ownerColumnDescriptions, setOwnerColumnDescriptions] = useState(null);
   const [ownerDeletions, setOwnerDeletions] = useState(null);
   const [ownerConnectionDescriptions, setOwnerConnectionDescriptions] = useState(null);
+  const [ownerTableLinkageDeletions, setOwnerTableLinkageDeletions] = useState(null);
+  const [ownerColumnLinkageDeletions, setOwnerColumnLinkageDeletions] = useState(null);
+
 
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -80,6 +86,8 @@ const Header = () => {
       setTableLinkageNotifications(data['table linkage']);
       setColumnLinkageNotifications(data['column linkage']);
       setDeletionNotifications(data.deletions || []);
+      setTableLinkageDeletionNotifications(data['table linkage deletions'] || []);
+      setColumnLinkageDeletionNotifications(data['column linkage deletions'] || []);
       setLastFetched(Date.now());
     } catch (error) {
       console.error('Error fetching steward notifications:', error);
@@ -114,6 +122,8 @@ const Header = () => {
       setOwnerColumnDescriptions(result['column descriptions'] || []);
       setOwnerConnectionDescriptions(result['connection descriptions'] || []);
       setOwnerDeletions(result.deletions || []);
+      setOwnerTableLinkageDeletions(result['table linkage deletion'] || []);
+      setOwnerColumnLinkageDeletions(result['column linkage deletion'] || []);
       setLastFetched(Date.now());
     } catch (error) {
       console.error('Error fetching data owner notifications:', error);
@@ -145,9 +155,11 @@ const Header = () => {
         payload.deletions.push({ domain_id: [notification.domain_id] });
         break;
       case 'table_linkage':
+      case 'table_linkage_deletion':
         payload.catalogue.push({ connection_name: notification.connection_name, table_schema: notification.table_schema, table_name: notification.table_name, column_name: null });
         break;
       case 'column_linkage':
+      case 'column_linkage_deletion':
         const link = notification.catalogue_linkage_column[subIndex];
         payload.catalogue.push({ connection_name: notification.connection_name, table_schema: notification.table_schema, table_name: notification.table_name, column_name: link.column_name[0] });
         break;
@@ -196,12 +208,21 @@ const Header = () => {
       case 'business_catalogue': setOwnerBusinessCatalogue(filterByIndex); break;
       case 'deletion': setOwnerDeletions(filterByIndex); break;
       case 'table_linkage': setOwnerTableLinkage(filterByIndex); break;
+      case 'table_linkage_deletion': setOwnerTableLinkageDeletions(filterByIndex); break;
       case 'schema_description': setOwnerSchemaDescriptions(filterByIndex); break;
       case 'table_description': setOwnerTableDescriptions(filterByIndex); break;
       case 'column_description': setOwnerColumnDescriptions(filterByIndex); break;
       case 'connection_description': setOwnerConnectionDescriptions(filterByIndex); break;
       case 'column_linkage':
         setOwnerColumnLinkage(prev => {
+          const newState = JSON.parse(JSON.stringify(prev));
+          const notificationGroup = newState[index];
+          notificationGroup.catalogue_linkage_column.splice(subIndex, 1);
+          return newState.filter(group => group.catalogue_linkage_column.length > 0);
+        });
+        break;
+      case 'column_linkage_deletion':
+        setOwnerColumnLinkageDeletions(prev => {
           const newState = JSON.parse(JSON.stringify(prev));
           const notificationGroup = newState[index];
           notificationGroup.catalogue_linkage_column.splice(subIndex, 1);
@@ -319,7 +340,9 @@ const Header = () => {
     (descriptionNotifications && descriptionNotifications.length > 0) ||
     (tableLinkageNotifications && tableLinkageNotifications.length > 0) ||
     (columnLinkageNotifications && columnLinkageNotifications.length > 0) ||
-    (deletionNotifications && deletionNotifications.length > 0)
+    (deletionNotifications && deletionNotifications.length > 0) ||
+    (tableLinkageDeletionNotifications && tableLinkageDeletionNotifications.length > 0) ||
+    (columnLinkageDeletionNotifications && columnLinkageDeletionNotifications.length > 0)
   );
 
   const hasOwnerNotifications = (
@@ -330,7 +353,9 @@ const Header = () => {
     (ownerTableDescriptions && ownerTableDescriptions.length > 0) ||
     (ownerColumnDescriptions && ownerColumnDescriptions.length > 0) ||
     (ownerConnectionDescriptions && ownerConnectionDescriptions.length > 0) ||
-    (ownerDeletions && ownerDeletions.length > 0)
+    (ownerDeletions && ownerDeletions.length > 0) ||
+    (ownerTableLinkageDeletions && ownerTableLinkageDeletions.length > 0) ||
+    (ownerColumnLinkageDeletions && ownerColumnLinkageDeletions.length > 0)
   );
 
   const hasNotifications = (isDataSteward && hasStewardNotifications) || (isDataOwner && hasOwnerNotifications);
@@ -450,6 +475,30 @@ const Header = () => {
                       );
                     })}
 
+                    {isDataSteward && tableLinkageDeletionNotifications?.map((n, index) => {
+                      const message = `Catalogue linkage removal from ${n.connection}.${n.schema}.${n.tables} requires approval.`;
+                      return (
+                        <div key={`table-link-del-${index}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
+                          <p className="text-sm text-gray-900 flex-1">{message}</p>
+                          <button onClick={() => handleViewDetails('table_linkage_deletion', index, n)} className="text-[#8e78b7] ml-2 flex-shrink-0" title="View details">
+                            <ChevronRight className='text-[#8e78b7]' size={20} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {isDataSteward && columnLinkageDeletionNotifications?.map((n, index) => {
+                      const message = `Catalogue linkage removal from ${n.connection}.${n.schema}.${n.table}.${n.columns} requires approval.`;
+                      return (
+                        <div key={`column-link-del-${index}`} className="px-4 py-3 hover:bg-gray-50 flex justify-between items-center">
+                          <p className="text-sm text-gray-900 flex-1">{message}</p>
+                          <button onClick={() => handleViewDetails('column_linkage_deletion', index, n)} className="text-[#8e78b7] ml-2 flex-shrink-0" title="View details">
+                            <ChevronRight className='text-[#8e78b7]' size={20} />
+                          </button>
+                        </div>
+                      );
+                    })}
+
+
                     {/* Data Owner Notifications */}
                     {isDataOwner && ownerBusinessCatalogue?.map((n, i) => {
                       const status = n.status_approval?.[0]?.toLowerCase();
@@ -506,6 +555,44 @@ const Header = () => {
                           />
                         );
                       })
+                    )}
+                    {isDataOwner && ownerTableLinkageDeletions?.map((n, i) => {
+                        const status = n.catalogue_linkage_table?.[0]?.status_approval[0]?.toLowerCase();
+                        const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
+                        const message = `Your entry for Catalogue linkage removal to ${n.connection_name}.${n.table_schema}.${n.table_name} has been ${status}.`;
+                        const reasonText = n.catalogue_linkage_table?.[0]?.reason?.join(', ');
+                        const uniqueId = `table_linkage_deletion-${i}-null`;
+                        return (
+                            <OwnerNotificationItem
+                                key={`owner-tld-${i}`}
+                                icon={icon}
+                                message={message}
+                                reason={status === 'rejected' ? (reasonText || '-') : null}
+                                onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('table_linkage_deletion', n, i); }}
+                                isDismissing={dismissingId === uniqueId}
+                                isAnyDismissing={dismissingId !== null}
+                            />
+                        );
+                    })}
+                    {isDataOwner && ownerColumnLinkageDeletions?.flatMap((n, i) =>
+                        n.catalogue_linkage_column.map((link, j) => {
+                            const status = link.status_approval[0]?.toLowerCase();
+                            const icon = status === 'approved' ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />;
+                            const message = `Your entry for Catalogue linkage removal to ${n.connection_name}.${n.table_schema}.${n.table_name}.${link.column_name[0]} has been ${status}.`;
+                            const reasonText = link.reason?.join(', ');
+                            const uniqueId = `column_linkage_deletion-${i}-${j}`;
+                            return (
+                                <OwnerNotificationItem
+                                    key={`owner-cld-${i}-${j}`}
+                                    icon={icon}
+                                    message={message}
+                                    reason={status === 'rejected' ? (reasonText || '-') : null}
+                                    onDismiss={(e) => { e.stopPropagation(); handleDismissNotification('column_linkage_deletion', n, i, j); }}
+                                    isDismissing={dismissingId === uniqueId}
+                                    isAnyDismissing={dismissingId !== null}
+                                />
+                            );
+                        })
                     )}
                     {isDataOwner && ownerDeletions?.map((n, i) => {
                       const status = n.delete_approval?.status_approval[0]?.toLowerCase();
@@ -733,9 +820,8 @@ const Header = () => {
               <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white sm:ml-3 sm:w-auto sm:text-sm ${
-                    isLoggingOut ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
-                  }`}
+                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white sm:ml-3 sm:w-auto sm:text-sm ${isLoggingOut ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
+                    }`}
                   onClick={handleConfirmLogout}
                   disabled={isLoggingOut}
                 >
@@ -753,9 +839,8 @@ const Header = () => {
                 </button>
                 <button
                   type="button"
-                  className={`mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium sm:mt-0 sm:w-auto sm:text-sm ${
-                    isLoggingOut ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
-                  }`}
+                  className={`mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium sm:mt-0 sm:w-auto sm:text-sm ${isLoggingOut ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+                    }`}
                   onClick={handleCancelLogout}
                   disabled={isLoggingOut}
                 >
