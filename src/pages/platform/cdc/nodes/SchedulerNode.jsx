@@ -11,7 +11,6 @@ import { encrypt } from "../../../../utils/Crypto";
 
 import { useAuth } from "../../../../context/AuthContext";
 export function SchedulerNode({ id, data, selected}) {
-  // console.log("SCHEDULAR DATA---------",data)
   const pipelineId = data?.pipelineId;
   const isPipelineNode = pipelineId !== undefined;
   const ID = isPipelineNode ? pipelineId : id;
@@ -112,7 +111,6 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       op_types: tableOperations,
     };
 
-    console.log("Final Payload:", finalPayload);
     try {
       const response = await fetch(`${hostnameV2}/create-cdc`, {
         method: "POST",
@@ -124,7 +122,6 @@ const {token,decodedToken ,project, hostnameV2}= useAuth()
       });
 
       const data = await response.json();
-      console.log("Response:", data);
     } catch (error) {
       console.error("Error:", error);
     }

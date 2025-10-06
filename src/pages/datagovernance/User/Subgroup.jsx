@@ -185,7 +185,6 @@ function Subgroup() {
       });
 
       setTableData(transformedData);
-      console.log("Fetched subgroup list data:", transformedData);
       return { success: true };
     } catch (error) {
       console.error("Error fetching subgroup list data:", error);
@@ -319,7 +318,6 @@ function Subgroup() {
   };
 
   const handleSave = async (result) => {
-    console.log('Subgroup creation result:', result);
 
     if (result.success) {
       try {

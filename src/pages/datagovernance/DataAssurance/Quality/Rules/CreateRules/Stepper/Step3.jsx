@@ -7,7 +7,6 @@ function Step3({ onBack, onCreate, step1Data, step2Data, loading, edit }) {
   const step2 = step2Data || stepData.step2 || [];
   const [search, setSearch] = useState('');
 
-  // console.log('Step 3 Data:', step2);
   const groupStats = useMemo(() => {
     const stats = {};
     step2.forEach(rule => {

@@ -334,7 +334,7 @@ const LineItemSummary = () => {
               Back to Configuration
             </button>
             <button
-              className="px-5 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+              className="px-5 py-2.5 rounded-lg bg-[#8E77BB] hover:bg-[#7a63ac] text-white font-medium transition-all duration-200 shadow-sm hover:shadow-md"
               onClick={handleSaveClick}
             >
               {mode === "EDIT" ? "Update Line Item" : "Save Line Item"}

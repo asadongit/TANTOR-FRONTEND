@@ -280,7 +280,11 @@ const BusinessGlossary = () => {
             <Download className="h-5 w-5" />
           </button>
           <button
-            onClick={() => fetchData(true)}
+            onClick={() => {
+              setSearchTerm('');
+              setSortConfig({ key: null, direction: 'asc' });
+              fetchData(true);
+            }}
             disabled={isLoading}
             className="text-black border border-gray-300 shadow-sm hover:bg-gray-100 focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5 flex items-center justify-center dark:bg-white dark:hover:bg-gray-50 focus:outline-none dark:focus:ring-[#8e78b7] disabled:opacity-50"
             title="Refresh"

@@ -145,13 +145,13 @@ const RuleSummary = ({
               {/* Header with navigation path */}
               <div className="flex justify-between items-center mb-6 sticky top-0 bg-white z-10">
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <span>Platform</span>
+                  {/* <span>Platform</span>
                   <span>→</span>
                   <span>Rule</span>
                   <span>→</span>
                   {mode === "CREATE" && (<span>Create Rule</span>)}
                   {mode === "EDIT" && (<span>Edit Rule</span>)}
-                  {mode === "DISPLAY" && (<span>Display Rule</span>)}
+                  {mode === "DISPLAY" && (<span>Display Rule</span>)} */}
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}

@@ -16,7 +16,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
 import { useToast } from "../context/ToastContext";
 
-const SearchableSelect = ({ options, value, onChange, placeholder }) => {
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled = false, isLoading = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -29,7 +29,9 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
     );
 
   const handleSelectClick = () => {
-    setIsOpen(!isOpen);
+    if (!disabled && !isLoading) {
+      setIsOpen(!isOpen);
+    }
   };
 
   const handleOptionClick = (option) => {
@@ -41,18 +43,24 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
   return (
     <div className="relative w-full">
       <div
-        className="w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+        className={`w-full px-3 py-2 border-2 rounded-lg text-gray-500 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
         onClick={handleSelectClick}
       >
         <span>{value || placeholder}</span>
-        {isOpen ? (
+        {isLoading ? (
+          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+        ) : isOpen ? (
           <ChevronUp className="w-4 h-4" />
         ) : (
           <ChevronDown className="w-4 h-4" />
         )}
       </div>
 
-      {isOpen && (
+      {isOpen && !isLoading && !disabled && (
         <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
           <div className="p-2 border-b">
             <div className="relative">
@@ -68,15 +76,19 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
             </div>
           </div>
           <div className="max-h-60 overflow-y-auto">
-            {filteredOptions.map((option) => (
-              <div
-                key={option}
-                className="p-2 hover:bg-gray-100 cursor-pointer"
-                onClick={() => handleOptionClick(option)}
-              >
-                {option}
-              </div>
-            ))}
+            {filteredOptions.length === 0 ? (
+              <div className="p-2 text-gray-500">No options available</div>
+            ) : (
+              filteredOptions.map((option) => (
+                <div
+                  key={option}
+                  className="p-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleOptionClick(option)}
+                >
+                  {option}
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -85,12 +97,15 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
 };
 
 export function BaseNode({ id, data }) {
-   const { showToast } = useToast();
+  const { showToast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isAllSelected, setIsAllSelected] = useState(false);
   const [apiViews, setApiViews] = useState([]);
   const [selectedView, setSelectedView] = useState("");
   const [apiColumns, setApiColumns] = useState([]);
+  const [isLoadingViews, setIsLoadingViews] = useState(false);
+  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
+
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
   const {
     settingsList,
@@ -100,6 +115,7 @@ export function BaseNode({ id, data }) {
     userCheckedColumns,
     setUserCheckedColumns,
   } = useStateContext();
+
   const getFilterModalColumns = () => {
     if (apiColumns.length > 0) {
       return apiColumns.map((column) => ({
@@ -110,9 +126,9 @@ export function BaseNode({ id, data }) {
     return [];
   };
 
-
   useEffect(() => {
     (async () => {
+      setIsLoadingViews(true);
       try {
         const params = new URLSearchParams({
           view_type: "Base",
@@ -137,18 +153,18 @@ export function BaseNode({ id, data }) {
       } catch (error) {
         console.error("Fetch error", error);
         showToast('Error fetching views', 'error');
+      } finally {
+        setIsLoadingViews(false);
       }
     })();
   }, []);
 
-
-
   useEffect(() => {
     if (selectedView) {
       (async () => {
-        let response;
+        setIsLoadingColumns(true);
         try {
-          response = await fetch(`${hostnameV1}/fetch_view_columns`, {
+          const response = await fetch(`${hostnameV1}/fetch_view_columns`, {
             headers: {
               "Content-Type": "application/json",
               authorization: `Bearer ${token}`,
@@ -168,8 +184,9 @@ export function BaseNode({ id, data }) {
             showToast('Error occurred while trying to fetch columns', 'error');
           }
         } catch (error) {
-          console.log(error);
           showToast('Error occurred while trying to fetch columns', 'error');
+        } finally {
+          setIsLoadingColumns(false);
         }
       })();
     }
@@ -196,8 +213,8 @@ export function BaseNode({ id, data }) {
     const isColumnChecked = userCheckedColumns.includes(columnName);
 
     const updatedCheckedColumns = isColumnChecked
-      ? userCheckedColumns.filter((name) => name !== columnName) 
-      : [...userCheckedColumns, columnName]; 
+      ? userCheckedColumns.filter((name) => name !== columnName)
+      : [...userCheckedColumns, columnName];
 
     setSettingsList((prev) => {
       const updatedSettingsList = prev.map((item) => {
@@ -323,10 +340,21 @@ export function BaseNode({ id, data }) {
               value={selectedView}
               onChange={handleChangeView}
               placeholder="Select View"
+              isLoading={isLoadingViews}
             />
           </div>
 
-          {apiColumns && (
+          {isLoadingColumns && (
+            <div className="flex items-center justify-center py-4">
+              <svg className="animate-spin h-5 w-5 text-[#8E77BB]" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span className="ml-2 text-sm text-gray-600">Loading columns...</span>
+            </div>
+          )}
+
+          {!isLoadingColumns && apiColumns && apiColumns.length > 0 && (
             <div className={`mb-4 ${selectedView ? "" : "hidden"}`}>
               <h3 className="font-semibold text-gray-700 mb-2">
                 Select Columns
@@ -348,7 +376,7 @@ export function BaseNode({ id, data }) {
                   </label>
                 </div>
 
-                <div className="max-h-32 overflow-y-auto pr-1">
+                <div className="max-h-32 overflow-y-auto pr-1 custom-scrollbar">
                   {apiColumns.map((item) => (
                     <div
                       key={item.column_name}
@@ -369,7 +397,7 @@ export function BaseNode({ id, data }) {
                       <Pencil
                         name="edit"
                         onClick={() => handleEditColumn(item.column_name)}
-                        className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
+                        className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700 cursor-pointer"
                       />
                     </div>
                   ))}
@@ -394,12 +422,30 @@ export function BaseNode({ id, data }) {
           </button>
         </div>
       )}
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #a0aec0;
+          border-radius: 3px;
+        }
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
     </div>
   );
 }
 
 export function ConnectionNode({ id, data }) {
-   const { showToast } = useToast();
+  const { showToast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");
@@ -408,8 +454,13 @@ export function ConnectionNode({ id, data }) {
   const [apiSchemas, setApiSchemas] = useState([]);
   const [apiTables, setApiTables] = useState([]);
   const [apiColumns, setApiColumns] = useState([]);
-  const [allowedColumns, setAllowedColumns] = useState([]); 
+  const [allowedColumns, setAllowedColumns] = useState([]);
   const [isAllSelected, setIsAllSelected] = useState(false);
+  const [isLoadingConnections, setIsLoadingConnections] = useState(false);
+  const [isLoadingSchemas, setIsLoadingSchemas] = useState(false);
+  const [isLoadingTables, setIsLoadingTables] = useState(false);
+  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
+
   const {
     settingsList,
     setSettingsList,
@@ -422,7 +473,6 @@ export function ConnectionNode({ id, data }) {
   const { token, project, decodedToken, setSelectedProject, hostnameV1, hostnameV2 } = useAuth();
 
   const getFilterModalColumns = () => {
-    console.log("apicolumn are ,",apiColumns)
     if (apiColumns.length > 0 && allowedColumns.length > 0) {
       const filtered = apiColumns.filter((column) =>
         allowedColumns.some((allowedCol) => allowedCol.column_name.toLowerCase() === column.column.toLowerCase())
@@ -437,6 +487,7 @@ export function ConnectionNode({ id, data }) {
 
   useEffect(() => {
     const fetchConnections = async () => {
+      setIsLoadingConnections(true);
       try {
         const secureQueryResponse = await secureQuery({ user_query: "" }, token);
         const policyIds = secureQueryResponse.matched_policy_ids || [];
@@ -466,6 +517,8 @@ export function ConnectionNode({ id, data }) {
         console.error("Error fetching connections:", error);
         showToast('Failed to load connections', 'error');
         setApiConnections([]);
+      } finally {
+        setIsLoadingConnections(false);
       }
     };
     fetchConnections();
@@ -474,6 +527,7 @@ export function ConnectionNode({ id, data }) {
   useEffect(() => {
     if (selectedConnection) {
       const fetchSchemas = async () => {
+        setIsLoadingSchemas(true);
         try {
           const secureQueryResponse = await secureQuery({ user_query: "" }, token);
           const policyIds = secureQueryResponse.matched_policy_ids || [];
@@ -510,6 +564,8 @@ export function ConnectionNode({ id, data }) {
           console.error("Error fetching schema data:", error);
           showToast('Failed to load schemas', 'error');
           setApiSchemas([]);
+        } finally {
+          setIsLoadingSchemas(false);
         }
       };
       fetchSchemas();
@@ -519,6 +575,7 @@ export function ConnectionNode({ id, data }) {
   useEffect(() => {
     if (selectedSchema) {
       const fetchTables = async () => {
+        setIsLoadingTables(true);
         try {
           const secureQueryResponse = await secureQuery({ user_query: "" }, token);
           const policyIds = secureQueryResponse.matched_policy_ids || [];
@@ -537,7 +594,7 @@ export function ConnectionNode({ id, data }) {
             body: JSON.stringify({
               matched_policy_ids: policyIds,
               connection_name: selectedConnection,
-              schema_name: [selectedSchema], 
+              schema_name: [selectedSchema],
             }),
           });
 
@@ -558,6 +615,8 @@ export function ConnectionNode({ id, data }) {
           console.error("Error fetching table data:", error);
           showToast('Failed to load tables', 'error');
           setApiTables([]);
+        } finally {
+          setIsLoadingTables(false);
         }
       };
       fetchTables();
@@ -567,6 +626,7 @@ export function ConnectionNode({ id, data }) {
   useEffect(() => {
     if (selectedTable) {
       const fetchColumns = async () => {
+        setIsLoadingColumns(true);
         try {
           const detailedColumnsResponse = await fetch(
             `${hostnameV1}/${selectedConnection}/schemas/${selectedSchema}/tables/${selectedTable}/columns`,
@@ -602,7 +662,7 @@ export function ConnectionNode({ id, data }) {
             body: JSON.stringify({
               matched_policy_ids: policyIds,
               connection_name: selectedConnection,
-              schema_name: [selectedSchema], 
+              schema_name: [selectedSchema],
               table_name: [selectedTable],
             }),
           });
@@ -632,12 +692,13 @@ export function ConnectionNode({ id, data }) {
           showToast('Failed to load columns', 'error');
           setApiColumns([]);
           setAllowedColumns([]);
+        } finally {
+          setIsLoadingColumns(false);
         }
       };
       fetchColumns();
     }
   }, [selectedTable, selectedConnection, selectedSchema, token, hostnameV1]);
-
 
   const handleColumnChange = (column) => {
     const columnName = column.column;
@@ -737,7 +798,7 @@ export function ConnectionNode({ id, data }) {
     setApiSchemas([]);
     setApiTables([]);
     setApiColumns([]);
-    setAllowedColumns([]); 
+    setAllowedColumns([]);
     setSelectedSchema("");
     setSelectedTable("");
     setUserCheckedColumns([]);
@@ -749,9 +810,9 @@ export function ConnectionNode({ id, data }) {
     setSelectedConnection(event.target.value);
     resetSelections();
     setUserSelections((prev) => {
-      const updatedSelections = new Map(prev); 
+      const updatedSelections = new Map(prev);
       updatedSelections.set("connection", event.target.value);
-      updatedSelections.delete("schema"); 
+      updatedSelections.delete("schema");
       updatedSelections.delete("table");
       return updatedSelections;
     });
@@ -761,7 +822,7 @@ export function ConnectionNode({ id, data }) {
     setSelectedSchema(event.target.value);
     setApiTables([]);
     setApiColumns([]);
-    setAllowedColumns([]); 
+    setAllowedColumns([]);
     setSelectedTable("");
     setUserCheckedColumns([]);
     setSettingsList([]);
@@ -769,7 +830,7 @@ export function ConnectionNode({ id, data }) {
     setUserSelections((prev) => {
       const updatedSelections = new Map(prev);
       updatedSelections.set("schema", event.target.value);
-      updatedSelections.delete("table"); 
+      updatedSelections.delete("table");
       return updatedSelections;
     });
   };
@@ -777,7 +838,7 @@ export function ConnectionNode({ id, data }) {
   const handleTableChange = (event) => {
     setSelectedTable(event.target.value);
     setApiColumns([]);
-    setAllowedColumns([]); 
+    setAllowedColumns([]);
     setUserCheckedColumns([]);
     setIsAllSelected(false);
     setSettingsList([]);
@@ -836,6 +897,7 @@ export function ConnectionNode({ id, data }) {
                 value={selectedConnection}
                 onChange={handleConnectionChange}
                 placeholder="Select a connection"
+                isLoading={isLoadingConnections}
               />
             </div>
             <div>
@@ -847,6 +909,8 @@ export function ConnectionNode({ id, data }) {
                 value={selectedSchema}
                 onChange={handleSchemaChange}
                 placeholder="Select a schema"
+                disabled={!selectedConnection}
+                isLoading={isLoadingSchemas}
               />
             </div>
             <div>
@@ -858,10 +922,22 @@ export function ConnectionNode({ id, data }) {
                 value={selectedTable}
                 onChange={handleTableChange}
                 placeholder="Select a table"
+                disabled={!selectedSchema}
+                isLoading={isLoadingTables}
               />
             </div>
 
-            {selectedTable && (
+            {isLoadingColumns && (
+              <div className="flex items-center justify-center py-4">
+                <svg className="animate-spin h-5 w-5 text-[#8E77BB]" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span className="ml-2 text-sm text-gray-600">Loading columns...</span>
+              </div>
+            )}
+
+            {!isLoadingColumns && selectedTable && allowedColumns.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-black mb-1">
                   Select Columns
@@ -883,7 +959,6 @@ export function ConnectionNode({ id, data }) {
                     </label>
                   </div>
                   <div className="max-h-32 overflow-y-auto space-y-2 custom-scrollbar">
-                    {/* Render only columns that are in allowedColumns and have detailed info */}
                     {apiColumns
                       .filter((col) =>
                         allowedColumns.some(
@@ -912,7 +987,7 @@ export function ConnectionNode({ id, data }) {
                           <Pencil
                             name="edit"
                             onClick={() => handleEditColumn(item.column)}
-                            className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700"
+                            className="ml-auto h-4 w-4 text-gray-500 hover:text-gray-700 cursor-pointer"
                           />
                         </div>
                       ))}
@@ -947,6 +1022,14 @@ export function ConnectionNode({ id, data }) {
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background-color: #a0aec0;
           border-radius: 3px;
+        }
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        .animate-spin {
+          animation: spin 1s linear infinite;
         }
       `}</style>
     </div>

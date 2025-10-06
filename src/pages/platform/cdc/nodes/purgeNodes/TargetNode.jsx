@@ -25,7 +25,6 @@ import {
 } from "../../hooks/DataFetch";
 
 export function TargetNode({ id, data, selected }) {
-  // console.log("TARGET DATA",data)
   const [loading, setLoading] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [selectedSchema, setSelectedSchema] = useState("");

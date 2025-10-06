@@ -63,12 +63,6 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
     }
   }, []);
 
-  // Fetch date columns on component mount
-  // useEffect(() => {
-  //   console.log("nodeData.timeTransformationFilters ==> ", nodeData.timeTransformationFilters);
-  //   if(nodeData?.timeTransformationFilters && nodeData.timeTransformationFilters.length > 0)
-  //     setTransformations(nodeData.timeTransformationFilters);
-  // }, []);
 
   useEffect(() => {
     if (!factId) return;
@@ -98,7 +92,6 @@ const TimeTransformationFilter = ({ setIsOpen, onApply, factId, updateNodeData, 
         setDateColumns(formattedData);
       } catch (error) {
         setDateColumns([]);
-        console.log(error);
         toast.error(error.message);
       }
     })();

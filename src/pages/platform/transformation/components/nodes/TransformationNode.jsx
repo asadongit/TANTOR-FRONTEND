@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Handle, Position } from "reactflow";
-import { X, Pencil, Code2, ArrowRight } from "lucide-react";
+import { X, Pencil, Code2, ArrowRight, ArrowRightLeft } from "lucide-react";
 import { useTransformation } from "../TransformationContext";
 
 export const TransformationNode = ({ id, data }) => {
@@ -98,7 +98,7 @@ export const TransformationNode = ({ id, data }) => {
       <Handle type="source" position={Position.Right} style={{ width: 10, height: 10 }} />
 
       <div className="flex items-center space-x-3 mb-3">
-        <Pencil className="w-5 h-5 text-[#96CF7B]" />
+        <ArrowRightLeft className="w-5 h-5 text-[#8E77BB]" />
         <h3 className="text-black font-medium">Transformation</h3>
       </div>
 

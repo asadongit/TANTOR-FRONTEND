@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { useLocation, useNavigate, Navigate, Outlet } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import { initKeycloak, login as kcLogin, logout as kcLogout, getToken as kcGetToken, getKeycloak } from "../services/KeycloakService";
 
 const AuthContext = createContext({
   isAuthenticated: false,
@@ -17,38 +18,22 @@ const AuthContext = createContext({
   project: "default",
   setSelectedProject: () => {},
   hostnameV1: "",
-  hostnameV2: ""
+  hostnameV2: "",
+  isInitializing: true,
 });
 
 export const AuthProvider = ({ children }) => {
   const hostnameV1 = window._env_?.VITE_FAST_API;
   const hostnameV2 = window._env_?.VITE_FAST_API_V2;
 
-  const [token, setToken] = useState(
-    () => localStorage.getItem("token") || null
-  );
-  const [decodedToken, setDecodedToken] = useState(() => {
-    if (token) {
-      try {
-        return jwtDecode(token);
-      } catch (error) {
-        console.error("Invalid token:", error);
-        return null;
-      }
-    }
-    return null;
-  });
+  const [token, setToken] = useState(null);
+  const [decodedToken, setDecodedToken] = useState(null);
   const [loginString, setLoginString] = useState("");
+  const [isInitializing, setIsInitializing] = useState(true);
   const navigate = useNavigate();
   const inactivityTimerRef = useRef(null);
 
-
-  const [project, setProject] = useState(() => {
-    if (decodedToken?.preferred_username) {
-      return localStorage.getItem(`project_${decodedToken.preferred_username}`) || "default";
-    }
-    return "default";
-  });
+  const [project, setProject] = useState(() => "default");
 
   const setSelectedProject = (projectId) => {
     if (decodedToken?.preferred_username) {
@@ -56,6 +41,53 @@ export const AuthProvider = ({ children }) => {
     }
     setProject(projectId);
   };
+
+  useEffect(() => {
+    const init = async () => {
+      const authenticated = await initKeycloak();
+      const kc = getKeycloak();
+      if (authenticated) {
+        const t = kcGetToken();
+        setToken(t);
+        try {
+          const dt = jwtDecode(t);
+          setDecodedToken(dt);
+          const savedProject = localStorage.getItem(`project_${dt.preferred_username}`);
+          if (savedProject) setProject(savedProject);
+        } catch (e) {
+          console.error("Invalid token:", e);
+        }
+      }
+
+      // Keep state in sync with Keycloak events
+      kc.onAuthSuccess = () => {
+        const t = kcGetToken();
+        setToken(t);
+        try { setDecodedToken(jwtDecode(t)); } catch {}
+      };
+      kc.onAuthLogout = () => {
+        setToken(null);
+        setDecodedToken(null);
+        setProject("default");
+      };
+      kc.onTokenExpired = async () => {
+        try {
+          const refreshed = await kc.updateToken(30);
+          if (refreshed) {
+            const t = kcGetToken();
+            setToken(t);
+            try { setDecodedToken(jwtDecode(t)); } catch {}
+          }
+        } catch (e) {
+          kcLogin(true);
+        }
+      };
+
+      setIsInitializing(false);
+    };
+
+    init();
+  }, []);
 
   useEffect(() => {
     if (decodedToken?.preferred_username) {
@@ -66,83 +98,23 @@ export const AuthProvider = ({ children }) => {
     }
   }, [decodedToken]);
 
-  useEffect(() => {
-    const logoutDueToInactivity = () => {
-      setLoginString(
-        "Your session has expired. Please log in again to continue working."
-      );
-      logout();
-    };
-
-    const resetTimer = () => {
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-      }
-      inactivityTimerRef.current = setTimeout(
-        logoutDueToInactivity,
-        500000 * 600000 * 1000
-      );
-    };
-
-    if (token) {
-      resetTimer();
-      window.addEventListener("mousemove", resetTimer);
-      window.addEventListener("keydown", resetTimer);
-      window.addEventListener("click", resetTimer);
-    }
-
-    return () => {
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-      }
-      window.removeEventListener("mousemove", resetTimer);
-      window.removeEventListener("keydown", resetTimer);
-      window.removeEventListener("click", resetTimer);
-    };
-  }, [token]);
-
-  const login = async (username, password) => {
-    try {
-      const response = await fetch(`${hostnameV1}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-  
-      const data = await response.json();
-      if (response.ok && data.access_token) {
-        try {
-          setToken(data.access_token);
-          const decodedToken = jwtDecode(data.access_token);
-          setDecodedToken(decodedToken);
-          localStorage.setItem("token", data.access_token);
-          
-          const savedProject = localStorage.getItem(`project_${decodedToken.preferred_username}`);
-          if (savedProject) {
-            setProject(savedProject);
-          }
-          
-          return true;
-        } catch (error) {
-          console.error("Error decoding token:", error);
-          return false;
-        }
-      }
-    } catch (error) {
-      console.error("Login API error:", error);
-    }
-
-    return false;
+  const login = async () => {
+    setLoginString("");
+    await kcLogin(true);
+    return true;
   };
 
+  const logout = async () => {
+    try {
+      await kcLogout();
 
-  const logout = () => {
-    setToken(null);
-    setDecodedToken(null);
-    setProject("default");
-    localStorage.removeItem("token");
-    // localStorage.removeItem(`project_${decodedToken.preferred_username}`);
-    navigate("/");
+      setToken(null);
+      setDecodedToken(null);
+      setProject("default");
+    } catch (error) {
+      console.error("Error during logout:", error);
+      window.location.href = `${window.location.origin}`;
+    }
   };
 
   return (
@@ -158,7 +130,8 @@ export const AuthProvider = ({ children }) => {
         project,
         setSelectedProject,
         hostnameV1,
-        hostnameV2
+        hostnameV2,
+        isInitializing,
       }}
     >
       {children}
@@ -175,18 +148,23 @@ export const useAuth = () => {
 };
 
 export const ProtectedRoute = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isInitializing, login } = useAuth();
   const location = useLocation();
+
+  if (isInitializing) return null;
+
   if (!isAuthenticated) {
-    return <Navigate to="/" state={{ from: location }} replace />;
+    login();
+    return null;
   }
 
   return <Outlet />;
 };
 
 export const PublicRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isInitializing } = useAuth();
 
+  if (isInitializing) return null;
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }

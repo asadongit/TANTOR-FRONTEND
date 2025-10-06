@@ -10,7 +10,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 function Tables() {
   const { token, decodedToken } = useAuth();
   const isUserAuthorized = decodedToken?.resource_access?.darch?.roles?.some(role =>
-    ['data steward', 'data owner'].includes(role?.toLowerCase())
+    ['persona:data steward', 'persona:data owner'].includes(role?.toLowerCase())
   );
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
@@ -124,6 +124,7 @@ function Tables() {
   }, [allTablesRawData, navigationState]);
 
   const handleRefresh = async () => {
+    setSearchTerm("")
     const result = await loadData();
     if (result.success) {
       setToast({ show: true, message: 'Table data refreshed successfully', type: 'success' });
@@ -294,7 +295,7 @@ function Tables() {
                       {table.name}
                     </td>
                     <td className="p-4 max-w-xs truncate whitespace-nowrap">{table.description}</td>
-                    <td className="p-4">{table.database}</td>
+                    <td className="p-4 max-w-xs truncate whitespace-nowrap">{table.connection_name}</td>
                     <td className="p-4">{table.schema}</td>
                     <td className="p-4">{table.owner}</td>
                     <td className="p-4 text-blue-600 underline cursor-pointer" onClick={() => handleColumnClick(table)}>
