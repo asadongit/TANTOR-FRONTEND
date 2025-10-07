@@ -110,6 +110,18 @@ function Tables() {
           item.connection_name === navigationState.connectionName
         );
       }
+      else if (
+        navigationState?.type === 'table' &&
+        navigationState?.table &&
+        navigationState?.schemaName &&
+        navigationState?.connectionName
+      ) {
+        dataToProcess = allTablesRawData.filter(item =>
+          item.table_name === navigationState.table &&
+          item.table_schema === navigationState.schemaName &&
+          item.connection_name === navigationState.connectionName
+        );
+      }
       else if (navigationState?.type === 'database' && navigationState?.connectionName) {
         dataToProcess = allTablesRawData.filter(item =>
           item.connection_name === navigationState.connectionName
