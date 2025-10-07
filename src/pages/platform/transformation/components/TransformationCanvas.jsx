@@ -438,17 +438,25 @@ function TransformationCanvasContent() {
         return;
       }
 
+      
+
       // FIXED: Force update of transformation context with current node states before generating JSON
       nodes.forEach(node => {
-        if (node.type === 'source' && typeof node.data.enableCountLogging === 'boolean') {
+        if (node.type === 'source' && typeof node.data.enableCountLogging === 'boolean')
+           {
           dispatch({
             type: ACTION_TYPES.UPDATE_SOURCE,
             payload: {
               id: node.id,
-              data: { enableCountLogging: node.data.enableCountLogging }
+              data: { enableCountLogging: node.data.enableCountLogging,
+                customQuery: node.data.customQuery,
+                fileColumns: node.data.fileColumns,
+               }
             }
           });
+         
         } else if (node.type === 'target' && typeof node.data.enableCountLogging === 'boolean') {
+          
           dispatch({
             type: ACTION_TYPES.UPDATE_TARGET,
             payload: {
@@ -456,8 +464,12 @@ function TransformationCanvasContent() {
               data: { enableCountLogging: node.data.enableCountLogging }
             }
           });
-        }
-      });
+        } else {
+   
+  }
+});
+
+
 
       // Wait for state update before generating JSON
       await new Promise(resolve => setTimeout(resolve, 100));
