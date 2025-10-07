@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Info, ArrowRight, ChevronDown, X, SlidersHorizontal, Table, Columns4, ArrowUpRight } from 'lucide-react';
+import { Search, Info, ArrowRight, ChevronDown, X, Table, Columns4, ArrowUpRight, Save, FolderOpen, Trash2, CircleCheck, XCircle, BookMarked } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { secureQuery } from '../DataCatalogue/Components/function';
 
 const GovernanceSearch = ({ activeSection }) => {
-    const { token } = useAuth();
+    const { token, decodedToken } = useAuth();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +21,13 @@ const GovernanceSearch = ({ activeSection }) => {
     const [searchResults, setSearchResults] = useState([]);
     const [showResults, setShowResults] = useState(false);
     const [noDataFound, setNoDataFound] = useState(false);
+
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [showLoadModal, setShowLoadModal] = useState(false);
+    const [savedFilters, setSavedFilters] = useState([]);
+    const [isSavingFilter, setIsSavingFilter] = useState(false);
+    const [isLoadingFilters, setIsLoadingFilters] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
     useEffect(() => {
         setSearchTerm('');
@@ -40,9 +47,9 @@ const GovernanceSearch = ({ activeSection }) => {
 
     const getSortedResults = (results) => {
         if (!results || results.length === 0) return results;
-        
+
         const sortedResults = [...results];
-        
+
         switch (sortBy) {
             case 'name-asc':
                 return sortedResults.sort((a, b) => {
@@ -50,14 +57,14 @@ const GovernanceSearch = ({ activeSection }) => {
                     const nameB = b.type === 'table' ? b.table_name : b.column_name;
                     return nameA.localeCompare(nameB);
                 });
-                
+
             case 'name-desc':
                 return sortedResults.sort((a, b) => {
                     const nameA = a.type === 'table' ? a.table_name : a.column_name;
                     const nameB = b.type === 'table' ? b.table_name : b.column_name;
                     return nameB.localeCompare(nameA);
                 });
-                
+
             case 'type':
                 return sortedResults.sort((a, b) => {
                     if (a.type === b.type) {
@@ -67,7 +74,7 @@ const GovernanceSearch = ({ activeSection }) => {
                     }
                     return a.type.localeCompare(b.type);
                 });
-                
+
             case 'relevance':
             default:
                 return results;
@@ -263,48 +270,203 @@ const GovernanceSearch = ({ activeSection }) => {
         }
     };
 
+    const handleSaveFilter = async () => {
+        if (!searchTerm.trim()) return;
+
+        setIsSavingFilter(true);
+        try {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/global_search/governance/save_filter`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    keyword: searchTerm,
+                    username: decodedToken?.preferred_username
+                })
+            });
+
+            if (response.ok) {
+                setShowSaveModal(false);
+                setToast({ show: true, message: 'Filter saved successfully', type: 'success' });
+                setTimeout(() => {
+                    setToast({ show: false, message: '', type: '' });
+                }, 3000);
+            }
+        } catch (error) {
+            console.error('Error saving filter:', error);
+        } finally {
+            setIsSavingFilter(false);
+        }
+    };
+
+    const handleLoadFilters = async () => {
+        setIsLoadingFilters(true);
+        setShowLoadModal(true);
+
+        try {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/global_search/governance/apply_filter`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: decodedToken?.preferred_username
+                })
+            });
+
+            const data = await response.json();
+            setSavedFilters(data.keywords || []);
+        } catch (error) {
+            console.error('Error loading filters:', error);
+            alert('Failed to load saved filters');
+        } finally {
+            setIsLoadingFilters(false);
+        }
+    };
+
+    const handleApplySavedFilter = (keyword) => {
+        setSearchTerm(keyword);
+        setShowLoadModal(false);
+        setHasSearchedData(false);
+        setSearchResults([]);
+        setShowResults(false);
+        setFilterData({});
+        setSelectedFilters({});
+        setExpandedSections({});
+        setNoDataFound(false);
+        setSortBy('relevance');
+    };
+
     return (
         <>
-            <div className="relative">
-                <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    placeholder="Search"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] w-64 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    onKeyPress={(e) => e.key === 'Enter' && !isSearching && handleSearch()}
-                    disabled={isSearching}
-                />
+            {toast.show && (
+                <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+                    'bg-red-100 text-red-800 border-l-4 border-red-500'
+                    }`}>
+                    {toast.type === 'success' ? (<CircleCheck className="h-5 w-5" />) : (<XCircle className="h-5 w-5" />)}
+                    <p>{toast.message}</p>
+                    <button onClick={() => setToast({ show: false, message: '', type: '' })} className="ml-2 text-gray-500 hover:text-gray-700">
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
+            <div className="relative flex items-center gap-2">
+                <div className="relative">
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        placeholder="Search"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] w-64 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        onKeyPress={(e) => e.key === 'Enter' && !isSearching && handleSearch()}
+                        disabled={isSearching}
+                    />
+
+                    <button
+                        onClick={() => {
+                            if (hasSearchedData) {
+                                setIsModalOpen(true);
+                            } else {
+                                handleSearch();
+                            }
+                        }}
+                        disabled={!searchTerm.trim() || isSearching}
+                        className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 rounded-md transition-all ${searchTerm.trim() && !isSearching
+                            ? 'bg-[#8e78b7] text-white'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            }`}
+                    >
+                        {isSearching ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : hasSearchedData ? (
+                            <ArrowRight size={16} />
+                        ) : (
+                            <Search size={16} />
+                        )}
+                    </button>
+                </div>
 
                 <button
-                    onClick={() => {
-                        if (hasSearchedData) {
-                            setIsModalOpen(true);
-                        } else {
-                            handleSearch();
-                        }
-                    }}
-                    disabled={!searchTerm.trim() || isSearching}
-                    className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 rounded-md transition-all ${searchTerm.trim() && !isSearching
-                        ? 'bg-[#8e78b7] text-white'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
+                    onClick={handleLoadFilters}
+                    className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all"
+                    title="Open saved filters"
                 >
-                    {isSearching ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    ) : hasSearchedData ? (
-                        <ArrowRight size={16} />
-                    ) : (
-                        <Search size={16} />
-                    )}
+                    <FolderOpen size={18} />
                 </button>
             </div>
 
-            {/* Modal */}
+            {showSaveModal && (
+                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+                        <h3 className="text-lg font-semibold mb-4">Save Filter</h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Save the search term "{searchTerm}" for future use?
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowSaveModal(false)}
+                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveFilter}
+                                disabled={isSavingFilter}
+                                className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6ba0] disabled:bg-gray-400"
+                            >
+                                {isSavingFilter ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showLoadModal && (
+                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-h-[80vh] flex flex-col">
+                        <h3 className="text-lg font-semibold mb-4">Saved Filters</h3>
+
+                        {isLoadingFilters ? (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8e78b7]"></div>
+                            </div>
+                        ) : savedFilters.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">
+                                <p>No saved filters found</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-y-auto flex-1 mb-4 px-2">
+                                {savedFilters.map((keyword, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer border border-gray-200 mb-2"
+                                        onClick={() => handleApplySavedFilter(keyword)}
+                                    >
+                                        <span className="text-sm font-medium">{keyword}</span>
+                                        <ArrowRight size={16} className="text-gray-400" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setShowLoadModal(false)}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-hidden bg-black bg-opacity-50 flex items-center justify-center">
                     <div className="bg-white w-full h-full max-w-7xl max-h-[90vh] m-4 rounded-lg shadow-2xl flex flex-col">
-                        {/* Modal Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                             <div className="flex items-center gap-4 flex-1">
                                 <h2 className="text-xl font-semibold text-gray-900">Marketplace</h2>
@@ -314,7 +476,7 @@ const GovernanceSearch = ({ activeSection }) => {
                                             {searchResults.length} results
                                         </div>
                                         <div className="text-sm text-gray-400 flex items-center gap-2">
-                                            Sort by 
+                                            Sort by
                                             <select
                                                 value={sortBy}
                                                 onChange={(e) => setSortBy(e.target.value)}
@@ -329,12 +491,23 @@ const GovernanceSearch = ({ activeSection }) => {
                                     </>
                                 )}
                             </div>
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
+                            <div className="flex items-center justify-between">
+                                <button
+                                    onClick={() => setShowSaveModal(true)}
+                                    disabled={!searchTerm.trim()}
+                                    className={`p-2 rounded-lg transition-all text-green-600 hover:bg-green-200
+                                        }`}
+                                    title="Save current search"
+                                >
+                                    <BookMarked size={18} />
+                                </button>
+                                <button
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex flex-1 overflow-hidden">
