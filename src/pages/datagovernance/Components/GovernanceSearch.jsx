@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Info, ArrowRight, ChevronDown, X, Table, Columns4, ArrowUpRight, Save, FolderOpen, Trash2, CircleCheck, XCircle, BookMarked } from 'lucide-react';
+import { Search, Info, ArrowRight, ChevronDown, X, Table, Columns4, ArrowUpRight, Save, FolderOpen, Trash2, CircleCheck, XCircle, Bookmark } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { secureQuery } from '../DataCatalogue/Components/function';
@@ -21,13 +21,11 @@ const GovernanceSearch = ({ activeSection }) => {
     const [searchResults, setSearchResults] = useState([]);
     const [showResults, setShowResults] = useState(false);
     const [noDataFound, setNoDataFound] = useState(false);
-
-    const [showSaveModal, setShowSaveModal] = useState(false);
     const [showLoadModal, setShowLoadModal] = useState(false);
     const [savedFilters, setSavedFilters] = useState([]);
     const [isSavingFilter, setIsSavingFilter] = useState(false);
     const [isLoadingFilters, setIsLoadingFilters] = useState(false);
-    const [toast, setToast] = useState({ show: false, message: '', type: '' });
+    const [isCheckingSaved, setIsCheckingSaved] = useState(false);
 
     useEffect(() => {
         setSearchTerm('');
@@ -43,6 +41,7 @@ const GovernanceSearch = ({ activeSection }) => {
         setIsFetchingFilters(false);
         setNoDataFound(false);
         setSortBy('relevance');
+        setSavedFilters([]);
     }, [activeSection]);
 
     const getSortedResults = (results) => {
@@ -81,6 +80,33 @@ const GovernanceSearch = ({ activeSection }) => {
         }
     };
 
+    const checkIfSearchIsSaved = async () => {
+        setIsCheckingSaved(true);
+        try {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/global_search/governance/apply_filter`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: decodedToken?.preferred_username
+                })
+            });
+
+            const data = await response.json();
+            setSavedFilters(data.keywords || []);
+        } catch (error) {
+            console.error('Error checking saved filters:', error);
+        } finally {
+            setIsCheckingSaved(false);
+        }
+    };
+
+    const isSearchTermSaved = () => {
+        return savedFilters.some(filter => filter.toLowerCase() === searchTerm.toLowerCase());
+    };
+
     const handleSearch = async () => {
         if (!searchTerm.trim()) return;
 
@@ -88,6 +114,8 @@ const GovernanceSearch = ({ activeSection }) => {
         setIsFetchingFilters(true);
 
         try {
+            await checkIfSearchIsSaved();
+
             const secureQueryResponse = await secureQuery({ user_query: "" }, token);
             const matched_ids = secureQueryResponse.matched_policy_ids || []
             setPolicyIds(matched_ids);
@@ -288,16 +316,46 @@ const GovernanceSearch = ({ activeSection }) => {
             });
 
             if (response.ok) {
-                setShowSaveModal(false);
-                setToast({ show: true, message: 'Filter saved successfully', type: 'success' });
-                setTimeout(() => {
-                    setToast({ show: false, message: '', type: '' });
-                }, 3000);
+                setSavedFilters(prev => [...prev, searchTerm]);
             }
         } catch (error) {
             console.error('Error saving filter:', error);
         } finally {
             setIsSavingFilter(false);
+        }
+    };
+    const handleRemoveFilter = async () => {
+        if (!searchTerm.trim()) return;
+
+        setIsSavingFilter(true);
+        try {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/global_search/governance/remove_filter`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    keyword: searchTerm,
+                    username: decodedToken?.preferred_username
+                })
+            });
+
+            if (response.ok) {
+                setSavedFilters(prev => prev.filter(filter => filter.toLowerCase() !== searchTerm.toLowerCase()));
+            }
+        } catch (error) {
+            console.error('Error removing filter:', error);
+        } finally {
+            setIsSavingFilter(false);
+        }
+    };
+
+    const handleBookmarkClick = async () => {
+        if (isSearchTermSaved()) {
+            await handleRemoveFilter();
+        } else {
+            await handleSaveFilter();
         }
     };
 
@@ -342,17 +400,6 @@ const GovernanceSearch = ({ activeSection }) => {
 
     return (
         <>
-            {toast.show && (
-                <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
-                    'bg-red-100 text-red-800 border-l-4 border-red-500'
-                    }`}>
-                    {toast.type === 'success' ? (<CircleCheck className="h-5 w-5" />) : (<XCircle className="h-5 w-5" />)}
-                    <p>{toast.message}</p>
-                    <button onClick={() => setToast({ show: false, message: '', type: '' })} className="ml-2 text-gray-500 hover:text-gray-700">
-                        <X className="h-4 w-4" />
-                    </button>
-                </div>
-            )}
             <div className="relative flex items-center gap-2">
                 <div className="relative">
                     <input
@@ -374,10 +421,7 @@ const GovernanceSearch = ({ activeSection }) => {
                             }
                         }}
                         disabled={!searchTerm.trim() || isSearching}
-                        className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 rounded-md transition-all ${searchTerm.trim() && !isSearching
-                            ? 'bg-[#8e78b7] text-white'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            }`}
+                        className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 rounded-md transition-all ${searchTerm.trim() && !isSearching ? 'bg-[#8e78b7] text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                     >
                         {isSearching ? (
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -397,32 +441,6 @@ const GovernanceSearch = ({ activeSection }) => {
                     <FolderOpen size={18} />
                 </button>
             </div>
-
-            {showSaveModal && (
-                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-                    <div className="bg-white rounded-lg shadow-xl p-6 w-96">
-                        <h3 className="text-lg font-semibold mb-4">Save Filter</h3>
-                        <p className="text-sm text-gray-600 mb-4">
-                            Save the search term "{searchTerm}" for future use?
-                        </p>
-                        <div className="flex justify-end gap-3">
-                            <button
-                                onClick={() => setShowSaveModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSaveFilter}
-                                disabled={isSavingFilter}
-                                className="px-4 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7d6ba0] disabled:bg-gray-400"
-                            >
-                                {isSavingFilter ? 'Saving...' : 'Save'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {showLoadModal && (
                 <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
@@ -491,15 +509,14 @@ const GovernanceSearch = ({ activeSection }) => {
                                     </>
                                 )}
                             </div>
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => setShowSaveModal(true)}
-                                    disabled={!searchTerm.trim()}
-                                    className={`p-2 rounded-lg transition-all text-green-600 hover:bg-green-200
-                                        }`}
-                                    title="Save current search"
+                                    onClick={handleBookmarkClick}
+                                    disabled={isSavingFilter || isCheckingSaved}
+                                    className={`p-2 rounded-lg transition-all ${isSearchTermSaved() ? 'text-green-600' : 'text-gray-600'} ${(isSavingFilter || isCheckingSaved) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title={isSearchTermSaved() ? 'Already saved' : 'Save current search'}
                                 >
-                                    <BookMarked size={18} />
+                                    <Bookmark size={20} fill={isSearchTermSaved() ? 'currentColor' : 'none'} />
                                 </button>
                                 <button
                                     onClick={() => setIsModalOpen(false)}
@@ -551,8 +568,7 @@ const GovernanceSearch = ({ activeSection }) => {
                                                                 <span className="capitalize">{category}</span>
                                                                 <ChevronDown
                                                                     size={16}
-                                                                    className={`transform transition-transform ${expandedSections[category] ? 'rotate-180' : ''
-                                                                        }`}
+                                                                    className={`transform transition-transform ${expandedSections[category] ? 'rotate-180' : ''}`}
                                                                 />
                                                             </button>
 
@@ -585,10 +601,7 @@ const GovernanceSearch = ({ activeSection }) => {
                                                 <button
                                                     onClick={handleApplyFilters}
                                                     disabled={isFetchingResults}
-                                                    className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${isFetchingResults
-                                                        ? 'bg-gray-400 text-white cursor-not-allowed'
-                                                        : 'bg-[#8e78b7] text-white hover:bg-[#7d6ba0]'
-                                                        }`}
+                                                    className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${isFetchingResults ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-[#8e78b7] text-white hover:bg-[#7d6ba0]'}`}
                                                 >
                                                     {isFetchingResults ? (
                                                         <span className="flex items-center justify-center">
@@ -640,26 +653,30 @@ const GovernanceSearch = ({ activeSection }) => {
                                                 >
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex-1">
-                                                            <div className="flex items-center gap-3 mb-2">
+                                                            <div className="flex items-center gap-3 mb-2 flex-wrap">
                                                                 {result.type === 'table' ? (
                                                                     <Table size={18} className="text-blue-600" />
                                                                 ) : (
                                                                     <Columns4 size={18} className="text-green-600" />
                                                                 )}
                                                                 <h3 className="font-semibold text-gray-900">
-                                                                    {result.type === 'table'
-                                                                        ? result.table_name
-                                                                        : result.column_name}
+                                                                    {result.type === 'table' ? result.table_name : result.column_name}
                                                                 </h3>
                                                                 <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full capitalize">
                                                                     {result.type}
                                                                 </span>
+                                                                {result.matched_type && result.matched_type.map((matchType, idx) => (
+                                                                    <span
+                                                                        key={idx}
+                                                                        className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full capitalize"
+                                                                    >
+                                                                        {matchType}
+                                                                    </span>
+                                                                ))}
                                                             </div>
                                                             {result.description && (
                                                                 <p className="text-sm text-gray-600 mb-2">
-                                                                    {Array.isArray(result.description)
-                                                                        ? result.description.join(', ')
-                                                                        : result.description}
+                                                                    {Array.isArray(result.description) ? result.description.join(', ') : result.description}
                                                                 </p>
                                                             )}
                                                             <div className="space-y-1">
