@@ -464,13 +464,6 @@ export const SourceNode = ({ id, data }) => {
   useEffect(() => {
   data.setEnableCountLogging = setEnableCountLogging;
 
-  console.log("🔍 USEEFFECT TRIGGERED with values:", {
-    sourceType,
-    selectedObjectType,
-    customQuery: customQuery,
-    selectedConnection: selectedConnection.name
-  });
-
   if (sourceType === "file") {
     const fileColumnsFormatted = fileColumns
       .filter(col => col.name.trim() !== "")
@@ -479,7 +472,7 @@ export const SourceNode = ({ id, data }) => {
         datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
       }));
 
-    console.log("🟡 FILE SOURCE - Processing");
+   
 
     data.onDataChange({
       sourceType: "file",
@@ -517,11 +510,10 @@ export const SourceNode = ({ id, data }) => {
     });
 
   } else if (sourceType === "database") {
-    console.log("🔵 DATABASE SOURCE - Processing, objectType:", selectedObjectType);
+    
     
     // Handle source-query case specifically
     if (selectedObjectType === "source-query") {
-      console.log("🟢 SOURCE-QUERY MODE DETECTED");
       
       const fileColumnsFormatted = fileColumns
         .filter(col => col.name.trim() !== "")
@@ -529,15 +521,6 @@ export const SourceNode = ({ id, data }) => {
           name: col.name,
           datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
         }));
-
-      console.log("🟢 SOURCE-QUERY - Sending data:", {
-        customQuery: customQuery,
-        fileColumns: fileColumns,
-        formattedColumns: fileColumnsFormatted,
-        selectedTable: selectedTable,
-        selectedConnection: selectedConnection,
-        selectedSchema: selectedSchema
-      });
 
       data.onDataChange({
         sourceType: "database",
@@ -554,7 +537,7 @@ export const SourceNode = ({ id, data }) => {
         enableCountLogging: enableCountLogging,
       });
 
-      console.log("✅ SOURCE-QUERY onDataChange called with customQuery:", customQuery);
+      
 
       dispatch({
         type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
@@ -582,7 +565,7 @@ export const SourceNode = ({ id, data }) => {
 
     } else {
       // Handle tables and procedures cases
-      console.log("🔵 DATABASE - Tables/Procedures mode");
+      
       
       const currentTable = selectedObjectType === "procedures" && tableSelections.selectedTable
         ? tableSelections.selectedTable
@@ -638,7 +621,7 @@ export const SourceNode = ({ id, data }) => {
           };
         });
 
-      console.log("🔵 DATABASE - Sending tables/procedures data with customQuery:", customQuery);
+      
 
       data.onDataChange({
         sourceType: "database",

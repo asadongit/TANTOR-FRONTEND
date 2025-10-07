@@ -78,12 +78,6 @@ function transformationReducer(state, action) {
       };
 
     case ACTION_TYPES.UPDATE_SOURCE:
-      console.log("🟠 REDUCER: UPDATE_SOURCE received for", action.payload.id);
-  console.log("🟠 REDUCER: action.payload:", action.payload);
-  console.log("🟠 REDUCER: action.payload.data:", action.payload.data);
-  console.log("🟠 REDUCER: Current sources before update:", state.sources);
-  console.log("🟠 REDUCER: Current source before update:", state.sources[action.payload.id]);
-      
       const updatedSourceState = {
         ...state,
         sources: {
@@ -107,11 +101,6 @@ function transformationReducer(state, action) {
           }
         }, 0);
       }
-      console.log("🟠 REDUCER: Updated source after merge:", updatedSourceState.sources[action.payload.id]);
-  console.log("🟠 REDUCER: customQuery in updated source:", updatedSourceState.sources[action.payload.id]?.customQuery);
-  console.log("🟠 REDUCER: fileColumns in updated source:", updatedSourceState.sources[action.payload.id]?.fileColumns);
-  console.log("🟠 REDUCER: All sources after update:", updatedSourceState.sources);
-
       return updatedSourceState;
 
     case ACTION_TYPES.REMOVE_SOURCE:
@@ -598,25 +587,19 @@ export function TransformationProvider({ children }) {
     } else {
       // Check if this is a source-query mode
       if (sourceData.objectType === 'source-query') {
-        // Handle source-query with column mapping (like file sources)
-         console.log("🟣 JSON: Processing source-query for", sourceKey);
-    console.log("🟣 JSON: sourceData:", sourceData);
-    console.log("🟣 JSON: sourceData.customQuery:", sourceData.customQuery);
-    console.log("🟣 JSON: sourceData.fileColumns:", sourceData.fileColumns);
-    console.log("🟣 JSON: sourceData.fileColumns stringified:", JSON.stringify(sourceData.fileColumns));
         const queryColumns = sourceData.fileColumns || [];
         const columnMapping = {};
 
         queryColumns
           .filter(col => col.name && col.name.trim() !== "")
           .forEach(col => {
-            console.log("🟣 JSON: Processing column:", col);
+            
             columnMapping[col.name] = 
               col.datatype === 'custom'
                 ? (col.customDatatype || 'custom')
                 : col.datatype;
           });
-          console.log("🟣 JSON: Final columnMapping:", columnMapping);
+          
 
         result.source[sourceKey] = {
           sourceType: sourceData.connectionType || "unknown",
@@ -624,10 +607,10 @@ export function TransformationProvider({ children }) {
           sourceConnId: sourceData.connectionId || "",
           sourceQualifier: sourceData.customQuery,
           objectType: "source-query",
-          column: [columnMapping], // Array with column-to-datatype mapping
+          column: [columnMapping], 
           ConnectionParameters: {
             sourceSchema: sourceData.schema || "",
-            sourceTable: sourceData.table || "" // Not applicable for custom queries
+            sourceTable: sourceData.table || "" 
           },
           readParameters: {
             watermarkColumn: "",
@@ -635,7 +618,7 @@ export function TransformationProvider({ children }) {
           },
           EnableCountLogging: sourceData.enableCountLogging === true
         };
-        console.log("🟣 JSON: Final source config for", sourceKey, ":", result.source[sourceKey]);
+        
       } else {
         // Handle regular database sources (tables, views, procedures)
         result.source[sourceKey] = {
