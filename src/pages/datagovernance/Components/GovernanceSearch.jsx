@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ArrowRight, ChevronDown, X, Table, Columns4, ArrowUpRight } from 'lucide-react';
+import { Search, Info, ArrowRight, ChevronDown, X, SlidersHorizontal, Table, Columns4, ArrowUpRight } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { secureQuery } from '../DataCatalogue/Components/function';
 
 const GovernanceSearch = ({ activeSection }) => {
-    const { token} = useAuth();
+    const { token } = useAuth();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -14,6 +14,7 @@ const GovernanceSearch = ({ activeSection }) => {
     const [isFetchingResults, setIsFetchingResults] = useState(false);
     const [isFetchingFilters, setIsFetchingFilters] = useState(false);
     const [policyIds, setPolicyIds] = useState([]);
+    const [sortBy, setSortBy] = useState('relevance');
     const [filterData, setFilterData] = useState({});
     const [selectedFilters, setSelectedFilters] = useState({});
     const [expandedSections, setExpandedSections] = useState({});
@@ -34,7 +35,44 @@ const GovernanceSearch = ({ activeSection }) => {
         setIsFetchingResults(false);
         setIsFetchingFilters(false);
         setNoDataFound(false);
+        setSortBy('relevance');
     }, [activeSection]);
+
+    const getSortedResults = (results) => {
+        if (!results || results.length === 0) return results;
+        
+        const sortedResults = [...results];
+        
+        switch (sortBy) {
+            case 'name-asc':
+                return sortedResults.sort((a, b) => {
+                    const nameA = a.type === 'table' ? a.table_name : a.column_name;
+                    const nameB = b.type === 'table' ? b.table_name : b.column_name;
+                    return nameA.localeCompare(nameB);
+                });
+                
+            case 'name-desc':
+                return sortedResults.sort((a, b) => {
+                    const nameA = a.type === 'table' ? a.table_name : a.column_name;
+                    const nameB = b.type === 'table' ? b.table_name : b.column_name;
+                    return nameB.localeCompare(nameA);
+                });
+                
+            case 'type':
+                return sortedResults.sort((a, b) => {
+                    if (a.type === b.type) {
+                        const nameA = a.type === 'table' ? a.table_name : a.column_name;
+                        const nameB = b.type === 'table' ? b.table_name : b.column_name;
+                        return nameA.localeCompare(nameB);
+                    }
+                    return a.type.localeCompare(b.type);
+                });
+                
+            case 'relevance':
+            default:
+                return results;
+        }
+    };
 
     const handleSearch = async () => {
         if (!searchTerm.trim()) return;
@@ -107,6 +145,7 @@ const GovernanceSearch = ({ activeSection }) => {
             setSelectedFilters({});
             setExpandedSections({});
             setNoDataFound(false);
+            setSortBy('relevance');
         }
     };
 
@@ -140,6 +179,7 @@ const GovernanceSearch = ({ activeSection }) => {
         setSearchResults([]);
         setShowResults(false);
         setNoDataFound(false);
+        setSortBy('relevance');
     };
 
     const getSelectedCount = () => {
@@ -189,6 +229,7 @@ const GovernanceSearch = ({ activeSection }) => {
                 setSearchResults(data.results);
                 setShowResults(true);
                 setNoDataFound(false);
+                setSortBy('relevance');
             }
         } catch (error) {
             console.error('Error fetching results:', error);
@@ -230,8 +271,9 @@ const GovernanceSearch = ({ activeSection }) => {
                     value={searchTerm}
                     onChange={handleSearchChange}
                     placeholder="Search"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] w-64"
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] w-64 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    onKeyPress={(e) => e.key === 'Enter' && !isSearching && handleSearch()}
+                    disabled={isSearching}
                 />
 
                 <button
@@ -271,8 +313,18 @@ const GovernanceSearch = ({ activeSection }) => {
                                         <div className="text-sm text-gray-500">
                                             {searchResults.length} results
                                         </div>
-                                        <div className="text-sm text-gray-400">
-                                            Sort by <span className="border border-gray-300 px-2 py-1 rounded ml-1 cursor-pointer hover:bg-gray-50"></span>
+                                        <div className="text-sm text-gray-400 flex items-center gap-2">
+                                            Sort by 
+                                            <select
+                                                value={sortBy}
+                                                onChange={(e) => setSortBy(e.target.value)}
+                                                className="border border-gray-300 px-2 py-1 rounded text-gray-700 cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#8e78b7]"
+                                            >
+                                                <option value="relevance">Relevance</option>
+                                                <option value="name-asc">Name (A-Z)</option>
+                                                <option value="name-desc">Name (Z-A)</option>
+                                                <option value="type">Type</option>
+                                            </select>
                                         </div>
                                     </>
                                 )}
@@ -286,7 +338,7 @@ const GovernanceSearch = ({ activeSection }) => {
                         </div>
 
                         <div className="flex flex-1 overflow-hidden">
-                            <div className="w-64 border-r border-gray-200 overflow-y-auto bg-gray-50 flex flex-col">
+                            <div className="w-80 border-r border-gray-200 bg-gray-50 flex flex-col">
                                 {isFetchingFilters ? (
                                     <div className="flex items-center justify-center h-full">
                                         <div className="text-center">
@@ -296,7 +348,7 @@ const GovernanceSearch = ({ activeSection }) => {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="p-4 flex-1">
+                                        <div className="p-4 flex-1 overflow-y-auto">
                                             <div className="flex items-center justify-between mb-4">
                                                 <h3 className="font-semibold text-gray-900">Filters</h3>
                                                 {getSelectedCount() > 0 && (
@@ -386,7 +438,7 @@ const GovernanceSearch = ({ activeSection }) => {
                                         <div className="text-center text-gray-500">
                                             <Search size={48} className="mx-auto mb-4 text-gray-300" />
                                             <p className="text-lg font-medium mb-2">Select filters to view results</p>
-                                            <p className="text-sm">Choose from the options on the left and click "Apply Filters"</p>
+                                            <p className="text-sm">Choose from the options on the left and click "Apply"</p>
                                         </div>
                                     </div>
                                 ) : isFetchingResults ? (
@@ -407,7 +459,7 @@ const GovernanceSearch = ({ activeSection }) => {
                                 ) : (
                                     <div className="p-6">
                                         <div className="space-y-4">
-                                            {searchResults.map((result, index) => (
+                                            {getSortedResults(searchResults).map((result, index) => (
                                                 <div
                                                     key={index}
                                                     className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
@@ -456,11 +508,10 @@ const GovernanceSearch = ({ activeSection }) => {
                             </div>
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                        <div className="flex items-center justify-end p-3 border-t border-gray-200 bg-gray-50">
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                                className="px-8 py-1 rounded-lg font-medium transition-colors bg-[#8e78b7] text-white hover:bg-[#7d6ba0]"
                             >
                                 OK
                             </button>
