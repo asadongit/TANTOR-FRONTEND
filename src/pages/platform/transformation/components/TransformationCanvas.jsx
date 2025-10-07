@@ -430,17 +430,44 @@ function TransformationCanvasContent() {
         return;
       }
 
+      
+console.log("🔵 CANVAS: Starting handleSave");
+console.log("🔵 CANVAS: Processing", nodes.length, "nodes");
       // FIXED: Force update of transformation context with current node states before generating JSON
       nodes.forEach(node => {
-        if (node.type === 'source' && typeof node.data.enableCountLogging === 'boolean') {
+        console.log("🔵 CANVAS: Processing node type:", node.type, "id:", node.id);
+  console.log("🔵 CANVAS: Full node.data:", node.data);
+
+        if (node.type === 'source' && typeof node.data.enableCountLogging === 'boolean')
+          
+
+           {
+            console.log("🟢 CANVAS: Source node", node.id, "matches criteria");
+    console.log("🟢 CANVAS: Source node data:", {
+      customQuery: node.data.customQuery,
+      fileColumns: node.data.fileColumns,
+      fileColumnsStringified: JSON.stringify(node.data.fileColumns),
+      objectType: node.data.objectType,
+      enableCountLogging: node.data.enableCountLogging,
+      alias: node.data.alias,
+      connection: node.data.connection,
+      schema: node.data.schema,
+      table: node.data.table
+    });
+     console.log("🟢 CANVAS: Dispatching UPDATE_SOURCE for node", node.id);
           dispatch({
             type: ACTION_TYPES.UPDATE_SOURCE,
             payload: {
               id: node.id,
-              data: { enableCountLogging: node.data.enableCountLogging }
+              data: { enableCountLogging: node.data.enableCountLogging,
+                customQuery: node.data.customQuery,
+                fileColumns: node.data.fileColumns,
+               }
             }
           });
+         console.log("✅ CANVAS: UPDATE_SOURCE dispatched for", node.id);
         } else if (node.type === 'target' && typeof node.data.enableCountLogging === 'boolean') {
+          console.log("🟡 CANVAS: Target node", node.id, "matches criteria");
           dispatch({
             type: ACTION_TYPES.UPDATE_TARGET,
             payload: {
@@ -448,8 +475,12 @@ function TransformationCanvasContent() {
               data: { enableCountLogging: node.data.enableCountLogging }
             }
           });
-        }
-      });
+        } else {
+    console.log("🔴 CANVAS: Node", node.id, "doesn't match criteria. Type:", node.type, "enableCountLogging:", typeof node.data.enableCountLogging);
+  }
+});
+
+console.log("🔵 CANVAS: Finished processing all nodes");
 
       // Wait for state update before generating JSON
       await new Promise(resolve => setTimeout(resolve, 100));

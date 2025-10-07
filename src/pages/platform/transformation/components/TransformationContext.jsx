@@ -78,6 +78,12 @@ function transformationReducer(state, action) {
       };
 
     case ACTION_TYPES.UPDATE_SOURCE:
+      console.log("🟠 REDUCER: UPDATE_SOURCE received for", action.payload.id);
+  console.log("🟠 REDUCER: action.payload:", action.payload);
+  console.log("🟠 REDUCER: action.payload.data:", action.payload.data);
+  console.log("🟠 REDUCER: Current sources before update:", state.sources);
+  console.log("🟠 REDUCER: Current source before update:", state.sources[action.payload.id]);
+      
       const updatedSourceState = {
         ...state,
         sources: {
@@ -101,6 +107,10 @@ function transformationReducer(state, action) {
           }
         }, 0);
       }
+      console.log("🟠 REDUCER: Updated source after merge:", updatedSourceState.sources[action.payload.id]);
+  console.log("🟠 REDUCER: customQuery in updated source:", updatedSourceState.sources[action.payload.id]?.customQuery);
+  console.log("🟠 REDUCER: fileColumns in updated source:", updatedSourceState.sources[action.payload.id]?.fileColumns);
+  console.log("🟠 REDUCER: All sources after update:", updatedSourceState.sources);
 
       return updatedSourceState;
 
@@ -494,62 +504,165 @@ export function TransformationProvider({ children }) {
         return sourceIds.includes(conn.source) && transformationNodes.includes(conn.target);
       });
 
+      // sourceConnections.forEach((conn) => {
+      //   const sourceId = conn.source;
+      //   const sourceData = state.sources[sourceId];
+
+      //   if (sourceData) {
+      //     const sourceKey = sourceData.alias || `source_${sourceId}`;
+
+      //     const originalColumns = state.originalSourceColumns[sourceId] || [];
+
+      //     if (sourceData.sourceType === "file") {
+      //       const fileColumns = sourceData.fileColumns || [];
+      //       const columnMapping = {};
+
+      //       fileColumns
+      //         .filter(col => col.name && col.name.trim() !== "")
+      //         .forEach(col => {
+      //           columnMapping[col.name] =
+      //             col.datatype === 'custom'
+      //               ? (col.customDatatype || 'custom')
+      //               : col.datatype;
+      //         });
+
+      //       result.source[sourceKey] = {
+      //         sourceType: sourceData.fileType?.toLowerCase() || "csv",
+      //         sourceConnName: "",
+      //         // sourceConnId: "",
+      //         column: [columnMapping],
+      //         ConnectionParameters: {
+      //           sourceFilePath: sourceData.filePath || "",
+      //           sourceFileName: sourceData.fileName || "",
+      //         },
+      //         readParameters: {
+      //           watermarkColumn: "",
+      //           watermarkColumnDataType: ""
+      //         },
+      //         EnableCountLogging: sourceData.enableCountLogging === true
+      //       };
+      //     } else {
+      //       result.source[sourceKey] = {
+      //         sourceType: sourceData.connectionType || "unknown",
+      //         sourceConnName: sourceData.connection || "unknown",
+      //         sourceConnId: sourceData.connectionId || "",
+      //         column: originalColumns,
+      //         ConnectionParameters: {
+      //           sourceSchema: sourceData.schema || "",
+      //           sourceTable: sourceData.table || ""
+      //         },
+      //         readParameters: {
+      //           watermarkColumn: "",
+      //           watermarkColumnDataType: ""
+      //         },
+      //         EnableCountLogging: sourceData.enableCountLogging === true
+      //       };
+      //     }
+      //   }
+      // });
       sourceConnections.forEach((conn) => {
-        const sourceId = conn.source;
-        const sourceData = state.sources[sourceId];
+  const sourceId = conn.source;
+  const sourceData = state.sources[sourceId];
 
-        if (sourceData) {
-          const sourceKey = sourceData.alias || `source_${sourceId}`;
+  if (sourceData) {
+    const sourceKey = sourceData.alias || `source_${sourceId}`;
+    const originalColumns = state.originalSourceColumns[sourceId] || [];
 
-          const originalColumns = state.originalSourceColumns[sourceId] || [];
+    if (sourceData.sourceType === "file") {
+      const fileColumns = sourceData.fileColumns || [];
+      const columnMapping = {};
 
-          if (sourceData.sourceType === "file") {
-            const fileColumns = sourceData.fileColumns || [];
-            const columnMapping = {};
+      fileColumns
+        .filter(col => col.name && col.name.trim() !== "")
+        .forEach(col => {
+          columnMapping[col.name] =
+            col.datatype === 'custom'
+              ? (col.customDatatype || 'custom')
+              : col.datatype;
+        });
 
-            fileColumns
-              .filter(col => col.name && col.name.trim() !== "")
-              .forEach(col => {
-                columnMapping[col.name] =
-                  col.datatype === 'custom'
-                    ? (col.customDatatype || 'custom')
-                    : col.datatype;
-              });
+      result.source[sourceKey] = {
+        sourceType: sourceData.fileType?.toLowerCase() || "csv",
+        sourceConnName: "",
+        column: [columnMapping],
+        ConnectionParameters: {
+          sourceFilePath: sourceData.filePath || "",
+          sourceFileName: sourceData.fileName || "",
+        },
+        readParameters: {
+          watermarkColumn: "",
+          watermarkColumnDataType: ""
+        },
+        EnableCountLogging: sourceData.enableCountLogging === true
+      };
+    } else {
+      // Check if this is a source-query mode
+      if (sourceData.objectType === 'source-query') {
+        // Handle source-query with column mapping (like file sources)
+         console.log("🟣 JSON: Processing source-query for", sourceKey);
+    console.log("🟣 JSON: sourceData:", sourceData);
+    console.log("🟣 JSON: sourceData.customQuery:", sourceData.customQuery);
+    console.log("🟣 JSON: sourceData.fileColumns:", sourceData.fileColumns);
+    console.log("🟣 JSON: sourceData.fileColumns stringified:", JSON.stringify(sourceData.fileColumns));
+        const queryColumns = sourceData.fileColumns || [];
+        const columnMapping = {};
 
-            result.source[sourceKey] = {
-              sourceType: sourceData.fileType?.toLowerCase() || "csv",
-              sourceConnName: "",
-              // sourceConnId: "",
-              column: [columnMapping],
-              ConnectionParameters: {
-                sourceFilePath: sourceData.filePath || "",
-                sourceFileName: sourceData.fileName || "",
-              },
-              readParameters: {
-                watermarkColumn: "",
-                watermarkColumnDataType: ""
-              },
-              EnableCountLogging: sourceData.enableCountLogging === true
-            };
-          } else {
-            result.source[sourceKey] = {
-              sourceType: sourceData.connectionType || "unknown",
-              sourceConnName: sourceData.connection || "unknown",
-              sourceConnId: sourceData.connectionId || "",
-              column: originalColumns,
-              ConnectionParameters: {
-                sourceSchema: sourceData.schema || "",
-                sourceTable: sourceData.table || ""
-              },
-              readParameters: {
-                watermarkColumn: "",
-                watermarkColumnDataType: ""
-              },
-              EnableCountLogging: sourceData.enableCountLogging === true
-            };
-          }
+        queryColumns
+          .filter(col => col.name && col.name.trim() !== "")
+          .forEach(col => {
+            console.log("🟣 JSON: Processing column:", col);
+            columnMapping[col.name] = 
+              col.datatype === 'custom'
+                ? (col.customDatatype || 'custom')
+                : col.datatype;
+          });
+          console.log("🟣 JSON: Final columnMapping:", columnMapping);
+
+        result.source[sourceKey] = {
+          sourceType: sourceData.connectionType || "unknown",
+          sourceConnName: sourceData.connection || "unknown",
+          sourceConnId: sourceData.connectionId || "",
+          sourceQualifier: sourceData.customQuery,
+          objectType: "source-query",
+          column: [columnMapping], // Array with column-to-datatype mapping
+          ConnectionParameters: {
+            sourceSchema: sourceData.schema || "",
+            sourceTable: sourceData.table || "" // Not applicable for custom queries
+          },
+          readParameters: {
+            watermarkColumn: "",
+            watermarkColumnDataType: ""
+          },
+          EnableCountLogging: sourceData.enableCountLogging === true
+        };
+        console.log("🟣 JSON: Final source config for", sourceKey, ":", result.source[sourceKey]);
+      } else {
+        // Handle regular database sources (tables, views, procedures)
+        result.source[sourceKey] = {
+          sourceType: sourceData.connectionType || "unknown",
+          sourceConnName: sourceData.connection || "unknown",
+          sourceConnId: sourceData.connectionId || "",
+          column: originalColumns,
+          ConnectionParameters: {
+            sourceSchema: sourceData.schema || "",
+            sourceTable: sourceData.table || ""
+          },
+          readParameters: {
+            watermarkColumn: "",
+            watermarkColumnDataType: ""
+          },
+          EnableCountLogging: sourceData.enableCountLogging === true
+        };
+
+        // Add objectType for procedures/views if it exists
+        if (sourceData.objectType && sourceData.objectType !== 'source-query') {
+          result.source[sourceKey].objectType = sourceData.objectType;
         }
-      });
+      }
+    }
+  }
+});
+
 
       // target
       const targetConnections = state.connections.filter(conn => {
@@ -792,6 +905,8 @@ export function useTrackConnections(nodes, edges) {
                 schema: data.schema,
                 table: data.table,
                 columns: data.columns,
+                customQuery: data.customQuery, 
+                fileColumns: data.fileColumns,
                 objectType: data.objectType,
                 preProcedures: data.preProcedures,
                 postProcedures: data.postProcedures

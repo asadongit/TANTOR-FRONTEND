@@ -462,53 +462,67 @@ export const SourceNode = ({ id, data }) => {
   }, [fetchConnections]);
 
   useEffect(() => {
-    data.setEnableCountLogging = setEnableCountLogging;
+  data.setEnableCountLogging = setEnableCountLogging;
 
-    if (sourceType === "file") {
-      const fileColumnsFormatted = fileColumns
-        .filter(col => col.name.trim() !== "")
-        .map(col => ({
-          name: col.name,
-          datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
-        }));
+  console.log("🔍 USEEFFECT TRIGGERED with values:", {
+    sourceType,
+    selectedObjectType,
+    customQuery: customQuery,
+    selectedConnection: selectedConnection.name
+  });
 
-      data.onDataChange({
-        sourceType: "file",
-        fileType: fileType,
-        filePath: filePath,
-        fileName: fileName,
-        fileColumns: fileColumns,
-        columns: fileColumnsFormatted,
-        alias: alias,
-        enableCountLogging: enableCountLogging,
-      });
+  if (sourceType === "file") {
+    const fileColumnsFormatted = fileColumns
+      .filter(col => col.name.trim() !== "")
+      .map(col => ({
+        name: col.name,
+        datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
+      }));
 
-      dispatch({
-        type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
-        payload: {
-          sourceNodeId: id,
-          columns: fileColumnsFormatted.map(col => col.name)
-        }
-      });
+    console.log("🟡 FILE SOURCE - Processing");
 
-      dispatch({
-        type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
-        payload: {
-          sourceNodeId: id,
-          columns: fileColumnsFormatted.map(col => col.name)
-        }
-      });
+    data.onDataChange({
+      sourceType: "file",
+      fileType: fileType,
+      filePath: filePath,
+      fileName: fileName,
+      fileColumns: fileColumns,
+      columns: fileColumnsFormatted,
+      alias: alias,
+      enableCountLogging: enableCountLogging,
+    });
 
-      dispatch({
-        type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
-        payload: {
-          sourceNodeId: id,
-          columns: fileColumnsFormatted
-        }
-      });
-     } else if (sourceType === "database") {
+    dispatch({
+      type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: fileColumnsFormatted.map(col => col.name)
+      }
+    });
+
+    dispatch({
+      type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: fileColumnsFormatted.map(col => col.name)
+      }
+    });
+
+    dispatch({
+      type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: fileColumnsFormatted
+      }
+    });
+
+  } else if (sourceType === "database") {
+    console.log("🔵 DATABASE SOURCE - Processing, objectType:", selectedObjectType);
+    
     // Handle source-query case specifically
     if (selectedObjectType === "source-query") {
+      console.log("🟢 SOURCE-QUERY MODE DETECTED");
+      
       const fileColumnsFormatted = fileColumns
         .filter(col => col.name.trim() !== "")
         .map(col => ({
@@ -517,13 +531,13 @@ export const SourceNode = ({ id, data }) => {
         }));
 
       console.log("🟢 SOURCE-QUERY - Sending data:", {
-          customQuery: customQuery,
-          fileColumns: fileColumns,
-          formattedColumns: fileColumnsFormatted,
-          selectedTable: selectedTable,
-          selectedConnection: selectedConnection,
-          selectedSchema: selectedSchema
-        });  
+        customQuery: customQuery,
+        fileColumns: fileColumns,
+        formattedColumns: fileColumnsFormatted,
+        selectedTable: selectedTable,
+        selectedConnection: selectedConnection,
+        selectedSchema: selectedSchema
+      });
 
       data.onDataChange({
         sourceType: "database",
@@ -540,6 +554,8 @@ export const SourceNode = ({ id, data }) => {
         enableCountLogging: enableCountLogging,
       });
 
+      console.log("✅ SOURCE-QUERY onDataChange called with customQuery:", customQuery);
+
       dispatch({
         type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
         payload: {
@@ -564,8 +580,10 @@ export const SourceNode = ({ id, data }) => {
         }
       });
 
-    }
-    } else if (sourceType === "database") {
+    } else {
+      // Handle tables and procedures cases
+      console.log("🔵 DATABASE - Tables/Procedures mode");
+      
       const currentTable = selectedObjectType === "procedures" && tableSelections.selectedTable
         ? tableSelections.selectedTable
         : selectedTable;
@@ -620,6 +638,8 @@ export const SourceNode = ({ id, data }) => {
           };
         });
 
+      console.log("🔵 DATABASE - Sending tables/procedures data with customQuery:", customQuery);
+
       data.onDataChange({
         sourceType: "database",
         connection: selectedConnection.name,
@@ -637,7 +657,6 @@ export const SourceNode = ({ id, data }) => {
         postProcedures: enrichedPostProcedures,
         enableCountLogging: enableCountLogging,
         customQuery: customQuery,
-        
       });
 
       dispatch({
@@ -667,8 +686,11 @@ export const SourceNode = ({ id, data }) => {
         }
       });
     }
-  }, [sourceType, fileType, filePath, fileName, fileColumns, selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging, customQuery]);
+  }
+}, [sourceType, fileType, filePath, fileName, fileColumns, selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging, customQuery]);
 
+
+  
   const getColumnsForTable = (tableName) => {
     const tableObj = tables.find(t => t.table_name === tableName);
     return tableObj?.column_json || [];
@@ -1655,103 +1677,107 @@ useEffect(() => {
                 )}
 /////// 
                 {selectedObjectType === "source-query" && (
-  <div>
-    <div className="flex items-center justify-between">
-      <label className="text-xs font-semibold text-black mb-0.5 block">
-        Source Table
-      </label>
-      {dataFetchStatus.tables === 'loading' && (
-        <div className="flex items-center">
-          <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
-          <span className="text-[10px] text-gray-500">Loading...</span>
-        </div>
-      )}
-    </div>
-    <div className="space-y-1.5" ref={tableDropdownRef}>
-      <div className="relative">
-        <button
-          type="button"
-          className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-          onClick={() => setTableDropdownOpen(v => !v)}
-          disabled={loading.tables}
-        >
-          {selectedTable
-            ? selectedTable
-            : dataFetchStatus.tables === 'loading'
-              ? 'Loading tables...'
-              : 'Select source table'}
-          <span className="ml-auto pl-2">&#9662;</span>
-        </button>
-        {tableDropdownOpen && (
-          <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
-            <input
-              type="search"
-              placeholder="Search tables..."
-              className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-              value={tableSearch}
-              onChange={e => setTableSearch(e.target.value)}
-              autoFocus
-            />
-            {filteredTables.length === 0 && (
-              <div className="p-2 text-xs text-gray-500">No tables found</div>
-            )}
-            {filteredTables.map((table, idx) => (
-              <div
-                key={idx}
-                className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedTable === table.table_name ? "bg-gray-100" : ""}`}
-                onClick={() => {
-                  setSelectedTable(table.table_name);
-                  setSelectedColumns([]); // Clear previous selections
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-black mb-0.5 block">
+                        Source Table
+                      </label>
+                      {dataFetchStatus.tables === 'loading' && (
+                        <div className="flex items-center">
+                          <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
+                          <span className="text-[10px] text-gray-500">Loading...</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1.5" ref={tableDropdownRef}>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
+                          onClick={() => setTableDropdownOpen(v => !v)}
+                          disabled={loading.tables}
+                        >
+                          {selectedTable
+                            ? selectedTable
+                            : dataFetchStatus.tables === 'loading'
+                              ? 'Loading tables...'
+                              : 'Select source table'}
+                          <span className="ml-auto pl-2">&#9662;</span>
+                        </button>
+                        {tableDropdownOpen && (
+                          <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
+                            <input
+                              type="search"
+                              placeholder="Search tables..."
+                              className="w-full p-1 text-[11px] text-black border-b border-gray-200"
+                              value={tableSearch}
+                              onChange={e => setTableSearch(e.target.value)}
+                              autoFocus
+                            />
+                            {filteredTables.length === 0 && (
+                              <div className="p-2 text-xs text-gray-500">No tables found</div>
+                            )}
+                            {filteredTables.map((table, idx) => (
+                              <div
+                                key={idx}
+                                className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedTable === table.table_name ? "bg-gray-100" : ""}`}
+                                onClick={() => {
+                                  setSelectedTable(table.table_name);
+                                  setSelectedColumns([]); // Clear previous selections
 
-                  // Get and set columns for the selected table
-                  const tableColumns = getColumnsForTable(table.table_name);
-                  setColumns(tableColumns);
+                                  // Get and set columns for the selected table(removed)
+                                  // const tableColumns = getColumnsForTable(table.table_name);
+                                  // setColumns(tableColumns);
+                                  setColumns([]);
 
-                  setTableDropdownOpen(false);
+                                  setTableDropdownOpen(false);
 
-                  // Update table selections state
-                  setTableSelections({
-                    selectedTable: table.table_name,
-                    selectedColumns: []
-                  });
-                }}
-              >
-                {table.table_name}
-              </div>
-            ))}
-          </div>
-        )}
-        {loading.tables && (
-          <div className="absolute right-2 top-2">
-            <Loader size={12} className="animate-spin text-gray-400" />
-          </div>
-        )}
-      </div>
-    </div>
-    {dataFetchStatus.tables === 'error' && (
-      <p className="text-[10px] text-red-500 mt-1">Failed to load tables</p>
-    )}
-    {dataFetchStatus.tables === 'success' && tables.length === 0 && (
-      <p className="text-[10px] text-amber-500 mt-1">No tables found</p>
-    )}
-    
-    {/* Query Input Field - Only show when a source table is selected */}
-    {selectedTable && (
-      <div className="mt-4">
-        <label className="text-xs font-semibold text-black mb-0.5 block">
-          Query
-        </label>
-        <textarea
-          placeholder={`Enter your SQL query for ${selectedTable}...`}
-          className="w-full p-2 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 resize-vertical min-h-[80px]"
-          value={customQuery}
-          onChange={(e) => setCustomQuery(e.target.value)}
-        />
-      </div>
-    )}
+                                  // Update table selections state
+                                  setTableSelections({
+                                    selectedTable: table.table_name,
+                                    selectedColumns: []
+                                  });
+                                }}
+                              >
+                                {table.table_name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {loading.tables && (
+                          <div className="absolute right-2 top-2">
+                            <Loader size={12} className="animate-spin text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                      {dataFetchStatus.tables === 'error' && (
+                        <p className="text-[10px] text-red-500 mt-1">Failed to load tables</p>
+                      )}
+                      {dataFetchStatus.tables === 'success' && tables.length === 0 && (
+                        <p className="text-[10px] text-amber-500 mt-1">No tables found</p>
+                      )}
+                      
+                      {/* Query Input Field - Only show when a source table is selected */}
+                      {selectedTable && (
+                        <div className="mt-4">
+                          <label className="text-xs font-semibold text-black mb-0.5 block">
+                            Query
+                          </label>
+                          <textarea
+                            placeholder={`Enter your SQL query for ${selectedTable}...`}
+                            className="w-full p-2 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 resize-vertical min-h-[80px]"
+                            value={customQuery}
+                            
+                            
+                            onChange={(e) => setCustomQuery(e.target.value)}
+                            
+                          />
+                        </div>
+                      )}
 
     {/* Column Mapping Section - Only show when a table is selected and has columns */}
-    {selectedTable && columns.length > 0 && (
+    {selectedTable && (
       <div className="mt-4">
         <div className="flex items-center justify-between mb-1">
           <label className="text-xs font-semibold text-black">
@@ -2131,7 +2157,7 @@ useEffect(() => {
                       </div>
                     </div>
                   </div>
-                ) : sourceType === "database" && selectedTable ? (
+                ) : sourceType === "database" && selectedTable  && selectedObjectType !== "source-query"? (
                   <div className="text-center py-2 text-[11px] text-gray-500">
                     No columns found for this table
                   </div>
