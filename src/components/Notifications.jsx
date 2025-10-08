@@ -320,7 +320,7 @@ const Notifications = ({ isDataSteward, isDataOwner }) => {
                 <button className="py-2 relative" onClick={toggleNotifications} aria-label="Notifications">
                     <BellIcon className="h-6 w-6 text-gray-600" />
                     {hasNotifications && (
-                        <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+                        <span className="absolute top-2 right-0.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
                     )}
                 </button>
 

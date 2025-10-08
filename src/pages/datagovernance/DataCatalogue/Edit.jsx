@@ -631,14 +631,16 @@ const Edit = ({ onClose, editDetails, type }) => {
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        let errorMessage = errorData.detail || `Failed to save details`;
+        errorMessage = errorMessage.replace(/^\d{3}:\s*/, '');
+        throw new Error(errorMessage);
       }
       const data = await response.json();
       onClose();
       toast.success(data.message || "Saved Successfully")
     } catch (error) {
       console.error('Error saving catalogue element:', error);
-      setSaveError(`Failed to save details`);
+      setSaveError(error.message || `Failed to save details`);
     } finally {
       setIsSaving(false);
     }
@@ -702,7 +704,7 @@ const Edit = ({ onClose, editDetails, type }) => {
               <div className='flex items-center gap-x-2'>
                 {isUserAuthorized && (
                   <>
-                  <button
+                    <button
                       onClick={() => setIsModalOpen(true)}
                       className='flex items-center gap-x-1.5 px-3 py-1 rounded-md text-sm font-semibold bg-[#8d77ba] text-white hover:bg-opacity-90'
                       aria-label="Add new catalogue item"
