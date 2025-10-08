@@ -127,6 +127,13 @@ function Schema() {
       if (navigationState?.type === 'database' && navigationState?.connectionName) {
         dataToProcess = allRawData.filter(item => item.connection_name === navigationState.connectionName);
       }
+      else if (
+        navigationState?.type === 'schema' && navigationState?.schemaName && navigationState?.connectionName
+      ) {
+        dataToProcess = allRawData.filter(item => item.connection_name === navigationState.connectionName &&
+          item.table_schema === navigationState.schemaName
+        );
+      }
 
       const processedData = processSchemaData(dataToProcess);
       setSchemaData(processedData);

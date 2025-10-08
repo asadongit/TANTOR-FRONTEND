@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Info, ArrowRight, ChevronDown, X, Table, Columns4, ArrowUpRight, Save, FolderOpen, Trash2, CircleCheck, XCircle, Bookmark } from 'lucide-react';
+import { Search, Info, ArrowRight, ChevronDown, X, Table, Columns4, ArrowUpRight, Save, FolderOpen, Trash2, CircleCheck, XCircle, Bookmark, Network } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { secureQuery } from '../DataCatalogue/Components/function';
@@ -52,23 +52,23 @@ const GovernanceSearch = ({ activeSection }) => {
         switch (sortBy) {
             case 'name-asc':
                 return sortedResults.sort((a, b) => {
-                    const nameA = a.type === 'table' ? a.table_name : a.column_name;
-                    const nameB = b.type === 'table' ? b.table_name : b.column_name;
+                    const nameA = a.type === 'schema' ? a.schema_name : a.type === 'table' ? a.table_name : a.column_name;
+                    const nameB = b.type === 'schema' ? b.schema_name : b.type === 'table' ? b.table_name : b.column_name;
                     return nameA.localeCompare(nameB);
                 });
 
             case 'name-desc':
                 return sortedResults.sort((a, b) => {
-                    const nameA = a.type === 'table' ? a.table_name : a.column_name;
-                    const nameB = b.type === 'table' ? b.table_name : b.column_name;
+                    const nameA = a.type === 'schema' ? a.schema_name : a.type === 'table' ? a.table_name : a.column_name;
+                    const nameB = b.type === 'schema' ? b.schema_name : b.type === 'table' ? b.table_name : b.column_name;
                     return nameB.localeCompare(nameA);
                 });
 
             case 'type':
                 return sortedResults.sort((a, b) => {
                     if (a.type === b.type) {
-                        const nameA = a.type === 'table' ? a.table_name : a.column_name;
-                        const nameB = b.type === 'table' ? b.table_name : b.column_name;
+                        const nameA = a.type === 'schema' ? a.schema_name : a.type === 'table' ? a.table_name : a.column_name;
+                        const nameB = b.type === 'schema' ? b.schema_name : b.type === 'table' ? b.table_name : b.column_name;
                         return nameA.localeCompare(nameB);
                     }
                     return a.type.localeCompare(b.type);
@@ -141,12 +141,43 @@ const GovernanceSearch = ({ activeSection }) => {
                 Object.keys(apiFilters).forEach(key => {
                     if (apiFilters[key] && typeof apiFilters[key] === 'object') {
                         newFilterData[key] = Object.entries(apiFilters[key]).map(
-                            ([name, data]) => ({
-                                label: `${name} (${data.count})`,
-                                name: name,
-                                id: data.id,
-                                count: data.count
-                            })
+                            ([name, data]) => {
+                                let displayName = name;
+                                
+                                if (key === 'schemas') {
+                                    const parts = name.split('.');
+                                    if (parts.length >= 2) {
+                                        const connection = parts[0];
+                                        const schema = parts.slice(1).join('.');
+                                        displayName = `${schema} (${connection})`;
+                                    }
+                                } else if (key === 'tables') {
+                                    const parts = name.split('.');
+                                    if (parts.length >= 3) {
+                                        const connection = parts[0];
+                                        const tableName = parts[parts.length - 1];
+                                        displayName = `${tableName} (${connection})`;
+                                    }
+                                } else if (key === 'columns') {
+                                    const parts = name.split('.');
+                                    if (parts.length >= 4) {
+                                        const connection = parts[0];
+                                        const tableName = parts[parts.length - 2];
+                                        const columnName = parts[parts.length - 1];
+                                        displayName = `${tableName}.${columnName} (${connection})`;
+                                    }
+                                }
+                                
+                                const labelWithCount = data.count !== null ? `${displayName} (${data.count})` : displayName;
+                                
+                                return {
+                                    label: labelWithCount,
+                                    displayName: displayName,
+                                    name: name,
+                                    id: data.id,
+                                    count: data.count
+                                };
+                            }
                         );
                         newSelectedFilters[key] = [];
                         newExpandedSections[key] = false;
@@ -273,10 +304,19 @@ const GovernanceSearch = ({ activeSection }) => {
         }
     };
 
-    const handleResultClick = (result) => {
+    const handleResultClick = (result, e) => {
+        e.stopPropagation();
         setIsModalOpen(false);
 
-        if (result.type === 'table') {
+        if (result.type === 'schema') {
+            navigate('/datagovernance/data-catalogue/schema', {
+                state: {
+                    type: 'schema',
+                    schemaName: result.schema_name,
+                    connectionName: result.connection_name
+                }
+            });
+        } else if (result.type === 'table') {
             navigate('/datagovernance/data-catalogue/table', {
                 state: {
                     type: "table",
@@ -324,6 +364,7 @@ const GovernanceSearch = ({ activeSection }) => {
             setIsSavingFilter(false);
         }
     };
+
     const handleRemoveFilter = async () => {
         if (!searchTerm.trim()) return;
 
@@ -400,7 +441,7 @@ const GovernanceSearch = ({ activeSection }) => {
 
     return (
         <>
-            <div className="relative flex items-center gap-2">
+            <div className="relative flex items-center gap-5">
                 <div className="relative">
                     <input
                         type="text"
@@ -435,10 +476,10 @@ const GovernanceSearch = ({ activeSection }) => {
 
                 <button
                     onClick={handleLoadFilters}
-                    className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-all"
+                    className="text-gray-600"
                     title="Open saved filters"
                 >
-                    <FolderOpen size={18} />
+                    <Bookmark size={20} />
                 </button>
             </div>
 
@@ -509,20 +550,14 @@ const GovernanceSearch = ({ activeSection }) => {
                                     </>
                                 )}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center">
                                 <button
                                     onClick={handleBookmarkClick}
                                     disabled={isSavingFilter || isCheckingSaved}
-                                    className={`p-2 rounded-lg transition-all ${isSearchTermSaved() ? 'text-green-600' : 'text-gray-600'} ${(isSavingFilter || isCheckingSaved) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    title={isSearchTermSaved() ? 'Already saved' : 'Save current search'}
+                                    className={`p-2 rounded-lg transition-all ${isSearchTermSaved() ? 'text-[#8e78b7]' : 'text-gray-600'} ${(isSavingFilter || isCheckingSaved) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title={isSearchTermSaved() ? 'Remove from saved search' : 'Save current search'}
                                 >
                                     <Bookmark size={20} fill={isSearchTermSaved() ? 'currentColor' : 'none'} />
-                                </button>
-                                <button
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                >
-                                    <X size={20} />
                                 </button>
                             </div>
                         </div>
@@ -577,15 +612,16 @@ const GovernanceSearch = ({ activeSection }) => {
                                                                     {filterData[category].map((item) => (
                                                                         <label
                                                                             key={item.label}
-                                                                            className="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md cursor-pointer"
+                                                                            className="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md cursor-pointer group"
+                                                                            title={item.displayName || item.name}
                                                                         >
                                                                             <input
                                                                                 type="checkbox"
                                                                                 checked={selectedFilters[category]?.some(f => f.label === item.label) || false}
                                                                                 onChange={() => toggleFilter(category, item)}
-                                                                                className="mr-2 rounded border-gray-300 text-[#8e78b7] focus:ring-[#8e78b7]"
+                                                                                className="mr-2 rounded border-gray-300 text-[#8e78b7] focus:ring-[#8e78b7] flex-shrink-0"
                                                                             />
-                                                                            <span>{item.label}</span>
+                                                                            <span className="truncate">{item.label}</span>
                                                                         </label>
                                                                     ))}
                                                                 </div>
@@ -649,29 +685,36 @@ const GovernanceSearch = ({ activeSection }) => {
                                                 <div
                                                     key={index}
                                                     className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                                                    onClick={() => handleResultClick(result)}
                                                 >
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                                                {result.type === 'table' ? (
+                                                                {result.type === 'schema' ? (
+                                                                    <Network size={18} className="text-purple-600" />
+                                                                ) : result.type === 'table' ? (
                                                                     <Table size={18} className="text-blue-600" />
                                                                 ) : (
                                                                     <Columns4 size={18} className="text-green-600" />
                                                                 )}
                                                                 <h3 className="font-semibold text-gray-900">
-                                                                    {result.type === 'table' ? result.table_name : result.column_name}
+                                                                    {result.type === 'schema' 
+                                                                        ? result.schema_name 
+                                                                        : result.type === 'table' 
+                                                                        ? result.table_name 
+                                                                        : result.column_name}
                                                                 </h3>
                                                                 <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full capitalize">
                                                                     {result.type}
                                                                 </span>
                                                                 {result.matched_type && result.matched_type.map((matchType, idx) => (
-                                                                    <span
-                                                                        key={idx}
-                                                                        className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full capitalize"
-                                                                    >
-                                                                        {matchType}
-                                                                    </span>
+                                                                    matchType && (
+                                                                        <span
+                                                                            key={idx}
+                                                                            className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full capitalize"
+                                                                        >
+                                                                            {matchType}
+                                                                        </span>
+                                                                    )
                                                                 ))}
                                                             </div>
                                                             {result.description && (
@@ -681,14 +724,18 @@ const GovernanceSearch = ({ activeSection }) => {
                                                             )}
                                                             <div className="space-y-1">
                                                                 <p className="text-xs text-gray-500">
-                                                                    <span className="font-medium">Connection:</span> {result.connection_name}.{result.schema_name}.{result.table_name}
-                                                                    {result.type === 'column' && `.${result.column_name}`}
+                                                                    <span className="font-medium">Connection:</span> {`${result.connection_name}.${result.schema_name}`}
+                                                                    {result.type === 'table' && `.${result.table_name}`}
+                                                                    {result.type === 'column' && `.${result.table_name}.${result.column_name}`}
                                                                 </p>
                                                             </div>
                                                         </div>
-                                                        <div className="ml-4">
+                                                        <button
+                                                            onClick={(e) => handleResultClick(result, e)}
+                                                            className="ml-4 p-1 hover:bg-gray-100 rounded transition-colors"
+                                                        >
                                                             <ArrowUpRight size={20} className="text-gray-400 hover:text-gray-600" />
-                                                        </div>
+                                                        </button>
                                                     </div>
                                                 </div>
                                             ))}
