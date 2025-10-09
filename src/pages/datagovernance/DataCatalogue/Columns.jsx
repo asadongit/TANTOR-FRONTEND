@@ -71,8 +71,21 @@ function Columns() {
         if (allTablesRawData.length > 0) {
             let dataToProcess = allTablesRawData;
 
-            // If state is from a TABLE navigation
             if (
+                navigationState?.type === 'column' &&
+                navigationState?.columnName &&
+                navigationState?.tableName &&
+                navigationState?.schemaName &&
+                navigationState?.connectionName
+            ) {
+                dataToProcess = allTablesRawData.filter(item =>
+                    item.column_name === navigationState.columnName &&
+                    item.table_name === navigationState.tableName &&
+                    item.table_schema === navigationState.schemaName &&
+                    item.connection_name === navigationState.connectionName
+                );
+            }
+            else if (
                 navigationState?.type === 'table' &&
                 navigationState?.tableName &&
                 navigationState?.schemaName &&
@@ -84,7 +97,6 @@ function Columns() {
                     item.connection_name === navigationState.connectionName
                 );
             }
-            // If state is from a SCHEMA navigation
             else if (
                 navigationState?.type === 'schema' &&
                 navigationState?.schemaName &&
