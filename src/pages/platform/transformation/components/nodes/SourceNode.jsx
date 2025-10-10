@@ -74,8 +74,8 @@ export const SourceNode = ({ id, data }) => {
   const [customDatatypeModalOpen, setCustomDatatypeModalOpen] = useState(false);
   const [customDatatypeInput, setCustomDatatypeInput] = useState("");
   const [currentEditingColumn, setCurrentEditingColumn] = useState(null);
-  // state variable for custom query 
-  const [customQuery, setCustomQuery] = useState(data.customQuery || ""); 
+  // state variable for custom query
+  const [customQuery, setCustomQuery] = useState(data.customQuery || "");
   //
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
@@ -422,7 +422,7 @@ export const SourceNode = ({ id, data }) => {
       const procedureIndex = selectedPostProcedures.findIndex(p => p.id === modalProcedureItemId);
       procedureOrder = procedureIndex + 1;
     }
- 
+
     const procedureJSON = {
       "EventType": eventType,
       "Dataset": alias || "unnamed_source",
@@ -470,7 +470,7 @@ export const SourceNode = ({ id, data }) => {
         datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
       }));
 
-   
+
 
     data.onDataChange({
       sourceType: "file",
@@ -508,11 +508,11 @@ export const SourceNode = ({ id, data }) => {
     });
 
   } else if (sourceType === "database") {
-    
-    
+
+
     // Handle source-query case specifically
     if (selectedObjectType === "source-query") {
-      
+
       const fileColumnsFormatted = fileColumns
         .filter(col => col.name.trim() !== "")
         .map(col => ({
@@ -535,7 +535,7 @@ export const SourceNode = ({ id, data }) => {
         enableCountLogging: enableCountLogging,
       });
 
-      
+
 
       dispatch({
         type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
@@ -563,8 +563,8 @@ export const SourceNode = ({ id, data }) => {
 
     } else {
       // Handle tables and procedures cases
-      
-      
+
+
       const currentTable = selectedObjectType === "procedures" && tableSelections.selectedTable
         ? tableSelections.selectedTable
         : selectedTable;
@@ -619,7 +619,7 @@ export const SourceNode = ({ id, data }) => {
           };
         });
 
-      
+
 
       data.onDataChange({
         sourceType: "database",
@@ -671,7 +671,7 @@ export const SourceNode = ({ id, data }) => {
 }, [sourceType, fileType, filePath, fileName, fileColumns, selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging, customQuery]);
 
 
-  
+
   const getColumnsForTable = (tableName) => {
     const tableObj = tables.find(t => t.table_name === tableName);
     return tableObj?.column_json || [];
@@ -787,7 +787,7 @@ export const SourceNode = ({ id, data }) => {
         // Clear source query specific data when switching away
         // No need to save anything specific for source-query mode
       }
-      
+
       // Handle switching to source-query
       if (newObjectType === "source-query") {
         // Save current selections when switching to source query
@@ -1033,7 +1033,7 @@ useEffect(() => {
         }));
       }
     }
-    
+
 
     hasInitializedSelectedColumns.current = true;
   }
@@ -1656,91 +1656,12 @@ useEffect(() => {
                     )}
                   </div>
                 )}
-/////// 
+///////
                 {selectedObjectType === "source-query" && (
                   <div>
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-black mb-0.5 block">
-                        Source Table
-                      </label>
-                      {dataFetchStatus.tables === 'loading' && (
-                        <div className="flex items-center">
-                          <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
-                          <span className="text-[10px] text-gray-500">Loading...</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-1.5" ref={tableDropdownRef}>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                          onClick={() => setTableDropdownOpen(v => !v)}
-                          disabled={loading.tables}
-                        >
-                          {selectedTable
-                            ? selectedTable
-                            : dataFetchStatus.tables === 'loading'
-                              ? 'Loading tables...'
-                              : 'Select source table'}
-                          <span className="ml-auto pl-2">&#9662;</span>
-                        </button>
-                        {tableDropdownOpen && (
-                          <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
-                            <input
-                              type="search"
-                              placeholder="Search tables..."
-                              className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                              value={tableSearch}
-                              onChange={e => setTableSearch(e.target.value)}
-                              autoFocus
-                            />
-                            {filteredTables.length === 0 && (
-                              <div className="p-2 text-xs text-gray-500">No tables found</div>
-                            )}
-                            {filteredTables.map((table, idx) => (
-                              <div
-                                key={idx}
-                                className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedTable === table.table_name ? "bg-gray-100" : ""}`}
-                                onClick={() => {
-                                  setSelectedTable(table.table_name);
-                                  setSelectedColumns([]); // Clear previous selections
 
-                                  // Get and set columns for the selected table(removed)
-                                  // const tableColumns = getColumnsForTable(table.table_name);
-                                  // setColumns(tableColumns);
-                                  setColumns([]);
-
-                                  setTableDropdownOpen(false);
-
-                                  // Update table selections state
-                                  setTableSelections({
-                                    selectedTable: table.table_name,
-                                    selectedColumns: []
-                                  });
-                                }}
-                              >
-                                {table.table_name}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {loading.tables && (
-                          <div className="absolute right-2 top-2">
-                            <Loader size={12} className="animate-spin text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                      {dataFetchStatus.tables === 'error' && (
-                        <p className="text-[10px] text-red-500 mt-1">Failed to load tables</p>
-                      )}
-                      {dataFetchStatus.tables === 'success' && tables.length === 0 && (
-                        <p className="text-[10px] text-amber-500 mt-1">No tables found</p>
-                      )}
-                      
                       {/* Query Input Field - Only show when a source table is selected */}
-                      {selectedTable && (
+                      { (
                         <div className="mt-4">
                           <label className="text-xs font-semibold text-black mb-0.5 block">
                             Query
@@ -1749,16 +1670,16 @@ useEffect(() => {
                             placeholder={`Enter your SQL query for ${selectedTable}...`}
                             className="w-full p-2 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 resize-vertical min-h-[80px]"
                             value={customQuery}
-                            
-                            
+
+
                             onChange={(e) => setCustomQuery(e.target.value)}
-                            
+
                           />
                         </div>
                       )}
 
     {/* Column Mapping Section - Only show when a table is selected and has columns */}
-    {selectedTable && (
+    { (
       <div className="mt-4">
         <div className="flex items-center justify-between mb-1">
           <label className="text-xs font-semibold text-black">
@@ -1821,7 +1742,7 @@ useEffect(() => {
 
 
 
-                {(selectedTable || selectedObjectType === "procedures") && (
+                {(selectedTable || selectedObjectType === "procedures" || selectedObjectType === "source-query") && (
                   <div className="mt-2">
                     <label className="text-xs font-semibold text-black mb-0.5 block">
                       Alias Name
