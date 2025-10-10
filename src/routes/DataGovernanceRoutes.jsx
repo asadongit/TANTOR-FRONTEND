@@ -1,6 +1,5 @@
 import { Route } from 'react-router-dom';
 import Databot from '../pages/datagovernance/Databot/Databot';
-import Reports from '../pages/datagovernance/Reports';
 import Import from '../pages/datagovernance/Import';
 import CustomAddition from '../pages/datagovernance/CustomAddition';
 import { UserRoutes } from '../pages/datagovernance/User/UserRoutes';
@@ -8,6 +7,7 @@ import { DataCatalogueRoutes } from '../pages/datagovernance/DataCatalogue/DataC
 import { DataShieldRoutes } from '../pages/datagovernance/DataShield/DataShieldRoutes';
 import {DataAssuranceRoutes} from '../pages/datagovernance/DataAssurance/DataAssuranceRoutes';
 import { BusinessCatalogueRoutes } from '../pages/datagovernance/BusinessCatalogue/BusinessCatalogueRoutes';
+import Reports from '../pages/datagovernance/Reports/Reports';
 
 
 export const DataGovernanceRoutes = (
