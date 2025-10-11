@@ -125,13 +125,13 @@ function Schema() {
       let dataToProcess = allRawData;
 
       if (navigationState?.type === 'database' && navigationState?.connectionName) {
-        dataToProcess = allRawData.filter(item => item.connection_name === navigationState.connectionName);
+        dataToProcess = allRawData.filter(item => item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase());
       }
       else if (
         navigationState?.type === 'schema' && navigationState?.schemaName && navigationState?.connectionName
       ) {
-        dataToProcess = allRawData.filter(item => item.connection_name === navigationState.connectionName &&
-          item.table_schema === navigationState.schemaName
+        dataToProcess = allRawData.filter(item => item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase() &&
+          item.table_schema?.toLowerCase() === navigationState.schemaName?.toLowerCase()
         );
       }
 
