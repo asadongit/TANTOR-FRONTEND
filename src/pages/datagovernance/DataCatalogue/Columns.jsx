@@ -79,10 +79,10 @@ function Columns() {
                 navigationState?.connectionName
             ) {
                 dataToProcess = allTablesRawData.filter(item =>
-                    item.column_name === navigationState.columnName &&
-                    item.table_name === navigationState.tableName &&
-                    item.table_schema === navigationState.schemaName &&
-                    item.connection_name === navigationState.connectionName
+                    item.column_name?.toLowerCase() === navigationState.columnName?.toLowerCase() &&
+                    item.table_name?.toLowerCase() === navigationState.tableName?.toLowerCase() &&
+                    item.table_schema?.toLowerCase() === navigationState.schemaName?.toLowerCase() &&
+                    item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase()
                 );
             }
             else if (
@@ -92,9 +92,9 @@ function Columns() {
                 navigationState?.connectionName
             ) {
                 dataToProcess = allTablesRawData.filter(item =>
-                    item.table_name === navigationState.tableName &&
-                    item.table_schema === navigationState.schemaName &&
-                    item.connection_name === navigationState.connectionName
+                    item.table_name?.toLowerCase() === navigationState.tableName?.toLowerCase() &&
+                    item.table_schema?.toLowerCase() === navigationState.schemaName?.toLowerCase() &&
+                    item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase()
                 );
             }
             else if (
@@ -103,13 +103,13 @@ function Columns() {
                 navigationState?.connectionName
             ) {
                 dataToProcess = allTablesRawData.filter(item =>
-                    item.table_schema === navigationState.schemaName &&
-                    item.connection_name === navigationState.connectionName
+                    item.table_schema?.toLowerCase() === navigationState.schemaName?.toLowerCase() &&
+                    item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase()
                 );
             }
             else if (navigationState?.type === 'database' && navigationState?.connectionName) {
                 dataToProcess = allTablesRawData.filter(item =>
-                    item.connection_name === navigationState.connectionName
+                    item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase()
                 );
             }
 
