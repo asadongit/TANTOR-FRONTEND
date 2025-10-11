@@ -399,7 +399,8 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-                throw new Error(errorData.detail || `Failed to generate report: ${response.statusText}`);
+                const errorMessage = errorData.msg || errorData.detail || `Failed to generate report: ${response.statusText}`;
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
