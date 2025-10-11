@@ -220,7 +220,7 @@ const Reports = () => {
     setCurrentPage(1);
   };
 
-  const handleDownload = async (fileUrl, reportName) => {
+  const handleDownload = async (fileUrl, refnum, reportName,) => {
     const toastId = toast.loading('Downloading report...');
 
     try {
@@ -240,7 +240,7 @@ const Reports = () => {
 
       const blob = await response.blob();
 
-      let filename = reportName || 'report';
+      let filename = `${reportName}_${refnum}` || "report";
       if (!filename.toLowerCase().endsWith('.xlsx')) {
         filename += '.xlsx';
       }
@@ -436,7 +436,7 @@ const Reports = () => {
                       <td className="p-3 text-gray-600">{report.remarks}</td>
                       <td className="p-3">
                         <button
-                          onClick={() => handleDownload(report.file_url, report.ref_number)}
+                          onClick={() => handleDownload(report.file_url, report.ref_number,report.report_name)}
                           disabled={report.status?.toLowerCase() !== 'completed'}
                           className={`inline-flex items-center p-2 rounded-lg transition-colors ${report.status?.toLowerCase() === 'completed'
                             ? 'text-green-600 hover:bg-green-700 hover:text-white cursor-pointer'
