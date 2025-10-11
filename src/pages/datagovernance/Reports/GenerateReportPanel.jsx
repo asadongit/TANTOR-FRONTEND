@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ChevronDown, Search, FileText, RefreshCw, Loader, Info } from 'lucide-react';
+import { X, ChevronDown, Search, FileText, Loader, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const MultiSelectDropdown = ({
@@ -134,13 +134,17 @@ const MultiSelectDropdown = ({
 
 const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
     const [formData, setFormData] = useState({
+        reportName: '',
         dateFrom: '',
         dateTo: '',
+        users: [],
         resourceTypes: [],
         operationTypes: []
     });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [stakeholders, setStakeholders] = useState([]);
+    const [isLoadingStakeholders, setIsLoadingStakeholders] = useState(false);
 
     const resourceTypeOptions = [
         { value: 'USER', label: 'User' },
@@ -148,7 +152,6 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
         { value: 'GROUP_MEMBERSHIP', label: 'Group Membership' }
     ];
 
-    // Get today's date in YYYY-MM-DD format for max date attribute
     const getTodayDate = () => {
         const today = new Date();
         const year = today.getFullYear();
@@ -159,12 +162,34 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
     const maxDate = getTodayDate();
 
-    // Reset form when modal closes
+    useEffect(() => {
+        if (isOpen) {
+            fetchStakeholders();
+        }
+    }, [isOpen]);
+
+    const fetchStakeholders = async () => {
+        setIsLoadingStakeholders(true);
+        try {
+            const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/users/names/stakeholders`);
+            if (!response.ok) throw new Error('Network response was not ok for stakeholders');
+            const data = await response.json();
+            setStakeholders(data);
+        } catch (error) {
+            console.error('Error fetching stakeholders:', error);
+            toast.error('Failed to load users');
+        } finally {
+            setIsLoadingStakeholders(false);
+        }
+    };
+
     useEffect(() => {
         if (!isOpen) {
             setFormData({
+                reportName: '',
                 dateFrom: '',
                 dateTo: '',
+                users: [],
                 resourceTypes: [],
                 operationTypes: []
             });
@@ -172,12 +197,10 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
         }
     }, [isOpen]);
 
-    // Clear operation types when resource types change
     useEffect(() => {
         const availableOps = getAvailableOperations();
         const availableOpValues = availableOps.map(op => op.value);
 
-        // Remove operation types that are no longer valid
         const validOperationTypes = formData.operationTypes.filter(op =>
             availableOpValues.includes(op)
         );
@@ -209,6 +232,31 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
         }
 
         return operations;
+    };
+
+    const getUserOptions = () => {
+        return stakeholders.map(user => ({
+            value: user.id,
+            label: user.username
+        }));
+    };
+
+    const toggleUser = (values, isSelectAll = false) => {
+        const userOptions = getUserOptions();
+        const allUserIds = userOptions.map(opt => opt.value);
+
+        if (isSelectAll) {
+            const newUsers = formData.users.length === allUserIds.length
+                ? []
+                : allUserIds;
+            setFormData(prev => ({ ...prev, users: newUsers }));
+        } else {
+            const value = values[0];
+            const newUsers = formData.users.includes(value)
+                ? formData.users.filter(u => u !== value)
+                : [...formData.users, value];
+            setFormData(prev => ({ ...prev, users: newUsers }));
+        }
     };
 
     const toggleResourceType = (values, isSelectAll = false) => {
@@ -261,8 +309,20 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
         setErrors(prev => ({ ...prev, dateTo: '' }));
     };
 
+    const handleReportNameChange = (e) => {
+        setFormData(prev => ({
+            ...prev,
+            reportName: e.target.value
+        }));
+        setErrors(prev => ({ ...prev, reportName: '' }));
+    };
+
     const validateForm = () => {
         const newErrors = {};
+
+        if (!formData.reportName || formData.reportName.trim() === '') {
+            newErrors.reportName = 'Report Name is required';
+        }
 
         if (formData.dateFrom && !formData.dateTo) {
             newErrors.dateTo = 'End Date is required';
@@ -292,10 +352,11 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
         try {
             const requestBody = {
-                criteria: 'governanceReporting'
+                criteria: 'governanceReporting',
+                reportName: formData.reportName.trim()
             };
 
-            const hasFilters = formData.dateFrom || formData.resourceTypes.length > 0 || formData.operationTypes.length > 0;
+            const hasFilters = formData.dateFrom || formData.users.length > 0 || formData.resourceTypes.length > 0 || formData.operationTypes.length > 0;
 
             if (hasFilters) {
                 requestBody.filters = {};
@@ -306,6 +367,16 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
                 if (formData.dateTo) {
                     requestBody.filters.date_to = formData.dateTo;
+                }
+
+                if (formData.users.length > 0) {
+                    requestBody.filters.user = formData.users.map(userId => {
+                        const user = stakeholders.find(s => s.id === userId);
+                        return {
+                            id: user.id,
+                            username: user.username
+                        };
+                    });
                 }
 
                 if (formData.resourceTypes.length > 0) {
@@ -335,8 +406,10 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
             toast.success('Report generation started successfully!', { id: toastId });
 
             setFormData({
+                reportName: '',
                 dateFrom: '',
                 dateTo: '',
+                users: [],
                 resourceTypes: [],
                 operationTypes: []
             });
@@ -355,8 +428,10 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
 
     const handleCancel = () => {
         setFormData({
+            reportName: '',
             dateFrom: '',
             dateTo: '',
+            users: [],
             resourceTypes: [],
             operationTypes: []
         });
@@ -367,19 +442,17 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
     if (!isOpen) return null;
 
     const availableOperations = getAvailableOperations();
+    const userOptions = getUserOptions();
 
     return (
         <>
-            {/* Backdrop */}
             <div
                 className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
                 onClick={handleCancel}
             />
 
-            {/* Side Panel */}
             <div className="fixed right-0 top-0 h-full w-[500px] bg-white shadow-2xl z-50 transform transition-transform">
                 <div className="flex flex-col h-full">
-                    {/* Header */}
                     <div className="flex items-center justify-between p-4 border-b">
                         <div className="flex items-center gap-2">
                             <FileText size={20} className='text-[#8e78b7]' />
@@ -394,23 +467,26 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                         </button>
                     </div>
 
-                    {/* Form Content */}
-                    <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+                    <div className="flex-1 overflow-y-auto p-6">
                         <div className="space-y-6">
-                            {/* Report Type - Fixed */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Report Type
+                                    Report Name <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
-                                    value="Governance Reporting"
-                                    disabled
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                                    value={formData.reportName}
+                                    onChange={handleReportNameChange}
+                                    placeholder="Enter report name"
+                                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8e78b7] focus:border-transparent ${errors.reportName ? 'border-red-500' : 'border-gray-300'
+                                        }`}
+                                    disabled={isSubmitting}
                                 />
+                                {errors.reportName && (
+                                    <p className="mt-1 text-xs text-red-500">{errors.reportName}</p>
+                                )}
                             </div>
 
-                            {/* Date Range */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -449,7 +525,16 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                                 </div>
                             </div>
 
-                            {/* Resource Types */}
+                            <MultiSelectDropdown
+                                title="Users"
+                                options={userOptions}
+                                selected={formData.users}
+                                toggleOption={toggleUser}
+                                hasSelectAll={true}
+                                disabled={isSubmitting}
+                                isLoading={isLoadingStakeholders}
+                            />
+
                             <MultiSelectDropdown
                                 title="Resource Types"
                                 options={resourceTypeOptions}
@@ -459,7 +544,6 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                                 disabled={isSubmitting}
                             />
 
-                            {/* Operation Types */}
                             <MultiSelectDropdown
                                 title="Operation Types"
                                 options={availableOperations}
@@ -470,17 +554,9 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                                 disabledText="Select resource types first"
                             />
 
-                            <div className="flex items-start p-3 bg-blue-50 rounded-md">
-                                <Info className="h-5 w-5 text-blue-500 mr-3 flex-shrink-0 mt-0.5" />
-                                <p className="text-sm text-blue-800">
-                                    All filters are optional. You can generate a report for all events by leaving the fields blank.
-                                </p>
-                            </div>
-
                         </div>
-                    </form>
+                    </div>
 
-                    {/* Footer */}
                     <div className="flex items-center justify-end gap-3 p-3 border-t bg-gray-50">
                         <button
                             type="button"
@@ -491,18 +567,18 @@ const GenerateReportPanel = ({ isOpen, onClose, token, onReportGenerated }) => {
                             Cancel
                         </button>
                         <button
-                            type="submit"
+                            type="button"
                             onClick={handleSubmit}
                             disabled={isSubmitting}
                             className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a67a0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {isSubmitting ? (
                                 <>
-                                    <Loader className={`h-5 w-5 animate-spin`} />
+                                    <Loader className="h-5 w-5 animate-spin" />
                                     <span>Generating...</span>
                                 </>
                             ) : (
-                                <span>Create</span>
+                                <span>Generate</span>
                             )}
                         </button>
                     </div>
