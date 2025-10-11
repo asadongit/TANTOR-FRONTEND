@@ -9,7 +9,7 @@ const MultiSelectDropdown = ({
     toggleOption,
     hasSelectAll = false,
     disabled = false,
-    disabledText = "Select previous filters first",
+    disabledText = "Select options",
     onOpen,
     isLoading = false
 }) => {
