@@ -26,10 +26,12 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
   const { token } = useAuth();
   const [existingPolicies, setExistingPolicies] = useState([]);
   const [newPolicies, setNewPolicies] = useState([]);
+  const [isFetchingPolicyNames, setIsFetchingPolicyNames] = useState(false);
 
-    const allPolicies = Array.from(
-    new Map([...existingPolicies, ...newPolicies].map(policy => [policy.id, policy])).values()
+  const allPolicies = Array.from(
+    new Map([...existingPolicies, ...newPolicies].map(policy => [String(policy.id), policy])).values()
   );
+
 
   useEffect(() => {
     if (isOpen && userData) {
@@ -47,7 +49,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
       });
 
       if (userData.datapolicy && userData.datapolicy.length > 0) {
-        fetchPolicyDetails(userData.datapolicy);
+        fetchPolicyNames(userData.datapolicy);
       }
 
       setApiResponse({ status: null, message: '' });
@@ -74,56 +76,84 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
     return [];
   };
 
-  const fetchPolicyDetails = async (policyIds) => {
+  const fetchPolicyNames = async (policyIds) => {
+    if (!policyIds || policyIds.length === 0) return;
+
+    setIsFetchingPolicyNames(true);
     try {
-      const policies = await Promise.all(policyIds.map(async (id) => {
-        const response = await fetch(`${window._env_?.VITE_FAST_API}/listpolicy/${id}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const data = await response.json();
-        return {
-          id,
-          name: data.policy?.sub_policy_name || `Policy ${id}`,
-          roles: data.policy?.user_selections?.role ? [data.policy.user_selections.role] : [],
-          persona: data.policy?.user_selections?.persona || [],
-          groups: data.policy?.user_selections?.group ? [data.policy.user_selections.group] : [],
-          subgroups: data.policy?.user_selections?.subGroup ? [data.policy.user_selections.subGroup] : []
-        };
-      }));
-      setExistingPolicies(policies);
-    } catch (error) {
-      console.error("Error fetching policy details:", error);
-      setApiResponse({
-        status: 'error',
-        message: 'Failed to load policy details'
+      const policyIdsAsNumbers = policyIds.map(id => parseInt(id));
+
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/policy_name`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(policyIdsAsNumbers)
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch policy names');
+      }
+
+      const data = await response.json();
+
+      const policies = data.map(policy => ({
+        id: String(policy.id),
+        name: policy.policy_name || `Policy ${policy.id}`
+      }));
+
+      setExistingPolicies(prev => {
+        const existingMap = new Map(prev.map(p => [String(p.id), p]));
+        policies.forEach(p => existingMap.set(String(p.id), p));
+        return Array.from(existingMap.values());
+      });
+    } catch (error) {
+      console.error('Error fetching policy names:', error);
+      const fallbackPolicies = policyIds.map(policyId => ({
+        id: String(policyId),
+        name: `Policy ${policyId}`
+      }));
+      setExistingPolicies(prev => {
+        const existingMap = new Map(prev.map(p => [String(p.id), p]));
+        fallbackPolicies.forEach(p => existingMap.set(String(p.id), p));
+        return Array.from(existingMap.values());
+      });
+    } finally {
+      setIsFetchingPolicyNames(false);
     }
   };
+
+  // Fetch policy names when allPolicies changes (from modal selection or new policy creation)
+  useEffect(() => {
+    if (allPolicies.length > 0) {
+      const policyIds = allPolicies.map(p => String(p.id));
+      // Remove duplicates
+      const uniquePolicyIds = [...new Set(policyIds)];
+      fetchPolicyNames(uniquePolicyIds);
+    }
+  }, [allPolicies.length]);
 
   const updateFormDataFromPolicies = (policies) => {
     const combinedRoles = new Set();
     const combinedPersonas = new Set();
     const combinedGroups = new Set();
     const combinedSubgroups = new Set();
-    const dataPolicyIds = [...new Set(policies.map(policy => policy.id))];
+    const dataPolicyIds = [...new Set(policies.map(policy => String(policy.id)))];
 
     policies.forEach(policy => {
-        const addItemsToSet = (data, set) => {
-            if (Array.isArray(data)) {
-                data.forEach(item => item && set.add(item));
-            } else if (typeof data === 'string' && data) {
-                set.add(data);
-            }
-        };
+      const addItemsToSet = (data, set) => {
+        if (Array.isArray(data)) {
+          data.forEach(item => item && set.add(item));
+        } else if (typeof data === 'string' && data) {
+          set.add(data);
+        }
+      };
 
-        addItemsToSet(policy.roles, combinedRoles);
-        addItemsToSet(policy.persona, combinedPersonas);
-        addItemsToSet(policy.groups, combinedGroups);
-        addItemsToSet(policy.subgroups, combinedSubgroups);
+      addItemsToSet(policy.roles, combinedRoles);
+      addItemsToSet(policy.persona, combinedPersonas);
+      addItemsToSet(policy.groups, combinedGroups);
+      addItemsToSet(policy.subgroups, combinedSubgroups);
     });
 
 
@@ -145,7 +175,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
 
   const handleApplyPoliciesFromModal = (appliedData) => {
     const newExistingPolicies = appliedData.datapolicy.map(id => ({
-      id,
+      id: String(id),
       name: appliedData.sub_policy_name || `Policy ${id}`,
       roles: appliedData.roles || [],
       persona: appliedData.persona || [],
@@ -160,8 +190,8 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
 
   const handlePolicyComplete = (policyDetails) => {
     const newPolicy = {
-      id: policyDetails.id,
-      name: policyDetails.sub_policy_name || `Policy ${policyDetails.id}`,
+      id: String(policyDetails.id),
+      name: policyDetails.policy_type || `Policy ${policyDetails.id}`,
       roles: policyDetails.roles || [],
       persona: policyDetails.persona || [],
       groups: policyDetails.group || [],
@@ -278,7 +308,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl w-[1000px] p-8">
+      <div className="bg-white rounded-2xl w-[1200px] max-w-[95vw] p-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
             <div>
@@ -297,8 +327,8 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-8">
-          <div className="space-y-3">
+        <div className="grid grid-cols-11 gap-8">
+          <div className="col-span-3 space-y-3">
             <h3 className="text-[#8e78b7] font-medium">Login Credentials</h3>
             <div className="space-y-4">
               <div>
@@ -315,7 +345,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="col-span-4 space-y-3">
             <h3 className="text-[#8e78b7] font-medium">Personal Details</h3>
             <div className="space-y-4">
               <div>
@@ -357,7 +387,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="col-span-4 space-y-6">
             <h3 className="text-[#8e78b7] font-medium">Access Policies</h3>
             <div className="space-y-3">
               <div className="space-y-4 mt-10">
@@ -379,25 +409,32 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
                 </button>
 
                 {allPolicies.length > 0 && (
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-sm font-medium mb-2">Assigned Policies:</p>
-                    <div className="max-h-52 overflow-y-auto space-y-2 pr-2">
-                      {allPolicies.map(policy => (
-                        <div key={policy.id} className="flex items-center justify-between bg-white p-2 rounded border border-gray-100">
-                          <div>
-                            <p className="text-sm">
-                              Policy ID : {policy.id}
-                            </p>
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm font-medium mb-3 text-gray-700">Assigned Policies:</p>
+                    {isFetchingPolicyNames ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader className="h-5 w-5 animate-spin text-[#8e78b7]" />
+                        <span className="ml-2 text-sm text-gray-600">Loading policy names...</span>
+                      </div>
+                    ) : (
+                      <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
+                        {allPolicies.map((policy, index) => (
+                          <div key={policy.id} className="bg-white p-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors">
+                            <div className="flex items-start gap-2">
+                              <span className="text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
+                              <div className="flex-1 min-w-0">
+                                <p
+                                  className="text-sm font-medium text-gray-900 truncate"
+                                  title={policy.name}
+                                >
+                                  {policy.name}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          {/* <button
-                            onClick={() => handleRemovePolicy(policy.id)}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            <X className="h-4 w-4" />
-                          </button> */}
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -444,7 +481,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         onClose={() => setIsPolicyModalOpen(false)}
         onApplyPolicies={handleApplyPoliciesFromModal}
         initialSelectedPolicyIds={[...existingPolicies.map(policy => policy.id), ...newPolicies.map(policy => policy.id)]}
-        setNewPolicies = {setNewPolicies}
+        setNewPolicies={setNewPolicies}
       />
       <Policy
         isEmbedded={true}
