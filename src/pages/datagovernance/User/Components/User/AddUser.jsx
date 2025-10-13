@@ -332,7 +332,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl w-[1000px] p-8">
+      <div className="bg-white rounded-2xl w-[1200px] max-w-[95vw] p-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
             <div>
@@ -351,8 +351,8 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-8">
-          <div className="space-y-3">
+        <div className="grid grid-cols-11 gap-8">
+          <div className="col-span-3 space-y-3">
             <h3 className="text-[#8e78b7] font-medium">Login Credentials</h3>
             <div className="space-y-4">
               <div>
@@ -391,14 +391,14 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Confirm password"
-                  className={`w-full p-1.5 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
+                  className={`w-full p-2.5 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.confirmPassword && <p className="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>}
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="col-span-4 space-y-3">
             <h3 className="text-[#8e78b7] font-medium">Personal Details</h3>
             <div className="space-y-4">
               <div>
@@ -439,10 +439,11 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
               </div>
             </div>
           </div>
-          <div className="space-y-6">
+
+          <div className="col-span-4 space-y-6">
             <h3 className="text-[#8e78b7] font-medium">Access Policies</h3>
             <div className="space-y-3">
-              <div className="space-y-4 mt-9">
+              <div className="space-y-4 mt-10">
                 <button
                   onClick={() => setIsPolicyModalOpen(true)}
                   className="w-full px-4 py-2 border border-gray-400 rounded-lg bg-gray-100 hover:bg-[#8e78b7] hover:text-white transition-colors text-black"
@@ -469,7 +470,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                         <span className="ml-2 text-sm text-gray-600">Loading policy names...</span>
                       </div>
                     ) : (
-                      <div className="max-h-52 overflow-y-auto space-y-2 pr-2">
+                      <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
                         {allPolicies.map((policy, index) => (
                           <div key={policy.id} className="bg-white p-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors">
                             <div className="flex items-start gap-2">
