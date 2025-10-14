@@ -39,7 +39,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
 
 const TableRowSkeleton = () => (
   <tr className="border-b animate-pulse">
-    {Array.from({ length: 8 }).map((_, i) => (
+    {Array.from({ length: 7 }).map((_, i) => (
       <td key={i} className="p-3">
         <div className="h-4 bg-gray-200 rounded w-full"></div>
       </td>
@@ -165,7 +165,6 @@ const Reports = () => {
   const filteredReports = reports.filter(report => {
     const searchLower = searchQuery.toLowerCase();
     return (
-      report.ref_number?.toLowerCase().includes(searchLower) ||
       report.report_name?.toLowerCase().includes(searchLower) ||
       report.status?.toLowerCase().includes(searchLower) ||
       report.remarks?.toLowerCase().includes(searchLower) ||
@@ -326,10 +325,9 @@ const Reports = () => {
                 <thead className="bg-gray-800 text-white" style={{ userSelect: 'none' }}>
                   <tr>
                     <th className="text-left p-3 font-semibold tracking-wider" style={{ width: '80px' }}>S.No</th>
-                    <th className="text-left p-3 font-semibold tracking-wider">Reference Number</th>
+                    <th className="text-left p-3 font-semibold tracking-wider">Owner</th>
                     <th className="text-left p-3 font-semibold tracking-wider">Report Name</th>
-                    <th className="text-left p-3 font-semibold tracking-wider">Date & Time</th>
-                    <th className="text-left p-3 font-semibold tracking-wider" style={{ width: '150px' }}>Owner</th>
+                    <th className="text-left p-3 font-semibold tracking-wider">Date</th>
                     <th className="text-left p-3 font-semibold tracking-wider" style={{ width: '120px' }}>Status</th>
                     <th className="text-left p-3 font-semibold tracking-wider">Remarks</th>
                     <th className="text-left p-3 font-semibold tracking-wider" style={{ width: '100px' }}>Download</th>
@@ -379,40 +377,40 @@ const Reports = () => {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-800 text-white">
+                <thead className="bg-gray-800 text-white" style={{ userSelect: 'none' }}>
                   <tr>
-                    <th className="text-left p-3 font-semibold tracking-wider">S.No</th>
+                    <th className="text-left p-3 font-semibold tracking-wider bg-gray-800">S.No</th>
                     <th
-                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors select-none"
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors bg-gray-800"
                       onClick={() => handleSort('user_id')}
                     >
                       Owner {getSortIcon('user_id')}
                     </th>
                     <th
-                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors select-none"
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors bg-gray-800"
                       onClick={() => handleSort('report_name')}
                     >
                       Report Name {getSortIcon('report_name')}
                     </th>
                     <th
-                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors select-none"
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors bg-gray-800"
                       onClick={() => handleSort('report_date_time')}
                     >
                       Date {getSortIcon('report_date_time')}
                     </th>
                     <th
-                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors select-none"
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors bg-gray-800"
                       onClick={() => handleSort('status')}
                     >
                       Status {getSortIcon('status')}
                     </th>
                     <th
-                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors select-none"
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors bg-gray-800"
                       onClick={() => handleSort('remarks')}
                     >
                       Remarks {getSortIcon('remarks')}
                     </th>
-                    <th className="text-left p-3 font-semibold tracking-wider">Download</th>
+                    <th className="text-left p-3 font-semibold tracking-wider bg-gray-800">Download</th>
                   </tr>
                 </thead>
                 <tbody>
