@@ -39,7 +39,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPe
 
 const TableRowSkeleton = () => (
   <tr className="border-b animate-pulse">
-    {Array.from({ length: 7 }).map((_, i) => (
+    {Array.from({ length: 8 }).map((_, i) => (
       <td key={i} className="p-3">
         <div className="h-4 bg-gray-200 rounded w-full"></div>
       </td>
@@ -79,12 +79,7 @@ const Reports = () => {
       setLoading(true);
       setError(null);
 
-      const userId = decodedToken?.preferred_username;
-      if (!userId) {
-        throw new Error('User ID not found');
-      }
-
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/listReport?user_id=${userId}`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/listReport/governance Reporting`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -113,12 +108,7 @@ const Reports = () => {
     const toastId = toast.loading('Refreshing reports...');
 
     try {
-      const userId = decodedToken?.preferred_username;
-      if (!userId) {
-        throw new Error('User ID not found');
-      }
-
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/listReport?user_id=${userId}`, {
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/listReport/governance Reporting`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -179,6 +169,7 @@ const Reports = () => {
       report.report_name?.toLowerCase().includes(searchLower) ||
       report.status?.toLowerCase().includes(searchLower) ||
       report.remarks?.toLowerCase().includes(searchLower) ||
+      report.user_id?.toLowerCase().includes(searchLower) ||
       formatDateTime(report.report_date_time).toLowerCase().includes(searchLower)
     );
   });
@@ -220,7 +211,7 @@ const Reports = () => {
     setCurrentPage(1);
   };
 
-  const handleDownload = async (fileUrl, refnum, reportName,) => {
+  const handleDownload = async (fileUrl, refnum, reportName) => {
     const toastId = toast.loading('Downloading report...');
 
     try {
@@ -332,15 +323,16 @@ const Reports = () => {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-800 text-white">
+                <thead className="bg-gray-800 text-white" style={{ userSelect: 'none' }}>
                   <tr>
-                    <th className="text-left p-3 font-semibold tracking-wider">S.No</th>
+                    <th className="text-left p-3 font-semibold tracking-wider" style={{ width: '80px' }}>S.No</th>
                     <th className="text-left p-3 font-semibold tracking-wider">Reference Number</th>
                     <th className="text-left p-3 font-semibold tracking-wider">Report Name</th>
                     <th className="text-left p-3 font-semibold tracking-wider">Date & Time</th>
-                    <th className="text-left p-3 font-semibold tracking-wider">Status</th>
+                    <th className="text-left p-3 font-semibold tracking-wider" style={{ width: '150px' }}>Owner</th>
+                    <th className="text-left p-3 font-semibold tracking-wider" style={{ width: '120px' }}>Status</th>
                     <th className="text-left p-3 font-semibold tracking-wider">Remarks</th>
-                    <th className="text-left p-3 font-semibold tracking-wider">Download</th>
+                    <th className="text-left p-3 font-semibold tracking-wider" style={{ width: '100px' }}>Download</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -391,31 +383,31 @@ const Reports = () => {
                   <tr>
                     <th className="text-left p-3 font-semibold tracking-wider">S.No</th>
                     <th
-                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors"
-                      onClick={() => handleSort('ref_number')}
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors select-none"
+                      onClick={() => handleSort('user_id')}
                     >
-                      Reference Number {getSortIcon('ref_number')}
+                      Owner {getSortIcon('user_id')}
                     </th>
                     <th
-                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors"
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors select-none"
                       onClick={() => handleSort('report_name')}
                     >
                       Report Name {getSortIcon('report_name')}
                     </th>
                     <th
-                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors"
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors select-none"
                       onClick={() => handleSort('report_date_time')}
                     >
                       Date {getSortIcon('report_date_time')}
                     </th>
                     <th
-                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors"
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors select-none"
                       onClick={() => handleSort('status')}
                     >
                       Status {getSortIcon('status')}
                     </th>
                     <th
-                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors"
+                      className="text-left p-3 font-semibold tracking-wider cursor-pointer hover:bg-gray-700 transition-colors select-none"
                       onClick={() => handleSort('remarks')}
                     >
                       Remarks {getSortIcon('remarks')}
@@ -429,14 +421,14 @@ const Reports = () => {
                       <td className="p-3 text-gray-700 font-medium">
                         {(currentPage - 1) * itemsPerPage + index + 1}
                       </td>
-                      <td className="p-3 text-gray-600">{report.ref_number}</td>
+                      <td className="p-3 text-gray-600">{report.user_id}</td>
                       <td className="p-3 text-gray-600">{report.report_name}</td>
                       <td className="p-3 text-gray-600">{formatDateTime(report.report_date_time)}</td>
                       <td className="p-3">{getStatusBadge(report.status)}</td>
                       <td className="p-3 text-gray-600">{report.remarks}</td>
                       <td className="p-3">
                         <button
-                          onClick={() => handleDownload(report.file_url, report.ref_number,report.report_name)}
+                          onClick={() => handleDownload(report.file_url, report.ref_number, report.report_name)}
                           disabled={report.status?.toLowerCase() !== 'completed'}
                           className={`inline-flex items-center p-2 rounded-lg transition-colors ${report.status?.toLowerCase() === 'completed'
                             ? 'text-green-600 hover:bg-green-700 hover:text-white cursor-pointer'
