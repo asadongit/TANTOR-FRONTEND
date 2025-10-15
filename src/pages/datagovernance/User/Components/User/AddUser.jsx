@@ -25,13 +25,21 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiResponse, setApiResponse] = useState({ status: null, message: '' });
   const { token } = useAuth();
-  const [existingPolicies, setExistingPolicies] = useState([]); 
+  const [existingPolicies, setExistingPolicies] = useState([]);
   const [newPolicies, setNewPolicies] = useState([]);
+  const [isFetchingPolicyNames, setIsFetchingPolicyNames] = useState(false);
 
-  // const allPolicies = [...existingPolicies, ...newPolicies];
-    const allPolicies = Array.from(
-    new Map([...existingPolicies, ...newPolicies].map(policy => [policy.id, policy])).values()
+  const allPolicies = Array.from(
+    new Map([...existingPolicies, ...newPolicies].map(policy => {
+      const normalizedPolicy = {
+        ...policy,
+        id: String(policy.id)
+      };
+      return [normalizedPolicy.id, normalizedPolicy];
+    })).values()
   );
+
+  console.log("all policies aree @@@ ", allPolicies)
 
   useEffect(() => {
     if (isOpen) {
@@ -62,6 +70,46 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     onClose();
   };
 
+  const fetchPolicyNames = async (policyIds) => {
+    if (!policyIds || policyIds.length === 0) return [];
+
+    setIsFetchingPolicyNames(true);
+    try {
+      const policyIdsAsNumbers = policyIds.map(id => parseInt(id));
+
+      const response = await fetch(`${window._env_?.VITE_FAST_API}/policy_name`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(policyIdsAsNumbers)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch policy names');
+      }
+
+      const data = await response.json();
+
+      const policies = data.map(policy => ({
+        id: String(policy.id),
+        name: policy.policy_name || `Policy ${policy.id}`
+      }));
+
+      return policies;
+    } catch (error) {
+      console.error('Error fetching policy names:', error);
+      const fallbackPolicies = policyIds.map(policyId => ({
+        id: String(policyId),
+        name: `Policy ${policyId}`
+      }));
+      return fallbackPolicies;
+    } finally {
+      setIsFetchingPolicyNames(false);
+    }
+  };
+
   const updateFormDataFromPolicies = (policies) => {
     const combinedRoles = new Set();
     const combinedPersonas = new Set();
@@ -70,18 +118,18 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     const dataPolicyIds = [...new Set(policies.map(policy => policy.id))];
 
     policies.forEach(policy => {
-        const addItemsToSet = (data, set) => {
-            if (Array.isArray(data)) {
-                data.forEach(item => item && set.add(item));
-            } else if (typeof data === 'string' && data) {
-                set.add(data);
-            }
-        };
+      const addItemsToSet = (data, set) => {
+        if (Array.isArray(data)) {
+          data.forEach(item => item && set.add(item));
+        } else if (typeof data === 'string' && data) {
+          set.add(data);
+        }
+      };
 
-        addItemsToSet(policy.roles, combinedRoles);
-        addItemsToSet(policy.persona, combinedPersonas);
-        addItemsToSet(policy.groups, combinedGroups);
-        addItemsToSet(policy.subgroups, combinedSubgroups);
+      addItemsToSet(policy.roles, combinedRoles);
+      addItemsToSet(policy.persona, combinedPersonas);
+      addItemsToSet(policy.groups, combinedGroups);
+      addItemsToSet(policy.subgroups, combinedSubgroups);
     });
 
     setFormData(prev => ({
@@ -100,10 +148,13 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     }));
   };
 
-  const handleApplyPoliciesFromModal = (appliedData) => {
-    const newExistingPolicies = appliedData.datapolicy.map(id => ({
-      id,
-      name: appliedData.sub_policy_name || `Policy ${id}`,
+  const handleApplyPoliciesFromModal = async (appliedData) => {
+    const policyIds = appliedData.datapolicy;
+    const fetchedPolicies = await fetchPolicyNames(policyIds);
+
+    const newExistingPolicies = fetchedPolicies.map(policy => ({
+      id: policy.id,
+      name: policy.name,
       roles: appliedData.roles || [],
       persona: appliedData.persona || [],
       groups: appliedData.groups || [],
@@ -111,7 +162,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     }));
 
     setExistingPolicies(newExistingPolicies);
-    // updateFormDataFromPolicies([...newExistingPolicies, ...newPolicies]);
     updateFormDataFromPolicies(newExistingPolicies);
     setIsPolicyModalOpen(false);
   };
@@ -119,7 +169,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
   const handlePolicyComplete = (policyDetails) => {
     const newPolicy = {
       id: policyDetails.id,
-      name: policyDetails.sub_policy_name || `Policy ${policyDetails.id}`,
+      name: policyDetails.policy_type || `Policy ${policyDetails.id}`,
       roles: policyDetails.roles || [],
       persona: policyDetails.persona || [],
       groups: policyDetails.group || [],
@@ -130,14 +180,6 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     updateFormDataFromPolicies([...existingPolicies, ...newPolicies, newPolicy]);
     setIsPolicyStepperOpen(false);
   };
-
-  // const handleRemovePolicy = (policyId) => {
-  //   const updatedExistingPolicies = existingPolicies.filter(policy => policy.id !== policyId);
-  //   const updatedNewPolicies = newPolicies.filter(policy => policy.id !== policyId);
-  //   setExistingPolicies(updatedExistingPolicies);
-  //   setNewPolicies(updatedNewPolicies);
-  //   updateFormDataFromPolicies([...updatedExistingPolicies, ...updatedNewPolicies]);
-  // };
 
   if (!isOpen) return null;
 
@@ -290,7 +332,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl w-[1000px] p-8">
+      <div className="bg-white rounded-2xl w-[1200px] max-w-[95vw] p-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
             <div>
@@ -309,8 +351,8 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-8">
-          <div className="space-y-3">
+        <div className="grid grid-cols-11 gap-8">
+          <div className="col-span-3 space-y-3">
             <h3 className="text-[#8e78b7] font-medium">Login Credentials</h3>
             <div className="space-y-4">
               <div>
@@ -349,14 +391,14 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Confirm password"
-                  className={`w-full p-1.5 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
+                  className={`w-full p-2.5 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.confirmPassword && <p className="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>}
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="col-span-4 space-y-3">
             <h3 className="text-[#8e78b7] font-medium">Personal Details</h3>
             <div className="space-y-4">
               <div>
@@ -397,10 +439,11 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
               </div>
             </div>
           </div>
-          <div className="space-y-6">
+
+          <div className="col-span-4 space-y-6">
             <h3 className="text-[#8e78b7] font-medium">Access Policies</h3>
             <div className="space-y-3">
-              <div className="space-y-4 mt-9">
+              <div className="space-y-4 mt-10">
                 <button
                   onClick={() => setIsPolicyModalOpen(true)}
                   className="w-full px-4 py-2 border border-gray-400 rounded-lg bg-gray-100 hover:bg-[#8e78b7] hover:text-white transition-colors text-black"
@@ -419,35 +462,38 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                 </button>
 
                 {allPolicies.length > 0 && (
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-sm font-medium mb-2">Assigned Policies:</p>
-                    <div className="max-h-52 overflow-y-auto space-y-2">
-                      {allPolicies.map(policy => (
-                        <div key={policy.id} className="flex bg-white p-2 rounded border border-gray-100">
-                          <div>
-                            <p className="text-sm">
-                              Policy ID : {policy.id}
-                            </p>
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm font-medium mb-3 text-gray-700">Assigned Policies:</p>
+                    {isFetchingPolicyNames ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader className="h-5 w-5 animate-spin text-[#8e78b7]" />
+                        <span className="ml-2 text-sm text-gray-600">Loading policy names...</span>
+                      </div>
+                    ) : (
+                      <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
+                        {allPolicies.map((policy, index) => (
+                          <div key={policy.id} className="bg-white p-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors">
+                            <div className="flex items-start gap-2">
+                              <span className="text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
+                              <div className="flex-1 min-w-0">
+                                <p
+                                  className="text-sm font-medium text-gray-900 truncate"
+                                  title={policy.name}
+                                >
+                                  {policy.name}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          {/* <button
-                            onClick={() => handleRemovePolicy(policy.id)}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            <X className="h-4 w-4" />
-                          </button> */}
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {errors.policyAssignment && (
                   <p className="mt-2 text-sm text-red-500">{errors.policyAssignment}</p>
                 )}
-
-                {/* <p className="mt-2 text-sm text-gray-600">
-                  Policies will determine the user's roles, persona, groups, and sub-groups.
-                </p> */}
               </div>
             </div>
           </div>
@@ -482,7 +528,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
         onClose={() => setIsPolicyModalOpen(false)}
         onApplyPolicies={handleApplyPoliciesFromModal}
         initialSelectedPolicyIds={[...existingPolicies.map(policy => policy.id), ...newPolicies.map(policy => policy.id)]}
-        setNewPolicies = {setNewPolicies}
+        setNewPolicies={setNewPolicies}
       />
       <Policy
         isEmbedded={true}

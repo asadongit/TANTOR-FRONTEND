@@ -134,8 +134,8 @@ const LineageFilters = ({
 }) => {
   return (
     <div className="flex flex-wrap gap-4 items-end">
-      <MultiSelectDropdown title="Connections" options={connectionOptions} selected={selectedConnections} toggleOption={handleConnectionsToggle} isLoading={isConnectionsLoading} />
-      <MultiSelectDropdown title="Database" options={databaseOptions} selected={selectedDatabases} toggleOption={handleDatabasesToggle} disabled={selectedConnections.length === 0} disabledText="Select a Connection" onOpen={handleDatabaseOpen} isLoading={isDatabaseLoading} />
+      <MultiSelectDropdown title="Database" options={connectionOptions} selected={selectedConnections} toggleOption={handleConnectionsToggle} isLoading={isConnectionsLoading} />
+      <MultiSelectDropdown title="Connection" options={databaseOptions} selected={selectedDatabases} toggleOption={handleDatabasesToggle} disabled={selectedConnections.length === 0} disabledText="Select a Connection" onOpen={handleDatabaseOpen} isLoading={isDatabaseLoading} />
       <MultiSelectDropdown title="Schema" options={schemaOptions} selected={selectedSchemas} toggleOption={handleSchemasToggle} disabled={selectedDatabases.length === 0} disabledText="Select a Database" onOpen={handleSchemaOpen} isLoading={isSchemaLoading} />
       <MultiSelectDropdown title="Type" options={typeOptions} selected={selectedTypes} toggleOption={handleTypesToggle} hasSelectAll={true} disabled={selectedSchemas.length === 0} disabledText="Select a Schema" />
       <button onClick={fetchTableData} disabled={isShowDataDisabled} className="px-4 py-2 bg-[#8d77ba] text-white font-semibold rounded-md shadow-sm hover:opacity-90 disabled:bg-gray-300 disabled:cursor-not-allowed">
@@ -187,7 +187,7 @@ const LineageTable = ({
                 onClick={() => onSort('connection')}
               >
                 <span className="inline-flex items-center">
-                  Connection
+                  Database
                   {getSortIcon('connection')}
                 </span>
               </th>
@@ -196,7 +196,7 @@ const LineageTable = ({
                 onClick={() => onSort('database')}
               >
                 <span className="inline-flex items-center">
-                  Database
+                  Connection
                   {getSortIcon('database')}
                 </span>
               </th>

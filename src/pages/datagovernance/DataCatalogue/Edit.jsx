@@ -1,4 +1,4 @@
-import { Pencil, CircleX, Plus, X, ChevronDown, Loader2, Search } from 'lucide-react';
+import { Pencil, CircleX, Plus, X, ChevronDown, Loader2, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import AddCatalogueModal from '../BusinessCatalogue/AddCatalogueModal';
@@ -481,6 +481,84 @@ const Edit = ({ onClose, editDetails, type }) => {
     setSubTags([]);
   };
 
+  const handleRemoveLinkage = async () => {
+    setSaveError('');
+    setIsSaving(true);
+
+    let payload;
+    let endpoint;
+
+    if (type === 'column') {
+      const element = editDetails.connection_set.map(connection => ({
+        connection_set: [{
+          connection_name: connection.connection_name,
+          table_schema: connection.table_schema,
+          table_name: connection.table_name,
+          column: connection.column_name
+        }],
+        id_set: [{
+          column_name: connection.column_name,
+          domain_id: [],
+          category_id: [],
+          sub_category_id: [],
+          term_id: [],
+          tag_id: [],
+          sub_tag_id: []
+        }]
+      }));
+      const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+      const creatorArray = creatorRoles.map(role =>
+        role.startsWith('persona:') ? role.replace('persona:', '') : role
+      );
+      endpoint = `${window._env_?.VITE_FAST_API}/data_catalogue/add_catalogue_element_column`;
+      payload = {
+        elements: element,
+        roles: creatorArray || [],
+        owner: decodedToken?.preferred_username
+      };
+    } else {
+      endpoint = `${window._env_?.VITE_FAST_API}/data_catalogue/add_catalogue_element_table`;
+      const creatorRoles = decodedToken?.resource_access?.darch?.roles || [];
+      const creatorArray = creatorRoles.map(role =>
+        role.startsWith('persona:') ? role.replace('persona:', '') : role
+      );
+      payload = {
+        elements: [{
+          connection_set: editDetails.connection_set,
+          id_set: [{
+            domain_id: [],
+            category_id: [],
+            sub_category_id: [],
+            tag_id: [],
+            sub_tag_id: []
+          }]
+        }],
+        roles: creatorArray || [],
+        owner: decodedToken?.preferred_username
+      };
+    }
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      onClose();
+      toast.success(data.message || "Catalogue linkage removed successfully")
+    } catch (error) {
+      console.error('Error removing catalogue linkage:', error);
+      setSaveError(`Failed to remove linkage`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaveError('');
     setIsSaving(true);
@@ -553,20 +631,24 @@ const Edit = ({ onClose, editDetails, type }) => {
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        let errorMessage = errorData.detail || `Failed to save details`;
+        errorMessage = errorMessage.replace(/^\d{3}:\s*/, '');
+        throw new Error(errorMessage);
       }
       const data = await response.json();
       onClose();
       toast.success(data.message || "Saved Successfully")
     } catch (error) {
       console.error('Error saving catalogue element:', error);
-      setSaveError(`Failed to save details`);
+      setSaveError(error.message || `Failed to save details`);
     } finally {
       setIsSaving(false);
     }
   };
 
   const formSectionClass = 'w-full';
+
+  const hasSelection = [selectedDomains, selectedCategories, selectedSubCategories, selectedTags, selectedSubTags, selectedTerms].some(arr => arr.length > 0);
 
   if (isLoading) {
     return (
@@ -617,18 +699,32 @@ const Edit = ({ onClose, editDetails, type }) => {
 
           {/* DOMAIN */}
           <div className={formSectionClass}>
-            <div className='flex justify-between items-center mb-2'>
+            <div className='flex justify-between items-center my-2'>
               <div className='font-medium'>Domain</div>
-              {isUserAuthorized && (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className='flex items-center gap-x-1.5 px-3 py-1 rounded-md text-sm font-semibold bg-[#8d77ba] text-white hover:bg-opacity-90'
-                  aria-label="Add new catalogue item"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add
-                </button>
-              )}
+              <div className='flex items-center gap-x-2'>
+                {isUserAuthorized && (
+                  <>
+                    <button
+                      onClick={() => setIsModalOpen(true)}
+                      className='flex items-center gap-x-1.5 px-3 py-1 rounded-md text-sm font-semibold bg-[#8d77ba] text-white hover:bg-opacity-90'
+                      aria-label="Add new catalogue item"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add
+                    </button>
+                    <button
+                      onClick={handleRemoveLinkage}
+                      title="Remove Catalogue Linkage"
+                      className='flex items-center gap-x-1.5 px-3 py-1 rounded-md text-sm font-semibold border border-gray-400 text-gray-600 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                      aria-label="Remove catalogue linkage"
+                      disabled={isSaving || !hasSelection}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Remove
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             <div className='flex justify-between items-start gap-x-2'>
               <MultiSelectDropdown

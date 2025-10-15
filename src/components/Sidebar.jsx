@@ -44,6 +44,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const isGlobalAdmin = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'global-admin');
   const isPolicyManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:policy manager');
   const isUserManager = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:user manager');
+  const isDataAuditor = decodedToken?.resource_access?.darch?.roles?.some(role => role.toLowerCase() === 'persona:data auditor');
 
   const toggleExpand = (e, routeName) => {
     e.preventDefault();
@@ -133,7 +134,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     },
     { type: 'divider' },
     { name: 'Databot', icon: Bot, path: `${DATAGOVERNANCE_PREFIX}/databot` },
-    { name: 'Reports', icon: DocumentTextIcon, path: `${DATAGOVERNANCE_PREFIX}/reports` },
+    { name: 'Reports', icon: DocumentTextIcon, path: `${DATAGOVERNANCE_PREFIX}/reports`, requiresDataAuditor: true },
     { name: 'Import', icon: ArrowsPointingInIcon, path: `${DATAGOVERNANCE_PREFIX}/import` },
     { name: 'Custom Addition', icon: ArrowsPointingOutIcon, path: `${DATAGOVERNANCE_PREFIX}/custom-addition` },
   ];
@@ -141,6 +142,7 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
   const dataGovernanceRoutes = allDataGovernanceRoutes
     .map(route => {
       if (route.requiresUserManager && !isUserManager) return null;
+      if (route.requiresDataAuditor && !isDataAuditor) return null;
       if (route.subItems) {
         const filteredSubItems = route.subItems.filter(
           subItem => !subItem.requiresPolicyManager || isPolicyManager

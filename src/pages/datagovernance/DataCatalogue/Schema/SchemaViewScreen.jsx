@@ -11,6 +11,7 @@ import {
   FilePenLine,
   ChevronLeft,
   ChevronRight,
+  Network,
 } from "lucide-react";
 import CompositeViewComponent from "../Schema/CompositeViewComponent";
 import SchemaDetailsViewComponent from "./SchemaDetailsViewComponenet";
@@ -362,7 +363,7 @@ const SchemaViewScreen = () => {
               <button title="Back" onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
                 <ChevronLeft className="h-6 w-6" />
               </button>
-              <span className="text-[#8d77ba]"><Database /></span>
+              <span className="text-[#8d77ba]"><Network /></span>
               <h1 className="font-medium text-xl">{schema?.schema}</h1>
             </div>
 

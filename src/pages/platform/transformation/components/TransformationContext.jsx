@@ -101,7 +101,6 @@ function transformationReducer(state, action) {
           }
         }, 0);
       }
-
       return updatedSourceState;
 
     case ACTION_TYPES.REMOVE_SOURCE:
@@ -494,62 +493,159 @@ export function TransformationProvider({ children }) {
         return sourceIds.includes(conn.source) && transformationNodes.includes(conn.target);
       });
 
+      // sourceConnections.forEach((conn) => {
+      //   const sourceId = conn.source;
+      //   const sourceData = state.sources[sourceId];
+
+      //   if (sourceData) {
+      //     const sourceKey = sourceData.alias || `source_${sourceId}`;
+
+      //     const originalColumns = state.originalSourceColumns[sourceId] || [];
+
+      //     if (sourceData.sourceType === "file") {
+      //       const fileColumns = sourceData.fileColumns || [];
+      //       const columnMapping = {};
+
+      //       fileColumns
+      //         .filter(col => col.name && col.name.trim() !== "")
+      //         .forEach(col => {
+      //           columnMapping[col.name] =
+      //             col.datatype === 'custom'
+      //               ? (col.customDatatype || 'custom')
+      //               : col.datatype;
+      //         });
+
+      //       result.source[sourceKey] = {
+      //         sourceType: sourceData.fileType?.toLowerCase() || "csv",
+      //         sourceConnName: "",
+      //         // sourceConnId: "",
+      //         column: [columnMapping],
+      //         ConnectionParameters: {
+      //           sourceFilePath: sourceData.filePath || "",
+      //           sourceFileName: sourceData.fileName || "",
+      //         },
+      //         readParameters: {
+      //           watermarkColumn: "",
+      //           watermarkColumnDataType: ""
+      //         },
+      //         EnableCountLogging: sourceData.enableCountLogging === true
+      //       };
+      //     } else {
+      //       result.source[sourceKey] = {
+      //         sourceType: sourceData.connectionType || "unknown",
+      //         sourceConnName: sourceData.connection || "unknown",
+      //         sourceConnId: sourceData.connectionId || "",
+      //         column: originalColumns,
+      //         ConnectionParameters: {
+      //           sourceSchema: sourceData.schema || "",
+      //           sourceTable: sourceData.table || ""
+      //         },
+      //         readParameters: {
+      //           watermarkColumn: "",
+      //           watermarkColumnDataType: ""
+      //         },
+      //         EnableCountLogging: sourceData.enableCountLogging === true
+      //       };
+      //     }
+      //   }
+      // });
       sourceConnections.forEach((conn) => {
-        const sourceId = conn.source;
-        const sourceData = state.sources[sourceId];
+  const sourceId = conn.source;
+  const sourceData = state.sources[sourceId];
 
-        if (sourceData) {
-          const sourceKey = sourceData.alias || `source_${sourceId}`;
+  if (sourceData) {
+    const sourceKey = sourceData.alias || `source_${sourceId}`;
+    const originalColumns = state.originalSourceColumns[sourceId] || [];
 
-          const originalColumns = state.originalSourceColumns[sourceId] || [];
+    if (sourceData.sourceType === "file") {
+      const fileColumns = sourceData.fileColumns || [];
+      const columnMapping = {};
 
-          if (sourceData.sourceType === "file") {
-            const fileColumns = sourceData.fileColumns || [];
-            const columnMapping = {};
+      fileColumns
+        .filter(col => col.name && col.name.trim() !== "")
+        .forEach(col => {
+          columnMapping[col.name] =
+            col.datatype === 'custom'
+              ? (col.customDatatype || 'custom')
+              : col.datatype;
+        });
 
-            fileColumns
-              .filter(col => col.name && col.name.trim() !== "")
-              .forEach(col => {
-                columnMapping[col.name] =
-                  col.datatype === 'custom'
-                    ? (col.customDatatype || 'custom')
-                    : col.datatype;
-              });
+      result.source[sourceKey] = {
+        sourceType: sourceData.fileType?.toLowerCase() || "csv",
+        sourceConnName: "",
+        column: [columnMapping],
+        ConnectionParameters: {
+          sourceFilePath: sourceData.filePath || "",
+          sourceFileName: sourceData.fileName || "",
+        },
+        readParameters: {
+          watermarkColumn: "",
+          watermarkColumnDataType: ""
+        },
+        EnableCountLogging: sourceData.enableCountLogging === true
+      };
+    } else {
+      // Check if this is a source-query mode
+      if (sourceData.objectType === 'source-query') {
+        const queryColumns = sourceData.fileColumns || [];
+        const columnMapping = {};
 
-            result.source[sourceKey] = {
-              sourceType: sourceData.fileType?.toLowerCase() || "csv",
-              sourceConnName: "",
-              // sourceConnId: "",
-              column: [columnMapping],
-              ConnectionParameters: {
-                sourceFilePath: sourceData.filePath || "",
-                sourceFileName: sourceData.fileName || "",
-              },
-              readParameters: {
-                watermarkColumn: "",
-                watermarkColumnDataType: ""
-              },
-              EnableCountLogging: sourceData.enableCountLogging === true
-            };
-          } else {
-            result.source[sourceKey] = {
-              sourceType: sourceData.connectionType || "unknown",
-              sourceConnName: sourceData.connection || "unknown",
-              sourceConnId: sourceData.connectionId || "",
-              column: originalColumns,
-              ConnectionParameters: {
-                sourceSchema: sourceData.schema || "",
-                sourceTable: sourceData.table || ""
-              },
-              readParameters: {
-                watermarkColumn: "",
-                watermarkColumnDataType: ""
-              },
-              EnableCountLogging: sourceData.enableCountLogging === true
-            };
-          }
+        queryColumns
+          .filter(col => col.name && col.name.trim() !== "")
+          .forEach(col => {
+            
+            columnMapping[col.name] = 
+              col.datatype === 'custom'
+                ? (col.customDatatype || 'custom')
+                : col.datatype;
+          });
+          
+
+        result.source[sourceKey] = {
+          sourceType: sourceData.connectionType || "unknown",
+          sourceConnName: sourceData.connection || "unknown",
+          sourceConnId: sourceData.connectionId || "",
+          sourceQualifier: sourceData.customQuery,
+          objectType: "source-query",
+          column: [columnMapping], 
+          ConnectionParameters: {
+            sourceSchema: sourceData.schema || "",
+            sourceTable: sourceData.table || "" 
+          },
+          readParameters: {
+            watermarkColumn: "",
+            watermarkColumnDataType: ""
+          },
+          EnableCountLogging: sourceData.enableCountLogging === true
+        };
+        
+      } else {
+        // Handle regular database sources (tables, views, procedures)
+        result.source[sourceKey] = {
+          sourceType: sourceData.connectionType || "unknown",
+          sourceConnName: sourceData.connection || "unknown",
+          sourceConnId: sourceData.connectionId || "",
+          column: originalColumns,
+          ConnectionParameters: {
+            sourceSchema: sourceData.schema || "",
+            sourceTable: sourceData.table || ""
+          },
+          readParameters: {
+            watermarkColumn: "",
+            watermarkColumnDataType: ""
+          },
+          EnableCountLogging: sourceData.enableCountLogging === true
+        };
+
+        // Add objectType for procedures/views if it exists
+        if (sourceData.objectType && sourceData.objectType !== 'source-query') {
+          result.source[sourceKey].objectType = sourceData.objectType;
         }
-      });
+      }
+    }
+  }
+});
+
 
       // target
       const targetConnections = state.connections.filter(conn => {
@@ -792,6 +888,8 @@ export function useTrackConnections(nodes, edges) {
                 schema: data.schema,
                 table: data.table,
                 columns: data.columns,
+                customQuery: data.customQuery, 
+                fileColumns: data.fileColumns,
                 objectType: data.objectType,
                 preProcedures: data.preProcedures,
                 postProcedures: data.postProcedures

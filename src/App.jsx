@@ -59,7 +59,9 @@ function App() {
                 element={
                   <DatabotProvider>
                   <div className="min-h-screen bg-gray-50">
-                    <Header />
+                    <Header
+                     activeSection={activeSection}
+                    />
                     <Chatbot />
                     <div className="flex">
                       <Sidebar

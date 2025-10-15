@@ -106,13 +106,25 @@ function Tables() {
         navigationState?.connectionName
       ) {
         dataToProcess = allTablesRawData.filter(item =>
-          item.table_schema === navigationState.schemaName &&
-          item.connection_name === navigationState.connectionName
+          item.table_schema?.toLowerCase() === navigationState.schemaName?.toLowerCase() &&
+          item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase()
+        );
+      }
+      else if (
+        navigationState?.type === 'table' &&
+        navigationState?.table &&
+        navigationState?.schemaName &&
+        navigationState?.connectionName
+      ) {
+        dataToProcess = allTablesRawData.filter(item =>
+          item.table_name?.toLowerCase() === navigationState.table?.toLowerCase() &&
+          item.table_schema?.toLowerCase() === navigationState.schemaName?.toLowerCase() &&
+          item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase()
         );
       }
       else if (navigationState?.type === 'database' && navigationState?.connectionName) {
         dataToProcess = allTablesRawData.filter(item =>
-          item.connection_name === navigationState.connectionName
+          item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase()
         );
       }
 

@@ -61,6 +61,7 @@ const Step7 = ({ setIsOpen, policyData, setActiveStep, fetchPolicyListData, isEd
                 persona: policyData.user_selections.persona ? [policyData.user_selections.persona] : [],
                 id: data.id,
                 sub_policy_name: policyData.sub_policy_name,
+                policy_type:policyData.policy_type,
                 datapolicy: [data.id]
             });
 
