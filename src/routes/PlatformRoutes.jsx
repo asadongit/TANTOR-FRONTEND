@@ -36,6 +36,8 @@ import KafkaDashboard from '../pages/platform/cdc/kafkaDashboard/KafkaDashboard'
 import MonitoringDashboard from '../pages/platform/monitoring/MonitoringDashboard';
 import { MonitoringProvider } from '../pages/platform/monitoring/context/MonitoringContext';
 
+import Audit from '../pages/platform/Audit/Audit';
+
 
 export function PlatformRoutes() {
   return (
@@ -75,6 +77,7 @@ export function PlatformRoutes() {
             <MonitoringDashboard />
           </MonitoringProvider>
           } />
+        <Route path="/audit" element={<Audit />} />
       </Routes>
   );
 }

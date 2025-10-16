@@ -64,14 +64,19 @@ const Sidebar = ({ activeSection, isCollapsed, toggleSidebar }) => {
     { name: 'Connections', icon: LinkIcon, path: '/connections' },
     { name: 'Jobs', icon: BriefcaseIcon, path: '/jobs' },
     { name: 'Pipeline', icon: ArrowPathIcon, path: '/pipeline' },
-    { name: 'Reports', icon: DocumentTextIcon, path: '/report' },
     {
-      name: 'Business Reports',
-      icon: ArrowPathIcon,
-      path: '/config/rule',
+      name: 'Reports',
+      icon: DocumentTextIcon,
+      path: '/report',
       subItems: [
-        { name: 'Rules Configuration', path: '/config/rule' },
-        { name: 'Reports Configuration', path: '/config/report' },
+        {
+          name: 'Business Reports',
+          subItems: [
+            { name: 'Rules Config', path: '/config/rule' },
+            { name: 'Reports Config', path: '/config/report' },
+          ]
+        },
+        { name: 'Audit Report', path: '/audit' },
       ]
     },
     { type: 'divider' },
