@@ -193,6 +193,7 @@ export function SchedulerNode({ id, data, selected}) {
       });
   
       const responseData = await response.json();
+      // console.log("Response:", responseData);
       
       setTimeout(() => {
         setNodes([]);
