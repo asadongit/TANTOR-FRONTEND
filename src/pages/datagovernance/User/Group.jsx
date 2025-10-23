@@ -592,6 +592,7 @@ function Group() {
                                 width="24"
                                 height="24"
                               />
+                              
                               <span className="text-sm">
                                 {group.users.toString().padStart(2, "0")}
                               </span>
@@ -606,7 +607,7 @@ function Group() {
                                 />
                               )} */}
 
-                              
+
                               {togglingStatus === group.title ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
                               ) : (
