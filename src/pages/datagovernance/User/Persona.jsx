@@ -9,22 +9,58 @@ import { Icon } from "@iconify-icon/react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfirming }) => {
+const ConfirmationModal = ({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  title, 
+  message, 
+  isConfirming,
+  policyCount = null,
+  policyCountLoading = false 
+}) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center animate-fadeIn" onClick={onClose}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
-          <button title="Close" onClick={onClose} className="p-1 rounded-full hover:bg-gray-200"><X className="h-5 w-5 text-gray-600" /></button>
+          <button title="Close" onClick={onClose} className="p-1 rounded-full hover:bg-gray-200">
+            <X className="h-5 w-5 text-gray-600" />
+          </button>
         </div>
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100"><AlertTriangle className="h-6 w-6 text-red-600" /></div>
-          <div className="mt-1"><p className="text-sm text-gray-600">{message}</p></div>
+          <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+            <AlertTriangle className="h-6 w-6 text-red-600" />
+          </div>
+          <div className="mt-1 flex-1">
+            <p className="text-sm text-gray-600">{message}</p>
+            
+            {/* Policy Count Warning */}
+            {policyCountLoading ? (
+              <div className="mt-3 flex items-center gap-2">
+                <RefreshCcw className="h-4 w-4 text-gray-500 animate-spin" />
+                <p className="text-xs text-gray-500">Checking related policies...</p>
+              </div>
+            ) : policyCount !== null && policyCount > 0 ? (
+              <p className="text-xs text-orange-600 mt-3 font-medium">
+                ⚠️ This will also delete {policyCount} {policyCount === 1 ? "policy" : "policies"} linked to this persona.
+              </p>
+            ) : null}
+          </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none">Cancel</button>
-          <button onClick={onConfirm} disabled={isConfirming} className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none disabled:bg-red-300 disabled:cursor-wait">
+          <button 
+            onClick={onClose} 
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={onConfirm} 
+            disabled={isConfirming} 
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none disabled:bg-red-300 disabled:cursor-wait"
+          >
             {isConfirming ? 'Deleting...' : 'Delete'}
           </button>
         </div>
@@ -32,6 +68,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, isConfi
     </div>
   );
 };
+
 
 // Toggle Switch Component
 const ToggleSwitch = ({ enabled, onChange, disabled = false, size = 'md' }) => {
@@ -89,6 +126,9 @@ function Persona() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toggleStates, setToggleStates] = useState({});
   const [isCardViewVisible, setIsCardViewVisible] = useState(true);
+  const [policyCount, setPolicyCount] = useState(null);
+  const [policyCountLoading, setPolicyCountLoading] = useState(false);
+  
   const { token } = useAuth();
   const rowsPerPage = 10;
 
@@ -150,6 +190,40 @@ function Persona() {
       setIsTableLoading(false);
     }
   }, []);
+
+  
+  const fetchPolicyCount = async (personaName) => {
+    setPolicyCountLoading(true);
+    setPolicyCount(null);
+    
+    try {
+      const response = await fetch(
+        `${window._env_?.VITE_FAST_API}/auth/policies/count/persona/${encodeURIComponent(personaName)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to fetch policy count");
+        setPolicyCount(null);
+        return;
+      }
+
+      const data = await response.json();
+      setPolicyCount(data.policy_count);
+    } catch (error) {
+      console.error("Error fetching policy count:", error);
+      setPolicyCount(null);
+    } finally {
+      setPolicyCountLoading(false);
+    }
+  };
+
 
   const handleToggleStatus = async (personaName, currentEnabled) => {
     const toggleKey = `toggle-${personaName}`;
@@ -349,6 +423,9 @@ function Persona() {
     setItemToDelete(item);
     setIsDeleteModalOpen(true);
     setActiveMenu(null);
+    if (item?.name) {
+    fetchPolicyCount(item.name);
+  }
   };
 
   const handleConfirmDelete = async () => {
@@ -630,7 +707,20 @@ function Persona() {
         </div>
       )}
 
-      <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleConfirmDelete} title="Confirm Deletion" message={`Are you sure you want to delete the persona "${itemToDelete?.name}"? This action cannot be undone.`} isConfirming={isDeleting} />
+      <ConfirmationModal 
+  isOpen={isDeleteModalOpen} 
+  onClose={() => {
+    setIsDeleteModalOpen(false);
+    setPolicyCount(null);
+    setPolicyCountLoading(false);
+  }} 
+  onConfirm={handleConfirmDelete} 
+  title="Confirm Deletion" 
+  message={`Are you sure you want to delete the persona "${itemToDelete?.name}"? This action cannot be undone.`} 
+  isConfirming={isDeleting}
+  policyCount={policyCount}
+  policyCountLoading={policyCountLoading}
+/>
     </div>
   );
 }

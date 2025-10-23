@@ -88,11 +88,61 @@ function Group() {
     setActiveMenu(null);
   };
 
-  const toggleRole = async (index) => {
+  // const toggleRole = async (index) => {
+  //   const groupToUpdate = group[index];
+  //   const newStatus = !groupToUpdate.enabled;
+
+  //   setTogglingStatus(index);
+
+  //   try {
+  //     const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/groupstatus`, {
+  //       method: "PATCH",
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         name: groupToUpdate.title,
+  //         status: newStatus ? "Enabled" : "Disabled"
+
+  //       }),
+  //     });
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json().catch(() => ({}));
+  //       throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
+  //     }
+
+  //     const newGroup = [...group];
+  //     newGroup[index].enabled = newStatus;
+  //     setGroups(newGroup);
+
+  //     const updatedTableData = tableData.map(item => {
+  //       if (item.name === groupToUpdate.title) {
+  //         return {
+  //           ...item,
+  //           status: newStatus ? "Enabled" : "Disabled"
+  //         };
+  //       }
+  //       return item;
+  //     });
+  //     setTableData(updatedTableData);
+
+  //   } catch (error) {
+  //     console.error("Error updating group status:", error);
+  //   } finally {
+  //     setTogglingStatus(null);
+  //   }
+  // };
+  const toggleRole = async (identifier) => {
+    // identifier is group.title (stable name) instead of displayed index
+    const index = group.findIndex(g => g.title === identifier);
+    if (index === -1) return;
+
     const groupToUpdate = group[index];
     const newStatus = !groupToUpdate.enabled;
 
-    setTogglingStatus(index);
+    setTogglingStatus(identifier);
 
     try {
       const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/groupstatus`, {
@@ -104,7 +154,6 @@ function Group() {
         body: JSON.stringify({
           name: groupToUpdate.title,
           status: newStatus ? "Enabled" : "Disabled"
-
         }),
       });
 
@@ -543,17 +592,28 @@ function Group() {
                                 width="24"
                                 height="24"
                               />
+                              
                               <span className="text-sm">
                                 {group.users.toString().padStart(2, "0")}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {togglingStatus === index ? (
+                              {/* {togglingStatus === index ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
                               ) : (
                                 <Toggle
                                   enabled={group.enabled}
                                   onToggle={() => toggleRole(index)}
+                                />
+                              )} */}
+
+
+                              {togglingStatus === group.title ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
+                              ) : (
+                                <Toggle
+                                  enabled={group.enabled}
+                                  onToggle={() => toggleRole(group.title)}
                                 />
                               )}
                               <span

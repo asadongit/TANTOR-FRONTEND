@@ -57,11 +57,62 @@ const Role = () => {
     role.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const toggleRole = async (index) => {
+  // const toggleRole = async (index) => {
+  //   const roleToUpdate = roles[index];
+  //   const newStatus = !roleToUpdate.enabled;
+
+  //   setTogglingStatus(index);
+
+  //   try {
+  //     const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/rolestatus`, {
+  //       method: "PATCH",
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         name: roleToUpdate.title,
+  //         status: newStatus ? "Enabled" : "Disabled"
+  //       }),
+  //     });
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json().catch(() => ({}));
+  //       throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
+  //     }
+
+  //     const newRoles = [...roles];
+  //     newRoles[index].enabled = newStatus;
+  //     newRoles[index].attributes.Status = [newStatus ? "Enabled" : "Disabled"];
+  //     setRoles(newRoles);
+
+  //     const updatedTableData = tableData.map(item => {
+  //       if (item.name === roleToUpdate.title) {
+  //         return {
+  //           ...item,
+  //           status: newStatus ? "Enabled" : "Disabled"
+  //         };
+  //       }
+  //       return item;
+  //     });
+  //     setTableData(updatedTableData);
+
+  //   } catch (error) {
+  //     console.error("Error updating role status:", error);
+  //   } finally {
+  //     setTogglingStatus(null);
+  //   }
+  // };
+
+  const toggleRole = async (identifier) => {
+    // identifier is role.title (stable name) instead of displayed index
+    const index = roles.findIndex(r => r.title === identifier);
+    if (index === -1) return;
+
     const roleToUpdate = roles[index];
     const newStatus = !roleToUpdate.enabled;
 
-    setTogglingStatus(index);
+    setTogglingStatus(identifier);
 
     try {
       const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/rolestatus`, {
@@ -515,12 +566,23 @@ const Role = () => {
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {togglingStatus === index ? (
+                              
+                              {/* {togglingStatus === index ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
                               ) : (
                                 <Toggle
                                   enabled={role.enabled}
                                   onToggle={() => toggleRole(index)}
+                                />
+                              )} */}
+
+
+                              {togglingStatus === role.title ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]"></div>
+                              ) : (
+                                <Toggle
+                                  enabled={role.enabled}
+                                  onToggle={() => toggleRole(role.title)}
                                 />
                               )}
                               <span
