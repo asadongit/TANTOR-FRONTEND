@@ -116,6 +116,7 @@ function Subgroup() {
       const data = await response.json();
 
       const transformedData = data.map((subgroup) => ({
+        id: `${subgroup.group}-${subgroup.subgroup}`,
         title: subgroup.subgroup,
         parentGroup: subgroup.group,
         description: subgroup.attributes?.Description?.[0] ||
@@ -261,19 +262,35 @@ function Subgroup() {
     }
   };
 
-  const toggleRole = async (index) => {
-    const subgroup = subgroups[index];
+  const toggleRole = async (id) => {
+    const idx = subgroups.findIndex(s => s.id === id);
+    if (idx === -1) {
+      console.warn("Subgroup not found for id:", id);
+      return;
+    }
+
+    const subgroup = subgroups[idx];
     const newStatus = !subgroup.enabled;
 
-    setTogglingStatus(index);
-
+    setTogglingStatus(id);
     try {
       const result = await updateSubgroupStatus(subgroup.title, newStatus);
 
       if (result.success) {
         const newSubgroups = [...subgroups];
-        newSubgroups[index].enabled = newStatus;
+        newSubgroups[idx].enabled = newStatus;
         setSubgroups(newSubgroups);
+
+        const updatedTableData = tableData.map(item => {
+        if (item.name === subgroup.title) {
+          return {
+            ...item,
+            status: newStatus ? "Enabled" : "Disabled"
+          };
+        }
+        return item;
+      });
+      setTableData(updatedTableData);
 
         setToast({
           show: true,
@@ -281,7 +298,7 @@ function Subgroup() {
           type: 'success'
         });
 
-        await refreshAllData();
+        // await refreshAllData();
       } else {
         setToast({
           show: true,
@@ -485,9 +502,9 @@ function Subgroup() {
               {filteredSubgroups.length > 0 ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {displayedSubgroups.map((subgroup, index) => (
+                    {displayedSubgroups.map((subgroup) => (
                       <div
-                        key={index}
+                        key={subgroup.id}
                         className="bg-white rounded-lg shadow-sm border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1"
                       >
                         <div className="p-6">
@@ -505,12 +522,12 @@ function Subgroup() {
 
                             <div className="relative">
                               <button
-                                onClick={() => setActiveMenu(activeMenu === `card-${index}` ? null : `card-${index}`)}
+                                onClick={() => setActiveMenu(activeMenu === `card-${subgroup.id}` ? null : `card-${subgroup.id}`)}
                                 className="p-1.5 rounded-full hover:bg-gray-100"
                               >
                                 <MoreVertical className="h-5 w-5 text-gray-600" />
                               </button>
-                              {activeMenu === `card-${index}` && (
+                              {activeMenu === `card-${subgroup.id}` && (
                                 <>
                                   <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
                                   <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
@@ -556,12 +573,12 @@ function Subgroup() {
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {togglingStatus === index ? (
+                              {togglingStatus === subgroup.id ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#6a8caf]"></div>
                               ) : (
                                 <Toggle
                                   enabled={subgroup.enabled}
-                                  onToggle={() => toggleRole(index)}
+                                  onToggle={() => toggleRole(subgroup.id)}
                                 />
                               )}
                               <span
@@ -642,13 +659,13 @@ function Subgroup() {
                     <td className="py-3 px-4">
                       <div className="relative">
                         <button
-                          onClick={() => setActiveMenu(activeMenu === index ? null : index)}
+                          onClick={() => setActiveMenu(activeMenu === `row-${subgroup.id}` ? null : `row-${subgroup.id}`)}
                           className="p-1.5 rounded-full hover:bg-gray-100"
                         >
                           <MoreHorizontal className="h-5 w-5 text-gray-600" />
                         </button>
 
-                        {activeMenu === index && (
+                        {activeMenu === `row-${subgroup.id}` && (
                           <>
                             <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
                             <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
