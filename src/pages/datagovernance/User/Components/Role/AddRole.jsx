@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify-icon/react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Info } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
 
 const AddRole = ({ show, onClose, onSave }) => {
@@ -16,7 +16,7 @@ const AddRole = ({ show, onClose, onSave }) => {
   const [error, setError] = useState(null);
   const { token } = useAuth();
 
-  // Add useEffect to reset form when modal is closed
+  
   useEffect(() => {
     if (!show) {
       resetForm();
@@ -94,9 +94,11 @@ const AddRole = ({ show, onClose, onSave }) => {
         </div>
 
         <div className="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-          <div className="flex items-center gap-2 mb-6">
-            <Icon icon="material-symbols:supervisor-account-outline" width="18" height="18" className="text-[#8f79b8]" />
-            <h3 className="text-md font-bold text-[#8f79b8]">New role</h3>
+          <div className="flex items-center mb-6">
+            <h3 className="text-md font-bold text-[#8f79b8] mr-2">
+              Add Role
+            </h3>
+            <Info className="h-4 w-4 text-gray-400" />
           </div>
 
           {error && (
