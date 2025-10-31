@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { Icon } from "@iconify-icon/react";
 import { useAuth } from "../../../../../context/AuthContext";
 
 function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated }) {
@@ -33,6 +34,12 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // validate
+    if (!formData.new_name || !formData.new_name.trim()) {
+      setError("Subgroup name is required");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -43,22 +50,24 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          new_name: formData.new_name,
+          description: formData.description,
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Failed to update subgroup");
+        throw new Error(errorData.detail || `Error: ${response.status} ${response.statusText}`);
       }
 
-      // Close modal and refresh data
+      // Close modal and notify parent
       setShowModal(false);
-      if (onSubgroupUpdated) {
-        onSubgroupUpdated();
-      }
-    } catch (error) {
-      console.error("Error updating subgroup:", error);
-      setError(error.message || "Failed to update subgroup");
+      if (onSubgroupUpdated) onSubgroupUpdated();
+    } catch (err) {
+      console.error("Error updating subgroup:", err);
+      setError(err.message || "Failed to update subgroup. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -67,92 +76,117 @@ function EditSubgroup({ showModal, setShowModal, subgroupData, onSubgroupUpdated
   if (!showModal) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h3 className="text-lg font-semibold">Edit Subgroup</h3>
-          <button
-            onClick={() => setShowModal(false)}
-            className="p-1 rounded-full hover:bg-gray-100"
-          >
-            <X className="h-5 w-5" />
-          </button>
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center">
+        <div
+          className="fixed inset-0 transition-opacity"
+          onClick={() => !loading && setShowModal(false)}
+        >
+          <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
+        <form
+          onSubmit={handleSubmit}
+          className="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg"
+        >
+          <div className="flex items-center gap-2 mb-6">
+            <Icon icon="material-symbols:edit-outline" width="20" height="20" className="text-[#8f79b8]" />
+            <h3 className="text-md font-bold text-[#8f79b8]">
+              Edit Subgroup: {formData.new_name || subgroupData?.name}
+            </h3>
+
+            <button
+              type="button"
+              onClick={() => !loading && setShowModal(false)}
+              className="ml-auto p-1 rounded-full hover:bg-gray-100"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+          </div>
+
           {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
+            <div
+              className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg"
+              style={{
+                maxHeight: "120px",
+                overflowY: "auto",
+                wordBreak: "break-all",
+                whiteSpace: "pre-wrap",
+              }}
+            >
               {error}
             </div>
           )}
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Current Name
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              className="w-full px-3 py-2 border rounded-md bg-gray-100 text-gray-600"
-              disabled
-            />
-          </div>
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">
+                Current Name
+              </label>
+              <input
+                type="text"
+                value={subgroupData?.name || ""}
+                className="w-full px-3 py-2 border border-gray-400 rounded-lg bg-gray-100 cursor-not-allowed"
+                disabled
+              />
+            </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              New Name*
-            </label>
-            <input
-              type="text"
-              name="new_name"
-              value={formData.new_name}
-              onChange={handleChange}
-              required
-              placeholder="Enter new name"
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-          </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">
+                New Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="new_name"
+                value={formData.new_name}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
+                disabled={loading}
+                required
+              />
+            </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows={3}
-              placeholder="Enter description"
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-          </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
+                rows="6"
+                disabled={loading}
+              ></textarea>
+            </div>
 
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setShowModal(false)}
-              className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm bg-[#8e78b7] text-white rounded-md hover:bg-[#7d68a3] flex items-center"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                  Updating...
-                </>
-              ) : (
-                "Update Subgroup"
-              )}
-            </button>
+            <div className="flex justify-between items-center mt-6">
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  disabled={loading}
+                  className="w-20 px-4 py-2 text-white bg-[#8e78b7] border border-[#8e78b7] hover:bg-[#7d69a3] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-20 px-4 py-2 text-white bg-[#8e78b7] border border-[#8e78b7] hover:bg-[#7d69a3] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Updating...
+                    </>
+                  ) : (
+                    "Update"
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </form>
       </div>
