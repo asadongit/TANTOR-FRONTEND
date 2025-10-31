@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { X, AlertTriangle, CheckCircle, Loader } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
@@ -6,20 +7,55 @@ import { toast } from "react-toastify";
 const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [policyCount, setPolicyCount] = useState(null);
+  const [policyCountLoading, setPolicyCountLoading] = useState(false);
   const { token } = useAuth();
 
   useEffect(() => {
-    if (showModal) {
+    if (showModal && roleName) {
       setIsDeleted(false);
       setIsLoading(false);
+      fetchPolicyCount();
     }
   }, [showModal, roleName]);
+
+  const fetchPolicyCount = async () => {
+    setPolicyCountLoading(true);
+    try {
+      const response = await fetch(
+        `${window._env_?.VITE_FAST_API}/auth/policies/count/role/${encodeURIComponent(roleName)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to fetch policy count");
+        setPolicyCount(null);
+        return;
+      }
+
+      const data = await response.json();
+      setPolicyCount(data.policy_count);
+    } catch (error) {
+      console.error("Error fetching policy count:", error);
+      setPolicyCount(null);
+    } finally {
+      setPolicyCountLoading(false);
+    }
+  };
 
   if (!showModal || !roleName) return null;
 
   const handleClose = () => {
     setIsDeleted(false);
     setIsLoading(false);
+    setPolicyCount(null);
+    setPolicyCountLoading(false);
     setShowModal(false);
   };
 
@@ -42,11 +78,9 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
         throw new Error(errorData?.detail || "Failed to delete role");
       }
       setIsDeleted(true);
-      // toast.success(`Role "${roleName}" deleted successfully`);
       if (onConfirm) onConfirm();
     } catch (error) {
       console.error("Error deleting role:", error);
-      // toast.error(error.message || "Failed to delete role");
     } finally {
       setIsLoading(false);
     }
@@ -103,8 +137,22 @@ const DeleteRole = ({ showModal, setShowModal, roleName, onConfirm }) => {
                 <p className="text-lg font-medium text-gray-800">
                   You are about to delete the role "{roleName}"
                 </p>
+                
+                {/* Policy Count Warning - Before "This action cannot be undone" */}
+                {policyCountLoading ? (
+                  <div className="mt-2 flex items-center justify-center gap-2">
+                    <Loader className="h-4 w-4 text-gray-500 animate-spin" />
+                    <p className="text-gray-500">Checking related policies...</p>
+                  </div>
+                ) : policyCount !== null && policyCount > 0 ? (
+                  <p className="text-gray-500 mt-2">
+                    This will also delete {policyCount} {policyCount === 1 ? "policy" : "policies"} linked to "{roleName}"
+                  </p>
+                ) : null}
+                
                 <p className="text-gray-500 mt-2">This action cannot be undone.</p>
               </div>
+
               <p className="text-gray-600 text-center mb-6">Do you want to continue?</p>
 
               <div className="flex justify-center gap-4">
