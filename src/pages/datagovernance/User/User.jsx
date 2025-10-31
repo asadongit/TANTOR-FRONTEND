@@ -579,7 +579,7 @@ const currentUsers = users;
             </div>
 
             <div className="space-y-6 bg-gray-50 p-6 rounded-lg">
-              <div className="flex items-center justify-center mb-6">
+              <div className="flex items-center justify-start ">
                 <div className="h-24 w-24 rounded-full bg-[#8e78b7] text-white flex items-center justify-center text-3xl">
                   {selectedUser.username.charAt(0).toUpperCase()}
                 </div>
