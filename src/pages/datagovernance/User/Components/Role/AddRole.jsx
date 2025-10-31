@@ -16,8 +16,6 @@ const AddRole = ({ show, onClose, onSave }) => {
   const [error, setError] = useState(null);
   const { token } = useAuth();
 
-  const today = new Date().toISOString().split("T")[0];
-
   // Add useEffect to reset form when modal is closed
   useEffect(() => {
     if (!show) {
@@ -97,8 +95,8 @@ const AddRole = ({ show, onClose, onSave }) => {
 
         <div className="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
           <div className="flex items-center gap-2 mb-6">
-            <Icon icon="material-symbols:supervisor-account-outline" width="24" height="24" className="text-[#8f79b8]" />
-            <h3 className="text-lg font-bold text-[#8f79b8]">New role</h3>
+            <Icon icon="material-symbols:supervisor-account-outline" width="18" height="18" className="text-[#8f79b8]" />
+            <h3 className="text-md font-bold text-[#8f79b8]">New role</h3>
           </div>
 
           {error && (
@@ -123,17 +121,18 @@ const AddRole = ({ show, onClose, onSave }) => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
+                  className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
                   disabled={loading}
                 />
               </div>
+              
               <div className="flex-1">
                 <label className="block text-sm text-gray-700 mb-1">Description</label>
                 <input
                   type="text"
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
+                  className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
                   disabled={loading}
                 />
               </div>
@@ -144,36 +143,34 @@ const AddRole = ({ show, onClose, onSave }) => {
               <div className="flex items-center gap-4 mt-2">
                 <input
                   type="date"
-                  placeholder="From"
+                  placeholder="Start Date"
                   value={formData.duration.from}
-                  min={today}
                   onChange={(e) => setFormData({
                     ...formData,
                     duration: { ...formData.duration, from: e.target.value },
                   })}
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
+                  className="flex-1 h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
                   disabled={loading}
                 />
-                <span className="text-gray-400">→</span>
+                <span className="text-gray-400 px-2">→</span>
                 <input
                   type="date"
-                  placeholder="To"
+                  placeholder="End Date"
                   value={formData.duration.to}
-                  min={today}
                   onChange={(e) => setFormData({
                     ...formData,
                     duration: { ...formData.duration, to: e.target.value },
                   })}
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
+                  className="flex-1 h-10 px-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8f79b8] focus:border-transparent"
                   disabled={loading}
                 />
               </div>
             </div>
 
             <div className="flex justify-between items-center mt-6">
-              <div className="flex gap-3">
+              <div className="flex items-center gap-3">
                 <button
-                  className="px-4 py-2 text-[#8e78b7] border border-[#8e78b7] hover:bg-[#8e78b7] hover:text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-20 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   onClick={onClose}
                   disabled={loading}
                 >
@@ -181,7 +178,7 @@ const AddRole = ({ show, onClose, onSave }) => {
                 </button>
                 <button
                   onClick={handleSave}
-                  className="flex items-center justify-center gap-2 px-4 py-2 text-[#8e78b7] border border-[#8e78b7] hover:bg-[#8e78b7] hover:text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-20 flex items-center justify-center gap-2 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading}
                 >
                   {loading ? (
