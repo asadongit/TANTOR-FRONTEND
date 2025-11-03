@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight,ChevronDown } from 'lucide-react';
+import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight,ChevronDown,FolderX , UserRound} from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../components/Breadcrumb';
 import AddUser from './Components/User/AddUser';
@@ -392,14 +392,14 @@ const currentUsers = users;
         <table className="w-full">
           <thead>
             <tr className="bg-[#29304a] text-white text-sm">
-              <th className="text-left p-4">User</th>
-              <th className="text-left p-4">Roles</th>
-              <th className="text-left p-4">Persona</th>
-              <th className="text-left p-4">Group</th>
-              <th className="text-left p-4">Sub group</th>
-              <th className="text-left p-4">Status</th>
-              <th className="text-left p-4 last:rounded-tr-lg">Action</th>
-            </tr>
+            <th className="text-left" style={{ padding: '16px 19.75px' }}>User</th>
+              <th className="text-left" style={{ padding: '16px 19.75px' }}>Roles</th>
+              <th className="text-left" style={{ padding: '16px 19.75px' }}>Persona</th>
+              <th className="text-left" style={{ padding: '16px 19.75px' }}>Group</th>
+              <th className="text-left" style={{ padding: '16px 19.75px' }}>Sub group</th>
+              <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
+              <th className="text-left" style={{ padding: '16px 19.75px' }}>Action</th>
+          </tr>
           </thead>
           <tbody className="text-sm">
             {isPaginationLoading ? (
@@ -420,15 +420,20 @@ const currentUsers = users;
             ) : (
               users.map((user, index) => (
                 <tr key={user.id} className="border-b hover:bg-gray-50">
-                  <td className="p-4">
-                    <button
-                      className="text-[#8e78b7] font-medium hover:underline"
-                      onClick={() => openUserDetails(user)}
-                    >
-                      {user.username}
-                    </button>
+                  <td style={{ padding: '16px 19.75px' }}>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#8d77ba] bg-opacity-25 text-[#8d77ba]">
+                        <span className="text-sm font-semibold">{user.username.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <button
+                        className="text-[#8e78b7] font-medium hover:underline"
+                        onClick={() => openUserDetails(user)}
+                      >
+                        {user.username}
+                      </button>
+                    </div>
                   </td>
-                  <td className="p-4">
+                  <td style={{ padding: '16px 19.75px' }}>
                     <button
                       onClick={() => showDetailModal('role', user.roles, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
@@ -436,7 +441,7 @@ const currentUsers = users;
                       {getCount(user.roles)}
                     </button>
                   </td>
-                  <td className="p-4">
+                  <td style={{ padding: '16px 19.75px' }}>
                     <button
                       onClick={() => showDetailModal('persona', user.persona, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
@@ -444,7 +449,7 @@ const currentUsers = users;
                       {getCount(user.persona)}
                     </button>
                   </td>
-                  <td className="p-4">
+                  <td style={{ padding: '16px 19.75px' }}>
                     <button
                       onClick={() => showDetailModal('group', null, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
@@ -452,7 +457,7 @@ const currentUsers = users;
                       {getCount(null, 'group', user)}
                     </button>
                   </td>
-                  <td className="p-4">
+                  <td style={{ padding: '16px 19.75px' }}>
                     <button
                       onClick={() => showDetailModal('subgroup', null, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
@@ -460,13 +465,22 @@ const currentUsers = users;
                       {getCount(null, 'subgroup', user)}
                     </button>
                   </td>
-                  <td className="p-4">
-                    {user.enabled ?
-                      <span className="px-2 py-1 rounded-full text-sm text-green-600 bg-green-50">Active</span> :
-                      <span className="px-2 py-1 rounded-full text-sm text-red-600 bg-red-50">Inactive</span>
-                    }
+                  <td style={{ padding: '16px 19.75px' }}>
+                    <div className="text-center align-middle">
+                      {user.enabled ? (
+                        <span className="inline-block px-6 py-2 rounded-md text-sm font-medium" 
+                          style={{ background: '#def3e9', color: '#1a9962', minWidth: '88px', textAlign: 'center' }}>
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-block px-6 py-2 rounded-md text-sm font-medium" 
+                          style={{ background: '#f3f4f6', color: '#6b7280', minWidth: '88px', textAlign: 'center' }}>
+                          Inactive
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="p-4">
+                  <td style={{ padding: '16px 19.75px' }}>
                     <div className="relative">
                       <button
                         onClick={() => setActiveMenu(activeMenu === index ? null : index)}
@@ -507,11 +521,14 @@ const currentUsers = users;
           </tbody>
         </table>
 
-        <div className="flex flex-col md:flex-row items-center justify-between px-4 py-3 border-t mt-0">
+        
+      </div>
+
+      <div className="flex flex-col md:flex-row items-center justify-between px-4 py-3 border-t mt-0">
           <div className="text-sm text-gray-500 mb-3 md:mb-0">
-  Showing {users.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1} to {Math.min(currentPage * rowsPerPage, totalUsers)} of {totalUsers} users
-  {searchTerm && ` (filtered by "${searchTerm}")`}
-</div>
+              Showing {users.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1} to {Math.min(currentPage * rowsPerPage, totalUsers)} of {totalUsers} users
+              {searchTerm && ` (filtered by "${searchTerm}")`}
+          </div>
 
           <div className="flex items-center space-x-4">
             <div className="flex items-center gap-2">
@@ -541,7 +558,6 @@ const currentUsers = users;
             </div>
           </div>
         </div>
-      </div>
 
       <AddUser
         isOpen={isModalOpen}
@@ -571,7 +587,7 @@ const currentUsers = users;
                 <div>
                   <Icon className="h-5 w-5 text-[#8e78b7]" icon={"material-symbols:person"} width="24" height="24" />
                 </div>
-                <h2 className="text-xl font-bold text-[#8e78b7]">User Details</h2>
+                <h2 className="text-md font-bold text-[#8e78b7]">User Details</h2>
               </div>
               <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
@@ -640,11 +656,11 @@ const currentUsers = users;
           <div className="bg-white rounded-2xl w-[500px] p-6 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-blue-600" />}
-                {detailModalData.type === 'persona' && <Icon icon="mdi:face-agent" className="h-5 w-5 text-purple-600" />}
-                {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-teal-600" />}
-                {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-amber-600" />}
-                <h2 className="text-lg font-bold">{detailModalData.title}</h2>
+                {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-gray-600" />}
+                {detailModalData.type === 'persona' && <Icon icon="mdi:face-agent" className="h-5 w-5 text-gray-600" />}
+                {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-gray-600" />}
+                {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-gray-600" />}
+                <h2 className=" text-gray-600 text-md font-bold">{detailModalData.title}</h2>
               </div>
               <button onClick={() => setIsDetailModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
@@ -673,17 +689,17 @@ const currentUsers = users;
                     <div
                       key={index}
                       className={`p-4 rounded-lg ${
-                        detailModalData.type === 'role' ? 'bg-blue-50' :
-                        detailModalData.type === 'persona' ? 'bg-purple-50' :
-                        detailModalData.type === 'group' ? 'bg-teal-50' :
-                        'bg-amber-50'
+                        detailModalData.type === 'role' ? 'bg-gray-100' :
+                        detailModalData.type === 'persona' ? 'bg-gray-100' :
+                        detailModalData.type === 'group' ? 'bg-gray-100' :
+                        'bg-gray-100'
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-blue-600" />}
-                        {detailModalData.type === 'persona' && <Icon icon="mdi:face-agent" className="h-5 w-5 text-purple-600" />}
-                        {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-teal-600" />}
-                        {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-amber-600" />}
+                        {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-gray-500" />}
+                        {detailModalData.type === 'persona' && <Icon icon="mdi:face-agent" className="h-5 w-5 text-gray-500" />}
+                        {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-gray-500" />}
+                        {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-gray-500" />}
                         <p className="font-medium">{item}</p>
                       </div>
                     </div>
@@ -691,7 +707,7 @@ const currentUsers = users;
                 </div>
               ) : (
                 <div className="p-8 text-center bg-gray-50 rounded-lg">
-                  <Icon icon="mdi:folder-information-outline" className="h-10 w-10 mx-auto mb-3 text-gray-400" />
+                  <FolderX className="h-8 w-8 mx-auto mb-3 text-gray-400" />
                   <p className="text-gray-500">No {detailModalData.type} information available</p>
                 </div>
               )}
@@ -701,10 +717,10 @@ const currentUsers = users;
               <button
                 onClick={() => setIsDetailModalOpen(false)}
                 className={`px-5 py-2 rounded-lg text-white ${
-                  detailModalData.type === 'role' ? 'bg-blue-600' :
+                  detailModalData.type === 'role' ? 'bg-purple-600' :
                   detailModalData.type === 'persona' ? 'bg-purple-600' :
-                  detailModalData.type === 'group' ? 'bg-teal-600' :
-                  'bg-amber-600'
+                  detailModalData.type === 'group' ? 'bg-purple-600' :
+                  'bg-purple-600'
                 } hover:bg-opacity-90 transition-colors`}
               >
                 Close
