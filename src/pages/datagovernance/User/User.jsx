@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight,ChevronDown,FolderX , UserRound} from 'lucide-react';
+import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight,ChevronDown,FolderX , UserRound, SquareUserRound} from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../components/Breadcrumb';
 import AddUser from './Components/User/AddUser';
@@ -601,13 +601,11 @@ const currentUsers = users;
 
       {isDetailsModalOpen && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-[600px] p-8">
+          <div className="bg-white rounded-2xl w-[800px] max-w-[95vw] p-8">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
-                <div>
-                  <Icon className="h-5 w-5 text-gray-400" icon={"material-symbols:person"} width="24" height="24" />
-                </div>
-                <h2 className="text-md font-bold text-gray-400">User Details</h2>
+                <UserRound className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                <h2 className="text-md font-bold text-gray-600">User Details</h2>
               </div>
               <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
@@ -624,12 +622,12 @@ const currentUsers = users;
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Username</p>
-                  <p className="font-medium truncate" title={selectedUser.username}>{selectedUser.username}</p>
+                  <p className="font-medium  text-md truncate" title={selectedUser.username}>{selectedUser.username}</p>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">User ID</p>
-                  <p className="font-medium text-xs truncate">{selectedUser.id}</p>
+                  <p className="font-medium text-md break-word truncate">{selectedUser.id}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -639,7 +637,7 @@ const currentUsers = users;
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Status</p>
-                  <p className="font-medium">
+                  <p className="font-medium text-md">
                     {selectedUser.enabled ?
                       <span className="px-2 py-0.5 rounded-full text-sm text-green-600 bg-green-50">Active</span> :
                       <span className="px-2 py-0.5 rounded-full text-sm text-red-600 bg-red-50">Inactive</span>
@@ -666,11 +664,11 @@ const currentUsers = users;
 
       {isDetailModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-[500px] p-6 max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl w-[800px] max-w-[95vw] p-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-gray-600" />}
-                {detailModalData.type === 'persona' && <Icon icon="mdi:face-agent" className="h-5 w-5 text-gray-600" />}
+                {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-gray-700" />}
+                {detailModalData.type === 'persona' && <SquareUserRound className="h-5 w-5 text-gray-600 flex-shrink-0" />}
                 {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-gray-600" />}
                 {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-gray-600" />}
                 <h2 className=" text-gray-600 text-md font-bold">{detailModalData.title}</h2>
@@ -710,7 +708,7 @@ const currentUsers = users;
                     >
                       <div className="flex items-center gap-2">
                         {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-gray-500" />}
-                        {detailModalData.type === 'persona' && <Icon icon="mdi:face-agent" className="h-5 w-5 text-gray-500" />}
+                        {detailModalData.type === 'persona' && <SquareUserRound className="h-5 w-5 text-gray-500 flex-shrink-0" />}
                         {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-gray-500" />}
                         {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-gray-500" />}
                         <p className="font-medium">{item}</p>

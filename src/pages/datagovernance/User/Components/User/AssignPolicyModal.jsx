@@ -421,10 +421,10 @@ const AssignPolicyModal = ({ isOpen, onClose, onApplyPolicies, initialSelectedPo
                             </table>
                         </div>
 
-                        <div className="flex justify-end gap-4 mt-auto">
+                        <div className="flex justify-start gap-4 mt-auto">
                             <button
                                 onClick={onCloseModal}
-                                className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors text-black"
+                                className="w-20 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                             >
                                 Cancel
                             </button>

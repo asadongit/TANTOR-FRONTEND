@@ -12,7 +12,8 @@ import {
   ChevronRight,
   List,
   ChevronDown,
-  AlertTriangle
+  AlertTriangle,
+  Info
 } from "lucide-react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
@@ -448,8 +449,13 @@ const Persona = () => {
       )}
 
       <Breadcrumb />
-      <div className="flex items-center justify-between mb-[18px]">
-        <h1 className="text-2xl font-semibold">Persona</h1>
+      <div className="flex items-center justify-between mb-[18px] overflow-visible">
+        <div className="flex items-center gap-2 overflow-visible">
+          <h1 className="text-2xl font-semibold">Persona</h1>
+          <div className="relative group">
+  
+</div>
+        </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: '#818181' }} />
@@ -522,18 +528,18 @@ const Persona = () => {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {displayedCards.map((card, index) => (
-                      <div key={card.id || index} className="bg-white rounded-lg border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1">
+                     <div key={card.id || index} className="bg-white rounded-lg border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1 overflow-hidden">
                         <div className="p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${card.bgcolor} rounded-full ${card.iconcolor}`} aria-hidden="true">
+                          <div className="flex items-start justify-between gap-2 min-w-0">
+  <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${card.bgcolor} rounded-full ${card.iconcolor} flex-shrink-0`} aria-hidden="true">
                                 <span className="text-sm md:text-base font-semibold">{getInitial(card)}</span>
                               </div>
-                              <h3 className="text-lg font-semibold">{card.title}</h3>
+                              <h3 className="text-lg font-semibold truncate">{card.title}</h3>
                             </div>
 
-                            <div className="relative">
-                              <button onClick={() => setActiveMenu(activeMenu === `card-${index}` ? null : `card-${index}`)} className="p-1.5 rounded-full hover:bg-gray-100">
+                            <div className="relative flex-shrink-0">
+  <button onClick={() => setActiveMenu(activeMenu === `card-${index}` ? null : `card-${index}`)} className="p-1.5 rounded-full hover:bg-gray-100">
                                 <MoreVertical className="h-5 w-5 text-gray-600" />
                               </button>
                               {activeMenu === `card-${index}` && (
@@ -554,7 +560,7 @@ const Persona = () => {
                             </div>
                           </div>
 
-                          <p className="text-gray-500 mt-4 text-sm">{card.description}</p>
+                          <p className="text-gray-500 mt-4 text-sm line-clamp-2">{card.description}</p>
 
                           <div className="flex items-center justify-between mt-6">
                             <div className="flex items-center gap-2">
@@ -747,7 +753,20 @@ const Persona = () => {
           <div className="flex items-center justify-center min-h-screen">
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => { if (!isSubmitting) { setShowModal(false); setShowEditModal(false); } }}></div>
             <div className="inline-block w-full max-w-xl p-6 my-8 text-left bg-white shadow-xl rounded-lg z-10">
-              <h3 className="text-lg font-bold text-[#8f79b8] mb-6">{personaToEdit ? 'Edit Persona' : 'Add Persona'}</h3>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-[#8f79b8]">{personaToEdit ? 'Edit Persona' : 'Add Persona'}</h3>
+                  {!personaToEdit && (
+                    <div className="relative group">
+                      <Info className="h-4 w-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" />
+                      <div className="absolute left-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50 whitespace-normal bottom-full mb-2">
+                        Create a new persona to define roles, permissions and access controls for users.
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* right side reserved for future controls (close button, etc.) */}
+              </div>
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Persona Name <span className="text-red-500">*</span></label>

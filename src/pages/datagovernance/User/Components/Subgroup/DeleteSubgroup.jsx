@@ -146,7 +146,7 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
           {isDeleted && (
             <div className="p-4 bg-green-50 rounded-lg text-center mb-6">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
-              <p className="text-lg font-medium text-gray-800">
+              <p className="text-lg font-medium text-gray-800 break-words">
                 Subgroup "{subgroupName}" deleted successfully
               </p>
               <button
@@ -163,7 +163,7 @@ const DeleteSubgroup = ({ showModal, setShowModal, subgroupName, onConfirm }) =>
             <>
               <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
                 <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
-                <p className="text-lg font-medium text-gray-800">
+                <p className="text-lg font-medium text-gray-800 break-words">
                   You are about to delete the subgroup "{subgroupName}"
                 </p>
                 
