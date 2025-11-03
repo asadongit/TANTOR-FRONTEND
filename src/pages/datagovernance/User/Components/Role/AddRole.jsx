@@ -98,7 +98,12 @@ const AddRole = ({ show, onClose, onSave }) => {
             <h3 className="text-md font-bold text-[#8f79b8] mr-2">
               Add Role
             </h3>
-            <Info className="h-4 w-4 text-gray-400" />
+            <div className="relative group">
+              <Info className="h-4 w-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" />
+              <div className="absolute left-0 mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-10 whitespace-normal">
+                Create a new role with a name, description, and optional validity period.
+              </div>
+            </div>
           </div>
 
           {error && (

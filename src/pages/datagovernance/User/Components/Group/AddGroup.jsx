@@ -85,12 +85,17 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
           <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
         </div>
 
-        <div className="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-          <div className="flex items-center  mb-6">
+        <div className="inline-block w-full max-w-xl p-6 my-8 overflow-visible text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+          <div className="flex items-center mb-6 overflow-visible">
             <h3 className="text-md font-bold text-[#8f79b8] mr-2">
               Add Group
             </h3>
-            <Info className="h-4 w-4 text-gray-400" />
+            <div className="relative group">
+              <Info className="h-4 w-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" />
+              <div className="absolute left-0 mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50 whitespace-normal">
+                Create a new group to organize users and manage access control effectively.
+              </div>
+            </div>
           </div>
 
           {error && (

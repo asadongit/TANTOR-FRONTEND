@@ -105,9 +105,9 @@ const DeleteGroup = ({ showModal, setShowModal, groupName, onConfirm }) => {
           {isDeleted && (
             <div className="p-4 bg-green-50 rounded-lg text-center mb-6">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
-              <p className="text-lg font-medium text-gray-800">
-                Group "{groupName}" deleted successfully
-              </p>
+              <p className="text-lg font-medium text-gray-800 break-words" style={{ wordWrap: 'break-word', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
+  Group "{groupName}" deleted successfully
+</p>
               <button
                 onClick={handleClose}
                 className="mt-6 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
@@ -121,9 +121,9 @@ const DeleteGroup = ({ showModal, setShowModal, groupName, onConfirm }) => {
             <>
               <div className="p-4 bg-red-50 rounded-lg text-center mb-6">
                 <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-2" />
-                <p className="text-lg font-medium text-gray-800">
-                  You are about to delete the group "{groupName}"
-                </p>
+                <p className="text-lg font-medium text-gray-800 break-words" style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
+  You are about to delete the group "{groupName}"
+</p>
                 
                 {/* Policy Count Warning */}
                 {policyCountLoading ? (
