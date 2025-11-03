@@ -50,6 +50,27 @@ const rotateAnimation = `
     display: none !important;
   }
 
+   table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead tr:first-child th:first-child {
+  border-top-left-radius: 0.5rem;
+}
+
+thead tr:first-child th:last-child {
+  border-top-right-radius: 0.5rem;
+}
+
+tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 0.5rem;
+}
+
+tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 0.5rem;
+}
+
 `;
 
 
@@ -882,7 +903,7 @@ function Group() {
 
       {viewMode === 'list' && (
         <>
-          <div className="bg-white rounded-lg shadow overflow-hidden mt-0">
+          <div className="bg-white rounded-lg shadow mt-0" style={{ overflow: 'visible' }}>
 
           <table className="w-full">
             <thead>

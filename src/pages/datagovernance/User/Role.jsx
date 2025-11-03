@@ -38,6 +38,26 @@ const rotateAnimation = `
   .toggle-disabled svg {
     display: none !important;
   }
+    table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead tr:first-child th:first-child {
+  border-top-left-radius: 0.5rem;
+}
+
+thead tr:first-child th:last-child {
+  border-top-right-radius: 0.5rem;
+}
+
+tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 0.5rem;
+}
+
+tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 0.5rem;
+}
 `;
 
 const Toggle = ({ enabled, onToggle, disabled = false, size = "md" }) => {
@@ -537,10 +557,10 @@ const Role = () => {
 
           {viewMode === 'list' && (
             <>
-              <div className="bg-white rounded-lg shadow overflow-hidden mt-0">
+              <div className="bg-white rounded-lg shadow mt-0" style={{ overflow: 'visible' }}>
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-[#29304a] text-white text-sm">
+                    <tr className="bg-[#29304a] text-white rounded-t-lg text-sm">
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>ID</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Name</th>
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>Description</th>
@@ -553,7 +573,7 @@ const Role = () => {
                   </thead>
                   <tbody className="text-sm">
                     {listCurrentRows.map((role, index) => (
-                      <tr key={index} className="border-b hover:bg-gray-50">
+                      <tr key={index} className="border-b hover:bg-gray-50 relative">
                         <td style={{ padding: '16px 19.75px' }} title={role.id}>{role.id?.substring(0, 8)}...</td>
                         <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
                           <div className="flex items-center">
@@ -585,14 +605,13 @@ const Role = () => {
                             {activeMenu === index && (
                               <>
                                 <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
-                                <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-50 animate-fadeIn min-w-max">
                                   <div className="flex items-center p-1 gap-1">
                                     <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setRoleToEdit(role); setShowEditModal(true); setActiveMenu(null); }}>
                                       <Pencil className="h-4 w-4" />
                                     </button>
 
                                     <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2" onClick={async () => { setActiveMenu(null); await toggleRole(role.name); }} disabled={togglingStatus === role.name} title={role.status === 'Enabled' ? 'Disable' : 'Enable'}>
-                                      {/* small toggle shown inside menu; becomes disabled and visually flipped while pending */}
                                       <Toggle
                                         enabled={togglingStatus === role.name ? role.status !== 'Enabled' : role.status === 'Enabled'}
                                         onToggle={async () => { setActiveMenu(null); await toggleRole(role.name); }}

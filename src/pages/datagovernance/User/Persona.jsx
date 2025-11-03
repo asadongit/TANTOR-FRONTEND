@@ -28,6 +28,26 @@ const rotateAnimation = `
   .icon-rotate { animation: rotate 1s linear infinite; }
   .icon-rotate svg { transform-origin: center; transform: scale(0.88); }
   .icon-rotate svg path, .icon-rotate svg g { stroke-width: 0.75px !important; vector-effect: non-scaling-stroke; }
+   table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead tr:first-child th:first-child {
+  border-top-left-radius: 0.5rem;
+}
+
+thead tr:first-child th:last-child {
+  border-top-right-radius: 0.5rem;
+}
+
+tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 0.5rem;
+}
+
+tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 0.5rem;
+}
 `;
 
 const Toggle = ({ enabled, onToggle }) => {
@@ -598,7 +618,7 @@ const Persona = () => {
 
           {viewMode === 'list' && (
             <>
-              <div className="bg-white rounded-lg shadow overflow-hidden mt-0">
+              <div className="bg-white rounded-lg shadow mt-0" style={{ overflow: 'visible' }}>
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[#29304a] text-white text-sm">

@@ -29,6 +29,26 @@ const rotateAnimation = `
   .toggle-disabled svg {
     display: none !important;
   }
+     table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead tr:first-child th:first-child {
+  border-top-left-radius: 0.5rem;
+}
+
+thead tr:first-child th:last-child {
+  border-top-right-radius: 0.5rem;
+}
+
+tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 0.5rem;
+}
+
+tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 0.5rem;
+}
 `;
 
 const User = () => {
@@ -388,7 +408,7 @@ const currentUsers = users;
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow mt-0" style={{ overflow: 'visible' }}>
         <table className="w-full">
           <thead>
             <tr className="bg-[#29304a] text-white text-sm">
@@ -713,19 +733,7 @@ const currentUsers = users;
               )}
             </div>
 
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() => setIsDetailModalOpen(false)}
-                className={`px-5 py-2 rounded-lg text-white ${
-                  detailModalData.type === 'role' ? 'bg-purple-600' :
-                  detailModalData.type === 'persona' ? 'bg-purple-600' :
-                  detailModalData.type === 'group' ? 'bg-purple-600' :
-                  'bg-purple-600'
-                } hover:bg-opacity-90 transition-colors`}
-              >
-                Close
-              </button>
-            </div>
+            
           </div>
         </div>
       )}
