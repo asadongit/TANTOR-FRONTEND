@@ -86,11 +86,11 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
         </div>
 
         <div className="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-          <div className="flex items-center gap-2 mb-6">
-            <h3 className="text-lg font-bold text-[#8f79b8] mr-2">
+          <div className="flex items-center  mb-6">
+            <h3 className="text-md font-bold text-[#8f79b8] mr-2">
               Add Group
             </h3>
-            <Info className="h-5 w-5 text-gray-400" />
+            <Info className="h-4 w-4 text-gray-400" />
           </div>
 
           {error && (
@@ -139,16 +139,16 @@ function AddGroup({ showModal, setShowModal, onGroupAdded }) {
             <div className="flex justify-between items-center mt-6">
               <div className="flex gap-3">
                 <button
-                  className="px-4 py-2 text-[#8e78b7] border border-[#8e78b7] hover:bg-[#8e78b7] hover:text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => setShowModal(false)}
                   disabled={loading}
+                  className="w-20 px-4 py-2 text-white bg-[#8e78b7] border border-[#8e78b7] hover:bg-[#7d69a3] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={loading}
-                  className="px-4 py-2 text-white bg-[#8e78b7] border border-[#8e78b7] hover:bg-[#7d69a3] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="w-20 px-4 py-2 text-white bg-[#8e78b7] border border-[#8e78b7] hover:bg-[#7d69a3] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {loading ? (
                     <>

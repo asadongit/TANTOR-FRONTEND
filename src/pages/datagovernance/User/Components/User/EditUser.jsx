@@ -316,9 +316,6 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
             </div>
             <h2 className="text-xl font-bold text-[#8e78b7]">Edit user</h2>
           </div>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
         {apiResponse.status && (
@@ -454,7 +451,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
         <div className="flex justify-start gap-4 mt-8">
           <button
             onClick={handleClose}
-            className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
+            className="w-20 px-6 py-2.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a6a9e] transition-colors font-medium flex items-center justify-center"
             disabled={isLoading}
           >
             Cancel
@@ -462,7 +459,7 @@ const EditUser = ({ isOpen, onClose, onSave, userData }) => {
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors flex items-center gap-2"
+            className="w-20 px-6 py-2.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a6a9e] transition-colors font-medium flex items-center gap-2 flex items-center justify-center"
           >
             {isLoading ? (
               <>
