@@ -605,9 +605,9 @@ const currentUsers = users;
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
                 <div>
-                  <Icon className="h-5 w-5 text-[#8e78b7]" icon={"material-symbols:person"} width="24" height="24" />
+                  <Icon className="h-5 w-5 text-gray-400" icon={"material-symbols:person"} width="24" height="24" />
                 </div>
-                <h2 className="text-md font-bold text-[#8e78b7]">User Details</h2>
+                <h2 className="text-md font-bold text-gray-400">User Details</h2>
               </div>
               <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
@@ -659,14 +659,7 @@ const currentUsers = users;
               </div>
             </div>
 
-            <div className="flex justify-end gap-4 mt-8">
-              <button
-                onClick={() => setIsDetailsModalOpen(false)}
-                className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-opacity-90 transition-colors"
-              >
-                Close
-              </button>
-            </div>
+            
           </div>
         </div>
       )}
