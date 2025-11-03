@@ -1,23 +1,86 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
-  MoreVertical, Search, Plus, Pencil, Trash2, MoreHorizontal,
-  X, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, RefreshCcw, AlertTriangle,
-  List
+  MoreVertical,
+  LayoutGrid,
+  Search,
+  Plus,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  RefreshCcw,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  ChevronDown,
+  AlertTriangle,
+  Info
 } from "lucide-react";
 import Breadcrumb from "../../../components/Breadcrumb";
 import { Icon } from "@iconify-icon/react";
-import { toast } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-const ConfirmationModal = ({ 
-  isOpen, 
-  onClose, 
-  onConfirm, 
-  title, 
-  message, 
+const rotateAnimation = `
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+  }
+  .icon-rotate { animation: rotate 1s linear infinite; }
+  .icon-rotate svg { transform-origin: center; transform: scale(0.88); }
+  .icon-rotate svg path, .icon-rotate svg g { stroke-width: 0.75px !important; vector-effect: non-scaling-stroke; }
+   table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead tr:first-child th:first-child {
+  border-top-left-radius: 0.5rem;
+}
+
+thead tr:first-child th:last-child {
+  border-top-right-radius: 0.5rem;
+}
+
+tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 0.5rem;
+}
+
+tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 0.5rem;
+}
+`;
+
+const Toggle = ({ enabled, onToggle }) => {
+  return (
+    <div
+      onClick={onToggle}
+      className={`relative inline-flex h-5 w-10 cursor-pointer rounded-full transition-colors ease-in-out duration-200 ${enabled ? "bg-[#1a9962]" : "bg-gray-200"
+        }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ease-in-out duration-200 m-0.5 ${enabled ? "translate-x-5" : "translate-x-0"
+          }`}
+      />
+    </div>
+  );
+};
+
+const getInitial = (r) => {
+  const str = (r?.title || r?.name || r?.id || "").toString();
+  const match = str.match(/[A-Za-z0-9]/);
+  return match ? match[0].toUpperCase() : "";
+};
+
+const ConfirmationModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
   isConfirming,
   policyCount = null,
-  policyCountLoading = false 
+  policyCountLoading = false
 }) => {
   if (!isOpen) return null;
   return (
@@ -26,7 +89,7 @@ const ConfirmationModal = ({
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
           <button title="Close" onClick={onClose} className="p-1 rounded-full hover:bg-gray-200">
-            <X className="h-5 w-5 text-gray-600" />
+            <svg className="h-5 w-5 text-gray-600" viewBox="0 0 24 24"><path d="M6 6l12 12M6 18L18 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
         </div>
         <div className="flex items-start gap-4">
@@ -35,8 +98,7 @@ const ConfirmationModal = ({
           </div>
           <div className="mt-1 flex-1">
             <p className="text-sm text-gray-600">{message}</p>
-            
-            {/* Policy Count Warning */}
+
             {policyCountLoading ? (
               <div className="mt-3 flex items-center gap-2">
                 <RefreshCcw className="h-4 w-4 text-gray-500 animate-spin" />
@@ -50,15 +112,15 @@ const ConfirmationModal = ({
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
-          <button 
-            onClick={onClose} 
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none"
+          <button
+            onClick={onClose}
+            className=" px-4 py-2 text-sm font-medium text-white bg-[#8e78b7] hover:bg-[#7a67a0] rounded-lg focus:outline-none"
           >
             Cancel
           </button>
-          <button 
-            onClick={onConfirm} 
-            disabled={isConfirming} 
+          <button
+            onClick={onConfirm}
+            disabled={isConfirming}
             className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none disabled:bg-red-300 disabled:cursor-wait"
           >
             {isConfirming ? 'Deleting...' : 'Delete'}
@@ -69,600 +131,642 @@ const ConfirmationModal = ({
   );
 };
 
-
-// Toggle Switch Component
-const ToggleSwitch = ({ enabled, onChange, disabled = false, size = 'md' }) => {
-  const sizeClasses = {
-    sm: 'w-9 h-5',
-    md: 'w-11 h-6',
-    lg: 'w-14 h-7'
-  };
-
-  const thumbSizeClasses = {
-    sm: 'w-3 h-3',
-    md: 'w-4 h-4',
-    lg: 'w-5 h-5'
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      disabled={disabled}
-      className={`${sizeClasses[size]} ${enabled ? 'bg-green-500' : 'bg-gray-300'
-        } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-        } relative inline-flex items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2`}
-    >
-      <span
-        className={`${thumbSizeClasses[size]} ${enabled ? `translate-x-5` : 'translate-x-0.5'
-          } inline-block transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out`}
-      />
-    </button>
-  );
-};
-
-// Helper Component: Table Row Skeleton
-const TableRowSkeleton = ({ columns }) => (
-  <tr className="border-b animate-pulse">{Array.from({ length: columns }).map((_, i) => (<td key={i} className="p-4"><div className="h-4 bg-gray-200 rounded w-full"></div></td>))}</tr>
-);
-
-function Persona() {
-  // Component States
-  const [personaCards, setPersonaCards] = useState([]);
-  const [isCardsLoading, setIsCardsLoading] = useState(true);
-  const [cardsError, setCardsError] = useState(null);
-  const [tableData, setTableData] = useState([]);
-  const [isTableLoading, setIsTableLoading] = useState(true);
-  const [tableError, setTableError] = useState(null);
+const Persona = () => {
   const [showModal, setShowModal] = useState(false);
-  const [itemToEdit, setItemToEdit] = useState(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [personaToEdit, setPersonaToEdit] = useState(null);
+  const [personaToDelete, setPersonaToDelete] = useState(null);
+
+  const [cards, setCards] = useState([]);
+  const [tableData, setTableData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortConfig, setSortConfig] = useState({});
+  const [viewMode, setViewMode] = useState("cards");
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [togglingStatus, setTogglingStatus] = useState(null);
   const [activeMenu, setActiveMenu] = useState(null);
+  const [showViewModeMenu, setShowViewModeMenu] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: "", type: "" });
+
+  const [formData, setFormData] = useState({ name: "", description: "", enabled: true });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toggleStates, setToggleStates] = useState({});
-  const [isCardViewVisible, setIsCardViewVisible] = useState(true);
+
   const [policyCount, setPolicyCount] = useState(null);
   const [policyCountLoading, setPolicyCountLoading] = useState(false);
-  
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const initialFetchDoneRef = useRef(false);
   const { token } = useAuth();
-  const rowsPerPage = 10;
 
-  const initialFormState = {
-    name: "",
-    description: "",
-    enabled: true,
-  };
-  const [formData, setFormData] = useState(initialFormState);
+  const processCards = (data = []) => data.map(item => ({
+    id: item.id,
+    title: item.name,
+    description: item.description || "No description available",
+    users: item.user_count || 0,
+    enabled: item.attributes?.Status?.[0] === "Enabled",
+    icon: "material-symbols:tab-group-outline",
+    bgcolor: "bg-[#8d77ba] bg-opacity-25",
+    iconcolor: "text-[#8d77ba]",
+  }));
 
-  const handleClickOutside = () => setActiveMenu(null);
-
-  // --- Data Fetching and Processing ---
-  const processPersonaCardData = (apiData) => {
-    if (!Array.isArray(apiData)) { console.error("Invalid API response for cards: Expected an array.", apiData); return []; }
-    return apiData.map((item) => ({ id: item.id, title: item.name, description: item.description, users: item.user_count, enabled: item.attributes?.Status?.[0] === "Enabled", icon: "material-symbols:tab-group-outline", bgcolor: "bg-[#8d77ba] bg-opacity-25", iconcolor: "text-[#8d77ba]", }));
-  };
-
-  const fetchPersonaHomepageData = useCallback(async () => {
-    setIsCardsLoading(true);
-    setCardsError(null);
+  const fetchPersonaDashboard = async () => {
     try {
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/personahomepage`);
-      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-      const data = await response.json();
-      setPersonaCards(processPersonaCardData(data));
-    } catch (error) {
-      console.error("Error fetching persona cards:", error);
-      setCardsError("Failed to load persona stats.");
-      toast.error("Failed to load persona stats.");
-    } finally {
-      setIsCardsLoading(false);
+      const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/personahomepage`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Failed to fetch dashboard: ${res.status}`);
+      const data = await res.json();
+      setCards(processCards(data));
+      return { success: true };
+    } catch (err) {
+      console.error("fetchPersonaDashboard:", err);
+      return { success: false, error: err.message };
     }
+  };
+
+  const fetchPersonaList = async () => {
+    try {
+      const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/personalist`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Failed to fetch list: ${res.status}`);
+      const data = await res.json();
+      const transformed = data.map(item => {
+        const createdOn = item.attributes?.createdOn?.[0] || "";
+        let createdFormatted = createdOn;
+        try {
+          const d = new Date(createdOn);
+          if (!isNaN(d.getTime())) createdFormatted = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch {}
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description || "No description available",
+          status: item.attributes?.Status?.[0] === "Enabled" ? "Enabled" : "Disabled",
+          createdOn: createdFormatted,
+        };
+      });
+      setTableData(transformed);
+      return { success: true };
+    } catch (err) {
+      console.error("fetchPersonaList:", err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  useEffect(() => {
+    if (!initialFetchDoneRef.current) {
+      initialFetchDoneRef.current = true;
+      Promise.all([fetchPersonaDashboard(), fetchPersonaList()]).finally(() => setLoading(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchPersonaListData = useCallback(async (isRefresh = false) => {
-    setIsTableLoading(true);
-    setTableError(null);
+  const refreshAllData = async (showToast = false) => {
+    setRefreshing(true);
+    setSearchTerm("");
+    setCurrentPage(1);
     try {
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/personalist`);
-      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-      const data = await response.json();
-      const formattedData = data.map(item => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        status: item.attributes?.Status?.[0] || 'N/A',
-        createdOn: item.attributes?.createdOn?.[0] || 'N/A',
-      }));
-      setTableData(formattedData);
-      if (isRefresh) {
-        toast.success('Persona list refreshed!');
+      const [dResult, lResult] = await Promise.all([fetchPersonaDashboard(), fetchPersonaList()]);
+      if (dResult.success && lResult.success) {
+        if (showToast) {
+          setToast({ show: true, message: "Persona data refreshed successfully", type: "success" });
+          setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+        }
+        return { success: true };
+      } else {
+        if (showToast) {
+          setToast({ show: true, message: "Failed to refresh persona data", type: "error" });
+          setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+        }
+        return { success: false, error: "Failed to refresh" };
       }
-    } catch (error) {
-      console.error("Error fetching persona list:", error);
-      setTableError("Failed to load persona list.");
-      toast.error("Failed to load persona list.");
+    } catch (err) {
+      console.error("refreshAllData:", err);
+      if (showToast) {
+        setToast({ show: true, message: "Failed to refresh persona data", type: "error" });
+        setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+      }
+      return { success: false, error: err.message };
     } finally {
-      setIsTableLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  };
 
-  
+  const togglePersona = async (identifier) => {
+    const index = cards.findIndex(c => c.title === identifier);
+    if (index === -1) return;
+    const persona = cards[index];
+    const newStatus = !persona.enabled;
+    setTogglingStatus(identifier);
+    try {
+      const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/personastatus`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name: persona.title, status: newStatus ? "Enabled" : "Disabled" }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Status patch failed: ${res.status}`);
+      }
+      const newCards = [...cards];
+      newCards[index].enabled = newStatus;
+      setCards(newCards);
+      setTableData(prev => prev.map(it => it.name === persona.title ? { ...it, status: newStatus ? "Enabled" : "Disabled" } : it));
+    } catch (err) {
+      console.error("togglePersona:", err);
+      setToast({ show: true, message: "Failed to update persona status", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    } finally {
+      setTogglingStatus(null);
+    }
+  };
+
   const fetchPolicyCount = async (personaName) => {
     setPolicyCountLoading(true);
     setPolicyCount(null);
-    
     try {
-      const response = await fetch(
-        `${window._env_?.VITE_FAST_API}/auth/policies/count/persona/${encodeURIComponent(personaName)}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.error("Failed to fetch policy count");
-        setPolicyCount(null);
-        return;
-      }
-
-      const data = await response.json();
-      setPolicyCount(data.policy_count);
-    } catch (error) {
-      console.error("Error fetching policy count:", error);
+      const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/policies/count/persona/${encodeURIComponent(personaName)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Failed to get policy count: ${res.status}`);
+      const data = await res.json();
+      setPolicyCount(data.policy_count ?? null);
+    } catch (err) {
+      console.error("fetchPolicyCount:", err);
       setPolicyCount(null);
     } finally {
       setPolicyCountLoading(false);
     }
   };
 
-
-  const handleToggleStatus = async (personaName, currentEnabled) => {
-    const toggleKey = `toggle-${personaName}`;
-    setToggleStates(prev => ({ ...prev, [toggleKey]: true }));
-
-    try {
-      const newStatus = currentEnabled ? 'Disabled' : 'Enabled';
-      const payload = {
-        name: personaName,
-        status: newStatus
-      };
-
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/personastatus`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
-        throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
-      }
-
-      setPersonaCards(prev => prev.map(card =>
-        card.title === personaName
-          ? { ...card, enabled: !currentEnabled }
-          : card
-      ));
-
-      setTableData(prev => prev.map(item =>
-        item.name === personaName
-          ? { ...item, status: newStatus }
-          : item
-      ));
-
-      toast.success(`Persona "${personaName}" ${newStatus.toLowerCase()} successfully!`);
-
-    } catch (error) {
-      console.error("Failed to toggle persona status:", error);
-      toast.error(`Failed to toggle persona status: ${error.message}`);
-    } finally {
-      setToggleStates(prev => ({ ...prev, [toggleKey]: false }));
-    }
-  };
-
-  useEffect(() => {
-    fetchPersonaHomepageData();
-    fetchPersonaListData();
-  }, [fetchPersonaHomepageData, fetchPersonaListData]);
-
-  const filteredCards = useMemo(() => {
-    if (!searchTerm.trim()) return personaCards;
-    return personaCards.filter(card =>
-      card.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [personaCards, searchTerm]);
-
-  const filteredAndSortedData = useMemo(() => {
-    let filtered = tableData.filter(item =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    if (sortConfig.key) {
-      filtered.sort((a, b) => {
-        let aValue = a[sortConfig.key] ?? '';
-        let bValue = b[sortConfig.key] ?? '';
-
-        if (typeof aValue === 'string') aValue = aValue.toLowerCase();
-        if (typeof bValue === 'string') bValue = bValue.toLowerCase();
-
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-    return filtered;
-  }, [tableData, searchTerm, sortConfig]);
-
-  const totalPages = Math.ceil(filteredAndSortedData.length / rowsPerPage);
-  const currentItems = filteredAndSortedData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
-
-  // --- Handlers ---
-  const handleSort = (key) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-    }));
-  };
-
-  const handleRefresh = useCallback(() => {
-    setSearchTerm('');
-    setSortConfig({});
-    setCurrentPage(1);
-    fetchPersonaHomepageData();
-    fetchPersonaListData(true);
-  }, [fetchPersonaHomepageData, fetchPersonaListData]);
-
-  const handleToggleView = () => {
-    setIsCardViewVisible(prev => !prev);
-  };
-
-  const handleSave = async (closeOnSave) => {
-    if (!formData.name.trim() || !formData.description.trim()) {
-      toast.error("Name and Description are required.");
-      return;
-    }
-    setIsSubmitting(true);
-
-    try {
-      if (itemToEdit) {
-        // --- EDIT LOGIC ---
-        const payload = {
-          name: itemToEdit.name,
-          new_name: formData.name.trim(),
-          description: formData.description.trim(),
-        };
-
-        const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/editpersona`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
-          throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
-        }
-
-        toast.success(`Persona "${payload.new_name}" updated successfully!`);
-
-      } else {
-        // --- CREATE LOGIC ---
-        const payload = {
-          name: formData.name.trim(),
-          description: formData.description.trim(),
-          status: formData.enabled ? 'yes' : 'no',
-        };
-
-        const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/createpersona`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
-          throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
-        }
-
-        toast.success(`Persona "${payload.name}" created successfully!`);
-      }
-
-      handleRefresh();
-      if (closeOnSave) {
-        setShowModal(false);
-      } else if (!itemToEdit) {
-        setFormData(initialFormState);
-      }
-
-    } catch (error) {
-      const action = itemToEdit ? "update" : "create";
-      console.error(`Failed to ${action} persona:`, error);
-      toast.error(`Failed to ${action} persona: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-
   const handleOpenAddModal = () => {
-    setItemToEdit(null);
-    setFormData(initialFormState);
+    setPersonaToEdit(null);
+    setFormData({ name: "", description: "", enabled: true });
     setShowModal(true);
   };
 
-  const handleOpenEditModal = (item) => {
-    setItemToEdit(item);
+  const handleOpenEditModal = (p) => {
+    setPersonaToEdit(p);
     setFormData({
-      name: item.name,
-      description: item.description,
-      enabled: item.status?.toLowerCase() === 'enabled' || item.status?.toLowerCase() === 'active' || item.status?.toLowerCase() === 'yes',
+      name: p.name,
+      description: p.description,
+      enabled: (p.status || "").toLowerCase() === "enabled"
     });
-    setShowModal(true);
+    setShowEditModal(true);
     setActiveMenu(null);
   };
 
-  const handleOpenDeleteModal = (item) => {
-    setItemToDelete(item);
-    setIsDeleteModalOpen(true);
+  const handleOpenDeleteModal = (p) => {
+    setPersonaToDelete(p);
+    setShowDeleteModal(true);
     setActiveMenu(null);
-    if (item?.name) {
-    fetchPolicyCount(item.name);
-  }
+    if (p?.name) fetchPolicyCount(p.name);
   };
 
   const handleConfirmDelete = async () => {
-    if (!itemToDelete) return;
+    if (!personaToDelete) return;
     setIsDeleting(true);
-
     try {
-      const personaName = encodeURIComponent(itemToDelete.name);
-      const response = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletepersona/${personaName}`, {
+      const nameEncoded = encodeURIComponent(personaToDelete.name);
+      const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/deletepersona/${nameEncoded}`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
-        throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to delete: ${res.status}`);
       }
-
-      toast.success(`Persona "${itemToDelete.name}" deleted successfully.`);
-      handleRefresh();
-
-    } catch (error) {
-      console.error("Failed to delete persona:", error);
-      toast.error(`Failed to delete persona: ${error.message}`);
+      await refreshAllData(true);
+      setToast({ show: true, message: `Persona "${personaToDelete.name}" deleted`, type: "success" });
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    } catch (err) {
+      console.error("handleConfirmDelete:", err);
+      setToast({ show: true, message: `Failed to delete persona: ${err.message}`, type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
     } finally {
       setIsDeleting(false);
-      setIsDeleteModalOpen(false);
-      setItemToDelete(null);
+      setShowDeleteModal(false);
+      setPersonaToDelete(null);
+      setPolicyCount(null);
     }
   };
 
-
-  // --- UI Helpers ---
-  const getSortIcon = (key) => {
-    if (sortConfig.key !== key) return <ArrowUpDown className="h-4 w-4 inline-block ml-1 opacity-40" />;
-    return sortConfig.direction === 'asc' ? <ArrowUp className="h-4 w-4 inline-block ml-1" /> : <ArrowDown className="h-4 w-4 inline-block ml-1" />;
-  };
-
-  const getStatusBadge = (status) => {
-    const lowerStatus = status?.toLowerCase();
-    let styles = "px-2.5 py-1 text-xs font-semibold rounded-full ";
-    switch (lowerStatus) {
-      case 'enabled':
-      case 'active':
-      case 'yes':
-        styles += "text-green-800 bg-green-100";
-        break;
-      case 'disabled':
-      case 'inactive':
-      case 'no':
-        styles += "text-yellow-800 bg-yellow-100";
-        break;
-      default:
-        styles += "text-gray-800 bg-gray-100";
-        break;
+  const handleSaveNew = async (closeOnSave = true) => {
+    if (!formData.name.trim() || !formData.description.trim()) {
+      setToast({ show: true, message: "Name and Description are required.", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+      return;
     }
-    return <span className={styles}>{status}</span>;
+    setIsSubmitting(true);
+    try {
+      if (personaToEdit) {
+        // edit
+        const payload = { name: personaToEdit.name, new_name: formData.name.trim(), description: formData.description.trim() };
+        const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/editpersona`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `Failed to edit: ${res.status}`);
+        }
+        setToast({ show: true, message: `Persona "${payload.new_name}" updated`, type: "success" });
+      } else {
+        // create
+        const payload = { name: formData.name.trim(), description: formData.description.trim(), status: formData.enabled ? "yes" : "no" };
+        const res = await fetch(`${window._env_?.VITE_FAST_API}/auth/createpersona`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `Failed to create: ${res.status}`);
+        }
+        setToast({ show: true, message: `Persona "${payload.name}" created`, type: "success" });
+      }
+      await refreshAllData(true);
+      if (closeOnSave) {
+        setShowModal(false);
+        setShowEditModal(false);
+      } else {
+        if (!personaToEdit) setFormData({ name: "", description: "", enabled: true });
+      }
+    } catch (err) {
+      console.error("handleSaveNew:", err);
+      setToast({ show: true, message: `Save failed: ${err.message}`, type: "error" });
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    }
   };
 
-  const tableHeaders = [
-    { key: 'id', label: 'Id' },
-    { key: 'name', label: 'Name' },
-    { key: 'description', label: 'Description' },
-    { key: 'status', label: 'Status' },
-    { key: 'createdOn', label: 'Created On' },
-    { key: 'action', label: 'Action' }
-  ];
+  const filteredCards = cards.filter(c => c.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredTable = tableData.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const isFormInvalid = !formData.name.trim() || !formData.description.trim();
+  // cards pagination
+  const cardTotalPages = Math.ceil(filteredCards.length / itemsPerPage);
+  const cardStartIndex = (currentPage - 1) * itemsPerPage;
+  const displayedCards = filteredCards.slice(cardStartIndex, cardStartIndex + itemsPerPage);
+
+  // list pagination
+  const listTotalPages = Math.ceil(filteredTable.length / itemsPerPage);
+  const listStartIndex = (currentPage - 1) * itemsPerPage;
+  const displayedRows = filteredTable.slice(listStartIndex, listStartIndex + itemsPerPage);
+
+  const handlePrevPage = () => setCurrentPage(p => Math.max(1, p - 1));
+  const handleNextPage = () => {
+    const max = viewMode === "cards" ? cardTotalPages : listTotalPages;
+    setCurrentPage(p => Math.min(max || 1, p + 1));
+  };
+
+  const handleItemsPerPageChange = (e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); };
+
+  const handleClickOutside = () => { setActiveMenu(null); setShowViewModeMenu(false); };
 
   return (
-    <div className="p-6">
+    <div className="p-4 bg-[#F3F5F7] min-h-screen">
+      <style>{rotateAnimation}</style>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+
+      {toast.show && (
+        <div className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' : 'bg-red-100 text-red-800 border-l-4 border-red-500'}`}>
+          <Icon icon={toast.type === 'success' ? 'mdi:check-circle' : 'mdi:alert-circle'} className="h-5 w-5" />
+          <p>{toast.message}</p>
+          <button onClick={() => setToast({ show: false, message: "", type: "" })} className="ml-2 text-gray-500 hover:text-gray-700">
+            <Icon icon="mdi:close" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <Breadcrumb />
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Persona</h1>
+      <div className="flex items-center justify-between mb-[18px] overflow-visible">
+        <div className="flex items-center gap-2 overflow-visible">
+          <h1 className="text-2xl font-semibold">Persona</h1>
+          <div className="relative group">
+  
+</div>
+        </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <input type="text" className="pl-10 w-64 h-10 rounded-lg border border-gray-400 focus:outline-none" placeholder="Search personas..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: '#818181' }} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              className="pl-10 w-64 h-10 rounded-lg border border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
+              placeholder="Search persona"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                <Icon icon="mdi:close" width="16" height="16" />
+              </button>
+            )}
           </div>
-          <button title="Refresh Data" onClick={handleRefresh} disabled={isTableLoading || isCardsLoading} className="p-2.5 border border-gray-400 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-            <RefreshCcw className={`h-5 w-5 text-gray-600 ${(isTableLoading || isCardsLoading) ? 'animate-spin' : ''}`} />
-          </button>
+
+          <div className="relative">
+            <button
+              className={`flex items-center justify-center p-1 px-1.5 rounded-lg border border-gray-400 bg-gray-50 hover:bg-gray-100`}
+              onClick={() => setShowViewModeMenu(prev => !prev)}
+              style={{ width: '40px', height: '40px', borderRadius: '8px', padding: '8px' }}
+              title="Choose view mode"
+            >
+              {viewMode === 'cards' ? <LayoutGrid className="h-5 w-5" style={{ color: '#818181' }} /> : <List className="h-5 w-5" style={{ color: '#818181' }} strokeWidth={1.5} />}
+            </button>
+
+            {showViewModeMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
+                <div className="absolute right-0 mt-2 w-36 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                  <button className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 hover:bg-gray-100 ${viewMode === 'list' ? 'bg-gray-50' : ''}`} onClick={() => { setViewMode('list'); setShowViewModeMenu(false); }}>
+                    <span className="flex items-center gap-2"><List className="h-4 w-4" />List</span>
+                    {viewMode === 'list' && <Icon icon="mdi:check" width="14" height="14" />}
+                  </button>
+                  <button className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 hover:bg-gray-100 ${viewMode === 'cards' ? 'bg-gray-50' : ''}`} onClick={() => { setViewMode('cards'); setShowViewModeMenu(false); }}>
+                    <span className="flex items-center gap-2"><LayoutGrid className="h-4 w-4" />Cards</span>
+                    {viewMode === 'cards' && <Icon icon="mdi:check" width="14" height="14" />}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           <button
-            type="button"
-            title="Toggle Card/List View"
-            onClick={handleToggleView}
-            className="p-2.5 border border-gray-400 rounded-lg hover:bg-gray-50"
+            className={`flex items-center justify-center p-1 px-1.5 rounded-lg border  border-gray-400 bg-gray-50 hover:bg-gray-100`}
+            onClick={() => refreshAllData(true)}
+            disabled={refreshing}
+            title="Refresh"
+            style={{ width: '40px', height: '40px', borderRadius: '8px', padding: '8px' }}
           >
-            <List className="h-5 w-5 text-gray-600" />
+            <RefreshCcw size={20} className={`${refreshing ? 'icon-rotate' : ''}`} style={{ color: '#818181' }} strokeWidth={1.7} />
           </button>
+
           <button className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg" onClick={handleOpenAddModal}>
-            <Plus className="h-5 w-5" /> New Persona
+            <Plus className="h-5 w-5" /> New persona
           </button>
         </div>
       </div>
 
-      {isCardViewVisible && (
-        isCardsLoading ? (<div className="text-center p-6">Loading personas...</div>) : cardsError ? (<div className="text-center p-6 bg-red-50 text-red-600 rounded-lg">{cardsError}</div>) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCards.map((card) => {
-              const cardIndex = personaCards.findIndex(c => c.id === card.id);
-              return (
-                <div key={card.id} className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                  <div className="p-6">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-                        <div className={`flex items-center justify-center w-10 h-10 ${card.bgcolor} rounded-full ${card.iconcolor} flex-shrink-0`}>
-                          <Icon icon={card.icon} />
-                        </div>
-                        <h3 className="text-lg font-semibold truncate" title={card.title}>{card.title}</h3>
-                      </div>
-                      <div className="relative flex-shrink-0">
-                        <button onClick={() => setActiveMenu(activeMenu === `card-${cardIndex}` ? null : `card-${cardIndex}`)} className="p-1.5 rounded-full hover:bg-gray-100" title="See Actions" >
-                          <MoreVertical className="h-5 w-5" />
-                        </button>
-                        {activeMenu === `card-${cardIndex}` && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
-                            <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                              <div className="flex items-center p-1 gap-1">
-                                <button onClick={() => handleOpenEditModal({ id: card.id, name: card.title, description: card.description, status: card.enabled ? 'enabled' : 'disabled' })} title="Edit Persona" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" >
-                                  <Pencil className="h-4 w-4" />
-                                </button>
-                                <button onClick={() => handleOpenDeleteModal({ id: card.id, name: card.title, description: card.description })} title="Delete Persona" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" >
-                                  <Trash2 className="h-4 w-4 text-red-600" />
-                                </button>
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#8e78b7]"></div>
+        </div>
+      ) : (
+        <>
+          {viewMode === 'cards' && (
+            <>
+              {filteredCards.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {displayedCards.map((card, index) => (
+                     <div key={card.id || index} className="bg-white rounded-lg border border-gray-100 transform transition-all duration-300 hover:shadow-md hover:-translate-y-1 overflow-hidden">
+                        <div className="p-6">
+                          <div className="flex items-start justify-between gap-2 min-w-0">
+  <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 ${card.bgcolor} rounded-full ${card.iconcolor} flex-shrink-0`} aria-hidden="true">
+                                <span className="text-sm md:text-base font-semibold">{getInitial(card)}</span>
                               </div>
+                              <h3 className="text-lg font-semibold truncate">{card.title}</h3>
                             </div>
-                          </>
-                        )}
+
+                            <div className="relative flex-shrink-0">
+  <button onClick={() => setActiveMenu(activeMenu === `card-${index}` ? null : `card-${index}`)} className="p-1.5 rounded-full hover:bg-gray-100">
+                                <MoreVertical className="h-5 w-5 text-gray-600" />
+                              </button>
+                              {activeMenu === `card-${index}` && (
+                                <>
+                                  <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
+                                  <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                    <div className="flex items-center p-1 gap-1">
+                                      <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { handleOpenEditModal({ name: card.title, description: card.description, status: card.enabled ? "Enabled" : "Disabled" }); setActiveMenu(null); }}>
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+                                      <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { handleOpenDeleteModal({ name: card.title, description: card.description }); setActiveMenu(null); }}>
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <p className="text-gray-500 mt-4 text-sm line-clamp-2">{card.description}</p>
+
+                          <div className="flex items-center justify-between mt-6">
+                            <div className="flex items-center gap-2">
+                              <Icon icon="material-symbols:supervisor-account-outline" width="24" height="24" style={{ color: '#818181' }} />
+                              <span className="text-sm">{card.users.toString().padStart(2, "0")}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {togglingStatus === card.title ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" />
+                              ) : (
+                                <Toggle enabled={card.enabled} onToggle={() => togglePersona(card.title)} />
+                              )}
+                              <span className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-gray-400"}`}>{card.enabled ? "Enabled" : "Disabled"}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                  </div>
+
+                  {filteredCards.length > 0 && (
+                    <div className="flex flex-col md:flex-row items-center justify-between mt-6 mb-6">
+                      <div className="text-sm text-gray-500 mb-4 md:mb-0">Showing {cardStartIndex + 1} to {Math.min(cardStartIndex + displayedCards.length, filteredCards.length)} of {filteredCards.length} personas</div>
+
+                      <div className="flex items-center space-x-4" style={{ transform: 'translateX(-20px)' }}>
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm text-gray-500">Show per page</label>
+                          <div className="relative">
+                            <select value={itemsPerPage} onChange={handleItemsPerPageChange} className="border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-center pl-2 pr-8" style={{ height: '31px', width: '55px', WebkitAppearance: 'none', appearance: 'none', paddingRight: '24px'}}>
+                              <option value={12}>12</option>
+                              <option value={24}>24</option>
+                              <option value={48}>48</option>
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-700" size={14} />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center border border-gray-400 rounded-md bg-gray-50" style={{ height: '31px', width: '55px', overflow: 'hidden' }}>
+                          <button onClick={handlePrevPage} disabled={currentPage === 1} title="Previous page" className={`flex-1 h-full flex items-center justify-center ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`} style={{ padding: 0, border: 'none' }}>
+                            <ChevronLeft size={14} />
+                          </button>
+                          <button onClick={handleNextPage} disabled={currentPage >= cardTotalPages || cardTotalPages === 0} title="Next page" className={`flex-1 h-full flex items-center justify-center ${currentPage >= cardTotalPages || cardTotalPages === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`} style={{ padding: 0, border: 'none', borderLeft: '1px solid rgba(156,163,175,0.45)' }}>
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <p className="text-gray-500 mt-4 text-sm overflow-hidden" title={card.description}>{card.description}</p>
-                    <div className="flex items-center justify-between mt-6">
-                      <div className="flex items-center gap-2">
-                        <Icon icon="material-symbols:supervisor-account-outline" width="24" height="24" />
-                        <span className="text-sm">{card.users}</span>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-64 text-gray-500 transition-opacity duration-300">
+                  <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
+                  <p>No personas found matching "{searchTerm}"</p>
+                  <button onClick={() => setSearchTerm("")} className="mt-2 text-[#8e78b7] hover:underline transition-all duration-200">Clear search</button>
+                </div>
+              )}
+            </>
+          )}
+
+          {viewMode === 'list' && (
+            <>
+              <div className="bg-white rounded-lg shadow mt-0" style={{ overflow: 'visible' }}>
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-[#29304a] text-white text-sm">
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>ID</th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Name</th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Description</th>
+                      <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Created On</th>
+                      <th className="text-left" style={{ padding: '16px 19.75px' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm">
+                    {displayedRows.map((row, idx) => (
+                      <tr key={row.id || idx} className="border-b hover:bg-gray-50">
+                        <td style={{ padding: '16px 19.75px' }} title={row.id}>{row.id?.substring(0, 8)}...</td>
+                        <td style={{ padding: '16px 19.75px' }} className="text-gray-600">
+                          <div className="flex items-center">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#8d77ba] bg-opacity-25 text-[#8d77ba] mr-2">
+                              <span className="text-sm font-semibold">{getInitial(row)}</span>
+                            </div>
+                            <div className="truncate">{row.name}</div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '16px 19.75px' }} className="text-gray-600 max-w-xs truncate">{row.description}</td>
+                        <td style={{ padding: '16px 19.75px' }}>
+                          <div className="text-center align-middle">
+                            {row.status === 'Enabled' ? (
+                              <span className="inline-block px-6 py-2 rounded-md text-sm font-medium" style={{ background: '#def3e9', color: '#1a9962', minWidth: '88px', textAlign: 'center' }} title="Enabled">Enabled</span>
+                            ) : (
+                              <span className="inline-block px-6 py-2 rounded-md text-sm font-medium" style={{ background: '#f3f4f6', color: '#6b7280', minWidth: '88px', textAlign: 'center' }} title="Disabled">Disabled</span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '16px 19.75px' }} className="text-gray-600">{row.createdOn || "-"}</td>
+                        <td style={{ padding: '16px 19.75px' }}>
+                          <div className="relative">
+                            <button onClick={() => setActiveMenu(activeMenu === idx ? null : idx)} className="p-1.5 rounded-full hover:bg-gray-100">
+                              <MoreHorizontal className="h-5 w-5 text-gray-600" />
+                            </button>
+
+                            {activeMenu === idx && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
+                                <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
+                                  <div className="flex items-center p-1 gap-1">
+                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setPersonaToEdit(row); setFormData({ name: row.name, description: row.description, enabled: (row.status || "").toLowerCase() === 'enabled' }); setShowEditModal(true); setActiveMenu(null); }}>
+                                      <Pencil className="h-4 w-4" />
+                                    </button>
+
+                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2" onClick={async () => { setActiveMenu(null); await togglePersona(row.name); }} disabled={togglingStatus === row.name} title={row.status === 'Enabled' ? 'Disable' : 'Enable'}>
+                                      {togglingStatus === row.name ? (
+                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" />
+                                      ) : (
+                                        <div className={`w-4 h-4 flex items-center justify-center mr-1 rounded-sm transition-colors ${row.status === 'Enabled' ? 'bg-[#1a9962] text-white' : 'border border-gray-300 bg-white text-transparent'}`} aria-hidden="true" title={row.status === 'Enabled' ? 'Disable' : 'Enable'}>
+                                          {row.status === 'Enabled' && <Icon icon="mdi:check" width="12" height="12" />}
+                                        </div>
+                                      )}
+                                    </button>
+
+                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setPersonaToDelete(row); setShowDeleteModal(true); setActiveMenu(null); }}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {!loading && displayedRows.length === 0 && (
+                      <tr>
+                        <td colSpan="6" className="p-4 text-center text-gray-500">
+                          {searchTerm ? (
+                            <div className="flex flex-col items-center justify-center py-8">
+                              <Icon icon="material-symbols:search-off-outline" width="48" height="48" className="mb-4 text-gray-400" />
+                              <p>No personas found matching "{searchTerm}"</p>
+                              <button onClick={() => setSearchTerm("")} className="mt-2 text-[#8e78b7] hover:underline transition-all duration-200">Clear search</button>
+                            </div>
+                          ) : "No personas found"}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {!loading && filteredTable.length > 0 && (
+                <div className="flex flex-col md:flex-row items-center justify-between mt-6 mb-6">
+                  <div className="text-sm text-gray-500 mb-4 md:mb-0">Showing {listStartIndex + 1} to {Math.min(listStartIndex + displayedRows.length, filteredTable.length)} of {filteredTable.length} personas</div>
+
+                  <div className="flex items-center space-x-4" style={{ transform: 'translateX(-20px)' }}>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-gray-500">Show per page</label>
+                      <div className="relative">
+                        <select value={itemsPerPage} onChange={handleItemsPerPageChange} className="border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-center pl-2 pr-8" style={{ height: '31px', width: '55px', WebkitAppearance: 'none', appearance: 'none', paddingRight: '28px' }}>
+                          <option value={12}>12</option>
+                          <option value={24}>24</option>
+                          <option value={48}>48</option>
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-700" size={14} />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          {card.enabled ? 'Enabled' : 'Disabled'}
-                        </span>
-                        <ToggleSwitch
-                          enabled={card.enabled}
-                          onChange={() => handleToggleStatus(card.title, card.enabled)}
-                          disabled={toggleStates[`toggle-${card.title}`]}
-                          size="sm"
-                        />
-                      </div>
+                    </div>
+
+                    <div className="flex items-center border border-gray-400 rounded-md bg-gray-50" style={{ height: '31px', width: '55px', overflow: 'hidden' }}>
+                      <button onClick={handlePrevPage} disabled={currentPage === 1} title="Previous page" className={`flex-1 h-full flex items-center justify-center ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`} style={{ padding: 0, border: 'none' }}>
+                        <ChevronLeft size={14} />
+                      </button>
+
+                      <button onClick={handleNextPage} disabled={currentPage >= listTotalPages || listTotalPages === 0} title="Next page" className={`flex-1 h-full flex items-center justify-center ${currentPage >= listTotalPages || listTotalPages === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`} style={{ padding: 0, border: 'none', borderLeft: '1px solid rgba(156,163,175,0.45)' }}>
+                        <ChevronRight size={14} />
+                      </button>
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )
+              )}
+            </>
+          )}
+        </>
       )}
 
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden mt-8 border border-gray-200">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-800 text-white">
-              <tr>
-                {tableHeaders.map(header => (
-                  <th key={header.key} className="text-left p-3 font-semibold tracking-wider" onClick={() => header.key !== 'action' && header.key !== 'id' && handleSort(header.key)}>
-                    <span className={`inline-flex items-center ${header.key !== 'action' && header.key !== 'id' ? 'cursor-pointer' : ''}`}>
-                      {header.label}
-                      {header.key !== 'action' && header.key !== 'id' && getSortIcon(header.key)}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {isTableLoading ? (
-                Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={tableHeaders.length} />)
-              ) : tableError ? (
-                <tr><td colSpan={tableHeaders.length} className="text-center p-6 text-red-600">{tableError}</td></tr>
-              ) : currentItems.length > 0 ? (
-                currentItems.map((item, index) => (
-                  <tr key={item.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3 text-gray-700 font-medium">{(currentPage - 1) * rowsPerPage + index + 1}</td>
-                    <td className="p-3 text-gray-600">{item.name}</td>
-                    <td className="p-3 text-gray-600 max-w-sm truncate" title={item.description}>{item.description}</td>
-                    <td className="p-3">{getStatusBadge(item.status)}</td>
-                    <td className="p-3 text-gray-600">{item.createdOn}</td>
-                    <td className="px-6 p-4 text-center whitespace-nowrap">
-                      <div className="relative">
-                        <button onClick={() => setActiveMenu(activeMenu === index ? null : index)} className="p-1.5 rounded-full hover:bg-gray-100" title="See Actions" >
-                          <MoreHorizontal className="h-5 w-5" />
-                        </button>
-                        {activeMenu === index && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={handleClickOutside} />
-                            <div className="absolute top-1 right-8 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                              <div className="flex items-center p-1 gap-1">
-                                <button onClick={() => handleOpenEditModal(item)} title="Edit Persona" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" >
-                                  <Pencil className="h-4 w-4" />
-                                </button>
-                                <button onClick={() => handleOpenDeleteModal(item)} title="Delete Persona" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" >
-                                  <Trash2 className="h-4 w-4 text-red-600" />
-                                </button>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr><td colSpan={tableHeaders.length} className="text-center p-6 text-gray-500">No personas found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex justify-between items-center px-4 py-3 border-t">
-          <span className="text-sm text-gray-600">
-            Showing {filteredAndSortedData.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} to {Math.min(currentPage * rowsPerPage, filteredAndSortedData.length)} of {filteredAndSortedData.length} results
-          </span>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronLeft className="h-5 w-5" /></button>
-            <span className="text-sm text-gray-600">Page {currentPage} of {totalPages > 0 ? totalPages : 1}</span>
-            <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages || totalPages === 0} className="p-2 rounded-lg disabled:text-gray-300 text-gray-600 hover:bg-gray-100"><ChevronRight className="h-5 w-5" /></button>
-          </div>
-        </div>
-      </div>
-
-      {showModal && (
+      {/* Add / Edit Modal */}
+      {(showModal || showEditModal) && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => !isSubmitting && setShowModal(false)}></div>
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => { if (!isSubmitting) { setShowModal(false); setShowEditModal(false); } }}></div>
             <div className="inline-block w-full max-w-xl p-6 my-8 text-left bg-white shadow-xl rounded-lg z-10">
-              <h3 className="text-lg font-bold text-[#8f79b8] mb-6">{itemToEdit ? 'Edit Persona' : 'Add New Persona'}</h3>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-[#8f79b8]">{personaToEdit ? 'Edit Persona' : 'Add Persona'}</h3>
+                  {!personaToEdit && (
+                    <div className="relative group">
+                      <Info className="h-4 w-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" />
+                      <div className="absolute left-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50 whitespace-normal bottom-full mb-2">
+                        Create a new persona to define roles, permissions and access controls for users.
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* right side reserved for future controls (close button, etc.) */}
+              </div>
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Persona Name <span className="text-red-500">*</span></label>
@@ -673,31 +777,29 @@ function Persona() {
                   <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none" rows="4" placeholder="Provide details about the persona's purpose"></textarea>
                 </div>
 
-                {/* --- Conditional Rendering for Status --- */}
-                {!itemToEdit && (
+                {!personaToEdit && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Enabled</label>
+                    {/* <label className="block text-sm font-medium text-gray-700 mb-2">Enabled</label> */}
                     <div className="flex items-center gap-4">
-                      <label className="flex items-center cursor-pointer">
-                        <input type="radio" name="status" checked={formData.enabled === true} onChange={() => setFormData({ ...formData, enabled: true })} className="form-radio h-4 w-4 text-[#8e78b7]" />
-                        <span className="ml-2 text-sm text-gray-700">Yes</span>
-                      </label>
-                      <label className="flex items-center cursor-pointer">
-                        <input type="radio" name="status" checked={formData.enabled === false} onChange={() => setFormData({ ...formData, enabled: false })} className="form-radio h-4 w-4 text-[#8e78b7]" />
-                        <span className="ml-2 text-sm text-gray-700">No</span>
-                      </label>
+                      <Toggle enabled={!!formData.enabled} onToggle={() => setFormData({ ...formData, enabled: !formData.enabled })} />
+                      <span className={`text-sm ${formData.enabled ? 'text-[#1a9962]' : 'text-gray-400'}`}>{formData.enabled ? 'Enabled' : 'Disabled'}</span>
                     </div>
                   </div>
                 )}
 
-                <div className="flex justify-end items-center gap-3 pt-4 border-t mt-6">
-                  <button disabled={isSubmitting} className="px-4 py-2 text-gray-700 border border-gray-300 hover:bg-gray-100 rounded-lg disabled:opacity-50" onClick={() => setShowModal(false)}>Cancel</button>
-                  {!itemToEdit && (
-                    <button onClick={() => handleSave(false)} disabled={isFormInvalid || isSubmitting} className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50 disabled:cursor-wait">
-                      {isSubmitting ? 'Saving...' : 'Save & Add Another'}
-                    </button>
-                  )}
-                  <button onClick={() => handleSave(true)} disabled={isFormInvalid || isSubmitting} className="px-4 py-2 text-white bg-[#8e78b7] hover:bg-[#7a67a0] rounded-lg disabled:opacity-50 disabled:cursor-wait">
+                <div className="flex justify-start items-center gap-3 pt-4 border-t mt-6">
+                  <button
+                    disabled={isSubmitting}
+                    onClick={() => { setShowModal(false); setShowEditModal(false); }}
+                    className="px-4 py-2 w-28 text-center text-white bg-[#8e78b7] hover:bg-[#7a67a0] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleSaveNew(true)}
+                    disabled={!formData.name.trim() || !formData.description.trim() || isSubmitting}
+                    className="px-4 py-2 w-28 text-center text-white bg-[#8e78b7] hover:bg-[#7a67a0] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
                     {isSubmitting ? 'Saving...' : 'Save'}
                   </button>
                 </div>
@@ -707,22 +809,18 @@ function Persona() {
         </div>
       )}
 
-      <ConfirmationModal 
-  isOpen={isDeleteModalOpen} 
-  onClose={() => {
-    setIsDeleteModalOpen(false);
-    setPolicyCount(null);
-    setPolicyCountLoading(false);
-  }} 
-  onConfirm={handleConfirmDelete} 
-  title="Confirm Deletion" 
-  message={`Are you sure you want to delete the persona "${itemToDelete?.name}"? This action cannot be undone.`} 
-  isConfirming={isDeleting}
-  policyCount={policyCount}
-  policyCountLoading={policyCountLoading}
-/>
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => { setShowDeleteModal(false); setPolicyCount(null); setPolicyCountLoading(false); }}
+        onConfirm={handleConfirmDelete}
+        title="Confirm Deletion"
+        message={`Are you sure you want to delete the persona "${personaToDelete?.name}"? This action cannot be undone.`}
+        isConfirming={isDeleting}
+        policyCount={policyCount}
+        policyCountLoading={policyCountLoading}
+      />
     </div>
   );
-}
+};
 
 export default Persona;

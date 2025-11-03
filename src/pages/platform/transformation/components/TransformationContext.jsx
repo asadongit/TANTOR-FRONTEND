@@ -85,7 +85,6 @@ function transformationReducer(state, action) {
           [action.payload.id]: {
             ...state.sources[action.payload.id],
             ...action.payload.data,
-            // FIXED: Ensure enableCountLogging is properly updated and preserved
             enableCountLogging: typeof action.payload.data.enableCountLogging === 'boolean'
               ? action.payload.data.enableCountLogging
               : (state.sources[action.payload.id]?.enableCountLogging || false)
@@ -93,7 +92,6 @@ function transformationReducer(state, action) {
         }
       };
 
-      // Trigger a sidebar update notification
       if (typeof action.payload.data.enableCountLogging === 'boolean') {
         setTimeout(() => {
           if (window.triggerSidebarUpdate) {
@@ -148,7 +146,6 @@ function transformationReducer(state, action) {
             alias: action.payload.data.alias,
             targetMapping: action.payload.data.targetMapping ||
                            state.preservedTargetMappings[action.payload.id] || {},
-            // NEW: keep SCD config
             scdConfig: action.payload.data.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" }
           }
         }
@@ -161,8 +158,6 @@ function transformationReducer(state, action) {
       if (Object.keys(newTargetMapping).length > 0) {
         state.preservedTargetMappings[action.payload.id] = { ...newTargetMapping };
       }
-
-      // FIXED: Ensure SCD config is properly preserved and updated
       const currentScdConfig = state.targets[action.payload.id]?.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" };
       const newScdConfig = action.payload.data.scdConfig !== undefined
         ? {
@@ -184,7 +179,9 @@ function transformationReducer(state, action) {
             enableCountLogging: typeof action.payload.data.enableCountLogging === 'boolean'
               ? action.payload.data.enableCountLogging
               : (state.targets[action.payload.id]?.enableCountLogging || false),
-            // FIXED: Always update SCD config properly
+            surPopulation: typeof action.payload.data.surPopulation === 'boolean'
+              ? action.payload.data.surPopulation
+              : (state.targets[action.payload.id]?.surPopulation || false),
             scdConfig: newScdConfig
           }
         }
@@ -593,13 +590,13 @@ export function TransformationProvider({ children }) {
         queryColumns
           .filter(col => col.name && col.name.trim() !== "")
           .forEach(col => {
-            
-            columnMapping[col.name] = 
+
+            columnMapping[col.name] =
               col.datatype === 'custom'
                 ? (col.customDatatype || 'custom')
                 : col.datatype;
           });
-          
+
 
         result.source[sourceKey] = {
           sourceType: sourceData.connectionType || "unknown",
@@ -607,10 +604,10 @@ export function TransformationProvider({ children }) {
           sourceConnId: sourceData.connectionId || "",
           sourceQualifier: sourceData.customQuery,
           objectType: "source-query",
-          column: [columnMapping], 
+          column: [columnMapping],
           ConnectionParameters: {
             sourceSchema: sourceData.schema || "",
-            sourceTable: sourceData.table || "" 
+            sourceTable: sourceData.table || ""
           },
           readParameters: {
             watermarkColumn: "",
@@ -618,7 +615,7 @@ export function TransformationProvider({ children }) {
           },
           EnableCountLogging: sourceData.enableCountLogging === true
         };
-        
+
       } else {
         // Handle regular database sources (tables, views, procedures)
         result.source[sourceKey] = {
@@ -704,7 +701,9 @@ export function TransformationProvider({ children }) {
                     targetPK: serializeBracketed(scd.primaryKeys || []),
                     surrogateKey: scd.surrogateKey || "",
                     changeType: (scd.checksumColumns?.length ? (scd.changeType || "checksum") : ""),
-                    checksumColumns: serializeBracketed(scd.checksumColumns || [])
+                    checksumColumns: serializeBracketed(scd.checksumColumns || []),
+                    // Add surrogate population for SCD1
+                    ...(targetData.loadType === "SCD1" ? { surPopulation: targetData.surPopulation || false } : {})
                   }
                 : {})
             },
@@ -888,7 +887,7 @@ export function useTrackConnections(nodes, edges) {
                 schema: data.schema,
                 table: data.table,
                 columns: data.columns,
-                customQuery: data.customQuery, 
+                customQuery: data.customQuery,
                 fileColumns: data.fileColumns,
                 objectType: data.objectType,
                 preProcedures: data.preProcedures,
@@ -941,6 +940,7 @@ export function useTrackConnections(nodes, edges) {
                   preProcedures: data.preProcedures,
                   postProcedures: data.postProcedures,
                   enableCountLogging: data.enableCountLogging || false,
+                  surPopulation: data.surPopulation || false,
                   // NEW: carry any existing SCD config from node data
                   scdConfig: data.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" }
                 }

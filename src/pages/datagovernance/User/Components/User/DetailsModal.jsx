@@ -412,12 +412,7 @@ const DetailsModal = ({ isOpen, onClose, title, items, type }) => {
                     </ul>
                 )}
                 <div className="flex justify-end mt-4">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 border border-gray-400 rounded-lg hover:bg-gray-100 transition-colors text-black"
-                    >
-                        Close
-                    </button>
+                    
                 </div>
             </div>
         </div>

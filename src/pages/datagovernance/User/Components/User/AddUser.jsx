@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Loader, Check, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Loader, Check, Search, ChevronDown, ChevronUp,Info } from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import { useAuth } from '../../../../../context/AuthContext';
 import AssignPolicyModal from './AssignPolicyModal';
@@ -338,7 +338,13 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
             <div>
               <Icon className="h-5 w-5 text-[#8e78b7]" icon={"material-symbols:supervisor-account-outline"} width="24" height="24" />
             </div>
-            <h2 className="text-xl font-bold text-[#8e78b7]">Add user</h2>
+            <h2 className="text-md font-bold text-[#8e78b7]">Add user</h2>
+            <div className="relative group">
+              <Info className="h-4 w-4 text-gray-400 cursor-help hover:text-gray-600 transition-colors" />
+              <div className="absolute left-0 mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-10 whitespace-normal">
+                Create a new user account with roles, personas, groups, and access policies.
+              </div>
+            </div>
           </div>
           <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
@@ -378,10 +384,10 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   className={`w-full p-2.5 border ${errors.password ? 'border-red-500' : 'border-gray-400'} rounded-lg focus:outline-none focus:border-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7]`}
                 />
                 {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
-                <p className="mt-1 text-xs text-gray-500">
+                {/* <p className="mt-1 text-xs text-gray-500">
                   Password must contain at least 8 characters, including uppercase, lowercase,
                   numbers, and special characters.
-                </p>
+                </p> */}
               </div>
               <div>
                 <label className="block text-sm text-black mb-1.5">Confirm password <span className="text-red-500">*</span></label>
@@ -502,7 +508,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
         <div className="flex justify-start gap-4 mt-8">
           <button
             onClick={handleClose}
-            className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors"
+            className="w-20 px-6 py-2.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a6a9e] transition-colors font-medium flex items-center justify-center"
             disabled={isLoading}
           >
             Cancel
@@ -510,7 +516,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-6 py-2 border border-gray-400 rounded-lg hover:bg-[#8e78b7] hover:text-white transition-colors flex items-center gap-2"
+            className="w-20 px-6 py-2.5 bg-[#8e78b7] text-white rounded-lg hover:bg-[#7a6a9e] transition-colors font-medium flex items-center justify-center"
           >
             {isLoading ? (
               <>
