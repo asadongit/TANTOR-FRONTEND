@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   Database,
@@ -19,7 +20,7 @@ import Switch from "@mui/material/Switch";
 import Builder from "./Builder";
 import { useAuth } from "../../../../context/AuthContext";
 import { secureQuery } from '../../../datagovernance/DataCatalogue/Components/function.js';
-import { Icon } from "@iconify/react"; // Added for toast icons
+import { Icon } from "@iconify/react";
 
 export default function Editor() {
   const { token, project, decodedToken, setSelectedProject, hostnameV1 } = useAuth();
@@ -50,7 +51,7 @@ export default function Editor() {
   const [apiDetails, setApiDetails] = useState({ viewName: "", curl: "" });
   const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [toast, setToast] = useState({ show: false, message: '', type: '' }); // Added toast state
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
 
   useEffect(() => {
     const fetchConnections = async () => {
@@ -271,6 +272,33 @@ export default function Editor() {
 
       if (!secureQueryResponse.ok) {
         const errData = await secureQueryResponse.json();
+
+        // Check if it's an "Access denied" error
+        const isAccessDenied = errData.detail && errData.detail.toLowerCase().includes("access denied");
+
+        if (isAccessDenied) {
+          const failedHistoryPayload = {
+            query: newQuery,
+            status: "failed",
+            owner: decodedToken?.preferred_username,
+            project: (project === "default" || project === "none") ? "default" : project,
+            type: 'df'
+          };
+
+          await fetch(`${hostnameV1}/save_query`, {
+            method: "POST",
+            headers: {
+              accept: "application/json",
+              "Content-Type": "application/json",
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(failedHistoryPayload),
+          });
+
+          const updatedHistory = await fetchQueryHistory();
+          if (updatedHistory) setQueryHistory(updatedHistory);
+        }
+
         setToast({
           show: true,
           message: errData.detail || "Error in query validation",
@@ -358,6 +386,7 @@ export default function Editor() {
 
       const historyPayload = {
         query: newQuery,
+        status: "success",
         owner: decodedToken?.preferred_username,
         project: (project === "default" || project === "none") ? "default" : project,
         type: 'df'
@@ -1088,8 +1117,8 @@ export default function Editor() {
             {toast.show && (
               <div
                 className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-fadeIn ${toast.type === "success"
-                    ? "bg-green-100 text-green-800 border-l-4 border-green-500"
-                    : "bg-red-100 text-red-800 border-l-4 border-red-500"
+                  ? "bg-green-100 text-green-800 border-l-4 border-green-500"
+                  : "bg-red-100 text-red-800 border-l-4 border-red-500"
                   }`}
               >
                 <Icon
