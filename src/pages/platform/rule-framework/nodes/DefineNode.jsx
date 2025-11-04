@@ -10,19 +10,21 @@ export function DefineNode({ id, data }) {
     name: initialName,
     description: initialDescription,
     onDataChange,
-    onDeleteNode // Specific delete handler for this node instance
+    onDeleteNode, // Specific delete handler for this node instance
   } = data;
 
   // Use refs to track if this is the first render
   const isFirstRender = useRef(true);
 
-  const [currentName, setCurrentName] = useState(initialName || '');
-  const [currentDescription, setCurrentDescription] = useState(initialDescription || '');
+  const [currentName, setCurrentName] = useState(initialName || "");
+  const [currentDescription, setCurrentDescription] = useState(
+    initialDescription || ""
+  );
 
   // Only update local state from props on mount or if the node id changes
   useEffect(() => {
-    setCurrentName(initialName || '');
-    setCurrentDescription(initialDescription || '');
+    setCurrentName(initialName || "");
+    setCurrentDescription(initialDescription || "");
     isFirstRender.current = false;
   }, [id]); // Only when node id changes
 
@@ -32,7 +34,7 @@ export function DefineNode({ id, data }) {
       onDataChange({
         name: currentName,
         description: currentDescription,
-        nodeType: 'define',
+        nodeType: "define",
       });
     }
     // eslint-disable-next-line
@@ -73,7 +75,12 @@ export function DefineNode({ id, data }) {
 
       <div className="space-y-1.5">
         <div>
-          <label htmlFor={`${id}-name`} className="text-xs font-semibold text-black mb-0.5 block">Name</label>
+          <label
+            htmlFor={`${id}-name`}
+            className="text-xs font-semibold text-black mb-0.5 block"
+          >
+            Name
+          </label>
           <input
             id={`${id}-name`}
             type="text"
@@ -84,7 +91,12 @@ export function DefineNode({ id, data }) {
           />
         </div>
         <div>
-          <label htmlFor={`${id}-description`} className="text-xs font-semibold text-black mb-0.5 block">Description</label>
+          <label
+            htmlFor={`${id}-description`}
+            className="text-xs font-semibold text-black mb-0.5 block"
+          >
+            Description
+          </label>
           <input
             id={`${id}-description`}
             type="text"
