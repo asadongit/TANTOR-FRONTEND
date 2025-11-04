@@ -271,7 +271,7 @@ function Schema() {
                     {Array.isArray(currentSchemaData) && currentSchemaData.length > 0 ? (
                       currentSchemaData.map((schema, index) => (
                         <tr
-                          key={schema?.connectionName + schema.schema ?? index}
+                          key={schema?.connectionName + schema.schema}
                           className="border-b"
                         >
                           <td className="p-4">{indexOfFirstItem + index + 1}</td>
