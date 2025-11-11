@@ -5,7 +5,7 @@ import { useAuth } from "../../../../../context/AuthContext";
 
 const hostname = window._env_?.VITE_FAST_API;
 
-// Use a module-level cache for transformation names
+// module-level cache for transformation names
 const transformationNamesCache = {
   names: [],
   timestamp: 0,
@@ -16,27 +16,32 @@ const transformationNamesCache = {
 
 export const DefineNode = ({ id, data }) => {
   const [nameExists, setNameExists] = useState(false);
+  const [localName, setLocalName] = useState(data.name || ""); //for editing the name of definition node
+  const [localDescription, setLocalDescription] = useState(
+    data.description || ""
+  ); //for editing description
+
   const [isChecking, setIsChecking] = useState(false);
   const [nameError, setNameError] = useState("");
   const [descriptionError, setDescriptionError] = useState("");
   const [attemptedSave, setAttemptedSave] = useState(false);
   const nameCheckTimeout = useRef(null);
   const { project, decodedToken, token } = useAuth();
+  const isEditMode =
+    data.isEditMode || sessionStorage.getItem("editMode") === "true";
 
-  // Memoized fetch function to avoid repeated calls
   const getExistingTransformationNames = useCallback(async () => {
     const now = Date.now();
     const currentUser = decodedToken?.preferred_username;
-    // Only fetch if cache is expired or project/user changed
     if (
-      now - transformationNamesCache.timestamp < transformationNamesCache.expiryTime &&
+      now - transformationNamesCache.timestamp <
+        transformationNamesCache.expiryTime &&
       transformationNamesCache.lastProject === project &&
       transformationNamesCache.lastUser === currentUser
     ) {
       return transformationNamesCache.names;
     }
 
-    // Prevent concurrent fetches
     if (transformationNamesCache._fetchPromise) {
       return transformationNamesCache._fetchPromise;
     }
@@ -57,7 +62,9 @@ export const DefineNode = ({ id, data }) => {
         }
 
         const data = await response.json();
-        const names = data.map((item) => item.transformation_name.toLowerCase());
+        const names = data.map((item) =>
+          item.transformation_name.toLowerCase()
+        );
 
         transformationNamesCache.names = names;
         transformationNamesCache.timestamp = now;
@@ -75,72 +82,118 @@ export const DefineNode = ({ id, data }) => {
     return transformationNamesCache._fetchPromise;
   }, [project, decodedToken, token]);
 
-  const generateUniqueName = useCallback(async (baseName) => {
-    const existingNames = await getExistingTransformationNames();
-    let uniqueName = baseName;
-    let suffix = 1;
-
-    while (existingNames.includes(uniqueName.toLowerCase())) {
-      uniqueName = `${baseName}_${suffix}`;
-      suffix++;
-    }
-
-    return uniqueName;
-  }, [getExistingTransformationNames]);
-
-  const validateName = useCallback(async (name) => {
-    if (!name) {
-      setNameError("Name is required");
-      return;
-    }
-
-    setIsChecking(true);
-    try {
+  const generateUniqueName = useCallback(
+    async (baseName) => {
       const existingNames = await getExistingTransformationNames();
-      const nameExists = existingNames.includes(name.toLowerCase());
+      let uniqueName = baseName;
+      let suffix = 1;
 
-      if (nameExists) {
-        setNameExists(true);
-        setNameError("Transformation name already exists");
-      } else {
-        const response = await fetch(
-          `${hostname}/etl/check-transformation-name?name=${encodeURIComponent(name)}`,
-          {
-            method: "GET",
-            headers: {
-              accept: "application/json",
-            },
-          }
-        );
+      while (existingNames.includes(uniqueName.toLowerCase())) {
+        uniqueName = `${baseName}_${suffix}`;
+        suffix++;
+      }
 
-        if (!response.ok) {
-          throw new Error("Failed to check transformation name");
-        }
+      return uniqueName;
+    },
+    [getExistingTransformationNames]
+  );
 
-        const result = await response.json();
-        setNameExists(result.exists);
+  const validateName = useCallback(
+    async (name) => {
+      if (!name) {
+        setNameError("Name is required");
+        return;
+      }
 
-        if (result.exists) {
+      setIsChecking(true);
+      try {
+        const existingNames = await getExistingTransformationNames();
+        const nameExists = existingNames.includes(name.toLowerCase());
+
+        if (nameExists) {
+          setNameExists(true);
           setNameError("Transformation name already exists");
         } else {
-          setNameError("");
-        }
-      }
-    } catch (error) {
-      console.error("Error checking transformation name:", error);
-    } finally {
-      setIsChecking(false);
-    }
-  }, [getExistingTransformationNames]);
+          const response = await fetch(
+            `${hostname}/etl/check-transformation-name?name=${encodeURIComponent(
+              name
+            )}`,
+            {
+              method: "GET",
+              headers: {
+                accept: "application/json",
+                Authorization: `Bearer ${token}`, //  include token from useAuth
+              },
+            }
+          );
 
+          if (!response.ok) {
+            throw new Error("Failed to check transformation name");
+          }
+
+          const result = await response.json();
+          setNameExists(result.exists);
+
+          if (result.exists) {
+            setNameError("Transformation name already exists");
+          } else {
+            setNameError("");
+          }
+        }
+      } catch (error) {
+        console.error("Error checking transformation name:", error);
+      } finally {
+        setIsChecking(false);
+      }
+    },
+    [getExistingTransformationNames]
+  );
+
+  // const handleNameChange = (e) => {
+  //   // if (isEditMode) return;    Commenting this to enable name change in edit mode
+  //   const value = e.target.value;
+  //   // Testing log
+  //   console.log("Typing name:", value);
+  //   if (typeof data.onDataChange !== "function") {
+  //     console.warn("onDataChange is missing or not a function in edit mode");
+  //   }
+
+  //   data.onDataChange({ name: value });
+
+  //   if (attemptedSave) {
+  //     setNameError("");
+  //   }
+
+  //   clearTimeout(nameCheckTimeout.current);
+
+  //   if (value) {
+  //     nameCheckTimeout.current = setTimeout(() => {
+  //       validateName(value);
+  //     }, 500);
+  //   } else {
+  //     setNameError("Name is required");
+  //     setNameExists(false);
+  //   }
+  // };
+  /*=================================================================================================
+                  Modified handleNameChange and handleDescriptionChange Function
+  ===============================================================================================*/
+
+  //  Name change handler
   const handleNameChange = (e) => {
     const value = e.target.value;
-    data.onDataChange({ name: value });
+    // console.log("Typing name:", value);
+    setLocalName(value); // update local state
 
-    if (attemptedSave) {
-      setNameError("");
+    // Update both local and parent ReactFlow state
+    if (typeof data.onDataChange === "function") {
+      data.onDataChange({ name: value });
+    } else {
+      console.warn("onDataChange is missing or not a function");
     }
 
+    // Reset validation + debounce
+    if (attemptedSave) setNameError("");
     clearTimeout(nameCheckTimeout.current);
 
     if (value) {
@@ -153,27 +206,58 @@ export const DefineNode = ({ id, data }) => {
     }
   };
 
+  //  Description change handler
   const handleDescriptionChange = (e) => {
     const value = e.target.value;
-    data.onDataChange({ description: value });
+    setLocalDescription(value); // add this state variable (next step)
+
+    if (typeof data.onDataChange === "function") {
+      data.onDataChange({ description: value });
+    }
 
     if (attemptedSave) {
-      if (!value) {
-        setDescriptionError("Description is required");
-      } else {
-        setDescriptionError("");
-      }
+      if (!value) setDescriptionError("Description is required");
+      else setDescriptionError("");
     }
   };
 
+  /* ==================================================================================================*/
+
+  // const handleDescriptionChange = (e) => {
+  //   const value = e.target.value;
+  //   data.onDataChange({ description: value });
+
+  //   if (attemptedSave) {
+  //     if (!value) {
+  //       setDescriptionError("Description is required");
+  //     } else {
+  //       setDescriptionError("");
+  //     }
+  //   }
+  // };
+
+  // Adding useEffect for local name change
   useEffect(() => {
-    // Only validate if name is present, not already checked, and not in edit mode with existing data
-    const isEditMode = sessionStorage.getItem('editMode') === 'true';
-    if (data.name && data.name.trim() !== "" && !nameError && !nameExists && !isEditMode) {
+    setLocalName(data.name || "");
+  }, [data.name]);
+
+  // Adding useEffect for local description change
+  useEffect(() => {
+    setLocalDescription(data.description || "");
+  }, [data.description]);
+
+  useEffect(() => {
+    const isEditMode = sessionStorage.getItem("editMode") === "true";
+    if (
+      data.name &&
+      data.name.trim() !== "" &&
+      !nameError &&
+      !nameExists &&
+      !isEditMode
+    ) {
       validateName(data.name);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, []);
 
   useEffect(() => {
     if (data.onSave) {
@@ -212,7 +296,11 @@ export const DefineNode = ({ id, data }) => {
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[250px] max-w-[280px] relative group">
-      <Handle type="source" position={Position.Right} style={{ width: 10, height: 10 }} />
+      <Handle
+        type="source"
+        position={Position.Right}
+        style={{ width: 10, height: 10 }}
+      />
 
       <div className="flex items-center space-x-3 mb-3">
         <FilePlus className="w-5 h-5 text-[#8E77BB]" />
@@ -228,13 +316,19 @@ export const DefineNode = ({ id, data }) => {
             <input
               type="text"
               className={`w-full p-1 text-[10px] bg-white rounded-sm border ${
-                attemptedSave && nameError ? "border-red-500" : "border-gray-300"
+                attemptedSave && nameError
+                  ? "border-red-500"
+                  : "border-gray-300"
               } text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 ${
-                attemptedSave && nameError ? "focus:ring-red-500" : "focus:ring-gray-400"
-              } focus:border-gray-400`}
+                attemptedSave && nameError
+                  ? "focus:ring-red-500"
+                  : "focus:ring-gray-400"
+              } focus:border-gray-400 
+              }`}
               placeholder="Enter transformation name"
-              value={data.name || ""}
+              value={localName}
               onChange={handleNameChange}
+              // disabled={isEditMode}   not needed becox to enable editing in edit mode
             />
             {isChecking && (
               <div className="absolute right-2 top-1">
@@ -252,13 +346,17 @@ export const DefineNode = ({ id, data }) => {
           </label>
           <textarea
             className={`w-full p-1 text-[10px] bg-white rounded-sm border ${
-              attemptedSave && descriptionError ? "border-red-500" : "border-gray-300"
+              attemptedSave && descriptionError
+                ? "border-red-500"
+                : "border-gray-300"
             } text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-1 ${
-              attemptedSave && descriptionError ? "focus:ring-red-500" : "focus:ring-gray-400"
+              attemptedSave && descriptionError
+                ? "focus:ring-red-500"
+                : "focus:ring-gray-400"
             } focus:border-gray-400`}
             placeholder="Enter description"
             rows="2"
-            value={data.description || ""}
+            value={localDescription}
             onChange={handleDescriptionChange}
           />
           {attemptedSave && descriptionError && (

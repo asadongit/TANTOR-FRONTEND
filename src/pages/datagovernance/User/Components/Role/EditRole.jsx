@@ -89,7 +89,7 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
         <div className="inline-block w-full max-w-xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
           <div className="flex items-center gap-2 mb-6">
             <Icon icon="material-symbols:edit-outline" width="24" height="24" className="text-[#8f79b8]" />
-            <h3 className="text-lg font-bold text-[#8f79b8]">Edit Role: {formData.originalName}</h3>
+            <h3 className="text-md font-bold text-[#8f79b8]">Edit Role: {formData.originalName}</h3>
           </div>
 
           {error && (
@@ -151,10 +151,10 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
               </div>
             </div>
 
-            <div className="flex justify-end items-center mt-6">
-              <div className="flex gap-3">
+            <div className="flex justify-between items-center mt-6">
+              <div className="flex items-center gap-3">
                 <button
-                  className="px-4 py-2 text-[#8e78b7] border border-[#8e78b7] hover:bg-[#8e78b7] hover:text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-20 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   onClick={onClose}
                   disabled={loading}
                 >
@@ -162,7 +162,7 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
                 </button>
                 <button
                   onClick={handleSave}
-                  className="flex items-center justify-center gap-2 px-4 py-2 text-[#8e78b7] border border-[#8e78b7] hover:bg-[#8e78b7] hover:text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-20 flex items-center justify-center gap-2 px-4 py-2 text-base bg-[#8e78b7] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading}
                 >
                   {loading ? (
@@ -170,7 +170,7 @@ const EditRole = ({ show, onClose, onSave, roleData }) => {
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Saving...
                     </>
-                  ) : "Update"}
+                  ) : "Save"}
                 </button>
               </div>
             </div>

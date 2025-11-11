@@ -125,7 +125,14 @@ function Schema() {
       let dataToProcess = allRawData;
 
       if (navigationState?.type === 'database' && navigationState?.connectionName) {
-        dataToProcess = allRawData.filter(item => item.connection_name === navigationState.connectionName);
+        dataToProcess = allRawData.filter(item => item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase());
+      }
+      else if (
+        navigationState?.type === 'schema' && navigationState?.schemaName && navigationState?.connectionName
+      ) {
+        dataToProcess = allRawData.filter(item => item.connection_name?.toLowerCase() === navigationState.connectionName?.toLowerCase() &&
+          item.table_schema?.toLowerCase() === navigationState.schemaName?.toLowerCase()
+        );
       }
 
       const processedData = processSchemaData(dataToProcess);
@@ -264,7 +271,7 @@ function Schema() {
                     {Array.isArray(currentSchemaData) && currentSchemaData.length > 0 ? (
                       currentSchemaData.map((schema, index) => (
                         <tr
-                          key={schema?.connectionName + schema.schema ?? index}
+                          key={schema?.connectionName + schema.schema}
                           className="border-b"
                         >
                           <td className="p-4">{indexOfFirstItem + index + 1}</td>

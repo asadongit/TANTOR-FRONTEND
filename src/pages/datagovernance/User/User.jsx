@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, RefreshCcw, Search, MoreHorizontal, Pencil, Trash2, RotateCw, X, ChevronLeft, ChevronRight,ChevronDown,FolderX , UserRound, SquareUserRound} from 'lucide-react';
 import { Icon } from "@iconify-icon/react";
 import Breadcrumb from '../../../components/Breadcrumb';
 import AddUser from './Components/User/AddUser';
@@ -13,13 +13,42 @@ const rotateAnimation = `
       transform: rotate(0deg);
     }
     to {
-      transform: rotate(360deg);
+      transform: rotate(-360deg);
     }
   }
 
   .icon-rotate {
     animation: rotate 1s linear infinite;
   }
+
+  .toggle-disabled {
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  .toggle-disabled svg {
+    display: none !important;
+  }
+     table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead tr:first-child th:first-child {
+  border-top-left-radius: 0.5rem;
+}
+
+thead tr:first-child th:last-child {
+  border-top-right-radius: 0.5rem;
+}
+
+tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 0.5rem;
+}
+
+tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 0.5rem;
+}
 `;
 
 const User = () => {
@@ -38,58 +67,101 @@ const User = () => {
   const [userToEdit, setUserToEdit] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
-  const [checkedUsers, setCheckedUsers] = useState({});
-  const [allChecked, setAllChecked] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [totalUsers, setTotalUsers] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const initialFetchDone = useRef(false);
-  const rowsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+  const rowsPerPage = itemsPerPage;
 
   const { token } = useAuth();
 
-  const fetchUserData = async (page = 1, search = '', isPagination = false) => {
+  // const fetchUserData = async (page = 1, search = '', isPagination = false) => {
+  //   if (isPagination) {
+  //     setIsPaginationLoading(true);
+  //   } else {
+  //     setIsLoading(true);
+  //   }
+
+  //   try {
+  //     const skip = (page - 1) * rowsPerPage;
+  //     let url = `${window._env_?.VITE_FAST_API}/auth/users?skip=${skip}&limit=${rowsPerPage}`;
+  //     if (search.trim()) {
+  //       url += `&search=${encodeURIComponent(search.trim())}`;
+  //     }
+
+  //     const response = await fetch(url, {
+  //       method: 'GET',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //         'Content-Type': 'application/json'
+  //       }
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error('Network response was not ok');
+  //     }
+
+  //     const data = await response.json();
+  //     setUsers(data.users);
+  //     setTotalUsers(data.total);
+  //     setHasMore(data.has_more);
+  //     return { success: true };
+  //   } catch (error) {
+  //     console.error('Error fetching user data:', error);
+  //     return { success: false, error };
+  //   } finally {
+  //     if (isPagination) {
+  //       setIsPaginationLoading(false);
+  //     } else {
+  //       setIsLoading(false);
+  //     }
+  //   }
+  // };
+
+  const fetchUserData = async (page = 1, search = '', isPagination = false, customPageSize = null) => {
+  if (isPagination) {
+    setIsPaginationLoading(true);
+  } else {
+    setIsLoading(true);
+  }
+
+  try {
+    const pageSize = customPageSize !== null ? customPageSize : rowsPerPage; // Use custom size if provided
+    const skip = (page - 1) * pageSize;
+    let url = `${window._env_?.VITE_FAST_API}/auth/users?skip=${skip}&limit=${pageSize}`;
+    if (search.trim()) {
+      url += `&search=${encodeURIComponent(search.trim())}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    const data = await response.json();
+    setUsers(data.users);
+    setTotalUsers(data.total);
+    setHasMore(data.has_more);
+    return { success: true };
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    return { success: false, error };
+  } finally {
     if (isPagination) {
-      setIsPaginationLoading(true);
+      setIsPaginationLoading(false);
     } else {
-      setIsLoading(true);
+      setIsLoading(false);
     }
-
-    try {
-      const skip = (page - 1) * rowsPerPage;
-      let url = `${window._env_?.VITE_FAST_API}/auth/users?skip=${skip}&limit=${rowsPerPage}`;
-      if (search.trim()) {
-        url += `&search=${encodeURIComponent(search.trim())}`;
-      }
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const data = await response.json();
-      setUsers(data.users);
-      setTotalUsers(data.total);
-      setHasMore(data.has_more);
-      return { success: true };
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      return { success: false, error };
-    } finally {
-      if (isPagination) {
-        setIsPaginationLoading(false);
-      } else {
-        setIsLoading(false);
-      }
-    }
-  };
+  }
+};
 
   useEffect(() => {
     if (!initialFetchDone.current) {
@@ -127,8 +199,6 @@ const User = () => {
     const newSearchTerm = e.target.value;
     setSearchTerm(newSearchTerm);
     setCurrentPage(1);
-    setCheckedUsers({});
-    setAllChecked(false);
 
     // Debounce search to avoid too many API calls
     clearTimeout(window.searchTimeout);
@@ -138,13 +208,12 @@ const User = () => {
   };
 
   const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  user.username.toLowerCase().includes(searchTerm.toLowerCase())
+);
 
-  const totalPages = Math.ceil(filteredUsers.length / rowsPerPage);
-  const indexOfLastUser = currentPage * rowsPerPage;
-  const indexOfFirstUser = indexOfLastUser - rowsPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+// Don't recalculate pagination - API handles it
+// Just display what we got from the server
+const currentUsers = users;
 
   const goToPage = (pageNumber) => {
     setCurrentPage(pageNumber);
@@ -154,8 +223,6 @@ const User = () => {
     if (currentPage > 1) {
       const newPage = currentPage - 1;
       setCurrentPage(newPage);
-      setCheckedUsers({});
-      setAllChecked(false);
       fetchUserData(newPage, searchTerm, true);
     }
   };
@@ -164,8 +231,6 @@ const User = () => {
     if (hasMore) {
       const newPage = currentPage + 1;
       setCurrentPage(newPage);
-      setCheckedUsers({});
-      setAllChecked(false);
       fetchUserData(newPage, searchTerm, true);
     }
   };
@@ -251,8 +316,6 @@ const User = () => {
   const handleRefresh = async () => {
     setSearchTerm('');
     setCurrentPage(1);
-    setCheckedUsers({});
-    setAllChecked(false);
 
     const result = await fetchUserData(1, '');
 
@@ -275,22 +338,15 @@ const User = () => {
     }, 3000);
   };
 
-  const handleCheckAll = () => {
-    const newAllChecked = !allChecked;
-    setAllChecked(newAllChecked);
-
-    const newCheckedUsers = {};
-    if (newAllChecked) {
-      users.forEach(user => {
-        newCheckedUsers[user.id] = true;
-      });
-    }
-    setCheckedUsers(newCheckedUsers);
-  };
+  const handleItemsPerPageChange = (e) => {
+  const newItemsPerPage = Number(e.target.value);
+  setItemsPerPage(newItemsPerPage);
+  setCurrentPage(1);
+  fetchUserData(1, searchTerm, false, newItemsPerPage); // Pass new value
+};
 
   return (
-    <div className="p-6">
-
+    <div className="px-6 py-4 bg-[#F3F5F7] min-h-screen">
       <style>{rotateAnimation}</style>
 
       {toast.show && (
@@ -313,63 +369,62 @@ const User = () => {
       )}
 
       <Breadcrumb />
-      <div className="flex gap-4 mb-6 items-center justify-between">
+      <div className="flex items-center justify-between mb-[18px]">
         <h1 className="text-2xl font-semibold">User</h1>
 
-        <div className="flex items-center gap-4 ml-auto">
+        <div className="flex items-center gap-2">
           <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: '#818181' }} />
             <input
               type="text"
               placeholder="Search all user"
-              className="pl-10 pr-4 py-2 w-[300px] border border-gray-300 rounded-lg focus:outline-none"
+              className="pl-10 w-64 h-10 rounded-lg border border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
               value={searchTerm}
               onChange={handleSearchChange}
             />
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            {searchTerm && (
+              <button onClick={() => { setSearchTerm(''); fetchUserData(1, ''); }} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                <Icon icon="mdi:close" width="16" height="16" />
+              </button>
+            )}
           </div>
 
           <button
-            className="p-2.5 rounded-lg bg-gray-100 disabled:opacity-50"
+            className={`flex items-center justify-center p-1 px-1.5 rounded-lg border border-gray-400 bg-gray-50 hover:bg-gray-100`}
             onClick={handleRefresh}
             disabled={isLoading}
+            title="Refresh"
+            style={{ width: '40px', height: '40px', borderRadius: '8px', padding: '8px' }}
           >
-            <RefreshCcw className={`h-5 w-5 ${isLoading ? 'icon-rotate' : ''}`} />
+            <RefreshCcw className={`${isLoading ? 'icon-rotate' : ''}`} size={20} style={{ color: '#818181' }} />
           </button>
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#8e78b7] text-white rounded-lg"
+            className="flex items-center gap-2 px-4 py-2 bg-[#8e78b7] text-white rounded-lg text-base"
           >
-            <Plus className="h-5 w-5" />
-            Add user
+            <Plus className="h-5 w-5 " /> Add user
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow mt-0" style={{ overflow: 'visible' }}>
         <table className="w-full">
           <thead>
-            <tr className="bg-[#29304a] text-white">
-              <th className="w-8 p-4 first:rounded-tl-lg">
-                <input
-                  type="checkbox"
-                  checked={allChecked}
-                  onChange={handleCheckAll}
-                />
-              </th>
-              <th className="text-left p-4">User</th>
-              <th className="text-left p-4">Roles</th>
-              <th className="text-left p-4">Persona</th>
-              <th className="text-left p-4">Group</th>
-              <th className="text-left p-4">Sub group</th>
-              <th className="text-left p-4">Status</th>
-              <th className="text-left p-4 last:rounded-tr-lg">Action</th>
-            </tr>
+            <tr className="bg-[#29304a] text-white text-sm">
+            <th className="text-left" style={{ padding: '16px 19.75px' }}>User</th>
+              <th className="text-left" style={{ padding: '16px 19.75px' }}>Roles</th>
+              <th className="text-left" style={{ padding: '16px 19.75px' }}>Persona</th>
+              <th className="text-left" style={{ padding: '16px 19.75px' }}>Group</th>
+              <th className="text-left" style={{ padding: '16px 19.75px' }}>Sub group</th>
+              <th className="text-center" style={{ padding: '16px 19.75px' }}>Status</th>
+              <th className="text-left" style={{ padding: '16px 19.75px' }}>Action</th>
+          </tr>
           </thead>
-          <tbody>
+          <tbody className="text-sm">
             {isPaginationLoading ? (
               <tr>
-                <td colSpan="8" className="p-8 text-center">
+                <td colSpan="7" className="p-8 text-center">
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-6 h-6 border-2 border-[#8e78b7] border-t-transparent rounded-full animate-spin"></div>
                     <span className="text-gray-500">Loading users...</span>
@@ -378,29 +433,27 @@ const User = () => {
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan="8" className="p-8 text-center text-gray-500">
+                <td colSpan="7" className="p-8 text-center text-gray-500">
                   No users found
                 </td>
               </tr>
             ) : (
               users.map((user, index) => (
                 <tr key={user.id} className="border-b hover:bg-gray-50">
-                  <td className="p-4">
-                    <input
-                      type="checkbox"
-                      checked={!!checkedUsers[user.id]}
-                      onChange={() => handleCheckUser(user.id)}
-                    />
+                  <td style={{ padding: '16px 19.75px' }}>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#8d77ba] bg-opacity-25 text-[#8d77ba]">
+                        <span className="text-sm font-semibold">{user.username.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <button
+                        className="text-[#8e78b7] font-medium hover:underline"
+                        onClick={() => openUserDetails(user)}
+                      >
+                        {user.username}
+                      </button>
+                    </div>
                   </td>
-                  <td className="p-4">
-                    <button
-                      className="text-[#8e78b7] font-medium hover:underline"
-                      onClick={() => openUserDetails(user)}
-                    >
-                      {user.username}
-                    </button>
-                  </td>
-                  <td className="p-4">
+                  <td style={{ padding: '16px 19.75px' }}>
                     <button
                       onClick={() => showDetailModal('role', user.roles, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
@@ -408,7 +461,7 @@ const User = () => {
                       {getCount(user.roles)}
                     </button>
                   </td>
-                  <td className="p-4">
+                  <td style={{ padding: '16px 19.75px' }}>
                     <button
                       onClick={() => showDetailModal('persona', user.persona, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
@@ -416,7 +469,7 @@ const User = () => {
                       {getCount(user.persona)}
                     </button>
                   </td>
-                  <td className="p-4">
+                  <td style={{ padding: '16px 19.75px' }}>
                     <button
                       onClick={() => showDetailModal('group', null, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
@@ -424,7 +477,7 @@ const User = () => {
                       {getCount(null, 'group', user)}
                     </button>
                   </td>
-                  <td className="p-4">
+                  <td style={{ padding: '16px 19.75px' }}>
                     <button
                       onClick={() => showDetailModal('subgroup', null, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
@@ -432,19 +485,28 @@ const User = () => {
                       {getCount(null, 'subgroup', user)}
                     </button>
                   </td>
-                  <td className="p-4">
-                    {user.enabled ?
-                      <span className="px-2 py-1 rounded-full text-sm text-green-600 bg-green-50">Active</span> :
-                      <span className="px-2 py-1 rounded-full text-sm text-red-600 bg-red-50">Inactive</span>
-                    }
+                  <td style={{ padding: '16px 19.75px' }}>
+                    <div className="text-center align-middle">
+                      {user.enabled ? (
+                        <span className="inline-block px-6 py-2 rounded-md text-sm font-medium" 
+                          style={{ background: '#def3e9', color: '#1a9962', minWidth: '88px', textAlign: 'center' }}>
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-block px-6 py-2 rounded-md text-sm font-medium" 
+                          style={{ background: '#f3f4f6', color: '#6b7280', minWidth: '88px', textAlign: 'center' }}>
+                          Inactive
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="p-4">
+                  <td style={{ padding: '16px 19.75px' }}>
                     <div className="relative">
                       <button
                         onClick={() => setActiveMenu(activeMenu === index ? null : index)}
                         className="p-1.5 rounded-full hover:bg-gray-100"
                       >
-                        <MoreHorizontal className="h-5 w-5" />
+                        <MoreHorizontal className="h-5 w-5 text-gray-600" />
                       </button>
 
                       {activeMenu === index && (
@@ -479,53 +541,43 @@ const User = () => {
           </tbody>
         </table>
 
-        <div className="flex justify-between items-center px-4 py-3 border-t">
-          <div className="text-sm text-gray-500">
-            Showing {users.length} of {totalUsers} users
-            {searchTerm && ` (filtered by "${searchTerm}")`}
+        
+      </div>
+
+      <div className="flex flex-col md:flex-row items-center justify-between px-4 py-3 border-t mt-0">
+          <div className="text-sm text-gray-500 mb-3 md:mb-0">
+              Showing {users.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1} to {Math.min(currentPage * rowsPerPage, totalUsers)} of {totalUsers} users
+              {searchTerm && ` (filtered by "${searchTerm}")`}
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={goToPreviousPage}
-              disabled={currentPage === 1 || isPaginationLoading}
-              className={`flex items-center gap-1 px-3 py-2 rounded-lg ${
-                currentPage === 1 || isPaginationLoading
-                  ? 'text-gray-300 cursor-not-allowed bg-gray-50'
-                  : 'text-gray-600 hover:bg-gray-100 bg-white border'
-              }`}
-            >
-              {isPaginationLoading && currentPage > 1 ? (
-                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <ChevronLeft className="h-4 w-4" />
-              )}
-              Previous
-            </button>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-500">Show per page</label>
+              <div className="relative">
+                <select value={itemsPerPage} onChange={handleItemsPerPageChange} className="border border-gray-400 rounded-md focus:outline-none text-sm text-center pl-2 pr-8" style={{ height: '31px', width: '55px', WebkitAppearance: 'none', appearance: 'none', paddingRight: '24px'}}>
+                  <option value={12}>12</option>
+                  <option value={24}>24</option>
+                  <option value={48}>48</option>
+                </select>
+                <ChevronDown 
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-700" 
+                  style={{ top: '52%' }}  
+                  size={14} 
+                />
+              </div>
+            </div>
 
-            <span className="px-3 py-2 text-sm text-gray-600">
-              Page {currentPage}
-            </span>
+            <div className="flex items-center border border-gray-400 rounded-md bg-gray-50" style={{ height: '31px', width: '95px', overflow: 'hidden' }}>
+              <button onClick={goToPreviousPage} disabled={currentPage === 1 || isPaginationLoading} title="Previous page" className={`flex-1 h-full flex items-center justify-center ${currentPage === 1 || isPaginationLoading ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`} style={{ padding: 0, border: 'none' }}>
+                {isPaginationLoading && currentPage > 1 ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div> : <ChevronLeft size={14} />}
+              </button>
 
-            <button
-              onClick={goToNextPage}
-              disabled={!hasMore || isPaginationLoading}
-              className={`flex items-center gap-1 px-3 py-2 rounded-lg ${
-                !hasMore || isPaginationLoading
-                  ? 'text-gray-300 cursor-not-allowed bg-gray-50'
-                  : 'text-gray-600 hover:bg-gray-100 bg-white border'
-              }`}
-            >
-              Next
-              {isPaginationLoading && hasMore ? (
-                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </button>
+              <button onClick={goToNextPage} disabled={!hasMore || isPaginationLoading} title="Next page" className={`flex-1 h-full flex items-center justify-center ${!hasMore || isPaginationLoading ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`} style={{ padding: 0, border: 'none', borderLeft: '1px solid rgba(156,163,175,0.45)' }}>
+                {isPaginationLoading && hasMore ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div> : <ChevronRight size={14} />}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
       <AddUser
         isOpen={isModalOpen}
@@ -549,13 +601,11 @@ const User = () => {
 
       {isDetailsModalOpen && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-[600px] p-8">
+          <div className="bg-white rounded-2xl w-[800px] max-w-[95vw] p-8">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
-                <div>
-                  <Icon className="h-5 w-5 text-[#8e78b7]" icon={"material-symbols:person"} width="24" height="24" />
-                </div>
-                <h2 className="text-xl font-bold text-[#8e78b7]">User Details</h2>
+                <UserRound className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                <h2 className="text-md font-bold text-gray-600">User Details</h2>
               </div>
               <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
@@ -563,7 +613,7 @@ const User = () => {
             </div>
 
             <div className="space-y-6 bg-gray-50 p-6 rounded-lg">
-              <div className="flex items-center justify-center mb-6">
+              <div className="flex items-center justify-start ">
                 <div className="h-24 w-24 rounded-full bg-[#8e78b7] text-white flex items-center justify-center text-3xl">
                   {selectedUser.username.charAt(0).toUpperCase()}
                 </div>
@@ -572,12 +622,12 @@ const User = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Username</p>
-                  <p className="font-medium truncate" title={selectedUser.username}>{selectedUser.username}</p>
+                  <p className="font-medium  text-md truncate" title={selectedUser.username}>{selectedUser.username}</p>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">User ID</p>
-                  <p className="font-medium text-xs truncate">{selectedUser.id}</p>
+                  <p className="font-medium text-md break-word truncate">{selectedUser.id}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -587,7 +637,7 @@ const User = () => {
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">Status</p>
-                  <p className="font-medium">
+                  <p className="font-medium text-md">
                     {selectedUser.enabled ?
                       <span className="px-2 py-0.5 rounded-full text-sm text-green-600 bg-green-50">Active</span> :
                       <span className="px-2 py-0.5 rounded-full text-sm text-red-600 bg-red-50">Inactive</span>
@@ -607,28 +657,21 @@ const User = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-4 mt-8">
-              <button
-                onClick={() => setIsDetailsModalOpen(false)}
-                className="px-6 py-2 bg-[#8e78b7] text-white rounded-lg hover:bg-opacity-90 transition-colors"
-              >
-                Close
-              </button>
-            </div>
+            
           </div>
         </div>
       )}
 
       {isDetailModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-[500px] p-6 max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl w-[800px] max-w-[95vw] p-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-blue-600" />}
-                {detailModalData.type === 'persona' && <Icon icon="mdi:face-agent" className="h-5 w-5 text-purple-600" />}
-                {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-teal-600" />}
-                {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-amber-600" />}
-                <h2 className="text-lg font-bold">{detailModalData.title}</h2>
+                {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-gray-700" />}
+                {detailModalData.type === 'persona' && <SquareUserRound className="h-5 w-5 text-gray-600 flex-shrink-0" />}
+                {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-gray-600" />}
+                {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-gray-600" />}
+                <h2 className=" text-gray-600 text-md font-bold">{detailModalData.title}</h2>
               </div>
               <button onClick={() => setIsDetailModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
@@ -657,17 +700,17 @@ const User = () => {
                     <div
                       key={index}
                       className={`p-4 rounded-lg ${
-                        detailModalData.type === 'role' ? 'bg-blue-50' :
-                        detailModalData.type === 'persona' ? 'bg-purple-50' :
-                        detailModalData.type === 'group' ? 'bg-teal-50' :
-                        'bg-amber-50'
+                        detailModalData.type === 'role' ? 'bg-gray-100' :
+                        detailModalData.type === 'persona' ? 'bg-gray-100' :
+                        detailModalData.type === 'group' ? 'bg-gray-100' :
+                        'bg-gray-100'
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-blue-600" />}
-                        {detailModalData.type === 'persona' && <Icon icon="mdi:face-agent" className="h-5 w-5 text-purple-600" />}
-                        {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-teal-600" />}
-                        {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-amber-600" />}
+                        {detailModalData.type === 'role' && <Icon icon="carbon:user-role" className="h-5 w-5 text-gray-500" />}
+                        {detailModalData.type === 'persona' && <SquareUserRound className="h-5 w-5 text-gray-500 flex-shrink-0" />}
+                        {detailModalData.type === 'group' && <Icon icon="mdi:account-group" className="h-5 w-5 text-gray-500" />}
+                        {detailModalData.type === 'subgroup' && <Icon icon="mdi:account-group-outline" className="h-5 w-5 text-gray-500" />}
                         <p className="font-medium">{item}</p>
                       </div>
                     </div>
@@ -675,25 +718,13 @@ const User = () => {
                 </div>
               ) : (
                 <div className="p-8 text-center bg-gray-50 rounded-lg">
-                  <Icon icon="mdi:folder-information-outline" className="h-10 w-10 mx-auto mb-3 text-gray-400" />
+                  <FolderX className="h-8 w-8 mx-auto mb-3 text-gray-400" />
                   <p className="text-gray-500">No {detailModalData.type} information available</p>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() => setIsDetailModalOpen(false)}
-                className={`px-5 py-2 rounded-lg text-white ${
-                  detailModalData.type === 'role' ? 'bg-blue-600' :
-                  detailModalData.type === 'persona' ? 'bg-purple-600' :
-                  detailModalData.type === 'group' ? 'bg-teal-600' :
-                  'bg-amber-600'
-                } hover:bg-opacity-90 transition-colors`}
-              >
-                Close
-              </button>
-            </div>
+            
           </div>
         </div>
       )}

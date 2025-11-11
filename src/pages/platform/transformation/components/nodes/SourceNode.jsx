@@ -74,7 +74,9 @@ export const SourceNode = ({ id, data }) => {
   const [customDatatypeModalOpen, setCustomDatatypeModalOpen] = useState(false);
   const [customDatatypeInput, setCustomDatatypeInput] = useState("");
   const [currentEditingColumn, setCurrentEditingColumn] = useState(null);
-
+  // state variable for custom query
+  const [customQuery, setCustomQuery] = useState(data.customQuery || "");
+  //
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
   const { dispatch, ACTION_TYPES } = useTransformation();
@@ -458,9 +460,59 @@ export const SourceNode = ({ id, data }) => {
   }, [fetchConnections]);
 
   useEffect(() => {
-    data.setEnableCountLogging = setEnableCountLogging;
+  data.setEnableCountLogging = setEnableCountLogging;
 
-    if (sourceType === "file") {
+  if (sourceType === "file") {
+    const fileColumnsFormatted = fileColumns
+      .filter(col => col.name.trim() !== "")
+      .map(col => ({
+        name: col.name,
+        datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
+      }));
+
+
+
+    data.onDataChange({
+      sourceType: "file",
+      fileType: fileType,
+      filePath: filePath,
+      fileName: fileName,
+      fileColumns: fileColumns,
+      columns: fileColumnsFormatted,
+      alias: alias,
+      enableCountLogging: enableCountLogging,
+    });
+
+    dispatch({
+      type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: fileColumnsFormatted.map(col => col.name)
+      }
+    });
+
+    dispatch({
+      type: ACTION_TYPES.SET_ORIGINAL_SOURCE_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: fileColumnsFormatted.map(col => col.name)
+      }
+    });
+
+    dispatch({
+      type: ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS,
+      payload: {
+        sourceNodeId: id,
+        columns: fileColumnsFormatted
+      }
+    });
+
+  } else if (sourceType === "database") {
+
+
+    // Handle source-query case specifically
+    if (selectedObjectType === "source-query") {
+
       const fileColumnsFormatted = fileColumns
         .filter(col => col.name.trim() !== "")
         .map(col => ({
@@ -469,15 +521,21 @@ export const SourceNode = ({ id, data }) => {
         }));
 
       data.onDataChange({
-        sourceType: "file",
-        fileType: fileType,
-        filePath: filePath,
-        fileName: fileName,
-        fileColumns: fileColumns,
-        columns: fileColumnsFormatted,
+        sourceType: "database",
+        connection: selectedConnection.name,
+        connectionId: selectedConnection.id,
+        connectionType: selectedConnection.type,
+        schema: selectedSchema,
+        table: selectedTable,
+        columns: fileColumnsFormatted, // Use fileColumns for source-query
         alias: alias,
+        objectType: selectedObjectType,
+        customQuery: customQuery,
+        fileColumns: fileColumns, // Also pass the raw fileColumns
         enableCountLogging: enableCountLogging,
       });
+
+
 
       dispatch({
         type: ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS,
@@ -502,7 +560,11 @@ export const SourceNode = ({ id, data }) => {
           columns: fileColumnsFormatted
         }
       });
-    } else if (sourceType === "database") {
+
+    } else {
+      // Handle tables and procedures cases
+
+
       const currentTable = selectedObjectType === "procedures" && tableSelections.selectedTable
         ? tableSelections.selectedTable
         : selectedTable;
@@ -557,6 +619,8 @@ export const SourceNode = ({ id, data }) => {
           };
         });
 
+
+
       data.onDataChange({
         sourceType: "database",
         connection: selectedConnection.name,
@@ -573,6 +637,7 @@ export const SourceNode = ({ id, data }) => {
         preProcedures: enrichedPreProcedures,
         postProcedures: enrichedPostProcedures,
         enableCountLogging: enableCountLogging,
+        customQuery: customQuery,
       });
 
       dispatch({
@@ -602,7 +667,10 @@ export const SourceNode = ({ id, data }) => {
         }
       });
     }
-  }, [sourceType, fileType, filePath, fileName, fileColumns, selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging]);
+  }
+}, [sourceType, fileType, filePath, fileName, fileColumns, selectedConnection, selectedSchema, selectedTable, selectedColumns, alias, id, dispatch, ACTION_TYPES, selectedObjectType, tableSelections, selectedPreProcedures, selectedPostProcedures, storedParameterMappings, enableCountLogging, customQuery]);
+
+
 
   const getColumnsForTable = (tableName) => {
     const tableObj = tables.find(t => t.table_name === tableName);
@@ -671,6 +739,8 @@ export const SourceNode = ({ id, data }) => {
       if (!clickedInPostProcedureDropdown) {
         setPostProcedureDropdownOpen({});
       }
+
+
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -713,6 +783,28 @@ export const SourceNode = ({ id, data }) => {
 
   const handleObjectTypeChange = useCallback((newObjectType) => {
     if (newObjectType === selectedObjectType) return;
+    if (selectedObjectType === "source-query") {
+        // Clear source query specific data when switching away
+        // No need to save anything specific for source-query mode
+      }
+
+      // Handle switching to source-query
+      if (newObjectType === "source-query") {
+        // Save current selections when switching to source query
+        if (selectedObjectType === "tables") {
+          setTableSelections({
+            selectedTable: selectedTable,
+            selectedColumns: selectedColumns,
+          });
+        } else if (selectedObjectType === "procedures") {
+          setProcedureSelections({
+            selectedProcedure: selectedTable,
+            selectedParameters: selectedColumns,
+          });
+        }
+        // Clear selections for source query mode (table will be selected separately)
+        setSelectedColumns([]);
+      }
 
     if (selectedObjectType === "procedures" && newObjectType === "tables") {
       setProcedureSelections({
@@ -941,6 +1033,7 @@ useEffect(() => {
         }));
       }
     }
+
 
     hasInitializedSelectedColumns.current = true;
   }
@@ -1457,6 +1550,17 @@ useEffect(() => {
                       Tables
                     </button>
                     <button
+                    type="button"
+                    className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${
+                      selectedObjectType === "source-query"
+                        ? "bg-[#8E77BB] text-white border-[#8E77BB]"
+                        : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
+                    }`}
+                    onClick={() => handleObjectTypeChange("source-query")}
+                  >
+                    Source Query
+                  </button>
+                    <button
                       type="button"
                       className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${
                         selectedObjectType === "procedures"
@@ -1552,8 +1656,93 @@ useEffect(() => {
                     )}
                   </div>
                 )}
+///////
+                {selectedObjectType === "source-query" && (
+                  <div>
 
-                {(selectedTable || selectedObjectType === "procedures") && (
+                      {/* Query Input Field - Only show when a source table is selected */}
+                      { (
+                        <div className="mt-4">
+                          <label className="text-xs font-semibold text-black mb-0.5 block">
+                            Query
+                          </label>
+                          <textarea
+                            placeholder={`Enter your SQL query for ${selectedTable}...`}
+                            className="w-full p-2 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 resize-vertical min-h-[80px]"
+                            value={customQuery}
+
+
+                            onChange={(e) => setCustomQuery(e.target.value)}
+
+                          />
+                        </div>
+                      )}
+
+    {/* Column Mapping Section - Only show when a table is selected and has columns */}
+    { (
+      <div className="mt-4">
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-xs font-semibold text-black">
+            Column Mapping
+          </label>
+          <button
+            type="button"
+            onClick={addFileColumn}
+            className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
+            title="Add column"
+          >
+            <Plus size={10} />
+          </button>
+        </div>
+        <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-sm p-2">
+          {fileColumns.map((column) => (
+            <div key={column.id} className="flex gap-2 items-center">
+              <input
+                type="text"
+                className="flex-1 p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
+                value={column.name}
+                onChange={e => updateFileColumn(column.id, 'name', e.target.value)}
+                placeholder="Column name"
+              />
+              <select
+                className="flex-1 p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
+                value={column.datatype === 'custom' ? (column.customDatatype || 'custom') : column.datatype}
+                onChange={e => updateFileColumn(column.id, 'datatype', e.target.value)}
+              >
+                <option value="string">string</option>
+                <option value="integer">integer</option>
+                <option value="float">float</option>
+                <option value="boolean">boolean</option>
+                <option value="date">date</option>
+                <option value="datetime">datetime</option>
+                <option value="custom">custom</option>
+                {column.datatype === 'custom' && column.customDatatype && (
+                  <option value={column.customDatatype}>{column.customDatatype}</option>
+                )}
+              </select>
+              {fileColumns.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeFileColumn(column.id)}
+                  className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
+                  title="Remove column"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
+
+
+
+
+                {(selectedTable || selectedObjectType === "procedures" || selectedObjectType === "source-query") && (
                   <div className="mt-2">
                     <label className="text-xs font-semibold text-black mb-0.5 block">
                       Alias Name
@@ -1870,7 +2059,7 @@ useEffect(() => {
                       </div>
                     </div>
                   </div>
-                ) : sourceType === "database" && selectedTable ? (
+                ) : sourceType === "database" && selectedTable  && selectedObjectType !== "source-query"? (
                   <div className="text-center py-2 text-[11px] text-gray-500">
                     No columns found for this table
                   </div>

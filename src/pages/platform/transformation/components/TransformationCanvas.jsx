@@ -16,11 +16,19 @@ import { TransformationSidebar } from "./TransformationSidebar";
 import { TransformationDrawer } from "./drawer/transformationDrawer";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
-import { TransformationProvider, useTransformation, useTrackConnections } from "./TransformationContext";
+import {
+  TransformationProvider,
+  useTransformation,
+  useTrackConnections,
+} from "./TransformationContext";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 import TargetMappingDrawer from "./TargetDrawer/TargetMappingDrawer";
-import { prepareEditFlowData, validateEditFlowData, restoreNodesAndEdgesFromEditData } from "../utils/editFlowUtils";
+import {
+  prepareEditFlowData,
+  validateEditFlowData,
+  restoreNodesAndEdgesFromEditData,
+} from "../utils/editFlowUtils";
 
 const nodeTypes = {
   define: DefineNode,
@@ -55,9 +63,11 @@ function TransformationCanvasContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const nodeIdRef = useRef(1);
-  const { generateTransformationJson, dispatch, ACTION_TYPES } = useTransformation();
+  const { generateTransformationJson, dispatch, ACTION_TYPES } =
+    useTransformation();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [activeTransformationNodeId, setActiveTransformationNodeId] = useState(null);
+  const [activeTransformationNodeId, setActiveTransformationNodeId] =
+    useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const { token, decodedToken, project } = useAuth();
   const [arthDrawerOpen, setArthDrawerOpen] = useState(false);
@@ -70,34 +80,115 @@ function TransformationCanvasContent() {
 
   // Check for edit mode and restore data on component mount - IMPROVED
   useEffect(() => {
-    const editMode = sessionStorage.getItem('editMode');
-    const editFlowDataStr = sessionStorage.getItem('editFlowData');
-    const transformationId = sessionStorage.getItem('editTransformationId');
+    const editMode = sessionStorage.getItem("editMode");
+    const editFlowDataStr = sessionStorage.getItem("editFlowData");
+    const transformationId = sessionStorage.getItem("editTransformationId");
 
-    if (editMode === 'true' && editFlowDataStr && transformationId) {
+    if (editMode === "true" && editFlowDataStr && transformationId) {
       try {
         const editFlowData = JSON.parse(editFlowDataStr);
 
         setIsEditMode(true);
         setEditTransformationId(transformationId);
 
-        const restoredData = restoreNodesAndEdgesFromEditData(editFlowData, setNodes, setEdges, nodeIdRef);
+        // const restoredData = restoreNodesAndEdgesFromEditData(
+        //   editFlowData,
+        //   setNodes,
+        //   setEdges,
+        //   nodeIdRef
+        // );
 
+        // setNodes(restoredData.nodes);
+        // setEdges(restoredData.edges);
+
+        // setNodes((prev) =>
+        //   prev.map((n) =>
+        //     n.type === "define"
+        //       ? { ...n, data: { ...n.data, isEditMode: true } }
+        //       : n
+        //   )
+        // );
+
+        /*==============================================================================================
+        Modified version to support ensure Define node works in edit mode
+        ==============================================================================================*/
+        const restoredData = restoreNodesAndEdgesFromEditData(
+          editFlowData,
+          setNodes,
+          setEdges,
+          nodeIdRef
+        );
+
+        // Restore nodes and edges
         setNodes(restoredData.nodes);
         setEdges(restoredData.edges);
+
+        //  Immediately re-attach onDataChange for all restored nodes
+        setNodes((prevNodes) =>
+          prevNodes.map((n) => {
+            if (n.type === "define") {
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  // Adding the name and desc here
+                  name:
+                    editFlowData?.properties?.transformation_name ||
+                    n.data.name ||
+                    "",
+                  description:
+                    editFlowData?.properties?.description ||
+                    n.data.description ||
+                    "",
+
+                  isEditMode: true,
+                  onDataChange: (newData) => {
+                    // Update this node’s data live as user types
+                    setNodes((prev) =>
+                      prev.map((node) =>
+                        node.id === n.id
+                          ? { ...node, data: { ...node.data, ...newData } }
+                          : node
+                      )
+                    );
+                  },
+                },
+              };
+            } else {
+              // generic live updater for all other nodes too
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  onDataChange: (newData) => {
+                    setNodes((prev) =>
+                      prev.map((node) =>
+                        node.id === n.id
+                          ? { ...node, data: { ...node.data, ...newData } }
+                          : node
+                      )
+                    );
+                  },
+                },
+              };
+            }
+          })
+        );
+
+        /*==============================================================================================*/
 
         if (editFlowData.properties) {
           dispatch({
             type: ACTION_TYPES.UPDATE_GLOBAL_PROPERTIES,
-            payload: editFlowData.properties
+            payload: editFlowData.properties,
           });
         } else {
           const sourceAndTargetNodes = restoredData.nodes.filter(
-            node => node.type === 'source' || node.type === 'target'
+            (node) => node.type === "source" || node.type === "target"
           );
 
           const allNodesWithCountLogging = sourceAndTargetNodes.every(
-            node => node.data && node.data.enableCountLogging === true
+            (node) => node.data && node.data.enableCountLogging === true
           );
 
           dispatch({
@@ -105,30 +196,30 @@ function TransformationCanvasContent() {
             payload: {
               logging: {
                 isLoggingEnabled: true,
-                isLoggingEnabledForEachDataset: allNodesWithCountLogging
+                isLoggingEnabledForEachDataset: allNodesWithCountLogging,
               },
               email: {
-                isEmailEnabled: false // Default value
-              }
-            }
+                isEmailEnabled: false, // Default value
+              },
+            },
           });
         }
 
         // Clear session storage after restoring
-        sessionStorage.removeItem('editMode');
-        sessionStorage.removeItem('editFlowData');
-        sessionStorage.removeItem('editTransformationId');
+        sessionStorage.removeItem("editMode");
+        sessionStorage.removeItem("editFlowData");
+        sessionStorage.removeItem("editTransformationId");
 
         // Mark restoration complete after a short delay
         setTimeout(() => {
           setIsRestorationComplete(true);
-          setNodes(prevNodes =>
-            prevNodes.map(node => ({
+          setNodes((prevNodes) =>
+            prevNodes.map((node) => ({
               ...node,
               data: {
                 ...node.data,
-                _isRestoring: false
-              }
+                _isRestoring: false,
+              },
             }))
           );
         }, 500);
@@ -137,7 +228,6 @@ function TransformationCanvasContent() {
           duration: 2000,
           position: "top-center",
         });
-
       } catch (error) {
         console.error("Error restoring edit flow data:", error);
         toast.error("Failed to load transformation for editing", {
@@ -152,60 +242,133 @@ function TransformationCanvasContent() {
   }, []); // Empty dependency array to run only once
 
   // Immediate onDataChange function without debouncing for better drawer performance
-  const onDataChangeImmediate = useCallback((nodeId, newData) => {
-    setNodes((prevNodes) =>
-      prevNodes.map((n) =>
-        n.id === nodeId
-          ? { ...n, data: { ...n.data, ...newData } }
-          : n
-      )
-    );
-  }, [setNodes]);
+  const onDataChangeImmediate = useCallback(
+    (nodeId, newData) => {
+      setNodes((prevNodes) =>
+        prevNodes.map((n) =>
+          n.id === nodeId ? { ...n, data: { ...n.data, ...newData } } : n
+        )
+      );
+    },
+    [setNodes]
+  );
 
   // Update onDataChange for all nodes - only after restoration is complete
+  // useEffect(() => {
+  //   if (!isRestorationComplete) return;
+
+  //   setNodes((nds) =>
+  //     nds.map((node) => ({
+  //       ...node,
+  //       data: {
+  //         ...node.data,
+  //         onDataChange: (newData) => {
+  //           if (node.data._isRestoring) {
+  //             return;
+  //           }
+
+  //           onDataChangeImmediate(node.id, newData);
+  //         },
+  //       },
+  //     }))
+  //   );
+  // }, [onDataChangeImmediate, isRestorationComplete]);
+
+  /*==============================================================================================
+                     Updated code block to ensure Define node works in edit mode 
+==============================================================================================*/
+
+  //  Ensure every node — including Define in edit mode — always has a working onDataChange
+  // useEffect(() => {
+  //   if (!isRestorationComplete) return;
+
+  //   setNodes((nodes) =>
+  //     nodes.map((node) => {
+  //       // Build a fresh onDataChange for every node
+  //       const updatedData = {
+  //         ...node.data,
+  //         onDataChange: (newData) => {
+  //           // Skip updates only if node is in the middle of restoring
+  //           if (node.data._isRestoring) return;
+  //           console.log(
+  //             "Updating node data via onDataChangeImmediate",
+  //             node.id,
+  //             newData
+  //           );
+  //           // Allow Define node edits even in edit mode
+  //           if (node.type === "define") {
+  //             console.log("Updating Define node data:", newData); // debug
+  //           }
+
+  //           // Update the node’s data inside ReactFlow state
+  //           setNodes((prevNodes) =>
+  //             prevNodes.map((n) =>
+  //               n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
+  //             )
+  //           );
+  //         },
+  //       };
+
+  //       return { ...node, data: updatedData };
+  //     })
+  //   );
+  // }, [setNodes, isRestorationComplete]);
+
   useEffect(() => {
     if (!isRestorationComplete) return;
 
-    setNodes((nds) =>
-      nds.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          onDataChange: (newData) => {
-            if (node.data._isRestoring) {
-              return;
-            }
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        const currentData = node.data || {};
 
-            onDataChangeImmediate(node.id, newData);
+        // Stable, node-specific onDataChange
+        const onDataChange = (newData) => {
+          // Skip while restoring
+          if (currentData._isRestoring) return;
+
+          setNodes((prevNodes) =>
+            prevNodes.map((n) =>
+              n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
+            )
+          );
+        };
+
+        return {
+          ...node,
+          data: {
+            ...currentData,
+            onDataChange,
           },
-        },
-      }))
+        };
+      })
     );
-  }, [onDataChangeImmediate, isRestorationComplete]);
+  }, [setNodes, isRestorationComplete]);
+
+  /*==============================================================================================*/
 
   useEffect(() => {
     id = nodeIdRef.current;
   }, []);
 
-  useEffect(() => {
-    setNodes((nds) =>
-      nds.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          onDataChange: (newData) => {
-            setNodes((prevNodes) =>
-              prevNodes.map((n) =>
-                n.id === node.id
-                  ? { ...n, data: { ...n.data, ...newData } }
-                  : n
-              )
-            );
-          },
-        },
-      }))
-    );
-  }, [setNodes]);
+  /*   =============================================================================================                               Commenting this block becox we will create a master to hanlde it
+  =============================================================================================== */
+  // useEffect(() => {
+  //   setNodes((nds) =>
+  //     nds.map((node) => ({
+  //       ...node,
+  //       data: {
+  //         ...node.data,
+  //         onDataChange: (newData) => {
+  //           setNodes((prevNodes) =>
+  //             prevNodes.map((n) =>
+  //               n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
+  //             )
+  //           );
+  //         },
+  //       },
+  //     }))
+  //   );
+  // }, [setNodes]);
 
   useEffect(() => {
     const hasDefineNode = nodes.some((node) => node.type === "define");
@@ -263,7 +426,10 @@ function TransformationCanvasContent() {
         return false;
       }
 
-      if (sourceNode.type === "source" && targetNode.type !== "transformation") {
+      if (
+        sourceNode.type === "source" &&
+        targetNode.type !== "transformation"
+      ) {
         return false;
       }
 
@@ -383,37 +549,85 @@ function TransformationCanvasContent() {
   );
 
   const handleSave = useCallback(async () => {
-    const targetNodes = nodes.filter(n => n.type === 'target');
+    const targetNodes = nodes.filter((n) => n.type === "target");
     for (const targetNode of targetNodes) {
       if (!targetNode.data?.connectedSources) continue;
-      const confirmed = window.localStorage.getItem(`targetMappingConfirmed_${targetNode.id}`) === "true";
+      const confirmed =
+        window.localStorage.getItem(
+          `targetMappingConfirmed_${targetNode.id}`
+        ) === "true";
       if (!confirmed) {
-        toast.error(`Please confirm target mapping for '${targetNode.data.alias || 'target node'}' before saving.`, {
-          duration: 3000,
-          position: "top-center",
-        });
+        toast.error(
+          `Please confirm target mapping for '${
+            targetNode.data.alias || "target node"
+          }' before saving.`,
+          {
+            duration: 3000,
+            position: "top-center",
+          }
+        );
         return;
       }
     }
 
     try {
-      const disconnectedNodes = nodes.filter(node => {
-        const hasIncomingEdge = edges.some(edge => edge.target === node.id);
-        const hasOutgoingEdge = edges.some(edge => edge.source === node.id);
+      const disconnectedNodes = nodes.filter((node) => {
+        const hasIncomingEdge = edges.some((edge) => edge.target === node.id);
+        const hasOutgoingEdge = edges.some((edge) => edge.source === node.id);
 
         return !(hasIncomingEdge || hasOutgoingEdge);
       });
 
       if (disconnectedNodes.length > 0) {
-        const nodeTypes = disconnectedNodes.map(node => node.type).join(', ');
-        toast.error(`Please connect all nodes: ${nodeTypes} ${disconnectedNodes.length > 1 ? 'nodes are' : 'node is'} disconnected`, {
-          duration: 3000,
-          position: "top-center",
-        });
+        const nodeTypes = disconnectedNodes.map((node) => node.type).join(", ");
+        toast.error(
+          `Please connect all nodes: ${nodeTypes} ${
+            disconnectedNodes.length > 1 ? "nodes are" : "node is"
+          } disconnected`,
+          {
+            duration: 3000,
+            position: "top-center",
+          }
+        );
         return;
       }
 
-      const defineNode = nodes.find(node => node.type === "define");
+      /*========================================================================================
+          Below code added to ensure new data is captured b4 passing on
+      ==========================================================================================*/
+      // Ensure latest Define node data is captured before saving
+      const defineNodeIndex = nodes.findIndex((node) => node.type === "define");
+      if (defineNodeIndex !== -1 && window.allNodes) {
+        const liveDefine = window.allNodes.find((n) => n.type === "define");
+        if (liveDefine && liveDefine.data) {
+          nodes[defineNodeIndex].data = { ...liveDefine.data };
+        }
+      }
+
+      /*========================================================================================*/
+
+      const defineNode = nodes.find((node) => node.type === "define");
+      /*  Adding Patch to sync React flow with local state  */
+      // Ensure latest Define node data (localName, localDescription) are pulled directly from the DOM
+      try {
+        const nameInput = document.querySelector(
+          'input[placeholder="Enter transformation name"]'
+        );
+        const descTextarea = document.querySelector(
+          'textarea[placeholder="Enter description"]'
+        );
+
+        if (defineNode && defineNode.data) {
+          defineNode.data.name =
+            nameInput?.value?.trim() || defineNode.data.name || "";
+          defineNode.data.description =
+            descTextarea?.value?.trim() || defineNode.data.description || "";
+        }
+      } catch (e) {
+        console.warn("DefineNode DOM sync skipped:", e);
+      }
+
+      // console.log("Define node data before save:", defineNode?.data);
       if (!defineNode) {
         toast.error("Define node is missing", {
           duration: 3000,
@@ -431,42 +645,68 @@ function TransformationCanvasContent() {
       }
 
       // FIXED: Force update of transformation context with current node states before generating JSON
-      nodes.forEach(node => {
-        if (node.type === 'source' && typeof node.data.enableCountLogging === 'boolean') {
+      nodes.forEach((node) => {
+        if (
+          node.type === "source" &&
+          typeof node.data.enableCountLogging === "boolean"
+        ) {
           dispatch({
             type: ACTION_TYPES.UPDATE_SOURCE,
             payload: {
               id: node.id,
-              data: { enableCountLogging: node.data.enableCountLogging }
-            }
+              data: {
+                enableCountLogging: node.data.enableCountLogging,
+                customQuery: node.data.customQuery,
+                fileColumns: node.data.fileColumns,
+              },
+            },
           });
-        } else if (node.type === 'target' && typeof node.data.enableCountLogging === 'boolean') {
+        } else if (
+          node.type === "target" &&
+          typeof node.data.enableCountLogging === "boolean"
+        ) {
           dispatch({
             type: ACTION_TYPES.UPDATE_TARGET,
             payload: {
               id: node.id,
-              data: { enableCountLogging: node.data.enableCountLogging }
-            }
+              data: { enableCountLogging: node.data.enableCountLogging },
+            },
           });
+        } else {
         }
       });
 
       // Wait for state update before generating JSON
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       setIsSaving(true);
-      const transformationData = generateTransformationJson();
 
+      // Dispatch to ensure the context state (state.define) is up-to-date, so your inner transformation_json will also get the correct workflow name and description.
+      dispatch({
+        type: ACTION_TYPES.UPDATE_DEFINE,
+        payload: {
+          name: defineNode.data.name,
+          description: defineNode.data.description || "",
+        },
+      });
 
+      const transformationData = generateTransformationJson({
+        name: defineNode.data.name,
+        description: defineNode.data.description || "",
+      });
 
       if (Object.keys(transformationData.source).length === 0) {
-        toast.error("Source data is empty. Make sure your source nodes are properly connected.");
+        toast.error(
+          "Source data is empty. Make sure your source nodes are properly connected."
+        );
         setIsSaving(false);
         return;
       }
 
       if (Object.keys(transformationData.target).length === 0) {
-        toast.error("Target data is empty. Make sure your target nodes are properly connected.");
+        toast.error(
+          "Target data is empty. Make sure your target nodes are properly connected."
+        );
         setIsSaving(false);
         return;
       }
@@ -474,76 +714,102 @@ function TransformationCanvasContent() {
       const consolidatedProcedureExecution = {};
       let globalProcCounter = 1;
 
-      Object.entries(transformationData.procedureExecution).forEach(([nodeId, procedureArray]) => {
-        const node = nodes.find(n => n.id === nodeId);
-        if (node && node.type === 'source' && node.data.alias && Array.isArray(procedureArray)) {
-          const beforeSourceReadProcs = [];
-          const afterSourceReadProcs = [];
-          procedureArray.forEach(procedureData => {
-            const procData = {
-              EventType: procedureData.EventType,
-              Dataset: node.data.alias,
-              ProcName: procedureData.ProcName,
-              ProcParams: procedureData.ProcParams,
-              ProcOrder: procedureData.ProcOrder
-            };
-            if (procedureData.EventType === "BeforeSourceRead") {
-              beforeSourceReadProcs.push(procData);
-            } else if (procedureData.EventType === "AfterSourceRead") {
-              afterSourceReadProcs.push(procData);
-            }
-          });
-          beforeSourceReadProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
-          afterSourceReadProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
-          [...beforeSourceReadProcs, ...afterSourceReadProcs].forEach(procData => {
-            const uniqueKey = `Proc${globalProcCounter}`;
-            consolidatedProcedureExecution[uniqueKey] = procData;
-            globalProcCounter++;
-          });
+      Object.entries(transformationData.procedureExecution).forEach(
+        ([nodeId, procedureArray]) => {
+          const node = nodes.find((n) => n.id === nodeId);
+          if (
+            node &&
+            node.type === "source" &&
+            node.data.alias &&
+            Array.isArray(procedureArray)
+          ) {
+            const beforeSourceReadProcs = [];
+            const afterSourceReadProcs = [];
+            procedureArray.forEach((procedureData) => {
+              const procData = {
+                EventType: procedureData.EventType,
+                Dataset: node.data.alias,
+                ProcName: procedureData.ProcName,
+                ProcParams: procedureData.ProcParams,
+                ProcOrder: procedureData.ProcOrder,
+              };
+              if (procedureData.EventType === "BeforeSourceRead") {
+                beforeSourceReadProcs.push(procData);
+              } else if (procedureData.EventType === "AfterSourceRead") {
+                afterSourceReadProcs.push(procData);
+              }
+            });
+            beforeSourceReadProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
+            afterSourceReadProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
+            [...beforeSourceReadProcs, ...afterSourceReadProcs].forEach(
+              (procData) => {
+                const uniqueKey = `Proc${globalProcCounter}`;
+                consolidatedProcedureExecution[uniqueKey] = procData;
+                globalProcCounter++;
+              }
+            );
+          }
         }
-      });
+      );
 
-      Object.entries(transformationData.procedureExecution).forEach(([nodeId, procedureArray]) => {
-        const node = nodes.find(n => n.id === nodeId);
-        if (node && node.type === 'target' && node.data.alias && Array.isArray(procedureArray)) {
-          const beforeTargetWriteProcs = [];
-          const afterTargetWriteProcs = [];
-          procedureArray.forEach(procedureData => {
-            const procData = {
-              EventType: procedureData.EventType,
-              Dataset: node.data.alias,
-              ProcName: procedureData.ProcName,
-              ProcParams: procedureData.ProcParams,
-              ProcOrder: procedureData.ProcOrder
-            };
-            if (procedureData.EventType === "BeforeTargetWrite") {
-              beforeTargetWriteProcs.push(procData);
-            } else if (procedureData.EventType === "AfterTargetWrite") {
-              afterTargetWriteProcs.push(procData);
-            }
-          });
-          beforeTargetWriteProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
-          afterTargetWriteProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
-          [...beforeTargetWriteProcs, ...afterTargetWriteProcs].forEach(procData => {
-            const uniqueKey = `Proc${globalProcCounter}`;
-            consolidatedProcedureExecution[uniqueKey] = procData;
-            globalProcCounter++;
-          });
+      Object.entries(transformationData.procedureExecution).forEach(
+        ([nodeId, procedureArray]) => {
+          const node = nodes.find((n) => n.id === nodeId);
+          if (
+            node &&
+            node.type === "target" &&
+            node.data.alias &&
+            Array.isArray(procedureArray)
+          ) {
+            const beforeTargetWriteProcs = [];
+            const afterTargetWriteProcs = [];
+            procedureArray.forEach((procedureData) => {
+              const procData = {
+                EventType: procedureData.EventType,
+                Dataset: node.data.alias,
+                ProcName: procedureData.ProcName,
+                ProcParams: procedureData.ProcParams,
+                ProcOrder: procedureData.ProcOrder,
+              };
+              if (procedureData.EventType === "BeforeTargetWrite") {
+                beforeTargetWriteProcs.push(procData);
+              } else if (procedureData.EventType === "AfterTargetWrite") {
+                afterTargetWriteProcs.push(procData);
+              }
+            });
+            beforeTargetWriteProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
+            afterTargetWriteProcs.sort((a, b) => a.ProcOrder - b.ProcOrder);
+            [...beforeTargetWriteProcs, ...afterTargetWriteProcs].forEach(
+              (procData) => {
+                const uniqueKey = `Proc${globalProcCounter}`;
+                consolidatedProcedureExecution[uniqueKey] = procData;
+                globalProcCounter++;
+              }
+            );
+          }
         }
-      });
+      );
 
       transformationData.procedureExecution = consolidatedProcedureExecution;
 
-      const targetNodes = nodes.filter(n => n.type === 'target');
+      const targetNodes = nodes.filter((n) => n.type === "target");
       for (const targetNode of targetNodes) {
         if (!targetNode.data?.connectedSources) continue;
 
-        const confirmed = window.localStorage.getItem(`targetMappingConfirmed_${targetNode.id}`) === "true";
+        const confirmed =
+          window.localStorage.getItem(
+            `targetMappingConfirmed_${targetNode.id}`
+          ) === "true";
         if (!confirmed) {
-          toast.error(`Please confirm target mapping for '${targetNode.data.alias || 'target node'}' before saving.`, {
-            duration: 3000,
-            position: "top-center",
-          });
+          toast.error(
+            `Please confirm target mapping for '${
+              targetNode.data.alias || "target node"
+            }' before saving.`,
+            {
+              duration: 3000,
+              position: "top-center",
+            }
+          );
           setIsSaving(false);
           return;
         }
@@ -551,35 +817,46 @@ function TransformationCanvasContent() {
 
       const sourceConnectionIds = [];
       const sourceTables = [];
-      Object.values(transformationData.source).forEach(source => {
-        const sourceNode = nodes.find(n =>
-          n.type === 'source' &&
-          n.data.connection === source.sourceConnName
+      Object.values(transformationData.source).forEach((source) => {
+        const sourceNode = nodes.find(
+          (n) =>
+            n.type === "source" && n.data.connection === source.sourceConnName
         );
         if (sourceNode && sourceNode.data.connectionId) {
           sourceConnectionIds.push(sourceNode.data.connectionId);
         }
-        if (source.ConnectionParameters.sourceSchema && source.ConnectionParameters.sourceTable) {
-          sourceTables.push(`${source.ConnectionParameters.sourceSchema}.${source.ConnectionParameters.sourceTable}`);
+        if (
+          source.ConnectionParameters.sourceSchema &&
+          source.ConnectionParameters.sourceTable
+        ) {
+          sourceTables.push(
+            `${source.ConnectionParameters.sourceSchema}.${source.ConnectionParameters.sourceTable}`
+          );
         }
       });
 
       const targetConnectionIds = [];
       const targetTables = [];
-      Object.values(transformationData.target).forEach(target => {
-        const targetNode = nodes.find(n =>
-          n.type === 'target' &&
-          n.data.connection === target.targetConnName
+      Object.values(transformationData.target).forEach((target) => {
+        const targetNode = nodes.find(
+          (n) =>
+            n.type === "target" && n.data.connection === target.targetConnName
         );
         if (targetNode && targetNode.data.connectionId) {
           targetConnectionIds.push(targetNode.data.connectionId);
         }
-        if (target.LoadingParams.targetschema && target.LoadingParams.targetTable) {
-          targetTables.push(`${target.LoadingParams.targetschema}.${target.LoadingParams.targetTable}`);
+        if (
+          target.LoadingParams.targetschema &&
+          target.LoadingParams.targetTable
+        ) {
+          targetTables.push(
+            `${target.LoadingParams.targetschema}.${target.LoadingParams.targetTable}`
+          );
         }
       });
 
       const editFlowData = prepareEditFlowData(nodes, edges, nodeIdRef.current);
+      // console.log("Define node data before save:", defineNode.data);
 
       const payload = {
         transformation_name: defineNode.data.name,
@@ -593,8 +870,8 @@ function TransformationCanvasContent() {
         created_by: decodedToken?.preferred_username || "unknown",
         project: project || "default",
         extra_info: {
-          edit_flow: editFlowData
-        }
+          edit_flow: editFlowData,
+        },
       };
 
       const isUpdate = isEditMode && editTransformationId;
@@ -607,17 +884,23 @@ function TransformationCanvasContent() {
         method: method,
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to ${isUpdate ? 'update' : 'save'} transformation`);
+        throw new Error(
+          errorData.detail ||
+            `Failed to ${isUpdate ? "update" : "save"} transformation`
+        );
       }
 
-      if (transformationData.properties && transformationData.properties.logging) {
+      if (
+        transformationData.properties &&
+        transformationData.properties.logging
+      ) {
         try {
           localStorage.setItem(
             `countLogging_${defineNode.data.name}`,
@@ -628,72 +911,100 @@ function TransformationCanvasContent() {
         }
       }
 
-      toast.success(`Transformation ${isUpdate ? 'updated' : 'saved'} successfully!`, {
-        duration: 3000,
-        position: "top-center",
-      });
+      toast.success(
+        `Transformation ${isUpdate ? "updated" : "saved"} successfully!`,
+        {
+          duration: 3000,
+          position: "top-center",
+        }
+      );
 
       setTimeout(() => {
         navigate("/transformation");
       }, 1500);
-
     } catch (error) {
-      console.error(`Error ${isEditMode ? 'updating' : 'saving'} transformation:`, error);
-      toast.error(`Failed to ${isEditMode ? 'update' : 'save'} transformation: ${error.message}`, {
-        duration: 5000,
-        position: "top-center",
-      });
+      console.error(
+        `Error ${isEditMode ? "updating" : "saving"} transformation:`,
+        error
+      );
+      toast.error(
+        `Failed to ${isEditMode ? "update" : "save"} transformation: ${
+          error.message
+        }`,
+        {
+          duration: 5000,
+          position: "top-center",
+        }
+      );
     } finally {
       setIsSaving(false);
     }
-  }, [generateTransformationJson, nodes, edges, navigate, hostname, token, decodedToken, project, nodeIdRef, isEditMode, editTransformationId, dispatch, ACTION_TYPES]);
+  }, [
+    generateTransformationJson,
+    nodes,
+    edges,
+    navigate,
+    hostname,
+    token,
+    decodedToken,
+    project,
+    nodeIdRef,
+    isEditMode,
+    editTransformationId,
+    dispatch,
+    ACTION_TYPES,
+  ]);
 
- const handleNewFlow = useCallback(() => {
-  // Reset the context state
-  dispatch({ type: ACTION_TYPES.RESET });
+  const handleNewFlow = useCallback(() => {
+    // Reset the context state
+    dispatch({ type: ACTION_TYPES.RESET });
 
-  // Reset nodes and edges
-  setNodes(initialNodes);
-  setEdges(initialEdges);
-  nodeIdRef.current = 1;
+    // Reset nodes and edges
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+    nodeIdRef.current = 1;
 
-  // Clear all localStorage mappings related to target mappings
-  const keysToRemove = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && (
-        key.startsWith('targetMapping_') ||
-        key.startsWith('targetMappingConfirmed_') ||
-        key.startsWith('targetMapping_') ||
-        key.includes('_draft') ||
-        key.includes('_backup')
-      )) {
-      keysToRemove.push(key);
+    // Clear all localStorage mappings related to target mappings
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (
+        key &&
+        (key.startsWith("targetMapping_") ||
+          key.startsWith("targetMappingConfirmed_") ||
+          key.startsWith("targetMapping_") ||
+          key.includes("_draft") ||
+          key.includes("_backup"))
+      ) {
+        keysToRemove.push(key);
+      }
     }
-  }
 
-  // Remove all identified keys
-  keysToRemove.forEach(key => localStorage.removeItem(key));
+    // Remove all identified keys
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
 
-  // Also clear debug variables if they exist
-  if (window.targetMappingsDebug) window.targetMappingsDebug = {};
-  if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
-}, [dispatch, setNodes, setEdges]);
+    // Also clear debug variables if they exist
+    if (window.targetMappingsDebug) window.targetMappingsDebug = {};
+    if (window.preservedTargetMappingsDebug)
+      window.preservedTargetMappingsDebug = {};
+  }, [dispatch, setNodes, setEdges]);
 
-const handleCancel = useCallback(() => {
-  // Perform complete reset
-  handleNewFlow();
-  navigate("/transformation");
-}, [navigate, handleNewFlow]);
+  const handleCancel = useCallback(() => {
+    // Perform complete reset
+    handleNewFlow();
+    navigate("/transformation");
+  }, [navigate, handleNewFlow]);
 
+  const openTransformationDrawer = useCallback(
+    (nodeId) => {
+      setActiveTransformationNodeId(nodeId);
+      setDrawerOpen(true);
 
-  const openTransformationDrawer = useCallback((nodeId) => {
-    setActiveTransformationNodeId(nodeId);
-    setDrawerOpen(true);
-
-    window.allNodes = nodes;
-    window.allEdges = edges;
-  }, [nodes, edges]);
+      window.allNodes = nodes;
+      window.allEdges = edges;
+    },
+    [nodes, edges]
+  );
 
   const closeTransformationDrawer = useCallback(() => {
     setDrawerOpen(false);
@@ -720,37 +1031,44 @@ const handleCancel = useCallback(() => {
       // Before opening the drawer, refresh all source columns
       if (window.allNodes && window.allEdges) {
         // Find the target node
-        const targetNode = window.allNodes.find(n => n.id === nodeId && n.type === 'target');
+        const targetNode = window.allNodes.find(
+          (n) => n.id === nodeId && n.type === "target"
+        );
         if (targetNode) {
           // Find all transformation nodes connected to this target
-          const incomingEdges = window.allEdges.filter(e => e.target === nodeId);
-          const transformationNodeIds = incomingEdges.map(e => e.source)
-            .filter(srcId => {
-              const n = window.allNodes.find(n => n.id === srcId);
-              return n && n.type === 'transformation';
+          const incomingEdges = window.allEdges.filter(
+            (e) => e.target === nodeId
+          );
+          const transformationNodeIds = incomingEdges
+            .map((e) => e.source)
+            .filter((srcId) => {
+              const n = window.allNodes.find((n) => n.id === srcId);
+              return n && n.type === "transformation";
             });
 
           // Trigger a global refresh event for all components to update their columns
-          window.dispatchEvent(new CustomEvent("tantor-refresh-all-columns", {
-            detail: { targetNodeId: nodeId }
-          }));
+          window.dispatchEvent(
+            new CustomEvent("tantor-refresh-all-columns", {
+              detail: { targetNodeId: nodeId },
+            })
+          );
 
           // Short delay to let columns update before opening the drawer
           setTimeout(() => {
             setArthDrawerNodeId(nodeId);
-            setArthDrawerProps({...props});
+            setArthDrawerProps({ ...props });
             setArthDrawerOpen(true);
           }, 50);
         } else {
           // If no extra processing needed, open drawer immediately
           setArthDrawerNodeId(nodeId);
-          setArthDrawerProps({...props});
+          setArthDrawerProps({ ...props });
           setArthDrawerOpen(true);
         }
       } else {
         // Fallback to opening drawer directly
         setArthDrawerNodeId(nodeId);
-        setArthDrawerProps({...props});
+        setArthDrawerProps({ ...props });
         setArthDrawerOpen(true);
       }
     };
@@ -769,50 +1087,52 @@ const handleCancel = useCallback(() => {
 
   const getActiveTransformationNode = useCallback(() => {
     if (!activeTransformationNodeId) return null;
-    return nodes.find(node => node.id === activeTransformationNodeId);
+    return nodes.find((node) => node.id === activeTransformationNodeId);
   }, [activeTransformationNodeId, nodes]);
 
   const activeNode = getActiveTransformationNode();
 
   const updateTransformationNodesData = useCallback(() => {
-    setNodes(prevNodes => {
+    setNodes((prevNodes) => {
       const sourceIdToAlias = {};
       const targetIdToAlias = {};
-      prevNodes.forEach(node => {
-        if (node.type === 'source') {
-          sourceIdToAlias[node.id] = node.data.alias || `unnamed_source_${node.id}`;
+      prevNodes.forEach((node) => {
+        if (node.type === "source") {
+          sourceIdToAlias[node.id] =
+            node.data.alias || `unnamed_source_${node.id}`;
         }
-        if (node.type === 'target') {
-          targetIdToAlias[node.id] = node.data.alias || `unnamed_target_${node.id}`;
+        if (node.type === "target") {
+          targetIdToAlias[node.id] =
+            node.data.alias || `unnamed_target_${node.id}`;
         }
       });
 
-      return prevNodes.map(node => {
-        if (node.type === 'transformation') {
-          const incomingEdges = edges.filter(edge => edge.target === node.id);
-          const outgoingEdges = edges.filter(edge => edge.source === node.id);
+      return prevNodes.map((node) => {
+        if (node.type === "transformation") {
+          const incomingEdges = edges.filter((edge) => edge.target === node.id);
+          const outgoingEdges = edges.filter((edge) => edge.source === node.id);
 
           const sourceNodes = incomingEdges
-            .map(edge => prevNodes.find(n => n.id === edge.source))
+            .map((edge) => prevNodes.find((n) => n.id === edge.source))
             .filter(Boolean)
             .map((srcNode) => ({
               ...srcNode,
-              dfId: sourceIdToAlias[srcNode.id] || srcNode.id
+              dfId: sourceIdToAlias[srcNode.id] || srcNode.id,
             }));
 
           const targetNodes = outgoingEdges
-            .map(edge => prevNodes.find(n => n.id === edge.target))
+            .map((edge) => prevNodes.find((n) => n.id === edge.target))
             .filter(Boolean)
             .map((tgtNode) => ({
               ...tgtNode,
-              dfId: targetIdToAlias[tgtNode.id] || tgtNode.id
+              dfId: targetIdToAlias[tgtNode.id] || tgtNode.id,
             }));
 
           const nodeToDataframeMap = {};
-          sourceNodes.forEach(node => {
+          sourceNodes.forEach((node) => {
             nodeToDataframeMap[node.id] = node.dfId;
           });
-          targetNodes.forEach(node => {
+          targetNodes.forEach((node) => {
             nodeToDataframeMap[node.id] = node.dfId;
           });
 
@@ -826,16 +1146,21 @@ const handleCancel = useCallback(() => {
               targetNodes,
               connectedSources: sourceNodes.length,
               connectedTargets: targetNodes.length,
-              isFullyConnected: sourceNodes.length > 0 && targetNodes.length > 0,
-              onDataChange: node.data.onDataChange
-            }
+              isFullyConnected:
+                sourceNodes.length > 0 && targetNodes.length > 0,
+              onDataChange: node.data.onDataChange,
+            },
           };
         }
 
-        if (node.type === 'target') {
-          const incomingEdges = edges.filter(edge => edge.target === node.id);
+        if (node.type === "target") {
+          const incomingEdges = edges.filter((edge) => edge.target === node.id);
           const connectedSources = incomingEdges
-            .map(edge => prevNodes.find(n => n.id === edge.source && n.type === 'transformation'))
+            .map((edge) =>
+              prevNodes.find(
+                (n) => n.id === edge.source && n.type === "transformation"
+              )
+            )
             .filter(Boolean).length;
 
           return {
@@ -843,8 +1168,8 @@ const handleCancel = useCallback(() => {
             data: {
               ...node.data,
               connectedSources,
-              onDataChange: node.data.onDataChange
-            }
+              onDataChange: node.data.onDataChange,
+            },
           };
         }
 
@@ -861,40 +1186,41 @@ const handleCancel = useCallback(() => {
     updateTransformationNodesData();
   }, [nodes.length, updateTransformationNodesData]);
 
-  useEffect(() => {
-    setNodes((nds) =>
-      nds.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          onDataChange: (newData) => {
-            setNodes((prevNodes) => {
-              const updatedNodes = prevNodes.map((n) =>
-                n.id === node.id
-                  ? { ...n, data: { ...n.data, ...newData } }
-                  : n
-              );
+  /*===============================================================================================
+                        Commenting it becox we will use Master
+    =============================================================================================*/
+  // useEffect(() => {
+  //   setNodes((nds) =>
+  //     nds.map((node) => ({
+  //       ...node,
+  //       data: {
+  //         ...node.data,
+  //         onDataChange: (newData) => {
+  //           setNodes((prevNodes) => {
+  //             const updatedNodes = prevNodes.map((n) =>
+  //               n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
+  //             );
 
-              return updatedNodes;
-            });
-          },
-        },
-      }))
-    );
-  }, [setNodes]);
+  //             return updatedNodes;
+  //           });
+  //         },
+  //       },
+  //     }))
+  //   );
+  // }, [setNodes]);
 
   useEffect(() => {
-    const defineNode = nodes.find(node => node.type === "define");
+    const defineNode = nodes.find((node) => node.type === "define");
     if (!defineNode) return;
 
-    const sourceNodes = nodes.filter(node => node.type === "source");
-    const targetNodes = nodes.filter(node => node.type === "target");
+    const sourceNodes = nodes.filter((node) => node.type === "source");
+    const targetNodes = nodes.filter((node) => node.type === "target");
 
-    const connectedSource = sourceNodes.find(src =>
-      edges.some(edge => edge.source === src.id || edge.target === src.id)
+    const connectedSource = sourceNodes.find((src) =>
+      edges.some((edge) => edge.source === src.id || edge.target === src.id)
     );
-    const connectedTarget = targetNodes.find(tgt =>
-      edges.some(edge => edge.source === tgt.id || edge.target === tgt.id)
+    const connectedTarget = targetNodes.find((tgt) =>
+      edges.some((edge) => edge.source === tgt.id || edge.target === tgt.id)
     );
 
     if (
@@ -909,10 +1235,12 @@ const handleCancel = useCallback(() => {
       const generateAndSetUniqueName = async () => {
         if (defineNode.data.generateUniqueName) {
           try {
-            const uniqueName = await defineNode.data.generateUniqueName(autoName);
+            const uniqueName = await defineNode.data.generateUniqueName(
+              autoName
+            );
             if (defineNode.data.name !== uniqueName) {
-              setNodes(nds =>
-                nds.map(n =>
+              setNodes((nds) =>
+                nds.map((n) =>
                   n.id === defineNode.id
                     ? { ...n, data: { ...n.data, name: uniqueName } }
                     : n
@@ -922,8 +1250,8 @@ const handleCancel = useCallback(() => {
           } catch (error) {
             console.error("Error generating unique name:", error);
             if (defineNode.data.name !== autoName) {
-              setNodes(nds =>
-                nds.map(n =>
+              setNodes((nds) =>
+                nds.map((n) =>
                   n.id === defineNode.id
                     ? { ...n, data: { ...n.data, name: autoName } }
                     : n
@@ -933,8 +1261,8 @@ const handleCancel = useCallback(() => {
           }
         } else {
           if (defineNode.data.name !== autoName) {
-            setNodes(nds =>
-              nds.map(n =>
+            setNodes((nds) =>
+              nds.map((n) =>
                 n.id === defineNode.id
                   ? { ...n, data: { ...n.data, name: autoName } }
                   : n
@@ -948,87 +1276,104 @@ const handleCancel = useCallback(() => {
     }
   }, [nodes, edges, setNodes]);
 
-  const handleAddNewTargetColumn = useCallback((columnName) => {
-    setNodes(prevNodes => {
-      if (!activeTransformationNodeId) return prevNodes;
-      const outgoingEdges = edges.filter(edge => edge.source === activeTransformationNodeId);
-      const targetNodeIds = outgoingEdges
-        .map(edge => {
-          const tgtNode = prevNodes.find(n => n.id === edge.target && n.type === 'target');
-          return tgtNode ? tgtNode.id : null;
-        })
-        .filter(Boolean);
+  const handleAddNewTargetColumn = useCallback(
+    (columnName) => {
+      setNodes((prevNodes) => {
+        if (!activeTransformationNodeId) return prevNodes;
+        const outgoingEdges = edges.filter(
+          (edge) => edge.source === activeTransformationNodeId
+        );
+        const targetNodeIds = outgoingEdges
+          .map((edge) => {
+            const tgtNode = prevNodes.find(
+              (n) => n.id === edge.target && n.type === "target"
+            );
+            return tgtNode ? tgtNode.id : null;
+          })
+          .filter(Boolean);
 
-      return prevNodes.map(node => {
-        if (targetNodeIds.includes(node.id)) {
-          let columns = Array.isArray(node.data.columns) ? [...node.data.columns] : [];
-          if (!columns.includes(columnName)) {
-            columns.push(columnName);
+        return prevNodes.map((node) => {
+          if (targetNodeIds.includes(node.id)) {
+            let columns = Array.isArray(node.data.columns)
+              ? [...node.data.columns]
+              : [];
+            if (!columns.includes(columnName)) {
+              columns.push(columnName);
+            }
+            let columnMapping = { ...(node.data.columnMapping || {}) };
+            if (!(columnName in columnMapping)) {
+              columnMapping[columnName] = "";
+            }
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                columns,
+                columnMapping,
+              },
+            };
           }
-          let columnMapping = { ...(node.data.columnMapping || {}) };
-          if (!(columnName in columnMapping)) {
-            columnMapping[columnName] = "";
+          return node;
+        });
+      });
+    },
+    [edges, activeTransformationNodeId, setNodes]
+  );
+
+  const handleTransformationApply = useCallback(
+    (transformationNodeId, transformations) => {
+      setNodes((prevNodes) => {
+        const outgoingEdges = edges.filter(
+          (edge) => edge.source === transformationNodeId
+        );
+        const targetNodeIds = outgoingEdges
+          .map((edge) => {
+            const tgtNode = prevNodes.find(
+              (n) => n.id === edge.target && n.type === "target"
+            );
+            return tgtNode ? tgtNode.id : null;
+          })
+          .filter(Boolean);
+
+        const processedTransformations = transformations.map((t) => {
+          if (
+            t.transformation_operation === "filter" &&
+            !t.transformation_operator
+          ) {
+            return { ...t, transformation_operator: "==" };
           }
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              columns,
-              columnMapping,
-            }
-          };
-        }
-        return node;
+          return t;
+        });
+
+        return prevNodes.map((node) => {
+          if (node.id === transformationNodeId) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                transformations: processedTransformations,
+                transformationConfig: {
+                  ...node.data.transformationConfig,
+                  operations: processedTransformations,
+                },
+              },
+            };
+          }
+          if (targetNodeIds.includes(node.id)) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                transformations: processedTransformations,
+              },
+            };
+          }
+          return node;
+        });
       });
-    });
-  }, [edges, activeTransformationNodeId, setNodes]);
-
-  const handleTransformationApply = useCallback((transformationNodeId, transformations) => {
-    setNodes(prevNodes => {
-      const outgoingEdges = edges.filter(edge => edge.source === transformationNodeId);
-      const targetNodeIds = outgoingEdges
-        .map(edge => {
-          const tgtNode = prevNodes.find(n => n.id === edge.target && n.type === 'target');
-          return tgtNode ? tgtNode.id : null;
-        })
-        .filter(Boolean);
-
-      const processedTransformations = transformations.map(t => {
-        if (t.transformation_operation === 'filter' && !t.transformation_operator) {
-          return { ...t, transformation_operator: "==" };
-        }
-        return t;
-      });
-
-      return prevNodes.map(node => {
-        if (node.id === transformationNodeId) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              transformations: processedTransformations,
-              transformationConfig: {
-                ...node.data.transformationConfig,
-                operations: processedTransformations
-              }
-            }
-          };
-        }
-        if (targetNodeIds.includes(node.id)) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              transformations: processedTransformations,
-            }
-          };
-        }
-        return node;
-      });
-    });
-  }, [edges, setNodes]);
-
-
+    },
+    [edges, setNodes]
+  );
 
   return (
     <div style={{ width: "100%", height: "100vh" }} className="relative">
@@ -1042,7 +1387,7 @@ const handleCancel = useCallback(() => {
         onDrop={onDrop}
         nodesDraggable={true}
         elementsSelectable={true}
-        deleteKeyCode={['Backspace', 'Delete']}
+        deleteKeyCode={["Backspace", "Delete"]}
         nodeTypes={nodeTypes}
         fitView
         className="bg-gray-50"
@@ -1077,13 +1422,33 @@ const handleCancel = useCallback(() => {
         >
           {isSaving ? (
             <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
               {isEditMode ? "Updating..." : "Saving..."}
             </>
-          ) : isEditMode ? "Update" : "Save"}
+          ) : isEditMode ? (
+            "Update"
+          ) : (
+            "Save"
+          )}
         </button>
       </div>
 
@@ -1112,8 +1477,9 @@ const handleCancel = useCallback(() => {
 
 const TransformationCanvas = () => {
   return (
-
-    <TransformationProvider>      <TransformationCanvasContent />
+    <TransformationProvider>
+      {" "}
+      <TransformationCanvasContent />
     </TransformationProvider>
   );
 };

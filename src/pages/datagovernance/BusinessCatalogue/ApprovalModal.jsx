@@ -18,7 +18,7 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
     const { type, details } = notification || {};
     const businessCatalogueData = type === 'business_catalogue' ? details : null;
     const descriptionData = type === 'description' ? details : null;
-    const linkageData = (type === 'table_linkage' || type === 'column_linkage') ? details : null;
+    const linkageData = (type === 'table_linkage' || type === 'column_linkage' || type === 'table_linkage_deletion' || type === 'column_linkage_deletion') ? details : null;
 
     const availableTabs = useMemo(() => {
         if (!businessCatalogueData) return [];
@@ -118,7 +118,9 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
             }
 
             case 'table_linkage':
-            case 'column_linkage': {
+            case 'column_linkage':
+            case 'table_linkage_deletion':
+            case 'column_linkage_deletion': {
                 const dataCatObject = {
                     connection: linkageData.connection,
                     schema: linkageData.schema,
@@ -133,7 +135,7 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
                     reason: reason || ""
                 };
 
-                if (type === 'column_linkage') {
+                if (type === 'column_linkage' || type === 'column_linkage_deletion') {
                     dataCatObject.column = linkageData.columns;
                 }
 
@@ -271,14 +273,23 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
         if (!linkageDetails) {
             return <div className="py-12 text-center text-gray-500"><AlertTriangle className="mx-auto h-10 w-10 text-gray-400" /><p className="mt-2">No details available.</p></div>;
         }
-        const title = type === 'table_linkage' ?
-            `Table: ${linkageData.connection}.${linkageData.schema}.${linkageData.tables}` :
-            `Column: ${linkageData.connection}.${linkageData.schema}.${linkageData.table}.${linkageData.columns}`;
+        
+        const isDeletion = type.includes('_deletion');
+        
+        const title = isDeletion
+            ? (type === 'table_linkage_deletion'
+                ? `Table: ${linkageData.connection}.${linkageData.schema}.${linkageData.tables}`
+                : `Column: ${linkageData.connection}.${linkageData.schema}.${linkageData.table}.${linkageData.columns}`)
+            : (type === 'table_linkage'
+                ? `Table: ${linkageData.connection}.${linkageData.schema}.${linkageData.tables}`
+                : `Column: ${linkageData.connection}.${linkageData.schema}.${linkageData.table}.${linkageData.columns}`);
+
+        const headerText = isDeletion ? 'APPROVAL FOR LINKAGE REMOVAL' : 'APPROVAL FOR LINKAGE';
 
         return (
             <div className="py-4 space-y-5">
                 <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-1">APPROVAL FOR</h4>
+                    <h4 className="text-sm font-medium text-gray-500 mb-1">{headerText}</h4>
                     <p className="text-md font-semibold text-gray-900 break-all">{title}</p>
                 </div>
                 {renderNameList('Domain', linkageDetails.domain)}
@@ -308,7 +319,8 @@ const ApprovalModal = ({ isOpen, onClose, notification, onActionSuccess }) => {
                         <div className="bg-white rounded-lg p-1">{renderBusinessCatalogueContent()}</div>
                     </>)}
                     {type === 'description' && (<div className="py-4"><h4 className="text-sm font-medium text-gray-500 mb-2">DESCRIPTION APPROVAL</h4><div className="p-4 bg-gray-50 rounded-lg border"><p className="text-md text-gray-800">{descriptionData}</p></div></div>)}
-                    {(type === 'table_linkage' || type === 'column_linkage') && renderLinkageContent()}
+                    
+                    {(type === 'table_linkage' || type === 'column_linkage' || type === 'table_linkage_deletion' || type === 'column_linkage_deletion') && renderLinkageContent()}
 
                     {type === 'deletion' && (
                         <div className="py-4">

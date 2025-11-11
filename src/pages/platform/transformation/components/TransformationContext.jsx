@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+import React, { createContext, useContext, useReducer, useEffect } from "react";
+import { useAuth } from "../../../../context/AuthContext";
 
 const initialState = {
   define: {
@@ -19,38 +19,38 @@ const initialState = {
   properties: {
     logging: {
       isLoggingEnabled: true,
-      isLoggingEnabledForEachDataset: false
+      isLoggingEnabledForEachDataset: false,
     },
     email: {
-      isEmailEnabled: false
-    }
+      isEmailEnabled: false,
+    },
   },
 };
 
 const ACTION_TYPES = {
-  UPDATE_DEFINE: 'UPDATE_DEFINE',
-  ADD_SOURCE: 'ADD_SOURCE',
-  UPDATE_SOURCE: 'UPDATE_SOURCE',
-  REMOVE_SOURCE: 'REMOVE_SOURCE',
-  ADD_TRANSFORMATION: 'ADD_TRANSFORMATION',
-  UPDATE_TRANSFORMATION: 'UPDATE_TRANSFORMATION',
-  REMOVE_TRANSFORMATION: 'REMOVE_TRANSFORMATION',
-  ADD_TARGET: 'ADD_TARGET',
-  UPDATE_TARGET: 'UPDATE_TARGET',
-  REMOVE_TARGET: 'REMOVE_TARGET',
-  SET_CONNECTIONS: 'SET_CONNECTIONS',
-  ADD_CONNECTION: 'ADD_CONNECTION',
-  REMOVE_CONNECTION: 'REMOVE_CONNECTION',
-  RESET: 'RESET',
-  UPDATE_SELECTED_SOURCE_COLUMNS: 'UPDATE_SELECTED_SOURCE_COLUMNS',
-  UPDATE_TARGET_SELECTED_SOURCE: 'UPDATE_TARGET_SELECTED_SOURCE',
-  UPDATE_PROCEDURE_EXECUTION: 'UPDATE_PROCEDURE_EXECUTION',
-  REMOVE_PROCEDURE_EXECUTION: 'REMOVE_PROCEDURE_EXECUTION', // New action type
-  SET_ORIGINAL_SOURCE_COLUMNS: 'SET_ORIGINAL_SOURCE_COLUMNS', // New action type
-  PRESERVE_TARGET_MAPPING: 'PRESERVE_TARGET_MAPPING', // New action type
-  RESTORE_TARGET_MAPPINGS: 'RESTORE_TARGET_MAPPINGS', // New action type
-  SET_SOURCE_ORIGINAL_COLUMNS: 'SET_SOURCE_ORIGINAL_COLUMNS', // <-- Add new action type
-  UPDATE_GLOBAL_PROPERTIES: 'UPDATE_GLOBAL_PROPERTIES',
+  UPDATE_DEFINE: "UPDATE_DEFINE",
+  ADD_SOURCE: "ADD_SOURCE",
+  UPDATE_SOURCE: "UPDATE_SOURCE",
+  REMOVE_SOURCE: "REMOVE_SOURCE",
+  ADD_TRANSFORMATION: "ADD_TRANSFORMATION",
+  UPDATE_TRANSFORMATION: "UPDATE_TRANSFORMATION",
+  REMOVE_TRANSFORMATION: "REMOVE_TRANSFORMATION",
+  ADD_TARGET: "ADD_TARGET",
+  UPDATE_TARGET: "UPDATE_TARGET",
+  REMOVE_TARGET: "REMOVE_TARGET",
+  SET_CONNECTIONS: "SET_CONNECTIONS",
+  ADD_CONNECTION: "ADD_CONNECTION",
+  REMOVE_CONNECTION: "REMOVE_CONNECTION",
+  RESET: "RESET",
+  UPDATE_SELECTED_SOURCE_COLUMNS: "UPDATE_SELECTED_SOURCE_COLUMNS",
+  UPDATE_TARGET_SELECTED_SOURCE: "UPDATE_TARGET_SELECTED_SOURCE",
+  UPDATE_PROCEDURE_EXECUTION: "UPDATE_PROCEDURE_EXECUTION",
+  REMOVE_PROCEDURE_EXECUTION: "REMOVE_PROCEDURE_EXECUTION", // New action type
+  SET_ORIGINAL_SOURCE_COLUMNS: "SET_ORIGINAL_SOURCE_COLUMNS", // New action type
+  PRESERVE_TARGET_MAPPING: "PRESERVE_TARGET_MAPPING", // New action type
+  RESTORE_TARGET_MAPPINGS: "RESTORE_TARGET_MAPPINGS", // New action type
+  SET_SOURCE_ORIGINAL_COLUMNS: "SET_SOURCE_ORIGINAL_COLUMNS", // <-- Add new action type
+  UPDATE_GLOBAL_PROPERTIES: "UPDATE_GLOBAL_PROPERTIES",
 };
 
 function transformationReducer(state, action) {
@@ -61,7 +61,7 @@ function transformationReducer(state, action) {
         define: {
           ...state.define,
           ...action.payload,
-        }
+        },
       };
 
     case ACTION_TYPES.ADD_SOURCE:
@@ -72,9 +72,9 @@ function transformationReducer(state, action) {
           [action.payload.id]: {
             ...action.payload.data,
             alias: action.payload.data.alias,
-            enableCountLogging: action.payload.data.enableCountLogging || false
-          }
-        }
+            enableCountLogging: action.payload.data.enableCountLogging || false,
+          },
+        },
       };
 
     case ACTION_TYPES.UPDATE_SOURCE:
@@ -85,30 +85,28 @@ function transformationReducer(state, action) {
           [action.payload.id]: {
             ...state.sources[action.payload.id],
             ...action.payload.data,
-            // FIXED: Ensure enableCountLogging is properly updated and preserved
-            enableCountLogging: typeof action.payload.data.enableCountLogging === 'boolean'
-              ? action.payload.data.enableCountLogging
-              : (state.sources[action.payload.id]?.enableCountLogging || false)
-          }
-        }
+            enableCountLogging:
+              typeof action.payload.data.enableCountLogging === "boolean"
+                ? action.payload.data.enableCountLogging
+                : state.sources[action.payload.id]?.enableCountLogging || false,
+          },
+        },
       };
 
-      // Trigger a sidebar update notification
-      if (typeof action.payload.data.enableCountLogging === 'boolean') {
+      if (typeof action.payload.data.enableCountLogging === "boolean") {
         setTimeout(() => {
           if (window.triggerSidebarUpdate) {
             window.triggerSidebarUpdate();
           }
         }, 0);
       }
-
       return updatedSourceState;
 
     case ACTION_TYPES.REMOVE_SOURCE:
       const { [action.payload]: _, ...remainingSources } = state.sources;
       return {
         ...state,
-        sources: remainingSources
+        sources: remainingSources,
       };
 
     case ACTION_TYPES.ADD_TRANSFORMATION:
@@ -116,8 +114,8 @@ function transformationReducer(state, action) {
         ...state,
         transformations: {
           ...state.transformations,
-          [action.payload.id]: action.payload.data
-        }
+          [action.payload.id]: action.payload.data,
+        },
       };
 
     case ACTION_TYPES.UPDATE_TRANSFORMATION:
@@ -127,16 +125,17 @@ function transformationReducer(state, action) {
           ...state.transformations,
           [action.payload.id]: {
             ...state.transformations[action.payload.id],
-            ...action.payload.data
-          }
-        }
+            ...action.payload.data,
+          },
+        },
       };
 
     case ACTION_TYPES.REMOVE_TRANSFORMATION:
-      const { [action.payload]: __, ...remainingTransformations } = state.transformations;
+      const { [action.payload]: __, ...remainingTransformations } =
+        state.transformations;
       return {
         ...state,
-        transformations: remainingTransformations
+        transformations: remainingTransformations,
       };
 
     case ACTION_TYPES.ADD_TARGET:
@@ -147,32 +146,54 @@ function transformationReducer(state, action) {
           [action.payload.id]: {
             ...action.payload.data,
             alias: action.payload.data.alias,
-            targetMapping: action.payload.data.targetMapping ||
-                           state.preservedTargetMappings[action.payload.id] || {},
-            // NEW: keep SCD config
-            scdConfig: action.payload.data.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" }
-          }
-        }
+            targetMapping:
+              action.payload.data.targetMapping ||
+              state.preservedTargetMappings[action.payload.id] ||
+              {},
+            scdConfig: action.payload.data.scdConfig || {
+              primaryKeys: [],
+              surrogateKey: "",
+              checksumColumns: [],
+              changeType: "",
+            },
+          },
+        },
       };
 
     case ACTION_TYPES.UPDATE_TARGET: {
-      const newTargetMapping = action.payload.data.targetMapping ||
-                              state.targets[action.payload.id]?.targetMapping ||
-                              state.preservedTargetMappings[action.payload.id] || {};
+      const newTargetMapping =
+        action.payload.data.targetMapping ||
+        state.targets[action.payload.id]?.targetMapping ||
+        state.preservedTargetMappings[action.payload.id] ||
+        {};
       if (Object.keys(newTargetMapping).length > 0) {
-        state.preservedTargetMappings[action.payload.id] = { ...newTargetMapping };
+        state.preservedTargetMappings[action.payload.id] = {
+          ...newTargetMapping,
+        };
       }
-
-      // FIXED: Ensure SCD config is properly preserved and updated
-      const currentScdConfig = state.targets[action.payload.id]?.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" };
-      const newScdConfig = action.payload.data.scdConfig !== undefined
-        ? {
-            primaryKeys: Array.isArray(action.payload.data.scdConfig.primaryKeys) ? action.payload.data.scdConfig.primaryKeys : [],
-            surrogateKey: action.payload.data.scdConfig.surrogateKey || "",
-            checksumColumns: Array.isArray(action.payload.data.scdConfig.checksumColumns) ? action.payload.data.scdConfig.checksumColumns : [],
-            changeType: action.payload.data.scdConfig.changeType || ""
-          }
-        : currentScdConfig;
+      const currentScdConfig = state.targets[action.payload.id]?.scdConfig || {
+        primaryKeys: [],
+        surrogateKey: "",
+        checksumColumns: [],
+        changeType: "",
+      };
+      const newScdConfig =
+        action.payload.data.scdConfig !== undefined
+          ? {
+              primaryKeys: Array.isArray(
+                action.payload.data.scdConfig.primaryKeys
+              )
+                ? action.payload.data.scdConfig.primaryKeys
+                : [],
+              surrogateKey: action.payload.data.scdConfig.surrogateKey || "",
+              checksumColumns: Array.isArray(
+                action.payload.data.scdConfig.checksumColumns
+              )
+                ? action.payload.data.scdConfig.checksumColumns
+                : [],
+              changeType: action.payload.data.scdConfig.changeType || "",
+            }
+          : currentScdConfig;
 
       const updatedTargetState = {
         ...state,
@@ -182,16 +203,20 @@ function transformationReducer(state, action) {
             ...state.targets[action.payload.id],
             ...action.payload.data,
             targetMapping: newTargetMapping,
-            enableCountLogging: typeof action.payload.data.enableCountLogging === 'boolean'
-              ? action.payload.data.enableCountLogging
-              : (state.targets[action.payload.id]?.enableCountLogging || false),
-            // FIXED: Always update SCD config properly
-            scdConfig: newScdConfig
-          }
-        }
+            enableCountLogging:
+              typeof action.payload.data.enableCountLogging === "boolean"
+                ? action.payload.data.enableCountLogging
+                : state.targets[action.payload.id]?.enableCountLogging || false,
+            surPopulation:
+              typeof action.payload.data.surPopulation === "boolean"
+                ? action.payload.data.surPopulation
+                : state.targets[action.payload.id]?.surPopulation || false,
+            scdConfig: newScdConfig,
+          },
+        },
       };
 
-      if (typeof action.payload.data.enableCountLogging === 'boolean') {
+      if (typeof action.payload.data.enableCountLogging === "boolean") {
         setTimeout(() => {
           if (window.triggerSidebarUpdate) window.triggerSidebarUpdate();
         }, 0);
@@ -204,49 +229,51 @@ function transformationReducer(state, action) {
       const { [action.payload]: ___, ...remainingTargets } = state.targets;
       return {
         ...state,
-        targets: remainingTargets
+        targets: remainingTargets,
       };
 
     case ACTION_TYPES.SET_CONNECTIONS:
       return {
         ...state,
-        connections: action.payload
+        connections: action.payload,
       };
 
     case ACTION_TYPES.ADD_CONNECTION:
       return {
         ...state,
-        connections: [...state.connections, action.payload]
+        connections: [...state.connections, action.payload],
       };
 
     case ACTION_TYPES.REMOVE_CONNECTION:
       return {
         ...state,
         connections: state.connections.filter(
-          conn => !(conn.source === action.payload.source && conn.target === action.payload.target)
-        )
+          (conn) =>
+            !(
+              conn.source === action.payload.source &&
+              conn.target === action.payload.target
+            )
+        ),
       };
 
     case ACTION_TYPES.UPDATE_SELECTED_SOURCE_COLUMNS: {
-
       const { sourceNodeId, columns } = action.payload;
       return {
         ...state,
         selectedSourceColumnsSet: {
           ...state.selectedSourceColumnsSet,
-          [sourceNodeId]: new Set(columns)
-        }
+          [sourceNodeId]: new Set(columns),
+        },
       };
     }
     case ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE: {
-
       const { targetNodeId, sourceNodeId } = action.payload;
       return {
         ...state,
         targetToSelectedSourceMap: {
           ...state.targetToSelectedSourceMap,
-          [targetNodeId]: sourceNodeId
-        }
+          [targetNodeId]: sourceNodeId,
+        },
       };
     }
 
@@ -255,9 +282,10 @@ function transformationReducer(state, action) {
       const currentProcedures = state.procedureExecution[sourceNodeId] || [];
 
       // Find existing procedure by procedureItemId and procedureType
-      const existingIndex = currentProcedures.findIndex(p =>
-        p.procedureItemId === procedureMapping.procedureItemId &&
-        p.procedureType === procedureMapping.procedureType
+      const existingIndex = currentProcedures.findIndex(
+        (p) =>
+          p.procedureItemId === procedureMapping.procedureItemId &&
+          p.procedureType === procedureMapping.procedureType
       );
 
       let updatedProcedures;
@@ -269,29 +297,37 @@ function transformationReducer(state, action) {
         // If the new mapping has isUpdated flag, use the new parameterMapping
         // If it's restored, always use the restored parameterMapping
         // Otherwise, preserve the original parameterMapping if it exists
-        const finalParameterMapping = procedureMapping.isUpdated || procedureMapping.isRestored
-          ? procedureMapping.parameterMapping
-          : existingProcedure.parameterMapping || procedureMapping.parameterMapping;
+        const finalParameterMapping =
+          procedureMapping.isUpdated || procedureMapping.isRestored
+            ? procedureMapping.parameterMapping
+            : existingProcedure.parameterMapping ||
+              procedureMapping.parameterMapping;
 
         updatedProcedures[existingIndex] = {
           ...procedureMapping,
           parameterMapping: finalParameterMapping,
-          originalParameterMapping: existingProcedure.originalParameterMapping || existingProcedure.parameterMapping || procedureMapping.parameterMapping
+          originalParameterMapping:
+            existingProcedure.originalParameterMapping ||
+            existingProcedure.parameterMapping ||
+            procedureMapping.parameterMapping,
         };
       } else {
         // Add new procedure
-        updatedProcedures = [...currentProcedures, {
-          ...procedureMapping,
-          originalParameterMapping: procedureMapping.parameterMapping || {}
-        }];
+        updatedProcedures = [
+          ...currentProcedures,
+          {
+            ...procedureMapping,
+            originalParameterMapping: procedureMapping.parameterMapping || {},
+          },
+        ];
       }
 
       return {
         ...state,
         procedureExecution: {
           ...state.procedureExecution,
-          [sourceNodeId]: updatedProcedures
-        }
+          [sourceNodeId]: updatedProcedures,
+        },
       };
     }
 
@@ -300,23 +336,33 @@ function transformationReducer(state, action) {
       const currentProcedures = state.procedureExecution[sourceNodeId] || [];
 
       // Remove the specific procedure
-      const updatedProcedures = currentProcedures.filter(p =>
-        !(p.procedureItemId === procedureItemId && p.procedureType === procedureType)
+      const updatedProcedures = currentProcedures.filter(
+        (p) =>
+          !(
+            p.procedureItemId === procedureItemId &&
+            p.procedureType === procedureType
+          )
       );
 
       // Update procedure orders for remaining procedures of the same type
-      const reorderedProcedures = updatedProcedures.map(proc => {
+      const reorderedProcedures = updatedProcedures.map((proc) => {
         if (proc.procedureType === procedureType) {
-          const sameTypeProcedures = updatedProcedures.filter(p =>
-            p.procedureType === procedureType &&
-            p.EventType === proc.EventType
+          const sameTypeProcedures = updatedProcedures.filter(
+            (p) =>
+              p.procedureType === procedureType &&
+              p.EventType === proc.EventType
           );
-          const sortedProcedures = sameTypeProcedures.sort((a, b) => a.timestamp - b.timestamp);
-          const newOrder = sortedProcedures.findIndex(p => p.procedureId === proc.procedureId) + 1;
+          const sortedProcedures = sameTypeProcedures.sort(
+            (a, b) => a.timestamp - b.timestamp
+          );
+          const newOrder =
+            sortedProcedures.findIndex(
+              (p) => p.procedureId === proc.procedureId
+            ) + 1;
 
           return {
             ...proc,
-            ProcOrder: newOrder
+            ProcOrder: newOrder,
           };
         }
         return proc;
@@ -326,8 +372,8 @@ function transformationReducer(state, action) {
         ...state,
         procedureExecution: {
           ...state.procedureExecution,
-          [sourceNodeId]: reorderedProcedures
-        }
+          [sourceNodeId]: reorderedProcedures,
+        },
       };
     }
 
@@ -337,8 +383,8 @@ function transformationReducer(state, action) {
         ...state,
         originalSourceColumns: {
           ...state.originalSourceColumns,
-          [sourceNodeId]: columns
-        }
+          [sourceNodeId]: columns,
+        },
       };
     }
 
@@ -347,28 +393,28 @@ function transformationReducer(state, action) {
         ...state,
         preservedTargetMappings: {
           ...state.preservedTargetMappings,
-          [action.payload.targetId]: action.payload.mapping
-        }
+          [action.payload.targetId]: action.payload.mapping,
+        },
       };
 
     case ACTION_TYPES.RESTORE_TARGET_MAPPINGS:
       // Batch update all targets with preserved mappings
-      const updatedTargets = {...state.targets};
+      const updatedTargets = { ...state.targets };
 
-      Object.keys(state.preservedTargetMappings).forEach(targetId => {
+      Object.keys(state.preservedTargetMappings).forEach((targetId) => {
         if (updatedTargets[targetId]) {
           updatedTargets[targetId] = {
             ...updatedTargets[targetId],
             targetMapping: {
-              ...state.preservedTargetMappings[targetId]
-            }
+              ...state.preservedTargetMappings[targetId],
+            },
           };
         }
       });
 
       return {
         ...state,
-        targets: updatedTargets
+        targets: updatedTargets,
       };
 
     case ACTION_TYPES.SET_SOURCE_ORIGINAL_COLUMNS: {
@@ -377,8 +423,8 @@ function transformationReducer(state, action) {
         ...state,
         sourceOriginalColumns: {
           ...state.sourceOriginalColumns,
-          [sourceNodeId]: columns
-        }
+          [sourceNodeId]: columns,
+        },
       };
     }
 
@@ -387,12 +433,12 @@ function transformationReducer(state, action) {
         ...state,
         properties: {
           ...state.properties,
-          ...action.payload
-        }
+          ...action.payload,
+        },
       };
 
     case ACTION_TYPES.RESET:
-      Object.keys(state.targets).forEach(targetId => {
+      Object.keys(state.targets).forEach((targetId) => {
         try {
           window.localStorage.removeItem(`targetMapping_${targetId}`);
           window.localStorage.removeItem(`targetMappingConfirmed_${targetId}`);
@@ -403,7 +449,8 @@ function transformationReducer(state, action) {
         }
       });
 
-      if (window.preservedTargetMappingsDebug) window.preservedTargetMappingsDebug = {};
+      if (window.preservedTargetMappingsDebug)
+        window.preservedTargetMappingsDebug = {};
       if (window.targetMappingsDebug) window.targetMappingsDebug = {};
 
       return initialState;
@@ -442,7 +489,9 @@ export function TransformationProvider({ children }) {
     };
   }, [state, dispatch, ACTION_TYPES]);
 
-  const generateTransformationJson = () => {
+  // const generateTransformationJson = () => {
+  // Accept optional override for define node data (latest name/description)
+  const generateTransformationJson = (defineOverride = {}) => {
     const timestamp = new Date().toISOString();
 
     const sourceIdToAlias = {};
@@ -467,40 +516,103 @@ export function TransformationProvider({ children }) {
       created_at: timestamp,
       created_by: decodedToken.preferred_username,
       project: project || "default",
-      workflow_name: state.define.name,
-      workflow_type : "manual",
-      description: state.define.description || "",
+      // workflow_name: state.define.name,
+      // workflow_type : "manual",
+      // description: state.define.description || "",
+      workflow_name: defineOverride.name || state.define.name,
+      workflow_type: "manual",
+      description: defineOverride.description || state.define.description || "",
+
       source: {},
       target: {},
       properties: {
         logging: {
           isLoggingEnabled: true,
-          isLoggingEnabledForEachDataset: state.properties?.logging?.isLoggingEnabledForEachDataset || false
+          isLoggingEnabledForEachDataset:
+            state.properties?.logging?.isLoggingEnabledForEachDataset || false,
         },
         email: {
-          isEmailEnabled: state.properties?.email?.isEmailEnabled || false
-        }
+          isEmailEnabled: state.properties?.email?.isEmailEnabled || false,
+        },
       },
       procedureExecution: state.procedureExecution,
-      transformation: {}
+      transformation: {},
     };
 
     const transformationNodes = Object.keys(state.transformations);
 
     if (transformationNodes.length > 0) {
       // source
-      const sourceConnections = state.connections.filter(conn => {
+      const sourceConnections = state.connections.filter((conn) => {
         const sourceIds = Object.keys(state.sources);
-        return sourceIds.includes(conn.source) && transformationNodes.includes(conn.target);
+        return (
+          sourceIds.includes(conn.source) &&
+          transformationNodes.includes(conn.target)
+        );
       });
 
+      // sourceConnections.forEach((conn) => {
+      //   const sourceId = conn.source;
+      //   const sourceData = state.sources[sourceId];
+
+      //   if (sourceData) {
+      //     const sourceKey = sourceData.alias || `source_${sourceId}`;
+
+      //     const originalColumns = state.originalSourceColumns[sourceId] || [];
+
+      //     if (sourceData.sourceType === "file") {
+      //       const fileColumns = sourceData.fileColumns || [];
+      //       const columnMapping = {};
+
+      //       fileColumns
+      //         .filter(col => col.name && col.name.trim() !== "")
+      //         .forEach(col => {
+      //           columnMapping[col.name] =
+      //             col.datatype === 'custom'
+      //               ? (col.customDatatype || 'custom')
+      //               : col.datatype;
+      //         });
+
+      //       result.source[sourceKey] = {
+      //         sourceType: sourceData.fileType?.toLowerCase() || "csv",
+      //         sourceConnName: "",
+      //         // sourceConnId: "",
+      //         column: [columnMapping],
+      //         ConnectionParameters: {
+      //           sourceFilePath: sourceData.filePath || "",
+      //           sourceFileName: sourceData.fileName || "",
+      //         },
+      //         readParameters: {
+      //           watermarkColumn: "",
+      //           watermarkColumnDataType: ""
+      //         },
+      //         EnableCountLogging: sourceData.enableCountLogging === true
+      //       };
+      //     } else {
+      //       result.source[sourceKey] = {
+      //         sourceType: sourceData.connectionType || "unknown",
+      //         sourceConnName: sourceData.connection || "unknown",
+      //         sourceConnId: sourceData.connectionId || "",
+      //         column: originalColumns,
+      //         ConnectionParameters: {
+      //           sourceSchema: sourceData.schema || "",
+      //           sourceTable: sourceData.table || ""
+      //         },
+      //         readParameters: {
+      //           watermarkColumn: "",
+      //           watermarkColumnDataType: ""
+      //         },
+      //         EnableCountLogging: sourceData.enableCountLogging === true
+      //       };
+      //     }
+      //   }
+      // });
       sourceConnections.forEach((conn) => {
         const sourceId = conn.source;
         const sourceData = state.sources[sourceId];
 
         if (sourceData) {
           const sourceKey = sourceData.alias || `source_${sourceId}`;
-
           const originalColumns = state.originalSourceColumns[sourceId] || [];
 
           if (sourceData.sourceType === "file") {
@@ -508,18 +620,17 @@ export function TransformationProvider({ children }) {
             const columnMapping = {};
 
             fileColumns
-              .filter(col => col.name && col.name.trim() !== "")
-              .forEach(col => {
+              .filter((col) => col.name && col.name.trim() !== "")
+              .forEach((col) => {
                 columnMapping[col.name] =
-                  col.datatype === 'custom'
-                    ? (col.customDatatype || 'custom')
+                  col.datatype === "custom"
+                    ? col.customDatatype || "custom"
                     : col.datatype;
               });
 
             result.source[sourceKey] = {
               sourceType: sourceData.fileType?.toLowerCase() || "csv",
               sourceConnName: "",
-              // sourceConnId: "",
               column: [columnMapping],
               ConnectionParameters: {
                 sourceFilePath: sourceData.filePath || "",
@@ -527,34 +638,79 @@ export function TransformationProvider({ children }) {
               },
               readParameters: {
                 watermarkColumn: "",
-                watermarkColumnDataType: ""
+                watermarkColumnDataType: "",
               },
-              EnableCountLogging: sourceData.enableCountLogging === true
+              EnableCountLogging: sourceData.enableCountLogging === true,
             };
           } else {
-            result.source[sourceKey] = {
-              sourceType: sourceData.connectionType || "unknown",
-              sourceConnName: sourceData.connection || "unknown",
-              sourceConnId: sourceData.connectionId || "",
-              column: originalColumns,
-              ConnectionParameters: {
-                sourceSchema: sourceData.schema || "",
-                sourceTable: sourceData.table || ""
-              },
-              readParameters: {
-                watermarkColumn: "",
-                watermarkColumnDataType: ""
-              },
-              EnableCountLogging: sourceData.enableCountLogging === true
-            };
+            // Check if this is a source-query mode
+            if (sourceData.objectType === "source-query") {
+              const queryColumns = sourceData.fileColumns || [];
+              const columnMapping = {};
+
+              queryColumns
+                .filter((col) => col.name && col.name.trim() !== "")
+                .forEach((col) => {
+                  columnMapping[col.name] =
+                    col.datatype === "custom"
+                      ? col.customDatatype || "custom"
+                      : col.datatype;
+                });
+
+              result.source[sourceKey] = {
+                sourceType: sourceData.connectionType || "unknown",
+                sourceConnName: sourceData.connection || "unknown",
+                sourceConnId: sourceData.connectionId || "",
+                sourceQualifier: sourceData.customQuery,
+                objectType: "source-query",
+                column: [columnMapping],
+                ConnectionParameters: {
+                  sourceSchema: sourceData.schema || "",
+                  sourceTable: sourceData.table || "",
+                },
+                readParameters: {
+                  watermarkColumn: "",
+                  watermarkColumnDataType: "",
+                },
+                EnableCountLogging: sourceData.enableCountLogging === true,
+              };
+            } else {
+              // Handle regular database sources (tables, views, procedures)
+              result.source[sourceKey] = {
+                sourceType: sourceData.connectionType || "unknown",
+                sourceConnName: sourceData.connection || "unknown",
+                sourceConnId: sourceData.connectionId || "",
+                column: originalColumns,
+                ConnectionParameters: {
+                  sourceSchema: sourceData.schema || "",
+                  sourceTable: sourceData.table || "",
+                },
+                readParameters: {
+                  watermarkColumn: "",
+                  watermarkColumnDataType: "",
+                },
+                EnableCountLogging: sourceData.enableCountLogging === true,
+              };
+
+              // Add objectType for procedures/views if it exists
+              if (
+                sourceData.objectType &&
+                sourceData.objectType !== "source-query"
+              ) {
+                result.source[sourceKey].objectType = sourceData.objectType;
+              }
+            }
           }
         }
       });
 
       // target
-      const targetConnections = state.connections.filter(conn => {
+      const targetConnections = state.connections.filter((conn) => {
         const targetIds = Object.keys(state.targets);
-        return transformationNodes.includes(conn.source) && targetIds.includes(conn.target);
+        return (
+          transformationNodes.includes(conn.source) &&
+          targetIds.includes(conn.target)
+        );
       });
 
       const targetToSelectedSourceMap = state.targetToSelectedSourceMap || {};
@@ -570,7 +726,9 @@ export function TransformationProvider({ children }) {
           const selectedSourceId = targetToSelectedSourceMap[targetId];
           if (selectedSourceId) {
             const selectedSource = state.sources[selectedSourceId];
-            sourceDataframe = selectedSource ? (selectedSource.alias || `source_${selectedSourceId}`) : selectedSourceId;
+            sourceDataframe = selectedSource
+              ? selectedSource.alias || `source_${selectedSourceId}`
+              : selectedSourceId;
           }
 
           // helper to serialize single vs array -> string or "[]"
@@ -583,7 +741,7 @@ export function TransformationProvider({ children }) {
           // NEW: bracketed serializer without quotes for multi-value SCD lists, single stays plain
           const serializeBracketed = (arr) => {
             if (!Array.isArray(arr)) return arr || "";
-            const cleaned = arr.filter(Boolean).map(v => String(v).trim());
+            const cleaned = arr.filter(Boolean).map((v) => String(v).trim());
             if (cleaned.length === 0) return "";
             if (cleaned.length === 1) return cleaned[0];
             return `[${cleaned.join(",")}]`;
@@ -602,26 +760,37 @@ export function TransformationProvider({ children }) {
               targetTable: targetData.table || "",
               loadStrategy: targetData.loadStrategy || "",
               // NEW: SCD params for SCD1/SCD2
-              ...(targetData.loadType === "SCD1" || targetData.loadType === "SCD2"
+              ...(targetData.loadType === "SCD1" ||
+              targetData.loadType === "SCD2"
                 ? {
                     // Use bracketed no-quote format for multi-values
                     targetPK: serializeBracketed(scd.primaryKeys || []),
                     surrogateKey: scd.surrogateKey || "",
-                    changeType: (scd.checksumColumns?.length ? (scd.changeType || "checksum") : ""),
-                    checksumColumns: serializeBracketed(scd.checksumColumns || [])
+                    changeType: scd.checksumColumns?.length
+                      ? scd.changeType || "checksum"
+                      : "",
+                    checksumColumns: serializeBracketed(
+                      scd.checksumColumns || []
+                    ),
+                    // Add surrogate population for SCD1
+                    ...(targetData.loadType === "SCD1"
+                      ? { surPopulation: targetData.surPopulation || false }
+                      : {}),
                   }
-                : {})
+                : {}),
             },
             EnableCountLogging: targetData.enableCountLogging || false,
-            targetMapping: targetData.targetMapping || {}
+            targetMapping: targetData.targetMapping || {},
           };
         }
       });
 
-      transformationNodes.forEach(nodeId => {
+      transformationNodes.forEach((nodeId) => {
         const transformationData = state.transformations[nodeId];
         if (transformationData && transformationData.transformationConfig) {
-          const patchedOps = (transformationData.transformationConfig.operations || []).map(op => {
+          const patchedOps = (
+            transformationData.transformationConfig.operations || []
+          ).map((op) => {
             const patchedOp = { ...op };
             if (patchedOp.source_dataframe) {
               let alias = null;
@@ -636,7 +805,7 @@ export function TransformationProvider({ children }) {
               patchedOp.target_dataframe = alias;
             }
             if (patchedOp.input) {
-              patchedOp.input = patchedOp.input.map(dfId => {
+              patchedOp.input = patchedOp.input.map((dfId) => {
                 if (Object.values(sourceIdToAlias).includes(dfId)) return dfId;
                 if (Object.values(targetIdToAlias).includes(dfId)) return dfId;
                 if (sourceIdToAlias[dfId]) return sourceIdToAlias[dfId];
@@ -645,7 +814,7 @@ export function TransformationProvider({ children }) {
               });
             }
             if (patchedOp.output) {
-              patchedOp.output = patchedOp.output.map(dfId => {
+              patchedOp.output = patchedOp.output.map((dfId) => {
                 if (Object.values(sourceIdToAlias).includes(dfId)) return dfId;
                 if (Object.values(targetIdToAlias).includes(dfId)) return dfId;
                 if (sourceIdToAlias[dfId]) return sourceIdToAlias[dfId];
@@ -663,11 +832,10 @@ export function TransformationProvider({ children }) {
     return result;
   };
 
-
-    const getAllSelectedSourceColumns = () => {
+  const getAllSelectedSourceColumns = () => {
     const allCols = [];
-    Object.values(state.selectedSourceColumnsSet).forEach(set => {
-      set.forEach(col => allCols.push(col));
+    Object.values(state.selectedSourceColumnsSet).forEach((set) => {
+      set.forEach((col) => allCols.push(col));
     });
     return Array.from(new Set(allCols));
   };
@@ -701,7 +869,7 @@ export function TransformationProvider({ children }) {
         getAllSelectedSourceColumns,
         targetToSelectedSourceMap: state.targetToSelectedSourceMap,
         procedureExecution: state.procedureExecution,
-        getTargetMappingById,  // Expose the new helper
+        getTargetMappingById, // Expose the new helper
         getSourceOriginalColumns, // <-- Expose helper
       }}
     >
@@ -713,7 +881,9 @@ export function TransformationProvider({ children }) {
 export function useTransformation() {
   const context = useContext(TransformationContext);
   if (!context) {
-    throw new Error('useTransformation must be used within a TransformationProvider');
+    throw new Error(
+      "useTransformation must be used within a TransformationProvider"
+    );
   }
   return context;
 }
@@ -725,42 +895,48 @@ export function useTrackConnections(nodes, edges) {
     const sourceNodeIds = new Map();
     const targetNodeIds = new Map();
 
-    edges.forEach(edge => {
-      const sourceNode = nodes.find(n => n.id === edge.source);
-      const targetNode = nodes.find(n => n.id === edge.target);
+    edges.forEach((edge) => {
+      const sourceNode = nodes.find((n) => n.id === edge.source);
+      const targetNode = nodes.find((n) => n.id === edge.target);
 
       if (!sourceNode || !targetNode) return;
 
-      if (sourceNode.type === 'source' && targetNode.type === 'transformation') {
+      if (
+        sourceNode.type === "source" &&
+        targetNode.type === "transformation"
+      ) {
         if (!sourceNodeIds.has(sourceNode.id)) {
           sourceNodeIds.set(sourceNode.id, sourceNodeIds.size + 1);
         }
       }
 
-      if (sourceNode.type === 'transformation' && targetNode.type === 'target') {
+      if (
+        sourceNode.type === "transformation" &&
+        targetNode.type === "target"
+      ) {
         if (!targetNodeIds.has(targetNode.id)) {
           targetNodeIds.set(targetNode.id, targetNodeIds.size + 1);
         }
       }
     });
 
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       const { id, type, data } = node;
 
       if (!data) return;
 
-      switch(type) {
-        case 'define':
+      switch (type) {
+        case "define":
           dispatch({
             type: ACTION_TYPES.UPDATE_DEFINE,
             payload: {
               name: data.name,
-              description: data.description
-            }
+              description: data.description,
+            },
           });
           break;
 
-        case 'source':
+        case "source":
           const sourceIndex = sourceNodeIds.get(id);
           if (sourceIndex) {
             const sourcePayload = {
@@ -768,8 +944,8 @@ export function useTrackConnections(nodes, edges) {
               data: {
                 dfId: `s_df_${sourceIndex}`,
                 alias: data.alias,
-                enableCountLogging: data.enableCountLogging || false
-              }
+                enableCountLogging: data.enableCountLogging || false,
+              },
             };
 
             if (data.sourceType === "file") {
@@ -780,7 +956,7 @@ export function useTrackConnections(nodes, edges) {
                 filePath: data.filePath,
                 fileName: data.fileName,
                 fileColumns: data.fileColumns,
-                columns: data.columns
+                columns: data.columns,
               };
             } else {
               sourcePayload.data = {
@@ -792,20 +968,22 @@ export function useTrackConnections(nodes, edges) {
                 schema: data.schema,
                 table: data.table,
                 columns: data.columns,
+                customQuery: data.customQuery,
+                fileColumns: data.fileColumns,
                 objectType: data.objectType,
                 preProcedures: data.preProcedures,
-                postProcedures: data.postProcedures
+                postProcedures: data.postProcedures,
               };
             }
 
             dispatch({
               type: ACTION_TYPES.ADD_SOURCE,
-              payload: sourcePayload
+              payload: sourcePayload,
             });
           }
           break;
 
-        case 'transformation':
+        case "transformation":
           dispatch({
             type: ACTION_TYPES.ADD_TRANSFORMATION,
             payload: {
@@ -814,13 +992,15 @@ export function useTrackConnections(nodes, edges) {
                 type: data.type,
                 function: data.function,
                 transformations: data.transformations || [],
-                transformationConfig: data.transformationConfig || { operations: [] }
-              }
-            }
+                transformationConfig: data.transformationConfig || {
+                  operations: [],
+                },
+              },
+            },
           });
           break;
 
-        case 'target':
+        case "target":
           const targetIndex = targetNodeIds.get(id);
           if (targetIndex) {
             dispatch({
@@ -843,10 +1023,16 @@ export function useTrackConnections(nodes, edges) {
                   preProcedures: data.preProcedures,
                   postProcedures: data.postProcedures,
                   enableCountLogging: data.enableCountLogging || false,
+                  surPopulation: data.surPopulation || false,
                   // NEW: carry any existing SCD config from node data
-                  scdConfig: data.scdConfig || { primaryKeys: [], surrogateKey: "", checksumColumns: [], changeType: "" }
-                }
-              }
+                  scdConfig: data.scdConfig || {
+                    primaryKeys: [],
+                    surrogateKey: "",
+                    checksumColumns: [],
+                    changeType: "",
+                  },
+                },
+              },
             });
 
             if (data.selectedSourceId) {
@@ -854,8 +1040,8 @@ export function useTrackConnections(nodes, edges) {
                 type: ACTION_TYPES.UPDATE_TARGET_SELECTED_SOURCE,
                 payload: {
                   targetNodeId: id,
-                  sourceNodeId: data.selectedSourceId
-                }
+                  sourceNodeId: data.selectedSourceId,
+                },
               });
             }
           }
@@ -868,14 +1054,13 @@ export function useTrackConnections(nodes, edges) {
 
     dispatch({
       type: ACTION_TYPES.SET_CONNECTIONS,
-      payload: edges.map(edge => ({
+      payload: edges.map((edge) => ({
         source: edge.source,
         target: edge.target,
-        id: edge.id
-      }))
+        id: edge.id,
+      })),
     });
   }, [nodes, edges, dispatch, ACTION_TYPES]);
 }
 
 export default TransformationContext;
-

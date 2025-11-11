@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
-import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FilePenLine } from 'lucide-react';
+import { Pencil, Lightbulb, ChartColumn, Layers, TableOfContents, FileCheck2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FilePenLine, Columns4 } from 'lucide-react';
 import Breadcrumb from '../../../components/Breadcrumb';
 import { useAuth } from "../../../context/AuthContext.jsx";
 import toast from 'react-hot-toast';
@@ -530,7 +530,7 @@ function ColumnDetailsPage() {
                                     <button title="Back" onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
                                         <ChevronLeft className="h-6 w-6" />
                                     </button>
-                                    <ChartColumn size={24} className="text-[#8d77ba]" />
+                                    <Columns4 size={24} className="text-[#8d77ba]" />
                                     <h1 className="text-xl font-bold text-gray-800">{columnDetails?.column_name}</h1>
                                 </div>
                             </div>
