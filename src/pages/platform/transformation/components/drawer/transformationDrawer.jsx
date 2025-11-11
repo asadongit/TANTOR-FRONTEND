@@ -783,7 +783,9 @@ export const TransformationDrawer = ({
 		case "typecast":
 			params = {
 			target_datatype: "",
-			source_datatype: ""
+			source_datatype: "",
+			precision: "",
+			scale: ""
 			};
 			transformation_operator = "";
 			break;
@@ -1475,7 +1477,7 @@ useEffect(() => {
 		if (!isOpen) {
 			setIsDataLoaded(false);
 			setColumnsLoaded(false);
-			hasReplayedRef.current = false; // Reset on close
+			hasReplayedRef.current = false;
 			return;
 		}
 
@@ -1538,6 +1540,29 @@ useEffect(() => {
 						};
 					}
 				}
+				// Handle typecast operation - preserve precision and scale
+				if (op.transformation_operation === "typecast") {
+					// Extract precision and scale from formatted datatype like "float(10,2)"
+					const targetDatatype = params.target_datatype || "";
+					const match = targetDatatype.match(/^(float|decimal|double)\((\d+),(\d+)\)$/);
+					if (match) {
+						params = {
+							...params,
+							target_datatype: match[1], // base type without precision/scale
+							precision: match[2],
+							scale: match[3]
+						};
+					} else {
+						params = {
+							target_datatype: params.target_datatype || "",
+							source_datatype: params.source_datatype || "",
+							precision: params.precision || "",
+							scale: params.scale || "",
+							format: params.format || ""
+						};
+					}
+				}
+
 				if (op.transformation_operation === "expression") {
 					params = {
 						exp: typeof params.exp === "string" ? params.exp : "",

@@ -7,6 +7,8 @@ const DATA_TYPES = [
   { id: "string", name: "String", prefix: "str_" },
   { id: "int", name: "int", prefix: "int_" },
   { id: "float", name: "Float", prefix: "float_" },
+  { id: "decimal", name: "Decimal", prefix: "decimal_" },
+  { id: "double", name: "Double", prefix: "double_" },
   { id: "boolean", name: "Boolean", prefix: "bool_" },
   { id: "timestamp", name: "Timestamp", prefix: "ts_" },
   { id: "date", name: "Date", prefix: "date_" }
@@ -30,6 +32,11 @@ export const TypecastOperationFields = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalInput, setModalInput] = useState("");
   const modalInputRef = useRef(null);
+  const [showPrecisionModal, setShowPrecisionModal] = useState(false);
+  const [precision, setPrecision] = useState("");
+  const [scale, setScale] = useState("");
+  const [pendingDataType, setPendingDataType] = useState("");
+  const precisionInputRef = useRef(null);
 
   const updateParam = (paramName, value) => {
     if (typeof transformation.updateTypecastParam === 'function') {
@@ -55,22 +62,55 @@ export const TypecastOperationFields = ({
     }
   }, [showAddModal]);
 
+  useEffect(() => {
+    if (showPrecisionModal && precisionInputRef.current) {
+      precisionInputRef.current.focus();
+    }
+  }, [showPrecisionModal]);
+
+  // Load existing precision and scale values when transformation changes
+  useEffect(() => {
+    if (transformation.params.precision) {
+      setPrecision(transformation.params.precision);
+    }
+    if (transformation.params.scale) {
+      setScale(transformation.params.scale);
+    }
+  }, [transformation.params.precision, transformation.params.scale]);
+
   const handleDataTypeChange = (value) => {
-    updateParam("target_datatype", value);
-    const selectedTarget = transformation.target_column[0];
-    if (selectedTarget) {
-      const targetCol = sourceCols.find(col => (typeof col === "object" ? col.name : col) === selectedTarget);
-      const targetDataType = targetCol && typeof targetCol === "object" ? targetCol.datatype : "";
-      if (targetDataType && !isAddingNewColumn) {
-        const isValid = value === "string"
-          ? isStringType(targetDataType)
-          : value === "int"
-          ? isNumericType(targetDataType)
-          : value === "float"
-          ? isFloatType(targetDataType)
-          : targetDataType === value;
-        if (!isValid) {
-          handleSelectAllColumns(transformation.id, "target", [], true);
+    // Check if it's a float-like type
+    if (["float", "decimal", "double"].includes(value)) {
+      setPendingDataType(value);
+      // Load existing values if available
+      if (transformation.params.precision && transformation.params.scale) {
+        setPrecision(transformation.params.precision);
+        setScale(transformation.params.scale);
+      } else {
+        setPrecision("");
+        setScale("");
+      }
+      setShowPrecisionModal(true);
+    } else {
+      updateParam("target_datatype", value);
+      updateParam("precision", "");
+      updateParam("scale", "");
+      setPendingDataType("");
+      const selectedTarget = transformation.target_column[0];
+      if (selectedTarget) {
+        const targetCol = sourceCols.find(col => (typeof col === "object" ? col.name : col) === selectedTarget);
+        const targetDataType = targetCol && typeof targetCol === "object" ? targetCol.datatype : "";
+        if (targetDataType && !isAddingNewColumn) {
+          const isValid = value === "string"
+            ? isStringType(targetDataType)
+            : value === "int"
+            ? isNumericType(targetDataType)
+            : value === "float"
+            ? isFloatType(targetDataType)
+            : targetDataType === value;
+          if (!isValid) {
+            handleSelectAllColumns(transformation.id, "target", [], true);
+          }
         }
       }
     }
@@ -164,15 +204,15 @@ export const TypecastOperationFields = ({
     }
 
     if (isStringType(sourceDataType)) {
-      return ["int", "date", "timestamp", "float"].includes(type.id);
+      return ["int", "date", "timestamp", "float", "decimal", "double"].includes(type.id);
     }
 
     if (isNumericType(sourceDataType) && !isFloatType(sourceDataType)) {
-      return ["string", "float","int"].includes(type.id);
+      return ["string", "float", "decimal", "double", "int"].includes(type.id);
     }
 
     if (isFloatType(sourceDataType)) {
-      return ["int", "string"].includes(type.id);
+      return ["int", "string", "decimal", "double"].includes(type.id);
     }
 
     if (sourceLower.includes('timestamp')) {
@@ -308,6 +348,48 @@ export const TypecastOperationFields = ({
     }
   };
 
+  const handlePrecisionModalOk = () => {
+    if (precision && scale) {
+      updateParam("target_datatype", pendingDataType);
+      updateParam("precision", precision);
+      updateParam("scale", scale);
+      setShowPrecisionModal(false);
+    } else if (!precision && !scale) {
+      // User didn't enter values, just set the datatype without precision/scale
+      updateParam("target_datatype", pendingDataType);
+      updateParam("precision", "");
+      updateParam("scale", "");
+      setShowPrecisionModal(false);
+    } else {
+      // Only one value entered - require both
+      alert("Please enter both precision and scale values.");
+    }
+  };
+
+  const handlePrecisionModalCancel = () => {
+    setShowPrecisionModal(false);
+    setPendingDataType("");
+    // Don't clear precision/scale state as they might be existing values
+  };
+
+  const handlePrecisionInputKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handlePrecisionModalOk();
+    }
+  };
+
+  const getDisplayDataType = () => {
+    const dataType = transformation.params.target_datatype;
+    const precisionVal = transformation.params.precision;
+    const scaleVal = transformation.params.scale;
+
+    if (["float", "decimal", "double"].includes(dataType) && precisionVal && scaleVal) {
+      return `${dataType}(${precisionVal},${scaleVal})`;
+    }
+    return dataType;
+  };
+
   const AddColumnModal = (
     <div
       style={{
@@ -363,6 +445,74 @@ export const TypecastOperationFields = ({
     </div>
   );
 
+  const PrecisionScaleModal = (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "rgba(0,0,0,0.2)",
+        zIndex: 10000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      onClick={handlePrecisionModalCancel}
+    >
+      <div
+        style={{
+          background: "white",
+          padding: 24,
+          borderRadius: 8,
+          minWidth: 320,
+          boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 text-base font-medium text-gray-700">Set Precision and Scale</div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-600 mb-1">Precision</label>
+          <input
+            ref={precisionInputRef}
+            type="number"
+            className="w-full p-2 border border-gray-300 rounded text-gray-800"
+            placeholder="e.g., 10"
+            value={precision}
+            onChange={(e) => setPrecision(e.target.value)}
+            onKeyDown={handlePrecisionInputKeyDown}
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-xs text-gray-600 mb-1">Scale</label>
+          <input
+            type="number"
+            className="w-full p-2 border border-gray-300 rounded text-gray-800"
+            placeholder="e.g., 2"
+            value={scale}
+            onChange={(e) => setScale(e.target.value)}
+            onKeyDown={handlePrecisionInputKeyDown}
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <button
+            className="px-3 py-1 rounded bg-gray-200 text-gray-700"
+            onClick={handlePrecisionModalCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-3 py-1 rounded bg-[#8E77BB] text-white"
+            onClick={handlePrecisionModalOk}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex gap-4">
@@ -400,6 +550,12 @@ export const TypecastOperationFields = ({
               <option key={type.id} value={type.id}>{type.name}</option>
             ))}
           </select>
+          {transformation.params.target_datatype && ["float", "decimal", "double"].includes(transformation.params.target_datatype) &&
+           transformation.params.precision && transformation.params.scale && (
+            <p className="text-xs text-[#8E77BB] mt-1 font-medium">
+              {getDisplayDataType()}
+            </p>
+          )}
         </div>
       </div>
 
@@ -447,19 +603,28 @@ export const TypecastOperationFields = ({
       </div>
 
       {showAddModal && AddColumnModal}
+      {showPrecisionModal && PrecisionScaleModal}
     </div>
   );
 };
 
 export const getTypecastParams = (transformation) => {
+  const baseDataType = transformation.params.target_datatype || "";
+
   const params = {
-    target_datatype: transformation.params.target_datatype || "",
     source_datatype: transformation.params.source_datatype || ""
   };
 
+  // Format float/decimal/double with precision and scale
+  if (["float", "decimal", "double"].includes(baseDataType) &&
+      transformation.params.precision && transformation.params.scale) {
+    params.target_datatype = `${baseDataType}(${transformation.params.precision},${transformation.params.scale})`;
+  } else {
+    params.target_datatype = baseDataType;
+  }
+
   // Include format parameter only if target datatype is date or timestamp and format is provided
-  if ((transformation.params.target_datatype === "date" || transformation.params.target_datatype === "timestamp")
-      && transformation.params.format) {
+  if ((baseDataType === "date" || baseDataType === "timestamp") && transformation.params.format) {
     params.format = transformation.params.format;
   }
 
