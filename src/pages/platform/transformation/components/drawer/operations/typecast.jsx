@@ -32,11 +32,8 @@ export const TypecastOperationFields = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalInput, setModalInput] = useState("");
   const modalInputRef = useRef(null);
-  const [showPrecisionModal, setShowPrecisionModal] = useState(false);
   const [precision, setPrecision] = useState("");
   const [scale, setScale] = useState("");
-  const [pendingDataType, setPendingDataType] = useState("");
-  const precisionInputRef = useRef(null);
 
   const updateParam = (paramName, value) => {
     if (typeof transformation.updateTypecastParam === 'function') {
@@ -62,12 +59,6 @@ export const TypecastOperationFields = ({
     }
   }, [showAddModal]);
 
-  useEffect(() => {
-    if (showPrecisionModal && precisionInputRef.current) {
-      precisionInputRef.current.focus();
-    }
-  }, [showPrecisionModal]);
-
   // Load existing precision and scale values when transformation changes
   useEffect(() => {
     if (transformation.params.precision) {
@@ -79,38 +70,30 @@ export const TypecastOperationFields = ({
   }, [transformation.params.precision, transformation.params.scale]);
 
   const handleDataTypeChange = (value) => {
-    // Check if it's a float-like type
-    if (["float", "decimal", "double"].includes(value)) {
-      setPendingDataType(value);
-      // Load existing values if available
-      if (transformation.params.precision && transformation.params.scale) {
-        setPrecision(transformation.params.precision);
-        setScale(transformation.params.scale);
-      } else {
-        setPrecision("");
-        setScale("");
-      }
-      setShowPrecisionModal(true);
-    } else {
-      updateParam("target_datatype", value);
+    updateParam("target_datatype", value);
+
+    // Clear precision and scale if not a double type
+    if (value !== "double") {
       updateParam("precision", "");
       updateParam("scale", "");
-      setPendingDataType("");
-      const selectedTarget = transformation.target_column[0];
-      if (selectedTarget) {
-        const targetCol = sourceCols.find(col => (typeof col === "object" ? col.name : col) === selectedTarget);
-        const targetDataType = targetCol && typeof targetCol === "object" ? targetCol.datatype : "";
-        if (targetDataType && !isAddingNewColumn) {
-          const isValid = value === "string"
-            ? isStringType(targetDataType)
-            : value === "int"
-            ? isNumericType(targetDataType)
-            : value === "float"
-            ? isFloatType(targetDataType)
-            : targetDataType === value;
-          if (!isValid) {
-            handleSelectAllColumns(transformation.id, "target", [], true);
-          }
+      setPrecision("");
+      setScale("");
+    }
+
+    const selectedTarget = transformation.target_column[0];
+    if (selectedTarget) {
+      const targetCol = sourceCols.find(col => (typeof col === "object" ? col.name : col) === selectedTarget);
+      const targetDataType = targetCol && typeof targetCol === "object" ? targetCol.datatype : "";
+      if (targetDataType && !isAddingNewColumn) {
+        const isValid = value === "string"
+          ? isStringType(targetDataType)
+          : value === "int"
+          ? isNumericType(targetDataType)
+          : value === "float"
+          ? isFloatType(targetDataType)
+          : targetDataType === value;
+        if (!isValid) {
+          handleSelectAllColumns(transformation.id, "target", [], true);
         }
       }
     }
@@ -348,34 +331,19 @@ export const TypecastOperationFields = ({
     }
   };
 
-  const handlePrecisionModalOk = () => {
-    if (precision && scale) {
-      updateParam("target_datatype", pendingDataType);
-      updateParam("precision", precision);
-      updateParam("scale", scale);
-      setShowPrecisionModal(false);
-    } else if (!precision && !scale) {
-      // User didn't enter values, just set the datatype without precision/scale
-      updateParam("target_datatype", pendingDataType);
-      updateParam("precision", "");
-      updateParam("scale", "");
-      setShowPrecisionModal(false);
-    } else {
-      // Only one value entered - require both
-      alert("Please enter both precision and scale values.");
+  const handlePrecisionChange = (e) => {
+    const value = e.target.value;
+    if (value === '' || (Number(value) >= 0 && !isNaN(Number(value)))) {
+      setPrecision(value);
+      updateParam("precision", value);
     }
   };
 
-  const handlePrecisionModalCancel = () => {
-    setShowPrecisionModal(false);
-    setPendingDataType("");
-    // Don't clear precision/scale state as they might be existing values
-  };
-
-  const handlePrecisionInputKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handlePrecisionModalOk();
+  const handleScaleChange = (e) => {
+    const value = e.target.value;
+    if (value === '' || (Number(value) >= 0 && !isNaN(Number(value)))) {
+      setScale(value);
+      updateParam("scale", value);
     }
   };
 
@@ -384,7 +352,7 @@ export const TypecastOperationFields = ({
     const precisionVal = transformation.params.precision;
     const scaleVal = transformation.params.scale;
 
-    if (["float", "decimal", "double"].includes(dataType) && precisionVal && scaleVal) {
+    if (dataType === "double" && precisionVal && scaleVal) {
       return `${dataType}(${precisionVal},${scaleVal})`;
     }
     return dataType;
@@ -445,74 +413,6 @@ export const TypecastOperationFields = ({
     </div>
   );
 
-  const PrecisionScaleModal = (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(0,0,0,0.2)",
-        zIndex: 10000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-      onClick={handlePrecisionModalCancel}
-    >
-      <div
-        style={{
-          background: "white",
-          padding: 24,
-          borderRadius: 8,
-          minWidth: 320,
-          boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 text-base font-medium text-gray-700">Set Precision and Scale</div>
-        <div className="mb-3">
-          <label className="block text-xs text-gray-600 mb-1">Precision</label>
-          <input
-            ref={precisionInputRef}
-            type="number"
-            className="w-full p-2 border border-gray-300 rounded text-gray-800"
-            placeholder="e.g., 10"
-            value={precision}
-            onChange={(e) => setPrecision(e.target.value)}
-            onKeyDown={handlePrecisionInputKeyDown}
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-xs text-gray-600 mb-1">Scale</label>
-          <input
-            type="number"
-            className="w-full p-2 border border-gray-300 rounded text-gray-800"
-            placeholder="e.g., 2"
-            value={scale}
-            onChange={(e) => setScale(e.target.value)}
-            onKeyDown={handlePrecisionInputKeyDown}
-          />
-        </div>
-        <div className="flex justify-end gap-2">
-          <button
-            className="px-3 py-1 rounded bg-gray-200 text-gray-700"
-            onClick={handlePrecisionModalCancel}
-          >
-            Cancel
-          </button>
-          <button
-            className="px-3 py-1 rounded bg-[#8E77BB] text-white"
-            onClick={handlePrecisionModalOk}
-          >
-            OK
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-4">
       <div className="flex gap-4">
@@ -550,12 +450,8 @@ export const TypecastOperationFields = ({
               <option key={type.id} value={type.id}>{type.name}</option>
             ))}
           </select>
-          {transformation.params.target_datatype && ["float", "decimal", "double"].includes(transformation.params.target_datatype) &&
-           transformation.params.precision && transformation.params.scale && (
-            <p className="text-xs text-[#8E77BB] mt-1 font-medium">
-              {getDisplayDataType()}
-            </p>
-          )}
+
+
         </div>
       </div>
 
@@ -585,6 +481,40 @@ export const TypecastOperationFields = ({
           />
         </div>
 
+         {transformation.params.target_datatype === "double" && (
+            <div className="">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-600 mb-1">Precision</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                    placeholder="e.g 10"
+                    value={precision}
+                    min="0"
+                    onChange={handlePrecisionChange}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-600 mb-1">Scale</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                    placeholder="e.g 2"
+                    value={scale}
+                    min="0"
+                    onChange={handleScaleChange}
+                  />
+                </div>
+              </div>
+              {precision && scale && (
+                <p className="text-xs text-[#8E77BB] font-medium mt-1">
+                  {getDisplayDataType()}
+                </p>
+              )}
+            </div>
+          )}
+
         {(selectedDataType === "date" || selectedDataType === "timestamp") && (
           <div className="w-1/2">
             <label className="text-xs text-gray-600 block mb-1">Source Format</label>
@@ -603,7 +533,6 @@ export const TypecastOperationFields = ({
       </div>
 
       {showAddModal && AddColumnModal}
-      {showPrecisionModal && PrecisionScaleModal}
     </div>
   );
 };
@@ -615,8 +544,7 @@ export const getTypecastParams = (transformation) => {
     source_datatype: transformation.params.source_datatype || ""
   };
 
-  // Format float/decimal/double with precision and scale
-  if (["float", "decimal", "double"].includes(baseDataType) &&
+  if (baseDataType === "double" &&
       transformation.params.precision && transformation.params.scale) {
     params.target_datatype = `${baseDataType}(${transformation.params.precision},${transformation.params.scale})`;
   } else {
