@@ -72,8 +72,7 @@ export const TypecastOperationFields = ({
   const handleDataTypeChange = (value) => {
     updateParam("target_datatype", value);
 
-    // Clear precision and scale if not a double type
-    if (value !== "double") {
+    if (value !== "decimal") {
       updateParam("precision", "");
       updateParam("scale", "");
       setPrecision("");
@@ -352,7 +351,7 @@ export const TypecastOperationFields = ({
     const precisionVal = transformation.params.precision;
     const scaleVal = transformation.params.scale;
 
-    if (dataType === "double" && precisionVal && scaleVal) {
+    if (dataType === "decimal" && precisionVal && scaleVal) {
       return `${dataType}(${precisionVal},${scaleVal})`;
     }
     return dataType;
@@ -481,7 +480,7 @@ export const TypecastOperationFields = ({
           />
         </div>
 
-         {transformation.params.target_datatype === "double" && (
+         {transformation.params.target_datatype === "decimal" && (
             <div className="">
               <div className="flex gap-2">
                 <div className="flex-1">
@@ -544,14 +543,13 @@ export const getTypecastParams = (transformation) => {
     source_datatype: transformation.params.source_datatype || ""
   };
 
-  if (baseDataType === "double" &&
+  if (baseDataType === "decimal" &&
       transformation.params.precision && transformation.params.scale) {
     params.target_datatype = `${baseDataType}(${transformation.params.precision},${transformation.params.scale})`;
   } else {
     params.target_datatype = baseDataType;
   }
 
-  // Include format parameter only if target datatype is date or timestamp and format is provided
   if ((baseDataType === "date" || baseDataType === "timestamp") && transformation.params.format) {
     params.format = transformation.params.format;
   }
