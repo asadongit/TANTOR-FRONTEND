@@ -69,7 +69,7 @@ export const SourceNode = ({ id, data }) => {
   const [fileType, setFileType] = useState(data.fileType || "CSV");
   const [filePath, setFilePath] = useState(data.filePath || "");
   const [fileName, setFileName] = useState(data.fileName || "");
-  const [fileColumns, setFileColumns] = useState(data.fileColumns || [{ id: 1, name: "", datatype: "string", customDatatype: "" }]);
+  const [fileColumns, setFileColumns] = useState(data.fileColumns || [{ id: 1, name: "", datatype: "string", customDatatype: "", format: "" }]);
   const [sourceTypeDropdownOpen, setSourceTypeDropdownOpen] = useState(false);
   const [fileTypeDropdownOpen, setFileTypeDropdownOpen] = useState(false);
 
@@ -468,7 +468,12 @@ export const SourceNode = ({ id, data }) => {
         datatype: col.datatype === 'custom' ? (col.customDatatype || 'custom') : col.datatype
       }));
 
-
+    const columnFormat = {};
+    fileColumns
+      .filter(col => col.name.trim() !== "" && ['date', 'datetime', 'timestamp'].includes(col.datatype))
+      .forEach(col => {
+        columnFormat[col.name] = col.format || "";
+      });
 
     data.onDataChange({
       sourceType: "file",
@@ -477,6 +482,7 @@ export const SourceNode = ({ id, data }) => {
       fileName: fileName,
       fileColumns: fileColumns,
       columns: fileColumnsFormatted,
+      column_format: Object.keys(columnFormat).length > 0 ? [columnFormat] : undefined,
       alias: alias,
       enableCountLogging: enableCountLogging,
     });
@@ -1279,7 +1285,7 @@ useEffect(() => {
   };
 
   return (
-    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[280px] max-w-[320px] relative group">
+    <div className="bg-white rounded-lg p-4 shadow-md border-2 border-[#8E77BB] min-w-[320px] max-w-[320px] relative group">
       <button
         onClick={() => window.deleteNode?.(id)}
         className="absolute top-1.5 right-2 p-1"

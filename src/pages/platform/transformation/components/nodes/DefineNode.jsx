@@ -149,50 +149,15 @@ export const DefineNode = ({ id, data }) => {
     [getExistingTransformationNames]
   );
 
-  // const handleNameChange = (e) => {
-  //   // if (isEditMode) return;    Commenting this to enable name change in edit mode
-  //   const value = e.target.value;
-  //   // Testing log
-  //   console.log("Typing name:", value);
-  //   if (typeof data.onDataChange !== "function") {
-  //     console.warn("onDataChange is missing or not a function in edit mode");
-  //   }
-
-  //   data.onDataChange({ name: value });
-
-  //   if (attemptedSave) {
-  //     setNameError("");
-  //   }
-
-  //   clearTimeout(nameCheckTimeout.current);
-
-  //   if (value) {
-  //     nameCheckTimeout.current = setTimeout(() => {
-  //       validateName(value);
-  //     }, 500);
-  //   } else {
-  //     setNameError("Name is required");
-  //     setNameExists(false);
-  //   }
-  // };
-  /*=================================================================================================
-                  Modified handleNameChange and handleDescriptionChange Function
-  ===============================================================================================*/
-
-  //  Name change handler
   const handleNameChange = (e) => {
     const value = e.target.value;
-    // console.log("Typing name:", value);
-    setLocalName(value); // update local state
+    setLocalName(value);
 
-    // Update both local and parent ReactFlow state
     if (typeof data.onDataChange === "function") {
       data.onDataChange({ name: value });
     } else {
       console.warn("onDataChange is missing or not a function");
     }
-
-    // Reset validation + debounce
     if (attemptedSave) setNameError("");
     clearTimeout(nameCheckTimeout.current);
 
@@ -206,10 +171,9 @@ export const DefineNode = ({ id, data }) => {
     }
   };
 
-  //  Description change handler
   const handleDescriptionChange = (e) => {
     const value = e.target.value;
-    setLocalDescription(value); // add this state variable (next step)
+    setLocalDescription(value);
 
     if (typeof data.onDataChange === "function") {
       data.onDataChange({ description: value });
@@ -221,27 +185,11 @@ export const DefineNode = ({ id, data }) => {
     }
   };
 
-  /* ==================================================================================================*/
 
-  // const handleDescriptionChange = (e) => {
-  //   const value = e.target.value;
-  //   data.onDataChange({ description: value });
-
-  //   if (attemptedSave) {
-  //     if (!value) {
-  //       setDescriptionError("Description is required");
-  //     } else {
-  //       setDescriptionError("");
-  //     }
-  //   }
-  // };
-
-  // Adding useEffect for local name change
   useEffect(() => {
     setLocalName(data.name || "");
   }, [data.name]);
 
-  // Adding useEffect for local description change
   useEffect(() => {
     setLocalDescription(data.description || "");
   }, [data.description]);
@@ -323,7 +271,7 @@ export const DefineNode = ({ id, data }) => {
                 attemptedSave && nameError
                   ? "focus:ring-red-500"
                   : "focus:ring-gray-400"
-              } focus:border-gray-400 
+              } focus:border-gray-400
               }`}
               placeholder="Enter transformation name"
               value={localName}

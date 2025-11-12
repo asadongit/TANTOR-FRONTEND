@@ -628,10 +628,18 @@ export function TransformationProvider({ children }) {
                     : col.datatype;
               });
 
+            const columnFormat = {};
+            fileColumns
+              .filter((col) => col.name && col.name.trim() !== "" && ['date', 'datetime', 'timestamp'].includes(col.datatype))
+              .forEach((col) => {
+                columnFormat[col.name] = col.format || "";
+              });
+
             result.source[sourceKey] = {
               sourceType: sourceData.fileType?.toLowerCase() || "csv",
               sourceConnName: "",
               column: [columnMapping],
+              ...(Object.keys(columnFormat).length > 0 && { column_format: [columnFormat] }),
               ConnectionParameters: {
                 sourceFilePath: sourceData.filePath || "",
                 sourceFileName: sourceData.fileName || "",
