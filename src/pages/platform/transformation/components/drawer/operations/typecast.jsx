@@ -7,6 +7,8 @@ const DATA_TYPES = [
   { id: "string", name: "String", prefix: "str_" },
   { id: "int", name: "int", prefix: "int_" },
   { id: "float", name: "Float", prefix: "float_" },
+  { id: "decimal", name: "Decimal", prefix: "decimal_" },
+  { id: "double", name: "Double", prefix: "double_" },
   { id: "boolean", name: "Boolean", prefix: "bool_" },
   { id: "timestamp", name: "Timestamp", prefix: "ts_" },
   { id: "date", name: "Date", prefix: "date_" }
@@ -30,6 +32,8 @@ export const TypecastOperationFields = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalInput, setModalInput] = useState("");
   const modalInputRef = useRef(null);
+  const [precision, setPrecision] = useState("");
+  const [scale, setScale] = useState("");
 
   const updateParam = (paramName, value) => {
     if (typeof transformation.updateTypecastParam === 'function') {
@@ -55,8 +59,27 @@ export const TypecastOperationFields = ({
     }
   }, [showAddModal]);
 
+  // Load existing precision and scale values when transformation changes
+  useEffect(() => {
+    if (transformation.params.precision) {
+      setPrecision(transformation.params.precision);
+    }
+    if (transformation.params.scale) {
+      setScale(transformation.params.scale);
+    }
+  }, [transformation.params.precision, transformation.params.scale]);
+
   const handleDataTypeChange = (value) => {
     updateParam("target_datatype", value);
+
+    // Clear precision and scale if not a double type
+    if (value !== "double") {
+      updateParam("precision", "");
+      updateParam("scale", "");
+      setPrecision("");
+      setScale("");
+    }
+
     const selectedTarget = transformation.target_column[0];
     if (selectedTarget) {
       const targetCol = sourceCols.find(col => (typeof col === "object" ? col.name : col) === selectedTarget);
@@ -164,15 +187,15 @@ export const TypecastOperationFields = ({
     }
 
     if (isStringType(sourceDataType)) {
-      return ["int", "date", "timestamp", "float"].includes(type.id);
+      return ["int", "date", "timestamp", "float", "decimal", "double"].includes(type.id);
     }
 
     if (isNumericType(sourceDataType) && !isFloatType(sourceDataType)) {
-      return ["string", "float","int"].includes(type.id);
+      return ["string", "float", "decimal", "double", "int"].includes(type.id);
     }
 
     if (isFloatType(sourceDataType)) {
-      return ["int", "string"].includes(type.id);
+      return ["int", "string", "decimal", "double"].includes(type.id);
     }
 
     if (sourceLower.includes('timestamp')) {
@@ -308,6 +331,33 @@ export const TypecastOperationFields = ({
     }
   };
 
+  const handlePrecisionChange = (e) => {
+    const value = e.target.value;
+    if (value === '' || (Number(value) >= 0 && !isNaN(Number(value)))) {
+      setPrecision(value);
+      updateParam("precision", value);
+    }
+  };
+
+  const handleScaleChange = (e) => {
+    const value = e.target.value;
+    if (value === '' || (Number(value) >= 0 && !isNaN(Number(value)))) {
+      setScale(value);
+      updateParam("scale", value);
+    }
+  };
+
+  const getDisplayDataType = () => {
+    const dataType = transformation.params.target_datatype;
+    const precisionVal = transformation.params.precision;
+    const scaleVal = transformation.params.scale;
+
+    if (dataType === "double" && precisionVal && scaleVal) {
+      return `${dataType}(${precisionVal},${scaleVal})`;
+    }
+    return dataType;
+  };
+
   const AddColumnModal = (
     <div
       style={{
@@ -400,6 +450,8 @@ export const TypecastOperationFields = ({
               <option key={type.id} value={type.id}>{type.name}</option>
             ))}
           </select>
+
+
         </div>
       </div>
 
@@ -429,6 +481,40 @@ export const TypecastOperationFields = ({
           />
         </div>
 
+         {transformation.params.target_datatype === "double" && (
+            <div className="">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-600 mb-1">Precision</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                    placeholder="e.g 10"
+                    value={precision}
+                    min="0"
+                    onChange={handlePrecisionChange}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-600 mb-1">Scale</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 text-sm bg-white border border-gray-300 rounded text-gray-800 focus:ring-1 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                    placeholder="e.g 2"
+                    value={scale}
+                    min="0"
+                    onChange={handleScaleChange}
+                  />
+                </div>
+              </div>
+              {precision && scale && (
+                <p className="text-xs text-[#8E77BB] font-medium mt-1">
+                  {getDisplayDataType()}
+                </p>
+              )}
+            </div>
+          )}
+
         {(selectedDataType === "date" || selectedDataType === "timestamp") && (
           <div className="w-1/2">
             <label className="text-xs text-gray-600 block mb-1">Source Format</label>
@@ -452,14 +538,21 @@ export const TypecastOperationFields = ({
 };
 
 export const getTypecastParams = (transformation) => {
+  const baseDataType = transformation.params.target_datatype || "";
+
   const params = {
-    target_datatype: transformation.params.target_datatype || "",
     source_datatype: transformation.params.source_datatype || ""
   };
 
+  if (baseDataType === "double" &&
+      transformation.params.precision && transformation.params.scale) {
+    params.target_datatype = `${baseDataType}(${transformation.params.precision},${transformation.params.scale})`;
+  } else {
+    params.target_datatype = baseDataType;
+  }
+
   // Include format parameter only if target datatype is date or timestamp and format is provided
-  if ((transformation.params.target_datatype === "date" || transformation.params.target_datatype === "timestamp")
-      && transformation.params.format) {
+  if ((baseDataType === "date" || baseDataType === "timestamp") && transformation.params.format) {
     params.format = transformation.params.format;
   }
 
