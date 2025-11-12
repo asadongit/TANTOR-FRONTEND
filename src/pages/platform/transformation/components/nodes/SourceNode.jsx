@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Handle, Position } from "reactflow";
-import { X, Database, Loader, Plus } from "lucide-react";
+import { X, Database } from "lucide-react";
 import { useAuth } from "../../../../../context/AuthContext";
 import { useTransformation } from "../TransformationContext";
 import { isNumericType, isStringType, isFloatType } from "./DataTypeMapping";
+import { SourceDatabaseType } from "./components/sourceDatabaseType";
+import { SourceFileType } from "./components/sourceFileType";
 
 export const SourceNode = ({ id, data }) => {
   const [connections, setConnections] = useState([]);
@@ -74,9 +76,7 @@ export const SourceNode = ({ id, data }) => {
   const [customDatatypeModalOpen, setCustomDatatypeModalOpen] = useState(false);
   const [customDatatypeInput, setCustomDatatypeInput] = useState("");
   const [currentEditingColumn, setCurrentEditingColumn] = useState(null);
-  // state variable for custom query
   const [customQuery, setCustomQuery] = useState(data.customQuery || "");
-  //
   const hostnamev1 = window._env_?.VITE_FAST_API;
   const { token, decodedToken, project } = useAuth();
   const { dispatch, ACTION_TYPES } = useTransformation();
@@ -84,8 +84,6 @@ export const SourceNode = ({ id, data }) => {
   const connectionDropdownRef = useRef(null);
   const schemaDropdownRef = useRef(null);
   const tableDropdownRef = useRef(null);
-  // const preProcedureDropdownRef = useRef(null);
-  // const postProcedureDropdownRef = useRef(null);
   const sourceTypeDropdownRef = useRef(null);
   const fileTypeDropdownRef = useRef(null);
 
@@ -208,7 +206,7 @@ export const SourceNode = ({ id, data }) => {
       setProcedures(proceduresData);
     } catch (error) {
       console.error("Error fetching procedures:", error);
-      setProcedures([]); // Set empty array on error
+      setProcedures([]);
     } finally {
       setLoading(prev => ({ ...prev, procedures: false }));
     }
@@ -510,7 +508,6 @@ export const SourceNode = ({ id, data }) => {
   } else if (sourceType === "database") {
 
 
-    // Handle source-query case specifically
     if (selectedObjectType === "source-query") {
 
       const fileColumnsFormatted = fileColumns
@@ -527,11 +524,11 @@ export const SourceNode = ({ id, data }) => {
         connectionType: selectedConnection.type,
         schema: selectedSchema,
         table: selectedTable,
-        columns: fileColumnsFormatted, // Use fileColumns for source-query
+        columns: fileColumnsFormatted,
         alias: alias,
         objectType: selectedObjectType,
         customQuery: customQuery,
-        fileColumns: fileColumns, // Also pass the raw fileColumns
+        fileColumns: fileColumns,
         enableCountLogging: enableCountLogging,
       });
 
@@ -562,8 +559,6 @@ export const SourceNode = ({ id, data }) => {
       });
 
     } else {
-      // Handle tables and procedures cases
-
 
       const currentTable = selectedObjectType === "procedures" && tableSelections.selectedTable
         ? tableSelections.selectedTable
@@ -783,14 +778,7 @@ export const SourceNode = ({ id, data }) => {
 
   const handleObjectTypeChange = useCallback((newObjectType) => {
     if (newObjectType === selectedObjectType) return;
-    if (selectedObjectType === "source-query") {
-        // Clear source query specific data when switching away
-        // No need to save anything specific for source-query mode
-      }
-
-      // Handle switching to source-query
-      if (newObjectType === "source-query") {
-        // Save current selections when switching to source query
+        if (newObjectType === "source-query") {
         if (selectedObjectType === "tables") {
           setTableSelections({
             selectedTable: selectedTable,
@@ -802,7 +790,6 @@ export const SourceNode = ({ id, data }) => {
             selectedParameters: selectedColumns,
           });
         }
-        // Clear selections for source query mode (table will be selected separately)
         setSelectedColumns([]);
       }
 
@@ -985,27 +972,6 @@ export const SourceNode = ({ id, data }) => {
     data.objectType,
     data.enableCountLogging
   ]);
-
-  // useEffect(() => {
-  //   if (data.table && data.columns && selectedTable === data.table && tables.length > 0) {
-  //     const tableColumns = getColumnsForTable(data.table);
-  //     if (tableColumns.length > 0 && columns.length === 0) {
-  //       setColumns(tableColumns);
-  //     }
-
-  //     if (selectedColumns.length === 0 && data.columns.length > 0) {
-  //       setSelectedColumns(data.columns);
-
-  //       if (selectedObjectType === "tables") {
-  //         setTableSelections(prev => ({
-  //           ...prev,
-  //           selectedTable: data.table,
-  //           selectedColumns: data.columns
-  //         }));
-  //       }
-  //     }
-  //   }
-  // }, [tables, data.table, data.columns, selectedTable, selectedObjectType, columns.length, selectedColumns.length]);
 
 const hasInitializedSelectedColumns = useRef(false);
 
@@ -1380,1078 +1346,307 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Database Source Fields */}
         {sourceType === "database" && (
-          <>
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-black mb-0.5 block">
-                  Connection
-                </label>
-                {dataFetchStatus.connections === 'loading' && (
-                  <div className="flex items-center">
-                    <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
-                    <span className="text-[10px] text-gray-500">Loading...</span>
-                  </div>
-                )}
-              </div>
-              <div className="relative" ref={connectionDropdownRef}>
-                <button
-                  type="button"
-                  className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                  onClick={() => setConnectionDropdownOpen(v => !v)}
-                  disabled={loading.connections}
-                >
-                  {selectedConnection.name
-                    ? `${selectedConnection.name} (${selectedConnection.type})`
-                    : dataFetchStatus.connections === 'loading'
-                      ? 'Loading connections...'
-                      : 'Select connection'}
-                  <span className="ml-auto pl-2">&#9662;</span>
-                </button>
-                {connectionDropdownOpen && (
-                  <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
-                    <input
-                      type="search"
-                      placeholder="Search connections..."
-                      className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                      value={connectionSearch}
-                      onChange={e => setConnectionSearch(e.target.value)}
-                      autoFocus
-                    />
-                    {filteredConnections.length === 0 && (
-                      <div className="p-2 text-xs text-gray-500">No connections found</div>
-                    )}
-                    {filteredConnections.map((connection, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedConnection.name === connection.connection_name ? "bg-gray-100" : ""}`}
-                        onClick={() => {
-                          setSelectedConnection({
-                            name: connection.connection_name,
-                            id: connection.connection_id,
-                            type: connection.connection_type,
-                          });
-                          setSelectedSchema("");
-                          setSelectedTable("");
-                          setSelectedColumns([]);
-                          fetchSchemas(connection.connection_name);
-                          setConnectionDropdownOpen(false);
-                        }}
-                      >
-                        {connection.connection_name} ({connection.connection_type})
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {loading.connections && (
-                  <div className="absolute right-2 top-2">
-                    <Loader size={12} className="animate-spin text-gray-400" />
-                  </div>
-                )}
-              </div>
-              {dataFetchStatus.connections === 'error' && (
-                <p className="text-[10px] text-red-500 mt-1">Failed to load connections</p>
-              )}
-              {dataFetchStatus.connections === 'success' && connections.length === 0 && (
-                <p className="text-[10px] text-amber-500 mt-1">No connections found</p>
-              )}
-            </div>
+          <SourceDatabaseType
+            selectedConnection={selectedConnection}
+            setSelectedConnection={setSelectedConnection}
+            selectedSchema={selectedSchema}
+            setSelectedSchema={setSelectedSchema}
+            selectedTable={selectedTable}
+            setSelectedTable={setSelectedTable}
+            selectedColumns={selectedColumns}
+            setSelectedColumns={setSelectedColumns}
+            selectedObjectType={selectedObjectType}
+            setSelectedObjectType={setSelectedObjectType}
+            tableSelections={tableSelections}
+            setTableSelections={setTableSelections}
+            procedureSelections={procedureSelections}
+            setProcedureSelections={setProcedureSelections}
+            selectedPreProcedures={selectedPreProcedures}
+            setSelectedPreProcedures={setSelectedPreProcedures}
+            selectedPostProcedures={selectedPostProcedures}
+            setSelectedPostProcedures={setSelectedPostProcedures}
+            preProcedureDropdownOpen={preProcedureDropdownOpen}
+            setPreProcedureDropdownOpen={setPreProcedureDropdownOpen}
+            postProcedureDropdownOpen={postProcedureDropdownOpen}
+            setPostProcedureDropdownOpen={setPostProcedureDropdownOpen}
+            parametersModalOpen={parametersModalOpen}
+            setParametersModalOpen={setParametersModalOpen}
+            selectedProcedureForModal={selectedProcedureForModal}
+            setSelectedProcedureForModal={setSelectedProcedureForModal}
+            parameterColumnMapping={parameterColumnMapping}
+            setParameterColumnMapping={setParameterColumnMapping}
+            modalProcedureType={modalProcedureType}
+            setModalProcedureType={setModalProcedureType}
+            modalProcedureItemId={modalProcedureItemId}
+            setModalProcedureItemId={setModalProcedureItemId}
+            storedParameterMappings={storedParameterMappings}
+            setStoredParameterMappings={setStoredParameterMappings}
+            preProcedureSearch={preProcedureSearch}
+            setPreProcedureSearch={setPreProcedureSearch}
+            postProcedureSearch={postProcedureSearch}
+            setPostProcedureSearch={setPostProcedureSearch}
+            enableCountLogging={enableCountLogging}
+            setEnableCountLogging={setEnableCountLogging}
+            customQuery={customQuery}
+            setCustomQuery={setCustomQuery}
+            fileColumns={fileColumns}
+            setFileColumns={setFileColumns}
+            alias={alias}
+            setAlias={setAlias}
+            connections={connections}
+            schemas={schemas}
+            tables={tables}
+            columns={columns}
+            procedures={procedures}
+            loading={loading}
+            dataFetchStatus={dataFetchStatus}
+            connectionSearch={connectionSearch}
+            setConnectionSearch={setConnectionSearch}
+            schemaSearch={schemaSearch}
+            setSchemaSearch={setSchemaSearch}
+            tableSearch={tableSearch}
+            setTableSearch={setTableSearch}
+            columnSearch={columnSearch}
+            setColumnSearch={setColumnSearch}
+            connectionDropdownOpen={connectionDropdownOpen}
+            setConnectionDropdownOpen={setConnectionDropdownOpen}
+            schemaDropdownOpen={schemaDropdownOpen}
+            setSchemaDropdownOpen={setSchemaDropdownOpen}
+            tableDropdownOpen={tableDropdownOpen}
+            setTableDropdownOpen={setTableDropdownOpen}
+            filteredConnections={filteredConnections}
+            filteredSchemas={filteredSchemas}
+            filteredTables={filteredTables}
+            filteredColumns={filteredColumns}
+            filteredPreProcedures={filteredPreProcedures}
+            filteredPostProcedures={filteredPostProcedures}
+            fetchSchemas={fetchSchemas}
+            fetchTablesAndColumns={fetchTablesAndColumns}
+            fetchProcedures={fetchProcedures}
+            handleObjectTypeChange={handleObjectTypeChange}
+            addPreProcedureDropdown={addPreProcedureDropdown}
+            addPostProcedureDropdown={addPostProcedureDropdown}
+            removePreProcedureDropdown={removePreProcedureDropdown}
+            removePostProcedureDropdown={removePostProcedureDropdown}
+            handlePreProcedureSelect={handlePreProcedureSelect}
+            handlePostProcedureSelect={handlePostProcedureSelect}
+            openParametersModal={openParametersModal}
+            closeParametersModal={closeParametersModal}
+            handleParameterMapping={handleParameterMapping}
+            applyProcedureMapping={applyProcedureMapping}
+            areAllParametersMapped={areAllParametersMapped}
+            addFileColumn={addFileColumn}
+            removeFileColumn={removeFileColumn}
+            updateFileColumn={updateFileColumn}
+            id={id}
+            data={data}
+            dispatch={dispatch}
+            ACTION_TYPES={ACTION_TYPES}
+            hostnamev1={hostnamev1}
+            token={token}
+            decodedToken={decodedToken}
+            project={project}
+            setColumns={setColumns}
+            setLoading={setLoading}
+            setDataFetchStatus={setDataFetchStatus}
+            setProcedures={setProcedures}
 
-            <div>
-
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-black mb-0.5 block">
-                  Schema
-                </label>
-                {dataFetchStatus.schemas === 'loading' && (
-                  <div className="flex items-center">
-                    <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
-                    <span className="text-[10px] text-gray-500">Loading...</span>
-                  </div>
-                )}
-              </div>
-              <div className="relative" ref={schemaDropdownRef}>
-                <button
-                  type="button"
-                  className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                  onClick={() => setSchemaDropdownOpen(v => !v)}
-                  disabled={!selectedConnection.name || loading.schemas}
-                >
-                  {selectedSchema
-                    ? selectedSchema
-                    : !selectedConnection.name
-                      ? 'Select connection first'
-                      : dataFetchStatus.schemas === 'loading'
-                        ? 'Loading schemas...'
-                        : 'Select schema'}
-                  <span className="ml-auto pl-2">&#9662;</span>
-                </button>
-                {schemaDropdownOpen && (
-                  <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
-                    <input
-                      type="search"
-                      placeholder="Search schemas..."
-                      className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                      value={schemaSearch}
-                      onChange={e => setSchemaSearch(e.target.value)}
-                      autoFocus
-                    />
-                    {filteredSchemas.length === 0 && (
-                      <div className="p-2 text-xs text-gray-500">No schemas found</div>
-                    )}
-                    {filteredSchemas.map((schema, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedSchema === schema.table_schema ? "bg-gray-100" : ""}`}
-                        onClick={() => {
-                          setSelectedSchema(schema.table_schema);
-                          setSelectedTable("");
-                          setSelectedColumns([]);
-                          fetchTablesAndColumns(selectedConnection.name, schema.table_schema);
-                          setSchemaDropdownOpen(false);
-                        }}
-                      >
-                        {schema.table_schema}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {loading.schemas && (
-                  <div className="absolute right-2 top-2">
-                    <Loader size={12} className="animate-spin text-gray-400" />
-                  </div>
-                )}
-              </div>
-              {dataFetchStatus.schemas === 'error' && (
-                <p className="text-[10px] text-red-500 mt-1">Failed to load schemas</p>
-              )}
-              {dataFetchStatus.schemas === 'success' && schemas.length === 0 && (
-                <p className="text-[10px] text-amber-500 mt-1">No schemas found</p>
-              )}
-            </div>
-
-            {selectedSchema && (
-              <>
-                <div>
-                  {/* <label className="text-xs font-semibold text-black mb-1 block">
-                    Object Type
-                  </label> */}
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${
-                        selectedObjectType === "tables"
-                          ? "bg-[#8E77BB] text-white border-[#8E77BB]"
-                          : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
-                      }`}
-                      onClick={() => handleObjectTypeChange("tables")}
-                    >
-                      Tables
-                    </button>
-                    <button
-                    type="button"
-                    className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${
-                      selectedObjectType === "source-query"
-                        ? "bg-[#8E77BB] text-white border-[#8E77BB]"
-                        : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
-                    }`}
-                    onClick={() => handleObjectTypeChange("source-query")}
-                  >
-                    Source Query
-                  </button>
-                    <button
-                      type="button"
-                      className={`flex-1 p-1.5 text-[11px] rounded-sm border text-center focus:outline-none focus:ring-1 focus:ring-gray-400 ${
-                        selectedObjectType === "procedures"
-                          ? "bg-[#8E77BB] text-white border-[#8E77BB]"
-                          : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
-                      }`}
-                      onClick={() => handleObjectTypeChange("procedures")}
-                    >
-                      Procedures
-                    </button>
-                  </div>
-                </div>
-
-                {selectedObjectType === "tables" && (
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-black mb-0.5 block">
-                        Table
-                      </label>
-                      {dataFetchStatus.tables === 'loading' && (
-                        <div className="flex items-center">
-                          <Loader size={10} className="animate-spin text-[#8E77BB] mr-1" />
-                          <span className="text-[10px] text-gray-500">Loading...</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-1.5" ref={tableDropdownRef}>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                          onClick={() => setTableDropdownOpen(v => !v)}
-                          disabled={loading.tables}
-                        >
-                          {selectedTable
-                            ? selectedTable
-                            : dataFetchStatus.tables === 'loading'
-                              ? 'Loading tables...'
-                              : 'Select table'}
-                          <span className="ml-auto pl-2">&#9662;</span>
-                        </button>
-                        {tableDropdownOpen && (
-                          <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-52 overflow-auto">
-                            <input
-                              type="search"
-                              placeholder="Search tables..."
-                              className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                              value={tableSearch}
-                              onChange={e => setTableSearch(e.target.value)}
-                              autoFocus
-                            />
-                            {filteredTables.length === 0 && (
-                              <div className="p-2 text-xs text-gray-500">No tables found</div>
-                            )}
-                            {filteredTables.map((table, idx) => (
-                              <div
-                                key={idx}
-                                className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${selectedTable === table.table_name ? "bg-gray-100" : ""}`}
-                                onClick={() => {
-                                  setSelectedTable(table.table_name);
-                                  setSelectedColumns([]); // Clear previous selections
-
-                                  // Get and set columns for the selected table
-                                  const tableColumns = getColumnsForTable(table.table_name);
-                                  setColumns(tableColumns);
-
-                                  setTableDropdownOpen(false);
-
-                                  // Update table selections state
-                                  setTableSelections({
-                                    selectedTable: table.table_name,
-                                    selectedColumns: []
-                                  });
-                                }}
-                              >
-                                {table.table_name}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {loading.tables && (
-                          <div className="absolute right-2 top-2">
-                            <Loader size={12} className="animate-spin text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {dataFetchStatus.tables === 'error' && (
-                      <p className="text-[10px] text-red-500 mt-1">Failed to load tables</p>
-                    )}
-                    {dataFetchStatus.tables === 'success' && tables.length === 0 && (
-                      <p className="text-[10px] text-amber-500 mt-1">No tables found</p>
-                    )}
-                  </div>
-                )}
-///////
-                {selectedObjectType === "source-query" && (
-                  <div>
-
-                      {/* Query Input Field - Only show when a source table is selected */}
-                      { (
-                        <div className="mt-4">
-                          <label className="text-xs font-semibold text-black mb-0.5 block">
-                            Query
-                          </label>
-                          <textarea
-                            placeholder={`Enter your SQL query for ${selectedTable}...`}
-                            className="w-full p-2 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 resize-vertical min-h-[80px]"
-                            value={customQuery}
-
-
-                            onChange={(e) => setCustomQuery(e.target.value)}
-
-                          />
-                        </div>
-                      )}
-
-    {/* Column Mapping Section - Only show when a table is selected and has columns */}
-    { (
-      <div className="mt-4">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-semibold text-black">
-            Column Mapping
-          </label>
-          <button
-            type="button"
-            onClick={addFileColumn}
-            className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
-            title="Add column"
-          >
-            <Plus size={10} />
-          </button>
-        </div>
-        <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-sm p-2">
-          {fileColumns.map((column) => (
-            <div key={column.id} className="flex gap-2 items-center">
-              <input
-                type="text"
-                className="flex-1 p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-                value={column.name}
-                onChange={e => updateFileColumn(column.id, 'name', e.target.value)}
-                placeholder="Column name"
-              />
-              <select
-                className="flex-1 p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-                value={column.datatype === 'custom' ? (column.customDatatype || 'custom') : column.datatype}
-                onChange={e => updateFileColumn(column.id, 'datatype', e.target.value)}
-              >
-                <option value="string">string</option>
-                <option value="integer">integer</option>
-                <option value="float">float</option>
-                <option value="boolean">boolean</option>
-                <option value="date">date</option>
-                <option value="datetime">datetime</option>
-                <option value="custom">custom</option>
-                {column.datatype === 'custom' && column.customDatatype && (
-                  <option value={column.customDatatype}>{column.customDatatype}</option>
-                )}
-              </select>
-              {fileColumns.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeFileColumn(column.id)}
-                  className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
-                  title="Remove column"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-  </div>
-)}
-
-
-
-
-
-                {(selectedTable || selectedObjectType === "procedures" || selectedObjectType === "source-query") && (
-                  <div className="mt-2">
-                    <label className="text-xs font-semibold text-black mb-0.5 block">
-                      Alias Name
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-                      value={alias}
-                      onChange={e => setAlias(e.target.value)}
-                      placeholder="Enter alias name"
-                    />
-                  </div>
-                )}
-                {selectedObjectType === "procedures" && (
-                  <div className="space-y-3">
-                    <div className="space-y-3">
-
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-semibold text-black">
-                            Pre Procedure
-                          </label>
-                          <button
-                            type="button"
-                            onClick={addPreProcedureDropdown}
-                            className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
-                            title="Add pre procedure"
-                          >
-                            <Plus size={10} />
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          {selectedPreProcedures.map((procedureItem, index) => (
-                            <div key={procedureItem.id} className="flex gap-1 items-center">
-                              <div
-                                className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`}
-                                data-pre-procedure-ref={procedureItem.id}
-                                style={{ minWidth: 0, maxWidth: '180px', width: '180px' }}
-                              >
-                                <button
-                                  type="button"
-                                  className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-black text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                                  style={{
-                                    minWidth: 0,
-                                    maxWidth: '180px',
-                                    width: '180px',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                  }}
-                                  onClick={() => setPreProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))}
-                                  title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select pre procedure'}
-                                >
-                                  <span
-                                    className="truncate block"
-                                    style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                    title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select pre procedure'}
-                                  >
-                                    {procedureItem.procedure
-                                      ? procedureItem.procedure.procedure_name
-                                      : 'Select pre procedure'}
-                                  </span>
-                                  <span className="ml-auto pl-2">&#9662;</span>
-                                </button>
-                                {preProcedureDropdownOpen[procedureItem.id] && (
-                                  <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-20 overflow-y-auto">
-                                    <input
-                                      type="search"
-                                      placeholder="Search procedures..."
-                                      className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                                      value={preProcedureSearch}
-                                      onChange={e => setPreProcedureSearch(e.target.value)}
-                                      autoFocus
-                                    />
-                                    {filteredPreProcedures.length === 0 ? (
-                                      <div className="p-2 text-[11px] text-gray-500">No procedures available</div>
-                                    ) : (
-                                      filteredPreProcedures.map((procedure, idx) => (
-                                        <div
-                                          key={idx}
-                                          className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${procedureItem.procedure && procedureItem.procedure.procedure_name === procedure.procedure_name ? "bg-gray-100" : ""}`}
-                                          onClick={() => handlePreProcedureSelect(procedureItem, procedure)}
-                                        >
-                                          {procedure.procedure_name}
-                                        </div>
-                                      ))
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              {procedureItem.procedure && (
-                                <button
-                                  type="button"
-                                  onClick={() => openParametersModal(procedureItem.procedure, "pre", procedureItem.id)}
-                                  className="px-2 py-1.5 text-[11px] bg-[#8E77BB] text-white rounded-sm border border-[#8E77BB] hover:bg-[#7A6BA3] focus:outline-none focus:ring-1 focus:ring-gray-400 whitespace-nowrap"
-                                  title="View parameters"
-                                >
-                                  Parameters
-                                </button>
-                              )}
-
-                              {selectedPreProcedures.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => removePreProcedureDropdown(procedureItem.id)}
-                                  className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
-                                  title="Remove pre procedure"
-                                >
-                                  <X size={12} />
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-semibold text-black">
-                            Post Procedure
-                          </label>
-                          <button
-                            type="button"
-                            onClick={addPostProcedureDropdown}
-                            className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
-                            title="Add post procedure"
-                          >
-                            <Plus size={10} />
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          {selectedPostProcedures.map((procedureItem, index) => (
-                            <div key={procedureItem.id} className="flex gap-1 items-center">
-                              <div
-                                className={`relative ${procedureItem.procedure ? 'flex-1' : 'w-full'}`}
-                                data-post-procedure-ref={procedureItem.id}
-                                style={{ minWidth: 0, maxWidth: '180px', width: '180px' }}
-                              >
-                                <button
-                                  type="button"
-                                  className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-black text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                                  style={{
-                                    minWidth: 0,
-                                    maxWidth: '180px',
-                                    width: '180px',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                  }}
-                                  onClick={() => setPostProcedureDropdownOpen(prev => ({ ...prev, [procedureItem.id]: !prev[procedureItem.id] }))}
-                                  title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select post procedure'}
-                                >
-                                  <span
-                                    className="truncate block"
-                                    style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                    title={procedureItem.procedure ? procedureItem.procedure.procedure_name : 'Select post procedure'}
-                                  >
-                                    {procedureItem.procedure
-                                      ? procedureItem.procedure.procedure_name
-                                      : 'Select post procedure'}
-                                  </span>
-                                  <span className="ml-auto pl-2">&#9662;</span>
-                                </button>
-                                {postProcedureDropdownOpen[procedureItem.id] && (
-                                  <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1 max-h-20 overflow-y-auto">
-                                    <input
-                                      type="search"
-                                      placeholder="Search procedures..."
-                                      className="w-full p-1 text-[11px] text-black border-b border-gray-200"
-                                      value={postProcedureSearch}
-                                      onChange={e => setPostProcedureSearch(e.target.value)}
-                                      autoFocus
-                                    />
-                                    {filteredPostProcedures.length === 0 ? (
-                                      <div className="p-2 text-[11px] text-gray-500">No procedures available</div>
-                                    ) : (
-                                      filteredPostProcedures.map((procedure, idx) => (
-                                        <div
-                                          key={idx}
-                                          className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${procedureItem.procedure && procedureItem.procedure.procedure_name === procedure.procedure_name ? "bg-gray-100" : ""}`}
-                                          onClick={() => handlePostProcedureSelect(procedureItem, procedure)}
-                                        >
-                                          {procedure.procedure_name}
-                                        </div>
-                                      ))
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              {procedureItem.procedure && (
-                                <button
-                                  type="button"
-                                  onClick={() => openParametersModal(procedureItem.procedure, "post", procedureItem.id)}
-                                  className="px-2 py-1.5 text-[11px] bg-[#8E77BB] text-white rounded-sm border border-[#8E77BB] hover:bg-[#7A6BA3] focus:outline-none focus:ring-1 focus:ring-gray-400 whitespace-nowrap"
-                                  title="View parameters"
-                                >
-                                  Parameters
-                                </button>
-                              )}
-
-                              {selectedPostProcedures.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => removePostProcedureDropdown(procedureItem.id)}
-                                  className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
-                                  title="Remove post procedure"
-                                >
-                                  <X size={12} />
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {selectedObjectType === "tables" && selectedTable && columns.length > 0 ? (
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-black mb-0.5 block">
-                        Columns
-                      </label>
-                      <input
-                        type="search"
-                        placeholder="Search columns..."
-                        className="ml-2 p-1 text-[11px] text-black border border-gray-400 rounded-sm w-32"
-                        value={columnSearch}
-                        onChange={e => setColumnSearch(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="max-h-40 mt-2 overflow-y-auto border text-black border-gray-300 rounded-sm p-2">
-                      <div className="mb-2">
-                        <label className="flex items-center text-[11px]">
-                          <input
-                            type="checkbox"
-                            className="mr-1.5 h-3.5 w-3.5"
-                            checked={selectedColumns.length === columns.length && columns.length > 0}
-                            onChange={(e) => {
-                              const newColumns = e.target.checked
-                                ? columns.map(col => ({
-                                    name: col.column_name,
-                                    datatype: col.DATA_TYPE
-                                  }))
-                                : [];
-
-                              setSelectedColumns(newColumns);
-                              setTableSelections(prev => ({
-                                ...prev,
-                                selectedColumns: newColumns
-                              }));
-                            }}
-                          />
-                          <span className="font-medium">Select All</span>
-                        </label>
-                      </div>
-
-
-
-                      {filteredColumns.map((column, idx) => {
-                        const isChecked = selectedColumns.some(
-                          c => c.name === column.column_name && c.datatype === column.DATA_TYPE
-                        );
-                        return (
-                          <div key={idx} className="mb-1.5">
-                            <label className="flex items-center text-[11px]">
-                              <input
-                                type="checkbox"
-                                className="mr-1.5 h-3.5 w-3.5"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  let newColumns;
-                                  if (e.target.checked) {
-                                    newColumns = [
-                                      ...selectedColumns,
-                                      { name: column.column_name, datatype: column.DATA_TYPE }
-                                    ];
-                                  } else {
-                                    newColumns = selectedColumns.filter(
-                                      c => !(c.name === column.column_name && c.datatype === column.DATA_TYPE)
-                                    );
-                                  }
-
-                                  setSelectedColumns(newColumns);
-                                  setTableSelections(prev => ({
-                                    ...prev,
-                                    selectedColumns: newColumns
-                                  }));
-                                }}
-                              />
-                              <span>{column.column_name}</span>
-                              <span className="text-[9px] text-gray-500 ml-1.5">({column.DATA_TYPE})</span>
-                            </label>
-                          </div>
-                        );
-                      })}
-                      {filteredColumns.length === 0 && (
-                        <div className="text-center py-2 text-[11px] text-gray-500">
-                          No columns match your search
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : sourceType === "database" && selectedTable && columns.length === 0 ? (
-                  <div>
-                    <div className="flex items-center justify-center py-4">
-                      <div className="text-center">
-                        <Loader size={16} className="animate-spin text-[#8E77BB] mx-auto mb-2" />
-                        <div className="text-[11px] text-gray-500">Loading columns...</div>
-                      </div>
-                    </div>
-                  </div>
-                ) : sourceType === "database" && selectedTable  && selectedObjectType !== "source-query"? (
-                  <div className="text-center py-2 text-[11px] text-gray-500">
-                    No columns found for this table
-                  </div>
-                ) : null}
-
-                {((sourceType === "database" && selectedTable) ||
-                  (sourceType === "file" && fileName)) && (
-                  <div className="mt-2">
-                    <label className="flex items-center text-xs font-semibold text-black">
-                      <input
-                        type="checkbox"
-                        className="mr-1.5 h-3.5 w-3.5"
-                        checked={enableCountLogging}
-                        onChange={(e) => {
-                          const newValue = e.target.checked;
-                          setEnableCountLogging(newValue);
-
-                          if (data.onDataChange) {
-                            data.onDataChange({ enableCountLogging: newValue });
-                          }
-
-
-
-                          if (window.allNodes) {
-                            const nodeIndex = window.allNodes.findIndex(n => n.id === id);
-                            if (nodeIndex !== -1) {
-                              window.allNodes[nodeIndex].data.enableCountLogging = newValue;
-                            }
-                          }
-
-                          dispatch({
-                            type: ACTION_TYPES.UPDATE_SOURCE,
-                            payload: {
-                              id: id,
-                              data: { enableCountLogging: newValue }
-                            }
-                          });
-
-                          window.allNodesLastUpdate = Date.now();
-                          if (window.triggerSidebarUpdate) {
-                            window.triggerSidebarUpdate();
-                          }
-                        }}
-                      />
-                      <span>Enable Count Logging</span>
-                    </label>
-                  </div>
-                )}
-              </>
-            )}
-          </>
+          />
         )}
 
         {sourceType === "file" && (
-          <>
-            <div>
-              <label className="text-xs font-semibold text-black mb-0.5 block">
-                File Type
-              </label>
-              <div className="relative" ref={fileTypeDropdownRef}>
-                <button
-                  type="button"
-                  className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800 text-left flex justify-between items-center focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 pr-8"
-                  onClick={() => setFileTypeDropdownOpen(v => !v)}
-                >
-                  {fileType}
-                  <span className="ml-auto pl-2">&#9662;</span>
-                </button>
-                {fileTypeDropdownOpen && (
-                  <div className="absolute z-10 left-0 right-0 bg-white border border-gray-300 rounded shadow mt-1">
-                    <div
-                      className={`p-2 text-[11px] text-black cursor-pointer hover:bg-gray-100 ${fileType === "CSV" ? "bg-gray-100" : ""}`}
-                      onClick={() => {
-                        setFileType("CSV");
-                        setFileTypeDropdownOpen(false);
-                      }}
-                    >
-                      CSV
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-black mb-0.5 block">
-                File Path
-              </label>
-              <input
-                type="text"
-                className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-                value={filePath}
-                onChange={e => setFilePath(e.target.value)}
-                placeholder="Enter file path"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-black mb-0.5 block">
-                File Name
-              </label>
-              <input
-                type="text"
-                className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-                value={fileName}
-                onChange={e => setFileName(e.target.value)}
-                placeholder="Enter file name"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-black">
-                  Column Mapping
-                </label>
-                <button
-                  type="button"
-                  onClick={addFileColumn}
-                  className="flex items-center justify-center w-4 h-4 bg-[#8E77BB] text-white rounded-full hover:bg-[#7A6BA3] focus:outline-none"
-                  title="Add column"
-                >
-                  <Plus size={10} />
-                </button>
-              </div>
-              <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-sm p-2">
-                {fileColumns.map((column) => (
-                  <div key={column.id} className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      className="flex-1 p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-                      value={column.name}
-                      onChange={e => updateFileColumn(column.id, 'name', e.target.value)}
-                      placeholder="Column name"
-                    />
-                    <select
-                      className="flex-1 p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-                      value={column.datatype === 'custom' ? (column.customDatatype || 'custom') : column.datatype}
-                      onChange={e => updateFileColumn(column.id, 'datatype', e.target.value)}
-                    >
-                      <option value="string">string</option>
-                      <option value="integer">integer</option>
-                      <option value="float">float</option>
-                      <option value="boolean">boolean</option>
-                      <option value="date">date</option>
-                      <option value="datetime">datetime</option>
-                      <option value="custom">custom</option>
-                      {column.datatype === 'custom' && column.customDatatype && (
-                        <option value={column.customDatatype}>{column.customDatatype}</option>
-                      )}
-                    </select>
-                    {fileColumns.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeFileColumn(column.id)}
-                        className="flex items-center justify-center w-6 h-6 text-red-500 hover:text-red-700 focus:outline-none"
-                        title="Remove column"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
+          <SourceFileType
+            fileType={fileType}
+            setFileType={setFileType}
+            filePath={filePath}
+            setFilePath={setFilePath}
+            fileName={fileName}
+            setFileName={setFileName}
+            fileColumns={fileColumns}
+            setFileColumns={setFileColumns}
+            alias={alias}
+            setAlias={setAlias}
+            enableCountLogging={enableCountLogging}
+            setEnableCountLogging={setEnableCountLogging}
+            fileTypeDropdownOpen={fileTypeDropdownOpen}
+            setFileTypeDropdownOpen={setFileTypeDropdownOpen}
+            fileTypeDropdownRef={fileTypeDropdownRef}
+            addFileColumn={addFileColumn}
+            removeFileColumn={removeFileColumn}
+            updateFileColumn={updateFileColumn}
+            id={id}
+            data={data}
+            dispatch={dispatch}
+            ACTION_TYPES={ACTION_TYPES}
+          />
         )}
 
-        {(
-          (sourceType === "file" && fileName)) && (
-          <div className="mt-2">
-            <label className="text-xs font-semibold text-black mb-0.5 block">
-              Alias Name
-            </label>
-            <input
-              type="text"
-              className="w-full p-1.5 text-[11px] bg-white rounded-sm border border-gray-300 text-gray-800"
-              value={alias}
-              onChange={e => setAlias(e.target.value)}
-              placeholder="Enter alias name"
-            />
+        {sourceType === "database" && selectedConnection.type && (
+          <div className="mt-3 pt-2 border-t border-gray-200">
+            <span className="text-[10px] text-gray-500">
+              Connection Type: <span className="font-semibold text-[#8E77BB]">{selectedConnection.type}</span>
+            </span>
           </div>
         )}
 
-        {(
-          (sourceType === "file" && fileName)) && (
-          <div className="mt-2">
-            <label className="flex items-center text-xs font-semibold text-black">
-              <input
-                type="checkbox"
-                className="mr-1.5 h-3.5 w-3.5"
-                checked={enableCountLogging}
-                onChange={(e) => {
-                  const newValue = e.target.checked;
-                  setEnableCountLogging(newValue);
+        {sourceType === "file" && (
+          <div className="mt-3 pt-2 border-t border-gray-200">
+            <span className="text-[10px] text-gray-500">
+              Source Type: <span className="font-semibold text-[#8E77BB]">File ({fileType})</span>
+            </span>
+          </div>
+        )}
 
-                  if (data.onDataChange) {
-                    data.onDataChange({ enableCountLogging: newValue });
-                  }
+        {customDatatypeModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+            <div className="bg-white rounded-lg p-4 w-[400px]">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold text-black">
+                  Custom Datatype
+                </h3>
+                <button
+                  onClick={handleCustomDatatypeCancel}
+                  className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-                  if (window.allNodes) {
-                    const nodeIndex = window.allNodes.findIndex(n => n.id === id);
-                    if (nodeIndex !== -1) {
-                      window.allNodes[nodeIndex].data.enableCountLogging = newValue;
-                    }
-                  }
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-black mb-1 block">
+                    Enter custom datatype name:
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                    value={customDatatypeInput}
+                    onChange={(e) => setCustomDatatypeInput(e.target.value)}
+                    placeholder="e.g., varchar(255), decimal(10,2), etc."
+                    autoFocus
+                  />
+                </div>
+              </div>
 
-                  dispatch({
-                    type: ACTION_TYPES.UPDATE_SOURCE,
-                    payload: {
-                      id: id,
-                      data: { enableCountLogging: newValue }
-                    }
-                  });
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={handleCustomDatatypeCancel}
+                  className="px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCustomDatatypeSave}
+                  className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
+                    customDatatypeInput.trim() !== ""
+                      ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                  disabled={customDatatypeInput.trim() === ""}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
-                  window.allNodesLastUpdate = Date.now();
-                  if (window.triggerSidebarUpdate) {
-                    window.triggerSidebarUpdate();
-                  }
-                }}
-              />
-              <span>Enable Count Logging</span>
-            </label>
+        {parametersModalOpen && selectedProcedureForModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+            <div className="bg-white rounded-lg p-4 w-[500px] max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-semibold text-black">
+                    Parameter Mapping
+                  </h3>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {selectedProcedureForModal.procedure_name}
+                  </p>
+                </div>
+                <button
+                  onClick={closeParametersModal}
+                  className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {selectedProcedureForModal.procedure_parameter && selectedProcedureForModal.procedure_parameter.length > 0 ? (
+                <div className="space-y-2">
+                  {selectedProcedureForModal.procedure_parameter.map((param, index) => {
+                    const isNumericParam = isNumericType(param.data_type);
+                    const isStringParam = isStringType(param.data_type);
+
+                    return (
+                      <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded border">
+                        <div className="w-1/3">
+                          <p className="text-sm font-medium text-black">{param.name}</p>
+                          <p className="text-xs text-gray-500">{param.data_type}</p>
+                        </div>
+
+                        <div className="flex-1">
+                          {isNumericParam ? (
+                            <input
+                              type="number"
+                              value={parameterColumnMapping[param.name] || ""}
+                              onChange={(e) => handleParameterMapping(param.name, e.target.value)}
+                              placeholder="Enter numeric value"
+                              className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                            />
+                          ) : isStringParam ? (
+                            <input
+                              type="text"
+                              value={parameterColumnMapping[param.name] || ""}
+                              onChange={(e) => handleParameterMapping(param.name, e.target.value)}
+                              placeholder="Enter text value"
+                              className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={parameterColumnMapping[param.name] || ""}
+                              onChange={(e) => handleParameterMapping(param.name, e.target.value)}
+                              placeholder="Enter value"
+                              className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-500">No parameters found for this procedure.</p>
+                  <p className="text-xs text-gray-400 mt-2">You can still apply the mapping to execute the procedure without parameters.</p>
+                </div>
+              )}
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={closeParametersModal}
+                  className="px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={applyProcedureMapping}
+                  className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
+                    areAllParametersMapped()
+                      ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                  disabled={!areAllParametersMapped()}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-      {/* Connection type display - only for database */}
-      {sourceType === "database" && selectedConnection.type && (
-        <div className="mt-3 pt-2 border-t border-gray-200">
-          <span className="text-[10px] text-gray-500">
-            Connection Type: <span className="font-semibold text-[#8E77BB]">{selectedConnection.type}</span>
-          </span>
-        </div>
-      )}
-
-      {/* File type display - only for file */}
-      {sourceType === "file" && (
-        <div className="mt-3 pt-2 border-t border-gray-200">
-          <span className="text-[10px] text-gray-500">
-            Source Type: <span className="font-semibold text-[#8E77BB]">File ({fileType})</span>
-          </span>
-        </div>
-      )}
-
-      {/* Custom Datatype Modal */}
-      {customDatatypeModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-lg p-4 w-[400px]">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-black">
-                Custom Datatype
-              </h3>
-              <button
-                onClick={handleCustomDatatypeCancel}
-                className="text-gray-400 hover:text-gray-600 focus:outline-none"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-black mb-1 block">
-                  Enter custom datatype name:
-                </label>
-                <input
-                  type="text"
-                  className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                  value={customDatatypeInput}
-                  onChange={(e) => setCustomDatatypeInput(e.target.value)}
-                  placeholder="e.g., varchar(255), decimal(10,2), etc."
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={handleCustomDatatypeCancel}
-                className="px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCustomDatatypeSave}
-                className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
-                  customDatatypeInput.trim() !== ""
-                    ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
-                disabled={customDatatypeInput.trim() === ""}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {parametersModalOpen && selectedProcedureForModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-lg p-4 w-[500px] max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-base font-semibold text-black">
-                  Parameter Mapping
-                </h3>
-                <p className="text-xs text-gray-600 mt-1">
-                  {selectedProcedureForModal.procedure_name}
-                </p>
-              </div>
-              <button
-                onClick={closeParametersModal}
-                className="text-gray-400 hover:text-gray-600 focus:outline-none"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {selectedProcedureForModal.procedure_parameter && selectedProcedureForModal.procedure_parameter.length > 0 ? (
-              <div className="space-y-2">
-                {selectedProcedureForModal.procedure_parameter.map((param, index) => {
-                  const isNumericParam = isNumericType(param.data_type);
-                  const isStringParam = isStringType(param.data_type);
-
-                  return (
-                    <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded border">
-                      <div className="w-1/3">
-                        <p className="text-sm font-medium text-black">{param.name}</p>
-                        <p className="text-xs text-gray-500">{param.data_type}</p>
-                      </div>
-
-                      <div className="flex-1">
-                        {isNumericParam ? (
-                          <input
-                            type="number"
-                            value={parameterColumnMapping[param.name] || ""}
-                            onChange={(e) => handleParameterMapping(param.name, e.target.value)}
-                            placeholder="Enter numeric value"
-                            className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                          />
-                        ) : isStringParam ? (
-                          <input
-                            type="text"
-                            value={parameterColumnMapping[param.name] || ""}
-                            onChange={(e) => handleParameterMapping(param.name, e.target.value)}
-                            placeholder="Enter text value"
-                            className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            value={parameterColumnMapping[param.name] || ""}
-                            onChange={(e) => handleParameterMapping(param.name, e.target.value)}
-                            placeholder="Enter value"
-                            className="w-full p-2 text-sm bg-white rounded border border-gray-300 text-black focus:outline-none focus:ring-2 focus:ring-[#8E77BB] focus:border-[#8E77BB]"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-sm text-gray-500">No parameters found for this procedure.</p>
-                <p className="text-xs text-gray-400 mt-2">You can still apply the mapping to execute the procedure without parameters.</p>
-              </div>
-            )}
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={closeParametersModal}
-                className="px-3 py-1.5 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={applyProcedureMapping}
-                className={`px-3 py-1.5 text-sm rounded focus:outline-none focus:ring-2 ${
-                  areAllParametersMapped()
-                    ? "bg-[#8E77BB] text-white hover:bg-[#7A6BA3] focus:ring-[#8E77BB]"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
-                disabled={!areAllParametersMapped()}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+

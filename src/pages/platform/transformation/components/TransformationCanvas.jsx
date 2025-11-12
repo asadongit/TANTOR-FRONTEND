@@ -91,27 +91,6 @@ function TransformationCanvasContent() {
         setIsEditMode(true);
         setEditTransformationId(transformationId);
 
-        // const restoredData = restoreNodesAndEdgesFromEditData(
-        //   editFlowData,
-        //   setNodes,
-        //   setEdges,
-        //   nodeIdRef
-        // );
-
-        // setNodes(restoredData.nodes);
-        // setEdges(restoredData.edges);
-
-        // setNodes((prev) =>
-        //   prev.map((n) =>
-        //     n.type === "define"
-        //       ? { ...n, data: { ...n.data, isEditMode: true } }
-        //       : n
-        //   )
-        // );
-
-        /*==============================================================================================
-        Modified version to support ensure Define node works in edit mode
-        ==============================================================================================*/
         const restoredData = restoreNodesAndEdgesFromEditData(
           editFlowData,
           setNodes,
@@ -253,66 +232,7 @@ function TransformationCanvasContent() {
     [setNodes]
   );
 
-  // Update onDataChange for all nodes - only after restoration is complete
-  // useEffect(() => {
-  //   if (!isRestorationComplete) return;
 
-  //   setNodes((nds) =>
-  //     nds.map((node) => ({
-  //       ...node,
-  //       data: {
-  //         ...node.data,
-  //         onDataChange: (newData) => {
-  //           if (node.data._isRestoring) {
-  //             return;
-  //           }
-
-  //           onDataChangeImmediate(node.id, newData);
-  //         },
-  //       },
-  //     }))
-  //   );
-  // }, [onDataChangeImmediate, isRestorationComplete]);
-
-  /*==============================================================================================
-                     Updated code block to ensure Define node works in edit mode 
-==============================================================================================*/
-
-  //  Ensure every node — including Define in edit mode — always has a working onDataChange
-  // useEffect(() => {
-  //   if (!isRestorationComplete) return;
-
-  //   setNodes((nodes) =>
-  //     nodes.map((node) => {
-  //       // Build a fresh onDataChange for every node
-  //       const updatedData = {
-  //         ...node.data,
-  //         onDataChange: (newData) => {
-  //           // Skip updates only if node is in the middle of restoring
-  //           if (node.data._isRestoring) return;
-  //           console.log(
-  //             "Updating node data via onDataChangeImmediate",
-  //             node.id,
-  //             newData
-  //           );
-  //           // Allow Define node edits even in edit mode
-  //           if (node.type === "define") {
-  //             console.log("Updating Define node data:", newData); // debug
-  //           }
-
-  //           // Update the node’s data inside ReactFlow state
-  //           setNodes((prevNodes) =>
-  //             prevNodes.map((n) =>
-  //               n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
-  //             )
-  //           );
-  //         },
-  //       };
-
-  //       return { ...node, data: updatedData };
-  //     })
-  //   );
-  // }, [setNodes, isRestorationComplete]);
 
   useEffect(() => {
     if (!isRestorationComplete) return;
@@ -344,31 +264,12 @@ function TransformationCanvasContent() {
     );
   }, [setNodes, isRestorationComplete]);
 
-  /*==============================================================================================*/
 
   useEffect(() => {
     id = nodeIdRef.current;
   }, []);
 
-  /*   =============================================================================================                               Commenting this block becox we will create a master to hanlde it
-  =============================================================================================== */
-  // useEffect(() => {
-  //   setNodes((nds) =>
-  //     nds.map((node) => ({
-  //       ...node,
-  //       data: {
-  //         ...node.data,
-  //         onDataChange: (newData) => {
-  //           setNodes((prevNodes) =>
-  //             prevNodes.map((n) =>
-  //               n.id === node.id ? { ...n, data: { ...n.data, ...newData } } : n
-  //             )
-  //           );
-  //         },
-  //       },
-  //     }))
-  //   );
-  // }, [setNodes]);
+
 
   useEffect(() => {
     const hasDefineNode = nodes.some((node) => node.type === "define");
@@ -874,6 +775,7 @@ function TransformationCanvasContent() {
         },
       };
 
+      console.log(payload)
       const isUpdate = isEditMode && editTransformationId;
       const url = isUpdate
         ? `${hostname}/etl/transformation/edit/update?transformation_id=${editTransformationId}`
