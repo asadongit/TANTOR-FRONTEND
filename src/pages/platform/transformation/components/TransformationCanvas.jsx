@@ -493,10 +493,6 @@ function TransformationCanvasContent() {
         return;
       }
 
-      /*========================================================================================
-          Below code added to ensure new data is captured b4 passing on
-      ==========================================================================================*/
-      // Ensure latest Define node data is captured before saving
       const defineNodeIndex = nodes.findIndex((node) => node.type === "define");
       if (defineNodeIndex !== -1 && window.allNodes) {
         const liveDefine = window.allNodes.find((n) => n.type === "define");
@@ -505,11 +501,8 @@ function TransformationCanvasContent() {
         }
       }
 
-      /*========================================================================================*/
 
       const defineNode = nodes.find((node) => node.type === "define");
-      /*  Adding Patch to sync React flow with local state  */
-      // Ensure latest Define node data (localName, localDescription) are pulled directly from the DOM
       try {
         const nameInput = document.querySelector(
           'input[placeholder="Enter transformation name"]'
@@ -545,7 +538,6 @@ function TransformationCanvasContent() {
         return;
       }
 
-      // FIXED: Force update of transformation context with current node states before generating JSON
       nodes.forEach((node) => {
         if (
           node.type === "source" &&
@@ -577,12 +569,10 @@ function TransformationCanvasContent() {
         }
       });
 
-      // Wait for state update before generating JSON
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       setIsSaving(true);
 
-      // Dispatch to ensure the context state (state.define) is up-to-date, so your inner transformation_json will also get the correct workflow name and description.
       dispatch({
         type: ACTION_TYPES.UPDATE_DEFINE,
         payload: {
@@ -775,7 +765,7 @@ function TransformationCanvasContent() {
         },
       };
 
-      console.log(payload)
+      // console.log(payload)
       const isUpdate = isEditMode && editTransformationId;
       const url = isUpdate
         ? `${hostname}/etl/transformation/edit/update?transformation_id=${editTransformationId}`
