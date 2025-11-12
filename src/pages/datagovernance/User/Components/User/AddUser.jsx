@@ -167,7 +167,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
       addItemsToSet(policy.roles, combinedRoles);
       addItemsToSet(policy.persona, combinedPersonas);
       addItemsToSet(policy.groups, combinedGroups);
-      addItemsToSet(policy.subgroups, combinedSubgroups);
+      addItemsToSet(policy.subgroups, combinedSubgroups); 
     });
 
     setFormData(prev => ({
