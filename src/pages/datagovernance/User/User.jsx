@@ -76,6 +76,37 @@ const User = () => {
 
   const { token } = useAuth();
 
+  // ignore any role that begins with "persona" (e.g. "persona:Analyst" etc.)
+  const isPersonaPrefixed = (val) => typeof val === 'string' && /^persona\b[:\-_/]?/i.test(val);
+  // strip the persona prefix and return the actual persona value
+  const extractPersonaFromPrefixedRole = (val) => {
+    if (!isPersonaPrefixed(val)) return null;
+    return val.toString().replace(/^persona\b[:\-_/]?\s*/i, '').trim();
+  };
+  const filterOutPersonaRoles = (roles) => {
+    if (!roles) return [];
+    const arr = Array.isArray(roles) ? roles : [roles];
+    return arr.filter(r => r && r.toString().trim() !== '' && !isPersonaPrefixed(r));
+  };
+  // collect persona values coming from prefixed roles
+  const getPersonaFromRoles = (roles) => {
+    if (!roles) return [];
+    const arr = Array.isArray(roles) ? roles : [roles];
+    return arr
+      .map(r => extractPersonaFromPrefixedRole(r))
+      .filter(Boolean);
+  };
+  // merge explicit persona field and persona extracted from roles, dedupe
+  const mergedPersona = (explicitPersona, roles) => {
+    const fromExplicit = explicitPersona
+      ? (Array.isArray(explicitPersona) ? explicitPersona : [explicitPersona])
+          .map(p => p && p.toString().trim())
+          .filter(Boolean)
+      : [];
+    const fromRoles = getPersonaFromRoles(roles);
+    return Array.from(new Set([...fromExplicit, ...fromRoles]));
+  };
+
   // const fetchUserData = async (page = 1, search = '', isPagination = false) => {
   //   if (isPagination) {
   //     setIsPaginationLoading(true);
@@ -242,11 +273,13 @@ const currentUsers = users;
     switch(type) {
       case 'role':
         modalTitle = `${user.username}'s Roles`;
-        modalData = Array.isArray(data) ? data : (data ? [data] : []);
+        // remove persona-prefixed items from roles before showing
+        modalData = filterOutPersonaRoles(data);
         break;
       case 'persona':
         modalTitle = `${user.username}'s Persona`;
-        modalData = Array.isArray(data) ? data : (data ? [data] : []);
+        // merge explicit persona field and persona values encoded in roles (strip prefixes)
+        modalData = mergedPersona(data, user.roles);
         break;
       case 'group':
         modalTitle = `${user.username}'s Groups`;
@@ -293,6 +326,18 @@ const currentUsers = users;
         count += subgroups.length;
       });
       return count;
+    }
+
+    // For roles, ignore persona-prefixed entries
+    if (type === 'role') {
+      const filtered = filterOutPersonaRoles(item);
+      return filtered.length;
+    }
+
+    // For persona, include explicit persona and persona encoded in roles
+    if (type === 'persona') {
+      const merged = mergedPersona(item, user?.roles);
+      return merged.length;
     }
 
     if (!item) return 0;
@@ -342,7 +387,7 @@ const currentUsers = users;
   const newItemsPerPage = Number(e.target.value);
   setItemsPerPage(newItemsPerPage);
   setCurrentPage(1);
-  fetchUserData(1, searchTerm, false, newItemsPerPage); // Pass new value
+  fetchUserData(1, searchTerm, false, newItemsPerPage); 
 };
 
   return (
@@ -458,7 +503,7 @@ const currentUsers = users;
                       onClick={() => showDetailModal('role', user.roles, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
                     >
-                      {getCount(user.roles)}
+                      {getCount(user.roles, 'role', user)}
                     </button>
                   </td>
                   <td style={{ padding: '16px 19.75px' }}>
@@ -466,7 +511,7 @@ const currentUsers = users;
                       onClick={() => showDetailModal('persona', user.persona, user)}
                       className="text-center font-medium underline decoration-1 underline-offset-4"
                     >
-                      {getCount(user.persona)}
+                      {getCount(user.persona, 'persona', user)}
                     </button>
                   </td>
                   <td style={{ padding: '16px 19.75px' }}>

@@ -39,7 +39,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     })).values()
   );
 
-  console.log("all policies aree @@@ ", allPolicies)
+ 
 
   useEffect(() => {
     if (isOpen) {
@@ -69,6 +69,44 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
     setNewPolicies([]);
     onClose();
   };
+
+  const handleRemovePolicy = (policyIdToRemove) => {
+    console.log("Attempting to remove policy ID:", policyIdToRemove, "Type:", typeof policyIdToRemove);
+  console.log("existingPolicies:", existingPolicies);
+  console.log("newPolicies:", newPolicies);
+  // Remove from both policy arrays
+  const updatedExisting = existingPolicies.filter(
+    policy => policy.id !== policyIdToRemove
+  );
+  const updatedNew = newPolicies.filter(
+    policy => policy.id !== policyIdToRemove
+  );
+
+  console.log("After filtering - updatedExisting:", updatedExisting);
+  console.log("After filtering - updatedNew:", updatedNew);
+
+  // Update UI
+  setExistingPolicies(updatedExisting);
+  setNewPolicies(updatedNew);
+
+  // IMPORTANT: Rebuild formData from remaining policies
+  const remainingPolicies = [...updatedExisting, ...updatedNew];
+  
+  if (remainingPolicies.length === 0) {
+    // If no policies left, clear everything
+    setFormData(prev => ({
+      ...prev,
+      roles: [],
+      persona: [],
+      groups: [],
+      subgroups: [],
+      datapolicy: []
+    }));
+  } else {
+    // Rebuild from remaining policies
+    updateFormDataFromPolicies(remainingPolicies);
+  }
+};
 
   const fetchPolicyNames = async (policyIds) => {
     if (!policyIds || policyIds.length === 0) return [];
@@ -149,26 +187,34 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
   };
 
   const handleApplyPoliciesFromModal = async (appliedData) => {
-    const policyIds = appliedData.datapolicy;
-    const fetchedPolicies = await fetchPolicyNames(policyIds);
+  const policyIds = appliedData.datapolicy;
+  const fetchedPolicies = await fetchPolicyNames(policyIds);
 
-    const newExistingPolicies = fetchedPolicies.map(policy => ({
-      id: policy.id,
-      name: policy.name,
-      roles: appliedData.roles || [],
-      persona: appliedData.persona || [],
-      groups: appliedData.groups || [],
-      subgroups: appliedData.subgroups || []
-    }));
+  // Map each policy with ITS OWN individual data
+  const newExistingPolicies = policyIds.map((policyId) => {
+    const policyName = fetchedPolicies.find(p => p.id === String(policyId))?.name || `Policy ${policyId}`;
+    
+    // Get individual data for THIS policy
+    const policyIndividualData = appliedData.policiesData?.[policyId];
+    
+    return {
+      id: String(policyId),
+      name: policyName,
+      roles: policyIndividualData?.role ? [policyIndividualData.role] : [],
+      persona: policyIndividualData?.persona || [],
+      groups: policyIndividualData?.group ? [policyIndividualData.group] : [],
+      subgroups: policyIndividualData?.subGroup ? [policyIndividualData.subGroup] : []
+    };
+  });
 
-    setExistingPolicies(newExistingPolicies);
-    updateFormDataFromPolicies(newExistingPolicies);
-    setIsPolicyModalOpen(false);
-  };
+  setExistingPolicies(newExistingPolicies);
+  updateFormDataFromPolicies(newExistingPolicies);
+  setIsPolicyModalOpen(false);
+};
 
   const handlePolicyComplete = (policyDetails) => {
     const newPolicy = {
-      id: policyDetails.id,
+      id: String(policyDetails.id),
       name: policyDetails.policy_type || `Policy ${policyDetails.id}`,
       roles: policyDetails.roles || [],
       persona: policyDetails.persona || [],
@@ -467,7 +513,7 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                   Add new policy
                 </button>
 
-                {allPolicies.length > 0 && (
+                {/* {allPolicies.length > 0 && (
                   <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <p className="text-sm font-medium mb-3 text-gray-700">Assigned Policies:</p>
                     {isFetchingPolicyNames ? (
@@ -495,7 +541,45 @@ const AddUser = ({ isOpen, onClose, onSave }) => {
                       </div>
                     )}
                   </div>
-                )}
+                )} */}
+
+                {allPolicies.length > 0 && (
+  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <p className="text-sm font-medium mb-3 text-gray-700">Assigned Policies:</p>
+    {isFetchingPolicyNames ? (
+      <div className="flex items-center justify-center py-6">
+        <Loader className="h-5 w-5 animate-spin text-[#8e78b7]" />
+        <span className="ml-2 text-sm text-gray-600">Loading policy names...</span>
+      </div>
+    ) : (
+      <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
+        {allPolicies.map((policy, index) => (
+          <div 
+            key={policy.id} 
+            className="bg-white p-3 rounded-lg border border-gray-200 hover:border-[#8e78b7] transition-colors flex items-center justify-between group"
+          >
+            <div className="flex items-start gap-2 flex-1">
+              <span className="text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
+              <p className="text-sm font-medium text-gray-900 truncate" title={policy.name}>
+                {policy.name}
+              </p>
+            </div>
+            
+            {/* Remove button - visible on hover */}
+            <button
+  onClick={() => handleRemovePolicy(policy.id)}
+  className="ml-2 text-gray-500 hover:text-red-600 hover:bg-red-100 p-1.5 rounded-md transition-all"
+  type="button"
+  title="Remove policy"
+>
+  <X className="h-4 w-4" />
+</button>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
                 {errors.policyAssignment && (
                   <p className="mt-2 text-sm text-red-500">{errors.policyAssignment}</p>
