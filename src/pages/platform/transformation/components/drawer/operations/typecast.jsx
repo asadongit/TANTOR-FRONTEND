@@ -176,34 +176,7 @@ export const TypecastOperationFields = ({
     ? selectedSourceColumn.datatype
     : "";
 
-  const filteredDataTypes = DATA_TYPES.filter(type => {
-    if (!sourceDataType) return true;
-
-    const sourceLower = sourceDataType.toLowerCase();
-
-    if (sourceLower.includes('date') && !sourceLower.includes('timestamp')) {
-      return ["string", "timestamp"].includes(type.id);
-    }
-
-    if (isStringType(sourceDataType)) {
-      return ["int", "date", "timestamp", "float", "decimal", "double"].includes(type.id);
-    }
-
-    if (isNumericType(sourceDataType) && !isFloatType(sourceDataType)) {
-      return ["string", "float", "decimal", "double", "int"].includes(type.id);
-    }
-
-    if (isFloatType(sourceDataType)) {
-      return ["int", "string", "decimal", "double"].includes(type.id);
-    }
-
-    if (sourceLower.includes('timestamp')) {
-      return ["string", "date"].includes(type.id);
-    }
-
-    return ["string"].includes(type.id);
-  });
-
+  const filteredDataTypes = DATA_TYPES;
 
   const customStyles = {
     control: (provided) => ({
