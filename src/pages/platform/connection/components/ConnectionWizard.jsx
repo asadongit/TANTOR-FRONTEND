@@ -16,7 +16,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
   const connectionNames = useMemo(() => {
     return connections.map(connection => connection.connection_name.toLowerCase());
   }, [connections]);
-  const { token, hostnameV1, decodedToken, project } = useAuth();
+  const { token, hostnameV1, hostnameV2, decodedToken, project } = useAuth();
   const [activeModal, setActiveModal] = useState(isEditMode ? 'details' : 'selection');
   const [selectedConnector, setSelectedConnector] = useState(isEditMode ? editConnectionData?.connection_type : null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -362,7 +362,7 @@ const ConnectionWizard = ({editConnectionData , closeLocalModal}) => {
     try {
       const endpoint = isEditMode
         ? `${hostnameV1}/connection-saves/${editConnectionData.connection_id}`
-        : `${hostnameV1}/create-connection`;
+        : `${hostnameV2}/create-connection`;
 
       const method = isEditMode ? "PATCH" : "POST";
 
