@@ -614,7 +614,6 @@ export default function Source() {
       )}
       <ColumnSettings
         columnSetting={columnSetting}
-        setColumnSetting={setColumnSetting}
         queryType={modalState.queryType}
       />
       {isModalOpen && (
