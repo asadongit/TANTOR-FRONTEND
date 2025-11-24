@@ -61,7 +61,7 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
         });
       }
     }
-    if (!isOpen) toggleDialog();
+    if (columnSetting && !isOpen) toggleDialog();
 
     console.log("column setting inside useeffect 1 is  @@@ ",isOpen)
   }, [columnSetting]);
