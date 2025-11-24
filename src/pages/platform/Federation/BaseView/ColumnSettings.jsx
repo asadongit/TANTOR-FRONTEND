@@ -60,7 +60,7 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
         });
       }
     }
-    if (!isOpen) toggleDialog();
+    if (columnSetting && !isOpen) toggleDialog();
   }, [columnSetting]);
 
   if (!isOpen) return null;
