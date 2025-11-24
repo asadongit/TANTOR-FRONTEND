@@ -19,6 +19,7 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
   const [showInfo, setShowInfo] = useState(false);
   const [settings, setSettings] = useState(defaultSetting);
 
+  console.log("column setting is @@@ ",isOpen)
   const {
     settingsList,
     setSettingsList,
@@ -61,6 +62,8 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
       }
     }
     if (!isOpen) toggleDialog();
+
+    console.log("column setting inside useeffect 1 is  @@@ ",isOpen)
   }, [columnSetting]);
 
   if (!isOpen) return null;
@@ -142,6 +145,7 @@ const ColumnSettings = ({ columnSetting, queryType }) => {
     }
 
     setSettings(defaultSetting);
+    console.log("column setting inside handle execute is   @@@ ",isOpen)
     toggleDialog();
   };
 
