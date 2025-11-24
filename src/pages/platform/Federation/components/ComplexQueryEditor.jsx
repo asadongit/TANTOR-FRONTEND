@@ -9,14 +9,17 @@ function ComplexQueryEditor({setShowQueryEditor}) {
   const {userSelections, setUserSelections, finalPayload, handleFinalPayload} = useStateContext("");
   
   useEffect(() => {
-    
     if(finalPayload.view_type === "Integrated View"){
-    if (complex_query) setQuery(complex_query);
-    else setQuery("");
-  }
-    else if(userSelections.has("complex_query"))
-        setQuery(userSelections.get("complex_query"));
-  },[]);
+      if (finalPayload.complex_query) {
+        setQuery(finalPayload.complex_query);
+      } else {
+        setQuery("");
+      }
+    }
+    else if(userSelections.has("complex_query")) {
+      setQuery(userSelections.get("complex_query"));
+    }
+  }, [finalPayload, userSelections]);
   
   const handelExecute = () => {
     if(query.trim() != ""){
