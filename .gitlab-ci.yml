@@ -12,7 +12,7 @@ variables:
   HARBOR_PASSWORD: "$HARBOR_PASS"
 
 before_script:
-  - sudo yum install -y git jq
+  - sudo yum update -y && sudo yum install -y git jq
   - git config --global user.name "$GIT_USER"
   - git config --global user.email "$GIT_EMAIL"
   - git config --global http.sslVerify false
