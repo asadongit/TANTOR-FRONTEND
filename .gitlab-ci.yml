@@ -1,16 +1,15 @@
-#test
 stages:
   - clone
 
 variables:
   DEPLOYMENT_REPO: "https://$GITLAB_USERNAME:$GITLAB_TOKEN@gitlab.tantor.io/root/tantor2-0_frontend_deployment.git"
   DEPLOYMENT_DIR: "tantor-front-2-0"
-  REGISTRY: "registry.tantor.io:443/tantor"   # <-- Harbor registry + project
+  REGISTRY: "registry.tantor.io:443/tantor"
   IMAGE_NAME: "tantorfront2-0-dev"
   GIT_USER: "root"
   GIT_EMAIL: "your-email@example.com"
-  HARBOR_USER: "$HARBOR_USER"               # Store in GitLab CI variables
-  HARBOR_PASSWORD: "$HARBOR_PASSWORD"
+  HARBOR_USER: "admin"
+  HARBOR_PASSWORD: "$HARBOR_PASS"
 
 before_script:
   - sudo yum install -y git jq
@@ -21,36 +20,30 @@ before_script:
 
 clone-deployment:
   stage: clone
-  script:
+  script: |
     - export BRANCH="${CI_COMMIT_REF_NAME}"
-    - echo "Branch = $BRANCH"
+    - echo "Branch: $BRANCH"
 
-    # Clone deployment repo
     - git clone -b "$BRANCH" "$DEPLOYMENT_REPO" "$DEPLOYMENT_DIR"
 
-    # Read current image
     - cd "$DEPLOYMENT_DIR/deploy"
     - export CURRENT_IMAGE=$(grep 'image:' tantorfront2-0-deployment.yml | awk '{print $2}')
     - export CURRENT_TAG=$(echo "$CURRENT_IMAGE" | rev | cut -d ':' -f1 | rev)
     - echo "Current image: $CURRENT_IMAGE"
+    - echo "Current tag: $CURRENT_TAG"
 
     - cd ../..
-
-    # Generate new tag from commit hash
     - export NEW_TAG=$(git rev-parse --short HEAD)
     - export NEW_IMAGE="$REGISTRY/$IMAGE_NAME:$NEW_TAG"
     - echo "New image: $NEW_IMAGE"
 
-    # Build and push image to Harbor
     - docker build -t "$NEW_IMAGE" .
     - docker push "$NEW_IMAGE"
 
-    # Update YAML with new image path
     - cd "$DEPLOYMENT_DIR/deploy"
     - sed -i "s|$CURRENT_IMAGE|$NEW_IMAGE|g" tantorfront2-0-deployment.yml
     - cat tantorfront2-0-deployment.yml
 
-    # Commit and push
     - git add tantorfront2-0-deployment.yml
     - git commit -m "Update deployment image to $NEW_IMAGE"
     - git push origin "$BRANCH"
