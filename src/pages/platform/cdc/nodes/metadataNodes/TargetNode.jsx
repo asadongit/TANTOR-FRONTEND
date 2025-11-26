@@ -53,7 +53,7 @@ export function TargetNode({ id, data, selected }) {
   );
 
   const [selectedSchema, setSelectedSchema] = useState(data?.schema || "");
- 
+
 
 
   const [validationInProgress, setValidationInProgress] = useState(false);
@@ -110,7 +110,7 @@ export function TargetNode({ id, data, selected }) {
       return response.data;
     } catch (error) {
       console.error("Error during DDL validation:", error);
-  
+
       if (error.response) {
         return error.response.data;
       } else if (error.request) {
@@ -120,7 +120,7 @@ export function TargetNode({ id, data, selected }) {
       }
     }
   };
-  
+
 
 
 
@@ -183,7 +183,7 @@ export function TargetNode({ id, data, selected }) {
     setTimeout(() => {
       navigate(
         `/details?${encodeURIComponent(
-          encrypt("componentType=migration&heading=metadata")
+          encrypt("componentType=metadata&heading=metadata")
         )}`
       );
       refetch();
