@@ -251,7 +251,7 @@ const Connections = () => {
   const filteredConnections = useMemo(() => {
     let filtered = connections;
 
-    if (project !== "none" && project) {
+    if (project !== "none" && project !== "default" && project) {
       filtered = filtered.filter((conn) => conn.project === project);
     }
 

@@ -17,7 +17,7 @@ const CardGrid = ({ cards, onCardClick, isLoading=false }) => {
   const navigate = useNavigate();
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${cards.length} gap-6`}>
       {cards.map((card) => (
         <div
           key={card.title}
