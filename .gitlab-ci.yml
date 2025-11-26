@@ -1,47 +1,49 @@
-#testnew
 stages:
   - clone
+
 variables:
   DEPLOYMENT_REPO: "https://$GITLAB_USERNAME:$GITLAB_TOKEN@gitlab.tantor.io/root/tantor2-0_frontend_deployment.git"
   DEPLOYMENT_DIR: "tantor-front-2-0"
-  REGISTRY: "tantor.example.com:5000"
+  REGISTRY: "registry.tantor.io:443/tantor"
   IMAGE_NAME: "tantorfront2-0-int"
   GIT_USER: "root"
   GIT_EMAIL: "your-email@example.com"
- 
+  HARBOR_USER: "admin"
+  HARBOR_PASSWORD: "$HARBOR_PASS"
+
 before_script:
   - sudo yum update -y && sudo yum install -y git jq
   - git config --global user.name "$GIT_USER"
   - git config --global user.email "$GIT_EMAIL"
-  - git config --global http.sslVerify "false"
- 
+  - git config --global http.sslVerify false
+  - docker login registry.tantor.io:443 -u "$HARBOR_USER" -p "$HARBOR_PASSWORD"
+
 clone-deployment:
   stage: clone
   script:
     - export BRANCH="${CI_COMMIT_REF_NAME}"
     - echo $BRANCH
-    - git clone -b $BRANCH "$DEPLOYMENT_REPO" "$DEPLOYMENT_DIR"
+
+    - git clone -b "$BRANCH" "$DEPLOYMENT_REPO" "$DEPLOYMENT_DIR"
+
     - cd "$DEPLOYMENT_DIR/deploy"
     - export CURRENT_IMAGE=$(grep 'image:' tantorfront2-0-deployment.yml | awk '{print $2}')
     - export CURRENT_TAG=$(echo "$CURRENT_IMAGE" | rev | cut -d ':' -f1 | rev)
-    - echo "Current image version $CURRENT_IMAGE"
-    - echo "$CURRENT_TAG"
-    - ls
-    # - echo `$(echo "$CURRENT_TAG" | sed 's/^v//')`
+    - echo $CURRENT_IMAGE
+    - echo $CURRENT_TAG
+
     - cd ../..
     - export NEW_TAG=$(git rev-parse --short HEAD)
-    - echo "$NEW_TAG"
     - export NEW_IMAGE="$REGISTRY/$IMAGE_NAME:$NEW_TAG"
-    - echo "Building new image $NEW_IMAGE"
-    - ls
+    - echo $NEW_IMAGE
+
     - docker build -t "$NEW_IMAGE" .
     - docker push "$NEW_IMAGE"
+
     - cd "$DEPLOYMENT_DIR/deploy"
-    #- sed -i "s@image: $CURRENT_IMAGE@image: $NEW_IMAGE@g" argocd-test-deployment.yaml
-    - sed -i "s| $CURRENT_IMAGE| $NEW_IMAGE|g" tantorfront2-0-deployment.yml
+    - sed -i "s|$CURRENT_IMAGE|$NEW_IMAGE|g" tantorfront2-0-deployment.yml
     - cat tantorfront2-0-deployment.yml
-    - git config --global user.name "$GIT_USER"
-    - git config --global user.email "$GIT_EMAIL"
+
     - git add tantorfront2-0-deployment.yml
     - git commit -m "Update deployment image to $NEW_IMAGE"
-    - git push origin $BRANCH
+    - git push origin "$BRANCH"
