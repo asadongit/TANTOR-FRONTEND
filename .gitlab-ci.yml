@@ -20,22 +20,22 @@ before_script:
 
 clone-deployment:
   stage: clone
-  script: |
+  script:
     - export BRANCH="${CI_COMMIT_REF_NAME}"
-    - echo "Branch: $BRANCH"
+    - echo $BRANCH
 
     - git clone -b "$BRANCH" "$DEPLOYMENT_REPO" "$DEPLOYMENT_DIR"
 
     - cd "$DEPLOYMENT_DIR/deploy"
     - export CURRENT_IMAGE=$(grep 'image:' tantorfront2-0-deployment.yml | awk '{print $2}')
     - export CURRENT_TAG=$(echo "$CURRENT_IMAGE" | rev | cut -d ':' -f1 | rev)
-    - echo "Current image: $CURRENT_IMAGE"
-    - echo "Current tag: $CURRENT_TAG"
+    - echo $CURRENT_IMAGE
+    - echo $CURRENT_TAG
 
     - cd ../..
     - export NEW_TAG=$(git rev-parse --short HEAD)
     - export NEW_IMAGE="$REGISTRY/$IMAGE_NAME:$NEW_TAG"
-    - echo "New image: $NEW_IMAGE"
+    - echo $NEW_IMAGE
 
     - docker build -t "$NEW_IMAGE" .
     - docker push "$NEW_IMAGE"
