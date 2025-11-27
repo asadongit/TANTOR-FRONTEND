@@ -23,7 +23,7 @@ const ArchivalList = () => {
   const navigate = useNavigate();
   const [activeMenu, setActiveMenu] = useState(null);
 
-  const {token, hostnameV1}= useAuth()
+  const {token, hostnameV1, hostnameV2}= useAuth()
 
 
   
@@ -98,7 +98,7 @@ const handleDeleteClick = (row) => {
 const confirmDeleteMigration = async () => {
   if (!deleteModal.migrationId) return;
   try {
-    await axios.delete(`${hostnameV1}/delete-migration/${deleteModal.migrationId}`, {
+    await axios.delete(`${hostnameV2}/delete-migration/${deleteModal.migrationId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     toast.success("Migration removed from platform.");
