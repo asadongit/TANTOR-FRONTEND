@@ -174,7 +174,7 @@ const Header = ({ activeSection }) => {
                   </div>
                 )}
 
-                <div className="py-1">
+                {/* <div className="py-1">
                   <button className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 w-full text-left" onClick={() => navigate('/dashboard')}>
                     <User size={16} className="mr-3 text-gray-500" /> My Profile
                   </button>
@@ -187,7 +187,7 @@ const Header = ({ activeSection }) => {
                   <button className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 w-full text-left" onClick={() => navigate('/dashboard')}>
                     <HelpCircle size={16} className="mr-3 text-gray-500" /> Help & Support
                   </button>
-                </div>
+                </div> */}
 
                 <div className="py-1 border-t border-gray-100 bg-gray-50">
                   {isLoading ? (
