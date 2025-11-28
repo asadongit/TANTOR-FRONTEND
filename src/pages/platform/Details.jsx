@@ -150,10 +150,8 @@ const processedData = useMemo(() => {
           {[
             { label: "Platform", path: "/" },
             {
-              label:
-                componentType?.charAt(0).toUpperCase() + componentType.slice(1),
-              path: componentType === "metadata" ? `/details?${encodeURIComponent(
-                        encrypt("componentType=metadata&heading=metadata"))}` : `/${componentType}`,
+              label: componentType === "metadata" ? "Migration" : componentType?.charAt(0).toUpperCase() + componentType.slice(1),
+              path: componentType === "metadata" ? '/migration' : `/${componentType}`,
             },
             { label: "Details", path: null },
           ].map((item, index) => (
