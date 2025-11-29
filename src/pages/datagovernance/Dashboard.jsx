@@ -1,44 +1,145 @@
 import { Icon } from "@iconify-icon/react";
 import { useState, useEffect } from "react";
-import { RadarChart, PolarGrid, PolarAngleAxis, Radar, BarChart, Bar, XAxis, Tooltip, Cell } from 'recharts';
+import { RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
 import { useAuth } from "../../context/AuthContext";
 
 const Dashboard = () => {
   const [apiCounts, setApiCounts] = useState(null);
+  const [technicalCounts, setTechnicalCounts] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { token, decodedToken } = useAuth()
+  const { token, decodedToken } = useAuth();
 
   useEffect(() => {
-    const fetchCounts = async () => {
+    const fetchAllData = async () => {
       try {
-        const response = await fetch(`${window._env_?.VITE_FAST_API}/governance/dashboard/count`, {
-          method: 'POST',
-          headers: {
-            'accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            owner: decodedToken.preferred_username
-          })
-        });
+        const countsResponse = await fetch(
+          `${window._env_?.VITE_FAST_API}/governance/dashboard/count`,
+          {
+            method: 'POST',
+            headers: {
+              'accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              owner: decodedToken.preferred_username
+            })
+          }
+        );
 
-        if (!response.ok) {
+        if (!countsResponse.ok) {
           throw new Error('Failed to fetch dashboard counts');
         }
 
-        const data = await response.json();
-        setApiCounts(data);
+        const countsData = await countsResponse.json();
+        setApiCounts(countsData);
+
+        try {
+          const secureQueryResponse = await fetch(
+            `${window._env_?.VITE_FAST_API}/secure-query`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ user_query: "" }),
+            }
+          );
+
+          if (!secureQueryResponse.ok) {
+            console.warn('Secure query failed, setting technical counts to 0');
+            setTechnicalCounts({
+              connectors: 0,
+              schemas: 0,
+              tables: 0,
+              columns: 0
+            });
+          } else {
+            const secureQueryData = await secureQueryResponse.json();
+            const policyIds = secureQueryData.matched_policy_ids || [];
+
+            if (policyIds.length > 0) {
+              const connectionDetailsResponse = await fetch(
+                `${window._env_?.VITE_FAST_API}/policy-connection-details`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'accept': 'application/json',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    policy_id: policyIds
+                  })
+                }
+              );
+
+              if (!connectionDetailsResponse.ok) {
+                setTechnicalCounts({
+                  connectors: 0,
+                  schemas: 0,
+                  tables: 0,
+                  columns: 0
+                });
+              } else {
+                const connectionDetailsData = await connectionDetailsResponse.json();
+
+                const uniqueConnectors = new Set();
+                const uniqueSchemas = new Set();
+                const uniqueTables = new Set();
+                let totalColumns = 0;
+
+                connectionDetailsData.forEach(item => {
+                  uniqueConnectors.add(item.connection_name);
+                  uniqueSchemas.add(`${item.connection_name}_${item.table_schema}`);
+                  uniqueTables.add(`${item.connection_name}_${item.table_schema}_${item.table_name}`);
+                  totalColumns++;
+                });
+
+                setTechnicalCounts({
+                  connectors: uniqueConnectors.size,
+                  schemas: uniqueSchemas.size,
+                  tables: uniqueTables.size,
+                  columns: totalColumns
+                });
+              }
+            } else {
+              setTechnicalCounts({
+                connectors: 0,
+                schemas: 0,
+                tables: 0,
+                columns: 0
+              });
+            }
+          }
+        } catch (technicalErr) {
+          setTechnicalCounts({
+            connectors: 0,
+            schemas: 0,
+            tables: 0,
+            columns: 0
+          });
+        }
+
         setLoading(false);
       } catch (err) {
         setError(err.message);
         setLoading(false);
-        console.error('Error fetching dashboard counts:', err);
+        if (!technicalCounts) {
+          setTechnicalCounts({
+            connectors: 0,
+            schemas: 0,
+            tables: 0,
+            columns: 0
+          });
+        }
       }
     };
 
-    fetchCounts();
-  }, []);
+    if (token && decodedToken?.preferred_username) {
+      fetchAllData();
+    }
+  }, [token, decodedToken]);
 
   const CardsLoadingSkeleton = () => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
@@ -69,10 +170,10 @@ const Dashboard = () => {
       bordercolor: "border-[#16ABC2]",
       title: "Technical",
       stats: [
-        { label: "Connectors", value: "07" },
-        { label: "Schema", value: "20" },
-        { label: "Tables", value: "39" },
-        { label: "Columns", value: "77" }
+        { label: "Connectors", value: technicalCounts?.connectors?.toString().padStart(2, '0') || "00" },
+        { label: "Schema", value: technicalCounts?.schemas?.toString().padStart(2, '0') || "00" },
+        { label: "Tables", value: technicalCounts?.tables?.toString().padStart(2, '0') || "00" },
+        { label: "Columns", value: technicalCounts?.columns?.toString().padStart(2, '0') || "00" }
       ]
     },
     {
@@ -240,7 +341,6 @@ const Dashboard = () => {
         </div>
       )}
       
-      {/* Cards Section with Conditional Loading */}
       {loading ? (
         <CardsLoadingSkeleton />
       ) : (
@@ -278,7 +378,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Rest of the dashboard content - always visible */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
           <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Data repository by sensitivity</h2>
