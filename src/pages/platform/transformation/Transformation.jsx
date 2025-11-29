@@ -913,7 +913,7 @@ function Transformation() {
             />
           </button>
 
-          <button
+          {/* <button
             className="p-1 px-1.5 rounded-lg border border-gray-400 hover:bg-gray-50"
             title="Download"
           >
@@ -923,7 +923,7 @@ function Transformation() {
               height="24"
               className="text-[#8d77ba]"
             />
-          </button>
+          </button> */}
 
           <button
             onClick={() => navigate("/transformation/studio")}
