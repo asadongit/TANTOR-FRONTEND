@@ -38,8 +38,8 @@ const AddScope = ({ drawerState, handleSave }) => {
     "Insert": "create",
     "Upsert": "update",
     "Delete": "delete",
-    "Schema changes": "schemaChanges",
-    "Data federation view": "datafederation"
+    // "Schema changes": "schemaChanges",
+    // "Data federation view": "datafederation"
   };
 
   const defaultOpTypes = {

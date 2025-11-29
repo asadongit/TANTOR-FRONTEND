@@ -14,6 +14,7 @@ import CardGrid from "../../../components/CardGrid";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
+import Breadcrumb from "../../../components/Breadcrumb";
 
 const ArchivalList = () => {
   const { data: cardData, isLoading: isCardLoading, error: cardError, refetchCardData } = useSourceTypeCounts('migration');
@@ -23,7 +24,7 @@ const ArchivalList = () => {
   const navigate = useNavigate();
   const [activeMenu, setActiveMenu] = useState(null);
 
-  const {token, hostnameV1}= useAuth()
+  const {token, hostnameV1, hostnameV2}= useAuth()
 
 
   
@@ -98,7 +99,7 @@ const handleDeleteClick = (row) => {
 const confirmDeleteMigration = async () => {
   if (!deleteModal.migrationId) return;
   try {
-    await axios.delete(`${hostnameV1}/delete-migration/${deleteModal.migrationId}`, {
+    await axios.delete(`${hostnameV2}/delete-migration/${deleteModal.migrationId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     toast.success("Migration removed from platform.");
@@ -155,6 +156,7 @@ const handleEditClick = async (row) => {
 
   return (
     <div className="p-6">
+      <Breadcrumb title="Platform" link={"/"} />
       <div className="flex gap-2 mb-6 items-center justify-between">
         <h1 className="text-2xl font-semibold">Migration</h1>
         <div>
