@@ -1599,7 +1599,7 @@ useEffect(() => {
 				}, 100);
 			}
 		}
-	}, [isOpen, activeNode, columnsLoaded]);
+	}, [isOpen, activeNodeId, columnsLoaded]);
 
 	// Use initialTransformations for drawer state if in edit mode - wait for columns to be loaded
 	useEffect(() => {
