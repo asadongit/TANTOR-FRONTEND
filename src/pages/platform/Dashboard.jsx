@@ -1,7 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import { useState, useEffect } from "react";
-
+import { useNavigate } from "react-router-dom";
 const Dashboard = () => {
+  const navigate = useNavigate();
+
   const cards = [
     {
       icon: "material-symbols:database-upload-outline",
@@ -12,6 +14,7 @@ const Dashboard = () => {
       description:
         "Data movement transfers data across systems using ETL, batch, or streaming methods, enabling integration, processing, and maintaining data integrity.",
       type: "platform",
+      path: "/migration",
     },
     {
       icon: "material-symbols-light:two-pager-store-outline",
@@ -22,6 +25,7 @@ const Dashboard = () => {
       description:
         "AI data fuels machine learning models, encompassing structured and unstructured datasets, enabling training, predictions, and decision-making for intelligent systems and applications.",
       type: "platform",
+      path: "/purge",
     },
     {
       icon: "material-symbols:cloud-sync-outline",
@@ -32,6 +36,7 @@ const Dashboard = () => {
       description:
         "Change Data Capture (CDC) identifies and tracks data changes in real-time, enabling efficient updates and synchronization across systems or databases.",
       type: "platform",
+      path: "/cdc",
     },
     {
       icon: "material-symbols:tab-group-outline",
@@ -42,6 +47,7 @@ const Dashboard = () => {
       description:
         "Federated data integrates distributed datasets from multiple sources, enabling unified access, analysis, and collaboration without centralizing or duplicating data storage.",
       type: "platform",
+      path: "/federation",
     },
   ];
 
@@ -166,7 +172,7 @@ const Dashboard = () => {
               <h3 className="text-lg font-semibold">{card.title}</h3>
             </div>
             <p className="text-gray-600 text-sm">{card.description}</p>
-            <button className="mt-4 text-purple-600 text-sm hover:text-purple-700">
+            <button className="mt-4 text-purple-600 text-sm hover:text-purple-700" onClick={() => navigate(card?.path || "/")}>
               See details
             </button>
           </div>

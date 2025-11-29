@@ -46,9 +46,9 @@ const Dashboard = ({ activeSection, setActiveSection }) => {
             );
           })}
         </div>
-        <button type="button" onClick={() => navigate('/dataview')} className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]">
+        {/* <button type="button" onClick={() => navigate('/dataview')} className="text-white bg-[#8e78b7] hover:bg-[#8e78b7] focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-[#8e78b7] dark:hover:bg-[#8e78b7] focus:outline-none dark:focus:ring-[#8e78b7]">
           Data View
-        </button>
+        </button> */}
       </div>
 
       {activeSection === 'platform' ? (

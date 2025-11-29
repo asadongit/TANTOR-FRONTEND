@@ -91,9 +91,6 @@ export const getActionConfigurations = ({ token, project, hostnameV2, navigate }
         onClick: (row) => console.log("Delete Migration", row),
       },
     ],
-    metadata: [
-      {}
-    ],
     rules: [
       // {
       //   label: "View",
