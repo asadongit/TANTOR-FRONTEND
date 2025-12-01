@@ -9,6 +9,7 @@ import { DrawerContainer } from "../react-flow/drawers/DrawerContainer";
 import PurgeDrawer from "../react-flow/dialog/PurgeDrawer"
 import PurgeSidebar from "./PurgeSidebar";
 import PurgeFooter from "./PurgeFooter";
+import { createPipeline } from "../cdc/components/CreatePipeline";
 import { useStateContext } from "../react-flow/context/ContextProvider";
 import toast from "react-hot-toast";
 
@@ -124,6 +125,15 @@ function PurgeCanvas() {
       }, 300);
     }
   }, [ui_json, setNodes, setEdges, handleDefineNodeName, handleDefineNodeDesc, handleSourceConnectionName, handleSourceSchemaName, handleSelectedTables, handleTargetConnectionName])
+
+  useEffect(() => {
+  if (ui_json) return;
+
+  const { nodes: autoNodes, edges: autoEdges } = createPipeline("purge", "purge_1");
+
+  setNodes(autoNodes);
+  setEdges(autoEdges);
+}, [ui_json, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
