@@ -592,11 +592,11 @@ function Transformation() {
       icon: <Icon icon="material-symbols:edit-outline" className="w-5 h-5" />,
       onClick: (row) => handleEditTransformation(row),
     },
-    {
-      label: "Info",
-      icon: <Icon icon="material-symbols:info-outline" className="w-5 h-5" />,
-      onClick: (row) => console.log("Info:", row),
-    },
+    // {
+    //   label: "Info",
+    //   icon: <Icon icon="material-symbols:info-outline" className="w-5 h-5" />,
+    //   onClick: (row) => console.log("Info:", row),
+    // },
     {
       label: "Delete",
       icon: <Icon icon="material-symbols:delete-outline" className="w-5 h-5" />,
