@@ -772,7 +772,7 @@ export function TargetNode({ id, data, selected }) {
           </div>
         </div>
       )}
-      {selectedMode == "subset" && selectedSchema && (
+      {/* {selectedMode == "subset" && selectedSchema && (
         <button
           className="w-full py-1 px-4 flex items-center justify-center border border-dashed border-[#8e78b7]  text-[#8e78b7] rounded-md  bg-transparent transition-all duration-200 ease-in-out
                                                           hover:bg-[#8e78b7] hover:text-white mt-2"
@@ -780,7 +780,7 @@ export function TargetNode({ id, data, selected }) {
         >
           + Add table
         </button>
-      )}
+      )} */}
       {/* <div className="flex space-x-2 mt-4">
         <button className="bg-transparent hover:bg-[#8e78b7] text-xs text-gray-700 font-semibold hover:text-white py-2 px-10 border border-gray-700 hover:border-transparent rounded"
         onClick={
