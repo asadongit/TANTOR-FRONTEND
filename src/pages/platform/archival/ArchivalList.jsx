@@ -125,11 +125,11 @@ const handleEditClick = async (row) => {
 };
 
     const actions = [
-      {
-        label: "Edit",
-        icon: <Pencil size={16} />,
-        onClick: handleEditClick,
-      },
+      // {
+      //   label: "Edit",
+      //   icon: <Pencil size={16} />,
+      //   onClick: handleEditClick,
+      // },
       {
         label: "Delete",
         icon: <Trash2 size={16} />,
@@ -183,7 +183,8 @@ const handleEditClick = async (row) => {
 
       {/* Migration Listing Table */}
 
-      <DataTable columns={columns} data={archivalData}
+      <DataTable 
+          columns={columns} data={archivalData}
           actions={actions}
           isLoading={isArchivalLoading}
           isError={archivalError}
