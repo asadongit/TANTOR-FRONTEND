@@ -207,8 +207,10 @@ const processedData = useMemo(() => {
           <button
             type="button"
             className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
-            onClick={()=>{refetch()
-              toast.success('Refreshed sucessfully!')
+            onClick={() => {
+              setSearchTerm("");
+              refetch();
+              toast.success("Refreshed sucessfully!");
             }}
           >
             <RefreshCcw className="h-5 w-5" />
