@@ -62,9 +62,9 @@ const Dashboard = () => {
     history: null,
   });
   const [loading, setLoading] = useState({
-    favourites: true,
-    updates: true,
-    history: true,
+    favourites: false,
+    updates: false,
+    history: false,
   });
   const [showDescription, setShowDescription] = useState({
     1: false,
@@ -73,79 +73,79 @@ const Dashboard = () => {
   });
 
   // Favourites Card state
-  useEffect(() => {
-    fetch("https://api.example.com/favorites")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((favouritesData) => {
-        setData((prevData) => ({ ...prevData, favourites: favouritesData }));
-        setError((prevError) => ({ ...prevError, favourites: null }));
-      })
-      .catch((error) => {
-        setError((prevError) => ({
-          ...prevError,
-          favourites: error.message || "An error occurred.",
-        }));
-        setData((prevData) => ({ ...prevData, favourites: [] }));
-      })
-      .finally(() => {
-        setLoading((prevLoading) => ({ ...prevLoading, favourites: false }));
-      });
-  }, []);
+  // useEffect(() => {
+  //   fetch("https://api.example.com/favorites")
+  //     .then((response) => {
+  //       if (!response.ok) {
+  //         throw new Error("Network response was not ok");
+  //       }
+  //       return response.json();
+  //     })
+  //     .then((favouritesData) => {
+  //       setData((prevData) => ({ ...prevData, favourites: favouritesData }));
+  //       setError((prevError) => ({ ...prevError, favourites: null }));
+  //     })
+  //     .catch((error) => {
+  //       setError((prevError) => ({
+  //         ...prevError,
+  //         favourites: error.message || "An error occurred.",
+  //       }));
+  //       setData((prevData) => ({ ...prevData, favourites: [] }));
+  //     })
+  //     .finally(() => {
+  //       setLoading((prevLoading) => ({ ...prevLoading, favourites: false }));
+  //     });
+  // }, []);
 
   // Updates Card state
-  useEffect(() => {
-    fetch("https://api.example.com/updates")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((updatesData) => {
-        setData((prevData) => ({ ...prevData, updates: updatesData }));
-        setError((prevError) => ({ ...prevError, updates: null }));
-      })
-      .catch((error) => {
-        setError((prevError) => ({
-          ...prevError,
-          updates: error.message || "An error occurred.",
-        }));
-        setData((prevData) => ({ ...prevData, updates: [] }));
-      })
-      .finally(() => {
-        setLoading((prevLoading) => ({ ...prevLoading, updates: false }));
-      });
-  }, []);
+  // useEffect(() => {
+  //   fetch("https://api.example.com/updates")
+  //     .then((response) => {
+  //       if (!response.ok) {
+  //         throw new Error("Network response was not ok");
+  //       }
+  //       return response.json();
+  //     })
+  //     .then((updatesData) => {
+  //       setData((prevData) => ({ ...prevData, updates: updatesData }));
+  //       setError((prevError) => ({ ...prevError, updates: null }));
+  //     })
+  //     .catch((error) => {
+  //       setError((prevError) => ({
+  //         ...prevError,
+  //         updates: error.message || "An error occurred.",
+  //       }));
+  //       setData((prevData) => ({ ...prevData, updates: [] }));
+  //     })
+  //     .finally(() => {
+  //       setLoading((prevLoading) => ({ ...prevLoading, updates: false }));
+  //     });
+  // }, []);
 
   // History Card state
-  useEffect(() => {
-    fetch("https://api.example.com/history")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((historyData) => {
-        setData((prevData) => ({ ...prevData, history: historyData }));
-        setError((prevError) => ({ ...prevError, history: null }));
-      })
-      .catch((error) => {
-        setError((prevError) => ({
-          ...prevError,
-          history: error.message || "An error occurred.",
-        }));
-        setData((prevData) => ({ ...prevData, history: [] }));
-      })
-      .finally(() => {
-        setLoading((prevLoading) => ({ ...prevLoading, history: false }));
-      });
-  }, []);
+  // useEffect(() => {
+  //   fetch("https://api.example.com/history")
+  //     .then((response) => {
+  //       if (!response.ok) {
+  //         throw new Error("Network response was not ok");
+  //       }
+  //       return response.json();
+  //     })
+  //     .then((historyData) => {
+  //       setData((prevData) => ({ ...prevData, history: historyData }));
+  //       setError((prevError) => ({ ...prevError, history: null }));
+  //     })
+  //     .catch((error) => {
+  //       setError((prevError) => ({
+  //         ...prevError,
+  //         history: error.message || "An error occurred.",
+  //       }));
+  //       setData((prevData) => ({ ...prevData, history: [] }));
+  //     })
+  //     .finally(() => {
+  //       setLoading((prevLoading) => ({ ...prevLoading, history: false }));
+  //     });
+  // }, []);
 
   const handleDescriptionToggle = (index) => {
     setShowDescription((prev) => {
@@ -205,7 +205,7 @@ const Dashboard = () => {
           </div>
           <hr className="my-2" />
           {loading.favourites ? (
-            <p className="text-gray-600">Loading...</p>
+            <p className="text-gray-600">Coming Soon</p>
           ) : error.favourites ? (
             <p className="text-gray-600">{error.favourites}</p>
           ) : data.favourites.length > 0 ? (
@@ -238,7 +238,7 @@ const Dashboard = () => {
           </div>
           <hr className="my-2" />
           {loading.updates ? (
-            <p className="text-gray-600">Loading...</p>
+            <p className="text-gray-600">Coming Soon</p>
           ) : error.updates ? (
             <p className="text-gray-600">{error.updates}</p>
           ) : data.updates.length > 0 ? (
@@ -271,7 +271,7 @@ const Dashboard = () => {
           </div>
           <hr className="my-2" />
           {loading.history ? (
-            <p className="text-gray-600">Loading...</p>
+            <p className="text-gray-600">Coming Soon</p>
           ) : error.history ? (
             <p className="text-gray-600">{error.history}</p>
           ) : data.history.length > 0 ? (
