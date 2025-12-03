@@ -91,6 +91,7 @@ const Details = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [activeMenu, setActiveMenu] = useState(null);
+  const [resetSortTrigger, setResetSortTrigger] = useState(0);
 
   const getColumnConfiguration = useCallback((type) => {
     const resolvedType = columnAliases[type] || type;
@@ -209,6 +210,7 @@ const processedData = useMemo(() => {
             className="text-[#818181] shadow-lg border hover:bg-[#8e78b7] hover:text-white focus:ring-1 focus:ring-[#8e78b7] rounded-lg text-sm px-3 py-2.5"
             onClick={() => {
               setSearchTerm("");
+              setResetSortTrigger((prev) => prev + 1);
               refetch();
               toast.success("Refreshed sucessfully!");
             }}
@@ -225,6 +227,7 @@ const processedData = useMemo(() => {
         isLoading={isLoading}
         isError={isError}
         refetch={refetch}
+        resetSortTrigger={resetSortTrigger}
       />
     </div>
   );

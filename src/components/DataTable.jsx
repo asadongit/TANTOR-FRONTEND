@@ -24,6 +24,7 @@ const DataTable = ({
   isLoading = false,
   isError = false,
   refetch = () => {},
+  resetSortTrigger,
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: "", direction: "asc" });
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,6 +45,12 @@ const DataTable = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (resetSortTrigger !== undefined) {
+      setSortConfig({ key: "", direction: "asc" });
+    }
+  }, [resetSortTrigger]);
 
   useEffect(() => {
     setPage(1);
