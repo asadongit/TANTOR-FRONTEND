@@ -125,11 +125,11 @@ const handleEditClick = async (row) => {
 };
 
     const actions = [
-      // {
-      //   label: "Edit",
-      //   icon: <Pencil size={16} />,
-      //   onClick: handleEditClick,
-      // },
+      {
+        label: "Edit",
+        icon: <Pencil size={16} />,
+        onClick: handleEditClick,
+      },
       {
         label: "Delete",
         icon: <Trash2 size={16} />,

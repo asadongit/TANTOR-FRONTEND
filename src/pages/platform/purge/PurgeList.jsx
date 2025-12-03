@@ -70,14 +70,14 @@ const {token, hostnameV1}= useAuth()
     },
   ];
   const actions = [
-    // {
-    //   label: "Edit",
-    //   icon: <Pencil size={16} />,
-    //   onClick: (row) => {
-    //     // Navigate to edit/canvas page and pass ui_json for node pre-population
-    //     navigate("/PurgeCanvas", { state: { ui_json: row.ui_json, purgeId: row.id } });
-    //   },
-    // },
+    {
+      label: "Edit",
+      icon: <Pencil size={16} />,
+      onClick: (row) => {
+        // Navigate to edit/canvas page and pass ui_json for node pre-population
+        navigate("/PurgeCanvas", { state: { ui_json: row.ui_json, purgeId: row.id } });
+      },
+    },
     {
       label: "Delete",
       icon: <Trash2 size={16} />,
