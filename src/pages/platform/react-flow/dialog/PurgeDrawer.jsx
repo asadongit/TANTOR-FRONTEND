@@ -174,22 +174,14 @@ const PurgeDrawer = ({ nodes, setNodes }) => {
 
         saveDropPartitions(
           nodeKey,
-          partition?.partition_name,
-          partition?.column_name,
-          partition?.high_value,
-          partition?.partition_type,
-          partition?.table_name
+          partition
         )
-      } else if (purgeNode === "Target node" && hasPartitions && dropPartitions.source.partitionName) {
+      } else if (purgeNode === "Target node" && hasPartitions && dropPartitions.source.partition_name) {
         const partition = sortedCurrentPartitions[0];
 
         saveDropPartitions(
           nodeKey,
-          partition?.partition_name,
-          partition?.column_name,
-          partition?.high_value,
-          partition?.partition_type,
-          partition?.table_name
+          partition
         )
       }
       saveFilter(nodeKey);

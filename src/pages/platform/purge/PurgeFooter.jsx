@@ -89,11 +89,11 @@ const PurgeFooter = ({ onCancel }) => {
   const buildPurgeSubsetSavePayload = () => {
     const isValidDropPartition = (partition) => {
       return partition &&
-        partition.partitionName !== null &&
-        partition.columnName !== null &&
-        partition.highValue !== null &&
-        partition.partitionType !== null &&
-        partition.tableName !== null;
+        partition.partition_name !== null &&
+        partition.column_name !== null &&
+        partition.high_value !== null &&
+        partition.partition_type !== null &&
+        partition.table_name !== null;
     };
 
     // Collect all node UI state for ui_json
@@ -177,7 +177,7 @@ const PurgeFooter = ({ onCancel }) => {
         targetObjectName: targetData.tableName,
         targetPath: "",
         targetType: targetData.targetType,
-        targetschema: targetData.schemaName,
+        targetSchemaName: targetData.schemaName,
       },
       target_table: targetData.tableName,
       transformation: {},
