@@ -6,6 +6,7 @@ import AddUser from './Components/User/AddUser';
 import EditUser from './Components/User/EditUser';
 import DeleteUser from './Components/User/DeleteUser';
 import { useAuth } from '../../../context/AuthContext';
+import { createPortal } from 'react-dom';
 
 const rotateAnimation = `
   @keyframes rotate {
@@ -73,8 +74,10 @@ const User = () => {
   const initialFetchDone = useRef(false);
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const rowsPerPage = itemsPerPage;
+  
 
   const { token } = useAuth();
+  
 
   // ignore any role that begins with "persona" (e.g. "persona:Analyst" etc.)
   const isPersonaPrefixed = (val) => typeof val === 'string' && /^persona\b[:\-_/]?/i.test(val);
@@ -194,12 +197,14 @@ const User = () => {
   }
 };
 
-  useEffect(() => {
-    if (!initialFetchDone.current) {
-      fetchUserData(1, searchTerm);
-      initialFetchDone.current = true;
-    }
-  }, []);
+ useEffect(() => {
+  window.scrollTo(0, 0);  
+  
+  if (!initialFetchDone.current) {
+    fetchUserData(1, searchTerm);
+    initialFetchDone.current = true;
+  }
+}, []);
 
   const handleClickOutside = () => {
     setActiveMenu(null);
@@ -390,6 +395,30 @@ const currentUsers = users;
   fetchUserData(1, searchTerm, false, newItemsPerPage); 
 };
 
+  const btnRefs = useRef([]);
+
+  const setBtnRef = (index, element) => {
+    if (element) {
+      btnRefs.current[index] = element;
+    }
+  };
+
+  const [menuPlacement, setMenuPlacement] = useState({});
+
+  const toggleMenu = (index) => {
+    const btn = btnRefs.current[index];
+    if (!btn) {
+      setActiveMenu(activeMenu === index ? null : index);
+      return;
+    }
+    const rect = btn.getBoundingClientRect();
+    // position menu just below the button (viewport coordinates) and roughly align right
+    const top = rect.bottom + 8;
+    const left = rect.left; // adjust if you want the menu right-aligned
+    setMenuPlacement(prev => ({ ...prev, [index]: { top, left } }));
+    setActiveMenu(activeMenu === index ? null : index);
+  };
+
   return (
     <div className="px-6 py-4 bg-[#F3F5F7] min-h-screen">
       <style>{rotateAnimation}</style>
@@ -435,13 +464,13 @@ const currentUsers = users;
           </div>
 
           <button
-            className={`flex items-center justify-center p-1 px-1.5 rounded-lg border border-gray-400 bg-gray-50 hover:bg-gray-100`}
+            className={`flex items-center justify-center p-1 px-1.5 rounded-lg border border-gray-400 bg-white hover:bg-gray-100`}
             onClick={handleRefresh}
             disabled={isLoading}
             title="Refresh"
             style={{ width: '40px', height: '40px', borderRadius: '8px', padding: '8px' }}
           >
-            <RefreshCcw className={`${isLoading ? 'icon-rotate' : ''}`} size={20} style={{ color: '#818181' }} />
+            <RefreshCcw size={20} className={`${isLoading ? 'icon-rotate' : ''}`} style={{ color: '#818181' }} strokeWidth={1.7} />
           </button>
 
           <button
@@ -453,9 +482,9 @@ const currentUsers = users;
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow mt-0" style={{ overflow: 'visible' }}>
-        <table className="w-full">
-          <thead>
+      <div className="bg-white rounded-lg shadow mt-0 overflow-x-auto" style={{ maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
+        <table className="w-full min-w-[900px]">
+          <thead className="sticky top-0 z-10">
             <tr className="bg-[#29304a] text-white text-sm">
             <th className="text-left" style={{ padding: '16px 19.75px' }}>User</th>
               <th className="text-left" style={{ padding: '16px 19.75px' }}>Roles</th>
@@ -548,35 +577,45 @@ const currentUsers = users;
                   <td style={{ padding: '16px 19.75px' }}>
                     <div className="relative">
                       <button
-                        onClick={() => setActiveMenu(activeMenu === index ? null : index)}
+                        ref={el => (btnRefs.current[index] = el)}
+                        onClick={() => toggleMenu(index)}
                         className="p-1.5 rounded-full hover:bg-gray-100"
                       >
                         <MoreHorizontal className="h-5 w-5 text-gray-600" />
                       </button>
 
-                      {activeMenu === index && (
+                      {activeMenu === index && menuPlacement[index] && createPortal(
                         <>
                           <div
-                            className="fixed inset-0 z-10"
+                            className="fixed inset-0 z-40"
                             onClick={handleClickOutside}
                           />
-                          <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border z-20 animate-fadeIn">
-                            <div className="flex items-center p-1 gap-1">
+                          <div
+                            className="fixed z-50 bg-white rounded-lg shadow-lg border animate-fadeIn"
+                            style={{
+                              top: menuPlacement[index].top,
+                              left: menuPlacement[index].left,
+                              transform: 'translateY(0)',
+                              minWidth: 75
+                            }}
+                          >
+                            <div className="flex items-center justify-center p-1 gap-1">
                               <button
-                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
                                 onClick={() => handleEditClick(user)}
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>
                               <button
-                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
                                 onClick={() => handleDeleteClick(user)}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
                           </div>
-                        </>
+                        </>,
+                        document.body
                       )}
                     </div>
                   </td>
