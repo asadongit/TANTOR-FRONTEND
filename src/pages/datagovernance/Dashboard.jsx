@@ -6,9 +6,76 @@ import { useAuth } from "../../context/AuthContext";
 const Dashboard = () => {
   const [apiCounts, setApiCounts] = useState(null);
   const [technicalCounts, setTechnicalCounts] = useState(null);
+  const [connectionTypes, setConnectionTypes] = useState({});
+  const [connectorAssets, setConnectorAssets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [technicalLoading, setTechnicalLoading] = useState(true);
+  const [connectorLoading, setConnectorLoading] = useState(true);
   const [error, setError] = useState(null);
   const { token, decodedToken } = useAuth();
+
+  const fetchConnectionTypes = async (connectionNames) => {
+    try {
+      const response = await fetch(
+        `${window._env_?.VITE_FAST_API}/connection_type_by_name`,
+        {
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            connection: connectionNames
+          })
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch connection types');
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (err) {
+      console.error('Error fetching connection types:', err);
+      return {};
+    }
+  };
+
+  const calculateConnectorAssets = (connectionDetails, connectionTypesData) => {
+    const connectorMap = {};
+    
+    connectionDetails.forEach(item => {
+      const connectorType = Object.keys(connectionTypesData).find(type => 
+        connectionTypesData[type].includes(item.connection_name)
+      );
+      
+      if (connectorType) {
+        if (!connectorMap[connectorType]) {
+          connectorMap[connectorType] = {
+            connections: new Set(),
+            schemas: new Set(),
+            tables: new Set(),
+            columns: 0
+          };
+        }
+        
+        connectorMap[connectorType].connections.add(item.connection_name);
+        connectorMap[connectorType].schemas.add(`${item.connection_name}_${item.table_schema}`);
+        connectorMap[connectorType].tables.add(`${item.connection_name}_${item.table_schema}_${item.table_name}`);
+        connectorMap[connectorType].columns++;
+      }
+    });
+    
+    return Object.keys(connectorMap).map(type => ({
+      name: type.charAt(0).toUpperCase() + type.slice(1),
+      count: connectorMap[type].connections.size,
+      connectionCount: connectorMap[type].connections.size,
+      schemaCount: connectorMap[type].schemas.size,
+      tableCount: connectorMap[type].tables.size,
+      columnCount: connectorMap[type].columns
+    }));
+  };
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -48,7 +115,6 @@ const Dashboard = () => {
           );
 
           if (!secureQueryResponse.ok) {
-            console.warn('Secure query failed, setting technical counts to 0');
             setTechnicalCounts({
               connectors: 0,
               schemas: 0,
@@ -102,6 +168,18 @@ const Dashboard = () => {
                   tables: uniqueTables.size,
                   columns: totalColumns
                 });
+
+                if (uniqueConnectors.size > 0) {
+                  setConnectorLoading(true);
+                  const connectionNames = Array.from(uniqueConnectors);
+                  const typesData = await fetchConnectionTypes(connectionNames);
+                  setConnectionTypes(typesData);
+                  
+                  const assetsData = calculateConnectorAssets(connectionDetailsData, typesData);
+                  setConnectorAssets(assetsData);
+                } else {
+                  setConnectorAssets([]);
+                }
               }
             } else {
               setTechnicalCounts({
@@ -110,6 +188,7 @@ const Dashboard = () => {
                 tables: 0,
                 columns: 0
               });
+              setConnectorAssets([]);
             }
           }
         } catch (technicalErr) {
@@ -119,12 +198,18 @@ const Dashboard = () => {
             tables: 0,
             columns: 0
           });
+          setConnectorAssets([]);
+        } finally {
+          setTechnicalLoading(false);
+          setConnectorLoading(false);
         }
 
         setLoading(false);
       } catch (err) {
         setError(err.message);
         setLoading(false);
+        setTechnicalLoading(false);
+        setConnectorLoading(false);
         if (!technicalCounts) {
           setTechnicalCounts({
             connectors: 0,
@@ -133,6 +218,7 @@ const Dashboard = () => {
             columns: 0
           });
         }
+        setConnectorAssets([]);
       }
     };
 
@@ -162,6 +248,22 @@ const Dashboard = () => {
     </div>
   );
 
+  const ConnectorBarChartSkeleton = () => (
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+      <div className="flex items-center mb-4 sm:mb-6">
+        <div className="h-6 bg-gray-200 rounded w-48 animate-pulse"></div>
+      </div>
+      <div className="h-6 sm:h-8 bg-gray-200 rounded-md animate-pulse"></div>
+      <div className="flex mt-3">
+        {[1, 2, 3].map((item) => (
+          <div key={item} className="mr-4">
+            <div className="h-4 bg-gray-200 rounded w-20 animate-pulse mb-1"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const cards = [
     {
       icon: "material-symbols:build-outline",
@@ -170,10 +272,10 @@ const Dashboard = () => {
       bordercolor: "border-[#16ABC2]",
       title: "Technical",
       stats: [
-        { label: "Connectors", value: technicalCounts?.connectors?.toString().padStart(2, '0') || "00" },
-        { label: "Schema", value: technicalCounts?.schemas?.toString().padStart(2, '0') || "00" },
-        { label: "Tables", value: technicalCounts?.tables?.toString().padStart(2, '0') || "00" },
-        { label: "Columns", value: technicalCounts?.columns?.toString().padStart(2, '0') || "00" }
+        { label: "Connectors", value: technicalLoading ? "..." : technicalCounts?.connectors?.toString().padStart(2, '0') || "00" },
+        { label: "Schema", value: technicalLoading ? "..." : technicalCounts?.schemas?.toString().padStart(2, '0') || "00" },
+        { label: "Tables", value: technicalLoading ? "..." : technicalCounts?.tables?.toString().padStart(2, '0') || "00" },
+        { label: "Columns", value: technicalLoading ? "..." : technicalCounts?.columns?.toString().padStart(2, '0') || "00" }
       ]
     },
     {
@@ -183,10 +285,10 @@ const Dashboard = () => {
       bordercolor: "border-[#FFC93F]",
       title: "Business",
       stats: [
-        { label: "Domain", value: apiCounts?.domain_count?.toString().padStart(2, '0') || "00" },
-        { label: "Terms", value: apiCounts?.term_count?.toString().padStart(2, '0') || "00" },
-        { label: "Category", value: apiCounts?.category_count?.toString().padStart(2, '0') || "00" },
-        { label: "SubCategory", value: apiCounts?.subcategory_count?.toString().padStart(2, '0') || "00" }
+        { label: "Domain", value: loading ? "..." : apiCounts?.domain_count?.toString().padStart(2, '0') || "00" },
+        { label: "Terms", value: loading ? "..." : apiCounts?.term_count?.toString().padStart(2, '0') || "00" },
+        { label: "Category", value: loading ? "..." : apiCounts?.category_count?.toString().padStart(2, '0') || "00" },
+        { label: "SubCategory", value: loading ? "..." : apiCounts?.subcategory_count?.toString().padStart(2, '0') || "00" }
       ]
     },
     {
@@ -196,10 +298,10 @@ const Dashboard = () => {
       bordercolor: "border-[#AF52DE]",
       title: "Operational",
       stats: [
-        { label: "Policies", value: apiCounts?.policy_count?.toString().padStart(2, '0') || "00" },
-        { label: "Tags", value: apiCounts?.tag_count?.toString().padStart(2, '0') || "00" },
-        { label: "Rules", value: apiCounts?.rules_count?.toString().padStart(2, '0') || "00" },
-        { label: "Persona", value: apiCounts?.persona_count?.toString().padStart(2, '0') || "00" }
+        { label: "Policies", value: loading ? "..." : apiCounts?.policy_count?.toString().padStart(2, '0') || "00" },
+        { label: "Tags", value: loading ? "..." : apiCounts?.tag_count?.toString().padStart(2, '0') || "00" },
+        { label: "Rules", value: loading ? "..." : apiCounts?.rules_count?.toString().padStart(2, '0') || "00" },
+        { label: "Persona", value: loading ? "..." : apiCounts?.persona_count?.toString().padStart(2, '0') || "00" }
       ]
     }
   ];
@@ -213,21 +315,24 @@ const Dashboard = () => {
   const repositoryData = [
     {
       name: 'Hive',
-      sensitive: 35,
-      nonSensitive: 40,
-      personal: 25
+      sensitive: 1,
+      nonSensitive: 4,
+      personal: 25,
+      others: 90
     },
     {
       name: 'Oracle',
       sensitive: 25,
       nonSensitive: 30,
-      personal: 45
+      personal: 45,
+      others: 90
     },
     {
       name: 'Postgres',
       sensitive: 10,
       nonSensitive: 35,
-      personal: 55
+      personal: 55,
+      others: 90
     }
   ];
 
@@ -261,6 +366,10 @@ const Dashboard = () => {
                 style={{ width: `${item.personal}%` }}
                 className="bg-blue-500"
               />
+              <div
+                style={{ width: `${item.others}%` }}
+                className="bg-gray-300"
+              />
             </div>
           </div>
         ))}
@@ -268,67 +377,105 @@ const Dashboard = () => {
     );
   };
 
-  const assetsCountData = [
-    { name: 'Postgress', count: 100 },
-    { name: 'Hive', count: 150 },
-    { name: 'Oracle', count: 120 },
-    { name: 'Snowflake', count: 90 },
-    { name: 'MSQL', count: 80 },
-    { name: 'DB2', count: 70 }
-  ];
-
   const ConnectorBarChart = () => {
-    const total = assetsCountData.reduce((sum, item) => sum + item.count, 0);
+    const total = connectorAssets.reduce((sum, item) => sum + item.count, 0);
 
     return (
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
         <div className="flex items-center mb-4 sm:mb-6">
           <h2 className="text-lg sm:text-xl font-semibold">Assets count by connector</h2>
-          <svg className="w-4 h-4 sm:w-5 sm:h-5 ml-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
         </div>
 
-        <div className="block sm:hidden space-y-3">
-          {assetsCountData.map((item, index) => (
-            <div key={item.name} className="flex items-center">
-              <span className="text-xs text-gray-600 w-20 mr-2">{item.name}</span>
-              <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${(item.count / total) * 100}%` }}
-                  className="h-full bg-orange-500"
-                />
-              </div>
-              <span className="text-xs ml-2 text-gray-600">{item.count}</span>
+        {connectorLoading ? (
+          <div className="h-8 bg-gray-200 rounded-md animate-pulse"></div>
+        ) : connectorAssets.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            No connector found
+          </div>
+        ) : (
+          <>
+            <div className="block sm:hidden space-y-3">
+              {connectorAssets.map((item, index) => (
+                <div key={item.name} className="relative group">
+                  <div className="flex items-center">
+                    <span className="text-xs text-gray-600 w-20 mr-2">{item.name}</span>
+                    <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        style={{ width: `${(item.count / total) * 100}%` }}
+                        className="h-full bg-orange-500"
+                      />
+                    </div>
+                    <span className="text-xs ml-2 text-gray-600">{item.count}</span>
+                  </div>
+                  <div className="absolute z-10 invisible group-hover:visible bg-gray-800 text-white text-xs rounded p-2 w-48 -left-4 top-6">
+                    <div className="grid grid-cols-2 gap-1">
+                      <div className="font-medium">Connections:</div>
+                      <div>{item.connectionCount}</div>
+                      <div className="font-medium">Schemas:</div>
+                      <div>{item.schemaCount}</div>
+                      <div className="font-medium">Tables:</div>
+                      <div>{item.tableCount}</div>
+                      <div className="font-medium">Columns:</div>
+                      <div>{item.columnCount}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div className="hidden sm:block">
-          <div className="flex mb-2">
-            {assetsCountData.map((item, index) => (
-              <div
-                key={item.name}
-                style={{ width: `${(item.count / total) * 100}%` }}
-              >
-                <span className="text-sm text-gray-600 block truncate px-1">{item.name}</span>
+            <div className="hidden sm:block">
+              <div className="flex mb-2">
+                {connectorAssets.map((item, index) => (
+                  <div
+                    key={item.name}
+                    style={{ width: `${(item.count / total) * 100}%` }}
+                    className="relative group"
+                  >
+                    <span className="text-sm text-gray-600 block truncate px-1">{item.name}</span>
+                    <div className="absolute z-10 invisible group-hover:visible bg-gray-800 text-white text-xs rounded p-2 w-48 -left-4 top-6">
+                      <div className="grid grid-cols-2 gap-1">
+                        <div className="font-medium">Connections:</div>
+                        <div>{item.connectionCount}</div>
+                        <div className="font-medium">Schemas:</div>
+                        <div>{item.schemaCount}</div>
+                        <div className="font-medium">Tables:</div>
+                        <div>{item.tableCount}</div>
+                        <div className="font-medium">Columns:</div>
+                        <div>{item.columnCount}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div className="h-6 sm:h-8 flex rounded-md overflow-hidden">
-            {assetsCountData.map((item, index) => (
-              <div
-                key={item.name}
-                style={{
-                  width: `${(item.count / total) * 100}%`,
-                  backgroundColor: `rgba(255, 87, 34, ${1 - (index * 0.15)})`
-                }}
-                className="h-full"
-              />
-            ))}
-          </div>
-        </div>
+              <div className="h-6 sm:h-8 flex rounded-md overflow-hidden">
+                {connectorAssets.map((item, index) => (
+                  <div
+                    key={item.name}
+                    style={{
+                      width: `${(item.count / total) * 100}%`,
+                      backgroundColor: `rgba(255, 87, 34, ${1 - (index * 0.15)})`
+                    }}
+                    className="h-full relative group"
+                  >
+                    <div className="absolute z-10 invisible group-hover:visible bg-gray-800 text-white text-xs rounded p-2 w-48 -left-4 top-8">
+                      <div className="grid grid-cols-2 gap-1">
+                        <div className="font-medium">Connections:</div>
+                        <div>{item.connectionCount}</div>
+                        <div className="font-medium">Schemas:</div>
+                        <div>{item.schemaCount}</div>
+                        <div className="font-medium">Tables:</div>
+                        <div>{item.tableCount}</div>
+                        <div className="font-medium">Columns:</div>
+                        <div>{item.columnCount}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   };
@@ -395,6 +542,10 @@ const Dashboard = () => {
               <div className="w-3 h-3 sm:w-4 sm:h-4 bg-[#268ede] rounded-sm mr-2" />
               <span className="text-xs sm:text-sm text-gray-600">Personal</span>
             </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-300 rounded-sm mr-2" />
+              <span className="text-xs sm:text-sm text-gray-600">Others</span>
+            </div>
           </div>
         </div>
 
@@ -427,7 +578,7 @@ const Dashboard = () => {
       </div>
 
       <div className="mt-6 sm:mt-10">
-        <ConnectorBarChart />
+        {connectorLoading ? <ConnectorBarChartSkeleton /> : <ConnectorBarChart />}
       </div>
 
       <div className="mt-6 sm:mt-10">
