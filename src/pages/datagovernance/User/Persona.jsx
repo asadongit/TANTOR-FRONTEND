@@ -49,18 +49,35 @@ tbody tr:last-child td:first-child {
 tbody tr:last-child td:last-child {
   border-bottom-right-radius: 0.5rem;
 }
+.toggle-disabled {
+    pointer-events: none;
+    opacity: 0.6;
+  }
+  
+  .toggle-disabled svg {
+    display: none !important;
+  }  
+  
 `;
 
-const Toggle = ({ enabled, onToggle }) => {
+const Toggle = ({ enabled, onToggle, disabled = false, size = "md" }) => {
+  const sizes = {
+    sm: { w: "w-8", h: "h-4", knob: "h-3 w-3", translate: "translate-x-4" },
+    md: { w: "w-10", h: "h-5", knob: "h-4 w-4", translate: "translate-x-5" },
+  };
+  const s = sizes[size] || sizes.md;
+
   return (
     <div
-      onClick={onToggle}
-      className={`relative inline-flex h-5 w-10 cursor-pointer rounded-full transition-colors ease-in-out duration-200 ${enabled ? "bg-[#1a9962]" : "bg-gray-200"
-        }`}
+      onClick={() => !disabled && onToggle && onToggle()}
+      className={`relative inline-flex ${s.h} ${s.w} ${disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"} rounded-full transition-colors ease-in-out duration-200 ${
+        enabled ? "bg-[#1a9962]" : "bg-gray-200"
+      }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ease-in-out duration-200 m-0.5 ${enabled ? "translate-x-5" : "translate-x-0"
-          }`}
+        className={`inline-block ${s.knob} transform rounded-full bg-white transition ease-in-out duration-200 m-0.5 ${
+          enabled ? s.translate : "translate-x-0"
+        }`}
       />
     </div>
   );
@@ -569,13 +586,18 @@ const Persona = () => {
                             </div>
 
                             <div className="flex items-center gap-2">
-                              {togglingStatus === card.title ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" />
-                              ) : (
-                                <Toggle enabled={card.enabled} onToggle={() => togglePersona(card.title)} />
-                              )}
-                              <span className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-gray-400"}`}>{card.enabled ? "Enabled" : "Disabled"}</span>
-                            </div>
+  <div className={togglingStatus === card.title ? 'toggle-disabled' : ''}>
+    <Toggle
+      enabled={togglingStatus === card.title ? !card.enabled : card.enabled}
+      onToggle={() => togglePersona(card.title)}
+      disabled={togglingStatus === card.title}
+      size="md"
+    />
+  </div>
+  <span className={`text-sm ${card.enabled ? "text-[#1a9962]" : "text-gray-400"}`}>
+    {card.enabled ? "Enabled" : "Disabled"}
+  </span>
+</div>
                           </div>
                         </div>
                       </div>
@@ -624,8 +646,8 @@ const Persona = () => {
 
           {viewMode === 'list' && (
             <>
-              <div className="bg-white rounded-lg shadow mt-0" style={{ overflow: 'visible' }}>
-                <table className="w-full">
+              <div className="bg-white rounded-lg shadow mt-0 overflow-x-auto" style={{ overflowY: 'visible' }}>
+        <table className="w-full min-w-[900px]">
                   <thead>
                     <tr className="bg-[#29304a] text-white text-sm">
                       <th className="text-left" style={{ padding: '16px 19.75px' }}>ID</th>
@@ -674,15 +696,17 @@ const Persona = () => {
                                       <Pencil className="h-4 w-4" />
                                     </button>
 
-                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2" onClick={async () => { setActiveMenu(null); await togglePersona(row.name); }} disabled={togglingStatus === row.name} title={row.status === 'Enabled' ? 'Disable' : 'Enable'}>
-                                      {togglingStatus === row.name ? (
-                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-[#8e78b7]" />
-                                      ) : (
-                                        <div className={`w-4 h-4 flex items-center justify-center mr-1 rounded-sm transition-colors ${row.status === 'Enabled' ? 'bg-[#1a9962] text-white' : 'border border-gray-300 bg-white text-transparent'}`} aria-hidden="true" title={row.status === 'Enabled' ? 'Disable' : 'Enable'}>
-                                          {row.status === 'Enabled' && <Icon icon="mdi:check" width="12" height="12" />}
-                                        </div>
-                                      )}
-                                    </button>
+                                    <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2" 
+  onClick={async () => { setActiveMenu(null); await togglePersona(row.name); }} 
+  disabled={togglingStatus === row.name} 
+  title={row.status === 'Enabled' ? 'Disable' : 'Enable'}>
+  <Toggle
+    enabled={togglingStatus === row.name ? row.status !== 'Enabled' : row.status === 'Enabled'}
+    onToggle={async () => { setActiveMenu(null); await togglePersona(row.name); }}
+    disabled={togglingStatus === row.name}
+    size="sm"
+  />
+</button>
 
                                     <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => { setPersonaToDelete(row); setShowDeleteModal(true); setActiveMenu(null); }}>
                                       <Trash2 className="h-4 w-4" />
