@@ -276,6 +276,7 @@ function Tables() {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden mt-5">
+          
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
